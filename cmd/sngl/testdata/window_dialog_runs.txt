@@ -28,6 +28,8 @@ stdout '3 tests, 0 failures'
 
 sngl test --platform=win32 --language=c app.sngl
 stdout '3 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout '3 tests, 0 failures'
 
 # bubbletea and android show one window, and refuse the second.
 ! sngl test --platform=bubbletea --language=go app.sngl
@@ -98,7 +100,7 @@ func testADialogUnderAnIfComesAndGoes(t Test, c app) {
     t.assert(c.mounts == 2)
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:82468270703307b36d2ba94036e7c3dc
+sha256:8f1cddee208690ed273d86ce2c81cba3
 {
   "results": [
     {
@@ -116,7 +118,7 @@ sha256:82468270703307b36d2ba94036e7c3dc
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:0e78176b87f16f670078694b9a41bf79
+sha256:3c196785763162049975f4b8df6fed99
 {
   "results": [
     {
@@ -134,7 +136,7 @@ sha256:0e78176b87f16f670078694b9a41bf79
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:700fb001f9594934dfa2e65d90226c87
+sha256:6a48a03ee6692d6ab2d373b47e200c0f
 {
   "results": [
     {
@@ -152,7 +154,7 @@ sha256:700fb001f9594934dfa2e65d90226c87
   ]
 }
 -- testrun/win32/c/app.sngl/app/1 --
-sha256:3e3a61d2fe9ca41709d40a7473582284
+sha256:ee0d29cd10932e08e4cb5e491173c19d
 {
   "results": [
     {
@@ -165,6 +167,24 @@ sha256:3e3a61d2fe9ca41709d40a7473582284
     },
     {
       "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/app/1 --
+sha256:f18cb337aa1725daba4ef630191228a3
+{
+  "results": [
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    },
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
       "Passed": true
     }
   ]

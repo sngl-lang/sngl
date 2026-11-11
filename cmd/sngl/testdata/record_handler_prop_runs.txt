@@ -27,6 +27,8 @@ stdout 'ok   2 tests, 0 failures'
 
 sngl test --platform=win32 --language=c app.sngl
 stdout 'ok   2 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -168,6 +170,20 @@ sha256:c5419db2fc8d3a7688f0d35b21570731
     },
     {
       "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/app/1 --
+sha256:74fb804bfc56d192ee12ded8384be153
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
       "Passed": true
     }
   ]

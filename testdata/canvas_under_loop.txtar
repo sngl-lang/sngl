@@ -252,13 +252,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n0__new := new__canvas0Instance(m, r, m.grow, func() {
+						__n0__made := new__canvas0Instance(m, r, m.grow, func() {
 							m.grow += 1.0
 							for _, __inst0_live_uv := range m.__inst0_live {
 								__inst0_live_uv.Set__p1(m.grow)
 							}
 						})
-						__n0 = __n0__new
+						__n0 = __n0__made
 					}
 					__inst0_next[__key1] = __n0
 					__n0__el := __n0.Root
@@ -325,8 +325,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := new__canvas1Instance(m, r)
-						__n1 = __n1__new
+						__n1__made := new__canvas1Instance(m, r)
+						__n1 = __n1__made
 					}
 					__inst1_next[__key2] = __n1
 					__n1__el := __n1.Root
@@ -1019,13 +1019,13 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 								return nil
 							}().Destroy()
 						}
-						__n0__new := new__canvas0Instance(m, r, m.grow, func() {
+						__n0__made := new__canvas0Instance(m, r, m.grow, func() {
 							m.grow += 1.0
 							for _, __inst0_live_uv := range m.__inst0_live {
 								__inst0_live_uv.Set__p1(m.grow)
 							}
 						})
-						__n0 = __n0__new
+						__n0 = __n0__made
 					}
 					__inst0_next[__key1] = __n0
 					__n0__el := __n0.Root
@@ -1092,8 +1092,8 @@ func (m *Model) __renderSlot1(parent *C.GtkBox) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := new__canvas1Instance(m, r)
-						__n1 = __n1__new
+						__n1__made := new__canvas1Instance(m, r)
+						__n1 = __n1__made
 					}
 					__inst1_next[__key2] = __n1
 					__n1__el := __n1.Root
@@ -1497,7 +1497,7 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n0__new = __cf___canvas0({ __p0: r, __p1: state.grow, __on0: () => {
+              let __n0__made = __cf___canvas0({ __p0: r, __p1: state.grow, __on0: () => {
                 state.grow += 1;
                 for (const [__inst1_live_uk, __inst1_live_uv] of __inst1_live.entries()) {
                   ;
@@ -1505,7 +1505,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n0 = __n0__new;
+              __n0 = __n0__made;
             }
             __inst1_next.set(__key2, __n0);
             let __n0__el = __n0.__root;
@@ -1566,8 +1566,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n1__new = __cf___canvas1({ __p0: r });
-              __n1 = __n1__new;
+              let __n1__made = __cf___canvas1({ __p0: r });
+              __n1 = __n1__made;
             }
             __inst3_next.set(__key4, __n1);
             let __n1__el = __n1.__root;
@@ -1658,8 +1658,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:f7df9ebecc86926ce04e4cc7aa483841
+pass sha256:26d9f79a6fb5ec5104da8c27be16d81f
 -- run/go/gtk4 --
-pass sha256:204f35b21ed6bb4be8365e4d02b160cb
+pass sha256:267b614fe0bc4d95bc4575e9855fb94f
 -- run/none/html --
-pass sha256:b82ec3d76435bba3da78133f9b9e4699
+pass sha256:987d7a94e634af1cbed57dba23bae324

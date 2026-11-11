@@ -1556,11 +1556,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
+						__n1__made := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
 							m.log = ((it.Elem + " ") + fmt.Sprint(on))
 							m.__n0.SetText(m.log)
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -1600,11 +1600,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := new__input_state1Instance(m, it.Elem, fmt.Sprint(__copy0), func(v string) {
+						__n2__made := new__input_state1Instance(m, it.Elem, fmt.Sprint(__copy0), func(v string) {
 							m.log = ((it.Elem + "=") + v)
 							m.__n0.SetText(m.log)
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst1_next[__key2] = __n2
 					__n2__el := __n2.Root
@@ -2184,11 +2184,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
+						__n1__made := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
 							m.log = ((it.Elem + " ") + fmt.Sprint(on))
 							gtk4rt.LabelSetLabel(m.__n0, m.log)
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -2228,11 +2228,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := new__input_state1Instance(m, it.Elem, fmt.Sprint(__copy0), func(v string) {
+						__n2__made := new__input_state1Instance(m, it.Elem, fmt.Sprint(__copy0), func(v string) {
 							m.log = ((it.Elem + "=") + v)
 							gtk4rt.LabelSetLabel(m.__n0, m.log)
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst1_next[__key2] = __n2
 					__n2__el := __n2.Root
@@ -3292,11 +3292,11 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n4__new = __cf___child0({ __p0: __copy0, __p1: it, __on0: () => {
+              let __n4__made = __cf___child0({ __p0: __copy0, __p1: it, __on0: () => {
                 state.log = it.elem;
                 __n0.textContent = state.log;
               } });
-              __n4 = __n4__new;
+              __n4 = __n4__made;
             }
             __inst1_next.set(__key2, __n4);
             let __n4__el = __n4.__root;
@@ -3329,11 +3329,11 @@ window.__sngl_boot = () => {
               if (__inst2_live.has(__key3)) {
                 (__inst2_live.has(__key3) ? __inst2_live.get(__key3) : null).__destroy();
               }
-              let __n5__new = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0), change: (on) => {
+              let __n5__made = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0), change: (on) => {
                 state.log = it.elem + " " + String(on);
                 __n0.textContent = state.log;
               } });
-              __n5 = __n5__new;
+              __n5 = __n5__made;
             }
             __inst2_next.set(__key3, __n5);
             let __n5__el = __n5.__root;
@@ -3366,11 +3366,11 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n6__new = __cf___input_state1({ __start_value: it.elem, __copy: String(__copy0), change: (v) => {
+              let __n6__made = __cf___input_state1({ __start_value: it.elem, __copy: String(__copy0), change: (v) => {
                 state.log = it.elem + "=" + v;
                 __n0.textContent = state.log;
               } });
-              __n6 = __n6__new;
+              __n6 = __n6__made;
             }
             __inst3_next.set(__key4, __n6);
             let __n6__el = __n6.__root;
@@ -3437,10 +3437,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:e1a72c829c02188219eb833790b39cb7
 -- run/go/fyne --
-pass sha256:4335a846e2183ad2e09e6717f21bed7d
+pass sha256:dd8d94adce29809b1e190b12dd9e5816
 -- run/go/gtk4 --
-pass sha256:043a5737760acebf371e5ee0ae75b321
+pass sha256:c45fc3bb81fddd35de86fd40e46fd91f
 -- run/kotlin/android --
 pass sha256:ea3887296929cf6f2aa99a0d3947bb7a
 -- run/none/html --
-pass sha256:4fc0cbb86b1c5f3df4240d83f55d6305
+pass sha256:c31e1e6b54c762c56b8308d656e7f338

@@ -916,8 +916,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__checkbox_state3Instance(m, false, it.Elem)
-						__n4 = __n4__new
+						__n4__made := new__checkbox_state3Instance(m, false, it.Elem)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -1232,8 +1232,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__checkbox_state3Instance(m, false, it.Elem)
-						__n4 = __n4__new
+						__n4__made := new__checkbox_state3Instance(m, false, it.Elem)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -1802,8 +1802,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n6__new = __cf___checkbox_state3({ label: it.elem });
-              __n6 = __n6__new;
+              let __n6__made = __cf___checkbox_state3({ label: it.elem });
+              __n6 = __n6__made;
             }
             __inst1_next.set(__key2, __n6);
             let __n6__el = __n6.__root;
@@ -1865,10 +1865,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fedfa288766d32c24583714d19235189
 -- run/go/fyne --
-pass sha256:0fb91facad5e10bf8609dbdc6774d150
+pass sha256:a6bdbd4959459991a2d7ac228dedaede
 -- run/go/gtk4 --
-pass sha256:619d4c855bb4cfd63cb0caa033094464
+pass sha256:ae63b5726f38dfddb057f0b0ebbfcca6
 -- run/kotlin/android --
 pass sha256:ddc65caf1c45c088c67db687554f5fb4
 -- run/none/html --
-pass sha256:574024b23f74d8ad1857158a5f18ee76
+pass sha256:e1307f2289e979309fdea4bd54268566

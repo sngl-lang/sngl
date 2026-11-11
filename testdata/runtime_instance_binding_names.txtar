@@ -724,8 +724,8 @@ func (c *Frame__slot6Instance) __renderSlot0(__parent *fyne.Container) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n15 = __n15__new
+							__n15__made := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n15 = __n15__made
 						}
 						__inst0_next = append(__inst0_next, __n15)
 						__inst0_i = (__inst0_i + 1)
@@ -858,8 +858,8 @@ func (c *Frame__slot5Instance) __renderSlot1(__parent *fyne.Container) {
 							if len(c.__inst1_live) > __inst1_i {
 								c.__inst1_live[__inst1_i].Destroy()
 							}
-							__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n17 = __n17__new
+							__n17__made := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n17 = __n17__made
 						}
 						__inst1_next = append(__inst1_next, __n17)
 						__inst1_i = (__inst1_i + 1)
@@ -992,8 +992,8 @@ func (c *Frame__slot4Instance) __renderSlot2(__parent *fyne.Container) {
 							if len(c.__inst2_live) > __inst2_i {
 								c.__inst2_live[__inst2_i].Destroy()
 							}
-							__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n19 = __n19__new
+							__n19__made := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n19 = __n19__made
 						}
 						__inst2_next = append(__inst2_next, __n19)
 						__inst2_i = (__inst2_i + 1)
@@ -1126,8 +1126,8 @@ func (c *Frame__slot2Instance) __renderSlot3(__parent *fyne.Container) {
 							if len(c.__inst3_live) > __inst3_i {
 								c.__inst3_live[__inst3_i].Destroy()
 							}
-							__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n21 = __n21__new
+							__n21__made := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n21 = __n21__made
 						}
 						__inst3_next = append(__inst3_next, __n21)
 						__inst3_i = (__inst3_i + 1)
@@ -1260,8 +1260,8 @@ func (c *Frame__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 							if len(c.__inst4_live) > __inst4_i {
 								c.__inst4_live[__inst4_i].Destroy()
 							}
-							__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n23 = __n23__new
+							__n23__made := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n23 = __n23__made
 						}
 						__inst4_next = append(__inst4_next, __n23)
 						__inst4_i = (__inst4_i + 1)
@@ -1394,8 +1394,8 @@ func (c *Frame__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 							if len(c.__inst5_live) > __inst5_i {
 								c.__inst5_live[__inst5_i].Destroy()
 							}
-							__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n25 = __n25__new
+							__n25__made := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n25 = __n25__made
 						}
 						__inst5_next = append(__inst5_next, __n25)
 						__inst5_i = (__inst5_i + 1)
@@ -1625,8 +1625,8 @@ func (c *Frame__slot6Instance) __renderSlot0(parent gtk4rt.Handle) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n15 = __n15__new
+							__n15__made := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n15 = __n15__made
 						}
 						__inst0_next = append(__inst0_next, __n15)
 						__inst0_i = (__inst0_i + 1)
@@ -1774,8 +1774,8 @@ func (c *Frame__slot5Instance) __renderSlot1(parent gtk4rt.Handle) {
 							if len(c.__inst1_live) > __inst1_i {
 								c.__inst1_live[__inst1_i].Destroy()
 							}
-							__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n17 = __n17__new
+							__n17__made := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n17 = __n17__made
 						}
 						__inst1_next = append(__inst1_next, __n17)
 						__inst1_i = (__inst1_i + 1)
@@ -1923,8 +1923,8 @@ func (c *Frame__slot4Instance) __renderSlot2(parent gtk4rt.Handle) {
 							if len(c.__inst2_live) > __inst2_i {
 								c.__inst2_live[__inst2_i].Destroy()
 							}
-							__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n19 = __n19__new
+							__n19__made := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n19 = __n19__made
 						}
 						__inst2_next = append(__inst2_next, __n19)
 						__inst2_i = (__inst2_i + 1)
@@ -2072,8 +2072,8 @@ func (c *Frame__slot2Instance) __renderSlot3(parent gtk4rt.Handle) {
 							if len(c.__inst3_live) > __inst3_i {
 								c.__inst3_live[__inst3_i].Destroy()
 							}
-							__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n21 = __n21__new
+							__n21__made := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n21 = __n21__made
 						}
 						__inst3_next = append(__inst3_next, __n21)
 						__inst3_i = (__inst3_i + 1)
@@ -2221,8 +2221,8 @@ func (c *Frame__slot1Instance) __renderSlot4(parent gtk4rt.Handle) {
 							if len(c.__inst4_live) > __inst4_i {
 								c.__inst4_live[__inst4_i].Destroy()
 							}
-							__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n23 = __n23__new
+							__n23__made := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n23 = __n23__made
 						}
 						__inst4_next = append(__inst4_next, __n23)
 						__inst4_i = (__inst4_i + 1)
@@ -2370,8 +2370,8 @@ func (c *Frame__slot0Instance) __renderSlot5(parent gtk4rt.Handle) {
 							if len(c.__inst5_live) > __inst5_i {
 								c.__inst5_live[__inst5_i].Destroy()
 							}
-							__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n25 = __n25__new
+							__n25__made := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n25 = __n25__made
 						}
 						__inst5_next = append(__inst5_next, __n25)
 						__inst5_i = (__inst5_i + 1)
@@ -2814,8 +2814,8 @@ window.__sngl_boot = () => {
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n15__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n15 = __n15__new;
+                  let __n15__made = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n15 = __n15__made;
                 }
                 __inst1_next.push(__n15);
                 __inst1_i = __inst1_i + 1;
@@ -2948,8 +2948,8 @@ window.__sngl_boot = () => {
                   if (__inst3_live.length > __inst3_i) {
                     __inst3_live[__inst3_i].__destroy();
                   }
-                  let __n17__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n17 = __n17__new;
+                  let __n17__made = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n17 = __n17__made;
                 }
                 __inst3_next.push(__n17);
                 __inst3_i = __inst3_i + 1;
@@ -3082,8 +3082,8 @@ window.__sngl_boot = () => {
                   if (__inst5_live.length > __inst5_i) {
                     __inst5_live[__inst5_i].__destroy();
                   }
-                  let __n19__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n19 = __n19__new;
+                  let __n19__made = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n19 = __n19__made;
                 }
                 __inst5_next.push(__n19);
                 __inst5_i = __inst5_i + 1;
@@ -3216,8 +3216,8 @@ window.__sngl_boot = () => {
                   if (__inst7_live.length > __inst7_i) {
                     __inst7_live[__inst7_i].__destroy();
                   }
-                  let __n21__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n21 = __n21__new;
+                  let __n21__made = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n21 = __n21__made;
                 }
                 __inst7_next.push(__n21);
                 __inst7_i = __inst7_i + 1;
@@ -3350,8 +3350,8 @@ window.__sngl_boot = () => {
                   if (__inst9_live.length > __inst9_i) {
                     __inst9_live[__inst9_i].__destroy();
                   }
-                  let __n23__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n23 = __n23__new;
+                  let __n23__made = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n23 = __n23__made;
                 }
                 __inst9_next.push(__n23);
                 __inst9_i = __inst9_i + 1;
@@ -3484,8 +3484,8 @@ window.__sngl_boot = () => {
                   if (__inst11_live.length > __inst11_i) {
                     __inst11_live[__inst11_i].__destroy();
                   }
-                  let __n25__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n25 = __n25__new;
+                  let __n25__made = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n25 = __n25__made;
                 }
                 __inst11_next.push(__n25);
                 __inst11_i = __inst11_i + 1;
@@ -3570,10 +3570,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:c2ee3d88455eec99037351c6f6de8156
 -- run/go/fyne --
-pass sha256:52013fe79c71b41556726b249a521b15
+pass sha256:5e87eeebb57bdd44d94be7ec8aa717e0
 -- run/go/gtk4 --
-pass sha256:c873e0b06e81a755e1fc359a4bca8ca1
+pass sha256:0d7cc9fe3073fb99c6ee693462a3bdb7
 -- run/kotlin/android --
 pass sha256:67255b602693438bdaef79a5ddf7c0fe
 -- run/none/html --
-pass sha256:e03e16f1f6df223811edd61574725cf4
+pass sha256:a527425f5fadd9da5d1d681f0660500b

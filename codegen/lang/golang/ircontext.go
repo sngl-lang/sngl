@@ -49,6 +49,10 @@ type GoIRContext struct {
 	// unqualified.
 	Wrapping string
 
+	// placedTests says the test bodies the context writes are a placed
+	// program's (WriteTests): a test's mount builds the program.
+	placedTests bool
+
 	// MethodRecvType, when set, emits EmitFuncDef's output as a method on that
 	// Go type rather than as a free function or a Model method.
 	MethodRecvType string
@@ -426,6 +430,9 @@ func atGoZero(f ir.FieldInit) bool {
 	if ir.IsNullLiteral(f.Value) {
 		return true
 	}
+	if lit, ok := f.Value.(*ir.StructLit); ok && len(lit.Fields) == 0 && opaqueC(lit.Type) {
+		return true
+	}
 	lit, ok := f.Value.(*ir.Literal)
 	if !ok || lit.Type == nil {
 		return false
@@ -440,6 +447,16 @@ func atGoZero(f ir.FieldInit) bool {
 		return err == nil && n == 0
 	}
 	return false
+}
+
+// opaqueC reports whether t is a type a `c:` import declares without its
+// fields: a handle, whose value only C makes.
+func opaqueC(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Foreign.Path == ir.CPath && len(sd.Fields) == 0
 }
 
 func isSpread(e ir.Expr) bool {
@@ -482,6 +499,9 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 	}
 	gc.requireForeignStructImport(n)
 	name := structLitTypeName(n)
+	if sd, ok := n.Type.Decl.(*ir.StructDef); ok && sd.RefBox {
+		return "&" + strings.TrimPrefix(name, "*") + "{" + strings.Join(gc.structLitParts(n, fieldStrs), ", ") + "}"
+	}
 	// A native type whose host spelling is a pointer has no composite literal:
 	// `*time.Ticker{}` does not parse. Only the empty literal can reach here
 	// for one -- it is the zero the checker synthesizes for `var t Ticker`,
@@ -497,6 +517,18 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		}
 		return "nil"
 	}
+	// Nor has a C type whose fields C keeps to itself, a handle cgo spells
+	// as a pointer or a number by what its typedef says; only its zero
+	// reaches here, and that is what `new` makes of either.
+	if len(n.Fields) == 0 && opaqueC(n.Type) {
+		return "*new(" + name + ")"
+	}
+	return name + "{" + strings.Join(gc.structLitParts(n, fieldStrs), ", ") + "}"
+}
+
+// structLitParts are n's fields as a composite literal names them, less
+// those at their zero.
+func (gc *GoIRContext) structLitParts(n *ir.StructLit, fieldStrs []string) []string {
 	parts := make([]string, 0, len(n.Fields))
 	for i, f := range n.Fields {
 		if f.Spread {
@@ -507,7 +539,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		}
 		parts = append(parts, ExportName(f.Name)+": "+fieldStrs[i])
 	}
-	return name + "{" + strings.Join(parts, ", ") + "}"
+	return parts
 }
 
 func (gc *GoIRContext) Spread(_ *ir.Spread, operand string) string { return operand }
@@ -917,6 +949,19 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	// fyne's localElementRef and gtk4's qualifyNodeExpr -- each build a *fresh*
 	// ir.Ident carrying no Sym. Copy one with its Sym instead and the local
 	// silently becomes a field read.
+	// A free function's body has no receiver holding node handles, nor has
+	// a lambda in one: a node
+	// placement made is a local of the function that made it, wherever the
+	// ident reading it was copied from -- one it declared with no symbol
+	// (declarativeState's), or a handler's read of the node it was written
+	// on, resolves as nothing else.
+	if gc.Ctx.FreeBody || gc.FreeFuncScope {
+		_, kind := gc.Ctx.Resolve(name)
+		v, _ := n.Sym.(*ir.Var)
+		if kind == codegen.NameLocal || kind == codegen.NameUnknown && (n.IsElementRef || v != nil && v.NodeHandle) {
+			return gc.Ctx.RenamedName(name)
+		}
+	}
 	if v, ok := n.Sym.(*ir.Var); ok && v.NodeHandle {
 		return gc.NodeRecv(name) + "." + name
 	}
@@ -2078,6 +2123,7 @@ func (gc *GoIRContext) WithLocal(name string) *GoIRContext {
 		AlertFunc:          gc.AlertFunc,
 		FreeFuncScope:      gc.FreeFuncScope,
 		Wrapping:           gc.Wrapping,
+		placedTests:        gc.placedTests,
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
@@ -2103,6 +2149,7 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 		AlertFunc:          gc.AlertFunc,
 		FreeFuncScope:      gc.FreeFuncScope,
 		Wrapping:           gc.Wrapping,
+		placedTests:        gc.placedTests,
 		EmitLineDirectives: gc.EmitLineDirectives,
 		LineDirBase:        gc.LineDirBase,
 		InstanceRecords:    gc.InstanceRecords,
@@ -2220,6 +2267,10 @@ func typeToGo(t *ir.Type, own string) string {
 				return sd.Foreign.Name
 			}
 			if name := ExportName(sd.Name); name != "" {
+				// A box is a reference, and Go's struct a value.
+				if sd.RefBox {
+					return "*" + name
+				}
 				return name
 			}
 			if len(sd.Fields) == 0 {

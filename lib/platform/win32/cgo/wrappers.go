@@ -911,6 +911,11 @@ func SnglWin32Span() HWND {
 	return C.sngl_win32_span()
 }
 
+// SnglWin32Step calls sngl_win32_step.
+func SnglWin32Step() {
+	C.sngl_win32_step()
+}
+
 // SnglWin32TabPage calls sngl_win32_tab_page.
 func SnglWin32TabPage() HWND {
 	return C.sngl_win32_tab_page()

@@ -1093,8 +1093,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCounterInstance(m, r.Elem)
-						__n5 = __n5__new
+						__n5__made := newCounterInstance(m, r.Elem)
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -1435,8 +1435,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCounterInstance(m, r.Elem)
-						__n5 = __n5__new
+						__n5__made := newCounterInstance(m, r.Elem)
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -1897,8 +1897,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n5__new = __cf_counter({ inc: r.elem });
-              __n5 = __n5__new;
+              let __n5__made = __cf_counter({ inc: r.elem });
+              __n5 = __n5__made;
             }
             __inst1_next.set(__key2, __n5);
             let __n5__el = __n5.__root;
@@ -1964,10 +1964,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b32b91492226e2f8555de88956ddc70c
 -- run/go/fyne --
-pass sha256:65f82ae41e4f1814255c722c7a36f482
+pass sha256:b4f5853c97ef81edec748b89607a2bce
 -- run/go/gtk4 --
-pass sha256:e013d1ef5cd549ebf03b9f320ef2fd67
+pass sha256:2c5137b01cc440fe2dbb6682c22eb034
 -- run/kotlin/android --
 pass sha256:020664f96f0fbc9b18c22e760fc06da3
 -- run/none/html --
-pass sha256:9a2045f8322f62e224a2c178dc8ac106
+pass sha256:0eb8176a76a26bd93462136b749aacdb

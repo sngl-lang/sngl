@@ -426,8 +426,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCardInstance(m, n.Elem)
-						__n5 = __n5__new
+						__n5__made := newCardInstance(m, n.Elem)
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -1183,8 +1183,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCardInstance(m, n.Elem)
-						__n5 = __n5__new
+						__n5__made := newCardInstance(m, n.Elem)
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -1597,6 +1597,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/fyne --
-pass sha256:0231182ec8b228999bb6275a9bd017f8
+pass sha256:1c148b6aa5d8292198e90775cee346f3
 -- run/go/gtk4 --
-pass sha256:2f9ca57c21f8d106214b3924048757f8
+pass sha256:8365402c69a36a9142b587c700803b48

@@ -624,8 +624,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: state.maybe__inst0 });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: state.maybe__inst0 });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -718,4 +718,4 @@ pass sha256:99b3764eb8886e7ca4d2b04547d2dfd7
 -- run/kotlin/android --
 pass sha256:aaea1c4ae9ed3548c2933ddf937102b6
 -- run/none/html --
-pass sha256:419def7a0d261aebdaaa813e337748fd
+pass sha256:7ea85d535dd69d721b8ee3d64315494e

@@ -2140,11 +2140,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 									return nil
 								}().Destroy()
 							}
-							__n2__new := new__checkbox_state0Instance(m, false, it.Elem, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), func(on bool) {
+							__n2__made := new__checkbox_state0Instance(m, false, it.Elem, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), func(on bool) {
 								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								m.__n0.SetText(m.log)
 							})
-							__n2 = __n2__new
+							__n2 = __n2__made
 						}
 						__inst0_next[__key1] = __n2
 						__n2__el := __n2.Root
@@ -2894,11 +2894,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 									return nil
 								}().Destroy()
 							}
-							__n2__new := new__checkbox_state0Instance(m, false, it.Elem, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), func(on bool) {
+							__n2__made := new__checkbox_state0Instance(m, false, it.Elem, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), func(on bool) {
 								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								gtk4rt.LabelSetLabel(m.__n0, m.log)
 							})
-							__n2 = __n2__new
+							__n2 = __n2__made
 						}
 						__inst0_next[__key1] = __n2
 						__n2__el := __n2.Root
@@ -4111,11 +4111,11 @@ window.__sngl_boot = () => {
                 if (__inst1_live.has(__key2)) {
                   (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                 }
-                let __n6__new = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0) + "/" + String(__copy1), change: (on) => {
+                let __n6__made = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0) + "/" + String(__copy1), change: (on) => {
                   state.log = it.elem + " " + String(on);
                   __n0.textContent = state.log;
                 } });
-                __n6 = __n6__new;
+                __n6 = __n6__made;
               }
               __inst1_next.set(__key2, __n6);
               let __n6__el = __n6.__root;
@@ -4185,11 +4185,11 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n7__new = __cf___child0({ __p0: __iterIdx0, __p1: e, __on0: () => {
+              let __n7__made = __cf___child0({ __p0: __iterIdx0, __p1: e, __on0: () => {
                 state.log = String(e);
                 __n0.textContent = state.log;
               } });
-              __n7 = __n7__new;
+              __n7 = __n7__made;
             }
             __inst3_next.set(__key4, __n7);
             let __n7__el = __n7.__root;
@@ -4248,11 +4248,11 @@ window.__sngl_boot = () => {
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n8__new = __cf___child1({ __p0: __copy0, __on0: () => {
+              let __n8__made = __cf___child1({ __p0: __copy0, __on0: () => {
                 state.log = state.log + ".";
                 __n0.textContent = state.log;
               } });
-              __n8 = __n8__new;
+              __n8 = __n8__made;
             }
             __inst5_next.push(__n8);
             __inst5_i = __inst5_i + 1;
@@ -4348,10 +4348,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
-pass sha256:58711d6de4e0ca13ffd11c02960a846e
+pass sha256:429dd45c6197b2879661be1cb7f55e2c
 -- run/go/gtk4 --
-pass sha256:6eddb6765837195840d9687628e74992
+pass sha256:d47deda528a7a9327ea8e81afa120d7b
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --
-pass sha256:1a2280143e1e48b2f1a2efd5b830fc89
+pass sha256:777cfc2f2f65cbe8628e64b9762ba23e

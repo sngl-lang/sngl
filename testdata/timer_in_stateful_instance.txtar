@@ -580,8 +580,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newTickerInstance(m, p.Elem)
-						__n2 = __n2__new
+						__n2__made := newTickerInstance(m, p.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -965,8 +965,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newTickerInstance(m, p.Elem)
-						__n2 = __n2__new
+						__n2__made := newTickerInstance(m, p.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1355,8 +1355,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_ticker({ period: p.elem });
-              __n2 = __n2__new;
+              let __n2__made = __cf_ticker({ period: p.elem });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -1400,8 +1400,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c4ff801327ad0079021152036a5543d5
 -- run/go/fyne --
-pass sha256:f4548e6a05b5f29f23971d54d8f055c7
+pass sha256:3de47e5a130681563de01ff992160e5c
 -- run/go/gtk4 --
-pass sha256:35ad5f6fe10fb772ef367ec4b2b310fb
+pass sha256:104095ec47cde64c89678e3d1441cb0f
 -- run/none/html --
-pass sha256:514c42f42c9663237e5fb5aa4cb75548
+pass sha256:794f6664817b0d702b02dc3eb273230e

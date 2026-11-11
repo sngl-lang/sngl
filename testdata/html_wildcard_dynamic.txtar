@@ -163,8 +163,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf___checkbox_state1({ label: it.elem, __start_checked: state.on__inst0 });
-              __n3 = __n3__new;
+              let __n3__made = __cf___checkbox_state1({ label: it.elem, __start_checked: state.on__inst0 });
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -206,4 +206,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a28786ff0ad205a2a2d53b027c9e7c36
+pass sha256:dd9bfc2e1d880d036917f19404c2c906

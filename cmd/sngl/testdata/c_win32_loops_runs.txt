@@ -39,6 +39,23 @@ stdout 'ok +3 tests, 0 failures'
 sngl test --platform=win32 --language=c seq.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# The same programs in Go, which calls the runtime through the wrappers
+# `sngl tool cgogen` writes (lib/platform/win32/cgo) and serves its tests
+# over TCP as C's agent does, draw what C's drew: each snapshot is held to
+# the one the C run wrote.
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go top.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go rows.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go nested.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=go seq.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import test "sngl:test"
@@ -221,7 +238,7 @@ ui.window {
     main()
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:25e5f5a75ca54811f7ece404b4b9f47f
+sha256:9ae315a9df37fe5a47373400ae6a3137
 {
   "results": [
     {
@@ -256,7 +273,7 @@ sha256:f632cc3ede785465e4059f364c9f3504
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:c47c9ea71587092530edbcb82eebdc97
+sha256:01240b5fd632b9930270938fd67fe765
 {
   "results": [
     {
@@ -280,7 +297,73 @@ sha256:b372bc7cc46ffe60b61e09e7b413719f
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:cbaa4b6e243c072ffc48a5807061735c
+sha256:ed259f36774df9d414d23a8ef72cc205
+{
+  "results": [
+    {
+      "Desc": "ClickInLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:1eb54b058430612424735fa96df9f876
+{
+  "results": [
+    {
+      "Desc": "AClickReachesItsCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ARenderReplacesTheCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/nested.sngl/main/1 --
+sha256:b8a385eae7ccdf6b7fcab0874f2e3df3
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/rows.sngl/main/1 --
+sha256:d1e9eaa2ee5c4f7d05fa18ac01dbfeca
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/seq.sngl/main/1 --
+sha256:d537ac281a9a620b8fd02db4fabdfb21
+{
+  "results": [
+    {
+      "Desc": "HeldAndPassed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/top.sngl/main/1 --
+sha256:94aeb4ac28d96ca1179b27ce1c828981
 {
   "results": [
     {

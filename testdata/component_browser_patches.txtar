@@ -542,8 +542,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n6__new = __cf___child0({ __p0: opt, __p1: state.fruit__inst0 });
-              __n6 = __n6__new;
+              let __n6__made = __cf___child0({ __p0: opt, __p1: state.fruit__inst0 });
+              __n6 = __n6__made;
             }
             __inst1_next.push(__n6);
             __inst1_i = __inst1_i + 1;
@@ -600,8 +600,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n7__new = __cf___child1({ __p0: state.maybe__inst0 });
-              __n7 = __n7__new;
+              let __n7__made = __cf___child1({ __p0: state.maybe__inst0 });
+              __n7 = __n7__made;
             }
             __inst3_next.push(__n7);
             __inst3_i = __inst3_i + 1;
@@ -671,8 +671,8 @@ window.__sngl_boot = () => {
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n9__new = __cf___child2({ __p0: state.maybe__inst0 });
-              __n9 = __n9__new;
+              let __n9__made = __cf___child2({ __p0: state.maybe__inst0 });
+              __n9 = __n9__made;
             }
             __inst5_next.push(__n9);
             __inst5_i = __inst5_i + 1;
@@ -766,8 +766,8 @@ window.__sngl_boot = () => {
               if (__inst8_live.length > __inst8_i) {
                 __inst8_live[__inst8_i].__destroy();
               }
-              let __n11__new = __cf___child3({ __p0: state.n__inst1 });
-              __n11 = __n11__new;
+              let __n11__made = __cf___child3({ __p0: state.n__inst1 });
+              __n11 = __n11__made;
             }
             __inst8_next.push(__n11);
             __inst8_i = __inst8_i + 1;
@@ -1006,7 +1006,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2c432cc4d3c12955a0f8edc8cde3406d
+pass sha256:8a0383ac0b15b97691b2ca572217283d
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:5dcbcf9d144b8421aa259727771a523a
 {
@@ -1048,7 +1048,7 @@ sha256:72feb40224f0772807fc4de6c20e1b2f
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:ce48baafae9652b330c696c86c3a492d
+sha256:b30882ee568e99832879e3520f7fb6ca
 {
   "results": [
     {
@@ -1058,7 +1058,7 @@ sha256:ce48baafae9652b330c696c86c3a492d
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:4e28e16e2dd46d45ba1ce3d8eed2fea4
+sha256:5ee3ae4770af2c8b8671f0236f1f7bd5
 {
   "results": [
     {
@@ -1068,7 +1068,7 @@ sha256:4e28e16e2dd46d45ba1ce3d8eed2fea4
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:a3265dbdd91c07f1f781bccf80e665b1
+sha256:4cd87ef5e6a20ae4fe6d07d04c242ef2
 {
   "results": [
     {

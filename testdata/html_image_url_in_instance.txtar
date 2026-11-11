@@ -171,8 +171,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n1__new = __cf_card({ url: state.u });
-              __n1 = __n1__new;
+              let __n1__made = __cf_card({ url: state.u });
+              __n1 = __n1__made;
             }
             __inst1_next.push(__n1);
             __inst1_i = __inst1_i + 1;
@@ -223,4 +223,4 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:fd0d6555629125aaaaade0d553809248
+pass sha256:dfa3bc547729836668add4aa8e3d5829

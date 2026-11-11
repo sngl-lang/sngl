@@ -1051,12 +1051,12 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newCard__slot0Instance(m, (i.Elem * 5), i, func(s string) {
+						__n2__made := newCard__slot0Instance(m, (i.Elem * 5), i, func(s string) {
 							m.contents = ((m.contents + s) + " ")
 						}, func(k string) {
 							m.heads = ((m.heads + k) + " ")
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1520,12 +1520,12 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newCard__slot0Instance(m, (i.Elem * 5), i, func(s string) {
+						__n2__made := newCard__slot0Instance(m, (i.Elem * 5), i, func(s string) {
 							m.contents = ((m.contents + s) + " ")
 						}, func(k string) {
 							m.heads = ((m.heads + k) + " ")
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -2343,12 +2343,12 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_Card__slot0({ start: i.elem * 5, __p0: i, report: (s) => {
+              let __n2__made = __cf_Card__slot0({ start: i.elem * 5, __p0: i, report: (s) => {
                 state.contents = state.contents + s + " ";
               }, __on0: (k) => {
                 state.heads = state.heads + k + " ";
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -2398,10 +2398,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:51748a2e8b3ff5bf1e07159d9f1c3470
 -- run/go/fyne --
-pass sha256:cdfb1ba55923fd4ea1a8a74fb7351501
+pass sha256:103f4dca62c912b027049b11fa537a10
 -- run/go/gtk4 --
-pass sha256:053d6de5de4669013427a5b652b04ffe
+pass sha256:8bcec88b5bb0d0f541ae5425e4abe5c3
 -- run/kotlin/android --
 pass sha256:ec6bbf19a98d7048ec8d024da5629a20
 -- run/none/html --
-pass sha256:6f6843a494831942992377f859e86bf3
+pass sha256:b5ec63564ffbe5c2791cff1c8f3cb895

@@ -1089,11 +1089,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newPickerInstance(m, func(v int) {
+						__n6__made := newPickerInstance(m, func(v int) {
 							m.got = (v + x.Elem)
 							m.__n5.SetText(("got=" + fmt.Sprint(m.got)))
 						})
-						__n6 = __n6__new
+						__n6 = __n6__made
 					}
 					__inst0_next[__key1] = __n6
 					__n6__el := __n6.Root
@@ -1406,11 +1406,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newPickerInstance(m, func(v int) {
+						__n6__made := newPickerInstance(m, func(v int) {
 							m.got = (v + x.Elem)
 							gtk4rt.LabelSetLabel(m.__n5, ("got=" + fmt.Sprint(m.got)))
 						})
-						__n6 = __n6__new
+						__n6 = __n6__made
 					}
 					__inst0_next[__key1] = __n6
 					__n6__el := __n6.Root
@@ -1992,11 +1992,11 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n6__new = __cf_Picker({ picked: (v) => {
+              let __n6__made = __cf_Picker({ picked: (v) => {
                 state.got = v + x.elem;
                 __n5.textContent = "got=" + String(state.got);
               } });
-              __n6 = __n6__new;
+              __n6 = __n6__made;
             }
             __inst1_next.set(__key2, __n6);
             let __n6__el = __n6.__root;
@@ -2064,10 +2064,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:83e000bf81471047224a540110ed1a4f
 -- run/go/fyne --
-pass sha256:4ba439e52076e335fa7443d52eff8713
+pass sha256:d25df190eeb805207c994f6261b4807d
 -- run/go/gtk4 --
-pass sha256:15cae61dd9982fba8c6df57c590e53d2
+pass sha256:c49ea14094d628fef4fa7465fb38ed0e
 -- run/kotlin/android --
 pass sha256:57d4b094ce83110987b672b413cb0cd9
 -- run/none/html --
-pass sha256:e7a5354146fa66528dcd031e53a5770d
+pass sha256:e4a46aa3229d57764cd6983851da1a05

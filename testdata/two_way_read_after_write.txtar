@@ -156,7 +156,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						p__new := newPickerInstance(m, m.chosen, func(v string) {
+						p__made := newPickerInstance(m, m.chosen, func(v string) {
 							m.heard = v
 						}, func(__value string) {
 							m.chosen = __value
@@ -164,7 +164,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								m.__inst0_live[__inst0_live_ui].SetValue(m.chosen)
 							}
 						})
-						p = p__new
+						p = p__made
 					}
 					__inst0_next = append(__inst0_next, p)
 					__inst0_i = (__inst0_i + 1)
@@ -565,7 +565,7 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let p__new = __cf_picker({ value: state.chosen, change: (v) => {
+              let p__made = __cf_picker({ value: state.chosen, change: (v) => {
                 state.heard = v;
               }, __on_value: (__value) => {
                 state.chosen = __value;
@@ -575,7 +575,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              p = p__new;
+              p = p__made;
             }
             __inst1_next.push(p);
             __inst1_i = __inst1_i + 1;
@@ -618,8 +618,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b1f510a1256341e6536f687bc0e410d8
+pass sha256:ed779f4e16e4d5c0b622c0474e274b28
 -- run/kotlin/android --
 pass sha256:5083069c61f9aa7c22ac1eebdae46602
 -- run/none/html --
-pass sha256:a260578deb516621522f44d93ecb6ebd
+pass sha256:6fe2a36d34c53c3601dc76f68abf3544

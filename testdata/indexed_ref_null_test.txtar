@@ -1253,11 +1253,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 									return nil
 								}().Destroy()
 							}
-							__n1__new := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
+							__n1__made := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
 								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								m.__n0.SetText(m.log)
 							})
-							__n1 = __n1__new
+							__n1 = __n1__made
 						}
 						__inst0_next[__key1] = __n1
 						__n1__el := __n1.Root
@@ -1710,11 +1710,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 									return nil
 								}().Destroy()
 							}
-							__n1__new := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
+							__n1__made := new__checkbox_state0Instance(m, false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
 								m.log = ((it.Elem + " ") + fmt.Sprint(on))
 								gtk4rt.LabelSetLabel(m.__n0, m.log)
 							})
-							__n1 = __n1__new
+							__n1 = __n1__made
 						}
 						__inst0_next[__key1] = __n1
 						__n1__el := __n1.Root
@@ -2470,11 +2470,11 @@ window.__sngl_boot = () => {
                 if (__inst1_live.has(__key2)) {
                   (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                 }
-                let __n4__new = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0), change: (on) => {
+                let __n4__made = __cf___checkbox_state0({ label: it.elem, __copy: String(__copy0), change: (on) => {
                   state.log = it.elem + " " + String(on);
                   __n0.textContent = state.log;
                 } });
-                __n4 = __n4__new;
+                __n4 = __n4__made;
               }
               __inst1_next.set(__key2, __n4);
               let __n4__el = __n4.__root;
@@ -2530,10 +2530,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:3f4afb47dbddadb7bf892e2fa9b1024a
 -- run/go/fyne --
-pass sha256:49a394fd8d6b24e15e75a6a397e74cfb
+pass sha256:359b2863aa544e563e708bf3f7465e06
 -- run/go/gtk4 --
-pass sha256:594176262ae33c6d6b5fa51b9890f2b2
+pass sha256:7705fee9195ce3841363ec7acb81a601
 -- run/kotlin/android --
 pass sha256:a897c5c3dff5f58ce6216ac711315832
 -- run/none/html --
-pass sha256:6e00a33d5f4b3bf7aa1e7ef021dcfe31
+pass sha256:a7c16dcea7b4b4e89eb13c458358a858

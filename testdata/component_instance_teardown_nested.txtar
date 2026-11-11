@@ -224,11 +224,11 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := newNestInstance(m, r.Elem, 1, func(s string) {
+						__n3__made := newNestInstance(m, r.Elem, 1, func(s string) {
 							m.log = ((m.log + s) + ";")
 							m.__n1.SetText(("log=" + m.log))
 						}, 0)
-						__n3 = __n3__new
+						__n3 = __n3__made
 					}
 					__inst1_next[__key2] = __n3
 					__n3__el := __n3.Root
@@ -531,8 +531,8 @@ func (c *NestInstance) __renderSlot0(__parent *fyne.Container) {
 									return nil
 								}().Destroy()
 							}
-							__n2__new := newNestInstance(c.__model, k.Elem, (c.__prop_depth - 1), c.__prop_note, (c.__prop___depth + 1))
-							__n2 = __n2__new
+							__n2__made := newNestInstance(c.__model, k.Elem, (c.__prop_depth - 1), c.__prop_note, (c.__prop___depth + 1))
+							__n2 = __n2__made
 						}
 						__inst0_next[__key1] = __n2
 						__n2__el := __n2.Root
@@ -776,11 +776,11 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := newNestInstance(m, r.Elem, 1, func(s string) {
+						__n3__made := newNestInstance(m, r.Elem, 1, func(s string) {
 							m.log = ((m.log + s) + ";")
 							gtk4rt.LabelSetLabel(m.__n1, ("log=" + m.log))
 						}, 0)
-						__n3 = __n3__new
+						__n3 = __n3__made
 					}
 					__inst1_next[__key2] = __n3
 					__n3__el := __n3.Root
@@ -1017,8 +1017,8 @@ func (c *NestInstance) __renderSlot0(parent gtk4rt.Handle) {
 									return nil
 								}().Destroy()
 							}
-							__n2__new := newNestInstance(c.__model, k.Elem, (c.__prop_depth - 1), c.__prop_note, (c.__prop___depth + 1))
-							__n2 = __n2__new
+							__n2__made := newNestInstance(c.__model, k.Elem, (c.__prop_depth - 1), c.__prop_note, (c.__prop___depth + 1))
+							__n2 = __n2__made
 						}
 						__inst0_next[__key1] = __n2
 						__n2__el := __n2.Root
@@ -1513,8 +1513,8 @@ window.__sngl_boot = () => {
                   if (__inst1_live.has(__key2)) {
                     (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                   }
-                  let __n2__new = __cf_nest({ tag: k.elem, depth: __prop_depth - 1, note: __prop_note, __depth: __prop___depth + 1 });
-                  __n2 = __n2__new;
+                  let __n2__made = __cf_nest({ tag: k.elem, depth: __prop_depth - 1, note: __prop_note, __depth: __prop___depth + 1 });
+                  __n2 = __n2__made;
                 }
                 __inst1_next.set(__key2, __n2);
                 let __n2__el = __n2.__root;
@@ -1605,11 +1605,11 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n3__new = __cf_nest({ tag: r.elem, depth: 1, note: (s) => {
+              let __n3__made = __cf_nest({ tag: r.elem, depth: 1, note: (s) => {
                 state.log = state.log + s + ";";
                 __n1.textContent = "log=" + state.log;
               }, __depth: 0 });
-              __n3 = __n3__new;
+              __n3 = __n3__made;
             }
             __inst3_next.set(__key4, __n3);
             let __n3__el = __n3.__root;
@@ -1662,15 +1662,15 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:528661bb69466856ce38cb93e279c37f
+pass sha256:8ef6e18076acb53df0b36d94495c5d3e
 -- run/go/gtk4 --
-pass sha256:5eb04014b664795737e6640d2d9e26e3
+pass sha256:c8f56438e56aeb4bc19b6c105be54716
 -- run/kotlin/android --
 pass sha256:48864b6ad9d1802a77bfdbfcf724744d
 -- run/none/html --
-pass sha256:17a8857fcbf67f07f7cbcdda8f080e57
+pass sha256:de295cf08a768ec09471cd6762246f70
 -- testrun/html/none/component_instance_teardown_nested.sngl/main/1 --
-sha256:f972b2a8f8671e5a51995b9ae05027e3
+sha256:518ecec4441272fc4d5c02e5ea3f60a8
 {
   "results": [
     {

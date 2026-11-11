@@ -1267,8 +1267,8 @@ func (m *Model) __renderSlot7(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n21__new := newOuterInstance(m)
-						__n21 = __n21__new
+						__n21__made := newOuterInstance(m)
+						__n21 = __n21__made
 					}
 					__inst7_next[__key8] = __n21
 					__n21__el := __n21.Root
@@ -1303,8 +1303,8 @@ func (m *Model) __renderSlot7(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n22__new := newOuter__slot1Instance(m, x)
-						__n22 = __n22__new
+						__n22__made := newOuter__slot1Instance(m, x)
+						__n22 = __n22__made
 					}
 					__inst8_next[__key9] = __n22
 					__n22__el := __n22.Root
@@ -1493,8 +1493,8 @@ func (c *TreeInstance) __renderSlot0(__parent *fyne.Container) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n14__new := newTree__slot2Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-							__n14 = __n14__new
+							__n14__made := newTree__slot2Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+							__n14 = __n14__made
 						}
 						__inst0_next = append(__inst0_next, __n14)
 						__inst0_i = (__inst0_i + 1)
@@ -1601,8 +1601,8 @@ func (c *Tree__slot5Instance) __renderSlot1(__parent *fyne.Container) {
 							if len(c.__inst1_live) > __inst1_i {
 								c.__inst1_live[__inst1_i].Destroy()
 							}
-							__n15__new := newTree__slot5Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-							__n15 = __n15__new
+							__n15__made := newTree__slot5Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+							__n15 = __n15__made
 						}
 						__inst1_next = append(__inst1_next, __n15)
 						__inst1_i = (__inst1_i + 1)
@@ -1709,8 +1709,8 @@ func (c *Tree__slot3Instance) __renderSlot2(__parent *fyne.Container) {
 							if len(c.__inst2_live) > __inst2_i {
 								c.__inst2_live[__inst2_i].Destroy()
 							}
-							__n16__new := newTree__slot3Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-							__n16 = __n16__new
+							__n16__made := newTree__slot3Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+							__n16 = __n16__made
 						}
 						__inst2_next = append(__inst2_next, __n16)
 						__inst2_i = (__inst2_i + 1)
@@ -1817,8 +1817,8 @@ func (c *Tree__slot2Instance) __renderSlot3(__parent *fyne.Container) {
 							if len(c.__inst3_live) > __inst3_i {
 								c.__inst3_live[__inst3_i].Destroy()
 							}
-							__n17__new := newTree__slot5Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-							__n17 = __n17__new
+							__n17__made := newTree__slot5Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+							__n17 = __n17__made
 						}
 						__inst3_next = append(__inst3_next, __n17)
 						__inst3_i = (__inst3_i + 1)
@@ -1925,8 +1925,8 @@ func (c *Tree__slot0Instance) __renderSlot4(__parent *fyne.Container) {
 							if len(c.__inst4_live) > __inst4_i {
 								c.__inst4_live[__inst4_i].Destroy()
 							}
-							__n18__new := newTree__slot3Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
-							__n18 = __n18__new
+							__n18__made := newTree__slot3Instance(c.__model, (c.__prop_d - 1), (c.__prop___depth + 1))
+							__n18 = __n18__made
 						}
 						__inst4_next = append(__inst4_next, __n18)
 						__inst4_i = (__inst4_i + 1)
@@ -2126,8 +2126,8 @@ func (c *OuterInstance) __renderSlot5(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n19__new := newInnerInstance(c.__model, true)
-						__n19 = __n19__new
+						__n19__made := newInnerInstance(c.__model, true)
+						__n19 = __n19__made
 					}
 					__inst5_next[__key6] = __n19
 					__n19__el := __n19.Root
@@ -2245,8 +2245,8 @@ func (c *Outer__slot1Instance) __renderSlot6(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n20__new := newInner__slot4Instance(c.__model, c.__prop___p0)
-						__n20 = __n20__new
+						__n20__made := newInner__slot4Instance(c.__model, c.__prop___p0)
+						__n20 = __n20__made
 					}
 					__inst6_next[__key7] = __n20
 					__n20__el := __n20.Root
@@ -2515,8 +2515,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n14__new = __cf_tree__slot2({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-                  __n14 = __n14__new;
+                  let __n14__made = __cf_tree__slot2({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+                  __n14 = __n14__made;
                 }
                 __inst1_next.push(__n14);
                 __inst1_i = __inst1_i + 1;
@@ -2622,8 +2622,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst3_live.length > __inst3_i) {
                     __inst3_live[__inst3_i].__destroy();
                   }
-                  let __n15__new = __cf_tree__slot5({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-                  __n15 = __n15__new;
+                  let __n15__made = __cf_tree__slot5({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+                  __n15 = __n15__made;
                 }
                 __inst3_next.push(__n15);
                 __inst3_i = __inst3_i + 1;
@@ -2728,8 +2728,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst5_live.length > __inst5_i) {
                     __inst5_live[__inst5_i].__destroy();
                   }
-                  let __n16__new = __cf_tree__slot3({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-                  __n16 = __n16__new;
+                  let __n16__made = __cf_tree__slot3({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+                  __n16 = __n16__made;
                 }
                 __inst5_next.push(__n16);
                 __inst5_i = __inst5_i + 1;
@@ -2834,8 +2834,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst7_live.length > __inst7_i) {
                     __inst7_live[__inst7_i].__destroy();
                   }
-                  let __n17__new = __cf_tree__slot5({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-                  __n17 = __n17__new;
+                  let __n17__made = __cf_tree__slot5({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+                  __n17 = __n17__made;
                 }
                 __inst7_next.push(__n17);
                 __inst7_i = __inst7_i + 1;
@@ -2940,8 +2940,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst9_live.length > __inst9_i) {
                     __inst9_live[__inst9_i].__destroy();
                   }
-                  let __n18__new = __cf_tree__slot3({ d: __prop_d - 1, __depth: __prop___depth + 1 });
-                  __n18 = __n18__new;
+                  let __n18__made = __cf_tree__slot3({ d: __prop_d - 1, __depth: __prop___depth + 1 });
+                  __n18 = __n18__made;
                 }
                 __inst9_next.push(__n18);
                 __inst9_i = __inst9_i + 1;
@@ -3103,8 +3103,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst11_live.has(__key12)) {
                   (__inst11_live.has(__key12) ? __inst11_live.get(__key12) : null).__destroy();
                 }
-                let __n19__new = __cf_inner({ __empty_content: true });
-                __n19 = __n19__new;
+                let __n19__made = __cf_inner({ __empty_content: true });
+                __n19 = __n19__made;
               }
               __inst11_next.set(__key12, __n19);
               let __n19__el = __n19.__root;
@@ -3210,8 +3210,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst13_live.has(__key14)) {
                   (__inst13_live.has(__key14) ? __inst13_live.get(__key14) : null).__destroy();
                 }
-                let __n20__new = __cf_inner__slot4({ __p0: __prop___p0 });
-                __n20 = __n20__new;
+                let __n20__made = __cf_inner__slot4({ __p0: __prop___p0 });
+                __n20 = __n20__made;
               }
               __inst13_next.set(__key14, __n20);
               let __n20__el = __n20.__root;
@@ -3308,8 +3308,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst15_live.has(__key16)) {
                 (__inst15_live.has(__key16) ? __inst15_live.get(__key16) : null).__destroy();
               }
-              let __n21__new = __cf_outer({});
-              __n21 = __n21__new;
+              let __n21__made = __cf_outer({});
+              __n21 = __n21__made;
             }
             __inst15_next.set(__key16, __n21);
             let __n21__el = __n21.__root;
@@ -3337,8 +3337,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst16_live.has(__key17)) {
                 (__inst16_live.has(__key17) ? __inst16_live.get(__key17) : null).__destroy();
               }
-              let __n22__new = __cf_outer__slot1({ __p0: x });
-              __n22 = __n22__new;
+              let __n22__made = __cf_outer__slot1({ __p0: x });
+              __n22 = __n22__made;
             }
             __inst16_next.set(__key17, __n22);
             let __n22__el = __n22.__root;
@@ -3394,8 +3394,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7e5fd1459eb1627d7a4f0d016c9319be
 -- run/go/fyne --
-pass sha256:141555649769aecd71c03b776228fce2
+pass sha256:9b08c4e812945f8329388bd4786d177e
 -- run/kotlin/android --
 pass sha256:a0c893e9cfb318528ac864f320c5a156
 -- run/none/html --
-pass sha256:ea6f3637b275125a9cca7a925ebf961f
+pass sha256:86d9826320fafbbad4586a6fdaa44a4a

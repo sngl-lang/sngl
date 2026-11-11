@@ -132,8 +132,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n3__new = __cf_seeded({ start: __prop_start, more: __prop_more - 1, __depth: __prop___depth + 1 });
-                  __n3 = __n3__new;
+                  let __n3__made = __cf_seeded({ start: __prop_start, more: __prop_more - 1, __depth: __prop___depth + 1 });
+                  __n3 = __n3__made;
                 }
                 __inst1_next.push(__n3);
                 __inst1_now_start.push(__prop_start);
@@ -226,4 +226,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1e3fc50884b415fb2948cb678488a287
+pass sha256:7588aa7161dd0e2acec70fca300d94fd

@@ -636,8 +636,8 @@ static void s___renderSlot0(HWND parent) {
 							if (sngl_map_string____child0__inst_find(s___inst1_live, __key2) >= 0) {
 								s___child0__destroy(sngl_map_string____child0__inst_get(s___inst1_live, __key2, NULL));
 							}
-							s___child0__inst * __n3__new = s___child0__new(name, ((sngl_fn_void__void){sngl_lambda6, sngl_heap_copy(&(sngl_lambda6_env[]){{.name = s___anon_id_elem_c6a818__keep(name)}}, sizeof(sngl_lambda6_env))}));
-							__n3 = __n3__new;
+							s___child0__inst * __n3__made = s___child0__new(name, ((sngl_fn_void__void){sngl_lambda6, sngl_heap_copy(&(sngl_lambda6_env[]){{.name = s___anon_id_elem_c6a818__keep(name)}}, sizeof(sngl_lambda6_env))}));
+							__n3 = __n3__made;
 						}
 						(*sngl_map_string____child0__inst_slot(&(__inst1_next), __key2)) = __n3;
 						HWND __n3__el = __n3->__root;
@@ -812,4 +812,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:ca8b871347af1654c19df17dd588a4c1
+pass sha256:58260d3a87987e23f7dc7a67286b7b66

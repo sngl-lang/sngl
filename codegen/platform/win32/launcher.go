@@ -17,6 +17,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/ir"
 )
 
@@ -28,9 +29,6 @@ var _ codegen.TestLauncher = (*Generator)(nil)
 // which it connects back to and serves the driver over. Wine hands a Windows
 // program none of the host's pipes, so the channel is TCP, as android's is.
 func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
-	if id := lang.LanguageIdentifier(); id != "c" {
-		return nil, nil, fmt.Errorf("win32: testing in %s is not written yet", id)
-	}
 	if ok, reason := g.ProbeTest(); !ok {
 		return nil, nil, &codegen.SkipError{Reason: reason}
 	}
@@ -39,10 +37,18 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 		return nil, nil, &codegen.SkipError{Reason: err.Error()}
 	}
 	bin := dir + ".testagent"
-	if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
-		return nil, nil, err
+	if lang.LanguageIdentifier() == "go" {
+		// Go's toolchain calls the same compiler, through cgo.
+		if bin, err = golang.BuildModule(dir, bin); err != nil {
+			return nil, nil, err
+		}
+	} else {
+		if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+			return nil, nil, err
+		}
+		bin = cc.Exe(bin)
 	}
-	argv := clang.Launch(cc.Exe(bin))
+	argv := clang.Launch(bin)
 	env := os.Environ()
 	if argv[0] == "wine" {
 		prefix, err := winePrefix(ctx)
@@ -114,7 +120,8 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 var _ codegen.ProgramRunner = (*Generator)(nil)
 
 // RunProgram implements codegen.ProgramRunner: the program the build wrote
-// to dir, cross-compiled for its target and run once per run -- under Wine,
+// to dir, cross-compiled for its target -- in its language, as LaunchTest
+// does -- and run once per run -- under Wine,
 // off Windows, in the prefix the test agent runs in -- for no more than a
 // minute each.
 func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.ProgramRun) (string, []codegen.ProgramRan, error) {
@@ -126,10 +133,18 @@ func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.P
 		return "", nil, &codegen.SkipError{Reason: err.Error()}
 	}
 	bin := filepath.Join(dir, "app")
-	if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
-		return out, nil, err
+	// The build wrote main.go where its language is Go, and main.c where C.
+	if _, err := os.Stat(filepath.Join(dir, "main.go")); err == nil {
+		if bin, err = golang.BuildModule(dir, bin); err != nil {
+			return "", nil, err
+		}
+	} else {
+		if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+			return out, nil, err
+		}
+		bin = cc.Exe(bin)
 	}
-	argv := clang.Launch(cc.Exe(bin))
+	argv := clang.Launch(bin)
 	env := os.Environ()
 	if argv[0] == "wine" {
 		prefix, err := winePrefix(ctx)

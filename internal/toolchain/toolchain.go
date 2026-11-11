@@ -40,6 +40,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/internal/gradle"
 	"duckfam.us/sngl/internal/headless"
@@ -85,6 +86,12 @@ func Unavailable(lang, platform string) string {
 		}
 		return ""
 	case "win32":
+		// Go calls the same compilers, through cgo.
+		if lang == "go" {
+			if reason := needGo(); reason != "" {
+				return reason
+			}
+		}
 		// Which architecture the program is for is its manifest's to say,
 		// which a probe has not seen; the build names the missing one.
 		for _, cc := range clang.Matrix() {
@@ -188,6 +195,10 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 			return goTest(ctx, dir)
 		}
 		return nodeCheck(ctx, dir, files)
+	case "win32":
+		// Cross-compiled for the target its manifest names, as C is.
+		_, err := golang.BuildModule(dir, filepath.Join(dir, "app"))
+		return "", err
 	case "android":
 		if _, err := os.Stat(filepath.Join(dir, "gradlew")); err != nil {
 			return directApk(dir)
@@ -328,9 +339,11 @@ const runTimeout = time.Minute
 // it once per run, in the display this process has, which for a program that
 // presents windows is the headless compositor its test binary runs inside. A
 // platform building and running its own program (codegen.ProgramRunner) does
-// both for a target in another language.
+// both for a target in another language, and for win32's in Go, which runs
+// under Wine.
 func Exec(ctx context.Context, files map[string][]byte, lang, platform string, runs []Run) (output string, ran []Ran, err error) {
-	if lang != "go" {
+	// win32 runs its program under Wine off Windows, in either language.
+	if lang != "go" || platform == "win32" {
 		runner, ok := codegen.LookupPlatform(platform).(codegen.ProgramRunner)
 		if !ok {
 			return "", nil, fmt.Errorf("no way to run a %s/%s program", lang, platform)

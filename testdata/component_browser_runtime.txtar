@@ -1208,8 +1208,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let b__new = __cf_badge__site0({ label: n.elem, __copy: String(__copy0) });
-              b = b__new;
+              let b__made = __cf_badge__site0({ label: n.elem, __copy: String(__copy0) });
+              b = b__made;
             }
             __inst1_next.set(__key2, b);
             let b__el = b.__root;
@@ -1272,8 +1272,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let b__1__new = __cf_badge__site1({ label: n.elem + state.tag__inst0, __copy: String(__copy0) });
-              b__1 = b__1__new;
+              let b__1__made = __cf_badge__site1({ label: n.elem + state.tag__inst0, __copy: String(__copy0) });
+              b__1 = b__1__made;
             }
             __inst3_next.set(__key4, b__1);
             let b__1__el = b__1.__root;
@@ -1336,8 +1336,8 @@ window.__sngl_boot = () => {
               if (__inst5_live.has(__key6)) {
                 (__inst5_live.has(__key6) ? __inst5_live.get(__key6) : null).__destroy();
               }
-              let b__2__new = __cf_badge__site2({ label: n.elem, __copy: String(__copy0) });
-              b__2 = b__2__new;
+              let b__2__made = __cf_badge__site2({ label: n.elem, __copy: String(__copy0) });
+              b__2 = b__2__made;
             }
             __inst5_next.set(__key6, b__2);
             let b__2__el = b__2.__root;
@@ -1400,8 +1400,8 @@ window.__sngl_boot = () => {
               if (__inst7_live.has(__key8)) {
                 (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
               }
-              let b__3__new = __cf_badge__site3({ label: n.elem, __copy: String(__copy0) });
-              b__3 = b__3__new;
+              let b__3__made = __cf_badge__site3({ label: n.elem, __copy: String(__copy0) });
+              b__3 = b__3__made;
             }
             __inst7_next.set(__key8, b__3);
             let b__3__el = b__3.__root;
@@ -1464,8 +1464,8 @@ window.__sngl_boot = () => {
               if (__inst9_live.has(__key10)) {
                 (__inst9_live.has(__key10) ? __inst9_live.get(__key10) : null).__destroy();
               }
-              let b__4__new = __cf_badge__site4({ label: n.elem, __copy: String(__copy0) });
-              b__4 = b__4__new;
+              let b__4__made = __cf_badge__site4({ label: n.elem, __copy: String(__copy0) });
+              b__4 = b__4__made;
             }
             __inst9_next.set(__key10, b__4);
             let b__4__el = b__4.__root;
@@ -1521,8 +1521,8 @@ window.__sngl_boot = () => {
               if (__inst11_live.length > __inst11_i) {
                 __inst11_live[__inst11_i].__destroy();
               }
-              let inner__new = __cf_badge__site5({ label: "i" });
-              inner = inner__new;
+              let inner__made = __cf_badge__site5({ label: "i" });
+              inner = inner__made;
             }
             __inst11_next.push(inner);
             __inst11_i = __inst11_i + 1;
@@ -1591,11 +1591,11 @@ window.__sngl_boot = () => {
               if (__inst13_live.has(__key14)) {
                 (__inst13_live.has(__key14) ? __inst13_live.get(__key14) : null).__destroy();
               }
-              let r__new = __cf_row({ label: item.elem, __copy: String(__copy0), pick: (_) => {
+              let r__made = __cf_row({ label: item.elem, __copy: String(__copy0), pick: (_) => {
                 state.picked__inst0 = item.elem;
                 __n9.textContent = "picked=" + state.picked__inst0;
               } });
-              r = r__new;
+              r = r__made;
             }
             __inst13_next.set(__key14, r);
             let r__el = r.__root;
@@ -1662,11 +1662,11 @@ window.__sngl_boot = () => {
               if (__inst15_live.has(__key16)) {
                 (__inst15_live.has(__key16) ? __inst15_live.get(__key16) : null).__destroy();
               }
-              let ch__new = __cf_choice({ label: item.elem, onpick: (s) => {
+              let ch__made = __cf_choice({ label: item.elem, onpick: (s) => {
                 state.picked__inst1 = s;
                 $6.textContent = "picked=" + state.picked__inst1;
               }, __copy: String(__copy0) });
-              ch = ch__new;
+              ch = ch__made;
             }
             __inst15_next.set(__key16, ch);
             let ch__el = ch.__root;
@@ -1730,8 +1730,8 @@ window.__sngl_boot = () => {
               if (__inst17_live.has(__key18)) {
                 (__inst17_live.has(__key18) ? __inst17_live.get(__key18) : null).__destroy();
               }
-              let b__5__new = __cf_seededBadge({ start: state.base__inst0, label: nm.elem + state.tag__inst1, __copy: String(__copy0) });
-              b__5 = b__5__new;
+              let b__5__made = __cf_seededBadge({ start: state.base__inst0, label: nm.elem + state.tag__inst1, __copy: String(__copy0) });
+              b__5 = b__5__made;
             }
             __inst17_next.set(__key18, b__5);
             __inst17_now_start.set(__key18, state.base__inst0);
@@ -1796,8 +1796,8 @@ window.__sngl_boot = () => {
               if (__inst19_live.has(__key20)) {
                 (__inst19_live.has(__key20) ? __inst19_live.get(__key20) : null).__destroy();
               }
-              let g__new = __cf_gauge({ level: l.elem, __copy: String(__copy0) });
-              g = g__new;
+              let g__made = __cf_gauge({ level: l.elem, __copy: String(__copy0) });
+              g = g__made;
             }
             __inst19_next.set(__key20, g);
             let g__el = g.__root;
@@ -1946,9 +1946,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2e468e0858e0e107119d8ee5853ca71e
+pass sha256:a02061327a8670470b3c5587eae9fa27
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:bf5341dac140a4a668c19063c666b787
+sha256:c126d34fc24611f7590e73b71a239eed
 {
   "results": [
     {
@@ -1958,7 +1958,7 @@ sha256:bf5341dac140a4a668c19063c666b787
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:d3f975c92550af2c09ca86a4817a07be
+sha256:bb2537f3a269a75e2ec299f99443981d
 {
   "results": [
     {
@@ -1968,7 +1968,7 @@ sha256:d3f975c92550af2c09ca86a4817a07be
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:6de38b721d7456ad8c28fcba91ae601e
+sha256:d8446f36a7a5fec51ab32439c58c4e5c
 {
   "results": [
     {
@@ -1978,7 +1978,7 @@ sha256:6de38b721d7456ad8c28fcba91ae601e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:2a8afe6a905e7c8e1e3b7aeae6c0845e
+sha256:5ca0b358e6d952a1e3e9dabc22baff0c
 {
   "results": [
     {
@@ -1992,7 +1992,7 @@ sha256:2a8afe6a905e7c8e1e3b7aeae6c0845e
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:793ee50a4f4036772c630705e3da2008
+sha256:ee7f60205a52df39002678f563a953e1
 {
   "results": [
     {
@@ -2002,7 +2002,7 @@ sha256:793ee50a4f4036772c630705e3da2008
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:2d3fd4a033c7bed55a1dff5a7d0e6ec9
+sha256:dc3ab075537f4ab8a6692bd9ce52979b
 {
   "results": [
     {
@@ -2012,7 +2012,7 @@ sha256:2d3fd4a033c7bed55a1dff5a7d0e6ec9
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:45755b8b48455011f331a337e7ffee93
+sha256:f5bd5cc2327e9a753b3818c15eb7c979
 {
   "results": [
     {
@@ -2022,7 +2022,7 @@ sha256:45755b8b48455011f331a337e7ffee93
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:99af1ee13a332d087a1877768224b503
+sha256:e9e0ba7cce4990b32cfface485371769
 {
   "results": [
     {
@@ -2032,7 +2032,7 @@ sha256:99af1ee13a332d087a1877768224b503
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:49c375ea37a3d8e69b96876d2993106b
+sha256:48b949f08d50385221e517bc3a1f8d51
 {
   "results": [
     {
@@ -2046,7 +2046,7 @@ sha256:49c375ea37a3d8e69b96876d2993106b
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:b2007a52ad02afbecbab794b86fbbcce
+sha256:c2cded72cc0209e7e30d1d9815a622c0
 {
   "results": [
     {

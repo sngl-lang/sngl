@@ -1709,8 +1709,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: opt, __p1: state.pick });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: opt, __p1: state.pick });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -1768,4 +1768,4 @@ pass sha256:45abf2131efd19445b0eb0c4a423761d
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --
-pass sha256:71036b5f67153c96bccdfff69f39de33
+pass sha256:d4ddd46fdc66d1ebc8925f860c915634

@@ -150,8 +150,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: r });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: r });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -193,4 +193,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6cde0ecc3bbce6bc05fa35f280ed0aeb
+pass sha256:ac19ad6a428119748eb717bceae80ff7

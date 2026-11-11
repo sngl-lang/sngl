@@ -1233,8 +1233,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newModifierInstance(m, ("w" + fmt.Sprint(r.Elem)))
-						__n2 = __n2__new
+						__n2__made := newModifierInstance(m, ("w" + fmt.Sprint(r.Elem)))
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1606,8 +1606,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newModifierInstance(m, ("w" + fmt.Sprint(r.Elem)))
-						__n2 = __n2__new
+						__n2__made := newModifierInstance(m, ("w" + fmt.Sprint(r.Elem)))
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -2221,8 +2221,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf_modifier({ label: "w" + String(r.elem) });
-              __n3 = __n3__new;
+              let __n3__made = __cf_modifier({ label: "w" + String(r.elem) });
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -2290,10 +2290,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:8ab129d3e83f640c7c781b64a7734d25
 -- run/go/fyne --
-pass sha256:84cd231f5f5ccf64f6103a303866085e
+pass sha256:7af8e871c3a8a6f52f629f8449b07a4f
 -- run/go/gtk4 --
-pass sha256:e142810aacc4bc52faa97930dafedd54
+pass sha256:5f770fbb1060bef814d35d0bb21c9fd0
 -- run/kotlin/android --
 pass sha256:4a50ab40ead2aa32828dbabb1800059e
 -- run/none/html --
-pass sha256:d9cd27afb19971aeb311db49aa5a2c32
+pass sha256:5741463dbdd1d2fdfc2d24ca9fa0881e

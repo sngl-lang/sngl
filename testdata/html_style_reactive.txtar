@@ -180,8 +180,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n4__new = __cf_row({ label: it.elem });
-              __n4 = __n4__new;
+              let __n4__made = __cf_row({ label: it.elem });
+              __n4 = __n4__made;
             }
             __inst1_next.set(__key2, __n4);
             let __n4__el = __n4.__root;
@@ -247,4 +247,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:3284c806a36a4d71d5d09719a9e60cbb
+pass sha256:f1e0ae468746e8e1d272e71ab11cff43

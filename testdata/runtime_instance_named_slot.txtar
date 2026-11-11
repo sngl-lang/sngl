@@ -1352,10 +1352,10 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCard__slot0Instance(m, i.Elem, i, func(k string) {
+						__n5__made := newCard__slot0Instance(m, i.Elem, i, func(k string) {
 							m.mounted = ((m.mounted + k) + " ")
 						})
-						__n5 = __n5__new
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -1422,8 +1422,8 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newCardInstance(m, i.Elem)
-						__n6 = __n6__new
+						__n6__made := newCardInstance(m, i.Elem)
+						__n6 = __n6__made
 					}
 					__inst2_next[__key3] = __n6
 					__n6__el := __n6.Root
@@ -1787,8 +1787,8 @@ func (c *Card__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := new__child0Instance(c.__model, c.__prop___p0, r)
-						__n3 = __n3__new
+						__n3__made := new__child0Instance(c.__model, c.__prop___p0, r)
+						__n3 = __n3__made
 					}
 					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
@@ -2109,10 +2109,10 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCard__slot0Instance(m, i.Elem, i, func(k string) {
+						__n5__made := newCard__slot0Instance(m, i.Elem, i, func(k string) {
 							m.mounted = ((m.mounted + k) + " ")
 						})
-						__n5 = __n5__new
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -2179,8 +2179,8 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newCardInstance(m, i.Elem)
-						__n6 = __n6__new
+						__n6__made := newCardInstance(m, i.Elem)
+						__n6 = __n6__made
 					}
 					__inst2_next[__key3] = __n6
 					__n6__el := __n6.Root
@@ -2493,8 +2493,8 @@ func (c *Card__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := new__child0Instance(c.__model, c.__prop___p0, r)
-						__n3 = __n3__new
+						__n3__made := new__child0Instance(c.__model, c.__prop___p0, r)
+						__n3 = __n3__made
 					}
 					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
@@ -3135,8 +3135,8 @@ window.__sngl_boot = () => {
                 if (__inst1_live.has(__key2)) {
                   (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                 }
-                let __n1__new = __cf___child1({});
-                __n1 = __n1__new;
+                let __n1__made = __cf___child1({});
+                __n1 = __n1__made;
               }
               __inst1_next.set(__key2, __n1);
               let __n1__el = __n1.__root;
@@ -3322,8 +3322,8 @@ window.__sngl_boot = () => {
                 if (__inst3_live.has(__key4)) {
                   (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
                 }
-                let __n3__new = __cf___child0({ __p0: __prop___p0, __p1: r });
-                __n3 = __n3__new;
+                let __n3__made = __cf___child0({ __p0: __prop___p0, __p1: r });
+                __n3 = __n3__made;
               }
               __inst3_next.set(__key4, __n3);
               let __n3__el = __n3.__root;
@@ -3471,10 +3471,10 @@ window.__sngl_boot = () => {
               if (__inst5_live.has(__key6)) {
                 (__inst5_live.has(__key6) ? __inst5_live.get(__key6) : null).__destroy();
               }
-              let __n5__new = __cf_Card__slot0({ start: i.elem, __p0: i, __on0: (k) => {
+              let __n5__made = __cf_Card__slot0({ start: i.elem, __p0: i, __on0: (k) => {
                 state.mounted = state.mounted + k + " ";
               } });
-              __n5 = __n5__new;
+              __n5 = __n5__made;
             }
             __inst5_next.set(__key6, __n5);
             let __n5__el = __n5.__root;
@@ -3535,8 +3535,8 @@ window.__sngl_boot = () => {
               if (__inst7_live.has(__key8)) {
                 (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
               }
-              let __n6__new = __cf_Card({ start: i.elem });
-              __n6 = __n6__new;
+              let __n6__made = __cf_Card({ start: i.elem });
+              __n6 = __n6__made;
             }
             __inst7_next.set(__key8, __n6);
             let __n6__el = __n6.__root;
@@ -3589,10 +3589,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:b29a027ddbe5a1d39a755c3e0dd9d236
 -- run/go/fyne --
-pass sha256:580933245b56a6401985658fd065f4c4
+pass sha256:3c8d5a97138490f72d810fc3de89d211
 -- run/go/gtk4 --
-pass sha256:ae18f1647ea8b7ecc07d57ea54541904
+pass sha256:342cb72b48b555fa22be1665881e1ecf
 -- run/kotlin/android --
 pass sha256:50138b384a1f3345b43fbbe40f76f5ce
 -- run/none/html --
-pass sha256:5e03bb83527225899a70a148307a8ca8
+pass sha256:72ceb085954693110c9bf3470cfcf9db

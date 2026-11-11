@@ -162,10 +162,10 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: r, __on0: () => {
+              let __n2__made = __cf___child0({ __p0: r, __on0: () => {
                 state.hits = state.hits + 1;
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -223,4 +223,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:301371a0aab19ccca9019df3a0b5e6e5
+pass sha256:71bd6ffe78620f6cb0cc74d61c909243

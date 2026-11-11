@@ -960,8 +960,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 										return nil
 									}().Destroy()
 								}
-								__n2__new := new__child0Instance(m, r, c__r2, m.cell__params__inst0)
-								__n2 = __n2__new
+								__n2__made := new__child0Instance(m, r, c__r2, m.cell__params__inst0)
+								__n2 = __n2__made
 							}
 							__inst0_next[__key1] = __n2
 							__n2__el := __n2.Root
@@ -998,8 +998,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 										return nil
 									}().Destroy()
 								}
-								__n3__new := new__child1Instance(m, m.pages__current__inst0, __copy, __copy1)
-								__n3 = __n3__new
+								__n3__made := new__child1Instance(m, m.pages__current__inst0, __copy, __copy1)
+								__n3 = __n3__made
 							}
 							__inst1_next[__key2] = __n3
 							__n3__el := __n3.Root
@@ -1491,8 +1491,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 										return nil
 									}().Destroy()
 								}
-								__n2__new := new__child0Instance(m, r, c__r2, m.cell__params__inst0)
-								__n2 = __n2__new
+								__n2__made := new__child0Instance(m, r, c__r2, m.cell__params__inst0)
+								__n2 = __n2__made
 							}
 							__inst0_next[__key1] = __n2
 							__n2__el := __n2.Root
@@ -1529,8 +1529,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 										return nil
 									}().Destroy()
 								}
-								__n3__new := new__child1Instance(m, m.pages__current__inst0, __copy, __copy1)
-								__n3 = __n3__new
+								__n3__made := new__child1Instance(m, m.pages__current__inst0, __copy, __copy1)
+								__n3 = __n3__made
 							}
 							__inst1_next[__key2] = __n3
 							__n3__el := __n3.Root
@@ -2046,8 +2046,8 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
 -- run/go/bubbletea --
 pass sha256:eab7b5528cfe54f143b93d19110ece88
 -- run/go/fyne --
-pass sha256:31190a65fe668ae797b40957b625d890
+pass sha256:065c2e572ef6ace03657ce5cfa56c33a
 -- run/go/gtk4 --
-pass sha256:19467c8ea411d1c614f3ff1436dbe716
+pass sha256:8afaa1cc2fe0c5645ab4c50a4915559a
 -- run/kotlin/android --
 pass sha256:809fe68da24f4f90ae5a726a36919015

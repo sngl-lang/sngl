@@ -178,8 +178,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newRowInstance(m, i.Elem)
-						__n2 = __n2__new
+						__n2__made := newRowInstance(m, i.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -402,8 +402,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_row({ n: i.elem });
-              __n2 = __n2__new;
+              let __n2__made = __cf_row({ n: i.elem });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -445,6 +445,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:0a9e56817db3b0178934078016326cf4
+pass sha256:070eba5ed26c6a4a8b6f1320890c0672
 -- run/none/html --
-pass sha256:9740e8d75ed2a4cf7298b0c0ec3fc630
+pass sha256:667c55f89d200782997f2bacf0d944c1

@@ -222,8 +222,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := newFrame__slot0Instance(m, r)
-						__n1 = __n1__new
+						__n1__made := newFrame__slot0Instance(m, r)
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -819,8 +819,8 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := newFrame__slot0Instance(m, r)
-						__n1 = __n1__new
+						__n1__made := newFrame__slot0Instance(m, r)
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -1114,8 +1114,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n1__new = __cf_frame__slot0({ __p0: r });
-              __n1 = __n1__new;
+              let __n1__made = __cf_frame__slot0({ __p0: r });
+              __n1 = __n1__made;
             }
             __inst1_next.set(__key2, __n1);
             let __n1__el = __n1.__root;
@@ -1198,8 +1198,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1d3f487c95a10bc9b4f11904aabc9812
+pass sha256:85eacae9d2b611f27bc1ce37394ca0b0
 -- run/go/gtk4 --
-pass sha256:35199bf9a33508167f21da85adf1651f
+pass sha256:8ecefb5414a13101bb4be9fb04fc39e8
 -- run/none/html --
-pass sha256:5d03f2d2ad64e5489f5b9da38ecb5125
+pass sha256:58a02ba83741f8dbc002791905823717

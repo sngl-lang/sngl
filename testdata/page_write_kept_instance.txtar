@@ -169,8 +169,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newRowInstance(m, n.Elem)
-						__n5 = __n5__new
+						__n5__made := newRowInstance(m, n.Elem)
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -337,8 +337,8 @@ func (c *RowInstance) __renderSlot0(__parent *fyne.Container) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n4__new := new__child0Instance(c.__model, c.__prop_name, c.taps)
-						__n4 = __n4__new
+						__n4__made := new__child0Instance(c.__model, c.__prop_name, c.taps)
+						__n4 = __n4__made
 					}
 					__inst0_next = append(__inst0_next, __n4)
 					__inst0_i = (__inst0_i + 1)
@@ -543,8 +543,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newRowInstance(m, n.Elem)
-						__n5 = __n5__new
+						__n5__made := newRowInstance(m, n.Elem)
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -674,8 +674,8 @@ func (c *RowInstance) __renderSlot0(parent gtk4rt.Handle) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n4__new := new__child0Instance(c.__model, c.__prop_name, c.taps)
-						__n4 = __n4__new
+						__n4__made := new__child0Instance(c.__model, c.__prop_name, c.taps)
+						__n4 = __n4__made
 					}
 					__inst0_next = append(__inst0_next, __n4)
 					__inst0_i = (__inst0_i + 1)
@@ -804,6 +804,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n3)
 }
 -- run/go/fyne --
-pass sha256:1d7a99a3023feffcb64c2c71c1ec5d48
+pass sha256:358de864d799ec48f9f3f665c40b7171
 -- run/go/gtk4 --
-pass sha256:92bb443b80a75748b2d1de01f7538e92
+pass sha256:7d91971b00ee760b420364a4ad144fe4

@@ -721,8 +721,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst1_live.has(__key2)) {
                   (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                 }
-                let __n3__new = __cf___child0({ __p0: i });
-                __n3 = __n3__new;
+                let __n3__made = __cf___child0({ __p0: i });
+                __n3 = __n3__made;
               }
               __inst1_next.set(__key2, __n3);
               let __n3__el = __n3.__root;
@@ -769,4 +769,4 @@ pass sha256:2560d451920ee7647ae95dbb846ab958
 -- run/go/gtk4 --
 pass sha256:90f507bfbba4489867d26656ca8e10da
 -- run/none/html --
-pass sha256:bfc3d9f5bcff66ca80f3b9342906041d
+pass sha256:556f7f6b770936e568c5418a154ce759

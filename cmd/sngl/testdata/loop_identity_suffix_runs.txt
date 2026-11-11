@@ -137,7 +137,7 @@ sha256:213021202cdd7f172ed067345e94dcd7
   ]
 }
 -- testrun/fyne/go/hash.sngl/page/1 --
-sha256:6b59302c2dc72e034678b27003cf7b50
+sha256:8be11183234d9d7d777d709f213ea8f7
 {
   "results": [
     {
@@ -147,7 +147,7 @@ sha256:6b59302c2dc72e034678b27003cf7b50
   ]
 }
 -- testrun/fyne/go/tilde.sngl/page/1 --
-sha256:1f2b1abe7a8301c335b8411725dd3c24
+sha256:eae507fb4d2a2eb3433ca1ca28e6d5af
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:1f2b1abe7a8301c335b8411725dd3c24
   ]
 }
 -- testrun/gtk4/go/hash.sngl/page/1 --
-sha256:7e0e1dd012dbe9abbda9499d4b1b1380
+sha256:2877c2ef963cad695cea3c1e9faee560
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:7e0e1dd012dbe9abbda9499d4b1b1380
   ]
 }
 -- testrun/gtk4/go/tilde.sngl/page/1 --
-sha256:278b7ff004ffc037f09569c922913717
+sha256:edfb1110a17b9e4b241094a3840aff27
 {
   "results": [
     {
@@ -177,7 +177,7 @@ sha256:278b7ff004ffc037f09569c922913717
   ]
 }
 -- testrun/html/none/hash.sngl/page/1 --
-sha256:73970c51ef3c457fe22e3c7ae48b34e5
+sha256:c20f2e489b67034c7428555964be6eb5
 {
   "results": [
     {
@@ -187,7 +187,7 @@ sha256:73970c51ef3c457fe22e3c7ae48b34e5
   ]
 }
 -- testrun/html/none/tilde.sngl/page/1 --
-sha256:5b0823b5f1d9ffdd13478f1da30f65c4
+sha256:d61204471e158ca455d9cbde1a040906
 {
   "results": [
     {

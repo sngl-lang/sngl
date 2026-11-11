@@ -158,8 +158,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := newAskerInstance(m, i)
-						__n1 = __n1__new
+						__n1__made := newAskerInstance(m, i)
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -589,8 +589,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newAskerInstance(m, i)
-						__n2 = __n2__new
+						__n2__made := newAskerInstance(m, i)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -828,6 +828,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:23fe7bf17e7c996a6e28bf9a11673305
+pass sha256:ed82c6b829e194f18224e0812308630b
 -- run/go/gtk4 --
-pass sha256:ae774492c33e967de790643d4ec79fde
+pass sha256:7fdd57e652170b3bf78bbd92dbdc2ebe

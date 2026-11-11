@@ -456,8 +456,8 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 //	    lower.UpdateComponent(<id>, "<prop>", <expr>)   // one per settable prop
 //	} else {
 //	    if list.length(<live>) > <idx> { lower.DestroyComponent(<live>[<idx>]) }
-//	    var <id>__new <Comp> = lower.CreateComponent(...)
-//	    <id> = <id>__new
+//	    var <id>__made <Comp> = lower.CreateComponent(...)
+//	    <id> = <id>__made
 //	}
 //	list.push(<next>, <id>)
 //	list.push(<now_p>, <expr>)                          // one per #[construct] prop
@@ -560,7 +560,9 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		}})
 	}
 
-	fresh := &ir.Var{Name: id + "__new", Type: si.elem, Synthesized: true}
+	// Not `<id>__new`, which is the constructor of a record placement makes
+	// of a component named like the instance (placeRecords).
+	fresh := &ir.Var{Name: id + "__made", Type: si.elem, Synthesized: true}
 	create := []ir.Stmt{
 		&ir.LocalVar{
 			Name: fresh.Name,

@@ -240,8 +240,8 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newRowInstance(m, it.Elem)
-						__n4 = __n4__new
+						__n4__made := newRowInstance(m, it.Elem)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -308,8 +308,8 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCardInstance(m, []string{it.Elem})
-						__n5 = __n5__new
+						__n5__made := newCardInstance(m, []string{it.Elem})
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -739,8 +739,8 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newRowInstance(m, it.Elem)
-						__n4 = __n4__new
+						__n4__made := newRowInstance(m, it.Elem)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -807,8 +807,8 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCardInstance(m, []string{it.Elem})
-						__n5 = __n5__new
+						__n5__made := newCardInstance(m, []string{it.Elem})
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -1085,6 +1085,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:4d2f4bb3efc2f4968fb22cc377b44077
+pass sha256:659d2b64920dfd62a90dd917b2c0a1de
 -- run/go/gtk4 --
-pass sha256:43d15d39b7a71e516c5023b7ab416f8a
+pass sha256:49bb04021180443b7e183b39ef2194d1

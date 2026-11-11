@@ -261,12 +261,12 @@ sha256:e5609af0b70c37753e214598a1fadfba
   "stdout": "app"
 }
 -- testrun/build/gtk4/c/generic.sngl/1 --
-sha256:7bec68b420f42986b6f680450c22182a
+sha256:eecc6f9314325ad1928e80e4eb44cbeb
 {
   "stdout": "app"
 }
 -- testrun/build/gtk4/c/pages.sngl/1 --
-sha256:b2de68cf9eccc3b067e9c4b1596d00ff
+sha256:ff21891bb77453a1f457c596a730968b
 {
   "stdout": "app"
 }

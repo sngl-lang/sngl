@@ -150,8 +150,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n4__new = __cf___child0({ __p0: r, __p1: state.shown });
-              __n4 = __n4__new;
+              let __n4__made = __cf___child0({ __p0: r, __p1: state.shown });
+              __n4 = __n4__made;
             }
             __inst1_next.set(__key2, __n4);
             let __n4__el = __n4.__root;
@@ -200,4 +200,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:10628a161c40db4f37de7be98c239767
+pass sha256:bbc6703926b7efd4eb773cba046d5a6c

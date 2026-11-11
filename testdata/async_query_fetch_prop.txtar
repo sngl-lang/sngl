@@ -230,11 +230,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := new__query_state1Instance(m, nil, false, nil, n.Elem, Lookup, func(got int) {
+						__n2__made := new__query_state1Instance(m, nil, false, nil, n.Elem, Lookup, func(got int) {
 							m.total__inst0 += got
 							m.__n1.SetText(fmt.Sprint(m.total__inst0))
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -741,11 +741,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := new__query_state1Instance(m, nil, false, nil, n.Elem, Lookup, func(got int) {
+						__n2__made := new__query_state1Instance(m, nil, false, nil, n.Elem, Lookup, func(got int) {
 							m.total__inst0 += got
 							gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.total__inst0))
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1083,6 +1083,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:e9dd4d7705bbdb4a65f298cc2154526e
+pass sha256:86c7b2029483bc740f4e7fa8f090cd99
 -- run/go/gtk4 --
-pass sha256:4f30d665c0fbc3e838d0e3570c278598
+pass sha256:d7b3bc6e9773c1c49865f18863763f11

@@ -813,8 +813,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n1__new := new__child0Instance(m, m.opened)
-						__n1 = __n1__new
+						__n1__made := new__child0Instance(m, m.opened)
+						__n1 = __n1__made
 					}
 					__inst0_next = append(__inst0_next, __n1)
 					__inst0_i = (__inst0_i + 1)
@@ -1080,8 +1080,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n1__new := new__child0Instance(m, m.opened)
-						__n1 = __n1__new
+						__n1__made := new__child0Instance(m, m.opened)
+						__n1 = __n1__made
 					}
 					__inst0_next = append(__inst0_next, __n1)
 					__inst0_i = (__inst0_i + 1)
@@ -1588,8 +1588,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n1__new = __cf___child0({ __p0: state.opened });
-              __n1 = __n1__new;
+              let __n1__made = __cf___child0({ __p0: state.opened });
+              __n1 = __n1__made;
             }
             __inst1_next.push(__n1);
             __inst1_i = __inst1_i + 1;
@@ -1669,10 +1669,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:54f13aefc0cdcc46f1a31b8b3f9a5c52
 -- run/go/fyne --
-pass sha256:a13ba3914fdadb48f05777669afeda04
+pass sha256:8a1d08a8dd084cffe09d5792e2c01768
 -- run/go/gtk4 --
-pass sha256:686b6d0fd20384e68dc96840f1d21da7
+pass sha256:43c8d0474af0bf712325f69b59648c04
 -- run/kotlin/android --
 pass sha256:eddde20277ba4d550a83f09848c95408
 -- run/none/html --
-pass sha256:5f02648ddfc410ff30847cc3d46be7c0
+pass sha256:f81a448fd0ace72591439d79fd7a2c24

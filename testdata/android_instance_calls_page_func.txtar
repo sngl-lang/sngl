@@ -1026,8 +1026,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n0__new = __cf_holder({});
-              __n0 = __n0__new;
+              let __n0__made = __cf_holder({});
+              __n0 = __n0__made;
             }
             __inst1_next.push(__n0);
             __inst1_i = __inst1_i + 1;
@@ -1087,4 +1087,4 @@ pass sha256:a3610ff870d83df1f8abe9fa3e7b4a0b
 -- run/kotlin/android --
 pass sha256:6d3ea9a3859bf99a909c779eb5244533
 -- run/none/html --
-pass sha256:467b6648f0eec5d775c56578b2b67a16
+pass sha256:cf913f0fc13cdf60e2fd4a8842302404

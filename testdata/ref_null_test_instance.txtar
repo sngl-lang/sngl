@@ -784,8 +784,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadgeInstance(m, "x")
-						b = b__new
+						b__made := newBadgeInstance(m, "x")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -1045,8 +1045,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadgeInstance(m, "x")
-						b = b__new
+						b__made := newBadgeInstance(m, "x")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -1555,8 +1555,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let b__new = __cf_badge({ label: "x" });
-              b = b__new;
+              let b__made = __cf_badge({ label: "x" });
+              b = b__made;
             }
             __inst1_next.push(b);
             __inst1_i = __inst1_i + 1;
@@ -1622,10 +1622,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:bdee349e6345fb111b02ffdc0ebaf120
 -- run/go/fyne --
-pass sha256:40b99e3220434f70b6ce02f32a97dfb3
+pass sha256:95c87a2bd959b71a1a7f0836827776a1
 -- run/go/gtk4 --
-pass sha256:8ca0e7eb293aa70fface7f681b2ff32a
+pass sha256:adeccca72482fb0cef06bb3e396dce70
 -- run/kotlin/android --
 pass sha256:23bb9626bbb474e20690327865d07549
 -- run/none/html --
-pass sha256:edf678b0d30fb7f3cd0a0bf9bff03932
+pass sha256:578aee3967992ff2586a5557d2837984

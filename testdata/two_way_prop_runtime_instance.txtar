@@ -174,14 +174,14 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := newCounterInstance(m, m.total, it.Elem, func(__n int) {
+						__n3__made := newCounterInstance(m, m.total, it.Elem, func(__n int) {
 							m.total = __n
 							m.__n2.SetText(("total " + fmt.Sprint(m.total)))
 							for _, __inst0_live_uv := range m.__inst0_live {
 								__inst0_live_uv.SetN(m.total)
 							}
 						})
-						__n3 = __n3__new
+						__n3 = __n3__made
 					}
 					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
@@ -461,14 +461,14 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := newCounterInstance(m, m.total, it.Elem, func(__n int) {
+						__n3__made := newCounterInstance(m, m.total, it.Elem, func(__n int) {
 							m.total = __n
 							gtk4rt.LabelSetLabel(m.__n2, ("total " + fmt.Sprint(m.total)))
 							for _, __inst0_live_uv := range m.__inst0_live {
 								__inst0_live_uv.SetN(m.total)
 							}
 						})
-						__n3 = __n3__new
+						__n3 = __n3__made
 					}
 					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
@@ -758,7 +758,7 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf_Counter({ n: state.total, label: it.elem, __on_n: (__n) => {
+              let __n3__made = __cf_Counter({ n: state.total, label: it.elem, __on_n: (__n) => {
                 state.total = __n;
                 __n2.textContent = "total " + String(state.total);
                 for (const [__inst1_live_uk, __inst1_live_uv] of __inst1_live.entries()) {
@@ -767,7 +767,7 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               } });
-              __n3 = __n3__new;
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -819,8 +819,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:4c2b8b20579038781abb8a03b88ee10d
+pass sha256:30519949439d71f6194f8799faac8632
 -- run/go/gtk4 --
-pass sha256:7cc73ae0d9feda5441050086cfdf6fe0
+pass sha256:544cff8b9b7796192b8e9d3db6529cef
 -- run/none/html --
-pass sha256:953b877ffcfccf045d41602d65da1520
+pass sha256:471540bdf0500d5df01b055287759250

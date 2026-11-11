@@ -939,10 +939,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := newWatchInstance(m, (i.Elem + m.tag), func(s string) {
+						__n1__made := newWatchInstance(m, (i.Elem + m.tag), func(s string) {
 							m.log = ((m.log + s) + " ")
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -1350,10 +1350,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := newWatchInstance(m, (i.Elem + m.tag), func(s string) {
+						__n1__made := newWatchInstance(m, (i.Elem + m.tag), func(s string) {
 							m.log = ((m.log + s) + " ")
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -2049,10 +2049,10 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n1__new = __cf_Watch({ tag: i.elem + state.tag, seen: (s) => {
+              let __n1__made = __cf_Watch({ tag: i.elem + state.tag, seen: (s) => {
                 state.log = state.log + s + " ";
               } });
-              __n1 = __n1__new;
+              __n1 = __n1__made;
             }
             __inst1_next.set(__key2, __n1);
             let __n1__el = __n1.__root;
@@ -2102,10 +2102,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:e4b3b2b6cc9d8c7ed3dee1d2b1194d37
 -- run/go/fyne --
-pass sha256:f5174bed30f073b9d5afe1038c1dcffa
+pass sha256:8a50ecb35e520b458b235cb606b62239
 -- run/go/gtk4 --
-pass sha256:35b3b824eec094d5a053e328035497f4
+pass sha256:4b16d4edb475a3196765b37e98eff1df
 -- run/kotlin/android --
 pass sha256:7dc40eb26bf2ae2077de8149cfc9e63f
 -- run/none/html --
-pass sha256:f89572604bd89caeef19106a8724477d
+pass sha256:b942209e95f3a3fe0802a7eac0fbc6db

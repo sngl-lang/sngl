@@ -239,11 +239,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := new__canvas0Instance(m, x, func() {
+						__n1__made := new__canvas0Instance(m, x, func() {
 							m.hits += x.Elem
 							m.__n0.SetText(("hits " + fmt.Sprint(m.hits)))
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -872,11 +872,11 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 								return nil
 							}().Destroy()
 						}
-						__n1__new := new__canvas0Instance(m, x, func() {
+						__n1__made := new__canvas0Instance(m, x, func() {
 							m.hits += x.Elem
 							gtk4rt.LabelSetLabel(gtk4rt.Handle(unsafe.Pointer(m.__n0)), ("hits " + fmt.Sprint(m.hits)))
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next[__key1] = __n1
 					__n1__el := __n1.Root
@@ -1200,11 +1200,11 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n1__new = __cf___canvas0({ __p0: x, __on0: () => {
+              let __n1__made = __cf___canvas0({ __p0: x, __on0: () => {
                 state.hits += x.elem;
                 __n0.textContent = "hits " + String(state.hits);
               } });
-              __n1 = __n1__new;
+              __n1 = __n1__made;
             }
             __inst1_next.set(__key2, __n1);
             let __n1__el = __n1.__root;
@@ -1293,8 +1293,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:8648eb62b7ac8ddcdbd5027b4ebd833a
+pass sha256:3614c76ab831a75b8fa168446efb1bc1
 -- run/go/gtk4 --
-pass sha256:18ef525f15cccb206ea9fcd64e9f68d5
+pass sha256:b214a48600f38ffb9f123d993acea274
 -- run/none/html --
-pass sha256:7b54ed90b7adcdd3bb0321ad40de9596
+pass sha256:f53f4912fd2d4cd9c1776f0e61edf650

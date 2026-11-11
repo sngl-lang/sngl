@@ -738,13 +738,13 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n2__new := new__child1Instance(m, m.shape, func(__value string) {
+						__n2__made := new__child1Instance(m, m.shape, func(__value string) {
 							m.shape = __value
 							for __inst1_live_ui, _ := range m.__inst1_live {
 								m.__inst1_live[__inst1_live_ui].Set__p0(m.shape)
 							}
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst1_next = append(__inst1_next, __n2)
 					__inst1_i = (__inst1_i + 1)
@@ -875,10 +875,10 @@ func (c *AskedInstance) __renderSlot0(__parent *fyne.Container) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n1__new := new__child0Instance(c.__model, c.__prop_value, func() {
+						__n1__made := new__child0Instance(c.__model, c.__prop_value, func() {
 							c.__prop___on_value("b")
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next = append(__inst0_next, __n1)
 					__inst0_i = (__inst0_i + 1)
@@ -1133,13 +1133,13 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n2__new := new__child1Instance(m, m.shape, func(__value string) {
+						__n2__made := new__child1Instance(m, m.shape, func(__value string) {
 							m.shape = __value
 							for __inst1_live_ui, _ := range m.__inst1_live {
 								m.__inst1_live[__inst1_live_ui].Set__p0(m.shape)
 							}
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst1_next = append(__inst1_next, __n2)
 					__inst1_i = (__inst1_i + 1)
@@ -1241,10 +1241,10 @@ func (c *AskedInstance) __renderSlot0(parent gtk4rt.Handle) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n1__new := new__child0Instance(c.__model, c.__prop_value, func() {
+						__n1__made := new__child0Instance(c.__model, c.__prop_value, func() {
 							c.__prop___on_value("b")
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst0_next = append(__inst0_next, __n1)
 					__inst0_i = (__inst0_i + 1)
@@ -1772,10 +1772,10 @@ window.__sngl_boot = () => {
                 if (__inst1_live.length > __inst1_i) {
                   __inst1_live[__inst1_i].__destroy();
                 }
-                let __n2__new = __cf___child0({ __p0: __prop_value, __on0: () => {
+                let __n2__made = __cf___child0({ __p0: __prop_value, __on0: () => {
                   __prop___on_value("b");
                 } });
-                __n2 = __n2__new;
+                __n2 = __n2__made;
               }
               __inst1_next.push(__n2);
               __inst1_i = __inst1_i + 1;
@@ -1935,7 +1935,7 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n3__new = __cf___child1({ __p0: state.shape, __on0: (__value) => {
+              let __n3__made = __cf___child1({ __p0: state.shape, __on0: (__value) => {
                 state.shape = __value;
                 for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
                   ;
@@ -1943,7 +1943,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n3 = __n3__new;
+              __n3 = __n3__made;
             }
             __inst3_next.push(__n3);
             __inst3_i = __inst3_i + 1;
@@ -1987,10 +1987,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:2277581293ee510807f27867971e1f96
 -- run/go/fyne --
-pass sha256:0d536b8fecae7aa50a4aa8014f10817c
+pass sha256:029fa5df1ca2d97004e6c36e63f793e3
 -- run/go/gtk4 --
-pass sha256:08f5c4ab99dd3ff201cd79eabb865a6c
+pass sha256:3464b1b374b8919988bc17ef2d87160a
 -- run/kotlin/android --
 pass sha256:883459a8ca2affbbe28091b51db240fc
 -- run/none/html --
-pass sha256:8e436ea47094ce9dca68c09ee9aeb14f
+pass sha256:72b0c2506b6d3bca137e610f18d205d6

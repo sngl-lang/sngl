@@ -226,8 +226,8 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n8__new := newRow__slot0Instance(m, it)
-						__n8 = __n8__new
+						__n8__made := newRow__slot0Instance(m, it)
+						__n8 = __n8__made
 					}
 					__inst2_next[__key3] = __n8
 					__n8__el := __n8.Root
@@ -293,8 +293,8 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n9__new := newRow__slot1Instance(m)
-						__n9 = __n9__new
+						__n9__made := newRow__slot1Instance(m)
+						__n9 = __n9__made
 					}
 					__inst3_next[__key4] = __n9
 					__n9__el := __n9.Root
@@ -513,8 +513,8 @@ func (c *Row__slot1Instance) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newCard__slot3Instance(c.__model)
-						__n4 = __n4__new
+						__n4__made := newCard__slot3Instance(c.__model)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -625,8 +625,8 @@ func (c *Row__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newCard__slot2Instance(c.__model, c.__prop___p0)
-						__n6 = __n6__new
+						__n6__made := newCard__slot2Instance(c.__model, c.__prop___p0)
+						__n6 = __n6__made
 					}
 					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
@@ -821,8 +821,8 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n8__new := newRow__slot0Instance(m, it)
-						__n8 = __n8__new
+						__n8__made := newRow__slot0Instance(m, it)
+						__n8 = __n8__made
 					}
 					__inst2_next[__key3] = __n8
 					__n8__el := __n8.Root
@@ -888,8 +888,8 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n9__new := newRow__slot1Instance(m)
-						__n9 = __n9__new
+						__n9__made := newRow__slot1Instance(m)
+						__n9 = __n9__made
 					}
 					__inst3_next[__key4] = __n9
 					__n9__el := __n9.Root
@@ -1097,8 +1097,8 @@ func (c *Row__slot1Instance) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newCard__slot3Instance(c.__model)
-						__n4 = __n4__new
+						__n4__made := newCard__slot3Instance(c.__model)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -1222,8 +1222,8 @@ func (c *Row__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newCard__slot2Instance(c.__model, c.__prop___p0)
-						__n6 = __n6__new
+						__n6__made := newCard__slot2Instance(c.__model, c.__prop___p0)
+						__n6 = __n6__made
 					}
 					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
@@ -1478,8 +1478,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst1_live.has(__key2)) {
                   (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
                 }
-                let __n4__new = __cf_Card__slot3({});
-                __n4 = __n4__new;
+                let __n4__made = __cf_Card__slot3({});
+                __n4 = __n4__made;
               }
               __inst1_next.set(__key2, __n4);
               let __n4__el = __n4.__root;
@@ -1576,8 +1576,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst3_live.has(__key4)) {
                   (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
                 }
-                let __n6__new = __cf_Card__slot2({ __p0: __prop___p0 });
-                __n6 = __n6__new;
+                let __n6__made = __cf_Card__slot2({ __p0: __prop___p0 });
+                __n6 = __n6__made;
               }
               __inst3_next.set(__key4, __n6);
               let __n6__el = __n6.__root;
@@ -1667,8 +1667,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst5_live.has(__key6)) {
                 (__inst5_live.has(__key6) ? __inst5_live.get(__key6) : null).__destroy();
               }
-              let __n8__new = __cf_Row__slot0({ __p0: it });
-              __n8 = __n8__new;
+              let __n8__made = __cf_Row__slot0({ __p0: it });
+              __n8 = __n8__made;
             }
             __inst5_next.set(__key6, __n8);
             let __n8__el = __n8.__root;
@@ -1728,8 +1728,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst7_live.has(__key8)) {
                 (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
               }
-              let __n9__new = __cf_Row__slot1({});
-              __n9 = __n9__new;
+              let __n9__made = __cf_Row__slot1({});
+              __n9 = __n9__made;
             }
             __inst7_next.set(__key8, __n9);
             let __n9__el = __n9.__root;
@@ -1773,8 +1773,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:46cf1c0d8e390bbbf8a70bcf6f3ff3d7
+pass sha256:263e189cca3e4f2c644d4c4dfb869670
 -- run/go/gtk4 --
-pass sha256:a1d07ccf98384bcaad0ec60618fa92e4
+pass sha256:b7a415beb7e72a9ebb0e826c31ee13e6
 -- run/none/html --
-pass sha256:b6008a1b15385427bc8dda1ecac1cd82
+pass sha256:7fceab787c70aef462b10e1657eda577

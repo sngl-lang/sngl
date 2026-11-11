@@ -163,7 +163,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := new__child0Instance(m, m.pick, func(v string) {
+						__n2__made := new__child0Instance(m, m.pick, func(v string) {
 							var at int = ChoiceLabeled__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, v)
 							if (at >= 0) && ([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value != m.pick) {
 								m.pick = []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value
@@ -172,7 +172,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								}
 							}
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -303,4 +303,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:df6cc1071c4df70ade3528618fc1e9d2
+pass sha256:4c9d886ca3c7c62c98f9831cf78ba5c6

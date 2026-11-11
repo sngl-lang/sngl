@@ -1136,7 +1136,7 @@ sha256:3f59ad152b8309abe306d5093c0e39ce
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:4269120a3b0855206512d3bc4c14d9c4
+sha256:506c0007c8952870f07ef9d98826605a
 {
   "results": [
     {
@@ -1198,7 +1198,7 @@ sha256:b880ba2ce6c867e3053c303f43a376be
   ]
 }
 -- testrun/gtk4/c/holders.sngl/framed/1 --
-sha256:3d6c30e860562c4ce73ca7afb6931462
+sha256:b85e6052250a95761b11dcd368eaa3df
 {
   "results": [
     {
@@ -1208,7 +1208,7 @@ sha256:3d6c30e860562c4ce73ca7afb6931462
   ]
 }
 -- testrun/gtk4/c/holders.sngl/picks/1 --
-sha256:e952ea642454e8b265b0b616de5b8e31
+sha256:40b4803cfa495a7e54446b545a98768a
 {
   "results": [
     {
@@ -1262,7 +1262,7 @@ sha256:ef8ea39b356a631c9055ba48ca95f40a
   ]
 }
 -- testrun/gtk4/c/records.sngl/page/1 --
-sha256:c0a922c9abd8ac143f3e7c67f2c21f82
+sha256:0c5fc66c113e36018d092eea53c8fed5
 {
   "results": [
     {
@@ -1272,7 +1272,7 @@ sha256:c0a922c9abd8ac143f3e7c67f2c21f82
   ]
 }
 -- testrun/gtk4/c/records.sngl/population/1 --
-sha256:0b1378218c33e5182c28419b226cd269
+sha256:45604eb7fa299afaf86918ce387099e1
 {
   "results": [
     {
@@ -1282,7 +1282,7 @@ sha256:0b1378218c33e5182c28419b226cd269
   ]
 }
 -- testrun/gtk4/c/records.sngl/rows/1 --
-sha256:b17aa55750c7b49f883711fc308f98b8
+sha256:6d4018eb2ca47a39e30aa770fad53cab
 {
   "results": [
     {
@@ -1292,7 +1292,7 @@ sha256:b17aa55750c7b49f883711fc308f98b8
   ]
 }
 -- testrun/gtk4/c/rows.sngl/main/1 --
-sha256:3ba8750f8a454e588497ec9a42fd99e6
+sha256:47bda15228f71c59334e1d093e13035e
 {
   "results": [
     {
@@ -1316,7 +1316,7 @@ sha256:9557323c6f84421038a1fdb299d7e972
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:5cf35e448a1739440f493cd847b6ac3c
+sha256:74d62da2a8b5ab834ce5a953904509f4
 {
   "results": [
     {

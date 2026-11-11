@@ -437,7 +437,7 @@ static bool s___rendering0;
 static bool s___renderAgain0;
 static GtkBox *s___n1;
 static GtkDrawingArea *s_board;
-static s_dot__inst *s___n0__new;
+static s_dot__inst *s___n0__made;
 static GtkWidget *s___slot0__anchor;
 
 static void s_dot___lambda0(s_dot__inst *__self, s___lambda0_caps state) {
@@ -592,8 +592,8 @@ static void s___renderSlot0(GtkBox * parent) {
 							if (sngl_map_string__instance_dot__find(s___inst0_live, __key1) >= 0) {
 								s_dot__destroy(sngl_map_string__instance_dot__get(s___inst0_live, __key1, NULL));
 							}
-							s___n0__new = s_dot__new(r.elem);
-							__n0 = s___n0__new;
+							s___n0__made = s_dot__new(r.elem);
+							__n0 = s___n0__made;
 						}
 						(*sngl_map_string__instance_dot__slot(&(__inst0_next), __key1)) = __n0;
 						GtkWidget * __n0__el = __n0->__root;
@@ -696,4 +696,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:b97b4b44ce421cb45f5a7e36e3f03fc5
+pass sha256:e7c7bdf6248cb4539f89be79db5a2a60

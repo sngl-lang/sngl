@@ -1149,8 +1149,8 @@ static void s___renderSlot1(HWND parent) {
 							if (sngl_map_string__dot__inst_find(s___inst2_live, __key3) >= 0) {
 								s_dot__destroy(sngl_map_string__dot__inst_get(s___inst2_live, __key3, NULL));
 							}
-							s_dot__inst * __n0__new = s_dot__new(r.elem);
-							__n0 = __n0__new;
+							s_dot__inst * __n0__made = s_dot__new(r.elem);
+							__n0 = __n0__made;
 						}
 						(*sngl_map_string__dot__inst_slot(&(__inst2_next), __key3)) = __n0;
 						HWND __n0__el = __n0->__root;
@@ -1184,8 +1184,8 @@ static void s___renderSlot1(HWND parent) {
 							if (sngl_map_string____canvas0__inst_find(s___inst3_live->value, __key4) >= 0) {
 								s___canvas0__destroy(sngl_map_string____canvas0__inst_get(s___inst3_live->value, __key4, NULL));
 							}
-							s___canvas0__inst * __n1__new = s___canvas0__new(r, s_hits->value, ((sngl_fn_void__void){sngl_lambda13, NULL}));
-							__n1 = __n1__new;
+							s___canvas0__inst * __n1__made = s___canvas0__new(r, s_hits->value, ((sngl_fn_void__void){sngl_lambda13, NULL}));
+							__n1 = __n1__made;
 						}
 						(*sngl_map_string____canvas0__inst_slot(&(__inst3_next), __key4)) = __n1;
 						HWND __n1__el = __n1->__root;
@@ -1424,4 +1424,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:7dde447ce819c25b70da1a1b48200442
+pass sha256:382c84ad82397c0d674b857806262ea2

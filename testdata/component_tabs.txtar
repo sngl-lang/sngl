@@ -1519,7 +1519,7 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
+              let __n2__made = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
                 state.idx = k;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
@@ -1533,7 +1533,7 @@ window.__sngl_boot = () => {
                 ;
                 state.changed = k;
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -1592,8 +1592,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n3__new = __cf___child1({ __p0: k, __p1: state.idx, __p2: t });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child1({ __p0: k, __p1: state.idx, __p2: t });
+              __n3 = __n3__made;
             }
             __inst3_next.push(__n3);
             __inst3_i = __inst3_i + 1;
@@ -1716,9 +1716,9 @@ pass sha256:062dc729f7c3b52da738836cbc01365f
 -- run/kotlin/android --
 pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --
-pass sha256:8cb934b845de4e55314a3101f8e0acab
+pass sha256:1d3a785039445e3f1ecbdb4e84679b25
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:f890472de616af9b00308b2f9839561a
+sha256:d03eefa9d6144cc30ffe45dc7597aeed
 {
   "results": [
     {

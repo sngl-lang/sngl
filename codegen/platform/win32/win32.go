@@ -40,8 +40,7 @@ func (g *Generator) Description() string {
 	return "Classic Windows GUI over user32, gdi32 and comctl32."
 }
 
-// C is the default until a Go program has a test agent (TODO.md Part 4).
-func (g *Generator) SupportedLangs() []string { return []string{"c", "go"} }
+func (g *Generator) SupportedLangs() []string { return []string{"go", "c"} }
 
 var _ codegen.TestProber = (*Generator)(nil)
 
@@ -203,15 +202,33 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 	if err := golang.WriteProgram(fe, pkg, platformName); err != nil {
 		return fmt.Errorf("win32: %w", err)
 	}
+	agent := codegen.OptionString(req.Options, "testMode") == "agent"
+	if agent {
+		if err := golang.WriteTests(fe, pkg); err != nil {
+			return fmt.Errorf("win32: %w", err)
+		}
+	}
 	cgo := fe.RequireImport(wrappers)
 	fe.RequireImport("runtime")
-	if codegen.OptionBool(req.Options, snapshotOption) {
+	switch {
+	case agent:
+		for _, p := range []string{"bytes", "encoding/binary", "errors", "fmt", "image", "image/png", "net", "os", "duckfam.us/sngl/pkg/go/testagent"} {
+			fe.RequireImport(p)
+		}
+		io.WriteString(fe, strings.ReplaceAll(goAgentMain, "cgo.", cgo+"."))
+	case codegen.OptionBool(req.Options, snapshotOption):
 		// Built for `sngl snapshot`, as C's is.
 		fe.RequireImport("os")
 		fe.RequireImport("strconv")
 		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tif len(os.Args) < 4 {\n\t\tos.Exit(2)\n\t}\n\tw, _ := strconv.Atoi(os.Args[2])\n\th, _ := strconv.Atoi(os.Args[3])\n\tsnglInit()\n\tsnglBuild()\n\tos.Exit("+cgo+".SnglWin32Snapshot(os.Args[1], w, h))\n}\n")
-	} else {
-		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n}\n")
+	case golang.RunsHandler(pkg):
+		fe.RequireImport("fmt")
+		fe.RequireImport("os")
+		io.WriteString(fe, strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain))
+	case pkg.Run != nil:
+		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\t"+cgo+".SnglWin32Hold()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n\tsnglTeardown()\n}\n")
+	default:
+		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n\tsnglTeardown()\n}\n")
 	}
 	if err := fe.Close(); err != nil {
 		return err
@@ -222,6 +239,104 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 	}
 	return carryGo(sink, req.FileAssets)
 }
+
+// goRunMain is a Go program's entry where the platform node wrote `@run`,
+// as C's is (appMain): the windows the build attaches are held hidden and
+// the handler is called with the command line and a `run` presenting them
+// and running the loop. A handler that returns without calling it gets the
+// loop with nothing shown; a second run is refused.
+const goRunMain = `
+var snglStarted bool
+
+func snglStart() {
+	if snglStarted {
+		fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", POS)
+		os.Exit(2)
+	}
+	snglStarted = true
+	cgo.SnglWin32Present()
+	cgo.SnglWin32Run()
+	snglTeardown()
+}
+
+func main() {
+	runtime.LockOSThread()
+	cgo.SnglWin32Hold()
+	snglInit()
+	snglBuild()
+	snglRun(os.Args[1:], snglStart)
+	if !snglStarted {
+		snglStarted = true
+		cgo.SnglWin32Run()
+		snglTeardown()
+	}
+}
+`
+
+// goAgentMain is a Go program's entry built for `sngl test`: the test agent,
+// connected to the driver on the loopback port its one argument names, as
+// C's is (sngl_win32_agent.c). It serves the driver on a goroutine and runs
+// each run of tests on the thread the program's windows belong to, which
+// main locks. A snapshot is the shown toplevel drawn at its size into a file
+// (sngl_win32_snapshot), whose pixels are sent as the PNG the driver makes
+// of C's.
+const goAgentMain = `
+func main() {
+	runtime.LockOSThread()
+	if len(os.Args) < 2 {
+		os.Exit(2)
+	}
+	conn, err := net.Dial("tcp", "127.0.0.1:"+os.Args[1])
+	if err != nil {
+		os.Exit(1)
+	}
+	testagent.RegisterSnapshot(snglCapture)
+	runs := make(chan func(), 8)
+	done := make(chan struct{})
+	go func() {
+		testagent.Serve(conn, conn, func(run func()) { runs <- run })
+		close(done)
+	}()
+	for {
+		select {
+		case run := <-runs:
+			run()
+		case <-done:
+			conn.Close()
+			return
+		}
+	}
+}
+
+func snglCapture() (string, []byte, error) {
+	f, err := os.CreateTemp("", "sngl-snapshot-*")
+	if err != nil {
+		return "", nil, err
+	}
+	path := f.Name()
+	f.Close()
+	defer os.Remove(path)
+	if cgo.SnglWin32Snapshot(path, 0, 0) != 0 {
+		return "", nil, errors.New("no window is shown to draw")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(raw) < 8 {
+		return "", nil, fmt.Errorf("a capture of %d bytes", len(raw))
+	}
+	w, h := int(binary.LittleEndian.Uint32(raw[0:4])), int(binary.LittleEndian.Uint32(raw[4:8]))
+	if pix := raw[8:]; w <= 0 || h <= 0 || len(pix) != w*h*4 {
+		return "", nil, fmt.Errorf("a capture of %d bytes of pixels for %d by %d", len(pix), w, h)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, &image.NRGBA{Pix: raw[8:], Stride: w * 4, Rect: image.Rect(0, 0, w, h)}); err != nil {
+		return "", nil, err
+	}
+	return "image/png", buf.Bytes(), nil
+}
+`
 
 // carryGo writes the files a Go program carries beside it, and assets.go,
 // which embeds each and hands it to the runtime before the program builds:

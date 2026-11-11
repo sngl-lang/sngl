@@ -12,23 +12,37 @@
 
 sngl test --platform=win32 --language=c forward.sngl
 stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go forward.sngl
+stdout 'ok +1 tests, 0 failures'
 
 sngl test --platform=win32 --language=c deepfire.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go deepfire.sngl
 stdout 'ok +1 tests, 0 failures'
 
 sngl test --platform=win32 --language=c reserved.sngl
 stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go reserved.sngl
+stdout 'ok +1 tests, 0 failures'
 
 sngl test --platform=win32 --language=c context.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go context.sngl
 stdout 'ok +1 tests, 0 failures'
 
 sngl test --platform=win32 --language=c panel.sngl
 stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go panel.sngl
+stdout 'ok +1 tests, 0 failures'
 
 sngl test --platform=win32 --language=c branch.sngl
 stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go branch.sngl
+stdout 'ok +2 tests, 0 failures'
 
 sngl test --platform=win32 --language=c slot.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go slot.sngl
 stdout 'ok +1 tests, 0 failures'
 
 # A component with state of its own is a record on win32, which keeps it
@@ -38,6 +52,8 @@ stdout 'ok +1 tests, 0 failures'
 # event it raises, and null once the loop no longer makes it.
 
 sngl test --platform=win32 --language=c copies.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go copies.sngl
 stdout 'ok +2 tests, 0 failures'
 
 -- forward.sngl --
@@ -379,7 +395,7 @@ window {
     main
 }
 -- testrun/win32/c/branch.sngl/branch/1 --
-sha256:17a874e790414a8b968ab82a45d1ccd7
+sha256:99d3825491b5cd8a89e545315a6355ef
 {
   "results": [
     {
@@ -403,7 +419,7 @@ sha256:699f1b0f7635fb882a80ed1426d8964c
   ]
 }
 -- testrun/win32/c/copies.sngl/main/1 --
-sha256:1b03cf57b83fa72902ee307a000b9a28
+sha256:6185d4c8dae3ae58b491ebf87f42c491
 {
   "results": [
     {
@@ -417,7 +433,7 @@ sha256:1b03cf57b83fa72902ee307a000b9a28
   ]
 }
 -- testrun/win32/c/deepfire.sngl/main/1 --
-sha256:1ad01c9d294f2cb2a8755ad9e6cf3662
+sha256:557bc00db51a3da31c437e3eab0868c3
 {
   "results": [
     {
@@ -437,7 +453,7 @@ sha256:1e69366f0b98d41341ac09a26beb7744
   ]
 }
 -- testrun/win32/c/panel.sngl/panel/1 --
-sha256:018aa91d613c306e419be58c185ec2a1
+sha256:72805243a0a17172803e611cc96fff28
 {
   "results": [
     {
@@ -447,7 +463,7 @@ sha256:018aa91d613c306e419be58c185ec2a1
   ]
 }
 -- testrun/win32/c/reserved.sngl/main/1 --
-sha256:1c27c6699a16758ae4eb7c1c20c22fe7
+sha256:83b454e505eade876620c87c052dd47f
 {
   "results": [
     {
@@ -457,7 +473,95 @@ sha256:1c27c6699a16758ae4eb7c1c20c22fe7
   ]
 }
 -- testrun/win32/c/slot.sngl/main/1 --
-sha256:40011feb4a29555d17d62811c1fbfdf5
+sha256:960e326606a80ba64e6328c0bf944d68
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/branch.sngl/branch/1 --
+sha256:aa6f614d0dd7c2187d84356891989fe1
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    },
+    {
+      "Desc": "GoneWithItsBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/context.sngl/main/1 --
+sha256:57e72ec074219a2b865f2e84420c1abd
+{
+  "results": [
+    {
+      "Desc": "Context",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/copies.sngl/main/1 --
+sha256:7ebea14c5f3caba9238c60bec878b61b
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/deepfire.sngl/main/1 --
+sha256:9bc907b8f14b63255836465b4ffbfb04
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/forward.sngl/main/1 --
+sha256:03b0583c7357a2a6129c42ece34f619a
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/panel.sngl/panel/1 --
+sha256:15c3259505a94a4dc4e9cdf4a0bd1b66
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/reserved.sngl/main/1 --
+sha256:15cc24e87597e9747b28268a6bb420b4
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/slot.sngl/main/1 --
+sha256:785f2924c4d204c390a4aed2b589e9d3
 {
   "results": [
     {

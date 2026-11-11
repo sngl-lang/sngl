@@ -4555,8 +4555,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 									if len(m.__inst0_live) > __inst0_i {
 										m.__inst0_live[__inst0_i].Destroy()
 									}
-									__n5__new := new__checkbox_state1Instance(m, (it.Task == "done"), true)
-									__n5 = __n5__new
+									__n5__made := new__checkbox_state1Instance(m, (it.Task == "done"), true)
+									__n5 = __n5__made
 								}
 								__inst0_next = append(__inst0_next, __n5)
 								__inst0_i = (__inst0_i + 1)
@@ -4593,8 +4593,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 												if len(m.__inst1_live) > __inst1_i {
 													m.__inst1_live[__inst1_i].Destroy()
 												}
-												__n10__new := new__checkbox_state1Instance(m, (it.Task == "done"), true)
-												__n10 = __n10__new
+												__n10__made := new__checkbox_state1Instance(m, (it.Task == "done"), true)
+												__n10 = __n10__made
 											}
 											__inst1_next = append(__inst1_next, __n10)
 											__inst1_i = (__inst1_i + 1)
@@ -4631,8 +4631,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															if len(m.__inst2_live) > __inst2_i {
 																m.__inst2_live[__inst2_i].Destroy()
 															}
-															__n15__new := new__checkbox_state1Instance(m, (it.Task == "done"), true)
-															__n15 = __n15__new
+															__n15__made := new__checkbox_state1Instance(m, (it.Task == "done"), true)
+															__n15 = __n15__made
 														}
 														__inst2_next = append(__inst2_next, __n15)
 														__inst2_i = (__inst2_i + 1)
@@ -9812,6 +9812,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1277a5d060e54c56ddb69361caca30c6
 -- run/go/fyne --
-pass sha256:9e0a06ced8c16ecdbb67b4d29381e683
+pass sha256:887ce404291d3a3f194292b29811674a
 -- run/none/html --
 pass sha256:975a4f8965a0c49cbd1cc9ced11c95f0

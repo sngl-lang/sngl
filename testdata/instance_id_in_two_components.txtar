@@ -1035,8 +1035,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						b__new := newBadgeInstance(m, "m")
-						b = b__new
+						b__made := newBadgeInstance(m, "m")
+						b = b__made
 					}
 					__inst1_next = append(__inst1_next, b)
 					__inst1_i = (__inst1_i + 1)
@@ -1083,8 +1083,8 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						__n1__new := newPanelInstance(m)
-						__n1 = __n1__new
+						__n1__made := newPanelInstance(m)
+						__n1 = __n1__made
 					}
 					__inst2_next = append(__inst2_next, __n1)
 					__inst2_i = (__inst2_i + 1)
@@ -1288,8 +1288,8 @@ func (c *PanelInstance) __renderSlot0(__parent *fyne.Container) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadgeInstance(c.__model, "p")
-						b = b__new
+						b__made := newBadgeInstance(c.__model, "p")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -1486,8 +1486,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						b__new := newBadgeInstance(m, "m")
-						b = b__new
+						b__made := newBadgeInstance(m, "m")
+						b = b__made
 					}
 					__inst1_next = append(__inst1_next, b)
 					__inst1_i = (__inst1_i + 1)
@@ -1534,8 +1534,8 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						__n1__new := newPanelInstance(m)
-						__n1 = __n1__new
+						__n1__made := newPanelInstance(m)
+						__n1 = __n1__made
 					}
 					__inst2_next = append(__inst2_next, __n1)
 					__inst2_i = (__inst2_i + 1)
@@ -1687,8 +1687,8 @@ func (c *PanelInstance) __renderSlot0(parent gtk4rt.Handle) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadgeInstance(c.__model, "p")
-						b = b__new
+						b__made := newBadgeInstance(c.__model, "p")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -2217,8 +2217,8 @@ window.__sngl_boot = () => {
                 if (__inst1_live.length > __inst1_i) {
                   __inst1_live[__inst1_i].__destroy();
                 }
-                let b__new = __cf_badge({ label: "p" });
-                b = b__new;
+                let b__made = __cf_badge({ label: "p" });
+                b = b__made;
               }
               __inst1_next.push(b);
               __inst1_i = __inst1_i + 1;
@@ -2318,8 +2318,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let b__new = __cf_badge({ label: "m" });
-              b = b__new;
+              let b__made = __cf_badge({ label: "m" });
+              b = b__made;
             }
             __inst3_next.push(b);
             __inst3_i = __inst3_i + 1;
@@ -2376,8 +2376,8 @@ window.__sngl_boot = () => {
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n2__new = __cf_panel({});
-              __n2 = __n2__new;
+              let __n2__made = __cf_panel({});
+              __n2 = __n2__made;
             }
             __inst5_next.push(__n2);
             __inst5_i = __inst5_i + 1;
@@ -2436,10 +2436,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:6eb92ffc7287aae4398bba394b974443
 -- run/go/fyne --
-pass sha256:ff79a754016565ef3d402d5833d812b5
+pass sha256:fd181a5294fcc2f64aa3ff02a172a9fd
 -- run/go/gtk4 --
-pass sha256:0c2e945df6508d1b8c26300a97db2869
+pass sha256:c8f03ae6d683492ef117ab4f40c6fd6d
 -- run/kotlin/android --
 pass sha256:4781f3bd0ce030025d422bcec487fbb0
 -- run/none/html --
-pass sha256:aa2296baa8d76750559b357a56f90082
+pass sha256:159ef45e516665a12e33044758796827

@@ -704,8 +704,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__child0Instance(m, m.uptime__inst0)
-						__n3 = __n3__new
+						__n3__made := new__child0Instance(m, m.uptime__inst0)
+						__n3 = __n3__made
 					}
 					__inst0_next = append(__inst0_next, __n3)
 					__inst0_i = (__inst0_i + 1)
@@ -775,8 +775,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__child1Instance(m, it, m.uptime__inst0)
-						__n4 = __n4__new
+						__n4__made := new__child1Instance(m, it, m.uptime__inst0)
+						__n4 = __n4__made
 					}
 					__inst1_next[__key2] = __n4
 					__n4__el := __n4.Root
@@ -1097,8 +1097,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__child0Instance(m, m.uptime__inst0)
-						__n3 = __n3__new
+						__n3__made := new__child0Instance(m, m.uptime__inst0)
+						__n3 = __n3__made
 					}
 					__inst0_next = append(__inst0_next, __n3)
 					__inst0_i = (__inst0_i + 1)
@@ -1168,8 +1168,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__child1Instance(m, it, m.uptime__inst0)
-						__n4 = __n4__new
+						__n4__made := new__child1Instance(m, it, m.uptime__inst0)
+						__n4 = __n4__made
 					}
 					__inst1_next[__key2] = __n4
 					__n4__el := __n4.Root
@@ -1739,8 +1739,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: state.uptime__inst0 });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child0({ __p0: state.uptime__inst0 });
+              __n3 = __n3__made;
             }
             __inst1_next.push(__n3);
             __inst1_i = __inst1_i + 1;
@@ -1804,8 +1804,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n4__new = __cf___child1({ __p0: it, __p1: state.uptime__inst0 });
-              __n4 = __n4__new;
+              let __n4__made = __cf___child1({ __p0: it, __p1: state.uptime__inst0 });
+              __n4 = __n4__made;
             }
             __inst3_next.set(__key4, __n4);
             let __n4__el = __n4.__root;
@@ -1870,10 +1870,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c62d8f70a86804036e382eeca0265486
 -- run/go/fyne --
-pass sha256:b3825ac1493df7e271e668d0bd35797a
+pass sha256:6a776eaecfe33a80bf0a17783737f162
 -- run/go/gtk4 --
-pass sha256:49e9b5da9c1b1b2e2738eeca9f3e6c4b
+pass sha256:b29c1750350fa334b434e31952dd8226
 -- run/kotlin/android --
 pass sha256:2da69b45a79e7ea0e7d91b1a3e0fcd38
 -- run/none/html --
-pass sha256:da0ec9e894c66905da280c1665a48642
+pass sha256:4b15a57c1e35c78c200688b3ac7e6583

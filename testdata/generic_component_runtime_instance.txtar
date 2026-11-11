@@ -260,10 +260,10 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newShow__intInstance(m, []int{i.Elem}, __anon_v_853006{V: i.Elem}, func(w __anon_v_853006) {
+						__n4__made := newShow__intInstance(m, []int{i.Elem}, __anon_v_853006{V: i.Elem}, func(w __anon_v_853006) {
 							m.got = w.V
 						})
-						__n4 = __n4__new
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -334,10 +334,10 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newShow__stringInstance(m, []string{s.Elem}, __anon_v_ba918a{V: s.Elem}, func(w __anon_v_ba918a) {
+						__n5__made := newShow__stringInstance(m, []string{s.Elem}, __anon_v_ba918a{V: s.Elem}, func(w __anon_v_ba918a) {
 							m.said = w.V
 						})
-						__n5 = __n5__new
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -390,13 +390,13 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						__n6__new := newHeld__intInstance(m, m.n, 4, func(__value int) {
+						__n6__made := newHeld__intInstance(m, m.n, 4, func(__value int) {
 							m.n = __value
 							for __inst2_live_ui, _ := range m.__inst2_live {
 								m.__inst2_live[__inst2_live_ui].SetValue(m.n)
 							}
 						})
-						__n6 = __n6__new
+						__n6 = __n6__made
 					}
 					__inst2_next = append(__inst2_next, __n6)
 					__inst2_i = (__inst2_i + 1)
@@ -866,10 +866,10 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newShow__intInstance(m, []int{i.Elem}, __anon_v_853006{V: i.Elem}, func(w __anon_v_853006) {
+						__n4__made := newShow__intInstance(m, []int{i.Elem}, __anon_v_853006{V: i.Elem}, func(w __anon_v_853006) {
 							m.got = w.V
 						})
-						__n4 = __n4__new
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -940,10 +940,10 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newShow__stringInstance(m, []string{s.Elem}, __anon_v_ba918a{V: s.Elem}, func(w __anon_v_ba918a) {
+						__n5__made := newShow__stringInstance(m, []string{s.Elem}, __anon_v_ba918a{V: s.Elem}, func(w __anon_v_ba918a) {
 							m.said = w.V
 						})
-						__n5 = __n5__new
+						__n5 = __n5__made
 					}
 					__inst1_next[__key2] = __n5
 					__n5__el := __n5.Root
@@ -996,13 +996,13 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						__n6__new := newHeld__intInstance(m, m.n, 4, func(__value int) {
+						__n6__made := newHeld__intInstance(m, m.n, 4, func(__value int) {
 							m.n = __value
 							for __inst2_live_ui, _ := range m.__inst2_live {
 								m.__inst2_live[__inst2_live_ui].SetValue(m.n)
 							}
 						})
-						__n6 = __n6__new
+						__n6 = __n6__made
 					}
 					__inst2_next = append(__inst2_next, __n6)
 					__inst2_i = (__inst2_i + 1)
@@ -1673,10 +1673,10 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf_show({ xs: [i.elem], w: { v: i.elem }, chose: (w) => {
+              let __n3__made = __cf_show({ xs: [i.elem], w: { v: i.elem }, chose: (w) => {
                 state.got = w.v;
               } });
-              __n3 = __n3__new;
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -1741,10 +1741,10 @@ body { font-family: system-ui, sans-serif; }
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n4__new = __cf_show({ xs: [s.elem], w: { v: s.elem }, chose: (w) => {
+              let __n4__made = __cf_show({ xs: [s.elem], w: { v: s.elem }, chose: (w) => {
                 state.said = w.v;
               } });
-              __n4 = __n4__new;
+              __n4 = __n4__made;
             }
             __inst3_next.set(__key4, __n4);
             let __n4__el = __n4.__root;
@@ -1808,7 +1808,7 @@ body { font-family: system-ui, sans-serif; }
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n5__new = __cf_held({ value: state.n, next: 4, __on_value: (__value) => {
+              let __n5__made = __cf_held({ value: state.n, next: 4, __on_value: (__value) => {
                 state.n = __value;
                 for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
@@ -1816,7 +1816,7 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               } });
-              __n5 = __n5__new;
+              __n5 = __n5__made;
             }
             __inst5_next.push(__n5);
             __inst5_i = __inst5_i + 1;
@@ -1864,10 +1864,10 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:901e2bfc140458b31e258ac53468763f
+pass sha256:b977156d8fbaef4bd40ed14a8fed5acb
 -- run/go/gtk4 --
-pass sha256:f2a874eee14a4af468ed785692f01a2c
+pass sha256:bbd2fbf5697294a6b57da0ed85459f96
 -- run/kotlin/android --
 pass sha256:3a1906d14d5dffb89af453afa9f6386e
 -- run/none/html --
-pass sha256:9178cc91901ef40c4554bddf8b038263
+pass sha256:609ec8f05f257c0de98b438a28f6beff

@@ -160,10 +160,24 @@ the `.c` files of the package's own directory.
 what `passPlacement` left: the program's types, each package var a field of
 the one state `m`, each const a file-scope var, each function free (a method
 as the free function `LiftsToFreeFunc` names, as on every Go platform), and
-`snglInit` and `snglBuild`. win32 writes the entry, which runs the loop
-through the wrappers (`SnglWin32Run`). The loop's calls and the snapshot's are
-declared in `win32.sngl` for the wrappers to carry (`_rtRun`, `_rtSnapshot`),
-though no SNGL calls them.
+`snglInit`, `snglBuild` and `snglTeardown`. win32 writes the entry, which runs
+the loop through the wrappers (`SnglWin32Run`). The loop's calls and the
+snapshot's are declared in `win32.sngl` for the wrappers to carry (`_rtRun`,
+`_rtSnapshot`, `_rtStep`), though no SNGL calls them. Where the platform node
+wrote `@run`, WriteProgram writes the handler as `snglRun` and the entry is
+C's `appMain` in Go: the windows held, the handler handed `os.Args[1:]` and a
+`run` that presents them, runs the loop and refuses a second call
+(`testdata/win32_go_run_handler_runs.txtar`).
+
+**What placement writes is held as a free function holds it.** The writer
+had only been asked for a Model's methods, and three answers changed for a
+placed program. A node placement made is a local of the function that made
+it, so an element ref nothing else resolves -- a `LocalVar` placement wrote
+without a symbol, or a handler's read of the node it is on -- is that local,
+not a field of `m`. A record is a box (`StructDef.RefBox`), so Go spells it
+`*T` and builds it with `&T{…}`, and `ir.CopiedStruct` answers nil for one:
+every copy shares it. A handle C keeps opaque (`HWND`) has no composite
+literal; its zero is `*new(T)`, and is left out of a struct literal.
 
 **It is cross-compiled by the Go toolchain calling MinGW.** win32 writes
 `sngl.build`'s `target windows/<arch>` line for Go as for C, and
@@ -180,6 +194,19 @@ both.
 **`async.do` posts through the runtime's `sngl_post`**, as C's does: a
 platform intrinsic (`codegen/platform/win32/async.go`) calls the wrapper
 `SnglPost` with the closure.
+
+**`sngl test` in Go is C's agent written from the same tests.**
+`golang.WriteTests` writes each test of the placed program as C's
+`WriteTests` does -- reset (teardown, then `snglInit`), `snglBuild` unless
+the test mounts, the body through Go's test lowering -- and registers it with
+`testagent`. The entry dials the driver's loopback port, as C's agent does,
+and serves it on a goroutine through `testagent.Serve`, which hands each run
+of tests back to main to run on the thread its windows belong to. A test's
+`wait` pumps the loop through `SnglWin32Step` (a platform intrinsic, as
+gtk4's is), and a snapshot draws the shown window at its size into a file
+(`sngl_win32_snapshot` with no size), which the agent sends as the PNG the
+driver makes of C's pixels. Each win32 script runs its programs in both
+languages, the snapshot scripts holding Go's to the PNG C's run wrote.
 
 **The snapshot tests hold Go to C.** Each of `snapshot_test.go`'s programs is
 built in both languages, and the window Go draws must be C's, pixel for

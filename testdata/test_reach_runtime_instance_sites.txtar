@@ -1464,8 +1464,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadge__site0Instance(m, "one")
-						b = b__new
+						b__made := newBadge__site0Instance(m, "one")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -1536,8 +1536,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						r__new := newBadge__site1Instance(m, n.Elem, fmt.Sprint(__copy0))
-						r = r__new
+						r__made := newBadge__site1Instance(m, n.Elem, fmt.Sprint(__copy0))
+						r = r__made
 					}
 					__inst1_next[__key2] = r
 					r__el := r.Root
@@ -1585,8 +1585,8 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						inner__new := newBadge__site2Instance(m, "in")
-						inner = inner__new
+						inner__made := newBadge__site2Instance(m, "in")
+						inner = inner__made
 					}
 					__inst2_next = append(__inst2_next, inner)
 					__inst2_i = (__inst2_i + 1)
@@ -2017,8 +2017,8 @@ func (c *Badge__site1Instance) __renderSlot5(__parent *fyne.Container) {
 						if len(c.__inst3_live) > __inst3_i {
 							c.__inst3_live[__inst3_i].Destroy()
 						}
-						__n2__new := new__child0Instance(c.__model, c.__prop___copy)
-						__n2 = __n2__new
+						__n2__made := new__child0Instance(c.__model, c.__prop___copy)
+						__n2 = __n2__made
 					}
 					__inst3_next = append(__inst3_next, __n2)
 					__inst3_i = (__inst3_i + 1)
@@ -2461,8 +2461,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadge__site0Instance(m, "one")
-						b = b__new
+						b__made := newBadge__site0Instance(m, "one")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -2533,8 +2533,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						r__new := newBadge__site1Instance(m, n.Elem, fmt.Sprint(__copy0))
-						r = r__new
+						r__made := newBadge__site1Instance(m, n.Elem, fmt.Sprint(__copy0))
+						r = r__made
 					}
 					__inst1_next[__key2] = r
 					r__el := r.Root
@@ -2582,8 +2582,8 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						inner__new := newBadge__site2Instance(m, "in")
-						inner = inner__new
+						inner__made := newBadge__site2Instance(m, "in")
+						inner = inner__made
 					}
 					__inst2_next = append(__inst2_next, inner)
 					__inst2_i = (__inst2_i + 1)
@@ -2845,8 +2845,8 @@ func (c *Badge__site1Instance) __renderSlot5(parent gtk4rt.Handle) {
 						if len(c.__inst3_live) > __inst3_i {
 							c.__inst3_live[__inst3_i].Destroy()
 						}
-						__n2__new := new__child0Instance(c.__model, c.__prop___copy)
-						__n2 = __n2__new
+						__n2__made := new__child0Instance(c.__model, c.__prop___copy)
+						__n2 = __n2__made
 					}
 					__inst3_next = append(__inst3_next, __n2)
 					__inst3_i = (__inst3_i + 1)
@@ -3878,8 +3878,8 @@ window.__sngl_boot = () => {
                 if (__inst9_live.length > __inst9_i) {
                   __inst9_live[__inst9_i].__destroy();
                 }
-                let __n2__new = __cf___child0({ __p0: __prop___copy });
-                __n2 = __n2__new;
+                let __n2__made = __cf___child0({ __p0: __prop___copy });
+                __n2 = __n2__made;
               }
               __inst9_next.push(__n2);
               __inst9_i = __inst9_i + 1;
@@ -4097,8 +4097,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let b__new = __cf_badge__site0({ label: "one" });
-              b = b__new;
+              let b__made = __cf_badge__site0({ label: "one" });
+              b = b__made;
             }
             __inst1_next.push(b);
             __inst1_i = __inst1_i + 1;
@@ -4163,8 +4163,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let r__new = __cf_badge__site1({ label: n.elem, __copy: String(__copy0) });
-              r = r__new;
+              let r__made = __cf_badge__site1({ label: n.elem, __copy: String(__copy0) });
+              r = r__made;
             }
             __inst3_next.set(__key4, r);
             let r__el = r.__root;
@@ -4221,8 +4221,8 @@ window.__sngl_boot = () => {
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let inner__new = __cf_badge__site2({ label: "in" });
-              inner = inner__new;
+              let inner__made = __cf_badge__site2({ label: "in" });
+              inner = inner__made;
             }
             __inst5_next.push(inner);
             __inst5_i = __inst5_i + 1;
@@ -4325,10 +4325,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:f9f193db9f96e2bb52261d0f7b5d3b5e
 -- run/go/fyne --
-pass sha256:20a360274b3c1377ad4fae0cb2b29d31
+pass sha256:452a08693fd3f60750cf87bb003c4991
 -- run/go/gtk4 --
-pass sha256:b65f0bd4920f660f6f55ad15bd428586
+pass sha256:6be54e189e158570b4446bfc2aea7cf6
 -- run/kotlin/android --
 pass sha256:7aa818aaa9b7d27103a0fecabb1f4ab4
 -- run/none/html --
-pass sha256:66ec403d2ce8240605c304298e58d823
+pass sha256:2990aef60283fab8ba28c9cc535bb354

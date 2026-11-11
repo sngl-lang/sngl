@@ -32,13 +32,17 @@ func HoldsValue(t *Type) bool {
 
 // CopiedStruct is t's declaration when a copy of t copies its fields: a
 // struct the program or a library declares as data, and not a builtin kind,
-// an intrinsic or a host type.
+// an intrinsic, a box or a host type.
 func CopiedStruct(t *Type) *StructDef {
 	if t == nil || t.Kind != TypeStruct {
 		return nil
 	}
 	def, ok := t.Decl.(*StructDef)
 	if !ok || def == nil || def.Builtin != "" || def.Intrinsic != "" {
+		return nil
+	}
+	// A box is a reference, which every copy shares (StructDef.RefBox).
+	if def.RefBox {
 		return nil
 	}
 	if def.Foreign.Name != "" && !def.Foreign.Marked {

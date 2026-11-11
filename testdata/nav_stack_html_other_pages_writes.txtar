@@ -164,8 +164,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: opt, __p1: state.picked__inst0 });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: opt, __p1: state.picked__inst0 });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -334,8 +334,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: opt, __p1: state.picked__inst0 });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: opt, __p1: state.picked__inst0 });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -385,4 +385,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:0156da175bb510e8841118cecb1b0b68
+pass sha256:928ffee4635435ba12bcabbaac74e639

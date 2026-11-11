@@ -617,8 +617,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n6__new = __cf___child0({ __p0: opt, __p1: state.fruit });
-              __n6 = __n6__new;
+              let __n6__made = __cf___child0({ __p0: opt, __p1: state.fruit });
+              __n6 = __n6__made;
             }
             __inst1_next.push(__n6);
             __inst1_i = __inst1_i + 1;
@@ -684,7 +684,7 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n7__new = __cf___child1({ __p0: opt, __p1: state.pick, __on0: (e) => {
+              let __n7__made = __cf___child1({ __p0: opt, __p1: state.pick, __on0: (e) => {
                 let at = choiceLabeled([{ label: "x", value: "x" }, { label: "y", value: "y" }], e.currentTarget.value);
                 if (at >= 0) {
                   ;
@@ -692,7 +692,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n7 = __n7__new;
+              __n7 = __n7__made;
             }
             __inst3_next.push(__n7);
             __inst3_i = __inst3_i + 1;
@@ -764,7 +764,7 @@ window.__sngl_boot = () => {
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n8__new = __cf___child2({ __p0: t, __p1: k, __p2: state.sel, __on0: () => {
+              let __n8__made = __cf___child2({ __p0: t, __p1: k, __p2: state.sel, __on0: () => {
                 state.sel = k;
                 for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
@@ -777,7 +777,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n8 = __n8__new;
+              __n8 = __n8__made;
             }
             __inst5_next.push(__n8);
             __inst5_i = __inst5_i + 1;
@@ -836,8 +836,8 @@ window.__sngl_boot = () => {
               if (__inst7_live.length > __inst7_i) {
                 __inst7_live[__inst7_i].__destroy();
               }
-              let __n9__new = __cf___child3({ __p0: k, __p1: state.sel, __p2: t });
-              __n9 = __n9__new;
+              let __n9__made = __cf___child3({ __p0: k, __p1: state.sel, __p2: t });
+              __n9 = __n9__made;
             }
             __inst7_next.push(__n9);
             __inst7_i = __inst7_i + 1;
@@ -984,9 +984,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d2c4e422e29500781067fb924aa8ab59
+pass sha256:5d3d3782b11ef3978a1d9a8e1a8adb0b
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:1985d256f45fb05ca587edf0e25413c7
+sha256:d03802fef4ea51b1250cb9796ee5f283
 {
   "results": [
     {

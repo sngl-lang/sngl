@@ -248,11 +248,11 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
+              let __n2__made = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
                 state.ticks__inst0 += 1;
                 __n1.textContent = "ticks=" + String(state.ticks__inst0);
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             __inst1_now_interval.set(__key2, p.elem);
@@ -306,4 +306,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4b4d6b809b427d262d93226bd4b240e8
+pass sha256:965c28e3690f741fca9d3f457f4ce99b

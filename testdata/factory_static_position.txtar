@@ -124,8 +124,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n3__new = __cf_chain({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-                  __n3 = __n3__new;
+                  let __n3__made = __cf_chain({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+                  __n3 = __n3__made;
                 }
                 __inst1_next.push(__n3);
                 __inst1_i = __inst1_i + 1;
@@ -198,4 +198,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:4daa78f26ff0e7b3635959f05eeadf1c
+pass sha256:508487e1f19d88cbeef98e07cdf2f1aa

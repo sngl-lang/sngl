@@ -1408,8 +1408,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 							if len(m.__inst1_live) > __inst1_i {
 								m.__inst1_live[__inst1_i].Destroy()
 							}
-							__n6__new := new__child0Instance(m, m.skip)
-							__n6 = __n6__new
+							__n6__made := new__child0Instance(m, m.skip)
+							__n6 = __n6__made
 						}
 						__inst1_next = append(__inst1_next, __n6)
 						__inst1_i = (__inst1_i + 1)
@@ -1533,14 +1533,14 @@ func (m *Model) __renderSlot3(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n9__new := new__child1Instance(m, n, m.skip, func(__skip string) {
+						__n9__made := new__child1Instance(m, n, m.skip, func(__skip string) {
 							m.skip = __skip
 							for _, __inst2_live_uv := range m.__inst2_live {
 								__inst2_live_uv.Set__p1(m.skip)
 							}
 							m.__renderSlot1(m.__n10)
 						})
-						__n9 = __n9__new
+						__n9 = __n9__made
 					}
 					__inst2_next[__key3] = __n9
 					__n9__el := __n9.Root
@@ -1811,8 +1811,8 @@ func (c *StepInstance) __renderSlot0(__parent *fyne.Container) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n4__new := newStepInstance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1))
-							__n4 = __n4__new
+							__n4__made := newStepInstance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1))
+							__n4 = __n4__made
 						}
 						__inst0_next = append(__inst0_next, __n4)
 						__inst0_i = (__inst0_i + 1)
@@ -1934,8 +1934,8 @@ func (c *__block_state0Instance) __renderSlot4(__parent *fyne.Container) {
 						if len(c.__inst3_live) > __inst3_i {
 							c.__inst3_live[__inst3_i].Destroy()
 						}
-						__n11__new := new__child2Instance(c.__model, c.shout__inst1())
-						__n11 = __n11__new
+						__n11__made := new__child2Instance(c.__model, c.shout__inst1())
+						__n11 = __n11__made
 					}
 					__inst3_next = append(__inst3_next, __n11)
 					__inst3_i = (__inst3_i + 1)
@@ -1951,8 +1951,8 @@ func (c *__block_state0Instance) __renderSlot4(__parent *fyne.Container) {
 							if len(c.__inst4_live) > __inst4_i {
 								c.__inst4_live[__inst4_i].Destroy()
 							}
-							__n12__new := new__child4Instance(c.__model, c.__prop_n)
-							__n12 = __n12__new
+							__n12__made := new__child4Instance(c.__model, c.__prop_n)
+							__n12 = __n12__made
 						}
 						__inst4_next = append(__inst4_next, __n12)
 						__inst4_i = (__inst4_i + 1)
@@ -1996,8 +1996,8 @@ func (c *__block_state0Instance) __renderSlot4(__parent *fyne.Container) {
 									return nil
 								}().Destroy()
 							}
-							__n14__new := new__child3Instance(c.__model, c.__prop_n, i)
-							__n14 = __n14__new
+							__n14__made := new__child3Instance(c.__model, c.__prop_n, i)
+							__n14 = __n14__made
 						}
 						__inst5_next[__key6] = __n14
 						__n14__el := __n14.Root
@@ -2495,8 +2495,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 							if len(m.__inst1_live) > __inst1_i {
 								m.__inst1_live[__inst1_i].Destroy()
 							}
-							__n6__new := new__child0Instance(m, m.skip)
-							__n6 = __n6__new
+							__n6__made := new__child0Instance(m, m.skip)
+							__n6 = __n6__made
 						}
 						__inst1_next = append(__inst1_next, __n6)
 						__inst1_i = (__inst1_i + 1)
@@ -2624,14 +2624,14 @@ func (m *Model) __renderSlot3(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n9__new := new__child1Instance(m, n, m.skip, func(__skip string) {
+						__n9__made := new__child1Instance(m, n, m.skip, func(__skip string) {
 							m.skip = __skip
 							for _, __inst2_live_uv := range m.__inst2_live {
 								__inst2_live_uv.Set__p1(m.skip)
 							}
 							m.__renderSlot1(m.__n10)
 						})
-						__n9 = __n9__new
+						__n9 = __n9__made
 					}
 					__inst2_next[__key3] = __n9
 					__n9__el := __n9.Root
@@ -2758,8 +2758,8 @@ func (c *StepInstance) __renderSlot0(parent gtk4rt.Handle) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n4__new := newStepInstance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1))
-							__n4 = __n4__new
+							__n4__made := newStepInstance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1))
+							__n4 = __n4__made
 						}
 						__inst0_next = append(__inst0_next, __n4)
 						__inst0_i = (__inst0_i + 1)
@@ -2894,8 +2894,8 @@ func (c *__block_state0Instance) __renderSlot4(parent gtk4rt.Handle) {
 						if len(c.__inst3_live) > __inst3_i {
 							c.__inst3_live[__inst3_i].Destroy()
 						}
-						__n11__new := new__child2Instance(c.__model, c.shout__inst1())
-						__n11 = __n11__new
+						__n11__made := new__child2Instance(c.__model, c.shout__inst1())
+						__n11 = __n11__made
 					}
 					__inst3_next = append(__inst3_next, __n11)
 					__inst3_i = (__inst3_i + 1)
@@ -2911,8 +2911,8 @@ func (c *__block_state0Instance) __renderSlot4(parent gtk4rt.Handle) {
 							if len(c.__inst4_live) > __inst4_i {
 								c.__inst4_live[__inst4_i].Destroy()
 							}
-							__n12__new := new__child4Instance(c.__model, c.__prop_n)
-							__n12 = __n12__new
+							__n12__made := new__child4Instance(c.__model, c.__prop_n)
+							__n12 = __n12__made
 						}
 						__inst4_next = append(__inst4_next, __n12)
 						__inst4_i = (__inst4_i + 1)
@@ -2957,8 +2957,8 @@ func (c *__block_state0Instance) __renderSlot4(parent gtk4rt.Handle) {
 									return nil
 								}().Destroy()
 							}
-							__n14__new := new__child3Instance(c.__model, c.__prop_n, i)
-							__n14 = __n14__new
+							__n14__made := new__child3Instance(c.__model, c.__prop_n, i)
+							__n14 = __n14__made
 						}
 						__inst5_next[__key6] = __n14
 						__n14__el := __n14.Root
@@ -3957,8 +3957,8 @@ window.__sngl_boot = () => {
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n4__new = __cf_step({ n: __prop_n - 1, __depth: __prop___depth + 1 });
-                  __n4 = __n4__new;
+                  let __n4__made = __cf_step({ n: __prop_n - 1, __depth: __prop___depth + 1 });
+                  __n4 = __n4__made;
                 }
                 __inst1_next.push(__n4);
                 __inst1_i = __inst1_i + 1;
@@ -4077,8 +4077,8 @@ window.__sngl_boot = () => {
                 if (__inst9_live.length > __inst9_i) {
                   __inst9_live[__inst9_i].__destroy();
                 }
-                let __n12__new = __cf___child2({ __p0: __prop_n + "!" });
-                __n12 = __n12__new;
+                let __n12__made = __cf___child2({ __p0: __prop_n + "!" });
+                __n12 = __n12__made;
               }
               __inst9_next.push(__n12);
               __inst9_i = __inst9_i + 1;
@@ -4102,8 +4102,8 @@ window.__sngl_boot = () => {
                   if (__inst10_live.length > __inst10_i) {
                     __inst10_live[__inst10_i].__destroy();
                   }
-                  let __n13__new = __cf___child4({ __p0: __prop_n });
-                  __n13 = __n13__new;
+                  let __n13__made = __cf___child4({ __p0: __prop_n });
+                  __n13 = __n13__made;
                 }
                 __inst10_next.push(__n13);
                 __inst10_i = __inst10_i + 1;
@@ -4148,8 +4148,8 @@ window.__sngl_boot = () => {
                   if (__inst11_live.has(__key12)) {
                     (__inst11_live.has(__key12) ? __inst11_live.get(__key12) : null).__destroy();
                   }
-                  let __n15__new = __cf___child3({ __p0: __prop_n, __p1: i });
-                  __n15 = __n15__new;
+                  let __n15__made = __cf___child3({ __p0: __prop_n, __p1: i });
+                  __n15 = __n15__made;
                 }
                 __inst11_next.set(__key12, __n15);
                 let __n15__el = __n15.__root;
@@ -4409,8 +4409,8 @@ window.__sngl_boot = () => {
                 if (__inst3_live.length > __inst3_i) {
                   __inst3_live[__inst3_i].__destroy();
                 }
-                let __n6__new = __cf___child0({ __p0: state.skip });
-                __n6 = __n6__new;
+                let __n6__made = __cf___child0({ __p0: state.skip });
+                __n6 = __n6__made;
               }
               __inst3_next.push(__n6);
               __inst3_i = __inst3_i + 1;
@@ -4542,8 +4542,8 @@ window.__sngl_boot = () => {
               if (__inst6_live.has(__key7)) {
                 (__inst6_live.has(__key7) ? __inst6_live.get(__key7) : null).__destroy();
               }
-              let __n9__new = __cf___child5({ __p0: n });
-              __n9 = __n9__new;
+              let __n9__made = __cf___child5({ __p0: n });
+              __n9 = __n9__made;
             }
             __inst6_next.set(__key7, __n9);
             let __n9__el = __n9.__root;
@@ -4581,7 +4581,7 @@ window.__sngl_boot = () => {
               if (__inst7_live.has(__key8)) {
                 (__inst7_live.has(__key8) ? __inst7_live.get(__key8) : null).__destroy();
               }
-              let __n10__new = __cf___child1({ __p0: n, __p1: state.skip, __on0: (__skip) => {
+              let __n10__made = __cf___child1({ __p0: n, __p1: state.skip, __on0: (__skip) => {
                 state.skip = __skip;
                 for (const [__inst7_live_uk, __inst7_live_uv] of __inst7_live.entries()) {
                   ;
@@ -4590,7 +4590,7 @@ window.__sngl_boot = () => {
                 ;
                 __renderSlot1(__slotAnchor_1);
               } });
-              __n10 = __n10__new;
+              __n10 = __n10__made;
             }
             __inst7_next.set(__key8, __n10);
             let __n10__el = __n10.__root;
@@ -4679,10 +4679,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:35c3b4c5752b5fab11b98862df7fbd31
 -- run/go/fyne --
-pass sha256:96741c0792627b260d128860888004d9
+pass sha256:62b36ed9795e0563cc2bdcafbf3ec672
 -- run/go/gtk4 --
-pass sha256:2c41bc8fe070f0d1f042dfc6e9111664
+pass sha256:e2102182e7ffff2d2025dc3d9db1c963
 -- run/kotlin/android --
 pass sha256:e5d8964bf8010e82785daf34e846f546
 -- run/none/html --
-pass sha256:bc2e85d3121227f5df92ecd65f0f132b
+pass sha256:d578d0f45ebe47cf8d5842b0f017c616

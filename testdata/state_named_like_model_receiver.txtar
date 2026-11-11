@@ -1019,8 +1019,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newCounterInstance(m, x.Elem)
-						__n2 = __n2__new
+						__n2__made := newCounterInstance(m, x.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1331,8 +1331,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newCounterInstance(m, x.Elem)
-						__n2 = __n2__new
+						__n2__made := newCounterInstance(m, x.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1472,6 +1472,6 @@ func (m *Model) incClick() {
 -- run/go/bubbletea --
 pass sha256:0ab01b4d5e903431d33225d442513bbf
 -- run/go/fyne --
-pass sha256:818271c8c8169ae075d758600c3c30bb
+pass sha256:68b09a17e814e01ede5495879281bf6a
 -- run/go/gtk4 --
-pass sha256:89c6976c709c8b30d4fbf31b2b73bd8d
+pass sha256:5e8e10dc5d222e46ce7cb1acc50245b1

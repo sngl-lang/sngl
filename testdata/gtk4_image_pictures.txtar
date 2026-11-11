@@ -569,8 +569,8 @@ func (m *Model) __renderSlot0(parent *C.GtkBox) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__remote_state1Instance(m, u.Elem)
-						__n4 = __n4__new
+						__n4__made := new__remote_state1Instance(m, u.Elem)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -887,4 +887,4 @@ func (m *Model) BuildUI(app *C.GtkApplication) *C.GtkWidget {
 	return win
 }
 -- run/go/gtk4 --
-pass sha256:f50b5b915be27d46e01f9108eb90258a
+pass sha256:60c538b9d212096f173d464c920f3702

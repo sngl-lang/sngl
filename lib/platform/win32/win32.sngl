@@ -1456,6 +1456,12 @@ func _rtRun()
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Hold")]
 func _rtHold()
 
+// Handles the messages waiting, or waits up to a millisecond for one: how a
+// Go test agent lets the loop run while a test waits.
+#[macro.cnative("sngl_win32_step")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Step")]
+func _rtStep()
+
 // A file the program carries, which Go's entry hands the runtime one at a
 // time; C's hands it its build's table.
 #[macro.cnative("sngl_win32_carry_file")]
@@ -1474,7 +1480,8 @@ func _rtPost(
 )
 
 // Draws the toplevel shown last at width by height into the file path
-// names, which the entry a program is built with for `sngl snapshot` calls.
+// names, which the entry a program is built with for `sngl snapshot` calls;
+// at its size where either is zero, which a Go test agent's snapshot is.
 #[macro.cnative("sngl_win32_snapshot")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Snapshot")]
 func _rtSnapshot(path string, width int, height int) int

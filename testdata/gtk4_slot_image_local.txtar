@@ -121,8 +121,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__file_state0Instance(m, "a.png")
-						__n3 = __n3__new
+						__n3__made := new__file_state0Instance(m, "a.png")
+						__n3 = __n3__made
 					}
 					__inst0_next = append(__inst0_next, __n3)
 					__inst0_i = (__inst0_i + 1)
@@ -376,4 +376,4 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n1)
 }
 -- run/go/gtk4 --
-pass sha256:23214826f7e2cf02aecc50f371a6b63f
+pass sha256:16757cd29acce241ff29240865eab8b7

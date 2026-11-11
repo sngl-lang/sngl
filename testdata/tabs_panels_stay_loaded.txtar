@@ -1418,7 +1418,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n0__new := new__child0Instance(m, t, k, m.seen, func() {
+						__n0__made := new__child0Instance(m, t, k, m.seen, func() {
 							m.idx = k
 							m.strip.SetSelected(m.idx)
 							m.changes += 1
@@ -1428,7 +1428,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								m.__inst0_live[__inst0_live_ui].Set__p2(m.seen)
 							}
 						})
-						__n0 = __n0__new
+						__n0 = __n0__made
 					}
 					__inst0_next = append(__inst0_next, __n0)
 					__inst0_i = (__inst0_i + 1)
@@ -1849,8 +1849,8 @@ func (c *__child0Instance) __renderSlot1(__parent *fyne.Container) {
 						if len(c.__inst1_live) > __inst1_i {
 							c.__inst1_live[__inst1_i].Destroy()
 						}
-						c__r0__new := newCounterInstance(c.__model)
-						c__r0 = c__r0__new
+						c__r0__made := newCounterInstance(c.__model)
+						c__r0 = c__r0__made
 					}
 					__inst1_next = append(__inst1_next, c__r0)
 					__inst1_i = (__inst1_i + 1)
@@ -1872,10 +1872,10 @@ func (c *__child0Instance) __renderSlot1(__parent *fyne.Container) {
 							if len(c.__inst2_live) > __inst2_i {
 								c.__inst2_live[__inst2_i].Destroy()
 							}
-							__n1__new := new__block_state0Instance(c.__model, c.__prop___p2, func(__on1_0 int) {
+							__n1__made := new__block_state0Instance(c.__model, c.__prop___p2, func(__on1_0 int) {
 								c.__prop___on1(__on1_0)
 							})
-							__n1 = __n1__new
+							__n1 = __n1__made
 						}
 						__inst2_next = append(__inst2_next, __n1)
 						__inst2_i = (__inst2_i + 1)
@@ -1891,8 +1891,8 @@ func (c *__child0Instance) __renderSlot1(__parent *fyne.Container) {
 								if len(c.__inst3_live) > __inst3_i {
 									c.__inst3_live[__inst3_i].Destroy()
 								}
-								__n2__new := newLaterInstance(c.__model)
-								__n2 = __n2__new
+								__n2__made := newLaterInstance(c.__model)
+								__n2 = __n2__made
 							}
 							__inst3_next = append(__inst3_next, __n2)
 							__inst3_i = (__inst3_i + 1)
@@ -2173,7 +2173,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n0__new := new__child0Instance(m, t, k, m.seen, func() {
+						__n0__made := new__child0Instance(m, t, k, m.seen, func() {
 							m.idx = k
 							gtk4rt.TabsSetSelected(m.strip, m.idx)
 							m.changes += 1
@@ -2183,7 +2183,7 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								m.__inst0_live[__inst0_live_ui].Set__p2(m.seen)
 							}
 						})
-						__n0 = __n0__new
+						__n0 = __n0__made
 					}
 					__inst0_next = append(__inst0_next, __n0)
 					__inst0_i = (__inst0_i + 1)
@@ -2487,8 +2487,8 @@ func (c *__child0Instance) __renderSlot1(parent gtk4rt.Handle) {
 						if len(c.__inst1_live) > __inst1_i {
 							c.__inst1_live[__inst1_i].Destroy()
 						}
-						c__r0__new := newCounterInstance(c.__model)
-						c__r0 = c__r0__new
+						c__r0__made := newCounterInstance(c.__model)
+						c__r0 = c__r0__made
 					}
 					__inst1_next = append(__inst1_next, c__r0)
 					__inst1_i = (__inst1_i + 1)
@@ -2510,10 +2510,10 @@ func (c *__child0Instance) __renderSlot1(parent gtk4rt.Handle) {
 							if len(c.__inst2_live) > __inst2_i {
 								c.__inst2_live[__inst2_i].Destroy()
 							}
-							__n1__new := new__block_state0Instance(c.__model, c.__prop___p2, func(__on1_0 int) {
+							__n1__made := new__block_state0Instance(c.__model, c.__prop___p2, func(__on1_0 int) {
 								c.__prop___on1(__on1_0)
 							})
-							__n1 = __n1__new
+							__n1 = __n1__made
 						}
 						__inst2_next = append(__inst2_next, __n1)
 						__inst2_i = (__inst2_i + 1)
@@ -2529,8 +2529,8 @@ func (c *__child0Instance) __renderSlot1(parent gtk4rt.Handle) {
 								if len(c.__inst3_live) > __inst3_i {
 									c.__inst3_live[__inst3_i].Destroy()
 								}
-								__n2__new := newLaterInstance(c.__model)
-								__n2 = __n2__new
+								__n2__made := newLaterInstance(c.__model)
+								__n2 = __n2__made
 							}
 							__inst3_next = append(__inst3_next, __n2)
 							__inst3_i = (__inst3_i + 1)
@@ -3510,8 +3510,8 @@ window.__sngl_boot = () => {
                 if (__inst5_live.length > __inst5_i) {
                   __inst5_live[__inst5_i].__destroy();
                 }
-                let c__new = __cf_counter({});
-                c = c__new;
+                let c__made = __cf_counter({});
+                c = c__made;
               }
               __inst5_next.push(c);
               __inst5_i = __inst5_i + 1;
@@ -3540,10 +3540,10 @@ window.__sngl_boot = () => {
                   if (__inst6_live.length > __inst6_i) {
                     __inst6_live[__inst6_i].__destroy();
                   }
-                  let __n7__new = __cf___block_state0({ seen: __prop___p3, __on_seen: (__on0_0) => {
+                  let __n7__made = __cf___block_state0({ seen: __prop___p3, __on_seen: (__on0_0) => {
                     __prop___on0(__on0_0);
                   } });
-                  __n7 = __n7__new;
+                  __n7 = __n7__made;
                 }
                 __inst6_next.push(__n7);
                 __inst6_i = __inst6_i + 1;
@@ -3567,8 +3567,8 @@ window.__sngl_boot = () => {
                     if (__inst7_live.length > __inst7_i) {
                       __inst7_live[__inst7_i].__destroy();
                     }
-                    let __n8__new = __cf_later({});
-                    __n8 = __n8__new;
+                    let __n8__made = __cf_later({});
+                    __n8 = __n8__made;
                   }
                   __inst7_next.push(__n8);
                   __inst7_i = __inst7_i + 1;
@@ -3702,7 +3702,7 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
+              let __n3__made = __cf___child0({ __p0: t, __p1: k, __p2: state.idx, __on0: () => {
                 state.idx = k;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
@@ -3716,7 +3716,7 @@ window.__sngl_boot = () => {
                 ;
                 state.changes += 1;
               } });
-              __n3 = __n3__new;
+              __n3 = __n3__made;
             }
             __inst1_next.push(__n3);
             __inst1_i = __inst1_i + 1;
@@ -3784,7 +3784,7 @@ window.__sngl_boot = () => {
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n4__new = __cf___child1({ __p0: k, __p1: state.idx, __p2: t, __p3: state.seen, __on0: (__seen) => {
+              let __n4__made = __cf___child1({ __p0: k, __p1: state.idx, __p2: t, __p3: state.seen, __on0: (__seen) => {
                 state.seen = __seen;
                 for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
                   ;
@@ -3792,7 +3792,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n4 = __n4__new;
+              __n4 = __n4__made;
             }
             __inst3_next.push(__n4);
             __inst3_i = __inst3_i + 1;
@@ -3901,10 +3901,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:4421ef135162069748340f9230ecf99e
 -- run/go/fyne --
-pass sha256:16bd9a4e2b47fba05bda7d7d7ac3c487
+pass sha256:490af2600e0f6a1897ad91c6df051bfe
 -- run/go/gtk4 --
-pass sha256:ea7c50d684b6237193d02db00bd96421
+pass sha256:f3b779a86d8cee609cdf9d76c54d42fd
 -- run/kotlin/android --
 pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --
-pass sha256:f65adc8bf86b8cc6bdde94c2272c9ffc
+pass sha256:325f55e81e16066a75fa93e05c7ee802

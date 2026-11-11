@@ -211,8 +211,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf_Row({ label: "x" });
-              __n2 = __n2__new;
+              let __n2__made = __cf_Row({ label: "x" });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -258,4 +258,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:1af9c3082c997df77fba140307f055d6
+pass sha256:80964a00e5fc7f21b79718174c3c142b

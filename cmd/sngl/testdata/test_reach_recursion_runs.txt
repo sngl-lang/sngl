@@ -266,7 +266,7 @@ sha256:34328104a3ca64d97c1f2b085ec31dea
   ]
 }
 -- testrun/fyne/go/buttons.sngl/main/1 --
-sha256:3564afbca34f5072436663fad99bc740
+sha256:eb89c872af8bfba9fe2baaef39f38922
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:3564afbca34f5072436663fad99bc740
   ]
 }
 -- testrun/fyne/go/counters.sngl/main/1 --
-sha256:0f6925e880598452a71c970c789257d0
+sha256:2f05b8b578c7d6b219c47e248e4b0eef
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:0f6925e880598452a71c970c789257d0
   ]
 }
 -- testrun/fyne/go/recursion.sngl/main/1 --
-sha256:987d61da491696091ba2cf8759231497
+sha256:c0b1c58202e47e0637593b76f5f1bc05
 {
   "results": [
     {
@@ -296,7 +296,7 @@ sha256:987d61da491696091ba2cf8759231497
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:cded69afaf4e1cd03eaeb2a8649ce465
+sha256:3c37b05f53cef1bb6eafae9afb52d9d4
 {
   "results": [
     {
@@ -306,7 +306,7 @@ sha256:cded69afaf4e1cd03eaeb2a8649ce465
   ]
 }
 -- testrun/gtk4/go/counters.sngl/main/1 --
-sha256:524cdd5cc8f964507278b67c1bcf07dc
+sha256:ce7fca4c4221c7956ed6c770a287793b
 {
   "results": [
     {
@@ -316,7 +316,7 @@ sha256:524cdd5cc8f964507278b67c1bcf07dc
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:310c777431a4e7306fce3caa7d3fa0e4
+sha256:9e959adcf6fa56708023a93deeafd05e
 {
   "results": [
     {
@@ -326,7 +326,7 @@ sha256:310c777431a4e7306fce3caa7d3fa0e4
   ]
 }
 -- testrun/html/none/buttons.sngl/main/1 --
-sha256:41732729da8157ac110917be47597a1d
+sha256:a6e2829960fd1baac9504f9b83d91c63
 {
   "results": [
     {
@@ -336,7 +336,7 @@ sha256:41732729da8157ac110917be47597a1d
   ]
 }
 -- testrun/html/none/counters.sngl/main/1 --
-sha256:fdd1dcdeb74e5652b5eeeac21cdae55e
+sha256:897ace5a0b76caa375b56e99f7fa9000
 {
   "results": [
     {
@@ -346,7 +346,7 @@ sha256:fdd1dcdeb74e5652b5eeeac21cdae55e
   ]
 }
 -- testrun/html/none/recursion.sngl/main/1 --
-sha256:3f97b4b8ceefd007be293cf22d03a33d
+sha256:a1506408f874beb7721370496d58568b
 {
   "results": [
     {

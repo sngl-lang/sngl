@@ -810,8 +810,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_row({ label: it.elem });
-              __n2 = __n2__new;
+              let __n2__made = __cf_row({ label: it.elem });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -855,4 +855,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:d2a3da10190bc9d2d0368976605d5bd8
 -- run/none/html --
-pass sha256:896de2d5426c178cf5930f9170373e61
+pass sha256:4ff0d758cc9b53bcf0d12cc9cc59bbaf

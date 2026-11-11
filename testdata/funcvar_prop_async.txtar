@@ -145,8 +145,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_loader({ fetch: fetchHello });
-              __n2 = __n2__new;
+              let __n2__made = __cf_loader({ fetch: fetchHello });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -188,4 +188,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6b4cfded21919d851b843a5442accf35
+pass sha256:4b03960a6faa48e8fc9849c62b5fb975

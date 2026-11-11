@@ -1176,8 +1176,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadgeInstance(m, "m")
-						b = b__new
+						b__made := newBadgeInstance(m, "m")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -1198,13 +1198,13 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n1__new := new__child0Instance(m, m.mh__inst0, func() {
+						__n1__made := new__child0Instance(m, m.mh__inst0, func() {
 							m.mh__inst0 = (m.mh__inst0 + 1)
 							for __inst1_live_ui, _ := range m.__inst1_live {
 								m.__inst1_live[__inst1_live_ui].Set__p0(m.mh__inst0)
 							}
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst1_next = append(__inst1_next, __n1)
 					__inst1_i = (__inst1_i + 1)
@@ -1261,8 +1261,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						b__1__new := newBadgeInstance(m, "p")
-						b__1 = b__1__new
+						b__1__made := newBadgeInstance(m, "p")
+						b__1 = b__1__made
 					}
 					__inst2_next = append(__inst2_next, b__1)
 					__inst2_i = (__inst2_i + 1)
@@ -1283,13 +1283,13 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						if len(m.__inst3_live) > __inst3_i {
 							m.__inst3_live[__inst3_i].Destroy()
 						}
-						__n2__new := new__child1Instance(m, m.ph__inst0, func() {
+						__n2__made := new__child1Instance(m, m.ph__inst0, func() {
 							m.ph__inst0 = (m.ph__inst0 + 1)
 							for __inst3_live_ui, _ := range m.__inst3_live {
 								m.__inst3_live[__inst3_live_ui].Set__p0(m.ph__inst0)
 							}
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst3_next = append(__inst3_next, __n2)
 					__inst3_i = (__inst3_i + 1)
@@ -1789,8 +1789,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						b__new := newBadgeInstance(m, "m")
-						b = b__new
+						b__made := newBadgeInstance(m, "m")
+						b = b__made
 					}
 					__inst0_next = append(__inst0_next, b)
 					__inst0_i = (__inst0_i + 1)
@@ -1811,13 +1811,13 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n1__new := new__child0Instance(m, m.mh__inst0, func() {
+						__n1__made := new__child0Instance(m, m.mh__inst0, func() {
 							m.mh__inst0 = (m.mh__inst0 + 1)
 							for __inst1_live_ui, _ := range m.__inst1_live {
 								m.__inst1_live[__inst1_live_ui].Set__p0(m.mh__inst0)
 							}
 						})
-						__n1 = __n1__new
+						__n1 = __n1__made
 					}
 					__inst1_next = append(__inst1_next, __n1)
 					__inst1_i = (__inst1_i + 1)
@@ -1874,8 +1874,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						if len(m.__inst2_live) > __inst2_i {
 							m.__inst2_live[__inst2_i].Destroy()
 						}
-						b__1__new := newBadgeInstance(m, "p")
-						b__1 = b__1__new
+						b__1__made := newBadgeInstance(m, "p")
+						b__1 = b__1__made
 					}
 					__inst2_next = append(__inst2_next, b__1)
 					__inst2_i = (__inst2_i + 1)
@@ -1896,13 +1896,13 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						if len(m.__inst3_live) > __inst3_i {
 							m.__inst3_live[__inst3_i].Destroy()
 						}
-						__n2__new := new__child1Instance(m, m.ph__inst0, func() {
+						__n2__made := new__child1Instance(m, m.ph__inst0, func() {
 							m.ph__inst0 = (m.ph__inst0 + 1)
 							for __inst3_live_ui, _ := range m.__inst3_live {
 								m.__inst3_live[__inst3_live_ui].Set__p0(m.ph__inst0)
 							}
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst3_next = append(__inst3_next, __n2)
 					__inst3_i = (__inst3_i + 1)
@@ -2782,8 +2782,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let b__new = __cf_badge({ label: "m" });
-              b = b__new;
+              let b__made = __cf_badge({ label: "m" });
+              b = b__made;
             }
             __inst1_next.push(b);
             __inst1_i = __inst1_i + 1;
@@ -2815,7 +2815,7 @@ window.__sngl_boot = () => {
               if (__inst2_live.length > __inst2_i) {
                 __inst2_live[__inst2_i].__destroy();
               }
-              let __n4__new = __cf___child0({ __p0: state.mh__inst0, __on0: () => {
+              let __n4__made = __cf___child0({ __p0: state.mh__inst0, __on0: () => {
                 state.mh__inst0 = state.mh__inst0 + 1;
                 for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
                   ;
@@ -2823,7 +2823,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n4 = __n4__new;
+              __n4 = __n4__made;
             }
             __inst2_next.push(__n4);
             __inst2_i = __inst2_i + 1;
@@ -2889,8 +2889,8 @@ window.__sngl_boot = () => {
               if (__inst4_live.length > __inst4_i) {
                 __inst4_live[__inst4_i].__destroy();
               }
-              let b__1__new = __cf_badge({ label: "p" });
-              b__1 = b__1__new;
+              let b__1__made = __cf_badge({ label: "p" });
+              b__1 = b__1__made;
             }
             __inst4_next.push(b__1);
             __inst4_i = __inst4_i + 1;
@@ -2922,7 +2922,7 @@ window.__sngl_boot = () => {
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n5__new = __cf___child1({ __p0: state.ph__inst0, __on0: () => {
+              let __n5__made = __cf___child1({ __p0: state.ph__inst0, __on0: () => {
                 state.ph__inst0 = state.ph__inst0 + 1;
                 for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
                   ;
@@ -2930,7 +2930,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n5 = __n5__new;
+              __n5 = __n5__made;
             }
             __inst5_next.push(__n5);
             __inst5_i = __inst5_i + 1;
@@ -2996,10 +2996,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:9dc235f5da9c297ce191ff29facfc9d8
 -- run/go/fyne --
-pass sha256:0e11506c5677d7345ca08ea4f60917a2
+pass sha256:9b3fce5c9010284ffbdd2d356e110187
 -- run/go/gtk4 --
-pass sha256:34a013173e1053f3893932ee7d461a4b
+pass sha256:583d7e4935949cb569200362f129a0cc
 -- run/kotlin/android --
 pass sha256:e3922aa152fa446e80308598a887d837
 -- run/none/html --
-pass sha256:022fd1730d5b137bf1ce85edeb2e65dd
+pass sha256:4485a0d47ac9df6602b9dd16fa6ced7e

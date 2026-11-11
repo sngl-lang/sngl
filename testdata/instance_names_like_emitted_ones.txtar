@@ -202,8 +202,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := new__child1Instance(m, m.parent)
-						__n4 = __n4__new
+						__n4__made := new__child1Instance(m, m.parent)
+						__n4 = __n4__made
 					}
 					__inst1_next = append(__inst1_next, __n4)
 					__inst1_i = (__inst1_i + 1)
@@ -272,8 +272,8 @@ func (m *Model) __renderSlot2(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newRowInstance(m, x.Elem)
-						__n5 = __n5__new
+						__n5__made := newRowInstance(m, x.Elem)
+						__n5 = __n5__made
 					}
 					__inst2_next[__key3] = __n5
 					__n5__el := __n5.Root
@@ -421,8 +421,8 @@ func (c *RowInstance) __renderSlot0(__parent *fyne.Container) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n2__new := new__child0Instance(c.__model, c.__prop_container)
-						__n2 = __n2__new
+						__n2__made := new__child0Instance(c.__model, c.__prop_container)
+						__n2 = __n2__made
 					}
 					__inst0_next = append(__inst0_next, __n2)
 					__inst0_i = (__inst0_i + 1)
@@ -695,8 +695,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 						if len(m.__inst1_live) > __inst1_i {
 							m.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := new__child1Instance(m, m.parent)
-						__n4 = __n4__new
+						__n4__made := new__child1Instance(m, m.parent)
+						__n4 = __n4__made
 					}
 					__inst1_next = append(__inst1_next, __n4)
 					__inst1_i = (__inst1_i + 1)
@@ -765,8 +765,8 @@ func (m *Model) __renderSlot2(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newRowInstance(m, x.Elem)
-						__n5 = __n5__new
+						__n5__made := newRowInstance(m, x.Elem)
+						__n5 = __n5__made
 					}
 					__inst2_next[__key3] = __n5
 					__n5__el := __n5.Root
@@ -881,8 +881,8 @@ func (c *RowInstance) __renderSlot0(parent gtk4rt.Handle) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n2__new := new__child0Instance(c.__model, c.__prop_container)
-						__n2 = __n2__new
+						__n2__made := new__child0Instance(c.__model, c.__prop_container)
+						__n2 = __n2__made
 					}
 					__inst0_next = append(__inst0_next, __n2)
 					__inst0_i = (__inst0_i + 1)
@@ -1035,6 +1035,6 @@ func (m *Model) bumpClick() {
 	gtk4rt.Emit(m.bump, "clicked")
 }
 -- run/go/fyne --
-pass sha256:96aebefdedd44069fe43c36f7322d913
+pass sha256:05117bd07e6148cbb9e490e973f91b96
 -- run/go/gtk4 --
-pass sha256:026e4e7bb2f2f16acdeb53c7afcd381a
+pass sha256:4eed607da2eda954a166dcb48d0a0f4b

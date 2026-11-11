@@ -802,8 +802,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 							if len(m.__inst0_live) > __inst0_i {
 								m.__inst0_live[__inst0_i].Destroy()
 							}
-							__n3__new := new__child0Instance(m, m.pages__current, __copy)
-							__n3 = __n3__new
+							__n3__made := new__child0Instance(m, m.pages__current, __copy)
+							__n3 = __n3__made
 						}
 						__inst0_next = append(__inst0_next, __n3)
 						__inst0_i = (__inst0_i + 1)
@@ -1240,8 +1240,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 							if len(m.__inst0_live) > __inst0_i {
 								m.__inst0_live[__inst0_i].Destroy()
 							}
-							__n3__new := new__child0Instance(m, m.pages__current, __copy)
-							__n3 = __n3__new
+							__n3__made := new__child0Instance(m, m.pages__current, __copy)
+							__n3 = __n3__made
 						}
 						__inst0_next = append(__inst0_next, __n3)
 						__inst0_i = (__inst0_i + 1)
@@ -2078,9 +2078,9 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:47664d7bbe59b2a4ee604bb446cb8746
 -- run/go/fyne --
-pass sha256:f3e017f1b19f5307f48c54cf8acc3dd5
+pass sha256:4e76b5bc716aabc5d2713f21c197a69d
 -- run/go/gtk4 --
-pass sha256:18c5c40bdccc57c934bebe65cb51a772
+pass sha256:47984c2c7a491b4c980e72517129e2f2
 -- run/kotlin/android --
 pass sha256:ae566d640377ffc649874b145020b0ac
 -- run/none/html --

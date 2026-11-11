@@ -1136,11 +1136,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCard__slot0Instance(m, it, func() {
+						__n5__made := newCard__slot0Instance(m, it, func() {
 							m.picked = it.Elem
 							m.__n4.SetText(("picked " + m.picked))
 						})
-						__n5 = __n5__new
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -1206,8 +1206,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newCardInstance(m)
-						__n6 = __n6__new
+						__n6__made := newCardInstance(m)
+						__n6 = __n6__made
 					}
 					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
@@ -1554,11 +1554,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newCard__slot0Instance(m, it, func() {
+						__n5__made := newCard__slot0Instance(m, it, func() {
 							m.picked = it.Elem
 							gtk4rt.LabelSetLabel(m.__n4, ("picked " + m.picked))
 						})
-						__n5 = __n5__new
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -1624,8 +1624,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newCardInstance(m)
-						__n6 = __n6__new
+						__n6__made := newCardInstance(m)
+						__n6 = __n6__made
 					}
 					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
@@ -2301,11 +2301,11 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n5__new = __cf_Card__slot0({ __p0: it, __on0: () => {
+              let __n5__made = __cf_Card__slot0({ __p0: it, __on0: () => {
                 state.picked = it.elem;
                 __n4.textContent = "picked " + state.picked;
               } });
-              __n5 = __n5__new;
+              __n5 = __n5__made;
             }
             __inst1_next.set(__key2, __n5);
             let __n5__el = __n5.__root;
@@ -2365,8 +2365,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n6__new = __cf_Card({});
-              __n6 = __n6__new;
+              let __n6__made = __cf_Card({});
+              __n6 = __n6__made;
             }
             __inst3_next.set(__key4, __n6);
             let __n6__el = __n6.__root;
@@ -2423,10 +2423,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4e263e02d9cf87f46c35ab83d086fcbe
 -- run/go/fyne --
-pass sha256:15a70acbe3fccdcf7caad15d1b03807b
+pass sha256:ff1cc8888dd60db2d9d60182a8c6897a
 -- run/go/gtk4 --
-pass sha256:9fc53b6f4860c9f0951934412954a9d6
+pass sha256:899fe6809d90f543399f12813c845e52
 -- run/kotlin/android --
 pass sha256:3fae323ffc3d01b77959bccd2db95710
 -- run/none/html --
-pass sha256:0bc497f08a08ebea5f3dbd509b8ee0db
+pass sha256:015c9d56b68dc6bb39d5babe4a086873

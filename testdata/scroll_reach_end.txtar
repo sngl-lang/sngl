@@ -1467,8 +1467,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n1__new = __cf___child0({ __p0: i });
-              __n1 = __n1__new;
+              let __n1__made = __cf___child0({ __p0: i });
+              __n1 = __n1__made;
             }
             __inst1_next.set(__key2, __n1);
             let __n1__el = __n1.__root;
@@ -1573,4 +1573,4 @@ pass sha256:e524928baf743310bdbed034cd03168d
 -- run/kotlin/android --
 pass sha256:4bee11b91272d47ac6ea1f1709ef170c
 -- run/none/html --
-pass sha256:5a11dce680a4292f5f291ebfed96f4a6
+pass sha256:0cafac7519db6c3d98c4f427a91a3ea8

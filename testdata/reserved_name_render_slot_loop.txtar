@@ -820,8 +820,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newRowInstance(m, m__r2.Elem)
-						__n2 = __n2__new
+						__n2__made := newRowInstance(m, m__r2.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1066,8 +1066,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newRowInstance(m, m__r3.Elem)
-						__n2 = __n2__new
+						__n2__made := newRowInstance(m, m__r3.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -1196,6 +1196,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:e2228e955cf00bdb83c8c73b65ae0332
 -- run/go/fyne --
-pass sha256:34d5d0d3db4b7538b37d66732a044b6c
+pass sha256:ff0b31535ab5605ddd8cc7008b39b3db
 -- run/go/gtk4 --
-pass sha256:ce5be0b6529aac2b1cafa100eb44d0b2
+pass sha256:5fc97c3efcf018d3252503d6e6d03333

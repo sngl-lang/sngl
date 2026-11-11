@@ -208,11 +208,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newTimerInstance(m, p.Elem, true, func() {
+						__n2__made := newTimerInstance(m, p.Elem, true, func() {
 							m.n__inst0 += 1
 							m.__n1.SetText(fmt.Sprint(m.n__inst0))
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__inst0_now_interval[__key1] = p.Elem
@@ -643,11 +643,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newTimerInstance(m, p.Elem, true, func() {
+						__n2__made := newTimerInstance(m, p.Elem, true, func() {
 							m.n__inst0 += 1
 							gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n__inst0))
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__inst0_now_interval[__key1] = p.Elem
@@ -1082,11 +1082,11 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
+              let __n2__made = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
                 state.n__inst0 += 1;
                 __n1.textContent = String(state.n__inst0);
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             __inst1_now_interval.set(__key2, p.elem);
@@ -1135,8 +1135,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:746fe439a395067c79eec63b1670f257
+pass sha256:abda5ec747ea10f52ff54e8d4f4dfd34
 -- run/go/gtk4 --
-pass sha256:1d4b0c7ff005e0af06ab369b7de6949f
+pass sha256:d231669c3ba7ea957ef3793b300b9c85
 -- run/none/html --
-pass sha256:d59090bccc8927503c45c049a1fde046
+pass sha256:905ba1e32e05a0a371dec6ea3e5370b3

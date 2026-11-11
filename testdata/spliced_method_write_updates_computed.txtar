@@ -286,8 +286,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newRow__slot0Instance(m, it.Elem, it)
-						__n4 = __n4__new
+						__n4__made := newRow__slot0Instance(m, it.Elem, it)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -719,8 +719,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newRow__slot0Instance(m, it.Elem, it)
-						__n4 = __n4__new
+						__n4__made := newRow__slot0Instance(m, it.Elem, it)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -1187,8 +1187,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n4__new = __cf_Row__slot0({ label: it.elem, __p0: it });
-              __n4 = __n4__new;
+              let __n4__made = __cf_Row__slot0({ label: it.elem, __p0: it });
+              __n4 = __n4__made;
             }
             __inst1_next.set(__key2, __n4);
             let __n4__el = __n4.__root;
@@ -1236,8 +1236,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:1dc7fbf0381b3cbb7b0377d4d6c21c4a
+pass sha256:99c09a0f4b808a6b15a463eb27c3cde7
 -- run/go/gtk4 --
-pass sha256:1b17814fd161b74a2c32deab186ea112
+pass sha256:40c6d3de09e0188bd7dbb01ad79f456f
 -- run/none/html --
-pass sha256:4af226bd4832e6f3d8b025d318019a53
+pass sha256:e724eeb685a0877f6ce6a5ba60801871

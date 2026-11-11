@@ -923,8 +923,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n4__new := newCounterInstance(m)
-						__n4 = __n4__new
+						__n4__made := newCounterInstance(m)
+						__n4 = __n4__made
 					}
 					__inst0_next = append(__inst0_next, __n4)
 					__inst0_i = (__inst0_i + 1)
@@ -941,8 +941,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 							if len(m.__inst1_live) > __inst1_i {
 								m.__inst1_live[__inst1_i].Destroy()
 							}
-							__n5__new := new__child0Instance(m, m.pages__current)
-							__n5 = __n5__new
+							__n5__made := new__child0Instance(m, m.pages__current)
+							__n5 = __n5__made
 						}
 						__inst1_next = append(__inst1_next, __n5)
 						__inst1_i = (__inst1_i + 1)
@@ -959,8 +959,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								if len(m.__inst2_live) > __inst2_i {
 									m.__inst2_live[__inst2_i].Destroy()
 								}
-								__n6__new := new__child1Instance(m, m.pkg__params)
-								__n6 = __n6__new
+								__n6__made := new__child1Instance(m, m.pkg__params)
+								__n6 = __n6__made
 							}
 							__inst2_next = append(__inst2_next, __n6)
 							__inst2_i = (__inst2_i + 1)
@@ -1400,8 +1400,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n4__new := newCounterInstance(m)
-						__n4 = __n4__new
+						__n4__made := newCounterInstance(m)
+						__n4 = __n4__made
 					}
 					__inst0_next = append(__inst0_next, __n4)
 					__inst0_i = (__inst0_i + 1)
@@ -1418,8 +1418,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 							if len(m.__inst1_live) > __inst1_i {
 								m.__inst1_live[__inst1_i].Destroy()
 							}
-							__n5__new := new__child0Instance(m, m.pages__current)
-							__n5 = __n5__new
+							__n5__made := new__child0Instance(m, m.pages__current)
+							__n5 = __n5__made
 						}
 						__inst1_next = append(__inst1_next, __n5)
 						__inst1_i = (__inst1_i + 1)
@@ -1436,8 +1436,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								if len(m.__inst2_live) > __inst2_i {
 									m.__inst2_live[__inst2_i].Destroy()
 								}
-								__n6__new := new__child1Instance(m, m.pkg__params)
-								__n6 = __n6__new
+								__n6__made := new__child1Instance(m, m.pkg__params)
+								__n6 = __n6__made
 							}
 							__inst2_next = append(__inst2_next, __n6)
 							__inst2_i = (__inst2_i + 1)
@@ -1766,6 +1766,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 -- run/go/bubbletea --
 pass sha256:c0e6aa931f99bc4a55401503115f27f3
 -- run/go/fyne --
-pass sha256:071911b6815e37aaa88454eed09d7779
+pass sha256:aa7f714fba5eca5f19f1f0015a093858
 -- run/go/gtk4 --
-pass sha256:7447188171dfade220301b3b01d71696
+pass sha256:b9d7600a7102b8d1dff07005a92063b7

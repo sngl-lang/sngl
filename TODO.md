@@ -521,7 +521,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      font. Everything else goes in `unstyled` with a reason.
      `lib/style_coverage_test.go` holds it to every field.
    - `doc.sngl`, the package doc.
-4. **`codegen/platform/win32`.** Done, but for Go (Part 4).
+4. **`codegen/platform/win32`.** Done.
    - Registered with `codegen.RegisterNative("win32", …)` and blank-imported
      in `codegen/platform/platforms.go`.
    - `SupportedLangs` is `{"go", "c"}` once Part 2 exists, `{"go"}` until
@@ -735,8 +735,8 @@ what someone wrapped, and win32's Go path would need the same again.
    whichever mark comes first, since every C pass reads it there.
 2. **The tool: `internal/cgogen`, run as `sngl tool cgogen`.** Done
    (`design/win32.md`), for a library package; a user's package of
-   `cnative` declarations is still to come, and so are wrappers for a `ref`
-   or an `option` parameter.
+   `cnative` declarations is still to come, and so is a wrapper for a `ref`
+   parameter.
    - It loads a package, and wraps each `#[cnative]` function that is no
      cast, once per C name, in a Go function named for it
      (`sngl_win32_append` → `SnglWin32Append`). Each handle type and C
@@ -767,14 +767,12 @@ what someone wrapped, and win32's Go path would need the same again.
    wrapper*; `testdata/c_go_wrapper_call.txtar`). A `ref` parameter has no
    wrapper yet: its call's record of results is the program package's.
 4. **A placed program in Go** (`golang.WriteProgram`). Done.
-5. **win32 in Go.** Done: `SupportedLangs`, the entry, the cross-compile,
-   carried files through a call, `async.do`, and `sngl snapshot`, which
-   `snapshot_test.go` holds to C's pixels. Left:
-   - `sngl test` in Go: an agent serving over the TCP channel the C one
-     does, its tests written from the placed program as C's `WriteTests`
-     writes them.
-   - The `@run` entry in Go, which C's `appMain` writes.
-   - The win32 scripts and goldens recorded in both languages.
+5. **win32 in Go.** Done, and Go is win32's default language:
+   `SupportedLangs`, the entry and `@run`'s, the cross-compile, carried
+   files through a call, `async.do`, `sngl snapshot`, and `sngl test`, whose
+   agent writes the placed program's tests as C's `WriteTests` does
+   (`design/win32.md`, *win32 in Go*). Every win32 script runs its programs
+   in both languages, and Go's snapshots are held to C's.
 6. **gtk4 onto the wrappers**, its `cgo=true` becoming the `direct`,
    `wrapper` or `purego` enum, and then `purego`.
 

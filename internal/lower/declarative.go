@@ -765,7 +765,7 @@ func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeStat
 	// keeps handlers as closures -- which is Lambda held, not withheld --
 	// and whether an instance is a record is the target's answer rather than
 	// the slot's. The connect is the platform's wherever a node is built.
-	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative, connect: caps.connect})
+	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative, connect: caps.connect, language: caps.language})
 	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier

@@ -10,6 +10,8 @@ stdout 'ok +3 tests, 0 failures'
 
 sngl test --platform=win32 --language=c app.sngl
 stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
 
 -- app.sngl --
 import test "sngl:test"
@@ -68,6 +70,24 @@ sha256:7b75009335d34986a36a99ae05c30b7f
 }
 -- testrun/win32/c/app.sngl/page/1 --
 sha256:bd0ea22dc2f2c7d35ed3920f74e34c49
+{
+  "results": [
+    {
+      "Desc": "AHandlerReadsTheDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsWhatTheTestSet",
+      "Passed": true
+    },
+    {
+      "Desc": "TheBuildReadsWhatTheTestSet",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/page/1 --
+sha256:f06f5f2534fe1292a9b14ae51e0cfe88
 {
   "results": [
     {

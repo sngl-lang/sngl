@@ -37,6 +37,19 @@ stdout 'ok +4 tests, 0 failures'
 sngl test --platform=win32 --language=c async.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# The same programs in Go, which calls the runtime through the wrappers
+# `sngl tool cgogen` writes (lib/platform/win32/cgo) and serves its tests
+# over TCP as C's agent does, draw what C's drew: each snapshot is held to
+# the one the C run wrote.
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt arch=386 app.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=win32 --language=go async.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import test "sngl:test"
@@ -193,6 +206,72 @@ sha256:4d36f8b82a9ed38d1f1a7be845ba3523
 }
 -- testrun/win32/c/async.sngl/main/1 --
 sha256:63c9a45e9b15b4c2ed7c78f277d408ef
+{
+  "results": [
+    {
+      "Desc": "WorkRunsOnTheLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/1 --
+sha256:b7063397688a6074cf1952c6c538b328
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/2 --
+sha256:48141d3fc360baf9c1b40423b28bade0
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:f26c7dd9c2b50184f720eab68db988e0
+{
+  "results": [
+    {
+      "Desc": "DrawsTheWindow",
+      "Passed": true
+    },
+    {
+      "Desc": "PressesReachTheirHandlers",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesReachTheirHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/2 --
+sha256:8e87a7712dcfca10dc9e5b102ded9256
+{
+  "results": [
+    {
+      "Desc": "DrawsTheWindow",
+      "Passed": true
+    },
+    {
+      "Desc": "PressesReachTheirHandlers",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesReachTheirHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/async.sngl/main/1 --
+sha256:a1e36eec93199440f1fdbac8aefaaf71
 {
   "results": [
     {

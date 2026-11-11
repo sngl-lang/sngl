@@ -78,6 +78,25 @@ sngl test --platform=win32 --language=c image.sngl
 stdout 'ok +3 tests, 0 failures'
 exists image.sngl.snapshots/logo.png
 
+# The same programs in Go, which calls the runtime through the wrappers
+# `sngl tool cgogen` writes (lib/platform/win32/cgo) and serves its tests
+# over TCP as C's agent does, draw what C's drew: each snapshot is held to
+# the one the C run wrote.
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=go controls.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=win32 --language=go layout.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go panels.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=win32 --language=go menus.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=go data.sngl
+stdout 'ok +4 tests, 0 failures'
+sngl test --platform=win32 --language=go image.sngl
+stdout 'ok +3 tests, 0 failures'
+
 -- controls.sngl --
 import ui "sngl:ui"
 import time "sngl:time"
@@ -623,7 +642,7 @@ sha256:b9aff544e081e9809d6a7767d0b73d0c
   }
 }
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:659632c64f9f215cc6920fe03d8dbf7c
+sha256:dbaea92efa38f47c9cf73323bf4c2719
 {
   "results": [
     {
@@ -647,4 +666,126 @@ sha256:659632c64f9f215cc6920fe03d8dbf7c
     "first.png": "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",
     "more.png": "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"
   }
+}
+-- testrun/win32/go/controls.sngl/main/1 --
+sha256:d11b7ec7d85a8dcfd0126c062592d93d
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "SelectPicks",
+      "Passed": true
+    },
+    {
+      "Desc": "TextAreaLines",
+      "Passed": true
+    },
+    {
+      "Desc": "TimerTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/data.sngl/main/1 --
+sha256:d41cac8f72e61a9d1223bc18e1ad699c
+{
+  "results": [
+    {
+      "Desc": "ADayIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodeIsSelected",
+      "Passed": true
+    },
+    {
+      "Desc": "ARowIsSelected",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/image.sngl/main/1 --
+sha256:fea6d7f6803e6a55f3a971014e65c3f4
+{
+  "results": [
+    {
+      "Desc": "AMissingFileFails",
+      "Passed": true
+    },
+    {
+      "Desc": "APictureLoads",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/layout.sngl/main/1 --
+sha256:7fb3d47cf9d7a399fcbed55d1117dd38
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "EventsReachTheirHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/menus.sngl/_/1 --
+sha256:3c50e68ced04cb5d957c4e676be75d74
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/menus.sngl/main/1 --
+sha256:0b61db39d5e4f3e168f03755e8136cd8
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "TheMenuBarIsTheWindows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/panels.sngl/main/1 --
+sha256:52c2fda150ce35d6a4b3e1156ffe6134
+{
+  "results": [
+    {
+      "Desc": "AModalClosesThroughTheProgram",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "PressingATabSelectsIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheEndAsksForMore",
+      "Passed": true
+    }
+  ]
 }

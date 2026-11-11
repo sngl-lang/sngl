@@ -830,8 +830,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 							if len(m.__inst0_live) > __inst0_i {
 								m.__inst0_live[__inst0_i].Destroy()
 							}
-							__n2__new := new__child0Instance(m, m.item__params)
-							__n2 = __n2__new
+							__n2__made := new__child0Instance(m, m.item__params)
+							__n2 = __n2__made
 						}
 						__inst0_next = append(__inst0_next, __n2)
 						__inst0_i = (__inst0_i + 1)
@@ -1228,8 +1228,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 							if len(m.__inst0_live) > __inst0_i {
 								m.__inst0_live[__inst0_i].Destroy()
 							}
-							__n2__new := new__child0Instance(m, m.item__params)
-							__n2 = __n2__new
+							__n2__made := new__child0Instance(m, m.item__params)
+							__n2 = __n2__made
 						}
 						__inst0_next = append(__inst0_next, __n2)
 						__inst0_i = (__inst0_i + 1)
@@ -1636,8 +1636,8 @@ class MainScreenTest {
 -- run/go/bubbletea --
 pass sha256:eec83a9541a8242a81878432c54b6aae
 -- run/go/fyne --
-pass sha256:e2a2f4ee914ce4eee1b294bed41528cd
+pass sha256:2f8d0a68f9872e0bd098df220c18d358
 -- run/go/gtk4 --
-pass sha256:f7fd55fc6e9139d988c030fa9224ea38
+pass sha256:9cd0be1474ce53904d8ca670ad46a8fc
 -- run/kotlin/android --
 pass sha256:652ad206fad10e2c9cef43e02b5a0014

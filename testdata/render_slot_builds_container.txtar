@@ -263,8 +263,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__checkbox_state0Instance(m, true, true)
-						__n4 = __n4__new
+						__n4__made := new__checkbox_state0Instance(m, true, true)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -640,8 +640,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := new__checkbox_state0Instance(m, true, true)
-						__n4 = __n4__new
+						__n4__made := new__checkbox_state0Instance(m, true, true)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -772,6 +772,6 @@ func (m *Model) moreClick() {
 	gtk4rt.Emit(m.more, "clicked")
 }
 -- run/go/fyne --
-pass sha256:48b6c6f78ca7860a887c62da6516ad16
+pass sha256:dcbfb569ff27aafe6cb9ecb9675ee096
 -- run/go/gtk4 --
-pass sha256:3068294fe8cc3d78f860e45726203c48
+pass sha256:7760ad01a734e12c923ac15839c20852

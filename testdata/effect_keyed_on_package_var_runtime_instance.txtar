@@ -1169,8 +1169,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						g__new := newGaugeInstance(m, "", m.level)
-						g = g__new
+						g__made := newGaugeInstance(m, "", m.level)
+						g = g__made
 					}
 					__inst0_next = append(__inst0_next, g)
 					__inst0_i = (__inst0_i + 1)
@@ -1241,8 +1241,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						row__new := newGaugeInstance(m, fmt.Sprint(__copy0), m.level)
-						row = row__new
+						row__made := newGaugeInstance(m, fmt.Sprint(__copy0), m.level)
+						row = row__made
 					}
 					__inst1_next[__key2] = row
 					row__el := row.Root
@@ -1762,8 +1762,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						g__new := newGaugeInstance(m, "", m.level)
-						g = g__new
+						g__made := newGaugeInstance(m, "", m.level)
+						g = g__made
 					}
 					__inst0_next = append(__inst0_next, g)
 					__inst0_i = (__inst0_i + 1)
@@ -1834,8 +1834,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						row__new := newGaugeInstance(m, fmt.Sprint(__copy0), m.level)
-						row = row__new
+						row__made := newGaugeInstance(m, fmt.Sprint(__copy0), m.level)
+						row = row__made
 					}
 					__inst1_next[__key2] = row
 					row__el := row.Root
@@ -2713,8 +2713,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let g__new = __cf_gauge({ __on_level: state.level });
-              g = g__new;
+              let g__made = __cf_gauge({ __on_level: state.level });
+              g = g__made;
             }
             __inst1_next.push(g);
             __inst1_i = __inst1_i + 1;
@@ -2779,8 +2779,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let row__new = __cf_gauge({ __copy: String(__copy0), __on_level: state.level });
-              row = row__new;
+              let row__made = __cf_gauge({ __copy: String(__copy0), __on_level: state.level });
+              row = row__made;
             }
             __inst3_next.set(__key4, row);
             let row__el = row.__root;
@@ -2843,10 +2843,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:bbee16778ed4283e7335210fb5d68eb1
 -- run/go/fyne --
-pass sha256:8cdaa09a7f146e5f57da3c7bffb708a2
+pass sha256:60138447f4d462c69c88bc31ae90a990
 -- run/go/gtk4 --
-pass sha256:6f7374c6f2d7584ab6bd17d211890afa
+pass sha256:03381f136cd3c7bf003541af698eec57
 -- run/kotlin/android --
 pass sha256:108e2f4516145e79408ad1c3eed71f34
 -- run/none/html --
-pass sha256:95003d065eb72cd3018bf0738f6effad
+pass sha256:be96e66fe1f27fe58037548b554ca3d8

@@ -797,8 +797,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 									if len(m.__inst0_live) > __inst0_i {
 										m.__inst0_live[__inst0_i].Destroy()
 									}
-									__n4__new := new__child0Instance(m, m.hits)
-									__n4 = __n4__new
+									__n4__made := new__child0Instance(m, m.hits)
+									__n4 = __n4__made
 								}
 								__inst0_next = append(__inst0_next, __n4)
 								__inst0_i = (__inst0_i + 1)
@@ -1030,8 +1030,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 									if len(m.__inst0_live) > __inst0_i {
 										m.__inst0_live[__inst0_i].Destroy()
 									}
-									__n4__new := new__child0Instance(m, m.hits)
-									__n4 = __n4__new
+									__n4__made := new__child0Instance(m, m.hits)
+									__n4 = __n4__made
 								}
 								__inst0_next = append(__inst0_next, __n4)
 								__inst0_i = (__inst0_i + 1)
@@ -1486,8 +1486,8 @@ body { font-family: system-ui, sans-serif; }
                     if (__inst1_live.length > __inst1_i) {
                       __inst1_live[__inst1_i].__destroy();
                     }
-                    let __n5__new = __cf___child0({ __p0: state.hits });
-                    __n5 = __n5__new;
+                    let __n5__made = __cf___child0({ __p0: state.hits });
+                    __n5 = __n5__made;
                   }
                   __inst1_next.push(__n5);
                   __inst1_i = __inst1_i + 1;
@@ -1546,10 +1546,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9a29060591679d06d504c9f74152ca4a
 -- run/go/fyne --
-pass sha256:2bcf0db8936ae032a23d243353812968
+pass sha256:1844830da06f059b8d7a003cd76702f9
 -- run/go/gtk4 --
-pass sha256:273664b1c6a3edaa4da009466e41ace5
+pass sha256:94edf3eaf17772730957ef3c282a8a6b
 -- run/kotlin/android --
 pass sha256:daf5ca92bfb8648aec9c730d0a02e28a
 -- run/none/html --
-pass sha256:e90b739be1507f3fa4d65dd0b0d310a7
+pass sha256:39afa2fdfdb704092be6e6da6c774ffd

@@ -32,6 +32,8 @@ stdout '2 tests, 0 failures'
 
 sngl test --platform=win32 --language=c app.sngl
 stdout '2 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout '2 tests, 0 failures'
 
 -- app.sngl --
 import test "sngl:test"
@@ -150,7 +152,7 @@ sha256:63a9f30087658177db73e382b5c08f32
   ]
 }
 -- testrun/html/none/app.sngl/names/1 --
-sha256:f6336810cd4ddff381a75093dd8066e6
+sha256:c2314db6a1c4e7837571780aba439842
 {
   "results": [
     {
@@ -164,7 +166,7 @@ sha256:f6336810cd4ddff381a75093dd8066e6
   ]
 }
 -- testrun/win32/c/app.sngl/names/1 --
-sha256:2014059aa59121a465c3a4def83a54e5
+sha256:c316e7d61034a29f87921aca58bac576
 {
   "results": [
     {
@@ -173,6 +175,20 @@ sha256:2014059aa59121a465c3a4def83a54e5
     },
     {
       "Desc": "AConditionFiltersToo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/names/1 --
+sha256:be33785779365de8a3cd4d3c75aeb9b5
+{
+  "results": [
+    {
+      "Desc": "AConditionFiltersToo",
+      "Passed": true
+    },
+    {
+      "Desc": "TheLoopFollowsWhatItFilters",
       "Passed": true
     }
   ]

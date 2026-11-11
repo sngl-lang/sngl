@@ -700,8 +700,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						only__new := newRowInstance(m, m.name)
-						only = only__new
+						only__made := newRowInstance(m, m.name)
+						only = only__made
 					}
 					__inst0_next = append(__inst0_next, only)
 					__inst0_i = (__inst0_i + 1)
@@ -979,8 +979,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						only__new := newRowInstance(m, m.name)
-						only = only__new
+						only__made := newRowInstance(m, m.name)
+						only = only__made
 					}
 					__inst0_next = append(__inst0_next, only)
 					__inst0_i = (__inst0_i + 1)
@@ -1511,8 +1511,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let only__new = __cf_row({ label: state.name });
-              only = only__new;
+              let only__made = __cf_row({ label: state.name });
+              only = only__made;
             }
             __inst1_next.push(only);
             __inst1_i = __inst1_i + 1;
@@ -1565,15 +1565,15 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:0b0834dd6600e3ab03fd7f00aee9ab83
 -- run/go/fyne --
-pass sha256:494a18d3def676d6bfbb9f048e4fe5e1
+pass sha256:b06928c139554f0715e152e7cba57243
 -- run/go/gtk4 --
-pass sha256:e56892497fdb1a1ce295dd4a9ef75156
+pass sha256:a7546cae02f7f27f827e637baea6725d
 -- run/kotlin/android --
 pass sha256:def9e3220d52cba240831df7c68cefb0
 -- run/none/html --
-pass sha256:f406eb3b0b69f896ac65d0158571c47a
+pass sha256:63157b6e4a3cb7c01321d7d5cd6d139f
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --
-sha256:d051b9c11dd2f3a8a59a2d454785bc0f
+sha256:cac3dc0514475ada8adb667c47df5e12
 {
   "results": [
     {

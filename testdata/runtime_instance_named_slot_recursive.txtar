@@ -769,8 +769,8 @@ func (c *Frame__slot2Instance) __renderSlot0(__parent *fyne.Container) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n4__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-							__n4 = __n4__new
+							__n4__made := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+							__n4 = __n4__made
 						}
 						__inst0_next = append(__inst0_next, __n4)
 						__inst0_i = (__inst0_i + 1)
@@ -895,8 +895,8 @@ func (c *Frame__slot0Instance) __renderSlot1(__parent *fyne.Container) {
 							if len(c.__inst1_live) > __inst1_i {
 								c.__inst1_live[__inst1_i].Destroy()
 							}
-							__n6__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-							__n6 = __n6__new
+							__n6__made := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+							__n6 = __n6__made
 						}
 						__inst1_next = append(__inst1_next, __n6)
 						__inst1_i = (__inst1_i + 1)
@@ -1107,8 +1107,8 @@ func (c *Frame__slot2Instance) __renderSlot0(parent gtk4rt.Handle) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n4__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-							__n4 = __n4__new
+							__n4__made := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+							__n4 = __n4__made
 						}
 						__inst0_next = append(__inst0_next, __n4)
 						__inst0_i = (__inst0_i + 1)
@@ -1247,8 +1247,8 @@ func (c *Frame__slot0Instance) __renderSlot1(parent gtk4rt.Handle) {
 							if len(c.__inst1_live) > __inst1_i {
 								c.__inst1_live[__inst1_i].Destroy()
 							}
-							__n6__new := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
-							__n6 = __n6__new
+							__n6__made := newFrame__slot2Instance(c.__model, (c.__prop_n - 1), (c.__prop___depth + 1), c.__prop___p0)
+							__n6 = __n6__made
 						}
 						__inst1_next = append(__inst1_next, __n6)
 						__inst1_i = (__inst1_i + 1)
@@ -1656,8 +1656,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n4__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n4 = __n4__new;
+                  let __n4__made = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n4 = __n4__made;
                 }
                 __inst1_next.push(__n4);
                 __inst1_i = __inst1_i + 1;
@@ -1783,8 +1783,8 @@ body { font-family: system-ui, sans-serif; }
                   if (__inst3_live.length > __inst3_i) {
                     __inst3_live[__inst3_i].__destroy();
                   }
-                  let __n6__new = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n6 = __n6__new;
+                  let __n6__made = __cf_frame__slot2({ n: __prop_n - 1, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n6 = __n6__made;
                 }
                 __inst3_next.push(__n6);
                 __inst3_i = __inst3_i + 1;
@@ -1865,10 +1865,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:abd6a1f28106fa200510e38faae6022c
 -- run/go/fyne --
-pass sha256:1113d8fc9dd68d91c8ad2c43a3dad38a
+pass sha256:84926756133f013653cb9c45921a69ce
 -- run/go/gtk4 --
-pass sha256:abb355ed270ff0ea59af61f96ee948d1
+pass sha256:57105a5d45f54de73cac15b64820566f
 -- run/kotlin/android --
 pass sha256:33fbf6898dafef51c8c8441b077e3afb
 -- run/none/html --
-pass sha256:63539669641cdb795776b515e6c4e886
+pass sha256:183b95121c8e0bdde0f5e5bf9807fbc4

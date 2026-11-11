@@ -207,8 +207,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n2__new := newAskerInstance(m, "one", m.where__inst0)
-						__n2 = __n2__new
+						__n2__made := newAskerInstance(m, "one", m.where__inst0)
+						__n2 = __n2__made
 					}
 					__inst0_next = append(__inst0_next, __n2)
 					__inst0_i = (__inst0_i + 1)
@@ -526,4 +526,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:3912bcb46f61d2f6c6160d2031d51529
+pass sha256:a9efa2cd6509ca8cee9436a6ad819263

@@ -603,8 +603,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n2__new := new__child0Instance(m, m.sorry())
-						__n2 = __n2__new
+						__n2__made := new__child0Instance(m, m.sorry())
+						__n2 = __n2__made
 					}
 					__inst0_next = append(__inst0_next, __n2)
 					__inst0_i = (__inst0_i + 1)
@@ -819,8 +819,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: sorry() });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: sorry() });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -903,6 +903,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9aaf23777b694691f27d526927868272
 -- run/go/gtk4 --
-pass sha256:c6e9b85464c8b8d82bd67bbabab55d97
+pass sha256:17e1334a45a4a97c4f3e96ad20be649d
 -- run/none/html --
-pass sha256:ef387b95e75854c0d54dabd057fe8586
+pass sha256:5e8abe2c30616206b2cea19d92489528

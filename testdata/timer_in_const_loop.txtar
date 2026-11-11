@@ -746,11 +746,11 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newTimerInstance(m, p.Elem, true, func() {
+						__n2__made := newTimerInstance(m, p.Elem, true, func() {
 							m.n = (m.n + 1)
 							m.__n1.SetText(fmt.Sprint(m.n))
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__inst0_now_interval[__key1] = p.Elem
@@ -824,11 +824,11 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 									return nil
 								}().Destroy()
 							}
-							__n3__new := newTimerInstance(m, p.Elem, true, func() {
+							__n3__made := newTimerInstance(m, p.Elem, true, func() {
 								m.n = (m.n + 1)
 								m.__n1.SetText(fmt.Sprint(m.n))
 							})
-							__n3 = __n3__new
+							__n3 = __n3__made
 						}
 						__inst1_next[__key2] = __n3
 						__inst1_now_interval[__key2] = p.Elem
@@ -1262,11 +1262,11 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newTimerInstance(m, p.Elem, true, func() {
+						__n2__made := newTimerInstance(m, p.Elem, true, func() {
 							m.n = (m.n + 1)
 							gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__inst0_now_interval[__key1] = p.Elem
@@ -1340,11 +1340,11 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 									return nil
 								}().Destroy()
 							}
-							__n3__new := newTimerInstance(m, p.Elem, true, func() {
+							__n3__made := newTimerInstance(m, p.Elem, true, func() {
 								m.n = (m.n + 1)
 								gtk4rt.LabelSetLabel(m.__n1, fmt.Sprint(m.n))
 							})
-							__n3 = __n3__new
+							__n3 = __n3__made
 						}
 						__inst1_next[__key2] = __n3
 						__inst1_now_interval[__key2] = p.Elem
@@ -1792,11 +1792,11 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
+              let __n2__made = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
                 state.n = state.n + 1;
                 __n1.textContent = String(state.n);
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             __inst1_now_interval.set(__key2, p.elem);
@@ -1864,11 +1864,11 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst3_live.has(__key4)) {
                   (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
                 }
-                let __n3__new = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
+                let __n3__made = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
                   state.n = state.n + 1;
                   __n1.textContent = String(state.n);
                 } });
-                __n3 = __n3__new;
+                __n3 = __n3__made;
               }
               __inst3_next.set(__key4, __n3);
               __inst3_now_interval.set(__key4, p.elem);
@@ -1927,8 +1927,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:223e61dca8e13fe89f85085dde24536f
 -- run/go/fyne --
-pass sha256:2d10b5ef35d657affdb90585742bdbb2
+pass sha256:a24c24ca13033fe0afe6604378ee0b53
 -- run/go/gtk4 --
-pass sha256:f72c5334673c9a0b1e369887b6cc109e
+pass sha256:83616de396f1e747b543626a322821e3
 -- run/none/html --
-pass sha256:f7b2773a2307d98baef387a545408f67
+pass sha256:9e84907c286cad317e626e4ac9864b0d

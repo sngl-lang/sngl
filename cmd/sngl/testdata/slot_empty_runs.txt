@@ -241,7 +241,7 @@ sha256:e4152cb2b7c275b4e7ff0129eeb94ad4
   ]
 }
 -- testrun/html/none/fallback.sngl/main/1 --
-sha256:86217d363a819b3a837f8ee4fe80e524
+sha256:ebc2857c06fb254325902f6a6271b216
 {
   "results": [
     {

@@ -1121,8 +1121,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newPageInstance(m, m.txt)
-						__n6 = __n6__new
+						__n6__made := newPageInstance(m, m.txt)
+						__n6 = __n6__made
 					}
 					__inst2_next[__key3] = __n6
 					__n6__el := __n6.Root
@@ -1344,8 +1344,8 @@ func (c *PageInstance) __renderSlot0(__parent *fyne.Container) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__child0Instance(c.__model, c.__prop___ctx_label)
-						__n3 = __n3__new
+						__n3__made := new__child0Instance(c.__model, c.__prop___ctx_label)
+						__n3 = __n3__made
 					}
 					__inst0_next = append(__inst0_next, __n3)
 					__inst0_i = (__inst0_i + 1)
@@ -1360,8 +1360,8 @@ func (c *PageInstance) __renderSlot0(__parent *fyne.Container) {
 						if len(c.__inst1_live) > __inst1_i {
 							c.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := new__child1Instance(c.__model, c.__prop___ctx_label)
-						__n4 = __n4__new
+						__n4__made := new__child1Instance(c.__model, c.__prop___ctx_label)
+						__n4 = __n4__made
 					}
 					__inst1_next = append(__inst1_next, __n4)
 					__inst1_i = (__inst1_i + 1)
@@ -1601,8 +1601,8 @@ func (m *Model) __renderSlot1(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := newPageInstance(m, m.txt)
-						__n6 = __n6__new
+						__n6__made := newPageInstance(m, m.txt)
+						__n6 = __n6__made
 					}
 					__inst2_next[__key3] = __n6
 					__n6__el := __n6.Root
@@ -1774,8 +1774,8 @@ func (c *PageInstance) __renderSlot0(parent gtk4rt.Handle) {
 						if len(c.__inst0_live) > __inst0_i {
 							c.__inst0_live[__inst0_i].Destroy()
 						}
-						__n3__new := new__child0Instance(c.__model, c.__prop___ctx_label)
-						__n3 = __n3__new
+						__n3__made := new__child0Instance(c.__model, c.__prop___ctx_label)
+						__n3 = __n3__made
 					}
 					__inst0_next = append(__inst0_next, __n3)
 					__inst0_i = (__inst0_i + 1)
@@ -1790,8 +1790,8 @@ func (c *PageInstance) __renderSlot0(parent gtk4rt.Handle) {
 						if len(c.__inst1_live) > __inst1_i {
 							c.__inst1_live[__inst1_i].Destroy()
 						}
-						__n4__new := new__child1Instance(c.__model, c.__prop___ctx_label)
-						__n4 = __n4__new
+						__n4__made := new__child1Instance(c.__model, c.__prop___ctx_label)
+						__n4 = __n4__made
 					}
 					__inst1_next = append(__inst1_next, __n4)
 					__inst1_i = (__inst1_i + 1)
@@ -2110,8 +2110,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst1_live.length > __inst1_i) {
                   __inst1_live[__inst1_i].__destroy();
                 }
-                let __n3__new = __cf___child0({ __p0: __prop___ctx_label });
-                __n3 = __n3__new;
+                let __n3__made = __cf___child0({ __p0: __prop___ctx_label });
+                __n3 = __n3__made;
               }
               __inst1_next.push(__n3);
               __inst1_i = __inst1_i + 1;
@@ -2134,8 +2134,8 @@ body { font-family: system-ui, sans-serif; }
                 if (__inst2_live.length > __inst2_i) {
                   __inst2_live[__inst2_i].__destroy();
                 }
-                let __n4__new = __cf___child1({ __p0: __prop___ctx_label });
-                __n4 = __n4__new;
+                let __n4__made = __cf___child1({ __p0: __prop___ctx_label });
+                __n4 = __n4__made;
               }
               __inst2_next.push(__n4);
               __inst2_i = __inst2_i + 1;
@@ -2292,8 +2292,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst4_live.has(__key5)) {
                 (__inst4_live.has(__key5) ? __inst4_live.get(__key5) : null).__destroy();
               }
-              let __n6__new = __cf_page({ __ctx_label: state.txt });
-              __n6 = __n6__new;
+              let __n6__made = __cf_page({ __ctx_label: state.txt });
+              __n6 = __n6__made;
             }
             __inst4_next.set(__key5, __n6);
             let __n6__el = __n6.__root;
@@ -2346,8 +2346,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:42687eac7013e390cfc0d4a2ef3fb2cf
 -- run/go/fyne --
-pass sha256:dd0e849cc76a9b60da747730dfd54158
+pass sha256:35ec395dee8bf5785d13ad2e06598ccd
 -- run/go/gtk4 --
-pass sha256:dd93db58934400f3d20a1069abb753da
+pass sha256:48f72be67a610c1c834fc2585ef95b1d
 -- run/none/html --
-pass sha256:e8c111f0660650160e976007a54b4bbb
+pass sha256:500954e11540027f6cc4044aae3b6c2a

@@ -194,8 +194,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n4__new := newRowInstance(m, it.Elem)
-						__n4 = __n4__new
+						__n4__made := newRowInstance(m, it.Elem)
+						__n4 = __n4__made
 					}
 					__inst0_next[__key1] = __n4
 					__n4__el := __n4.Root
@@ -507,8 +507,8 @@ func (m *Model) __renderSlot0(parent gtk4rt.Handle) {
 								return nil
 							}().Destroy()
 						}
-						__n3__new := newRowInstance(m, it.Elem)
-						__n3 = __n3__new
+						__n3__made := newRowInstance(m, it.Elem)
+						__n3 = __n3__made
 					}
 					__inst0_next[__key1] = __n3
 					__n3__el := __n3.Root
@@ -757,6 +757,6 @@ func (m *Model) entryChange(v string) {
 	gtk4rt.Emit(m.__named_entry, "activate")
 }
 -- run/go/fyne --
-pass sha256:1132c5fb9120eb27cf3d6c44edcc641d
+pass sha256:5967620f7749466696573ab916db7283
 -- run/go/gtk4 --
-pass sha256:1f421616aa9bbfb0f75972b629207a81
+pass sha256:440a5d3d9321bf14ddc585c0116050b7
