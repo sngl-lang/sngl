@@ -164,7 +164,7 @@ sha256:f6336810cd4ddff381a75093dd8066e6
   ]
 }
 -- testrun/win32/c/app.sngl/names/1 --
-sha256:00926d1b1b0e8e1b58f68eb8a80f3b2f
+sha256:304385590b34bd60a03a691b0fc01e77
 {
   "results": [
     {

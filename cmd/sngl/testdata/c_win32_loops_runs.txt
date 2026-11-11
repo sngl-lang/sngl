@@ -221,7 +221,7 @@ ui.window {
     main()
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:7369a32d7904676ab30324855e791fa1
+sha256:842db6d282083eadb6f631ab5f44902a
 {
   "results": [
     {
@@ -238,7 +238,7 @@ sha256:7369a32d7904676ab30324855e791fa1
   }
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:38f9376f4635cdf8e919427ee7156ed1
+sha256:5c666cd6f035b8407792ff8fcae9b353
 {
   "results": [
     {
@@ -256,7 +256,7 @@ sha256:38f9376f4635cdf8e919427ee7156ed1
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:446219abc685e267540500e4fe8467e2
+sha256:03587ab3497038b6c5fd0aa3e1977adf
 {
   "results": [
     {
@@ -270,7 +270,7 @@ sha256:446219abc685e267540500e4fe8467e2
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:e2b9c2ee0cbb1ec7819fe8bf2e2e4117
+sha256:8def715d9f5a777b0c3316aa545e029b
 {
   "results": [
     {
@@ -280,7 +280,7 @@ sha256:e2b9c2ee0cbb1ec7819fe8bf2e2e4117
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:3fb4619af3cdd4ce1272bd049832a6f7
+sha256:db34e46ad7f6ea01e522621bb383be93
 {
   "results": [
     {

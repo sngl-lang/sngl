@@ -1401,4 +1401,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:c85183ec9754dd2f173b8df245321a20
+pass sha256:370800e882f3701466a0663315e084ec

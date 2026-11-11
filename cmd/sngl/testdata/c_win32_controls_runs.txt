@@ -499,7 +499,7 @@ func testDraws(t test.Test, c main) {
     t.snapshot("logo")
 }
 -- testrun/win32/c/controls.sngl/main/1 --
-sha256:c13b1f1780c60c750f45f85a41061d43
+sha256:a47f0f64f7e48550c0e6b3e8606a575d
 {
   "results": [
     {
@@ -524,7 +524,7 @@ sha256:c13b1f1780c60c750f45f85a41061d43
   }
 }
 -- testrun/win32/c/data.sngl/main/1 --
-sha256:3233ed639d98606df8261ecf12b13281
+sha256:e27e2d82c64a864619ff02b4418e6114
 {
   "results": [
     {
@@ -549,7 +549,7 @@ sha256:3233ed639d98606df8261ecf12b13281
   }
 }
 -- testrun/win32/c/image.sngl/main/1 --
-sha256:548f5bfdb8136ec6cc0fafbde278843e
+sha256:2730afbbac79cbdd965d9bf4a8b58229
 {
   "results": [
     {
@@ -570,7 +570,7 @@ sha256:548f5bfdb8136ec6cc0fafbde278843e
   }
 }
 -- testrun/win32/c/layout.sngl/main/1 --
-sha256:4f7b8589b1e06fd3b347e214229dc485
+sha256:7e220b089697dc8f369dc9746563fdc7
 {
   "results": [
     {
@@ -588,7 +588,7 @@ sha256:4f7b8589b1e06fd3b347e214229dc485
   }
 }
 -- testrun/win32/c/menus.sngl/_/1 --
-sha256:3a0fee3bd9fa6f6b8676640f787bcd9b
+sha256:afefa8e0b2d08192943668d2afdc7f23
 {
   "results": [
     {
@@ -598,7 +598,7 @@ sha256:3a0fee3bd9fa6f6b8676640f787bcd9b
   ]
 }
 -- testrun/win32/c/menus.sngl/main/1 --
-sha256:35ce277ecbcb766a0da4cfe17755f088
+sha256:df1b90b18c9788f5e1241bf17e8d3562
 {
   "results": [
     {
@@ -616,7 +616,7 @@ sha256:35ce277ecbcb766a0da4cfe17755f088
   }
 }
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:3d9c9023cb588a925442479d573b6e74
+sha256:d1cff8f14e22976f52f72346c3d3a9b8
 {
   "results": [
     {
