@@ -124,6 +124,24 @@ void sngl_win32_set_scaling(HWND w, int mode);
 void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_redraw(HWND w);
 
+/* sngl_win32_flow is a flow of rich text: a window that wraps and draws the
+ * words of the spans it holds, made by sngl_win32_span and put in it, or in
+ * a span in it, by sngl_win32_append. A span is a window never shown,
+ * holding its own words (sngl_win32_set_words), the link it leads to
+ * (sngl_win32_set_href) and what it sets of its appearance
+ * (sngl_win32_set_span_style: a color as 0xRRGGBB or -1, a size in SNGL px or
+ * 0, a weight -- 0 inherit, 1 normal, 2 bold, 3 lighter, 4 bolder -- a slant
+ * -- 0 inherit, 1 normal, 2 italic, 3 oblique -- an underline, a line
+ * through, and a family, "" inherit), each inherited by the spans it holds.
+ * A flow's own span style is the one its spans start from. Every character
+ * of a span's words is drawn as written, a newline ending the line; the
+ * lines wrap between words at the flow's width, and a link is drawn as one
+ * and opened as it is clicked. */
+HWND sngl_win32_flow(void);
+HWND sngl_win32_span(void);
+void sngl_win32_set_words(HWND w, const unsigned short *words);
+void sngl_win32_set_span_style(HWND w, int color, int size, int weight, int slant, int underline, int strike, const unsigned short *family);
+
 /* A drawing context's calls are cairo's, over GDI+: a path built and then
  * filled or stroked, in the color, line and font last set, which save and
  * restore keep. Angles are radians, clockwise from the positive x axis;

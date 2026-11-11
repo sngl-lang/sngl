@@ -19,8 +19,12 @@ handed. A run list flattened in `ir` was built and reverted, being a second
 representation of a tree. Where the cascade is resolved is each host's answer —
 CSS on html, Pango and Compose's `SpanStyle` merge natively on gtk4 and
 android, fyne flattens at render time because the tree is what a reactive
-program mutates, and bubbletea flattens at compile time because lipgloss
-returns a string with reset sequences in it.
+program mutates, bubbletea flattens at compile time because lipgloss
+returns a string with reset sequences in it, and win32's runtime walks the
+tree each time it lays out or draws a flow: a span is a window never shown,
+placed in its flow through the protocol as any node is, which the flow reads
+its words, link and look off (`testdata/win32_c_markup.txtar`,
+`TestSnapshotMarkup`).
 
 **A reactive `if` or `for` among spans** is a render slot only where a span
 can hold one, which is html's `display:contents` wrapper and what

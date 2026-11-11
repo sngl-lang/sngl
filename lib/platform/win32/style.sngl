@@ -18,7 +18,8 @@ import ui "sngl:ui"
 //   - position, top, bottom, left, right, zIndex: the runtime lays children
 //     out itself, with no flow to take one out of and no offsets.
 //   - fontFamily, fontWeight, fontStyle: a control draws in the system's
-//     message font, sized by fontSize alone.
+//     message font, sized by fontSize alone; only a flow of rich text,
+//     which draws its words itself, reads them (`baseOf`).
 //   - textAlign, maxLines, whiteSpace: a STATIC control draws its text from
 //     the left, every line of it.
 //   - borderRadius, borderColor, borderWidth, border, borderBottom,

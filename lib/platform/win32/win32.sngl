@@ -7,6 +7,7 @@ import gen "sngl:x/gen"
 import c "sngl:x/c"
 import api "sngl:platform/win32/api"
 import draw "sngl:ui/draw"
+import markup "sngl:ui/markup"
 import math "sngl:math"
 
 // The runtime every win32 program links: the window procedure, the layout of
@@ -671,8 +672,9 @@ component Link(text string, href string, enabled bool, look Look, @click()) ui.n
 #[macro.cnative("sngl_win32_link")]
 func _rtLink() Link
 
+// What a link, or a span, opens.
 #[macro.cnative("sngl_win32_set_href")]
-func _rtSetHref(l Link, href c.utf16)
+func _rtSetHref(l ui.node, href c.utf16)
 
 #[gen.protocol(create)]
 func _create_Link() Link {
@@ -1637,6 +1639,175 @@ func arcTo(ctx Gfx, from draw.Point, corner draw.Point, to draw.Point, r float) 
     return a.tangent2
 }
 
+// --- Rich text ---
+
+// A flow is a runtime window that wraps and draws the words of the spans it
+// holds, as a GTK label does Pango's: the runtime resolves the cascade, each
+// span's look over the one around it, starting from the flow's own. A span
+// is a window never shown, which the flow reads its words, its link and its
+// look off; a change to one draws its flow again.
+#[marks.intrinsic("win32:Flow")]
+component Flow(
+    look    Look,
+    // What the flow's style says of its words beyond a look's color and
+    // size: their weight, slant and family.
+    base    markup.SpanStyle,
+    content ...component markup.span,
+) ui.node
+
+#[marks.intrinsic("win32:Span")]
+component Span(
+    words     string = "",
+    href      string = "",
+    spanStyle markup.SpanStyle,
+    content   ...component markup.span,
+) markup.span
+
+#[macro.cnative("sngl_win32_flow")]
+func _rtFlow() Flow
+
+#[macro.cnative("sngl_win32_span")]
+func _rtSpan() Span
+
+#[macro.cnative("sngl_win32_set_words")]
+func _rtSetWords(w Span, words c.utf16)
+
+// The runtime's calls on a span, which is no `ui.node` but a window all the
+// same: put into a flow or a span, and written.
+#[macro.cnative("sngl_win32_append")]
+func _rtSpanAppend(parent ui.node, child markup.span)
+
+#[macro.cnative("sngl_win32_insert")]
+func _rtSpanInsert(parent ui.node, child markup.span, before markup.span)
+
+#[macro.cnative("sngl_win32_remove")]
+func _rtSpanRemove(parent ui.node, child markup.span)
+
+#[macro.cnative("sngl_win32_append")]
+func _rtSpanAppendIn(parent markup.span, child markup.span)
+
+#[macro.cnative("sngl_win32_insert")]
+func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span)
+
+#[macro.cnative("sngl_win32_remove")]
+func _rtSpanRemoveIn(parent markup.span, child markup.span)
+
+#[macro.cnative("sngl_win32_set_href")]
+func _rtSpanHref(w Span, href c.utf16)
+
+#[macro.cnative("sngl_win32_set_span_style")]
+func _rtSpanStyle(
+    w         Span,
+    color     int,
+    size      int,
+    weight    int,
+    slant     int,
+    underline bool,
+    strike    bool,
+    family    c.utf16,
+)
+
+#[macro.cnative("sngl_win32_set_span_style")]
+func _rtSetSpanStyle(
+    w         ui.node,
+    color     int,
+    size      int,
+    weight    int,
+    slant     int,
+    underline bool,
+    strike    bool,
+    family    c.utf16,
+)
+
+#[gen.protocol(create)]
+func _create_Flow() Flow {
+    return _rtFlow()
+}
+
+#[gen.protocol(append)]
+func _append_Flow(parent Flow, child markup.span) {
+    _rtSpanAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Flow(parent Flow, child markup.span) {
+    _rtSpanRemove(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Flow(parent Flow, child markup.span, before markup.span) {
+    _rtSpanInsert(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_Flow_look(w Flow, look Look) {
+    _look(w, look)
+}
+
+#[gen.protocol(set)]
+func _set_Flow_base(w Flow, base markup.SpanStyle) {
+    _rtSetSpanStyle(w, rgb(base.color), int(px(base.fontSize)), int(base.fontWeight), int(base.fontStyle), base.underline, base.strike, base.fontFamily)
+}
+
+#[gen.protocol(create)]
+func _create_Span() Span {
+    return _rtSpan()
+}
+
+#[gen.protocol(append)]
+func _append_Span(parent Span, child markup.span) {
+    _rtSpanAppendIn(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Span(parent Span, child markup.span) {
+    _rtSpanRemoveIn(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Span(parent Span, child markup.span, before markup.span) {
+    _rtSpanInsertIn(parent, child, before)
+}
+
+#[gen.protocol(set)]
+func _set_Span_words(w Span, words string) {
+    _rtSetWords(w, words)
+}
+
+#[gen.protocol(set)]
+func _set_Span_href(w Span, href string) {
+    _rtSpanHref(w, href)
+}
+
+#[gen.protocol(set)]
+func _set_Span_spanStyle(w Span, spanStyle markup.SpanStyle) {
+    _rtSpanStyle(w, rgb(spanStyle.color), int(px(spanStyle.fontSize)), int(spanStyle.fontWeight), int(spanStyle.fontStyle), spanStyle.underline, spanStyle.strike, spanStyle.fontFamily)
+}
+
+// A style's weight, slant and family as a span's, the two enums in the same
+// order with `inherit` where a style is `unset`.
+const func baseOf(s ui.Style) markup.SpanStyle {
+    var weight = markup.Weight.inherit
+    if s.fontWeight == ui.FontWeight.normal {
+        weight = markup.Weight.normal
+    } else if s.fontWeight == ui.FontWeight.bold {
+        weight = markup.Weight.bold
+    } else if s.fontWeight == ui.FontWeight.lighter {
+        weight = markup.Weight.lighter
+    } else if s.fontWeight == ui.FontWeight.bolder {
+        weight = markup.Weight.bolder
+    }
+    var slant = markup.Slant.inherit
+    if s.fontStyle == ui.FontStyle.normal {
+        slant = markup.Slant.normal
+    } else if s.fontStyle == ui.FontStyle.italic {
+        slant = markup.Slant.italic
+    } else if s.fontStyle == ui.FontStyle.oblique {
+        slant = markup.Slant.oblique
+    }
+    return markup.SpanStyle{fontWeight=weight, fontStyle=slant, fontFamily=s.fontFamily}
+}
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
@@ -2170,6 +2341,43 @@ const component draw.canvasText[platform](x, y, content, style) {
         e.ctx.showText(content)
         e.ctx.restore()
     })
+}
+
+const component markup.richText[platform](style, content) {
+    Flow(look=lookOf(style), base=baseOf(style)) {
+        content
+    }
+}
+
+const component markup.text[platform](value) {
+    Span(words=value) {}
+}
+
+const component markup.run[platform](style, content) {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// Drawn as a link, and opened as it is clicked.
+const component markup.link[platform](href, content) {
+    Span(href=href) {
+        content
+    }
+}
+
+// The light palette where the program's sets nothing, as on gtk4: the
+// system's colors are light.
+const component markup.token[platform](kind, content) {
+    Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
+        content
+    }
+}
+
+// A flow draws words, so a picture in one is its description, in the
+// brackets that say a picture stood there.
+const component markup.image[platform](alt) {
+    Span(words="[{alt}]") {}
 }
 
 const component ui.file[platform](path) {

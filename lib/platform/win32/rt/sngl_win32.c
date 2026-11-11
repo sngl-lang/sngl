@@ -8,6 +8,7 @@
 #include <gdiplus.h>
 #include <math.h>
 #include <shellapi.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,7 +29,7 @@
 #define SNGL_WM_LOADED (WM_APP + 5)
 #define SNGL_WM_FETCHED (WM_APP + 6)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE, K_CANVAS };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE, K_CANVAS, K_FLOW, K_SPAN };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -38,6 +39,12 @@ typedef struct {
 	void *ctx;
 	sngl_win32_release release;
 } handler;
+
+/* link_at is where a flow drew a link's words, and the span leading to it. */
+struct link_at {
+	RECT r;
+	HWND span;
+};
 
 /* ctl is the record the runtime keeps beside each node's window. */
 typedef struct {
@@ -111,6 +118,14 @@ typedef struct {
 	 * paints it, a sngl_win32_paint_fn. */
 	int cw, ch, scaling;
 	handler paint;
+	/* A span's words, and the appearance a span or a flow sets of its
+	 * spans: a color or -1, a size or 0, a weight and a slant or 0 to
+	 * inherit, an underline, a line through, and a family or NULL. A
+	 * flow's links, where it last drew them. */
+	WCHAR *words, *family;
+	int sp_color, sp_px, sp_weight, sp_slant, sp_under, sp_strike;
+	struct link_at *links;
+	int nlinks;
 	HWND self;
 	HWND *kids;
 	int nkids, capkids;
@@ -245,6 +260,9 @@ static void forget(HWND w) {
 	drop_handler(&c->load);
 	drop_handler(&c->failed);
 	drop_handler(&c->paint);
+	free(c->words);
+	free(c->family);
+	free(c->links);
 	if (c->bmp) {
 		DeleteObject(c->bmp);
 	}
@@ -281,6 +299,7 @@ static void relayout(HWND w);
 static const char *utf8(const WCHAR *wide);
 static void refresh(HWND w, int dpi);
 static void lay_out_top(HWND top);
+static void touched(HWND w);
 
 /* text_size is w's text as its font draws it. */
 static SIZE text_size(HWND w) {
@@ -515,6 +534,275 @@ static SIZE tabs_size(HWND w, ctl *c) {
 	return s;
 }
 
+/* --- Rich text --- */
+
+/* span_look is what a run of a flow is drawn in, as the spans around it
+ * set it: each field as sngl_win32_set_span_style takes it, and the span
+ * leading where its link does, if one does. */
+typedef struct {
+	int color, px, weight, slant, under, strike;
+	const WCHAR *family;
+	HWND link;
+} span_look;
+
+/* piece is a word, a run of spaces or a newline of a flow, where it is
+ * drawn: the font it is drawn in, its color, its width, and its place on
+ * its line. A run of spaces a wrap left at the start of a line is skipped. */
+typedef struct {
+	const WCHAR *s;
+	int len, kind, font, color, w, x, line, skip;
+	HWND link;
+} piece;
+
+enum { P_WORD, P_SPACE, P_NEWLINE };
+
+typedef struct {
+	piece *ps;
+	int n, cap;
+	HFONT *fonts;
+	int *asc, *desc;
+	int nfonts, capfonts;
+} flow_text;
+
+static void inherit(span_look *l, ctl *c) {
+	if (c->sp_color >= 0) {
+		l->color = c->sp_color;
+	}
+	if (c->sp_px > 0) {
+		l->px = c->sp_px;
+	}
+	if (c->sp_weight) {
+		l->weight = c->sp_weight;
+	}
+	if (c->sp_slant) {
+		l->slant = c->sp_slant;
+	}
+	l->under |= c->sp_under;
+	l->strike |= c->sp_strike;
+	if (c->family && c->family[0]) {
+		l->family = c->family;
+	}
+	if (c->kind == K_SPAN && c->href && c->href[0]) {
+		l->link = c->self;
+	}
+}
+
+/* look_font is the font l draws in at dpi: the message font as l changes
+ * it, a link underlined, and CSS's generic families as Windows' faces. */
+static HFONT look_font(const span_look *l, int dpi) {
+	LOGFONTW lf;
+	GetObjectW(message_font(dpi), sizeof lf, &lf);
+	if (l->px > 0) {
+		lf.lfHeight = -px(l->px, dpi);
+	}
+	switch (l->weight) {
+	case 1:
+		lf.lfWeight = FW_NORMAL;
+		break;
+	case 2:
+	case 4:
+		lf.lfWeight = FW_BOLD;
+		break;
+	case 3:
+		lf.lfWeight = FW_LIGHT;
+		break;
+	}
+	lf.lfItalic = l->slant >= 2;
+	lf.lfUnderline = l->under || l->link;
+	lf.lfStrikeOut = (BYTE)l->strike;
+	if (l->family) {
+		if (wcscmp(l->family, L"monospace") == 0) {
+			wcscpy(lf.lfFaceName, L"Courier New");
+			lf.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
+		} else if (wcscmp(l->family, L"serif") == 0) {
+			wcscpy(lf.lfFaceName, L"Times New Roman");
+			lf.lfPitchAndFamily = VARIABLE_PITCH | FF_ROMAN;
+		} else if (wcscmp(l->family, L"sans-serif") != 0) {
+			wcsncpy(lf.lfFaceName, l->family, LF_FACESIZE - 1);
+			lf.lfFaceName[LF_FACESIZE - 1] = 0;
+		}
+	}
+	return CreateFontIndirectW(&lf);
+}
+
+static int add_font(flow_text *t, HDC dc, const span_look *l, int dpi) {
+	if (t->nfonts == t->capfonts) {
+		t->capfonts = t->capfonts ? 2 * t->capfonts : 8;
+		t->fonts = realloc(t->fonts, sizeof(HFONT) * (size_t)t->capfonts);
+		t->asc = realloc(t->asc, sizeof(int) * (size_t)t->capfonts);
+		t->desc = realloc(t->desc, sizeof(int) * (size_t)t->capfonts);
+	}
+	HFONT f = look_font(l, dpi);
+	TEXTMETRICW tm;
+	HGDIOBJ old = SelectObject(dc, f);
+	GetTextMetricsW(dc, &tm);
+	SelectObject(dc, old);
+	t->fonts[t->nfonts] = f;
+	t->asc[t->nfonts] = tm.tmAscent;
+	t->desc[t->nfonts] = tm.tmDescent;
+	return t->nfonts++;
+}
+
+static void add_piece(flow_text *t, HDC dc, const WCHAR *s, int len, int kind, int font, const span_look *l) {
+	if (t->n == t->cap) {
+		t->cap = t->cap ? 2 * t->cap : 32;
+		t->ps = realloc(t->ps, sizeof(piece) * (size_t)t->cap);
+	}
+	piece *p = &t->ps[t->n++];
+	memset(p, 0, sizeof *p);
+	p->s = s;
+	p->len = len;
+	p->kind = kind;
+	p->font = font;
+	p->color = l->color;
+	p->link = l->link;
+	if (kind != P_NEWLINE) {
+		SIZE e;
+		HGDIOBJ old = SelectObject(dc, t->fonts[font]);
+		GetTextExtentPoint32W(dc, s, len, &e);
+		SelectObject(dc, old);
+		p->w = e.cx;
+	}
+}
+
+/* collect is the pieces of w's words and of every span under it, in the
+ * order they are read, each in the look the spans around it make. */
+static void collect(HWND w, span_look l, flow_text *t, HDC dc, int dpi) {
+	ctl *c = ctl_of(w);
+	if (!c) {
+		return;
+	}
+	inherit(&l, c);
+	if (c->words && c->words[0]) {
+		int font = add_font(t, dc, &l, dpi);
+		const WCHAR *s = c->words;
+		while (*s) {
+			const WCHAR *e = s;
+			int kind = *s == L'\n' ? P_NEWLINE : *s == L' ' ? P_SPACE : P_WORD;
+			if (kind == P_NEWLINE) {
+				e++;
+			} else {
+				while (*e && *e != L'\n' && (*e == L' ') == (kind == P_SPACE)) {
+					e++;
+				}
+			}
+			add_piece(t, dc, s, (int)(e - s), kind, font, &l);
+			s = e;
+		}
+	}
+	for (int i = 0; i < c->nkids; i++) {
+		collect(c->kids[i], l, t, dc, dpi);
+	}
+}
+
+/* flow_size is the size a flow's words take wrapped at width, drawn into
+ * draw where it is not NULL, which is where the flow's links are found. */
+static SIZE flow_size(HWND w, ctl *c, int width, HDC draw) {
+	HDC dc = draw ? draw : GetDC(w);
+	flow_text t;
+	memset(&t, 0, sizeof t);
+	span_look base = {c->color, c->font_px, 0, 0, 0, 0, NULL, NULL};
+	/* The flow's own font is the first, which an empty line is as tall
+	 * as. */
+	span_look own = base;
+	inherit(&own, c);
+	add_font(&t, dc, &own, c->dpi);
+	collect(w, base, &t, dc, c->dpi);
+	int x = 0, line = 0, wrapped = 0, most = 0;
+	for (int i = 0; i < t.n; i++) {
+		piece *p = &t.ps[i];
+		p->line = line;
+		if (p->kind == P_NEWLINE) {
+			line++;
+			x = 0;
+			wrapped = 0;
+			continue;
+		}
+		if (p->kind == P_SPACE && x == 0 && wrapped) {
+			p->skip = 1;
+			continue;
+		}
+		if (p->kind == P_WORD && x > 0 && x + p->w > width) {
+			p->line = ++line;
+			x = 0;
+			wrapped = 1;
+		}
+		p->x = x;
+		x += p->w;
+		most = x > most ? x : most;
+	}
+	int lines = line + 1;
+	int *asc = calloc((size_t)lines, sizeof(int)), *desc = calloc((size_t)lines, sizeof(int)), *top = calloc((size_t)lines, sizeof(int));
+	for (int i = 0; i < t.n; i++) {
+		piece *p = &t.ps[i];
+		if (!p->skip) {
+			asc[p->line] = t.asc[p->font] > asc[p->line] ? t.asc[p->font] : asc[p->line];
+			desc[p->line] = t.desc[p->font] > desc[p->line] ? t.desc[p->font] : desc[p->line];
+		}
+	}
+	SIZE size = {most, 0};
+	for (int i = 0; i < lines; i++) {
+		if (asc[i] == 0 && desc[i] == 0) {
+			asc[i] = t.asc[0];
+			desc[i] = t.desc[0];
+		}
+		top[i] = size.cy;
+		size.cy += asc[i] + desc[i];
+	}
+	if (draw) {
+		int x0 = px(c->pad[3], c->dpi), y0 = px(c->pad[0], c->dpi);
+		free(c->links);
+		c->links = NULL;
+		c->nlinks = 0;
+		SetBkMode(dc, TRANSPARENT);
+		HGDIOBJ old = SelectObject(dc, t.fonts[0]);
+		for (int i = 0; i < t.n; i++) {
+			piece *p = &t.ps[i];
+			if (p->skip || p->kind == P_NEWLINE) {
+				continue;
+			}
+			SelectObject(dc, t.fonts[p->font]);
+			COLORREF fg = p->color >= 0 ? RGB((p->color >> 16) & 0xff, (p->color >> 8) & 0xff, p->color & 0xff)
+										: GetSysColor(p->link ? COLOR_HOTLIGHT : COLOR_WINDOWTEXT);
+			SetTextColor(dc, fg);
+			int y = y0 + top[p->line] + asc[p->line] - t.asc[p->font];
+			TextOutW(dc, x0 + p->x, y, p->s, p->len);
+			if (p->link) {
+				c->links = realloc(c->links, sizeof(struct link_at) * (size_t)(c->nlinks + 1));
+				struct link_at *a = &c->links[c->nlinks++];
+				SetRect(&a->r, x0 + p->x, y0 + top[p->line], x0 + p->x + p->w, y0 + top[p->line] + asc[p->line] + desc[p->line]);
+				a->span = p->link;
+			}
+		}
+		SelectObject(dc, old);
+	} else {
+		ReleaseDC(w, dc);
+	}
+	for (int i = 0; i < t.nfonts; i++) {
+		DeleteObject(t.fonts[i]);
+	}
+	free(asc);
+	free(desc);
+	free(top);
+	free(t.ps);
+	free(t.fonts);
+	free(t.asc);
+	free(t.desc);
+	return size;
+}
+
+/* link_under is the span leading where the link a flow drew at x, y does,
+ * or NULL. */
+static HWND link_under(ctl *c, int x, int y) {
+	POINT pt = {x, y};
+	for (int i = 0; i < c->nlinks; i++) {
+		if (PtInRect(&c->links[i].r, pt)) {
+			return c->links[i].span;
+		}
+	}
+	return NULL;
+}
+
 static void measure(HWND w, SIZE *out) {
 	ctl *c = ctl_of(w);
 	SIZE s = {0, 0};
@@ -662,6 +950,24 @@ static void measure(HWND w, SIZE *out) {
 		s.cx = px(c->cw, c->dpi);
 		s.cy = px(c->ch, c->dpi);
 		break;
+	case K_FLOW: {
+		/* Its words on as few lines as their newlines allow, but asking
+		 * for no more than 240 px across, since what it asks for is the
+		 * least a window holding it is sized to: a box down the page
+		 * gives it the whole of its width whatever it asks, and it wraps
+		 * there. As tall as they wrap to at the width it was last laid
+		 * out at. */
+		int most = px(240, c->dpi);
+		s = flow_size(w, c, most, 0);
+		if (s.cx > most) {
+			s.cx = most;
+		}
+		if (c->flow_h > 0) {
+			s.cy = c->flow_h;
+		}
+		break;
+	}
+	case K_SPAN:
 	case K_PICTURE:
 	case K_MODAL:
 	case K_ENTRY:
@@ -908,6 +1214,18 @@ static void place(HWND w, int cw, int ch) {
 	case K_TABS:
 		lay_out_tabs(w, cw, ch);
 		break;
+	case K_FLOW: {
+		/* Its words wrap at its width, and what holds it is laid out
+		 * again where they wrap to another height. */
+		int e = px(c->pad[1] + c->pad[3], c->dpi);
+		int fh = flow_size(w, c, cw - e, 0).cy;
+		if (fh != c->flow_h) {
+			c->flow_h = fh;
+			relayout(w);
+		}
+		InvalidateRect(w, NULL, TRUE);
+		break;
+	}
 	case K_IMAGE:
 		/* Its picture fills it, and paints itself fitted. */
 		for (int i = 0; i < c->nkids; i++) {
@@ -1854,6 +2172,20 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		return 0;
 	case WM_PAINT:
 	case WM_PRINTCLIENT:
+		if (c && c->kind == K_FLOW) {
+			PAINTSTRUCT ps;
+			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
+			if (msg == WM_PRINTCLIENT) {
+				SendMessageW(w, WM_ERASEBKGND, wp, 0);
+			}
+			RECT r;
+			GetClientRect(w, &r);
+			flow_size(w, c, r.right - px(c->pad[1] + c->pad[3], c->dpi), dc);
+			if (msg != WM_PRINTCLIENT) {
+				EndPaint(w, &ps);
+			}
+			return 0;
+		}
 		if (c && c->kind == K_CANVAS) {
 			PAINTSTRUCT ps;
 			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
@@ -1892,6 +2224,14 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 		break;
 	case WM_LBUTTONUP:
+		if (c && c->kind == K_FLOW) {
+			/* A link's words open where it leads. */
+			ctl *link = ctl_of(link_under(c, (short)LOWORD(lp), (short)HIWORD(lp)));
+			if (link && link->href && link->href[0]) {
+				ShellExecuteW(NULL, L"open", link->href, NULL, NULL, SW_SHOWNORMAL);
+			}
+			return 0;
+		}
 		/* A box with a click handler, a clickable card, is pressed as a
 		 * button is. */
 		if (c && c->click.fn) {
@@ -2078,6 +2418,15 @@ static LRESULT CALLBACK control_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp, UIN
 		if (c && c->kind == K_LINK) {
 			SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
 			return TRUE;
+		}
+		if (c && c->kind == K_FLOW) {
+			POINT pt;
+			GetCursorPos(&pt);
+			ScreenToClient(w, &pt);
+			if (link_under(c, pt.x, pt.y)) {
+				SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
+				return TRUE;
+			}
 		}
 		break;
 	}
@@ -2393,6 +2742,8 @@ void sngl_win32_set_href(HWND w, const unsigned short *href) {
 	if (c) {
 		free(c->href);
 		c->href = _wcsdup((const WCHAR *)href);
+		/* A span's, which its flow draws as a link. */
+		touched(w);
 	}
 }
 
@@ -2976,6 +3327,68 @@ int sngl_win32_pick_date(HWND w, const unsigned short *iso) {
 HWND sngl_win32_image(void) { return control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, 0, K_IMAGE); }
 
 HWND sngl_win32_picture(void) { return control(SNGL_BOX_CLASS, 0, 0, K_PICTURE); }
+
+HWND sngl_win32_flow(void) {
+	HWND w = control(SNGL_BOX_CLASS, 0, 0, K_FLOW);
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->sp_color = -1;
+	}
+	return w;
+}
+
+/* A span is a window never shown: what a flow draws is read off it. */
+HWND sngl_win32_span(void) {
+	sngl_win32_init();
+	HWND w = CreateWindowExW(0, SNGL_BOX_CLASS, L"", WS_CHILD, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
+	ctl *c = new_ctl(w, K_SPAN);
+	if (c) {
+		c->sp_color = -1;
+	}
+	return w;
+}
+
+/* touched draws the flow w is in again, and lays it out where its words now
+ * wrap to another height. */
+static void touched(HWND w) {
+	for (HWND at = w; at; at = GetParent(at)) {
+		ctl *c = ctl_of(at);
+		if (!c || (c->kind != K_SPAN && c->kind != K_FLOW)) {
+			return;
+		}
+		if (c->kind == K_FLOW) {
+			InvalidateRect(at, NULL, TRUE);
+			relayout(at);
+			return;
+		}
+	}
+}
+
+static WCHAR *dup16(const unsigned short *s) { return s && s[0] ? _wcsdup((const WCHAR *)s) : NULL; }
+
+void sngl_win32_set_words(HWND w, const unsigned short *words) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		free(c->words);
+		c->words = dup16(words);
+		touched(w);
+	}
+}
+
+void sngl_win32_set_span_style(HWND w, int color, int size, int weight, int slant, int underline, int strike, const unsigned short *family) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->sp_color = color;
+		c->sp_px = size;
+		c->sp_weight = weight;
+		c->sp_slant = slant;
+		c->sp_under = underline;
+		c->sp_strike = strike;
+		free(c->family);
+		c->family = dup16(family);
+		touched(w);
+	}
+}
 
 HWND sngl_win32_canvas(void) {
 	if (!gdiplus) {

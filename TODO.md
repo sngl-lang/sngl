@@ -628,7 +628,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      the generator, the metadata pin, and the layout engine.
    - CLAUDE.md's `codegen/platform/{…}` list.
    - The platform's page in the docs site (`go tool docsgen`).
-8. **After the slice.** Done but for markup.
+8. **After the slice.** Done.
    - Every `sngl:ui` component builds on win32 in C, held to
      `cmd/sngl/testdata/c_win32_controls_runs.txt`:
      - textarea (`ES_MULTILINE`), select (`CBS_DROPDOWNLIST`), progress and
@@ -660,9 +660,10 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      is painted through its protocol, since html's redraw named a local of
      the slot's render; gtk4 in C does not redraw one a write outside the
      slot changes.
-   - **Left: `sngl:ui/markup`.** gtk4's translator assembles a flow's markup
-     from its span tree, since a span is no widget; win32 would want that
-     tree as the runtime's rich edit (`MSFTEDIT_CLASS`) or text it draws.
+   - `sngl:ui/markup`: a flow is a runtime window that wraps and draws the
+     words of the spans it holds, each a window never shown, placed through
+     the protocol (`testdata/win32_c_markup.txtar`, `TestSnapshotMarkup`).
+     An inline image is its description, as on gtk4.
    - Interpreter simulation: `--simulate win32` runs the platform's
      overrides and protocol over the interpreter's stubs for every
      `#[cnative]`, as gtk4's does (`cmd/sngl/testdata/simulate_win32.txt`).

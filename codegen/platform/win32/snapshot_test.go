@@ -127,6 +127,71 @@ ui.window(title="Canvas") {
 	}
 }
 
+// TestSnapshotMarkup is a flow of rich text, which the runtime wraps and
+// draws itself: a paragraph too long for its width wraps onto lines of its
+// own, a keyword token is drawn in the light palette's red and a link in the
+// system's link color.
+func TestSnapshotMarkup(t *testing.T) {
+	const src = `import ui "sngl:ui"
+import markup "sngl:ui/markup"
+
+output {
+    c {
+        win32
+    }
+}
+
+ui.window(title="Markup") {
+    markup.paragraph {
+        markup.token(kind=markup.Token.keyword) {
+            markup.text("func")
+        }
+        markup.text(" leads a paragraph long enough that it cannot fit on one line of the window, so it wraps onto several, and then a ")
+        markup.link(href="https://example.com") {
+            markup.text("link")
+        }
+    }
+}
+`
+	img := snapshot(t, src, 300, 120)
+	if img == nil {
+		return
+	}
+	b := img.Bounds()
+	// The bands of rows text is drawn in, each a line.
+	lines, inLine := 0, false
+	keyword, link := false, false
+	for y := range b.Dy() {
+		inked := false
+		for x := range b.Dx() {
+			r, g, bl, _ := img.At(x, y).RGBA()
+			r, g, bl = r>>8, g>>8, bl>>8
+			if r < 120 && g < 120 && bl < 120 {
+				inked = true
+			}
+			if r > 180 && g < 80 && bl < 80 {
+				keyword = true
+			}
+			if bl > 150 && r < 100 && bl > g+40 {
+				link = true
+			}
+		}
+		if inked && !inLine {
+			lines++
+		}
+		inLine = inked
+	}
+	if lines < 3 {
+		t.Errorf("the paragraph is drawn on %d lines, not wrapped onto three or more", lines)
+	}
+	if !keyword {
+		t.Error("the keyword is not drawn in the palette's red")
+	}
+	if !link {
+		t.Error("the link is not drawn in the system's link color")
+	}
+}
+
 // snapshot is src's window as `sngl snapshot` draws it, width by height,
 // under Wine; nil where its record says the program has not changed since it
 // last ran. A run is recorded in testdata/snapshot_runs, by the test's name:
