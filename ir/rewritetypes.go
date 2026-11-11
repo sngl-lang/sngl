@@ -25,7 +25,7 @@ import (
 // scheme's package, which the build makes, is rewritten with the program. win32's placement retyped `sngl:ui/draw`'s once
 // `sngl:platform/win32/api` imported `sngl:language/go`.
 func RewriteTypes(root any, f func(*Type) *Type) {
-	w := &typeRewriter{seen: map[uintptr]bool{}, f: f}
+	w := &typeRewriter{seen: map[uintptr]bool{}, f: f, plans: map[reflect.Type]*rewritePlan{}}
 	if p, ok := root.(*Package); ok {
 		w.root = p
 	}
@@ -38,6 +38,42 @@ type typeRewriter struct {
 	seen map[uintptr]bool
 	f    func(*Type) *Type
 	root *Package
+	// plans is each struct type's rewritePlan, made the first time the walk
+	// meets the type: asked per value, the field checks were most of a
+	// golden's lowering.
+	plans map[reflect.Type]*rewritePlan
+}
+
+// rewritePlan is what the walk visits of one struct type: the exported
+// fields that can hold a *Type, less a declaration's package and a reference
+// the cloner shares, and the index of its Frozen flag (promoted from
+// DeclInfo, on a declaration), or nil.
+type rewritePlan struct {
+	fields []int
+	frozen []int
+}
+
+func (w *typeRewriter) planFor(t reflect.Type) *rewritePlan {
+	if p, ok := w.plans[t]; ok {
+		return p
+	}
+	p := &rewritePlan{}
+	if f, ok := t.FieldByName("Frozen"); ok && f.Type.Kind() == reflect.Bool {
+		p.frozen = f.Index
+	}
+	kinds := planOf(t)
+	for i := range t.NumField() {
+		f := t.Field(i)
+		if !f.IsExported() || kinds[i] == fieldDeclPkg || kinds[i] == fieldShare {
+			continue
+		}
+		switch f.Type.Kind() {
+		case reflect.Pointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Array, reflect.Map:
+			p.fields = append(p.fields, i)
+		}
+	}
+	w.plans[t] = p
+	return p
 }
 
 func (w *typeRewriter) walk(v reflect.Value) {
@@ -56,8 +92,8 @@ func (w *typeRewriter) walk(v reflect.Value) {
 		}
 		w.seen[v.Pointer()] = true
 		e := v.Elem()
-		if e.Kind() == reflect.Struct {
-			if fz := e.FieldByName("Frozen"); fz.IsValid() && fz.Kind() == reflect.Bool && fz.Bool() {
+		if e.Kind() == reflect.Struct && isIRType(e.Type()) {
+			if i := w.planFor(e.Type()).frozen; i != nil && e.FieldByIndex(i).Bool() {
 				return
 			}
 		}
@@ -70,17 +106,11 @@ func (w *typeRewriter) walk(v reflect.Value) {
 		if !isIRType(v.Type()) {
 			return
 		}
-		for i := range v.NumField() {
-			fv := v.Field(i)
-			if !v.Type().Field(i).IsExported() {
-				continue
-			}
-			// A declaration's package is where it came from, not part of it,
-			// and a reference the cloner shares is no clone's to write.
-			if kind := planOf(v.Type())[i]; kind == fieldDeclPkg || kind == fieldShare {
-				continue
-			}
-			w.slot(fv)
+		// A declaration's package is where it came from, not part of it,
+		// and a reference the cloner shares is no clone's to write
+		// (planFor).
+		for _, i := range w.planFor(v.Type()).fields {
+			w.slot(v.Field(i))
 		}
 	case reflect.Slice, reflect.Array:
 		for i := range v.Len() {
