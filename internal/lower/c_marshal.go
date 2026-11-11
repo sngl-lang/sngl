@@ -393,3 +393,14 @@ func exprBody(fn *ir.Func) ir.Expr {
 	}
 	return nil
 }
+
+// CWrappers lowers the bodies of Go functions wrapping C functions (sngl
+// tool cgogen), which call a C function and nothing else: each argument
+// converted as passCMarshal converts it, and a ternary a conversion writes
+// (`c.cbool`) made statements, since Go has none.
+func CWrappers(pkg *ir.Package) error {
+	if err := CMarshal(pkg); err != nil {
+		return err
+	}
+	return lowerTernary(pkg, Features{}, Options{})
+}

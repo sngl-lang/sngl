@@ -60,10 +60,10 @@ func callbackCType(t *ir.Type) *ir.CType {
 	return &ir.CType{Name: "int"}
 }
 
-// callbacksSource is the Go file exporting a dispatcher for each of sigs, in
+// CallbacksSource is the Go file exporting a dispatcher for each of sigs, in
 // package pkgName, its preamble including what links does so a pointer
 // type's C name resolves. Nil where there is no callback.
-func callbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig) []byte {
+func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig) []byte {
 	byName := map[string]*ir.FuncSig{}
 	for _, s := range sigs {
 		byName[callbackName(s)] = s

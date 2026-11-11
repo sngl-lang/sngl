@@ -2,24 +2,29 @@
 
 import c "sngl:x/c"
 import macro "sngl:macro"
+import go "sngl:language/go"
 
 c.link(include="windows.h", system=true, library="user32", ldflags=["-luser32", "-lgdi32", "-lcomctl32"])
 
 // --- Handles ---
 
 #[macro.cnative("HBRUSH")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.HBRUSH")]
 struct HBRUSH {}
 
 #[macro.cnative("HDC")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.HDC")]
 struct HDC {}
 
 #[macro.cnative("HGDIOBJ")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.HGDIOBJ")]
 struct HGDIOBJ {}
 
 #[macro.cnative("HMODULE")]
 struct HMODULE {}
 
 #[macro.cnative("HWND")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.HWND")]
 struct HWND {}
 
 // --- Scalars ---
@@ -776,75 +781,95 @@ const WS_VSCROLL = 2097152
 // --- Functions ---
 
 #[macro.cnative("DestroyWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DestroyWindow")]
 func DestroyWindow(hWnd HWND) WINBOOL
 
 #[macro.cnative("EnableWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.EnableWindow")]
 func EnableWindow(hWnd HWND, bEnable bool) WINBOOL
 
 #[macro.cnative("GetClientRect")]
 func GetClientRect(hWnd HWND, lpRect ref[RECT]) WINBOOL
 
 #[macro.cnative("GetFocus")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetFocus")]
 func GetFocus() HWND
 
 #[macro.cnative("GetModuleHandleW")]
 func GetModuleHandle(lpModuleName option[c.utf16]) HMODULE
 
 #[macro.cnative("GetParent")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetParent")]
 func GetParent(hWnd HWND) HWND
 
 #[macro.cnative("GetSysColor")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetSysColor")]
 func GetSysColor(nIndex int) DWORD
 
 #[macro.cnative("GetSystemMetrics")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetSystemMetrics")]
 func GetSystemMetrics(nIndex int) int
 
 #[macro.cnative("GetWindowRect")]
 func GetWindowRect(hWnd HWND, lpRect ref[RECT]) WINBOOL
 
 #[macro.cnative("GetWindowTextLengthW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetWindowTextLengthW")]
 func GetWindowTextLength(hWnd HWND) int
 
 #[macro.cnative("IsWindowEnabled")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.IsWindowEnabled")]
 func IsWindowEnabled(hWnd HWND) WINBOOL
 
 #[macro.cnative("IsWindowVisible")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.IsWindowVisible")]
 func IsWindowVisible(hWnd HWND) WINBOOL
 
 #[macro.cnative("MoveWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.MoveWindow")]
 func MoveWindow(hWnd HWND, X int, Y int, nWidth int, nHeight int, bRepaint bool) WINBOOL
 
 #[macro.cnative("PostMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.PostMessageW")]
 func PostMessage(hWnd HWND, Msg UINT, wParam WPARAM, lParam LPARAM) WINBOOL
 
 #[macro.cnative("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendMessageW")]
 func SendMessage(hWnd HWND, Msg UINT, wParam WPARAM, lParam LPARAM) LRESULT
 
 #[macro.cnative("SetFocus")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetFocus")]
 func SetFocus(hWnd HWND) HWND
 
 #[macro.cnative("SetWindowTextW")]
 func SetWindowText(hWnd HWND, lpString option[c.utf16]) WINBOOL
 
 #[macro.cnative("ShowWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ShowWindow")]
 func ShowWindow(hWnd HWND, nCmdShow int) WINBOOL
 
 #[macro.cnative("UpdateWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.UpdateWindow")]
 func UpdateWindow(hWnd HWND) WINBOOL
 
 #[macro.cnative("CreateSolidBrush")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.CreateSolidBrush")]
 func CreateSolidBrush(color COLORREF) HBRUSH
 
 #[macro.cnative("DeleteObject")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DeleteObject")]
 func DeleteObject(ho HGDIOBJ) WINBOOL
 
 #[macro.cnative("SetBkColor")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetBkColor")]
 func SetBkColor(hdc HDC, color COLORREF) COLORREF
 
 #[macro.cnative("SetBkMode")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetBkMode")]
 func SetBkMode(hdc HDC, mode int) int
 
 #[macro.cnative("SetTextColor")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetTextColor")]
 func SetTextColor(hdc HDC, color COLORREF) COLORREF
 
 // Not written, each staying in the platform's C runtime where it is called:

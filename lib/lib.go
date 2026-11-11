@@ -44,6 +44,10 @@ import (
 //go:embed */*.sngl */*/*.sngl */*/*/*.sngl platform/gtk4/rt platform/win32/rt
 var FS embed.FS
 
+// The Go package wrapping win32's C declarations, platform/win32/cgo, and the
+// go.native marks beside them (internal/cgogen).
+//go:generate go run ../cmd/sngl tool cgogen sngl:platform/win32 --goos windows
+
 // Packages returns the embedded package paths, sorted. A directory holding
 // .sngl files is a package, at whatever depth — lib/internal/stdlib is
 // `sngl:internal/stdlib`. Order is not load order: packages import each

@@ -98,7 +98,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		if out == nil {
 			out = map[string][]byte{}
 		}
-		out[callbacksFile] = callbacksSource(name, links, sigs)
+		out[callbacksFile] = CallbacksSource(name, links, sigs)
 	}
 	return out, nil
 }

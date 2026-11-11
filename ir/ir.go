@@ -547,6 +547,10 @@ type CLink struct {
 // that name, and what it holds.
 type CSource struct {
 	Name string
+	// Path is the file as the c.link names it, relative to the file the
+	// link is written in: what a wrapper package beside it includes it by
+	// (sngl tool cgogen).
+	Path string `json:",omitempty"`
 	Text string `json:"-"`
 }
 
@@ -774,6 +778,24 @@ type Foreign struct {
 	// function converts to, parsed from Name. Nil for a C function, whose
 	// Name is the identifier to call.
 	C *CType
+	// Also is the declaration's spelling in each other language that has
+	// one: today a Go wrapper's (`#[go.native]`) beside a C declaration's,
+	// which stays the primary, since every C pass reads it there. In finds
+	// either.
+	Also []Foreign `json:",omitempty"`
+}
+
+// In is the declaration's spelling in scheme, or nil where it has none.
+func (f *Foreign) In(scheme string) *Foreign {
+	if f.Name != "" && f.Scheme == scheme {
+		return f
+	}
+	for i := range f.Also {
+		if f.Also[i].Scheme == scheme {
+			return &f.Also[i]
+		}
+	}
+	return nil
 }
 
 // Func represents any function: top-level, type-attached method, or lambda.

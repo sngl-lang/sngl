@@ -42,7 +42,7 @@ spec instead.
 - `design/plugins.md` — plugin principles and known gaps
 - `design/import-schemes.md` — plugin schemes, `c:` and `openapi:`
 - `design/navigation.md` — `sngl:ui/nav` on each target
-- `design/win32.md` — win32gen and its metadata pin, the win32 runtime's layout
+- `design/win32.md` — win32gen and its metadata pin, the Go wrappers (`sngl tool cgogen`), the win32 runtime's layout
 - `design/types.md` — anonymous and generic structs, constraint functions and aliases, monomorphization, units and their display, member lookup
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach
 - `design/performance.md` — profiling, the store (`internal/gencache`), what costs

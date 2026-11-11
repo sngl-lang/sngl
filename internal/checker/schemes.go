@@ -513,7 +513,7 @@ func (c *checker) readCSource(pos ast.Pos, name string) (ir.CSource, error) {
 	if err != nil {
 		return ir.CSource{}, err
 	}
-	return ir.CSource{Name: path.Base(clean), Text: string(data)}, nil
+	return ir.CSource{Name: path.Base(clean), Path: clean, Text: string(data)}, nil
 }
 
 // reportUnlinkedCNativeCalls refuses a call of a program's `#[cnative]`

@@ -938,8 +938,21 @@ func markConstruct(m *mark) error {
 // on one declaration kept whichever ran last, silently, and the *Go* output
 // said `Math.PI`. A value each language spells differently is an
 // `#[marks.intrinsic]`, which is what `math.sin` already is.
+//
+// The one pair kept is a C declaration and its Go wrapper (sngl tool
+// cgogen): the C spelling stays the primary, whichever is written first,
+// and the Go one is in Foreign.Also.
 func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
 	if dst.Name != "" {
+		c, wrapper := *dst, fm
+		if fm.Scheme == "c" {
+			c, wrapper = fm, *dst
+		}
+		if c.Scheme == "c" && wrapper.Scheme == "go" && len(c.Also) == 0 && len(wrapper.Also) == 0 {
+			c.Also = []ir.Foreign{wrapper}
+			*dst = c
+			return nil
+		}
 		return fmt.Errorf("#[native(%q)] is a second host identity; %q already names this declaration's, and a declaration names one identifier", name, dst.Name)
 	}
 	*dst = fm

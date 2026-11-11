@@ -727,14 +727,61 @@ what someone wrapped, and win32's Go path would need the same again.
   call C directly from Go first and move over later; its Go path is built on
   the generated wrappers, and gtk4 moves onto them after.
 
+### The steps
+
+1. **`ir.Foreign` names one spelling per language.** Done. A second native mark
+   of another scheme is kept in `Foreign.Also` rather than refused, and
+   `Foreign.In(scheme)` finds either. The C spelling stays the primary,
+   whichever mark comes first, since every C pass reads it there.
+2. **The tool: `internal/cgogen`, run as `sngl tool cgogen`.** Done
+   (`design/win32.md`), for a library package; a user's package of
+   `cnative` declarations is still to come, and so are wrappers for a `ref`
+   or an `option` parameter.
+   - It loads a package, and wraps each `#[cnative]` function that is no
+     cast, once per C name, in a Go function named for it
+     (`sngl_win32_append` → `SnglWin32Append`). Each handle type and C
+     struct the functions cross becomes an exported Go type in the same
+     package: a handle is an alias of cgo's (`type HWND = C.HWND`), and a
+     struct is the program's own Go struct.
+   - **A wrapper's body is direct mode's call.** The tool makes a SNGL
+     function for each wrapper whose body calls the declaration, runs
+     `lower.CMarshal` over them, and writes the package with the Go
+     language's own emitter. So a string, a struct, a `ref` and a callback
+     cross exactly as they do in a direct call. A callback's dispatcher and
+     its context table are written into the wrapper package, which answers
+     the first open question below. Strings are converted inside the
+     wrapper, which answers half of the second: a program in `wrapper`
+     mode has no `import "C"`, so nothing converts them in the program.
+   - The cgo preamble is the package's `c.link`: its flags, its include,
+     and a `.c` file per source that includes it from where it is, since
+     cgo compiles only the `.c` files in the package's own directory.
+     Both are behind the platform's `GOOS` where it has one (`windows`).
+   - It writes `#[go.native(path, name)]` beside each `cnative` mark in the
+     package's `.sngl` files, and is kept current by `go generate`. A test
+     regenerates both and compares them with what is committed, and builds
+     the package with MinGW for both architectures.
+3. **The Go language calls a wrapper.** A lowering pass for Go in `wrapper`
+   mode makes each declaration's Go spelling its primary one. Then
+   `passCMarshal` leaves the call alone, being no C call now, and Go writes
+   it as it writes any `go.native` call: a call into the wrapper package,
+   with a handle or a C struct being the wrapper's type. A cast between
+   two handle types, both the same Go type now, is the value itself.
+4. **A placed program in Go** (`golang.WriteProgram`), as C's: each package
+   var, each function, and the package body as `snglBuild`, and the
+   platform writes the entry.
+5. **win32 in Go.** `SupportedLangs` is `{"go", "c"}`; the entry calls the
+   runtime's loop through the wrappers; `go.buildModule` cross-compiles
+   (Part 3, step 5); the program's carried files reach the runtime through
+   a call rather than the `sngl_win32_assets` array C links; `sngl test`
+   and `sngl snapshot` in Go, and the win32 scripts and goldens recorded
+   in both languages.
+6. **gtk4 onto the wrappers**, its `cgo=true` becoming the `direct`,
+   `wrapper` or `purego` enum, and then `purego`.
+
 ### Open questions
 
-- How a callback (`#[c.context]`, `#[c.release]`) crosses a wrapper: gtk4rt
-  registers Go handlers through `cbind` today, which the generator would
-  have to write.
 - What a wrapper costs per call against direct cgo, which is one cgo call
-  either way, and whether strings should be converted inside the wrapper
-  (as gtk4rt does) rather than by `CMarshal` in the program.
+  either way.
 - What `purego` cannot reach: a struct passed by value, a callback's
   context, and a macro (`GetWindowLongPtrW` on 386) each need checking
   against its limits.

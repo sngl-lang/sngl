@@ -74,15 +74,15 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type Result__Response struct {
-	tag    int
-	Ok     Response
-	Failed Failure
-}
-
 type Result__string struct {
 	tag    int
 	Ok     string
+	Failed Failure
+}
+
+type Result__Response struct {
+	tag    int
+	Ok     Response
 	Failed Failure
 }
 
@@ -526,4 +526,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:547073ea8313b7291b513d81c0f3601b
+pass sha256:3912bcb46f61d2f6c6160d2031d51529

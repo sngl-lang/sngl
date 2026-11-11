@@ -1,7 +1,7 @@
 # win32
 
-How `sngl:platform/win32` gets its Win32 declarations and lays its controls
-out. What the platform is and how it builds, runs, tests and draws is its
+How `sngl:platform/win32` gets its Win32 declarations, wraps them for Go and
+lays its controls out. What the platform is and how it builds, runs, tests and draws is its
 bullet in `design/architecture.md`'s *Platform Details*; placement, the
 canvas's protocol and test triggers are `design/nodes.md`; rich text is
 `design/markup.md`.
@@ -85,6 +85,43 @@ That is also where everything goes that interop does not reach at all:
 The SNGL in `win32.sngl` calls `api.sngl` for what a single Win32 call does
 (`SetWindowText`, `ShowWindow`, `SendMessage` with a generated `BM_SETCHECK`)
 and the runtime for the rest.
+
+## The Go wrappers: `sngl tool cgogen`
+
+**A Go program calls C through a package that never changes.** Cgo runs over
+every package that imports `"C"`, so a program calling C directly paid for it
+on each build. `sngl tool cgogen sngl:platform/win32` (`internal/cgogen`, run
+by `go generate ./lib`) writes `lib/platform/win32/cgo`: one exported Go
+function per C function the platform and `api` declare, named for it
+(`sngl_win32_append` is `SnglWin32Append`), and the Go type each handle and C
+struct they cross is (`type HWND = C.HWND`, `type Look struct`). Both SNGL
+packages go into one Go package, because a handle is a type of the cgo
+package declaring it, and `C.HWND` in two packages is two types.
+
+**A wrapper's body is the call a direct one makes.** The tool builds a SNGL
+function per wrapper whose body calls the declaration, lowers it with
+`lower.CWrappers` (`passCMarshal`'s conversions, and no ternary), and writes it
+with the Go language's own emitter. So a string, a struct and a callback cross
+as they do in direct mode, and the callbacks' dispatchers are written into the
+wrapper package (`callbacks.go`). A declaration with a `ref` or an `option`
+parameter has no wrapper yet; the file lists each, with why.
+
+**Each declaration names its wrapper.** The tool writes
+`#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]`
+beside each wrapped `cnative` mark, and `ir.Foreign.Also` keeps it beside the
+C spelling, which stays the primary (`claimForeign`). A declaration's position
+is its first mark's line, which is how the tool finds where to write it.
+Rerunning `win32gen` drops the marks from `api.sngl`; `go generate ./lib`
+writes them again.
+
+**Its test holds both, and builds the package.** `TestCommitted` regenerates
+the package and the marks and compares them with what is committed;
+`TestBuilds` builds the package with both MinGW compilers, recorded in
+`internal/cgogen/testdata/builds/<arch>` as a digest of the package, the
+runtime it includes and `pkg/go/cbind`. The package's files are behind
+`//go:build windows`, since `windows.h` is no other system's, and its `.c`
+file includes `rt/sngl_win32.c` from where it is, because cgo compiles only
+the `.c` files of the package's own directory.
 
 ## The runtime's layout
 

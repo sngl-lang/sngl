@@ -23,6 +23,11 @@ func (c *converter) foreignAttrs(f Foreign, fn *Func) []ast.MacroAttr {
 	if a, ok := c.correspondenceAttr(f, fn); ok {
 		out = append(out, a)
 	}
+	for _, also := range f.Also {
+		if a, ok := c.correspondenceAttr(also, nil); ok {
+			out = append(out, a)
+		}
+	}
 	if f.Unusable != "" {
 		// Language-neutral, and deliberately a second mark rather than a flag:
 		// a flag carries no payload and the reason is the point.

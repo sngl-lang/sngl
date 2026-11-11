@@ -1,6 +1,9 @@
 package ir
 
-import "reflect"
+import (
+	"reflect"
+	"strings"
+)
 
 // RewriteTypes replaces, in place, every *Type held anywhere in the IR
 // reachable from root -- a field, a slice element, a map value -- with f of
@@ -14,14 +17,27 @@ import "reflect"
 //
 // A frozen declaration is left alone, and nothing under it is visited: it is
 // a library load's, which every check and every build share (see Freeze).
+// So is a package other than root that is the library's or frozen: a
+// namespace a call names holds the library package it imports, and through
+// that package's imports and overrides a node instance, which no Frozen flag
+// guards, reaches a library slot. A target's package is not frozen until a
+// check merges its overrides, so the path says it is the library's. A
+// scheme's package, which the build makes, is rewritten with the program. win32's placement retyped `sngl:ui/draw`'s once
+// `sngl:platform/win32/api` imported `sngl:language/go`.
 func RewriteTypes(root any, f func(*Type) *Type) {
 	w := &typeRewriter{seen: map[uintptr]bool{}, f: f}
+	if p, ok := root.(*Package); ok {
+		w.root = p
+	}
 	w.walk(reflect.ValueOf(root))
 }
+
+var packagePtrType = reflect.TypeFor[*Package]()
 
 type typeRewriter struct {
 	seen map[uintptr]bool
 	f    func(*Type) *Type
+	root *Package
 }
 
 func (w *typeRewriter) walk(v reflect.Value) {
@@ -29,6 +45,11 @@ func (w *typeRewriter) walk(v reflect.Value) {
 	case reflect.Pointer:
 		if v.IsNil() || !isIRType(v.Type().Elem()) || v.Type() == typePtrType {
 			return
+		}
+		if v.Type() == packagePtrType {
+			if p := v.Interface().(*Package); p != w.root && (p.Frozen || strings.HasPrefix(p.Path, "sngl:")) {
+				return
+			}
 		}
 		if w.seen[v.Pointer()] {
 			return
