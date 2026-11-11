@@ -546,6 +546,7 @@ static cairo_line_join_t s_platform_gtk4__lineJoin(int64_t join) {
 
 static void s___lambda1(s___lambda1_caps state) {
 	state.hits->value += 1;
+	gtk_widget_queue_draw(GTK_WIDGET(s_board));
 }
 
 static void s_x_c__free(char * s) {
@@ -695,4 +696,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:bcbfba423493c3364ebda592055f9763
+pass sha256:b97b4b44ce421cb45f5a7e36e3f03fc5

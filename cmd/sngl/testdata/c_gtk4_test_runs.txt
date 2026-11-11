@@ -1136,7 +1136,7 @@ sha256:3f59ad152b8309abe306d5093c0e39ce
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:a986f24ab8f6b9933b2b0a68e85221b3
+sha256:4269120a3b0855206512d3bc4c14d9c4
 {
   "results": [
     {
