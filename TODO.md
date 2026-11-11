@@ -628,7 +628,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      the generator, the metadata pin, and the layout engine.
    - CLAUDE.md's `codegen/platform/{…}` list.
    - The platform's page in the docs site (`go tool docsgen`).
-8. **After the slice.** Done but for markup and simulation.
+8. **After the slice.** Done but for markup.
    - Every `sngl:ui` component builds on win32 in C, held to
      `cmd/sngl/testdata/c_win32_controls_runs.txt`:
      - textarea (`ES_MULTILINE`), select (`CBS_DROPDOWNLIST`), progress and
@@ -663,9 +663,14 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
    - **Left: `sngl:ui/markup`.** gtk4's translator assembles a flow's markup
      from its span tree, since a span is no widget; win32 would want that
      tree as the runtime's rich edit (`MSFTEDIT_CLASS`) or text it draws.
-   - **Left: interpreter simulation** (`--simulate win32`). gtk4's runs its
-     protocol functions over a fake GTK in the interpreter; win32's
-     `#[cnative]` calls have no such fake.
+   - Interpreter simulation: `--simulate win32` runs the platform's
+     overrides and protocol over the interpreter's stubs for every
+     `#[cnative]`, as gtk4's does (`cmd/sngl/testdata/simulate_win32.txt`).
+     A string win32 is handed is a `c.utf16` the turn's arena holds, so the
+     leak tracker has none of its strings to follow. What `--simulate` does
+     not do on either target is a test's trigger an override relays from an
+     event of its own (`@input` from an edit's change), a select's pick or a
+     timer's tick.
    - A `winmd:` import scheme, if a program wants to declare a Win32 call
      the committed file does not hold. It is not needed for the platform
      itself.
