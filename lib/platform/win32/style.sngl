@@ -4,22 +4,22 @@ import ui "sngl:ui"
 // paints it by. Win32 itself styles no control past its font and the colors
 // its parent answers WM_CTLCOLOR* with, and lays out nothing, so what the
 // runtime's layout reads -- a box's gap and padding, a node's flex share and
-// least size, and whether its display hides it -- is the rest.
+// least size, and whether its display hides it -- is the rest. A control
+// draws in the system's message font, sized by fontSize alone; fontFamily,
+// fontWeight and fontStyle reach only a flow of rich text, which draws its
+// words itself (`baseOf`).
 
 // What a Style may say that this platform does not answer yet:
 //
 //   - margin and its sides: the runtime's box gives each child the room it
 //     measures and no more; a padding on the box is the room around them.
-//   - width, maxWidth, maxHeight: a node is its measured size or larger,
-//     never fixed or capped.
+//   - maxWidth, maxHeight: a node is its measured size or larger, never
+//     capped; a width or a height is the least it is, as a minWidth is.
 //   - flexDirection: vbox and hbox are the axis.
 //   - alignItems, justifyContent: a box stretches each child across it and
 //     starts at its own start.
 //   - position, top, bottom, left, right, zIndex: the runtime lays children
 //     out itself, with no flow to take one out of and no offsets.
-//   - fontFamily, fontWeight, fontStyle: a control draws in the system's
-//     message font, sized by fontSize alone; only a flow of rich text,
-//     which draws its words itself, reads them (`baseOf`).
 //   - textAlign, maxLines, whiteSpace: a STATIC control draws its text from
 //     the left, every line of it.
 //   - borderRadius, borderColor, borderWidth, border, borderBottom,
@@ -36,7 +36,6 @@ const unstyled list[string] = [
     "marginLeft",
     "marginX",
     "marginY",
-    "width",
     "maxWidth",
     "maxHeight",
     "flexDirection",
@@ -48,9 +47,6 @@ const unstyled list[string] = [
     "left",
     "right",
     "zIndex",
-    "fontFamily",
-    "fontWeight",
-    "fontStyle",
     "textAlign",
     "maxLines",
     "whiteSpace",
@@ -100,7 +96,7 @@ const func lookOf(s ui.Style) Look {
         padRight = side(s.padding, s.paddingX, s.paddingRight),
         padBottom = side(s.padding, s.paddingY, s.paddingBottom),
         padLeft = side(s.padding, s.paddingX, s.paddingLeft),
-        minWidth = inset(s.minWidth),
+        minWidth = int.max(inset(s.width), inset(s.minWidth)),
         minHeight = inset(s.height),
         color = rgb(s.color),
         background = rgb(s.background),

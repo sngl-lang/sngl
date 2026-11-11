@@ -469,9 +469,10 @@ func _set_Spacer_look(s Spacer, look Look) {
 
 // --- Controls ---
 
-// A STATIC control, its text on one line per line it holds.
+// A STATIC control, its text on one line per line it holds, which reports a
+// click on it.
 #[marks.intrinsic("win32:Text")]
-component Text(value string, look Look) ui.node
+component Text(value string, look Look, @click()) ui.node
 
 #[macro.cnative("sngl_win32_text")]
 func _rtText() Text
@@ -489,6 +490,16 @@ func _set_Text_value(t Text, value string) {
 #[gen.protocol(set)]
 func _set_Text_look(t Text, look Look) {
     _look(t, look)
+}
+
+#[gen.protocol(on)]
+func _on_Text_click(t Text, click func()) {
+    _rtOnClick(t, click)
+}
+
+#[gen.fires("click")]
+func _fire_Text_click(t Text) {
+    _rtFireClick(t)
 }
 
 // A push button.
@@ -1840,8 +1851,8 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
     }
 }
 
-const component ui.text[platform](value, style) {
-    Text(value=value, look=lookOf(style)) {}
+const component ui.text[platform](value, style, @click) {
+    Text(value=value, look=lookOf(style), @click { click() }) {}
 }
 
 const component ui.button[platform](text, focusable, style, @click) {

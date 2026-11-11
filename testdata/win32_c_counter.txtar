@@ -62,6 +62,9 @@ typedef struct s_builtin__color s_builtin__color;
 typedef struct sngl_opt_color sngl_opt_color;
 typedef struct s_platform_win32__Look s_platform_win32__Look;
 typedef struct sngl_list_float sngl_list_float;
+typedef struct sngl_list_int sngl_list_int;
+typedef struct sngl_fn_void__void sngl_fn_void__void;
+typedef struct sngl_lambda7_env sngl_lambda7_env;
 typedef struct sngl_opt_HWND sngl_opt_HWND;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
@@ -69,7 +72,6 @@ typedef struct s___lambda2_caps s___lambda2_caps;
 typedef struct s___lambda3_caps s___lambda3_caps;
 typedef struct s___lambda4_caps s___lambda4_caps;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
-typedef struct sngl_fn_void__void sngl_fn_void__void;
 
 typedef struct s___ref_int {
 	int64_t value;
@@ -203,6 +205,21 @@ typedef struct sngl_list_float {
 	int64_t cap;
 } sngl_list_float;
 
+typedef struct sngl_list_int {
+	int64_t *data;
+	int64_t len;
+	int64_t cap;
+} sngl_list_int;
+
+typedef struct sngl_fn_void__void {
+	void (*fn)(void *env);
+	void *env;
+} sngl_fn_void__void;
+
+typedef struct sngl_lambda7_env {
+	char unused;
+} sngl_lambda7_env;
+
 typedef struct sngl_opt_HWND {
 	bool ok;
 	HWND value;
@@ -238,11 +255,6 @@ typedef struct sngl_fn_bool__void {
 	void *env;
 } sngl_fn_bool__void;
 
-typedef struct sngl_fn_void__void {
-	void (*fn)(void *env);
-	void *env;
-} sngl_fn_void__void;
-
 
 static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t otherwise);
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s);
@@ -257,6 +269,7 @@ static void s___effects0_settle(void);
 static void s___renderSlot0(HWND parent);
 static void sngl_list_HWND__drop(sngl_list_HWND v);
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v);
+static void sngl_lambda7(void *env_);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
 static void s___lambda1(s___lambda1_caps state);
 static void s___lambda2(s___lambda2_caps state);
@@ -275,6 +288,21 @@ static double sngl_list_float_max(double m, sngl_list_float l) {
 static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
+	return l;
+}
+
+static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
+	for (int64_t i = 0; i < l.len; i++) {
+		if (l.data[i] > m) {
+			m = l.data[i];
+		}
+	}
+	return m;
+}
+
+static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
+	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
+	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
 	return l;
 }
 
@@ -348,6 +376,17 @@ static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
 	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	free(ctx);
+}
+
 static HWND *sngl_list_HWND_at(sngl_list_HWND l, int64_t i) {
 	if (i < 0 || i >= l.len) {
 		sngl_panic("index out of range");
@@ -400,19 +439,8 @@ static void sngl_dispatch_bool__void(bool a0, void *ctx) {
 	sngl_call_leave(m);
 }
 
-static void sngl_release(void *ctx) {
-	free(ctx);
-}
-
 static void s___lambda1__fn(void *env) {
 	s___lambda1(*(s___lambda1_caps *)env);
-}
-
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
 }
 
 static void s___lambda2__fn(void *env) {
@@ -461,7 +489,7 @@ static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t
 }
 
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
-	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = (!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .minHeight = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
+	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = sngl_list_int_max((!(s.width).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.width).value.px + (16.0 * ((s.width).value.em + (s.width).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), sngl_list_int_of(1, (int64_t[]){(!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0}))))})), .minHeight = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
 	return look;
 }
 
@@ -545,9 +573,9 @@ static void s___renderSlot0(HWND parent) {
 		s___rendering0 = true;
 		s___renderAgain0 = true;
 		{
-			sngl_catch __finally8 = {.up = sngl_catching};
-			sngl_catching = &__finally8;
-			if (setjmp(__finally8.at) == 0) {
+			sngl_catch __finally9 = {.up = sngl_catching};
+			sngl_catching = &__finally9;
+			if (setjmp(__finally9.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
 					sngl_list_HWND __place0_prev = s___slot0;
@@ -561,6 +589,7 @@ static void s___renderSlot0(HWND parent) {
 						HWND __n2 = sngl_win32_text();
 						sngl_win32_set_text(__n2, (const unsigned short *)sngl_utf16(SNGL_STR("Big")));
 						sngl_win32_set_look(__n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+						sngl_win32_on_click(__n2, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){((sngl_fn_void__void){sngl_lambda7, NULL})}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){0});
 						if (__place0_i < (__place0_prev).len) {
 							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
@@ -576,19 +605,19 @@ static void s___renderSlot0(HWND parent) {
 						}
 						sngl_list_HWND_push_kept(&(s___slot0), __n2);
 					}
-					for (struct { sngl_list_HWND l; int64_t i; } __loop7 = {__place0_prev, 0}; __loop7.i < __loop7.l.len; __loop7.i++) { HWND __place0_prev_e = __loop7.l.data[__loop7.i];
+					for (struct { sngl_list_HWND l; int64_t i; } __loop8 = {__place0_prev, 0}; __loop8.i < __loop8.l.len; __loop8.i++) { HWND __place0_prev_e = __loop8.l.data[__loop8.i];
 						if (sngl_list_HWND_index_of(s___slot0, __place0_prev_e) < 0) {
 							sngl_win32_remove(parent, __place0_prev_e);
 						}
 					}
 				}
-				sngl_catching = __finally8.up;
+				sngl_catching = __finally9.up;
 				s___rendering0 = false;
 			} else {
-				__finally8.message = sngl_raised.message;
-				__finally8.kind = sngl_raised.kind;
+				__finally9.message = sngl_raised.message;
+				__finally9.kind = sngl_raised.kind;
 				s___rendering0 = false;
-				sngl_raise(__finally8.message, __finally8.kind);
+				sngl_raise(__finally9.message, __finally9.kind);
 			}
 		}
 	}
@@ -608,9 +637,9 @@ static void s___lambda1(s___lambda1_caps state) {
 static void s___lambda2(s___lambda2_caps state) {
 	if (!sngl_string_eq(sngl_string_copy(sngl_win32_get_text(state.who)), state.value__inst0->value)) {
 		{
-	sngl_string *__slot9 = &(state.value__inst0->value);
-	sngl_drop((*__slot9).ptr);
-	*__slot9 = sngl_string_keep(sngl_string_copy(sngl_win32_get_text(state.who)));
+	sngl_string *__slot10 = &(state.value__inst0->value);
+	sngl_drop((*__slot10).ptr);
+	*__slot10 = sngl_string_keep(sngl_string_copy(sngl_win32_get_text(state.who)));
 }
 	}
 	s___effects0_settle();
@@ -619,14 +648,14 @@ static void s___lambda2(s___lambda2_caps state) {
 static void s___lambda3(s___lambda3_caps state) {
 	sngl_string __input_value_wrote1 = sngl_string_copy(sngl_win32_get_text(state.who));
 	{
-	sngl_string *__slot10 = &(state.value__inst0->value);
-	sngl_drop((*__slot10).ptr);
-	*__slot10 = sngl_string_keep(__input_value_wrote1);
-}
-	{
-	sngl_string *__slot11 = &(state.name__inst0->value);
+	sngl_string *__slot11 = &(state.value__inst0->value);
 	sngl_drop((*__slot11).ptr);
 	*__slot11 = sngl_string_keep(__input_value_wrote1);
+}
+	{
+	sngl_string *__slot12 = &(state.name__inst0->value);
+	sngl_drop((*__slot12).ptr);
+	*__slot12 = sngl_string_keep(__input_value_wrote1);
 }
 	s___effects0_settle();
 }
@@ -708,6 +737,9 @@ int main(void) {
 	sngl_win32_run();
 	return 0;
 }
+
+static void sngl_lambda7(void *env_) {
+}
 -- out/c/win32/sngl.build --
 # What this program links, which `sngl build` reads.
 flag -mwindows
@@ -730,4 +762,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:eea5e3d8bef2873f417bf242f8c5f49f
+pass sha256:0b4dadecd3cecbaa7dddca4b0cda1a3a

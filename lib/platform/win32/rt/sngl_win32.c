@@ -2099,8 +2099,8 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 		switch (HIWORD(wp)) {
 		case BN_CLICKED:
-			/* STN_CLICKED too, a link's. A test's click reports it
-			 * without opening anything. */
+			/* STN_CLICKED too, a text's or a link's. A test's click
+			 * reports it without opening anything. */
 			if (src->kind == K_LINK && src->href && src->href[0] && !firing) {
 				ShellExecuteW(NULL, L"open", src->href, NULL, NULL, SW_SHOWNORMAL);
 			}
@@ -2763,7 +2763,7 @@ void sngl_win32_set_href(HWND w, const unsigned short *href) {
 	}
 }
 
-HWND sngl_win32_text(void) { return control(L"STATIC", SS_LEFT | SS_NOPREFIX, 0, K_TEXT); }
+HWND sngl_win32_text(void) { return control(L"STATIC", SS_LEFT | SS_NOPREFIX | SS_NOTIFY, 0, K_TEXT); }
 
 HWND sngl_win32_button(void) { return control(L"BUTTON", BS_PUSHBUTTON | WS_TABSTOP, 0, K_BUTTON); }
 
