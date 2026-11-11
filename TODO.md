@@ -773,8 +773,13 @@ what someone wrapped, and win32's Go path would need the same again.
    agent writes the placed program's tests as C's `WriteTests` does
    (`design/win32.md`, *win32 in Go*). Every win32 script runs its programs
    in both languages, and Go's snapshots are held to C's.
-6. **gtk4 onto the wrappers**, its `cgo=true` becoming the `direct`,
-   `wrapper` or `purego` enum, and then `purego`.
+6. **gtk4 onto the wrappers** moved to Part 5. Generating gtk4rt's wrappers
+   would replace only its thin calls (`New`, the generic sets, `ChildCall`,
+   `Connect`), which already reach every GIR class with no cgo in the
+   program. Most of gtk4rt is a runtime with nothing to generate: the look
+   and flex layout, scroll, tabs, menus, images, toplevels and the loop.
+   gtk4 gets the wrappers once that runtime is SNGL over `cnative`
+   declarations, as win32's is.
 
 ### Open questions
 
@@ -783,3 +788,52 @@ what someone wrapped, and win32's Go path would need the same again.
 - What `purego` cannot reach: a struct passed by value, a callback's
   context, and a macro (`GetWindowLongPtrW` on 386) each need checking
   against its limits.
+
+## Part 5: gtk4's runtime in SNGL, and three ways to call C
+
+gtk4 has two runtimes that do one job. `pkg/go/gtk4rt` is Go (and C) for a
+Go program, and `lib/platform/gtk4/rt` is C for a C program, which
+`c_emit.go`'s `native` table maps each gtk4rt call onto. win32 has one: its
+protocol is SNGL calling `cnative` declarations (`sngl:platform/win32/api`
+and the runtime's C), and each language calls those as it calls C. gtk4
+moves to that model, and then every language and every way of calling C
+reaches it the same way.
+
+### The goal
+
+- **The runtime is SNGL over `cnative` GTK.** What gtk4rt and `rt/` do -- the
+  look and the flex layout, scroll, tabs, menus and the way back, images,
+  toplevels and the application, keys, posting -- becomes `gtk4.sngl`'s
+  protocol functions calling GTK's own functions. What GTK can reach only as
+  C stays C in `rt/`, as small as it can be: the layout manager's `measure`
+  and `allocate` vfuncs (a `GtkLayoutManager` subclass), a signal trampoline
+  of a shape a callback cannot take, and whatever else needs a GObject
+  subclass.
+- **The stdlib's GTK declarations are committed.** They are generated once
+  from the bundled GIR in `cnative` form into a tracked package
+  (`sngl:platform/gtk4/gtk`, as `win32/api` is), edited where needed, and
+  imported by `gtk4.sngl` instead of `gir:Gtk-4.0`. A program can still
+  import `gir:`; a class it reaches there that has no wrapper is called
+  directly.
+- **gtk4 moves onto placement** (`#[gen.wants(placement)]`), as win32 is, so
+  Go writes the program with `golang.WriteProgram` and C with its own, and
+  `compiler_ir.go`, `c_emit.go`, `c_record.go`, `wrapped.go` and the
+  inline-cgo scaffold retire. Weak holds come with it (Part 3, step 4).
+- **`cgo` becomes an enum: `direct`, `wrapper` or `purego`, defaulting to
+  `wrapper`.** `direct` calls C from the program. `wrapper` calls the
+  package `sngl tool cgogen` writes (Part 4), and falls back to `direct` for
+  a declaration with no wrapper. `purego` calls `libgtk-4.so` through
+  [purego](https://github.com/ebitengine/purego) with no cgo at all.
+- **`pkg/go/gtk4rt` is deleted**, and its tests become tests of the runtime
+  through a program (`cmd/sngl/testdata`, the gtk4 records), in both
+  languages.
+
+### Open questions
+
+- Which parts of the runtime must stay C, and how `purego` reaches them:
+  through `purego.NewCallback`, through a shared library built from `rt/`, or
+  not at all. A GObject subclass through purego is the hardest case.
+- Whether the canvas's draw function (#294) lands first, since it is the
+  last of gtk4's Go-only callbacks.
+- What a program's build costs in each mode, measured as Part 3's table
+  measured wrapped against cgo.
