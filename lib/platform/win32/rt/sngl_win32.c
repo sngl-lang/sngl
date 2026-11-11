@@ -766,7 +766,23 @@ static SIZE flow_size(HWND w, ctl *c, int width, HDC draw) {
 										: GetSysColor(p->link ? COLOR_HOTLIGHT : COLOR_WINDOWTEXT);
 			SetTextColor(dc, fg);
 			int y = y0 + top[p->line] + asc[p->line] - t.asc[p->font];
-			TextOutW(dc, x0 + p->x, y, p->s, p->len);
+			/* Each character at the advance the piece was measured with:
+			 * Wine draws its fonts tighter than GetTextExtentPoint32 says,
+			 * which left a gap after every piece placed by its width, and
+			 * a link's underline past its last letter. */
+			INT stack[64], *dx = p->len <= 64 ? stack : malloc(sizeof(INT) * (size_t)p->len);
+			SIZE e;
+			if (GetTextExtentExPointW(dc, p->s, p->len, 0, NULL, dx, &e)) {
+				for (int k = p->len - 1; k > 0; k--) {
+					dx[k] -= dx[k - 1];
+				}
+				ExtTextOutW(dc, x0 + p->x, y, 0, NULL, p->s, (UINT)p->len, dx);
+			} else {
+				TextOutW(dc, x0 + p->x, y, p->s, p->len);
+			}
+			if (dx != stack) {
+				free(dx);
+			}
 			if (p->link) {
 				c->links = realloc(c->links, sizeof(struct link_at) * (size_t)(c->nlinks + 1));
 				struct link_at *a = &c->links[c->nlinks++];
