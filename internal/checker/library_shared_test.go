@@ -170,7 +170,7 @@ func logLibraryWrites(t *testing.T, s testutil.Sample, doc *ast.Document) {
 }
 
 // notTheLibrary stops a walk at what does not belong to pkgs: the AST, which
-// TestProvidedDocsSurviveBuilds holds immutable, and another package or a
+// TestGolden holds immutable (providedDocsSurviveBuilds), and another package or a
 // declaration of one. A write linking the library to one is still seen, in the
 // library object it was written into.
 func notTheLibrary(pkgs []*ir.Package) func(reflect.Value) bool {

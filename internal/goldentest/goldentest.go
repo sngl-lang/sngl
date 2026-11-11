@@ -578,7 +578,7 @@ func reviewable(files map[string][]byte, boilerplate map[string]bool) map[string
 	return out
 }
 
-// notIR stops a fingerprint at the AST, which TestProvidedDocsSurviveBuilds
+// notIR stops a fingerprint at the AST, which TestGolden (providedDocsSurviveBuilds)
 // holds immutable.
 func notIR(v reflect.Value) bool {
 	return v.Type().Elem().PkgPath() == "duckfam.us/sngl/ast"

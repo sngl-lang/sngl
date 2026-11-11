@@ -44,4 +44,5 @@ func verifies(arg string) bool {
 //	go test . -run TestGolden -update
 func TestGolden(t *testing.T) {
 	goldentest.Run(t, "testdata/*.txtar", *update, *verify)
+	providedDocsSurviveBuilds(t)
 }
