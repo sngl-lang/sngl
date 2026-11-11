@@ -120,6 +120,7 @@ var passes = []pass{
 	passAnonStructs,
 	passNoImplicitRecv,
 	passShapeDraw,
+	passCanvasPaint,
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
@@ -147,6 +148,7 @@ var passes = []pass{
 	passConditionalTemps,
 	passTernary,
 	passCanvasReactivity,
+	passCanvasRedraw,
 	passInstanceBodies,
 	passDeclarative,
 	passNodeEscape,

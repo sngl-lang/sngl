@@ -261,7 +261,9 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 	read := map[string]bool{}
 	_ = ir.Walk(fn.Block, func(n ir.Node) error {
 		if sel, ok := n.(*ir.Select); ok {
-			if id, ok := sel.Operand.(*ir.Ident); ok && id.Name == comp && packageVar(pkg, sel.Field) == nil {
+			// One hoistShared made a package var is still made as its
+			// function renders, and gone where it no longer does.
+			if id, ok := sel.Operand.(*ir.Ident); ok && id.Name == comp && (packageVar(pkg, sel.Field) == nil || p.shared[sel.Field]) {
 				read[sel.Field] = true
 			}
 		}

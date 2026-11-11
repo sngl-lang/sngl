@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"flag"
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -29,9 +30,7 @@ var (
 
 // TestSnapshot is `sngl snapshot` on win32: the program built for it draws
 // its window at the size asked for, which the PNG has, with the controls
-// drawn in it. Run under Wine, it is recorded in testdata/snapshot_runs: a
-// digest of the program generated for it, the size and this package's Go,
-// which reads and encodes what the program writes.
+// drawn in it.
 func TestSnapshot(t *testing.T) {
 	const src = `import ui "sngl:ui"
 
@@ -49,7 +48,92 @@ ui.window(title="Snapshot") {
     }
 }
 `
-	const width, height = 300, 120
+	img := snapshot(t, src, 300, 120)
+	if img == nil {
+		return
+	}
+	// The window's background, and the text and the controls drawn on it.
+	colors := map[uint32]bool{}
+	b := img.Bounds()
+	for y := range b.Dy() {
+		for x := range b.Dx() {
+			r, g, b, _ := img.At(x, y).RGBA()
+			colors[r>>8<<16|g>>8<<8|b>>8] = true
+		}
+	}
+	if len(colors) < 3 {
+		t.Fatalf("the snapshot holds %d colors: nothing was drawn on the window", len(colors))
+	}
+}
+
+// TestSnapshotCanvas is a canvas GDI+ paints, stretched over the window: a
+// path stroked around an arcTo's corner and on down past it, and a disc.
+// Wine's GdipAddPathArc ended an arc with a segment of no length, after
+// which its stroke dropped the rest of the figure, so the line down the
+// right was not drawn; the runtime writes an arc as cubic segments.
+func TestSnapshotCanvas(t *testing.T) {
+	const src = `import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+output {
+    c {
+        win32
+    }
+}
+
+ui.window(title="Canvas") {
+    draw.canvas(width=300px, height=120px, scalingMode=draw.ScalingMode.stretch) {
+        draw.path(style=draw.Style{stroke=#000000, strokeWidth=4.0}) {
+            draw.moveTo(x=20.0, y=110.0)
+            draw.lineTo(x=20.0, y=10.0)
+            draw.arcTo(cx=250.0, cy=10.0, x=250.0, y=110.0, r=30.0)
+            draw.lineTo(x=250.0, y=110.0)
+        }
+        draw.circle(cx=150.0, cy=60.0, r=20.0, style=draw.Style{fill=#ff0000})
+    }
+}
+`
+	img := snapshot(t, src, 300, 120)
+	if img == nil {
+		return
+	}
+	// Whether some pixel within 10 of x, y is c, give or take.
+	near := func(x, y int, want func(r, g, b uint32) bool) bool {
+		for dy := -10; dy <= 10; dy++ {
+			for dx := -10; dx <= 10; dx++ {
+				r, g, b, _ := img.At(x+dx, y+dy).RGBA()
+				if want(r>>8, g>>8, b>>8) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	dark := func(r, g, b uint32) bool { return r < 80 && g < 80 && b < 80 }
+	red := func(r, g, b uint32) bool { return r > 200 && g < 60 && b < 60 }
+	for _, at := range []struct {
+		what string
+		x, y int
+		want func(r, g, b uint32) bool
+	}{
+		{"the line up the left", 20, 60, dark},
+		{"the corner's arc", 241, 19, dark},
+		{"the line down the right, after the arc", 250, 90, dark},
+		{"the disc", 150, 60, red},
+	} {
+		if !near(at.x, at.y, at.want) {
+			t.Errorf("%s is not drawn near %d, %d", at.what, at.x, at.y)
+		}
+	}
+}
+
+// snapshot is src's window as `sngl snapshot` draws it, width by height,
+// under Wine; nil where its record says the program has not changed since it
+// last ran. A run is recorded in testdata/snapshot_runs, by the test's name:
+// a digest of the program generated for it, the size and this package's Go,
+// which reads and encodes what the program writes.
+func snapshot(t *testing.T, src string, width, height int) image.Image {
+	t.Helper()
 	doc, err := parser.Parse("app.sngl", []byte(src))
 	if err != nil {
 		t.Fatal(err)
@@ -81,7 +165,7 @@ ui.window(title="Snapshot") {
 	have, _ := os.ReadFile(record)
 	switch {
 	case string(have) == want && !*verify:
-		return
+		return nil
 	case !*update && !*verify && have == nil:
 		t.Fatalf("%s: no record of this snapshot; rerun with -update on a host with Wine and MinGW", record)
 	case !*update && !*verify:
@@ -98,25 +182,20 @@ ui.window(title="Snapshot") {
 	if b := img.Bounds(); b.Dx() != width || b.Dy() != height {
 		t.Fatalf("the snapshot is %d by %d, not the %d by %d asked for", b.Dx(), b.Dy(), width, height)
 	}
-	// The window's background, and the text and the controls drawn on it.
-	colors := map[uint32]bool{}
-	for y := range height {
-		for x := range width {
-			r, g, b, _ := img.At(x, y).RGBA()
-			colors[r>>8<<16|g>>8<<8|b>>8] = true
-		}
+	if *update && !t.Failed() {
+		t.Cleanup(func() {
+			if t.Failed() {
+				return
+			}
+			if err := os.MkdirAll(filepath.Dir(record), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(record, []byte(want), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
-	if len(colors) < 3 {
-		t.Fatalf("the snapshot holds %d colors: nothing was drawn on the window", len(colors))
-	}
-	if *update {
-		if err := os.MkdirAll(filepath.Dir(record), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(record, []byte(want), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
+	return img
 }
 
 func snapshotDigest(t *testing.T, files map[string][]byte, width, height int) string {

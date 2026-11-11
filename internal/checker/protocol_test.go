@@ -18,8 +18,9 @@ import (
 // the connect, set and on fixtures.
 func TestGenProtocolPlacement(t *testing.T) {
 	const otherSrc = "import sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\n\n#[marks.intrinsic(\"other:Other\")]\ncomponent Other(@tap) sngl.node\n"
-	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport other \"sngl:x/protocolother\"\n\n" +
+	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport other \"sngl:x/protocolother\"\nimport draw \"sngl:ui/draw\"\n\n" +
 		"#[marks.intrinsic(\"extstub:Thing\")]\ncomponent Thing(x int, :shown bool, @tap) sngl.node\n\n" +
+		"#[marks.intrinsic(\"extstub:Pad\")]\ncomponent Pad(shapes ...component draw.shape) sngl.node\n\n" +
 		"component Plain() sngl.node {}\n\n" +
 		"#[macro.cnative(\"thing_new\")]\nfunc thingNew() Thing\n\n" +
 		"#[macro.cnative(\"plain_new\")]\nfunc plainNew() Plain\n\n" +
@@ -56,6 +57,10 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"a fire twice", "#[gen.fires(\"tap\")]\nfunc _a(w Thing) {}\n\n#[gen.fires(\"tap\")]\nfunc _b(w Thing) {}\n", "#[gen.fires(\"tap\")]: Thing already fires @tap with _a"},
 		{"a fire of no node", "#[gen.fires(\"tap\")]\nfunc _fire_tap(at int) {}\n", "#[gen.fires] declares the #[intrinsic] component it fires on as its first parameter"},
 		{"a fire of another package's", "#[gen.fires(\"tap\")]\nfunc _fire_tap(w other.Other) {}\n", "#[gen.fires(\"tap\")]: Other is declared by"},
+		{"a redraw of a canvas", "#[gen.protocol(redraw)]\nfunc _redraw(w Pad) {}\n", ""},
+		{"a redraw of one taking no shapes", "#[gen.protocol(redraw)]\nfunc _redraw(w Thing) {}\n", "#[gen.protocol(redraw)] asks a canvas to paint again, and Thing takes no shapes"},
+		{"a redraw of two", "#[gen.protocol(redraw)]\nfunc _redraw(w Pad, again Pad) {}\n", "#[gen.protocol(redraw)] takes the #[intrinsic] canvas it asks to paint again"},
+		{"a redraw twice", "#[gen.protocol(redraw)]\nfunc _a(w Pad) {}\n\n#[gen.protocol(redraw)]\nfunc _b(w Pad) {}\n", "#[gen.protocol(redraw)]: Pad already has _a"},
 		{"connects on an event", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"button-press\")]\n    @pressed,\n) sngl.node\n", ""},
 		{"connects on a prop", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"press\")]\n    x int,\n) sngl.node\n", "#[gen.connects] cannot mark a parameter; it marks an event"},
 	} {

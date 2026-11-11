@@ -628,7 +628,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      the generator, the metadata pin, and the layout engine.
    - CLAUDE.md's `codegen/platform/{…}` list.
    - The platform's page in the docs site (`go tool docsgen`).
-8. **After the slice.** Done but for the canvas, markup and simulation.
+8. **After the slice.** Done but for markup and simulation.
    - Every `sngl:ui` component builds on win32 in C, held to
      `cmd/sngl/testdata/c_win32_controls_runs.txt`:
      - textarea (`ES_MULTILINE`), select (`CBS_DROPDOWNLIST`), progress and
@@ -649,12 +649,17 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
    - A second window, `visible` and `@closed`: `window_dialog_runs.txt`. And
      `@run` (`testdata/win32_c_run_handler_runs.txtar`), which a golden's
      `exec` runs under Wine through `codegen.ProgramRunner`.
-   - **Left: the canvas and its shapes.** `draw.canvas` declares no
-     protocol: gtk4 draws it from its generator, in Go and in C, and
-     `passShapeDraw` is that generator's (#294). On win32 it needs the
-     canvas as a protocol -- a create, a draw callback handed a context, a
-     click -- with the shapes as `#[gen.protocol]` calls of GDI (or
-     Direct2D) through the runtime, as gtk4's overrides call cairo.
+   - The canvas and its shapes: win32's `Canvas`, placed through its
+     protocol, its drawing the handler of its `@paint` and each redraw its
+     `#[gen.protocol(redraw)]` (`design/nodes.md`), painted by GDI+ through
+     a context whose calls are cairo's (`testdata/win32_c_canvas.txtar`,
+     `TestSnapshotCanvas`). gtk4 still draws its canvas from its generator
+     (#294). Left on win32: `canvasImage` and `draw.image`, which are
+     refused. Left on the other targets: `passCanvasReactivity` redraws a
+     canvas under a branch, flattened into its render slot, only where it
+     is painted through its protocol, since html's redraw named a local of
+     the slot's render; gtk4 in C does not redraw one a write outside the
+     slot changes.
    - **Left: `sngl:ui/markup`.** gtk4's translator assembles a flow's markup
      from its span tree, since a span is no widget; win32 would want that
      tree as the runtime's rich edit (`MSFTEDIT_CLASS`) or text it draws.

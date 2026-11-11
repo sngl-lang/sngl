@@ -123,6 +123,30 @@ whole (`clang.WriteProgram`), so a platform on placement needs no translator:
 win32's generator writes only the program's entry
 (`testdata/win32_c_counter.txtar`, which fails with the pass turned off).
 
+**A canvas is placed through its protocol where its component declares a
+`#[gen.protocol(redraw)]`**, a function of the widget asking it to paint again,
+which the checker allows only on a component whose rest slot takes shapes
+(`TestGenProtocolPlacement`). win32's `Canvas` is one, which its
+`draw.canvas` override renders. `passCanvasPaint` (`internal/lower/canvas_paint.go`)
+runs right after `passShapeDraw` and hands the drawing -- the statements that
+pass put in place of the shapes -- to the canvas's event whose one parameter is
+typed as the context those statements paint through, as a handler marked
+`Lowered.Paints`. It runs before anything flattens a canvas, so a render slot's
+canvas (`passReactivity`) and a record's (`passInstanceBodies`) are flattened
+with the handler, which is lifted and connected through the component's `on`
+as any handler is. A canvas written with no id is given `__drawingN`, its own
+numbering, since the passes between that number nodes `__nN` count from none of
+theirs; a shared `__nN` named the window and the canvas both, and the canvas
+replaced the window it was to go in. `passCanvasReactivity` reads what the
+paint handler reads, and finds such a canvas flattened into a render slot's
+function too, which no other target's redraw can reach from outside the slot
+(html named a local of the slot's render). `passCanvasRedraw` then makes each
+redraw the protocol's call of the node, a read by name that placement holds as
+it holds any (`hoistShared`, which walks `closureFuncs` for a handler's
+closure as `hoistNodes` does, and `holdRead`, which still nulls such a node as
+its branch goes). `testdata/win32_c_canvas.txtar` holds it, and
+`TestSnapshotCanvas` (`codegen/platform/win32`) what GDI+ paints.
+
 **A component built at run time is placed as a record**
 (`internal/lower/placerecords.go`): a row a keyed `for` keeps, a slot body
 lifted into a component of its own. The record is a struct holding the

@@ -5,6 +5,8 @@
 #include <commctrl.h>
 #include <urlmon.h>
 #include <wincodec.h>
+#include <gdiplus.h>
+#include <math.h>
 #include <shellapi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +28,7 @@
 #define SNGL_WM_LOADED (WM_APP + 5)
 #define SNGL_WM_FETCHED (WM_APP + 6)
 
-enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE };
+enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE, K_CANVAS };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -105,6 +107,10 @@ typedef struct {
 	HBITMAP bmp;
 	int bw, bh;
 	WCHAR *url;
+	/* A canvas's drawing space, how it is mapped onto the canvas, and what
+	 * paints it, a sngl_win32_paint_fn. */
+	int cw, ch, scaling;
+	handler paint;
 	HWND self;
 	HWND *kids;
 	int nkids, capkids;
@@ -238,6 +244,7 @@ static void forget(HWND w) {
 	drop_handler(&c->reach);
 	drop_handler(&c->load);
 	drop_handler(&c->failed);
+	drop_handler(&c->paint);
 	if (c->bmp) {
 		DeleteObject(c->bmp);
 	}
@@ -650,6 +657,10 @@ static void measure(HWND w, SIZE *out) {
 				s.cy = px(k->bh, c->dpi);
 			}
 		}
+		break;
+	case K_CANVAS:
+		s.cx = px(c->cw, c->dpi);
+		s.cy = px(c->ch, c->dpi);
 		break;
 	case K_PICTURE:
 	case K_MODAL:
@@ -1422,6 +1433,300 @@ static void paint_picture(HWND w, ctl *c, HDC dc) {
 	DeleteDC(mem);
 }
 
+/* --- Drawing --- */
+
+static ULONG_PTR gdiplus;
+
+/* What save keeps of a context beside GDI+'s own state. */
+typedef struct {
+	GraphicsState gs;
+	ARGB color;
+	REAL width;
+	int cap, join;
+	REAL font_px;
+	WCHAR family[64];
+} gfx_state;
+
+struct sngl_win32_gfx {
+	GpGraphics *g;
+	GpPath *path;
+	/* The current point, where the figure being built started, and whether
+	 * there is a current point, and whether the figure has a point of its
+	 * own yet: a move only says where the next segment starts. */
+	REAL x, y, fx, fy;
+	int at, begun;
+	gfx_state now;
+	gfx_state saved[16];
+	int depth;
+};
+
+void sngl_win32_gfx_save(sngl_win32_gfx *g) {
+	if (g->depth < 16) {
+		g->saved[g->depth] = g->now;
+		GdipSaveGraphics(g->g, &g->saved[g->depth].gs);
+	}
+	g->depth++;
+}
+
+void sngl_win32_gfx_restore(sngl_win32_gfx *g) {
+	if (g->depth == 0) {
+		return;
+	}
+	g->depth--;
+	if (g->depth < 16) {
+		GdipRestoreGraphics(g->g, g->saved[g->depth].gs);
+		g->now = g->saved[g->depth];
+	}
+}
+
+static int channel(int v) { return v < 0 ? 0 : v > 255 ? 255 : v; }
+
+void sngl_win32_gfx_color(sngl_win32_gfx *g, int r, int gr, int b, int a) {
+	g->now.color = ((ARGB)channel(a) << 24) | ((ARGB)channel(r) << 16) | ((ARGB)channel(gr) << 8) | (ARGB)channel(b);
+}
+
+void sngl_win32_gfx_line_width(sngl_win32_gfx *g, double w) { g->now.width = (REAL)w; }
+void sngl_win32_gfx_line_cap(sngl_win32_gfx *g, int cap) { g->now.cap = cap; }
+void sngl_win32_gfx_line_join(sngl_win32_gfx *g, int join) { g->now.join = join; }
+
+void sngl_win32_gfx_rect(sngl_win32_gfx *g, double x, double y, double w, double h) {
+	GdipAddPathRectangle(g->path, (REAL)x, (REAL)y, (REAL)w, (REAL)h);
+	g->x = g->fx = (REAL)x;
+	g->y = g->fy = (REAL)y;
+	g->at = 1;
+	g->begun = 0;
+}
+
+void sngl_win32_gfx_new_sub_path(sngl_win32_gfx *g) {
+	GdipStartPathFigure(g->path);
+	g->at = 0;
+	g->begun = 0;
+}
+
+void sngl_win32_gfx_move_to(sngl_win32_gfx *g, double x, double y) {
+	GdipStartPathFigure(g->path);
+	g->x = g->fx = (REAL)x;
+	g->y = g->fy = (REAL)y;
+	g->at = 1;
+	g->begun = 0;
+}
+
+void sngl_win32_gfx_line_to(sngl_win32_gfx *g, double x, double y) {
+	if (!g->at) {
+		sngl_win32_gfx_move_to(g, x, y);
+		return;
+	}
+	GdipAddPathLine(g->path, g->x, g->y, (REAL)x, (REAL)y);
+	g->x = (REAL)x;
+	g->y = (REAL)y;
+	g->begun = 1;
+}
+
+void sngl_win32_gfx_curve_to(sngl_win32_gfx *g, double x1, double y1, double x2, double y2, double x3, double y3) {
+	if (!g->at) {
+		sngl_win32_gfx_move_to(g, x1, y1);
+	}
+	GdipAddPathBezier(g->path, g->x, g->y, (REAL)x1, (REAL)y1, (REAL)x2, (REAL)y2, (REAL)x3, (REAL)y3);
+	g->x = (REAL)x3;
+	g->y = (REAL)y3;
+	g->begun = 1;
+}
+
+/* arc adds the arc of sweep radians from start, joined by a line to the
+ * current point where there is one, as cairo's is. */
+static void arc(sngl_win32_gfx *g, double cx, double cy, double r, double start, double sweep) {
+	const double tau = 6.283185307179586;
+	if (sweep > tau) {
+		sweep = tau;
+	} else if (sweep < -tau) {
+		sweep = -tau;
+	}
+	REAL sx = (REAL)(cx + r * cos(start)), sy = (REAL)(cy + r * sin(start));
+	if (g->at && !g->begun) {
+		/* GDI+ joins an arc to the figure's last point, and a move made
+		 * none. */
+		GdipAddPathLine(g->path, g->x, g->y, sx, sy);
+	} else if (!g->at) {
+		g->fx = sx;
+		g->fy = sy;
+	}
+	/* As cubic segments of a quarter turn or less, as cairo's is: Wine's
+	 * GdipAddPathArc ends one with a segment of no length, after which its
+	 * stroke drops the rest of the figure. */
+	int n = (int)ceil(fabs(sweep) / (tau / 4) - 1e-9);
+	double step = n > 0 ? sweep / n : 0, k = 4.0 / 3 * tan(step / 4), a = start;
+	for (int i = 0; r > 0 && i < n; i++, a += step) {
+		double b = a + step;
+		double x0 = cx + r * cos(a), y0 = cy + r * sin(a), x3 = cx + r * cos(b), y3 = cy + r * sin(b);
+		GdipAddPathBezier(g->path, (REAL)x0, (REAL)y0, (REAL)(x0 - k * r * sin(a)), (REAL)(y0 + k * r * cos(a)), (REAL)(x3 + k * r * sin(b)), (REAL)(y3 - k * r * cos(b)), (REAL)x3, (REAL)y3);
+	}
+	g->x = (REAL)(cx + r * cos(start + sweep));
+	g->y = (REAL)(cy + r * sin(start + sweep));
+	g->at = 1;
+	g->begun = 1;
+}
+
+void sngl_win32_gfx_arc(sngl_win32_gfx *g, double cx, double cy, double r, double start, double end) {
+	const double tau = 6.283185307179586;
+	while (end < start) {
+		end += tau;
+	}
+	arc(g, cx, cy, r, start, end - start);
+}
+
+void sngl_win32_gfx_arc_negative(sngl_win32_gfx *g, double cx, double cy, double r, double start, double end) {
+	const double tau = 6.283185307179586;
+	while (end > start) {
+		end -= tau;
+	}
+	arc(g, cx, cy, r, start, end - start);
+}
+
+void sngl_win32_gfx_close_path(sngl_win32_gfx *g) {
+	GdipClosePathFigure(g->path);
+	g->x = g->fx;
+	g->y = g->fy;
+	g->begun = 0;
+}
+
+static void new_path(sngl_win32_gfx *g) {
+	GdipResetPath(g->path);
+	GdipSetPathFillMode(g->path, FillModeWinding);
+	g->at = 0;
+	g->begun = 0;
+}
+
+void sngl_win32_gfx_fill(sngl_win32_gfx *g, int preserve) {
+	GpSolidFill *b = NULL;
+	if (GdipCreateSolidFill(g->now.color, &b) == Ok) {
+		GdipFillPath(g->g, (GpBrush *)b, g->path);
+		GdipDeleteBrush((GpBrush *)b);
+	}
+	if (!preserve) {
+		new_path(g);
+	}
+}
+
+void sngl_win32_gfx_stroke(sngl_win32_gfx *g) {
+	static const LineCap caps[] = {LineCapFlat, LineCapRound, LineCapSquare};
+	static const DashCap dashes[] = {DashCapFlat, DashCapRound, DashCapFlat};
+	static const LineJoin joins[] = {LineJoinMiter, LineJoinRound, LineJoinBevel};
+	int cap = g->now.cap >= 0 && g->now.cap < 3 ? g->now.cap : 0;
+	int join = g->now.join >= 0 && g->now.join < 3 ? g->now.join : 0;
+	GpPen *p = NULL;
+	if (GdipCreatePen1(g->now.color, g->now.width, UnitPixel, &p) == Ok) {
+		GdipSetPenLineCap197819(p, caps[cap], caps[cap], dashes[cap]);
+		GdipSetPenLineJoin(p, joins[join]);
+		GdipDrawPath(g->g, p, g->path);
+		GdipDeletePen(p);
+	}
+	new_path(g);
+}
+
+void sngl_win32_gfx_font(sngl_win32_gfx *g, const unsigned short *family, double size) {
+	wcsncpy(g->now.family, family ? (const WCHAR *)family : L"", 63);
+	g->now.family[63] = 0;
+	g->now.font_px = (REAL)size;
+}
+
+/* family is the font family name names: CSS's generic families as GDI+'s,
+ * or the one the system knows by that name, or its sans-serif. */
+static GpFontFamily *family(const WCHAR *name) {
+	GpFontFamily *f = NULL;
+	if (wcscmp(name, L"serif") == 0) {
+		GdipGetGenericFontFamilySerif(&f);
+	} else if (wcscmp(name, L"monospace") == 0) {
+		GdipGetGenericFontFamilyMonospace(&f);
+	} else if (wcscmp(name, L"sans-serif") != 0 && name[0]) {
+		GdipCreateFontFamilyFromName(name, NULL, &f);
+	}
+	if (!f) {
+		GdipGetGenericFontFamilySansSerif(&f);
+	}
+	return f;
+}
+
+void sngl_win32_gfx_text(sngl_win32_gfx *g, const unsigned short *text) {
+	GpFontFamily *ff = family(g->now.family);
+	if (!ff) {
+		return;
+	}
+	GpFont *font = NULL;
+	GpSolidFill *b = NULL;
+	GpStringFormat *fmt = NULL;
+	UINT16 ascent = 0, em = 0;
+	GdipGetCellAscent(ff, FontStyleRegular, &ascent);
+	GdipGetEmHeight(ff, FontStyleRegular, &em);
+	if (GdipCreateFont(ff, g->now.font_px, FontStyleRegular, UnitPixel, &font) == Ok && GdipCreateSolidFill(g->now.color, &b) == Ok &&
+		GdipStringFormatGetGenericTypographic(&fmt) == Ok) {
+		/* Drawn from the top of its line, which is the ascent above the
+		 * baseline the point is on. */
+		REAL top = g->y - (em ? g->now.font_px * ascent / em : g->now.font_px);
+		RectF at = {g->x, top, 0, 0};
+		GdipDrawString(g->g, (const WCHAR *)text, -1, font, &at, fmt, (GpBrush *)b);
+	}
+	if (fmt) {
+		GdipDeleteStringFormat(fmt);
+	}
+	if (b) {
+		GdipDeleteBrush((GpBrush *)b);
+	}
+	if (font) {
+		GdipDeleteFont(font);
+	}
+	GdipDeleteFontFamily(ff);
+}
+
+/* paint_canvas paints a canvas into dc: its background, and its drawing
+ * mapped onto its client area as its scaling says, off screen first. */
+static void paint_canvas(HWND w, ctl *c, HDC dc) {
+	RECT r;
+	GetClientRect(w, &r);
+	int aw = r.right, ah = r.bottom;
+	if (aw <= 0 || ah <= 0) {
+		return;
+	}
+	HDC mem = CreateCompatibleDC(dc);
+	HBITMAP bmp = CreateCompatibleBitmap(dc, aw, ah);
+	HGDIOBJ old = SelectObject(mem, bmp);
+	HBRUSH bg = c->brush ? c->brush : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND);
+	FillRect(mem, &r, bg);
+	sngl_win32_gfx g;
+	memset(&g, 0, sizeof g);
+	if (c->paint.fn && GdipCreateFromHDC(mem, &g.g) == Ok) {
+		GdipCreatePath(FillModeWinding, &g.path);
+		GdipSetSmoothingMode(g.g, SmoothingModeAntiAlias);
+		GdipSetPixelOffsetMode(g.g, PixelOffsetModeHalf);
+		GdipSetTextRenderingHint(g.g, TextRenderingHintAntiAlias);
+		g.now.color = 0xff000000;
+		g.now.width = 1;
+		g.now.font_px = 16;
+		wcscpy(g.now.family, L"sans-serif");
+		/* The drawing's space onto the area: at its own size, a SNGL px a
+		 * 96th of an inch, centered, or scaled. */
+		double k = (double)c->dpi / 96, sx = k, sy = k;
+		if (c->cw > 0 && c->ch > 0 && c->scaling != 0) {
+			sx = (double)aw / c->cw;
+			sy = (double)ah / c->ch;
+			if (c->scaling == 1) {
+				sx = sy = sx < sy ? sx : sy;
+			} else if (c->scaling == 2) {
+				sx = sy = sx > sy ? sx : sy;
+			}
+		}
+		GdipSetClipRectI(g.g, 0, 0, aw, ah, CombineModeReplace);
+		GdipTranslateWorldTransform(g.g, (REAL)((aw - c->cw * sx) / 2), (REAL)((ah - c->ch * sy) / 2), MatrixOrderPrepend);
+		GdipScaleWorldTransform(g.g, (REAL)sx, (REAL)sy, MatrixOrderPrepend);
+		((sngl_win32_paint_fn)(void (*)(void))c->paint.fn)(&g, c->paint.ctx);
+		GdipDeletePath(g.path);
+		GdipDeleteGraphics(g.g);
+	}
+	BitBlt(dc, 0, 0, aw, ah, mem, 0, 0, SRCCOPY);
+	SelectObject(mem, old);
+	DeleteObject(bmp);
+	DeleteDC(mem);
+}
+
 /* --- Window procedures --- */
 
 static LRESULT color(ctl *c, HDC dc, LRESULT otherwise) {
@@ -1504,6 +1809,11 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		return color(src, (HDC)wp, otherwise);
 	}
 	case WM_ERASEBKGND:
+		if (c && c->kind == K_CANVAS) {
+			/* Its paint fills what it draws over, off screen, so it does
+			 * not flicker. */
+			return 1;
+		}
 		if (c && c->brush) {
 			RECT r;
 			GetClientRect(w, &r);
@@ -1544,6 +1854,15 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		return 0;
 	case WM_PAINT:
 	case WM_PRINTCLIENT:
+		if (c && c->kind == K_CANVAS) {
+			PAINTSTRUCT ps;
+			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
+			paint_canvas(w, c, dc);
+			if (msg != WM_PRINTCLIENT) {
+				EndPaint(w, &ps);
+			}
+			return 0;
+		}
 		if (c && c->kind == K_PICTURE) {
 			PAINTSTRUCT ps;
 			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
@@ -2657,6 +2976,61 @@ int sngl_win32_pick_date(HWND w, const unsigned short *iso) {
 HWND sngl_win32_image(void) { return control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, 0, K_IMAGE); }
 
 HWND sngl_win32_picture(void) { return control(SNGL_BOX_CLASS, 0, 0, K_PICTURE); }
+
+HWND sngl_win32_canvas(void) {
+	if (!gdiplus) {
+		GdiplusStartupInput in = {1, NULL, FALSE, FALSE};
+		GdiplusStartup(&gdiplus, &in, NULL);
+	}
+	return control(SNGL_BOX_CLASS, 0, 0, K_CANVAS);
+}
+
+static void canvas_size(HWND w, int *at, int v) {
+	if (*at != v) {
+		*at = v;
+		InvalidateRect(w, NULL, FALSE);
+		relayout(w);
+	}
+}
+
+void sngl_win32_set_canvas_width(HWND w, int width) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		canvas_size(w, &c->cw, width);
+	}
+}
+
+void sngl_win32_set_canvas_height(HWND w, int height) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		canvas_size(w, &c->ch, height);
+	}
+}
+
+void sngl_win32_set_scaling(HWND w, int mode) {
+	ctl *c = ctl_of(w);
+	if (c && c->scaling != mode) {
+		c->scaling = mode;
+		/* A drawing that scales grows into the room its box has spare. */
+		c->flex = mode != 0 ? 1 : 0;
+		InvalidateRect(w, NULL, FALSE);
+		relayout(w);
+	}
+}
+
+void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		set_handler(&c->paint, (sngl_win32_fn)(void (*)(void))fn, ctx, release);
+		InvalidateRect(w, NULL, FALSE);
+	}
+}
+
+void sngl_win32_redraw(HWND w) {
+	if (w) {
+		InvalidateRect(w, NULL, FALSE);
+	}
+}
 
 void sngl_win32_set_fit(HWND w, int fit) {
 	ctl *c = ctl_of(w);

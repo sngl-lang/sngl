@@ -194,6 +194,14 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 			funcs = append(funcs, fn)
 		}
 	}
+	// A closure lifted out of a component the inliner spliced away is in no
+	// list of the package's, and reads a node by its name as a function
+	// does: a handler's redraw of a canvas a render slot makes.
+	for _, fn := range closureFuncs(pkg) {
+		if !inRecord[fn] && !fn.IsTest && !slices.Contains(funcs, fn) {
+			funcs = append(funcs, fn)
+		}
+	}
 	// The local each name is, and the function making it.
 	type local struct {
 		lv *ir.LocalVar
@@ -236,6 +244,10 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 		l := made[name]
 		v := &ir.Var{Name: name, Type: l.lv.Type, Synthesized: true}
 		shared[name] = v
+		if p.shared == nil {
+			p.shared = map[string]bool{}
+		}
+		p.shared[name] = true
 		pkg.Vars = append(pkg.Vars, v)
 		// The local stays, which the function and what it closes over
 		// read: a loop's copy its own.
@@ -297,6 +309,9 @@ type placement struct {
 	// held is the package var holding each node a test reads that a
 	// function other than the package body makes, by its id (holdRead).
 	held map[string]*ir.Var
+	// shared is the nodes a function makes that hoistShared made package
+	// vars of, since another function reads them, by name.
+	shared map[string]bool
 	// records are the components the program builds at run time, as
 	// placement writes them (placerecords.go).
 	records map[*ir.Component]*record

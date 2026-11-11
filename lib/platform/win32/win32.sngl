@@ -6,11 +6,13 @@ import macro "sngl:macro"
 import gen "sngl:x/gen"
 import c "sngl:x/c"
 import api "sngl:platform/win32/api"
+import draw "sngl:ui/draw"
+import math "sngl:math"
 
 // The runtime every win32 program links: the window procedure, the layout of
 // a box's children and the message loop, in C, which each language compiles
 // into the program.
-c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32", "-lmsimg32", "-lole32", "-luuid", "-lwindowscodecs", "-lurlmon"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
+c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32", "-lmsimg32", "-lole32", "-luuid", "-lwindowscodecs", "-lurlmon", "-lgdiplus"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
 
 // The source annotations MinGW's sal.h, specstrings.h and driverspecs.h
 // define as macros, which windows.h includes: a local lowering names
@@ -95,7 +97,7 @@ const salMacros = [
 // as gtk4's is.
 #[gen.can(insertBefore, asyncPost, instanceState)]
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
-#[gen.wants(placement, stdlibContextParam)]
+#[gen.wants(placement, stdlibContextParam, canvas, reactiveCanvas)]
 #[gen.name("win32")]
 #[gen.native("win32")]
 component platform(
@@ -1438,6 +1440,203 @@ func _set_Picture_url(p Picture, url string) {
     _rtSetUrl(p, url)
 }
 
+// --- Drawing ---
+
+// A canvas is a window of the runtime's that GDI+ paints, through a context
+// whose calls are cairo's, as gtk4's are: a path built, then filled or
+// stroked in the color, line and font last set, which save and restore keep
+// (sngl_win32_gfx). Its drawing -- the shapes, as the calls the overrides
+// below make -- is the handler of its `@paint`, handed the context, which
+// lowering connects as it connects any handler, and a write to what the
+// drawing reads asks for a paint through its redraw.
+#[macro.cnative("sngl_win32_gfx *")]
+struct Gfx {}
+
+#[macro.cnative("sngl_win32_gfx_save")]
+func Gfx.save()
+
+#[macro.cnative("sngl_win32_gfx_restore")]
+func Gfx.restore()
+
+// Each channel 0..255, as a SNGL color holds it.
+#[macro.cnative("sngl_win32_gfx_color")]
+func Gfx.color(r int, g int, b int, a int)
+
+#[macro.cnative("sngl_win32_gfx_line_width")]
+func Gfx.lineWidth(w float)
+
+// `LineCap` and `LineJoin` in their order: butt, round, square, and miter,
+// round, bevel.
+#[macro.cnative("sngl_win32_gfx_line_cap")]
+func Gfx.lineCap(cap int)
+
+#[macro.cnative("sngl_win32_gfx_line_join")]
+func Gfx.lineJoin(join int)
+
+#[macro.cnative("sngl_win32_gfx_rect")]
+func Gfx.rectangle(x float, y float, w float, h float)
+
+#[macro.cnative("sngl_win32_gfx_new_sub_path")]
+func Gfx.newSubPath()
+
+#[macro.cnative("sngl_win32_gfx_move_to")]
+func Gfx.moveTo(x float, y float)
+
+#[macro.cnative("sngl_win32_gfx_line_to")]
+func Gfx.lineTo(x float, y float)
+
+#[macro.cnative("sngl_win32_gfx_curve_to")]
+func Gfx.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+
+#[macro.cnative("sngl_win32_gfx_arc")]
+func Gfx.arc(cx float, cy float, r float, start float, end float)
+
+#[macro.cnative("sngl_win32_gfx_arc_negative")]
+func Gfx.arcNegative(cx float, cy float, r float, start float, end float)
+
+#[macro.cnative("sngl_win32_gfx_close_path")]
+func Gfx.closePath()
+
+// The path filled, and kept for a stroke where `preserve` says.
+#[macro.cnative("sngl_win32_gfx_fill")]
+func Gfx.fill(preserve bool)
+
+#[macro.cnative("sngl_win32_gfx_stroke")]
+func Gfx.stroke()
+
+#[macro.cnative("sngl_win32_gfx_font")]
+func Gfx.font(family c.utf16, size float)
+
+// Drawn from the current point, on its baseline.
+#[macro.cnative("sngl_win32_gfx_text")]
+func Gfx.showText(content c.utf16)
+
+// What a `@draw` handler is handed: the context, and the coordinate space
+// the shapes were placed in.
+struct DrawEvent {
+    ctx    Gfx
+    width  int
+    height int
+}
+
+// The primitive every shape below paints through: its handler is spliced
+// into the drawing, written against the canvas's context.
+#[marks.intrinsic("win32:draw")]
+component Paint(@draw(e DrawEvent)) draw.shape
+
+// The window a `draw.canvas` is. Its width and height are the space its
+// shapes are placed in, and `scalingMode` how that space is shown in the
+// room it is given.
+#[marks.intrinsic("win32:Canvas")]
+component Canvas(
+    width       ui.measurement,
+    height      ui.measurement,
+    scalingMode draw.ScalingMode,
+    @click(),
+    @paint(ctx Gfx),
+    shapes      ...component draw.shape,
+) ui.node
+
+#[macro.cnative("sngl_win32_canvas")]
+func _rtCanvas() Canvas
+
+#[macro.cnative("sngl_win32_set_canvas_width")]
+func _rtSetCanvasWidth(w Canvas, width int)
+
+#[macro.cnative("sngl_win32_set_canvas_height")]
+func _rtSetCanvasHeight(w Canvas, height int)
+
+#[macro.cnative("sngl_win32_set_scaling")]
+func _rtSetScaling(w Canvas, mode int)
+
+#[macro.cnative("sngl_win32_on_paint")]
+func _rtOnPaint(
+    w Canvas,
+    #[c.type("sngl_win32_paint_fn")] fn func(ctx Gfx),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_win32_redraw")]
+func _rtRedraw(w Canvas)
+
+#[gen.protocol(create)]
+func _create_Canvas() Canvas {
+    return _rtCanvas()
+}
+
+#[gen.protocol(set)]
+func _set_Canvas_width(w Canvas, width ui.measurement) {
+    _rtSetCanvasWidth(w, int(px(width)))
+}
+
+#[gen.protocol(set)]
+func _set_Canvas_height(w Canvas, height ui.measurement) {
+    _rtSetCanvasHeight(w, int(px(height)))
+}
+
+#[gen.protocol(set)]
+func _set_Canvas_scalingMode(w Canvas, scalingMode draw.ScalingMode) {
+    _rtSetScaling(w, int(scalingMode))
+}
+
+#[gen.protocol(on)]
+func _on_Canvas_click(w Canvas, click func()) {
+    _rtOnClick(w, click)
+}
+
+#[gen.fires("click")]
+func _fire_Canvas_click(w Canvas) {
+    _rtFireClick(w)
+}
+
+#[gen.protocol(on)]
+func _on_Canvas_paint(w Canvas, paint func(ctx Gfx)) {
+    _rtOnPaint(w, paint)
+}
+
+#[gen.protocol(redraw)]
+func _redraw_Canvas(w Canvas) {
+    _rtRedraw(w)
+}
+
+func source(ctx Gfx, c color) {
+    ctx.color(int(c.r), int(c.g), int(c.b), int(c.a))
+}
+
+// Fill then stroke the current path, keeping it between the two where both
+// apply, as gtk4's paint does.
+func paint(ctx Gfx, style draw.Style) {
+    if style.fill.a > 0 {
+        source(ctx, style.fill)
+        ctx.fill(style.stroke.a > 0)
+    }
+    if style.stroke.a > 0 {
+        ctx.lineWidth(style.strokeWidth)
+        ctx.lineCap(int(style.lineCap))
+        ctx.lineJoin(int(style.lineJoin))
+        source(ctx, style.stroke)
+        ctx.stroke()
+    }
+}
+
+// The corner `sngl:ui/draw` solves, drawn as a line in and an arc, which
+// leaves the path at the point it answers.
+func arcTo(ctx Gfx, from draw.Point, corner draw.Point, to draw.Point, r float) draw.Point {
+    var a = draw.tangentArc(from, corner, to, r)
+    if a.degenerate {
+        ctx.lineTo(corner.x, corner.y)
+        return corner
+    }
+    ctx.lineTo(a.tangent1.x, a.tangent1.y)
+    if a.sweep < 0.0 {
+        ctx.arcNegative(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
+    } else {
+        ctx.arc(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
+    }
+    return a.tangent2
+}
+
 // --- Timers ---
 
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
@@ -1867,6 +2066,110 @@ const component ui.image[platform](fit, style, @click, @load, @error, src) {
     ) {
         src
     }
+}
+
+// A canvas's `style` reaches nothing: it is no shape's, and the window's
+// background is its box's.
+const component draw.canvas[platform](width, height, scalingMode, @click, shapes) {
+    Canvas(width=width, height=height, scalingMode=scalingMode, @click { click() }) {
+        shapes
+    }
+}
+
+const component draw.rect[platform](x, y, w, h, style) {
+    Paint(@draw(e) {
+        e.ctx.save()
+        e.ctx.rectangle(x, y, w, h)
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+const component draw.circle[platform](cx, cy, r, style) {
+    Paint(@draw(e) {
+        e.ctx.save()
+        e.ctx.newSubPath()
+        e.ctx.arc(cx, cy, r, 0.0, math.tau)
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+// Four cubic segments, as gtk4's: a scaled circle would scale its stroke.
+const component draw.ellipse[platform](cx, cy, rx, ry, style) {
+    Paint(@draw(e) {
+        var k = 0.5522847498307936
+        var ox = rx * k
+        var oy = ry * k
+
+        e.ctx.save()
+        e.ctx.newSubPath()
+        e.ctx.moveTo(cx, cy - ry)
+        e.ctx.curveTo(cx + ox, cy - ry, cx + rx, cy - oy, cx + rx, cy)
+        e.ctx.curveTo(cx + rx, cy + oy, cx + ox, cy + ry, cx, cy + ry)
+        e.ctx.curveTo(cx - ox, cy + ry, cx - rx, cy + oy, cx - rx, cy)
+        e.ctx.curveTo(cx - rx, cy - oy, cx - ox, cy - ry, cx, cy - ry)
+        e.ctx.closePath()
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+// A line has no inside, so its fill is not read.
+const component draw.line[platform](x1, y1, x2, y2, style) {
+    Paint(@draw(e) {
+        e.ctx.save()
+        e.ctx.moveTo(x1, y1)
+        e.ctx.lineTo(x2, y2)
+        e.ctx.lineWidth(style.strokeWidth)
+        e.ctx.lineCap(int(style.lineCap))
+        e.ctx.lineJoin(int(style.lineJoin))
+        source(e.ctx, style.stroke)
+        e.ctx.stroke()
+        e.ctx.restore()
+    })
+}
+
+const component draw.path[platform](style, steps) {
+    Paint(@draw(e) {
+        // Where the path is, which `arcTo` needs.
+        var at = draw.Point{x=0.0, y=0.0}
+
+        e.ctx.save()
+        for var c = steps {
+            if c.op == draw.PathOp.moveTo {
+                e.ctx.moveTo(c.x, c.y)
+                at = draw.Point{x=c.x, y=c.y}
+            }
+            if c.op == draw.PathOp.lineTo {
+                e.ctx.lineTo(c.x, c.y)
+                at = draw.Point{x=c.x, y=c.y}
+            }
+            if c.op == draw.PathOp.bezierTo {
+                e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
+                at = draw.Point{x=c.x, y=c.y}
+            }
+            if c.op == draw.PathOp.arcTo {
+                at = arcTo(e.ctx, at, draw.Point{x=c.cx1, y=c.cy1}, draw.Point{x=c.x, y=c.y}, c.r)
+            }
+            if c.op == draw.PathOp.close {
+                e.ctx.closePath()
+            }
+        }
+        paint(e.ctx, style)
+        e.ctx.restore()
+    })
+}
+
+const component draw.canvasText[platform](x, y, content, style) {
+    Paint(@draw(e) {
+        e.ctx.save()
+        e.ctx.font(style.fontFamily, style.fontSize)
+        source(e.ctx, style.fill)
+        e.ctx.moveTo(x, y)
+        e.ctx.showText(content)
+        e.ctx.restore()
+    })
 }
 
 const component ui.file[platform](path) {

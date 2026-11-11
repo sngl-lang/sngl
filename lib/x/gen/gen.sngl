@@ -200,6 +200,13 @@ enum Protocol {
     // renders more than one node, or a slot, at its top is held as one, its
     // nodes and the slot's put into it in the order written.
     contents
+    // Asks the widget to paint its drawing again: a function of the widget,
+    // typed as a component whose rest slot takes shapes, declared in the
+    // component's package, at most one per component. The build calls it
+    // wherever a write changes what the drawing reads. The drawing itself is
+    // handed to the component's event whose one parameter is the context its
+    // shapes paint through, which the component's `on` connects.
+    redraw
 }
 
 // Says the function is the named operation of its component's protocol.

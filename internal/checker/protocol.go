@@ -47,6 +47,8 @@ func (c *checker) bindProtocols() {
 			served, verb = fn.Params[0].Type, "fires on"
 		case ir.ProtocolAppend, ir.ProtocolRemove, ir.ProtocolInsertBefore:
 			served, verb = fn.Params[0].Type, "adds to"
+		case ir.ProtocolRedraw:
+			served, verb = fn.Params[0].Type, "redraws"
 		}
 		comp, _ := served.Decl.(*ir.Component)
 		switch {
@@ -88,6 +90,12 @@ func (c *checker) bindProtocols() {
 			comp.Protocol.Remove = fn
 		case ir.ProtocolInsertBefore:
 			comp.Protocol.InsertBefore = fn
+		case ir.ProtocolRedraw:
+			if !ir.IsShapeFamily(ir.RestSlotFamily(comp)) {
+				c.error(pm.pos, "#[gen.protocol(redraw)] asks a canvas to paint again, and %s takes no shapes", comp.Name)
+				continue
+			}
+			comp.Protocol.Redraw = fn
 		}
 	}
 }

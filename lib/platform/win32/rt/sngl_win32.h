@@ -106,6 +106,49 @@ HWND sngl_win32_entry(void);
 HWND sngl_win32_image(void);
 HWND sngl_win32_picture(void);
 void sngl_win32_set_fit(HWND w, int fit);
+
+/* sngl_win32_canvas is a drawing: a window painted, each time Win32 asks,
+ * by the function sngl_win32_on_paint connects, handed a drawing context
+ * that is the client area mapped onto the width by height space
+ * sngl_win32_set_canvas_width and sngl_win32_set_canvas_height give -- as
+ * it is, centered (mode 0), scaled evenly to fit inside the area (1) or to
+ * fill it (2), or stretched over it (3), as sngl_win32_set_scaling says. It
+ * measures as that size, a pixel a SNGL px, and takes a share of its box's
+ * spare room where it scales. sngl_win32_redraw asks it to paint again. */
+typedef struct sngl_win32_gfx sngl_win32_gfx;
+typedef void (*sngl_win32_paint_fn)(sngl_win32_gfx *g, void *ctx);
+HWND sngl_win32_canvas(void);
+void sngl_win32_set_canvas_width(HWND w, int width);
+void sngl_win32_set_canvas_height(HWND w, int height);
+void sngl_win32_set_scaling(HWND w, int mode);
+void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release);
+void sngl_win32_redraw(HWND w);
+
+/* A drawing context's calls are cairo's, over GDI+: a path built and then
+ * filled or stroked, in the color, line and font last set, which save and
+ * restore keep. Angles are radians, clockwise from the positive x axis;
+ * colors are 0..255 a channel; a line's cap is 0 butt, 1 round or 2 square
+ * and its join 0 miter, 1 round or 2 bevel. Text is drawn from the current
+ * point, on its baseline, in a family named as CSS's generic ones are or as
+ * the system knows one, sans-serif where it knows none. */
+void sngl_win32_gfx_save(sngl_win32_gfx *g);
+void sngl_win32_gfx_restore(sngl_win32_gfx *g);
+void sngl_win32_gfx_color(sngl_win32_gfx *g, int r, int gr, int b, int a);
+void sngl_win32_gfx_line_width(sngl_win32_gfx *g, double w);
+void sngl_win32_gfx_line_cap(sngl_win32_gfx *g, int cap);
+void sngl_win32_gfx_line_join(sngl_win32_gfx *g, int join);
+void sngl_win32_gfx_rect(sngl_win32_gfx *g, double x, double y, double w, double h);
+void sngl_win32_gfx_new_sub_path(sngl_win32_gfx *g);
+void sngl_win32_gfx_move_to(sngl_win32_gfx *g, double x, double y);
+void sngl_win32_gfx_line_to(sngl_win32_gfx *g, double x, double y);
+void sngl_win32_gfx_curve_to(sngl_win32_gfx *g, double x1, double y1, double x2, double y2, double x3, double y3);
+void sngl_win32_gfx_arc(sngl_win32_gfx *g, double cx, double cy, double r, double start, double end);
+void sngl_win32_gfx_arc_negative(sngl_win32_gfx *g, double cx, double cy, double r, double start, double end);
+void sngl_win32_gfx_close_path(sngl_win32_gfx *g);
+void sngl_win32_gfx_fill(sngl_win32_gfx *g, int preserve);
+void sngl_win32_gfx_stroke(sngl_win32_gfx *g);
+void sngl_win32_gfx_font(sngl_win32_gfx *g, const unsigned short *family, double size);
+void sngl_win32_gfx_text(sngl_win32_gfx *g, const unsigned short *text);
 void sngl_win32_set_url(HWND w, const unsigned short *url);
 const char *sngl_win32_image_failure(HWND w);
 void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);

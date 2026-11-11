@@ -246,6 +246,12 @@ var orderConstraints = []orderConstraint{
 		"a redraw fires on a state write, which is the dependency reactivity settles"},
 	{"NoTernary", "CanvasReactivity",
 		"CanvasRedrawStmt is a statement NoTernary's walker does not handle, so it must not be in the tree while NoTernary runs"},
+	{"Canvas", "CanvasPaint",
+		"the drawing it hands a canvas's paint event is the statements this pass makes of the shapes"},
+	{"CanvasPaint", "NoReactivity",
+		"a canvas under a branch is flattened into its render slot there, and a drawing not yet its paint handler is left behind: the canvas paints nothing"},
+	{"CanvasReactivity", "CanvasRedraw",
+		"it makes each redraw the canvas's #[gen.protocol(redraw)] call, and a redraw injected after it reaches the language as a statement placement does not write"},
 
 	{"Effect", "NoReactivity",
 		"a mount handler that writes state has to reach reactivity as an ordinary assignment, or nothing patches what reads that state"},

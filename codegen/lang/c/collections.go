@@ -770,21 +770,27 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 	return split + "(" + strings.Join(args, ", ") + ")", true
 }
 
-// numberIntrinsic is n, a call of a numeric builtin sngl:builtin answers in
-// SNGL and every language answers natively, as C answers it: math.h's, and
-// the least or greatest of a value and the rest of the list it is handed,
-// through a function of the list's.
+// numberIntrinsic is n, a call of a numeric builtin sngl:builtin or
+// sngl:math answers in SNGL and every language answers natively, as C
+// answers it: math.h's, and the least or greatest of a value and the rest of
+// the list it is handed, through a function of the list's.
 func (c *Context) numberIntrinsic(n *ir.Call) (string, bool) {
 	id := n.Func.Intrinsic
-	if !strings.HasPrefix(id, "int.") && !strings.HasPrefix(id, "float.") {
+	if !strings.HasPrefix(id, "int.") && !strings.HasPrefix(id, "float.") && !strings.HasPrefix(id, "math.") {
 		return "", false
 	}
 	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
 	math := func(fn string) string {
 		c.file.include("math.h", true)
-		return fn + "(" + arg(0) + ")"
+		args := make([]string, len(n.Args))
+		for i := range n.Args {
+			args[i] = arg(i)
+		}
+		return fn + "(" + strings.Join(args, ", ") + ")"
 	}
 	switch id {
+	case "math.pow", "math.sqrt", "math.sin", "math.cos", "math.tan", "math.asin", "math.acos", "math.atan", "math.atan2":
+		return math(strings.TrimPrefix(id, "math.")), true
 	case "float.floor":
 		return math("floor"), true
 	case "float.ceil":

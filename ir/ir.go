@@ -898,6 +898,9 @@ const (
 	// component built as a record renders into, where its body renders more
 	// than one node or a slot at its top.
 	ProtocolContents ProtocolOp = "contents"
+	// ProtocolRedraw is a component's: how a canvas is asked to paint its
+	// drawing again.
+	ProtocolRedraw ProtocolOp = "redraw"
 	// ProtocolFire is a component's, by the event: how a test fires the
 	// event as the host would (#[gen.fires]).
 	ProtocolFire ProtocolOp = "fire"
@@ -924,6 +927,8 @@ type NodeProtocol struct {
 	// Contents makes the container a component's body renders into where
 	// it renders more than one node, or a slot, at its top.
 	Contents *Func
+	// Redraw asks a canvas to paint its drawing again.
+	Redraw *Func
 	// Set is each prop's set, by the prop's name.
 	Set map[string]*Func
 	// On is each event's own connect, by the event's name, which a node of
@@ -983,6 +988,8 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 		return p.Detach
 	case ProtocolContents:
 		return p.Contents
+	case ProtocolRedraw:
+		return p.Redraw
 	}
 	return nil
 }
@@ -1004,6 +1011,10 @@ type FuncLowering struct {
 	// at all -- and the platforms that give a slot render a host-typed
 	// container parameter were giving those one as well.
 	SlotRender bool
+	// Paints says this is the handler a canvas painted through its
+	// protocol is handed its drawing as (lower's passCanvasPaint): what it
+	// reads is what the canvas redraws for.
+	Paints bool
 	// AsyncHoist says this is a computed passAsyncReactive synthesized for an
 	// async subexpression a view prop read: a zero-argument body returning it,
 	// lowered as a named async computed is. Said here rather than read off the
