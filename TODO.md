@@ -521,7 +521,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      font. Everything else goes in `unstyled` with a reason.
      `lib/style_coverage_test.go` holds it to every field.
    - `doc.sngl`, the package doc.
-4. **`codegen/platform/win32`.** Done, but for Go (Part 4) and the gallery.
+4. **`codegen/platform/win32`.** Done, but for Go (Part 4).
    - Registered with `codegen.RegisterNative("win32", …)` and blank-imported
      in `codegen/platform/platforms.go`.
    - `SupportedLangs` is `{"go", "c"}` once Part 2 exists, `{"go"}` until
@@ -576,8 +576,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
    - `LangForPlatform` is the platform's first language, from the registry.
      `cmd/sngl/consteval_output_test.go` checks a Go build's imports, which
      win32 joins with Part 4. The docs gallery (`docs/docs.go`'s
-     `platformOrder`) shows win32 once the stdlib's examples render there,
-     which waits on the canvas (step 8); gtk4 is not in it either.
+     `platformOrder`) shows win32 (step 7); gtk4 is not in it.
 5. **Cross-compiling.** Done for C, Go with Part 4.
    - The platform says what it builds for, and the language's build reads it.
      win32's generator writes `target windows/<arch>` into C's `sngl.build`
@@ -621,13 +620,12 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      the package body -- is done: the node is held in a package var of its
      option (`holdRead`), which a record sets as it makes it and lets go of
      as it is destroyed (`cmd/sngl/testdata/c_win32_test_reach_runs.txt`).
-7. **Docs.**
-   - `design/architecture.md`: a win32 bullet under *Platform Details*, with
-     its C runtime and cross-compilation.
-   - `design/win32.md` (or a section in `design/architecture.md`):
-     the generator, the metadata pin, and the layout engine.
-   - CLAUDE.md's `codegen/platform/{…}` list.
-   - The platform's page in the docs site (`go tool docsgen`).
+7. **Docs.** Done: `design/architecture.md`'s win32 bullet under *Platform
+   Details*; `design/win32.md`, the generator, its metadata pin and the
+   runtime's layout; CLAUDE.md's lists; and the docs site, which has no page
+   per platform, names win32 and `c` where it lists targets
+   (`docs/index.md`, `docs/learn/installation.md`, the tour) and shows win32
+   in the gallery (`lib/snapshots`).
 8. **After the slice.** Done.
    - Every `sngl:ui` component builds on win32 in C, held to
      `cmd/sngl/testdata/c_win32_controls_runs.txt`:
