@@ -664,6 +664,15 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      words of the spans it holds, each a window never shown, placed through
      the protocol (`testdata/win32_c_markup.txtar`, `TestSnapshotMarkup`).
      An inline image is its description, as on gtk4.
+   - Follow-up: a `richText` in SNGL that draws on a canvas, the default for a
+     platform with no rich text of its own. win32's C flow is its outline:
+     resolve each span's look from its parents, break the words into pieces
+     of one look, wrap them to the width, draw each line on one baseline at
+     the advances measured, and keep each link's rectangles for a click. It
+     wants three things of `sngl:ui/draw` first: measuring a run of text in a
+     font, the canvas's width at run time with the height the drawing comes
+     to handed back to layout, and where a click landed. win32 could then
+     drop its flow for it.
    - Interpreter simulation: `--simulate win32` runs the platform's
      overrides and protocol over the interpreter's stubs for every
      `#[cnative]`, as gtk4's does (`cmd/sngl/testdata/simulate_win32.txt`).
