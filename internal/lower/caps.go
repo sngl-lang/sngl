@@ -221,6 +221,12 @@ type Features struct {
 	// passPlacement its handle, attach and detach.
 	platform *ir.NodeProtocol
 
+	// language is the language node's #[gen.name], which is also the scheme
+	// its native marks spell a declaration in: a C declaration with a
+	// spelling there beside its C one is called through it, and CMarshal
+	// leaves the call alone (cWrapped).
+	language string
+
 	// connect is the platform node's #[gen.protocol(connect)], which
 	// passDeclarative splices into each handler it attaches to a widget whose
 	// component declares its protocol. Unexported: it is read off the node,

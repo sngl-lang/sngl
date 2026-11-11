@@ -507,7 +507,7 @@ func (p *placement) intoContents(owner string, stmts []ir.Stmt, tops []string, r
 		p.fail("#[gen.protocol(contents)] returns a %s, which declares no #[gen.protocol(append)]", box.Name)
 		return nil, false
 	}
-	made, err := protocolSplice(contents, nil)
+	made, err := protocolSplice(contents, nil, p.language)
 	if err != nil {
 		p.fail("%v", err)
 		return nil, false
@@ -525,7 +525,7 @@ func (p *placement) intoContents(owner string, stmts []ir.Stmt, tops []string, r
 			if lv.Sym != nil {
 				top.Sym = lv.Sym
 			}
-			put, err := protocolSplice(appendFn, []ir.Expr{root(), top})
+			put, err := protocolSplice(appendFn, []ir.Expr{root(), top}, p.language)
 			if err != nil {
 				p.fail("%v", err)
 				return false
@@ -574,7 +574,7 @@ func (p *placement) placeRoot(pkg *ir.Package) {
 	}
 	tops, nodeType := p.rootTops, p.rootType
 	attach := func(node ir.Expr) bool {
-		shown, err := protocolSplice(p.plat.Op(ir.ProtocolAttach), []ir.Expr{node})
+		shown, err := protocolSplice(p.plat.Op(ir.ProtocolAttach), []ir.Expr{node}, p.language)
 		if err != nil {
 			p.fail("%v", err)
 			return false

@@ -30,6 +30,9 @@ type HDC = C.HDC
 // HGDIOBJ is C's HGDIOBJ.
 type HGDIOBJ = C.HGDIOBJ
 
+// HMODULE is C's HMODULE.
+type HMODULE = C.HMODULE
+
 // HWND is C's HWND.
 type HWND = C.HWND
 
@@ -78,6 +81,15 @@ func EnableWindow(hWnd HWND, bEnable bool) int {
 // GetFocus calls GetFocus.
 func GetFocus() HWND {
 	return C.GetFocus()
+}
+
+// GetModuleHandleW calls GetModuleHandleW.
+func GetModuleHandleW(lpModuleName *string) HMODULE {
+	if lpModuleName == nil {
+		return C.GetModuleHandleW(nil)
+	} else {
+		return C.GetModuleHandleW((*C.ushort)(unsafe.Pointer(cbind.UTF16((*(lpModuleName))))))
+	}
 }
 
 // GetParent calls GetParent.
@@ -151,9 +163,23 @@ func SetTextColor(hdc HDC, color int) int {
 	return int(C.SetTextColor(hdc, C.COLORREF(color)))
 }
 
+// SetWindowTextW calls SetWindowTextW.
+func SetWindowTextW(hWnd HWND, lpString *string) int {
+	if lpString == nil {
+		return int(C.SetWindowTextW(hWnd, nil))
+	} else {
+		return int(C.SetWindowTextW(hWnd, (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(lpString)))))))
+	}
+}
+
 // ShowWindow calls ShowWindow.
 func ShowWindow(hWnd HWND, nCmdShow int) int {
 	return int(C.ShowWindow(hWnd, C.int(nCmdShow)))
+}
+
+// SnglPost calls sngl_post.
+func SnglPost(fn func()) {
+	C.sngl_post(snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
 }
 
 // SnglWin32Append calls sngl_win32_append.
@@ -190,6 +216,15 @@ func SnglWin32Cancel(id int) {
 // SnglWin32Canvas calls sngl_win32_canvas.
 func SnglWin32Canvas() HWND {
 	return C.sngl_win32_canvas()
+}
+
+// SnglWin32CarryFile calls sngl_win32_carry_file.
+func SnglWin32CarryFile(name string, data string, len int) {
+	__rel0 := C.CString(name)
+	__rel1 := C.CString(data)
+	C.sngl_win32_carry_file(__rel0, __rel1, C.int(len))
+	free(__rel1)
+	free(__rel0)
 }
 
 // SnglWin32Checkbox calls sngl_win32_checkbox.
@@ -414,6 +449,11 @@ func SnglWin32GfxText(recv Gfx, content string) {
 	C.sngl_win32_gfx_text(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(content))))
 }
 
+// SnglWin32Hold calls sngl_win32_hold.
+func SnglWin32Hold() {
+	C.sngl_win32_hold()
+}
+
 // SnglWin32Image calls sngl_win32_image.
 func SnglWin32Image() HWND {
 	return C.sngl_win32_image()
@@ -519,6 +559,11 @@ func SnglWin32Picture() HWND {
 	return C.sngl_win32_picture()
 }
 
+// SnglWin32Present calls sngl_win32_present.
+func SnglWin32Present() {
+	C.sngl_win32_present()
+}
+
 // SnglWin32Progress calls sngl_win32_progress.
 func SnglWin32Progress() HWND {
 	return C.sngl_win32_progress()
@@ -547,6 +592,11 @@ func SnglWin32Remove(parent HWND, child HWND) {
 // SnglWin32Row calls sngl_win32_row.
 func SnglWin32Row(t HWND) int {
 	return int(C.sngl_win32_row(t))
+}
+
+// SnglWin32Run calls sngl_win32_run.
+func SnglWin32Run() {
+	C.sngl_win32_run()
 }
 
 // SnglWin32Scroll calls sngl_win32_scroll.
@@ -838,6 +888,14 @@ func SnglWin32SetWords(w HWND, words string) {
 	C.sngl_win32_set_words(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(words))))
 }
 
+// SnglWin32Snapshot calls sngl_win32_snapshot.
+func SnglWin32Snapshot(path string, width int, height int) int {
+	__rel2 := C.CString(path)
+	var __ret3 int = int(C.sngl_win32_snapshot(__rel2, C.int(width), C.int(height)))
+	free(__rel2)
+	return __ret3
+}
+
 // SnglWin32Sorted calls sngl_win32_sorted.
 func SnglWin32Sorted(t HWND) string {
 	return C.GoString(C.sngl_win32_sorted(t))
@@ -893,9 +951,11 @@ func UpdateWindow(hWnd HWND) int {
 	return int(C.UpdateWindow(hWnd))
 }
 
+func free(s *C.char) {
+	C.free(unsafe.Pointer(s))
+}
+
 // Not wrapped, which a Go program calls directly:
 //
 //   - GetClientRect (GetClientRect): a ref parameter, which crosses as a record of the results only lowering declares
-//   - GetModuleHandle (GetModuleHandleW): an option parameter, which crosses as NULL only where the call writes null
 //   - GetWindowRect (GetWindowRect): a ref parameter, which crosses as a record of the results only lowering declares
-//   - SetWindowText (SetWindowTextW): an option parameter, which crosses as NULL only where the call writes null

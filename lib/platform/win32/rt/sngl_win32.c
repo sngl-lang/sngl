@@ -1685,8 +1685,41 @@ static DWORD WINAPI fetched(void *arg) {
 	return 0;
 }
 
-/* load shows what url names: a file the program carries (sngl_win32_assets),
- * one fetched where it is an http or https URL, or one on disk. */
+/* The files the program carries: its build's table, and each handed over on
+ * its own (sngl_win32.h). */
+static const sngl_win32_asset *carried;
+static sngl_win32_asset *carried_files;
+static size_t ncarried_files;
+
+void sngl_win32_carry(const sngl_win32_asset *assets) {
+	carried = assets;
+}
+
+void sngl_win32_carry_file(const char *name, const char *data, int len) {
+	size_t n = len > 0 ? (size_t)len : 0;
+	unsigned char *copy = malloc(n ? n : 1);
+	memcpy(copy, data, n);
+	carried_files = realloc(carried_files, (ncarried_files + 1) * sizeof *carried_files);
+	carried_files[ncarried_files++] = (sngl_win32_asset){_strdup(name), copy, n};
+}
+
+/* carried_file is the file the program carries by name, or NULL. */
+static const sngl_win32_asset *carried_file(const char *name) {
+	for (const sngl_win32_asset *a = carried; a && a->name; a++) {
+		if (strcmp(a->name, name) == 0) {
+			return a;
+		}
+	}
+	for (size_t i = 0; i < ncarried_files; i++) {
+		if (strcmp(carried_files[i].name, name) == 0) {
+			return &carried_files[i];
+		}
+	}
+	return NULL;
+}
+
+/* load shows what url names: a file the program carries (carried_file), one
+ * fetched where it is an http or https URL, or one on disk. */
 static void load(HWND w, ctl *c) {
 	const char *why = NULL;
 	int bw = 0, bh = 0;
@@ -1697,15 +1730,13 @@ static void load(HWND w, ctl *c) {
 	}
 	/* A carried file's URL is its path from the root it is served under. */
 	char *name = _strdup(utf8(c->url[0] == L'/' ? c->url + 1 : c->url));
-	for (const sngl_win32_asset *a = sngl_win32_assets; a->name; a++) {
-		if (strcmp(a->name, name) == 0) {
-			bmp = decode(a->data, a->len, NULL, &bw, &bh, &why);
-			free(name);
-			shown_as(w, c, bmp, bw, bh, why);
-			return;
-		}
-	}
+	const sngl_win32_asset *a = carried_file(name);
 	free(name);
+	if (a) {
+		bmp = decode(a->data, a->len, NULL, &bw, &bh, &why);
+		shown_as(w, c, bmp, bw, bh, why);
+		return;
+	}
 	if (wcsncmp(c->url, L"http://", 7) == 0 || wcsncmp(c->url, L"https://", 8) == 0) {
 		fetch *f = malloc(sizeof *f);
 		f->w = w;

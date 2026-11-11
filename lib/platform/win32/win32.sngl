@@ -1445,6 +1445,44 @@ func pickDate(n ui.node, iso c.utf16) bool
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Quit")]
 func quit()
 
+// The message loop, and the windows an `@run` handler holds back until it
+// presents them, which only a program's entry calls: C's by name, Go's
+// through the wrappers these give it.
+#[macro.cnative("sngl_win32_run")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Run")]
+func _rtRun()
+
+#[macro.cnative("sngl_win32_hold")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Hold")]
+func _rtHold()
+
+// A file the program carries, which Go's entry hands the runtime one at a
+// time; C's hands it its build's table.
+#[macro.cnative("sngl_win32_carry_file")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32CarryFile")]
+func _rtCarryFile(name string, data string, len int)
+
+// Runs `fn` on the message loop once it has handled what it already holds:
+// how `async.do` hands work a goroutine finished back in Go. C posts through
+// sngl_post itself.
+#[macro.cnative("sngl_post")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglPost")]
+func _rtPost(
+    #[c.type("sngl_win32_fn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+// Draws the toplevel shown last at width by height into the file path
+// names, which the entry a program is built with for `sngl snapshot` calls.
+#[macro.cnative("sngl_win32_snapshot")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Snapshot")]
+func _rtSnapshot(path string, width int, height int) int
+
+#[macro.cnative("sngl_win32_present")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Present")]
+func _rtPresent()
+
 // An image: a node holding the picture it shows, which fills it, painted as
 // `fit` says and measured at the picture's size. `@load` is its picture
 // shown, and `@failed` its picture failing, why being imageFailure's.

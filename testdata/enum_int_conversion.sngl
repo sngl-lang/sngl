@@ -1,0 +1,28 @@
+// `int(e)` of an enum is the index of the member e holds, in the order the
+// enum declares them: what a host enumeration's position crosses as, which
+// win32 hands a line cap and a font weight as. The interpreter read every
+// member as 0, taking its name for a number, and Go wrote `int("round")`.
+
+import test "sngl:test"
+import ui "sngl:ui"
+
+enum Cap {
+    butt
+    round
+    square
+}
+
+var cap = Cap.square
+
+func ordinal(c Cap) => int(c)
+
+func testEnumIndex(t test.Test) {
+    t.assert(ordinal(Cap.butt) == 0)
+    t.assert(ordinal(Cap.round) == 1)
+    t.assert(int(cap) == 2)
+    t.assert(float(cap) == 2.0)
+}
+
+ui.window {
+    ui.text("{int(cap)}")
+}

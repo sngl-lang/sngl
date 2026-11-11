@@ -66,12 +66,26 @@ func CPreambleLines(links []*ir.CLink) string {
 	return b.String()
 }
 
+// CLinks is the c.links a Go program reaches (ir.ReachedCLinks) but those of
+// a package a Go wrapper package calls the C of (`sngl tool cgogen`), which
+// links it in its own build: its sources compiled into the program as well
+// would define each symbol twice.
+func CLinks(pkg *ir.Package) []*ir.CLink {
+	return ir.ReachedCLinksExcept(pkg, wrapped)
+}
+
+// wrapped reports whether a wrapper package calls p's C: whether any of its
+// functions has a wrapper.
+func wrapped(p *ir.Package) bool {
+	return slices.ContainsFunc(p.Funcs, func(fn *ir.Func) bool { return wrapper(&fn.Foreign) != nil })
+}
+
 // CSources implements codegen.CCompiler: cgo compiles every .c file in the
 // package's directory, and the preamble includes a header there by its name,
 // so each source sits beside the generated Go under its own. The dispatchers
 // a C function's callback crosses through join them (ccallback.go).
 func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map[string][]byte, error) {
-	links := ir.ReachedCLinks(pkg)
+	links := CLinks(pkg)
 	var out map[string][]byte
 	for _, l := range links {
 		for _, src := range l.Sources {
@@ -87,7 +101,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 			out[src.Name] = []byte(src.Text)
 		}
 	}
-	if sigs := ir.ReachedCCallbacks(pkg); len(sigs) > 0 {
+	if sigs := ir.ReachedCCallbacks(pkg, func(fn *ir.Func) bool { return wrapper(&fn.Foreign) != nil }); len(sigs) > 0 {
 		name, err := generatedPackage(generated)
 		if err != nil {
 			return nil, err
@@ -98,7 +112,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		if out == nil {
 			out = map[string][]byte{}
 		}
-		out[callbacksFile] = CallbacksSource(name, links, sigs)
+		out[callbacksFile] = CallbacksSource(name, links, sigs, false)
 	}
 	return out, nil
 }

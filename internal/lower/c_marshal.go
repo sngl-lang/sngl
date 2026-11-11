@@ -14,7 +14,7 @@ import (
 var passCMarshal = pass{
 	name:    "CMarshal",
 	enabled: func(Features) bool { return true },
-	apply:   func(pkg *ir.Package, _ Features, _ Options) error { return CMarshal(pkg) },
+	apply:   func(pkg *ir.Package, f Features, _ Options) error { return marshalC(pkg, f.language) },
 }
 
 // CMarshal is passCMarshal for the interpreter simulating a target.
@@ -22,11 +22,15 @@ var passCMarshal = pass{
 // Every body the program reaches is rewritten, not only the package's own: on
 // the interpreter a library declaration is called where it is declared. A
 // frozen declaration is one the program does not reach (ir.ClonePackageFor).
-func CMarshal(pkg *ir.Package) error {
+func CMarshal(pkg *ir.Package) error { return marshalC(pkg, "") }
+
+// marshalC is passCMarshal for a build in language, which calls a C
+// declaration with a spelling in that language through it (cWrapped).
+func marshalC(pkg *ir.Package, language string) error {
 	if pkg == nil {
 		return nil
 	}
-	m := &cMarshal{done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
+	m := newCMarshal(language)
 	m.index(pkg)
 	if err := m.walk(pkg); err != nil {
 		return err
@@ -70,7 +74,13 @@ func CMarshal(pkg *ir.Package) error {
 	return nil
 }
 
+func newCMarshal(language string) *cMarshal {
+	return &cMarshal{language: language, done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
+}
+
 type cMarshal struct {
+	// language is the build's (Features.language).
+	language string
 	// done is each C call already converted: a body spliced without a deep
 	// copy shares its nodes with the declaration it came from.
 	done map[*ir.Call]bool
@@ -127,23 +137,37 @@ func (m *cMarshal) walk(root any) error {
 	if err != nil {
 		return err
 	}
-	return ir.Rewrite(root, rewriteCasts)
+	return ir.Rewrite(root, m.rewriteCasts)
 }
 
 // rewriteCasts makes each call of a `#[cnative(…, cast)]` function the
 // ir.CConvert it declares. Its argument was converted as any C call's is, so
 // a number reaches a typedef'd enum as a C `int` first, which cgo needs.
-func rewriteCasts(n ir.Node) (ir.Node, error) {
+//
+// A cast to a type the build's language spells as a wrapper's is its
+// argument: both are the one handle of the wrapper package (cWrapped).
+func (m *cMarshal) rewriteCasts(n ir.Node) (ir.Node, error) {
 	if c, ok := n.(*ir.Call); ok && c.Func.IsCCast() && len(c.Args) == 1 {
+		if sd, ok := c.Func.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
+			return c.Args[0].Value, nil
+		}
 		return ir.NewCConvert(c.Func, c.Args[0].Value), nil
 	}
 	return n, nil
 }
 
+// wrapped reports whether the build calls or spells a C declaration through
+// the spelling f has in its language: a Go wrapper's, which `sngl tool
+// cgogen` marks beside the C one (design/win32.md). The wrapper takes and
+// returns the language's own values, so nothing is converted for it.
+func (m *cMarshal) wrapped(f *ir.Foreign) bool {
+	return m.language != "" && m.language != f.Scheme && f.Scheme == "c" && f.In(m.language) != nil
+}
+
 // marshalSpliced converts the C calls of an expression a pass splices after
 // passCMarshal ran, and is e with its casts made conversions.
-func marshalSpliced(e ir.Expr) (ir.Expr, error) {
-	m := &cMarshal{done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
+func marshalSpliced(e ir.Expr, language string) (ir.Expr, error) {
+	m := newCMarshal(language)
 	err := ir.Walk(e, func(n ir.Node) error {
 		if c, ok := n.(*ir.Call); ok && c.Func != nil {
 			return m.call(c)
@@ -153,12 +177,12 @@ func marshalSpliced(e ir.Expr) (ir.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := rewriteCasts(e)
+	out, err := m.rewriteCasts(e)
 	if err != nil {
 		return nil, err
 	}
 	e = out.(ir.Expr)
-	return e, ir.Rewrite(e, rewriteCasts)
+	return e, ir.Rewrite(e, m.rewriteCasts)
 }
 
 // call converts each argument of c, when c calls a C function other than a
@@ -166,7 +190,7 @@ func marshalSpliced(e ir.Expr) (ir.Expr, error) {
 // called with the receiver as argument zero, which no parameter declares.
 func (m *cMarshal) call(c *ir.Call) error {
 	fn := c.Func
-	if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() || m.done[c] {
+	if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() || m.wrapped(&fn.Foreign) || m.done[c] {
 		return nil
 	}
 	m.done[c] = true
@@ -396,11 +420,14 @@ func exprBody(fn *ir.Func) ir.Expr {
 
 // CWrappers lowers the bodies of Go functions wrapping C functions (sngl
 // tool cgogen), which call a C function and nothing else: each argument
-// converted as passCMarshal converts it, and a ternary a conversion writes
-// (`c.cbool`) made statements, since Go has none.
+// converted as passCMarshal converts it, each string copied for C released
+// after the call as passReleaseTemps releases it, and a ternary a conversion
+// writes (`c.cbool`) made statements, since Go has none.
 func CWrappers(pkg *ir.Package) error {
-	if err := CMarshal(pkg); err != nil {
-		return err
+	for _, p := range []pass{passCMarshal, passConditionalTemps, passReleaseTemps} {
+		if err := p.apply(pkg, Features{}, Options{}); err != nil {
+			return err
+		}
 	}
 	return lowerTernary(pkg, Features{}, Options{})
 }

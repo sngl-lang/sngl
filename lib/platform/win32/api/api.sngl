@@ -21,6 +21,7 @@ struct HDC {}
 struct HGDIOBJ {}
 
 #[macro.cnative("HMODULE")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.HMODULE")]
 struct HMODULE {}
 
 #[macro.cnative("HWND")]
@@ -796,6 +797,7 @@ func GetClientRect(hWnd HWND, lpRect ref[RECT]) WINBOOL
 func GetFocus() HWND
 
 #[macro.cnative("GetModuleHandleW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetModuleHandleW")]
 func GetModuleHandle(lpModuleName option[c.utf16]) HMODULE
 
 #[macro.cnative("GetParent")]
@@ -842,6 +844,7 @@ func SendMessage(hWnd HWND, Msg UINT, wParam WPARAM, lParam LPARAM) LRESULT
 func SetFocus(hWnd HWND) HWND
 
 #[macro.cnative("SetWindowTextW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetWindowTextW")]
 func SetWindowText(hWnd HWND, lpString option[c.utf16]) WINBOOL
 
 #[macro.cnative("ShowWindow")]

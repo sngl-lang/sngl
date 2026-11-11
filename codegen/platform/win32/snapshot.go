@@ -16,6 +16,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/ir"
 )
 
@@ -27,9 +28,6 @@ var _ codegen.Snapshotter = (*Generator)(nil)
 // Wine, off Windows, in the prefix the test agent runs in -- and the pixels
 // it wrote encoded as a PNG.
 func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
-	if id := lang.LanguageIdentifier(); id != "c" {
-		return nil, fmt.Errorf("win32: a snapshot in %s is not written yet", id)
-	}
 	if ok, reason := g.ProbeTest(); !ok {
 		return nil, fmt.Errorf("win32: snapshot: %s", reason)
 	}
@@ -46,16 +44,12 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		return nil, fmt.Errorf("win32: %w", err)
 	}
 	defer release()
-	cc, err := clang.ForTarget(clang.TargetOf(dir), "")
+	exe, err := buildProgram(dir, "snapshot", lang)
 	if err != nil {
 		return nil, fmt.Errorf("win32: %w", err)
 	}
-	bin := filepath.Join(dir, "snapshot")
-	if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
-		return nil, fmt.Errorf("win32: %w", err)
-	}
 	out := filepath.Join(dir, "snapshot.rgba")
-	argv := append(clang.Launch(cc.Exe(bin)), out, strconv.Itoa(width), strconv.Itoa(height))
+	argv := append(clang.Launch(exe), out, strconv.Itoa(width), strconv.Itoa(height))
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = dir
 	if argv[0] == "wine" {
@@ -73,6 +67,24 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		return nil, fmt.Errorf("win32: %w", err)
 	}
 	return encodeSnapshot(raw)
+}
+
+// buildProgram builds the program the build wrote to dir into name beside
+// it, for the target its manifest names, in lang: with MinGW's compiler, or
+// the Go toolchain calling it through cgo. It is the executable it wrote.
+func buildProgram(dir, name string, lang codegen.LangTranslator) (string, error) {
+	bin := filepath.Join(dir, name)
+	if lang.LanguageIdentifier() == "go" {
+		return golang.BuildModule(dir, bin)
+	}
+	cc, err := clang.ForTarget(clang.TargetOf(dir), "")
+	if err != nil {
+		return "", err
+	}
+	if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		return "", err
+	}
+	return cc.Exe(bin), nil
 }
 
 // encodeSnapshot is the PNG of what sngl_win32_snapshot wrote: its width and

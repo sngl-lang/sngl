@@ -43,11 +43,20 @@ func Lib(root, name, dir, goos string) (*Plan, error) {
 	if len(diags) > 0 {
 		return nil, fmt.Errorf("sngl:%s does not check: %v", name, diags[0])
 	}
+	// Both absolute, so the path from dir to each package's sources is one
+	// filepath.Rel can make whichever was given relative.
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
 	pkgDir := func(p *ir.Package) string {
 		return filepath.Join(root, "lib", filepath.FromSlash(strings.TrimPrefix(p.Path, "sngl:")))
 	}
 	if dir == "" {
 		dir = filepath.Join(pkgDir(pkg), "cgo")
+	}
+	if dir, err = filepath.Abs(dir); err != nil {
+		return nil, err
 	}
 	importPath, err := goImportPath(dir)
 	if err != nil {

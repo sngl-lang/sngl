@@ -251,3 +251,23 @@ func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string) string {
 	}
 	return "int(" + v + ")"
 }
+
+// wrapper is the Go wrapper of a C declaration f describes, which `sngl tool
+// cgogen` marks beside its C spelling (design/win32.md), or nil where it has
+// none. Go calls the wrapper and spells the type as the wrapper package's,
+// and lower.CMarshal converts nothing for it.
+func wrapper(f *ir.Foreign) *ir.Foreign {
+	if f.Scheme != "c" {
+		return nil
+	}
+	return f.In("go")
+}
+
+// spelling is how Go names the declaration f describes: its wrapper where it
+// has one, and f otherwise.
+func spelling(f *ir.Foreign) *ir.Foreign {
+	if g := wrapper(f); g != nil {
+		return g
+	}
+	return f
+}

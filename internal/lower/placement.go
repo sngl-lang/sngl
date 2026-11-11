@@ -46,7 +46,7 @@ func lowerPlacement(pkg *ir.Package, feats Features, opts Options) error {
 	if handle == nil {
 		return fmt.Errorf("a platform asking for placement declares the type its nodes are held as: #[gen.protocol(handle)]")
 	}
-	p := &placement{plat: plat, records: collectRecords(pkg), pkg: pkg}
+	p := &placement{plat: plat, records: collectRecords(pkg), pkg: pkg, language: feats.language}
 	// Read off the node operations, which the rewrite below makes calls.
 	if root := pkg.RootDecl(); root != nil {
 		p.rootTops, p.rootType = bodyTops(root)
@@ -303,6 +303,9 @@ func closureFuncs(root any) []*ir.Func {
 
 type placement struct {
 	plat *ir.NodeProtocol
+	// language is the build's (Features.language), which protocolSplice
+	// marshals for.
+	language string
 	// fires is where a test fires each event the program handles, by
 	// "<id>.<event>" as the test names it (recordFire).
 	fires map[string]fireAt
@@ -459,7 +462,7 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 			pop = ir.ProtocolRemove
 		}
 		if fn := p.rootContainerOp(arg(0), pop); fn != nil {
-			put, err := protocolSplice(fn, []ir.Expr{arg(0), arg(1)})
+			put, err := protocolSplice(fn, []ir.Expr{arg(0), arg(1)}, p.language)
 			if err != nil {
 				p.fail("%v", err)
 				return nil
@@ -525,7 +528,7 @@ func (p *placement) platformCall(op ir.ProtocolOp, node ir.Expr) []ir.Stmt {
 		p.fail("a node is %sed at the program's root, and the platform declares no #[gen.protocol(%s)]", op, op)
 		return nil
 	}
-	spliced, err := protocolSplice(fn, []ir.Expr{node})
+	spliced, err := protocolSplice(fn, []ir.Expr{node}, p.language)
 	if err != nil {
 		p.fail("%v", err)
 		return nil
@@ -548,14 +551,14 @@ func (p *placement) insertBefore(parent, child, ref ir.Expr) []ir.Stmt {
 		p.fail("%s places a child a render slot renders, and declares no #[gen.protocol(insertBefore)] and append to", componentName(parent.ExprType()))
 		return nil
 	}
-	appended, err := protocolSplice(appendFn, []ir.Expr{parent, child})
+	appended, err := protocolSplice(appendFn, []ir.Expr{parent, child}, p.language)
 	if err != nil {
 		p.fail("%v", err)
 		return nil
 	}
 	rt := ref.ExprType()
 	if rt == nil || rt.Kind != ir.TypeOption {
-		inserted, err := protocolSplice(insert, []ir.Expr{parent, child, ref})
+		inserted, err := protocolSplice(insert, []ir.Expr{parent, child, ref}, p.language)
 		if err != nil {
 			p.fail("%v", err)
 			return nil
@@ -563,7 +566,7 @@ func (p *placement) insertBefore(parent, child, ref ir.Expr) []ir.Stmt {
 		return through(inserted)
 	}
 	before := &ir.Conversion{Type: rt.Elems[0], Operand: ir.CloneExprSharingDecls(ref)}
-	inserted, err := protocolSplice(insert, []ir.Expr{ir.CloneExprSharingDecls(parent), ir.CloneExprSharingDecls(child), before})
+	inserted, err := protocolSplice(insert, []ir.Expr{ir.CloneExprSharingDecls(parent), ir.CloneExprSharingDecls(child), before}, p.language)
 	if err != nil {
 		p.fail("%v", err)
 		return nil

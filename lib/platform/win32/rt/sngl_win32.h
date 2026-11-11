@@ -20,6 +20,12 @@ typedef void (*sngl_win32_fn)(void *ctx);
 typedef void (*sngl_win32_bool_fn)(int value, void *ctx);
 typedef void (*sngl_win32_release)(void *ctx);
 
+/* sngl_post queues fn on the message loop, behind what it already holds:
+ * the C runtime's (sngl.h), which this runtime defines, declared here for a
+ * program in a language other than C, which reaches it through the Go
+ * wrappers. */
+void sngl_post(sngl_win32_fn fn, void *ctx, sngl_win32_release release);
+
 /* sngl_win32_init registers the runtime's window classes and makes the
  * hidden window every node starts under. Each sngl_win32_* below calls it
  * first, so a program need not. */
@@ -172,14 +178,18 @@ const char *sngl_win32_image_failure(HWND w);
 void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_on_failed(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 
-/* The files a program carries, which its build defines, ending at a NULL
- * name: each by the path its URL names. */
+/* The files a program carries, each by the path its URL names. A C program's
+ * build defines sngl_win32_assets, ending at a NULL name, and its entry hands
+ * it to sngl_win32_carry; a Go program embeds its files and hands each to
+ * sngl_win32_carry_file, which copies it. Either before the program builds. */
 typedef struct {
 	const char *name;
 	const unsigned char *data;
 	size_t len;
 } sngl_win32_asset;
 extern const sngl_win32_asset sngl_win32_assets[];
+void sngl_win32_carry(const sngl_win32_asset *assets);
+void sngl_win32_carry_file(const char *name, const char *data, int len);
 
 /* sngl_win32_table is a list view of rows and columns. sngl_win32_fill_table
  * gives it its columns, one a line, and its rows, one a line of cells

@@ -134,7 +134,7 @@ func drawingContext(draw []ir.Stmt) *ir.Param {
 
 // lowerCanvasRedraw makes each redraw of a canvas painted through its
 // protocol the protocol's call of the node.
-func lowerCanvasRedraw(pkg *ir.Package, _ Features, _ Options) error {
+func lowerCanvasRedraw(pkg *ir.Package, f Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -145,7 +145,7 @@ func lowerCanvasRedraw(pkg *ir.Package, _ Features, _ Options) error {
 			if !ok || !paintsThrough(r.Canvas) {
 				continue
 			}
-			call, err := protocolSplice(r.Canvas.Component.Protocol.Redraw, []ir.Expr{handleRef(r.Canvas.ID, handleType(r.Canvas))})
+			call, err := protocolSplice(r.Canvas.Component.Protocol.Redraw, []ir.Expr{handleRef(r.Canvas.ID, handleType(r.Canvas))}, f.language)
 			if err != nil {
 				if failed == nil {
 					failed = fmt.Errorf("%s: %w", r.Canvas.Name, err)

@@ -561,7 +561,7 @@ func (c *compilation) newScaffoldData(widgetFields []widgetField, functionCode s
 		NeedsSlotAnchor:   c.shared.slotAnchor,
 		NeedsCalendarDate: c.shared.calendarDate,
 		Wrapped:           c.wrapped,
-		CLinks:            golang.CPreambleLines(ir.ReachedCLinks(c.ctx.Pkg)),
+		CLinks:            golang.CPreambleLines(golang.CLinks(c.ctx.Pkg)),
 	}
 	if c.wrapped || c.shared.dropDown {
 		// Widget fields are gtk4rt.Handle; ensure the import is present even if

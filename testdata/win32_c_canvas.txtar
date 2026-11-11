@@ -1357,6 +1357,7 @@ static void sngl_build(void) {
 }
 
 int main(void) {
+	sngl_win32_carry(sngl_win32_assets);
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -1423,4 +1424,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:e0714a65f497498b688c29bf9d010d1e
+pass sha256:7dde447ce819c25b70da1a1b48200442

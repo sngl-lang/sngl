@@ -572,7 +572,7 @@ func newIRTemplateData(info *irAnalysis, cfg Config, widgetFields []irWidgetFiel
 		})
 	}
 
-	if links := ir.ReachedCLinks(ctx.Pkg); len(links) > 0 {
+	if links := golang.CLinks(ctx.Pkg); len(links) > 0 {
 		if cc, ok := lang.(codegen.CCompiler); ok {
 			td.CgoPreamble = cc.EmitCHeader(links)
 		} else {

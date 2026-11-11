@@ -40,6 +40,26 @@ func callbackName(sig *ir.FuncSig) string {
 	return "snglCallback_" + strings.Join(params, "_") + "__" + ret
 }
 
+// cClosureType is the Go type of a closure taking and answering sig, each C
+// type as C spells it.
+func cClosureType(sig *ir.FuncSig) string {
+	spell := func(t *ir.Type) string {
+		if ct := ir.CTypeOf(t); ct != nil {
+			return CTypeToGo(ct)
+		}
+		return IRTypeToGo(t)
+	}
+	var ps []string
+	for _, p := range sig.Params {
+		ps = append(ps, spell(p.Type))
+	}
+	out := "func(" + strings.Join(ps, ", ") + ")"
+	if r := sig.Return; r != nil && r.Kind != ir.TypeVoid {
+		out += " " + spell(r)
+	}
+	return out
+}
+
 func callbackToken(t *ir.Type) string {
 	if ct := ir.CTypeOf(t); ct != nil {
 		return strings.ReplaceAll(ct.Name, " ", "_") + strings.Repeat("_p", ct.Ptr)
@@ -62,8 +82,11 @@ func callbackCType(t *ir.Type) *ir.CType {
 
 // CallbacksSource is the Go file exporting a dispatcher for each of sigs, in
 // package pkgName, its preamble including what links does so a pointer
-// type's C name resolves. Nil where there is no callback.
-func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig) []byte {
+// type's C name resolves. Nil where there is no callback. wrapping says
+// pkgName is a wrapper package (sngl tool cgogen), where the closure a C
+// type crosses into takes it as C spells it: the wrapper's own type for it
+// is an alias of that, and a package naming itself does not compile.
+func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, wrapping bool) []byte {
 	byName := map[string]*ir.FuncSig{}
 	for _, s := range sigs {
 		byName[callbackName(s)] = s
@@ -138,7 +161,11 @@ func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 		params = append(params, "ctx unsafe.Pointer")
 		// A closure released already answers C's zero: a callback C calls
 		// after it let the context go finds nothing, as cbind.Dispatch does.
-		lookup := "fn, ok := snglClosure(ctx).(" + IRTypeToGo(ir.FuncOf(sig.Params, sig.Return)) + ")"
+		closure := IRTypeToGo(ir.FuncOf(sig.Params, sig.Return))
+		if wrapping {
+			closure = cClosureType(sig)
+		}
+		lookup := "fn, ok := snglClosure(ctx).(" + closure + ")"
 		call := "fn(" + strings.Join(args, ", ") + ")"
 		ret, body := "", lookup+"\n\tif ok {\n\t\t"+call+"\n\t}"
 		if r := sig.Return; r != nil && r.Kind != ir.TypeVoid {

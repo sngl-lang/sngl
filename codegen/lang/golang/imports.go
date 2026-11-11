@@ -86,7 +86,7 @@ func foreignTypeImports(pkg *ir.Package) []string {
 			}
 			return
 		}
-		path := sd.Foreign.Path
+		path := spelling(&sd.Foreign).Path
 		if path == "" || path == "C" || seen[path] {
 			return
 		}

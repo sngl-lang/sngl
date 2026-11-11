@@ -80,10 +80,13 @@ type declarativeState struct {
 	// registry, as it keeps one written at the body's top, so the next render
 	// destroys it.
 	nestedInstance func(n *ir.NodeInst) []ir.Stmt
+	// language is the build's (Features.language), which protocolSplice
+	// marshals for.
+	language string
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
-	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: programConnect(pkg, caps.connect)}
+	st := &declarativeState{language: caps.language, liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: programConnect(pkg, caps.connect)}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -456,7 +459,7 @@ func (st *declarativeState) made(n *ir.NodeInst) ir.Expr {
 	if n.Component == nil || n.Component.Protocol == nil || n.Component.Protocol.Create == nil {
 		return nil
 	}
-	made, err := protocolSplice(n.Component.Protocol.Create, nil)
+	made, err := protocolSplice(n.Component.Protocol.Create, nil, st.language)
 	if err != nil && st.err == nil {
 		st.err = fmt.Errorf("%s: %w", n.Name, err)
 	}
@@ -485,7 +488,7 @@ func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr
 		}
 		fn, args = st.connect, append(args, &ir.Literal{Type: ir.TypString, Value: name})
 	}
-	connect, err := protocolSplice(fn, args)
+	connect, err := protocolSplice(fn, args, st.language)
 	if err != nil && st.err == nil {
 		st.err = fmt.Errorf("%s: %w", n.Name, err)
 	}
@@ -505,7 +508,10 @@ func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr
 // turn, which is how a platform's protocol delegates to the package it
 // imports: gtk4's connect to the widget package's signalConnect, which is a
 // native or a C call by the package's option.
-func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
+//
+// language is the build's (Features.language): a call of a C declaration
+// with a spelling in it is called through that and not converted.
+func protocolSplice(fn *ir.Func, args []ir.Expr, language string) (ir.Expr, error) {
 	body := spliceBody(fn)
 	if body == nil {
 		return nil, fmt.Errorf("#[gen.protocol(%s)] %s is spliced where its op is made, so its body is one return or one call", fn.Protocol, fn.Name)
@@ -518,7 +524,7 @@ func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
 		}
 		spliced = bindSplice(c.Func, spliceBody(c.Func), inner)
 	}
-	return marshalSpliced(spliced)
+	return marshalSpliced(spliced, language)
 }
 
 // spliceBody is fn's one return value or one call, or nil.
@@ -563,7 +569,7 @@ func bindSplice(fn *ir.Func, body ir.Expr, args []ir.Expr) ir.Expr {
 // #[gen.protocol(op)] function does with the two rides along as the last
 // operand; a component made through a create and declaring no append takes
 // no child.
-func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.CallStmt, error) {
+func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr, language string) (*ir.CallStmt, error) {
 	call := &ir.Call{
 		Type: ir.TypVoid,
 		Func: intrinsic,
@@ -588,7 +594,7 @@ func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.C
 		}
 		return stmt, nil
 	}
-	spliced, err := protocolSplice(fn, []ir.Expr{parent, child})
+	spliced, err := protocolSplice(fn, []ir.Expr{parent, child}, language)
 	if err != nil {
 		return stmt, fmt.Errorf("%s: %w", comp.Name, err)
 	}
@@ -671,7 +677,7 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 // appendChildStmt attaches a node to a parent expression: what the tree
 // attaches for it (attachRef).
 func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) ir.Stmt {
-	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child))
+	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child), st.language)
 	if err != nil && st.err == nil {
 		st.err = err
 	}

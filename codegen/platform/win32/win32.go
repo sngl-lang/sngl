@@ -11,7 +11,9 @@ import (
 	"io"
 	"io/fs"
 	"maps"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
@@ -19,6 +21,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/ir"
 	"duckfam.us/sngl/lib"
 )
@@ -36,7 +39,9 @@ func (g *Generator) PlatformIdentifier() string { return platformName }
 func (g *Generator) Description() string {
 	return "Classic Windows GUI over user32, gdi32 and comctl32."
 }
-func (g *Generator) SupportedLangs() []string { return []string{"c"} }
+
+// C is the default until a Go program has a test agent (TODO.md Part 4).
+func (g *Generator) SupportedLangs() []string { return []string{"c", "go"} }
 
 var _ codegen.TestProber = (*Generator)(nil)
 
@@ -59,6 +64,8 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	switch lang := req.Lang.LanguageIdentifier(); lang {
 	case "c":
 		return generateC(req, sink)
+	case "go":
+		return generateGo(req, sink)
 	default:
 		return fmt.Errorf("win32: generating %s is not written yet", lang)
 	}
@@ -83,7 +90,7 @@ func appMain(c *clang.Context, pkg *ir.Package) string {
 	if pkg.Teardown != nil {
 		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
 	}
-	build := "\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n"
+	build := "\tsngl_win32_carry(sngl_win32_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n"
 	if pkg.Run == nil {
 		return "\nint main(void) {\n" + build + "\tsngl_win32_run();\n" + teardown + "\treturn 0;\n}\n"
 	}
@@ -97,13 +104,18 @@ func appMain(c *clang.Context, pkg *ir.Package) string {
 	b.WriteString("\nstatic bool sngl_win32_started;\n\n")
 	b.WriteString("static void sngl_win32_start(void *env) {\n\t(void)env;\n\tif (sngl_win32_started) {\n")
 	fmt.Fprintf(&b, "\t\tsngl_win32_refuse_run_again(%s);\n\t}\n", strconv.Quote(pkg.RunPos.String()))
-	b.WriteString("\tsngl_win32_started = true;\n\tsngl_win32_present();\n\tsngl_win32_run();\n" + teardown + "}\n\n")
-	b.WriteString("int main(int argc, char **argv) {\n\tsngl_win32_hold();\n" + build)
+	b.WriteString("\tsngl_win32_started = true;\n\tsngl_win32_present();\n\tsngl_win32_run();\n")
+	b.WriteString(teardown)
+	b.WriteString("}\n\n")
+	b.WriteString("int main(int argc, char **argv) {\n\tsngl_win32_hold();\n")
+	b.WriteString(build)
 	fmt.Fprintf(&b, "\t%s args = {0};\n", args)
 	b.WriteString("\tif (argc > 1) {\n\t\targs.data = malloc(sizeof(sngl_string) * (size_t)(argc - 1));\n")
 	b.WriteString("\t\tfor (int i = 1; i < argc; i++) {\n\t\t\targs.data[args.len++] = (sngl_string){argv[i], strlen(argv[i])};\n\t\t}\n\t\targs.cap = args.len;\n\t}\n")
 	fmt.Fprintf(&b, "\tsngl_turn_enter();\n\t%s(args, (%s){sngl_win32_start, NULL});\n\tsngl_turn_leave();\n", clang.Decl(&pkg.Run.DeclInfo), run)
-	b.WriteString("\tif (!sngl_win32_started) {\n\t\tsngl_win32_started = true;\n\t\tsngl_win32_run();\n" + strings.ReplaceAll(teardown, "\t", "\t\t") + "\t}\n\treturn 0;\n}\n")
+	b.WriteString("\tif (!sngl_win32_started) {\n\t\tsngl_win32_started = true;\n\t\tsngl_win32_run();\n")
+	b.WriteString(strings.ReplaceAll(teardown, "\t", "\t\t"))
+	b.WriteString("\t}\n\treturn 0;\n}\n")
 	return b.String()
 }
 
@@ -127,11 +139,11 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		if err := clang.WriteTests(fe, pkg, "sngl_win32_step()"); err != nil {
 			return fmt.Errorf("win32: %w", err)
 		}
-		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\treturn sngl_win32_serve(sngl_tests, sngl_ntests, argc, argv);\n}\n")
+		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tsngl_win32_carry(sngl_win32_assets);\n\treturn sngl_win32_serve(sngl_tests, sngl_ntests, argc, argv);\n}\n")
 	} else if codegen.OptionBool(req.Options, snapshotOption) {
 		// Built for `sngl snapshot`: the program built and shown, then drawn
 		// at the size asked for into the file its first argument names.
-		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_win32_snapshot(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
+		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tsngl_win32_carry(sngl_win32_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_win32_snapshot(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
 	} else {
 		io.WriteString(fe, appMain(fe.Context(), pkg))
 	}
@@ -176,6 +188,69 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		}
 	}
 	return nil
+}
+
+// wrappers is the Go package wrapping the platform's C (sngl tool cgogen),
+// which a Go program calls the runtime through.
+const wrappers = "duckfam.us/sngl/lib/platform/win32/cgo"
+
+// generateGo writes req's program as Go: main.go, the program
+// (golang.WriteProgram) and its entry, which calls the runtime through the
+// wrappers.
+func generateGo(req *codegen.Request, sink codegen.Sink) error {
+	pkg := req.Pkg
+	fe := req.Lang.NewFileEmitter(sink, codegen.FileOptions{Name: "main.go", Source: req.Source, Platform: platformName, PackageName: "main"})
+	if err := golang.WriteProgram(fe, pkg, platformName); err != nil {
+		return fmt.Errorf("win32: %w", err)
+	}
+	cgo := fe.RequireImport(wrappers)
+	fe.RequireImport("runtime")
+	if codegen.OptionBool(req.Options, snapshotOption) {
+		// Built for `sngl snapshot`, as C's is.
+		fe.RequireImport("os")
+		fe.RequireImport("strconv")
+		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tif len(os.Args) < 4 {\n\t\tos.Exit(2)\n\t}\n\tw, _ := strconv.Atoi(os.Args[2])\n\th, _ := strconv.Atoi(os.Args[3])\n\tsnglInit()\n\tsnglBuild()\n\tos.Exit("+cgo+".SnglWin32Snapshot(os.Args[1], w, h))\n}\n")
+	} else {
+		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n}\n")
+	}
+	if err := fe.Close(); err != nil {
+		return err
+	}
+	// What the program is built for, which the Go build reads as C's does.
+	if err := writeFile(sink, clang.BuildFile, []byte("target windows/"+arch(req)+"\n")); err != nil {
+		return err
+	}
+	return carryGo(sink, req.FileAssets)
+}
+
+// carryGo writes the files a Go program carries beside it, and assets.go,
+// which embeds each and hands it to the runtime before the program builds:
+// the table C's build links, made at run time.
+func carryGo(sink codegen.Sink, assets []codegen.FileAsset) error {
+	if len(assets) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	b.WriteString("// Code generated by sngl (win32). DO NOT EDIT.\n\npackage main\n\nimport (\n\t_ \"embed\"\n\n\t\"" + wrappers + "\"\n)\n")
+	var init strings.Builder
+	for i, fa := range assets {
+		data := fa.Data
+		if data == nil {
+			d, err := os.ReadFile(fa.SrcPath)
+			if err != nil {
+				return err
+			}
+			data = d
+		}
+		name := filepath.ToSlash(fa.OutPath)
+		if err := writeFile(sink, name, data); err != nil {
+			return err
+		}
+		fmt.Fprintf(&b, "\n//go:embed %s\nvar snglAsset%d string\n", name, i)
+		fmt.Fprintf(&init, "\tcgo.SnglWin32CarryFile(%s, snglAsset%d, len(snglAsset%d))\n", strconv.Quote(name), i, i)
+	}
+	fmt.Fprintf(&b, "\nfunc init() {\n%s}\n", init.String())
+	return writeFile(sink, "assets.go", []byte(b.String()))
 }
 
 // snapshotOption builds the program for `sngl snapshot` (snapshot.go).

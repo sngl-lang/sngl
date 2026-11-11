@@ -706,8 +706,9 @@ func wrapped() int {
 An explicit conversion is written `T(x)`, naming a type and an operand. The
 permitted conversions among primitives are:
 
-- to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum, or a
-  single-base unit;
+- to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum
+  whose members carry no payload (the index of the member it holds, in the
+  order the enum declares them), or a single-base unit;
 - to `float` — from the same set as `int`;
 - to `bool` — from `bool` or `string`;
 - to a string-representable type — from `string` or from itself.

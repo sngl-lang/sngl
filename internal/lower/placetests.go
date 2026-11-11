@@ -245,7 +245,7 @@ func (p *placement) fire(pkg *ir.Package, call *ir.Call, comp, id string, path [
 	for _, a := range call.Args {
 		args = append(args, a.Value)
 	}
-	spliced, err := protocolSplice(fn, args)
+	spliced, err := protocolSplice(fn, args, p.language)
 	if err != nil {
 		p.fail("%v", err)
 		return call

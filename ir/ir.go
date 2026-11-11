@@ -556,7 +556,12 @@ type CSource struct {
 
 // ReachedCLinks is every c.link pkg and the packages it imports carry, each
 // once, in the order an import first reaches it.
-func ReachedCLinks(pkg *Package) []*CLink {
+func ReachedCLinks(pkg *Package) []*CLink { return ReachedCLinksExcept(pkg, nil) }
+
+// ReachedCLinksExcept is ReachedCLinks without the links of each package
+// skip reports, whose imports are still walked: a Go program's package
+// whose C a wrapper package calls, which links it in its own build.
+func ReachedCLinksExcept(pkg *Package, skip func(*Package) bool) []*CLink {
 	var out []*CLink
 	seen := map[*Package]bool{}
 	var walk func(p *Package)
@@ -565,7 +570,9 @@ func ReachedCLinks(pkg *Package) []*CLink {
 			return
 		}
 		seen[p] = true
-		out = append(out, p.CLinks...)
+		if skip == nil || !skip(p) {
+			out = append(out, p.CLinks...)
+		}
 		for _, imp := range p.Imports {
 			walk(imp.Pkg)
 		}
@@ -602,8 +609,9 @@ func TargetPackages(pkg *Package) []*Package {
 // ReachedCCallbacks is the type of each callback a C function pkg, a package
 // it imports or a target package of it (TargetPackages) declares takes, each
 // type once, in the order an import first reaches it: what a translator
-// writes a dispatcher for.
-func ReachedCCallbacks(pkg *Package) []*FuncSig {
+// writes a dispatcher for. A function skip reports is left out: one a Go
+// wrapper calls, whose package holds its dispatchers.
+func ReachedCCallbacks(pkg *Package, skip func(*Func) bool) []*FuncSig {
 	var out []*FuncSig
 	seen := map[*Package]bool{}
 	var walk func(p *Package)
@@ -613,7 +621,7 @@ func ReachedCCallbacks(pkg *Package) []*FuncSig {
 		}
 		seen[p] = true
 		for _, fn := range p.Funcs {
-			if fn.Foreign.Path != CPath || fn.IsCCast() || !slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CContext }) {
+			if fn.Foreign.Path != CPath || fn.IsCCast() || skip != nil && skip(fn) || !slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CContext }) {
 				continue
 			}
 			for _, p := range fn.Params {

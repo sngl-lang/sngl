@@ -760,21 +760,21 @@ what someone wrapped, and win32's Go path would need the same again.
      package's `.sngl` files, and is kept current by `go generate`. A test
      regenerates both and compares them with what is committed, and builds
      the package with MinGW for both architectures.
-3. **The Go language calls a wrapper.** A lowering pass for Go in `wrapper`
-   mode makes each declaration's Go spelling its primary one. Then
-   `passCMarshal` leaves the call alone, being no C call now, and Go writes
-   it as it writes any `go.native` call: a call into the wrapper package,
-   with a handle or a C struct being the wrapper's type. A cast between
-   two handle types, both the same Go type now, is the value itself.
-4. **A placed program in Go** (`golang.WriteProgram`), as C's: each package
-   var, each function, and the package body as `snglBuild`, and the
-   platform writes the entry.
-5. **win32 in Go.** `SupportedLangs` is `{"go", "c"}`; the entry calls the
-   runtime's loop through the wrappers; `go.buildModule` cross-compiles
-   (Part 3, step 5); the program's carried files reach the runtime through
-   a call rather than the `sngl_win32_assets` array C links; `sngl test`
-   and `sngl snapshot` in Go, and the win32 scripts and goldens recorded
-   in both languages.
+3. **The Go language calls a wrapper.** Done: Go reads a declaration's Go
+   spelling (`Foreign.In("go")`) wherever it reads its `Foreign`, and
+   `passCMarshal` and the splices after it are told the build's language
+   and leave a wrapped call alone (`design/win32.md`, *Go calls the
+   wrapper*; `testdata/c_go_wrapper_call.txtar`). A `ref` parameter has no
+   wrapper yet: its call's record of results is the program package's.
+4. **A placed program in Go** (`golang.WriteProgram`). Done.
+5. **win32 in Go.** Done: `SupportedLangs`, the entry, the cross-compile,
+   carried files through a call, `async.do`, and `sngl snapshot`, which
+   `snapshot_test.go` holds to C's pixels. Left:
+   - `sngl test` in Go: an agent serving over the TCP channel the C one
+     does, its tests written from the placed program as C's `WriteTests`
+     writes them.
+   - The `@run` entry in Go, which C's `appMain` writes.
+   - The win32 scripts and goldens recorded in both languages.
 6. **gtk4 onto the wrappers**, its `cgo=true` becoming the `direct`,
    `wrapper` or `purego` enum, and then `purego`.
 

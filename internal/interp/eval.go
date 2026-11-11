@@ -1598,6 +1598,12 @@ func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
 	if e.Type == nil {
 		return v, nil
 	}
+	// An enum's number is the index of the member it holds.
+	if e.Type.Kind == ir.TypeInt || e.Type.Kind == ir.TypeFloat {
+		if i, ok := enumIndex(e.Operand.ExprType(), v); ok {
+			v = i
+		}
+	}
 	switch e.Type.Kind {
 	case ir.TypeInt:
 		if r, ok := opeval.ConvertInt(v, e.Type.Bits, e.Type.Unsigned); ok {
@@ -1618,6 +1624,25 @@ func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
 		return false, nil
 	}
 	return v, nil
+}
+
+// enumIndex is the index of the member v holds of the enum t, in the order
+// t declares them, which is what `int` and `float` of it are.
+func enumIndex(t *ir.Type, v any) (int, bool) {
+	if t == nil || t.Kind != ir.TypeEnum {
+		return 0, false
+	}
+	ed, ok := t.Decl.(*ir.EnumDef)
+	if !ok {
+		return 0, false
+	}
+	switch m := v.(type) {
+	case string:
+		return ed.MemberIndex(m), true
+	case EnumValue:
+		return ed.MemberIndex(m.Member), true
+	}
+	return 0, false
 }
 
 func (env *Env) evalListLit(e *ir.ListLit) (any, error) {

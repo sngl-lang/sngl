@@ -102,9 +102,14 @@ package declaring it, and `C.HWND` in two packages is two types.
 function per wrapper whose body calls the declaration, lowers it with
 `lower.CWrappers` (`passCMarshal`'s conversions, and no ternary), and writes it
 with the Go language's own emitter. So a string, a struct and a callback cross
-as they do in direct mode, and the callbacks' dispatchers are written into the
-wrapper package (`callbacks.go`). A declaration with a `ref` or an `option`
-parameter has no wrapper yet; the file lists each, with why.
+as they do in direct mode, a string copied for C is freed after the call as
+`passReleaseTemps` frees it (`c.free` is written beside the wrappers), and
+the callbacks' dispatchers are written into the wrapper package
+(`callbacks.go`). A wrapper taking an `option` branches on null, since C takes
+NULL only where a call writes null. A declaration with a `ref` parameter has
+no wrapper yet: a call of one hands back a record of its results that the
+program's package declares, which the wrapper package cannot name. The file
+lists each, with why.
 
 **Each declaration names its wrapper.** The tool writes
 `#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]`
@@ -114,6 +119,32 @@ is its first mark's line, which is how the tool finds where to write it.
 Rerunning `win32gen` drops the marks from `api.sngl`; `go generate ./lib`
 writes them again.
 
+**Go calls the wrapper.** `ir.Foreign.In("go")` is a declaration's Go
+spelling, and the Go language reads it wherever it reads a declaration's
+`Foreign` for a call or a type (`wrapper` and `spelling`,
+`codegen/lang/golang/cinterop.go`): a call is written as any `go.native`
+call, into the wrapper package, and a handle or a C struct is the wrapper
+package's type. Nothing rewrites the declarations, since the library's are
+frozen and a protocol function placement splices is the library's own.
+`passCMarshal` is told the build's language (`Features.language`, the
+language node's `#[gen.name]`, which is also the scheme its native marks
+spell in) and converts nothing for a call of a declaration with a spelling
+there; the splices placement and the declarative passes make after it are
+told the same (`protocolSplice`). A `#[cnative(…, cast)]` to a type with a
+Go spelling is its argument, since both sides are the one handle there
+(`testdata/c_go_wrapper_call.txtar`, where `time` stands in for a wrapper
+package). A C build keeps every call C's, and the interpreter, simulating C,
+marshals as C does.
+
+**The wrappers write C, and name their own types bare.** The context writing
+them (`GoIRContext.Wrapping`, the package's import path) calls each
+declaration's C spelling, never the wrapper it is writing, and spells a type
+the package declares unqualified (`typeToGo`); the callbacks it exports take
+a C type as C spells it (`CallbacksSource`'s `wrapping`). A Go program's own
+`CLinks` and callbacks leave out a wrapped package's, which the wrapper
+package links: compiled into the program as well, its sources would define
+each symbol twice.
+
 **Its test holds both, and builds the package.** `TestCommitted` regenerates
 the package and the marks and compares them with what is committed;
 `TestBuilds` builds the package with both MinGW compilers, recorded in
@@ -122,6 +153,38 @@ runtime it includes and `pkg/go/cbind`. The package's files are behind
 `//go:build windows`, since `windows.h` is no other system's, and its `.c`
 file includes `rt/sngl_win32.c` from where it is, because cgo compiles only
 the `.c` files of the package's own directory.
+
+## win32 in Go
+
+**A placed program is written whole, as in C.** `golang.WriteProgram` writes
+what `passPlacement` left: the program's types, each package var a field of
+the one state `m`, each const a file-scope var, each function free (a method
+as the free function `LiftsToFreeFunc` names, as on every Go platform), and
+`snglInit` and `snglBuild`. win32 writes the entry, which runs the loop
+through the wrappers (`SnglWin32Run`). The loop's calls and the snapshot's are
+declared in `win32.sngl` for the wrappers to carry (`_rtRun`, `_rtSnapshot`),
+though no SNGL calls them.
+
+**It is cross-compiled by the Go toolchain calling MinGW.** win32 writes
+`sngl.build`'s `target windows/<arch>` line for Go as for C, and
+`golang.BuildModule` reads it: `GOOS`, `GOARCH`, `CGO_ENABLED=1` and `CC` the
+MinGW compiler C's matrix names, into an `.exe`. The wrapper package's
+`-mwindows` makes it a GUI program.
+
+**The files a program carries reach the runtime through a call.** C's entry
+hands the runtime its build's `sngl_win32_assets` table (`sngl_win32_carry`);
+Go's `assets.go` embeds each file and hands it over before the program builds
+(`sngl_win32_carry_file`, which copies it). The runtime looks a URL up in
+both.
+
+**`async.do` posts through the runtime's `sngl_post`**, as C's does: a
+platform intrinsic (`codegen/platform/win32/async.go`) calls the wrapper
+`SnglPost` with the closure.
+
+**The snapshot tests hold Go to C.** Each of `snapshot_test.go`'s programs is
+built in both languages, and the window Go draws must be C's, pixel for
+pixel; the record's digest covers both programs, the wrappers and the runtime
+they include.
 
 ## The runtime's layout
 

@@ -140,7 +140,7 @@ func (st *reactivityState) childOp(op ir.ProtocolOp, parent, child ir.Expr) *ir.
 	if op == ir.ProtocolRemove {
 		name = ir.NodeOpRemoveChild
 	}
-	stmt, err := childOp(st.intrinsics[name], op, parent, child)
+	stmt, err := childOp(st.intrinsics[name], op, parent, child, st.caps.language)
 	if err != nil {
 		st.failf(ast.Pos{}, "%v", err)
 	}
