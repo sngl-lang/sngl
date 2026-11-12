@@ -118,11 +118,19 @@ func WriteRuntime(dir string) error {
 const BuildFile = "sngl.build"
 
 // Manifest is the BuildFile for a program linking the pkg-config packages
-// named, and the flags links name.
+// named and those links name, and the flags links name.
 func Manifest(links []*ir.CLink, pkgConfig ...string) []byte {
 	var b strings.Builder
 	b.WriteString("# What this program links, which `sngl build` reads.\n")
-	for _, p := range pkgConfig {
+	pkgs := slices.Clone(pkgConfig)
+	for _, l := range links {
+		for _, p := range l.PkgConfig {
+			if !slices.Contains(pkgs, p) {
+				pkgs = append(pkgs, p)
+			}
+		}
+	}
+	for _, p := range pkgs {
 		b.WriteString("pkg-config " + p + "\n")
 	}
 	var seen []string

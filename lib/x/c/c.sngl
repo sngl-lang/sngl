@@ -10,6 +10,9 @@ import macro "sngl:macro"
 // found on the include path (`<gtk/gtk.h>`) rather than beside the program
 // (`"lib/math.h"`).
 //
+// `pkgConfig` names the packages pkg-config gives the compile and link flags
+// of (`gtk4`), where the host's own flags are what the header needs.
+//
 // `library` is the shared library the header declares, by the name a linker
 // takes (`gtk-4`, `user32`): a language that opens one at run time rather
 // than linking it reads that. `sources` are C files beside the file writing
@@ -17,7 +20,7 @@ import macro "sngl:macro"
 // language compiles into the program: a platform's runtime written in C, so
 // that it serves every language that can call C.
 #[marks.builtin("cLink")]
-component link(const include string, const system bool = false, const cflags list[string] = [], const ldflags list[string] = [], const library string = "", const sources list[string] = []) root {}
+component link(const include string, const system bool = false, const cflags list[string] = [], const ldflags list[string] = [], const pkgConfig list[string] = [], const library string = "", const sources list[string] = []) root {}
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which
 // `free` gives back.

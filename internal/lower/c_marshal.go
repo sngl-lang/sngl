@@ -148,8 +148,13 @@ func (m *cMarshal) walk(root any) error {
 // argument: both are the one handle of the wrapper package (cWrapped).
 func (m *cMarshal) rewriteCasts(n ir.Node) (ir.Node, error) {
 	if c, ok := n.(*ir.Call); ok && c.Func.IsCCast() && len(c.Args) == 1 {
+		// A node is its platform's handle in the wrapper's Go, as the struct
+		// is: nothing to convert. Anything else -- a pointer cast to another
+		// class, a number to an enum -- is converted to the wrapper's type.
 		if sd, ok := c.Func.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
-			return c.Args[0].Value, nil
+			if t := c.Args[0].Value.ExprType(); t == nil || t.Kind == ir.TypeComponent || t.Decl == sd {
+				return c.Args[0].Value, nil
+			}
 		}
 		return ir.NewCConvert(c.Func, c.Args[0].Value), nil
 	}
@@ -192,6 +197,13 @@ func (m *cMarshal) call(c *ir.Call) error {
 	fn := c.Func
 	if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() || m.wrapped(&fn.Foreign) || m.done[c] {
 		return nil
+	}
+	// A cast to a type the wrapper declares converts the language's own value
+	// (rewriteCasts), which no C value is first made of.
+	if fn.IsCCast() && fn.Return != nil {
+		if sd, ok := fn.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
+			return nil
+		}
 	}
 	m.done[c] = true
 	insertCContext(c)

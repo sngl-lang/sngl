@@ -56,6 +56,29 @@ struct Look {
 // calls take the class, the property and the adder by name, so a program
 // rendering only GIR classes has no cgo of its own.
 func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
+	return []byte(widgetHeader + widgetDecls(reg, cgo, false))
+}
+
+// widgetHeader is the imports widgetDecls's declarations are written against.
+const widgetHeader = "import marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport c \"sngl:x/c\"\n"
+
+// WidgetSource is a placed platform's own widget declarations: every class
+// of the bundled GIR, made, filled and written through the C functions GTK
+// names, under header, the generated file's first lines. Nothing in them is
+// gtk4rt's: the platform declares the Look every widget takes and the
+// `_setLook` that gives it one, and a box's child is appended by the C
+// runtime's sngl_box_append, which aligns it.
+func WidgetSource(header string) ([]byte, error) {
+	reg, err := gir.Minimal()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(header + "\n" + widgetHeader + widgetDecls(reg, true, true)), nil
+}
+
+// widgetDecls is the declarations of every class in reg; placed says they are
+// a placed platform's (WidgetSource).
+func widgetDecls(reg *gir.TypeRegistry, cgo, placed bool) string {
 	names := make([]string, 0, len(reg.Classes))
 	for name, info := range reg.Classes {
 		// A GIR <class> without a c:type is not a C type anything can
@@ -67,14 +90,21 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport c \"sngl:x/c\"\n")
-	b.WriteString(lookDecl)
+	if !placed {
+		b.WriteString(lookDecl)
+	}
 	declared := map[string]bool{}
 	casts := map[string]string{}
-	children := childOps{cgo: cgo, natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
+	children := childOps{cgo: cgo, placed: placed, natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
+			continue
+		}
+		// A class made with another object, a GtkApplicationWindow with its
+		// application, is the runtime's to make on a placed platform: a Go
+		// program cannot hand C an untyped pointer where it takes a typed one.
+		if placed && ctorTakesPointer(reg, info) {
 			continue
 		}
 		declared[info.CType] = true
@@ -84,7 +114,7 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		// the prop was given. Written on every generated declaration because
 		// it is true of every one of them -- these are widgets by
 		// construction, the GIR classes this platform wraps.
-		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
+		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[marks.intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
 		taken := map[string]bool{lookPropName: true, restSlotName: true}
 		var props []setProp
 		for _, p := range info.Props {
@@ -123,6 +153,8 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		// through a `#id` -- which names no one widget where the node is
 		// rendered more than once.
 		events := map[string]bool{}
+		// A placed platform's test fires a signal as GTK would emit it.
+		var fires [][2]string
 		for _, s := range info.Signals {
 			// A signal the fixed trampoline cannot carry is not declared, so
 			// binding it is a checker error on an event that does not exist
@@ -137,6 +169,9 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 			}
 			events[n] = true
 			writeEvent(&b, n, s.Name, info.CType)
+			if placed {
+				fires = append(fires, [2]string{n, s.Name})
+			}
 		}
 		var notifies [][2]string
 		for _, prop := range notifyProps[info.CType] {
@@ -154,13 +189,24 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
 		writeCreate(&b, reg, info, casts, cgo)
-		if cgo {
+		for _, f := range fires {
+			fmt.Fprintf(&b, "\n#[gen.fires(%q)]\nfunc _fire_%s_%s(w %s) {\n    _rtSignalEmit(w, %q)\n}\n", f[0], info.CType, f[0], info.CType, f[1])
+		}
+		switch {
+		case placed:
+			for _, nf := range notifies {
+				fmt.Fprintf(&b, "\n#[gen.protocol(on)]\nfunc _on_%s_%s(w %s, %s func()) {\n    _rtNotifyConnect(w, %q, %s)\n}\n", info.CType, nf[0], info.CType, nf[0], nf[1], nf[0])
+			}
+		case cgo:
 			for _, nf := range notifies {
 				writeNotifyOn(&b, info.CType, nf[0], nf[1])
 			}
 		}
 		children.write(&b, info)
 		children.writeSets(&b, reg, info, props, casts)
+		if placed {
+			fmt.Fprintf(&b, "\n#[gen.protocol(set)]\nfunc _set_%s_%s(self %s, %s Look) {\n    _setLook(self, %s)\n}\n", info.CType, lookPropName, info.CType, lookPropName, lookPropName)
+		}
 		// Each action is a method reached through a `#id` on the widget,
 		// declared as the C identifier it is: `bar.pulse()` is
 		// gtk_progress_bar_pulse(bar). One whose name a prop, an event or the
@@ -170,13 +216,36 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 			if !ok || taken[n] || events[n] {
 				continue
 			}
-			if params, ok := actionParams(a.Params); ok {
-				fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s.%s(%s)\n", a.CIdent, info.CType, n, params)
+			params, ok := actionParams(a.Params)
+			if !ok {
+				continue
 			}
+			if !placed {
+				fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s.%s(%s)\n", a.CIdent, info.CType, n, params)
+				continue
+			}
+			// On a placed platform the method casts its receiver to the class
+			// the C function takes, as C and Go both need: a node is held as
+			// the GtkWidget it is.
+			children.ptrs[info.CType] = true
+			children.classPtr(&b, info.CType)
+			native, args := "_"+a.CIdent, []string{fmt.Sprintf("%s(_ptr_%s(w))", ptrFunc(info.CType), info.CType)}
+			plain := params
+			for _, ap := range a.Params {
+				an, _ := snglName(ap.Name)
+				args = append(args, an)
+			}
+			plain = strings.ReplaceAll(plain, "#[macro.moves] ", "")
+			sep := ""
+			if params != "" {
+				sep = ", "
+			}
+			fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s(w %s%s%s)\n", a.CIdent, native, ptrType(info.CType), sep, params)
+			fmt.Fprintf(&b, "\nfunc %s.%s(w %s%s%s) {\n    %s(%s)\n}\n", info.CType, n, info.CType, sep, plain, native, strings.Join(args, ", "))
 		}
 	}
 	children.writeCasts(&b)
-	writeConnect(&b, cgo)
+	writeConnect(&b, cgo, placed)
 	castTypes := make([]string, 0, len(casts))
 	for cType := range casts {
 		castTypes = append(castTypes, cType)
@@ -186,7 +255,21 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nstruct %s {}\n", cType, castType(cType))
 		fmt.Fprintf(&b, "\n#[macro.cnative(%q, cast)]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
 	}
-	return []byte(b.String())
+	return b.String()
+}
+
+// ctorTakesPointer reports whether info's primary constructor takes a
+// pointer, which it is handed as an untyped one (ctorParam).
+func ctorTakesPointer(reg *gir.TypeRegistry, info *gir.ClassInfo) bool {
+	if len(info.Constructors) == 0 {
+		return false
+	}
+	for _, p := range pickPrimaryConstructorInfo(info).Params {
+		if spelled, err := ctorParam(reg, p); err == nil && spelled.typ == "option[c.pointer]" {
+			return true
+		}
+	}
+	return false
 }
 
 // writeConnect declares signalConnect, which gtk4.sngl's connect protocol
@@ -201,7 +284,11 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 // widget, at the latest: the program is cgo already. GLib calls a
 // handler with the instance, a property notification's with the GParamSpec
 // after it, and the context last, so each shape is a declaration of its own.
-func writeConnect(b *strings.Builder, cgo bool) {
+func writeConnect(b *strings.Builder, cgo, placed bool) {
+	if placed {
+		b.WriteString(connectPlaced)
+		return
+	}
 	if !cgo {
 		b.WriteString(connectWrapped)
 		return
@@ -238,6 +325,39 @@ func signalConnect(w ui.node, signal string, handler func()) {
     _signalConnect(_instance(w), signal, func(self c.pointer) {
         handler()
     }, 0)
+}
+`
+
+// connectPlaced is writeConnect for a placed platform: the runtime's
+// trampolines, which hand the handler only its context whatever GLib hands
+// them, so every handler crosses as one callback shape.
+const connectPlaced = `
+#[macro.cnative("sngl_signal_connect")]
+func _rtSignalConnect(
+    w ui.node,
+    signal string,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_notify_connect")]
+func _rtNotifyConnect(
+    w ui.node,
+    signal string,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+// Emits w's signal as GTK would, which a test fires an event with.
+#[macro.cnative("sngl_signal_emit")]
+func _rtSignalEmit(w ui.node, signal string)
+
+// Connects handler to w's signal, as the connect protocol does. A property
+// notification is its event's own protocol.
+func signalConnect(w ui.node, signal string, handler func()) {
+    _rtSignalConnect(w, signal, handler)
 }
 `
 
@@ -311,6 +431,7 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 // to another.
 type childOps struct {
 	cgo     bool
+	placed  bool
 	natives map[string]bool
 	ptrs    map[string]bool
 	// classPtrs is each class a `_ptr_` cast is declared for.
@@ -344,6 +465,14 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
 	// A box's alignItems is gtk4rt's to apply as a child arrives, so a box
 	// takes one through gtk4rt on cgo too: GTK's own call left it unaligned.
+	if o.placed && call.Func == "gtk_box_append" {
+		o.ptrs["GtkWidget"] = true
+		o.classPtr(b, info.CType)
+		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[macro.cnative(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
+		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    _sngl_box_append(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
+			op, op, info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"))
+		return
+	}
 	if !o.cgo || call.Func == "gtk_box_append" {
 		o.rtOp(b, info, op, call)
 		return

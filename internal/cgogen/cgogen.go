@@ -307,7 +307,7 @@ func (g *gen) goType(t *ir.Type) string {
 		if !strings.Contains(ct, "C.") {
 			return ct
 		}
-		name := golang.ExportName(sd.Name)
+		name := typeName(sd.Name)
 		if _, ok := g.types[name]; !ok {
 			g.types[name] = sd
 			for _, f := range sd.Fields {
@@ -347,6 +347,16 @@ func (g *gen) goSig(w *ir.Func, named bool) string {
 		r = " " + r
 	}
 	return "(" + strings.Join(ps, ", ") + ")" + r
+}
+
+// typeName is the exported Go name of the type a SNGL struct named n is: n
+// capitalized, or, where n is a package's own (`_p_GtkWidget`), each of its
+// words capitalized (`PGtkWidget`), as GoName spells a C function.
+func typeName(n string) string {
+	if strings.HasPrefix(n, "_") {
+		return GoName(n)
+	}
+	return golang.ExportName(n)
 }
 
 // pkgName is the Go package's name, the last element of its import path.

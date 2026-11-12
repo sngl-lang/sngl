@@ -67,7 +67,7 @@ func Unavailable(lang, platform string) string {
 			return needNode()
 		}
 		return ""
-	case "gtk4":
+	case "gtk4", "gtk4next":
 		if lang == "c" {
 			if len(clang.Compilers()) == 0 {
 				return "no C compiler on PATH"
@@ -81,7 +81,7 @@ func Unavailable(lang, platform string) string {
 		if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
 			return "gtk4 dev libraries not installed (pkg-config)"
 		}
-		if err := codegen.PlatformUnavailable("gtk4"); err != nil {
+		if err := codegen.PlatformUnavailable(platform); err != nil {
 			return err.Error()
 		}
 		return ""
@@ -131,7 +131,7 @@ func Unavailable(lang, platform string) string {
 // `go tool verify` still wraps the whole suite in a compositor, so the
 // courtesy is kept where it was always enforced.
 func PresentsWindows(platform string) string {
-	if platform != "gtk4" {
+	if platform != "gtk4" && platform != "gtk4next" {
 		return ""
 	}
 	if headless.Active() || headless.HasDisplay() || headless.Compositor() != "" {
@@ -190,7 +190,7 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 		return cBuild(dir)
 	}
 	switch platform {
-	case "bubbletea", "fyne", "gtk4":
+	case "bubbletea", "fyne", "gtk4", "gtk4next":
 		return goTest(ctx, dir)
 	case "html":
 		if lang == "go" {

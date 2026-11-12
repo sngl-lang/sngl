@@ -48,10 +48,10 @@ func TestWidgetSource_DeclaresProps(t *testing.T) {
 	}
 	src := string(widgetSource(reg, false))
 	for _, want := range []string{
-		"#[intrinsic(\"gtk4:GtkBox\")]\ncomponent GtkBox(",
+		"#[marks.intrinsic(\"gtk4:GtkBox\")]\ncomponent GtkBox(",
 		"\n    spacing int,\n",
 		"\n    orientation string,\n",
-		"#[intrinsic(\"gtk4:GtkButton\")]\ncomponent GtkButton(",
+		"#[marks.intrinsic(\"gtk4:GtkButton\")]\ncomponent GtkButton(",
 		"\n    @clicked(self GtkButton),\n",
 		// Hyphenated GIR names are unwritable in SNGL as they stand, so the
 		// declaration carries the camel-cased spelling.

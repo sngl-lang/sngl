@@ -25,14 +25,20 @@ var (
 // directories below.
 const root = "../.."
 
-// TestCommitted holds the committed wrapper package of sngl:platform/win32,
-// and the marks its .sngl files carry, to what the tool writes now.
+// TestCommitted holds each committed wrapper package, and the marks its
+// platform's .sngl files carry, to what the tool writes now.
 func TestCommitted(t *testing.T) {
-	plan, err := Lib(root, "platform/win32", "", "windows")
+	for _, p := range []struct{ name, goos string }{{"win32", "windows"}, {"gtk4next", ""}} {
+		t.Run(p.name, func(t *testing.T) { committed(t, p.name, p.goos) })
+	}
+}
+
+func committed(t *testing.T, platform, goos string) {
+	plan, err := Lib(root, "platform/"+platform, "", goos)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const rerun = "rerun `go generate ./lib`, which runs `sngl tool cgogen sngl:platform/win32`"
+	rerun := "rerun `go generate ./lib`, which runs `sngl tool cgogen sngl:platform/" + platform + "`"
 	for _, name := range slices.Sorted(maps.Keys(plan.Files)) {
 		have, err := os.ReadFile(filepath.Join(plan.Dir, name))
 		if err != nil || !bytes.Equal(have, plan.Files[name]) {
@@ -111,4 +117,14 @@ func buildDigest(t *testing.T, cc string, dirs ...string) string {
 		}
 	}
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// A struct a package names as its own, a leading underscore, is a Go type
+// the program can name: each word capitalized, as a C function's wrapper is.
+func TestTypeName(t *testing.T) {
+	for in, want := range map[string]string{"_p_GtkWidget": "PGtkWidget", "_c_gboolean": "CGboolean", "_gpointer": "Gpointer", "HWND": "HWND", "look": "Look"} {
+		if got := typeName(in); got != want {
+			t.Errorf("typeName(%q) = %q, want %q", in, got, want)
+		}
+	}
 }

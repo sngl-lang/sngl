@@ -459,6 +459,8 @@ func (c *checker) checkCLinks() {
 				link.CFlags = strs(p.Value)
 			case "ldflags":
 				link.LDFlags = strs(p.Value)
+			case "pkgConfig":
+				link.PkgConfig = strs(p.Value)
 			case "library":
 				if l, ok := p.Value.(*ir.Literal); ok {
 					link.Library = l.Value

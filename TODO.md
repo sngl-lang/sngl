@@ -863,7 +863,25 @@ reaches it the same way.
      `allocate`, the trampolines a callback cannot take, and any GObject
      subclass.
    - **Slices**, each in both languages with a script test and snapshots:
-     1. A window, a box, a label and a button whose click counts.
+     1. A window, a box, a label and a button whose click counts. Done:
+        `cmd/sngl/testdata/gtk4next_test_runs.txt`, in both languages,
+        its snapshots held to gtk4's C. The runtime is a copy of `rt/` in
+        `lib/platform/gtk4next/rt` until the swap; what it gained:
+        `sngl_gtk_main`, `sngl_gtk_init` and `sngl_gtk_step` for Go's
+        entry and agent, `sngl_signal_connect`/`sngl_notify_connect`/
+        `sngl_signal_emit` (a handler crosses as `SnglFn` and its context,
+        and a test fires a signal), the scaffold's `sngl_set_prop_*`,
+        `sngl_gtk_carry`/`sngl_gtk_carry_file` in place of an extern asset
+        table, `sngl_gtk_capture_file` for Go's snapshot, a node attached
+        that is no toplevel shown in one of its own, and `int` for a bool
+        it is handed, as SNGL's C hands one. Along the way: `c.link` takes
+        `pkgConfig`; cgogen names a struct with a leading underscore as an
+        exported Go type (`_p_GtkWidget` → `PGtkWidget`); and a cast to a
+        wrapped type converts to the wrapper's type in Go unless its operand
+        is a node or that type already. The placed widgets
+        (`gtk4.WidgetSource`) skip a class made with another object
+        (GtkApplicationWindow), and an action is a method casting its
+        receiver.
      2. The look and the layout (`style.sngl`), and every leaf widget.
      3. Toplevels, several windows, `@run` and the application's teardown.
      4. Scroll, tabs, menus and the way back, keys.

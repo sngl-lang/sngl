@@ -534,6 +534,8 @@ type CLink struct {
 	System  bool
 	CFlags  []string
 	LDFlags []string
+	// PkgConfig are the packages pkg-config gives the flags of.
+	PkgConfig []string `json:",omitempty"`
 	// Library is the shared library the header declares, as a linker names
 	// it (`gtk-4`): what a language loading C at run time opens.
 	Library string `json:",omitempty"`

@@ -1,0 +1,267 @@
+import ui "sngl:ui"
+import build "sngl:build"
+import marks "sngl:internal/marks"
+import macro "sngl:macro"
+import gen "sngl:x/gen"
+import c "sngl:x/c"
+import go "sngl:language/go"
+
+// The runtime every gtk4 program links: the toplevels and the application,
+// the look and the layout of a box's children, in C, which each language
+// compiles into the program.
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c"])
+
+// The `gtk4next` node of a build directive: `output { c { gtk4next() } }`.
+//
+// gtk4 as it is becoming: every node is a GTK widget and every operation on
+// one a protocol function, here or in widgets.sngl, so the platform asks for
+// `placement`, and each language writes the program whole. GTK owns its
+// widgets and diffs nothing, so the tree is flattened and each write is
+// explicit, as on gtk4.
+#[gen.can(insertBefore, asyncPost, instanceState)]
+#[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
+#[gen.wants(placement, stdlibContextParam)]
+#[gen.name("gtk4next")]
+#[gen.native("gtk4next")]
+component platform(
+    // Go package name for the generated files.
+    const package       string,
+    // Emit a standalone main() or a library-style module.
+    const main          bool,
+    // What its generated code introduces beside a program's names: the
+    // runtime's prefix and the program's entry.
+    const reservedNames list[string] = ["sngl_gtk", "sngl_app", "sngl_build", "sngl_main", "main"],
+) build.platform
+
+// Every node is a widget, held as its pointer. A protocol function handing a
+// node to GTK reaches the pointer through this.
+#[macro.cnative("GtkWidget *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.Widget")]
+struct Widget {}
+
+#[macro.cnative("GtkWidget *", cast)]
+#[gen.protocol(handle)]
+func _handle(n ui.node) Widget
+
+// A node the program holds at its root, a window, is put on screen when the
+// program attaches it and destroyed, with everything in it, when it detaches
+// it.
+#[macro.cnative("sngl_app_attach")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglAppAttach")]
+func _rtAttach(n ui.node)
+
+#[macro.cnative("sngl_app_detach")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglAppDetach")]
+func _rtDetach(n ui.node)
+
+#[gen.protocol(attach)]
+func _attach(n ui.node) {
+    _rtAttach(n)
+}
+
+#[gen.protocol(detach)]
+func _detach(n ui.node) {
+    _rtDetach(n)
+}
+
+// What a component renders several nodes, or a slot, at its top into.
+#[macro.cnative("sngl_contents_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglContentsNew")]
+func _rtContents() ui.node
+
+#[gen.protocol(contents)]
+func _contents() ui.node {
+    return _rtContents()
+}
+
+// Every widget's handlers are GLib signals.
+#[gen.protocol(connect)]
+func _connect(w ui.node, signal string, handler func()) {
+    signalConnect(w, signal, handler)
+}
+
+// What a widget's style asks of the runtime (look.c): its CSS, its least
+// size, its share of a box's spare room, and how a box lays out what it
+// holds.
+struct Look {
+    css       string
+    width     float
+    height    float
+    grow      float
+    cross     int
+    textAlign int
+    lines     int
+    wrap      int
+    hidden    bool
+    cursor    string
+    justify   int
+    spaced    bool
+    spacing   int
+    grid      bool
+    columns   int
+}
+
+#[macro.cnative("sngl_set_look")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSetLook")]
+func _rtSetLook(
+    w       ui.node,
+    css     string,
+    width   int,
+    height  int,
+    grow    float,
+    cross   int,
+    align   int,
+    lines   int,
+    wrap    int,
+    hidden  int,
+    cursor  string,
+    justify int,
+    spaced  int,
+    spacing int,
+    grid    int,
+    columns int,
+)
+
+// Gives w its look, each widget's `look` set.
+func _setLook(w ui.node, l Look) {
+    _rtSetLook(w, l.css, int(l.width + 0.5), int(l.height + 0.5), l.grow, l.cross, l.textAlign, l.lines, l.wrap, l.hidden ? 1 : 0, l.cursor, l.justify, l.spaced ? 1 : 0, l.spacing, l.grid ? 1 : 0, l.columns)
+}
+
+// Runs the application: the program built once GTK is ready, and the loop
+// until the last window closes. A Go program's entry; C's calls
+// sngl_app_run with its own build.
+#[macro.cnative("sngl_gtk_main")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkMain")]
+func _rtMain(
+    #[c.type("SnglFn")] build func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+) int
+
+// GTK made ready without an application, and the loop run once: how a Go
+// test agent starts, and lets the loop run while a test waits.
+#[macro.cnative("sngl_gtk_init")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkInit")]
+func _rtInit()
+
+#[macro.cnative("sngl_gtk_step")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkStep")]
+func _rtStep()
+
+// What was shown last, drawn at width by height into the file at path as
+// its size and pixels (rt's sngl_gtk_capture_file): a Go test's snapshot.
+#[macro.cnative("sngl_gtk_capture_file")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkCaptureFile")]
+func _rtCaptureFile(path string, width int, height int) int
+
+// A file a Go program embeds, handed to the runtime before it runs, which
+// its images read as C's read the table its entry hands it.
+#[macro.cnative("sngl_gtk_carry_file")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkCarryFile")]
+func _rtCarryFile(name string, data string, len int)
+
+// --- Windows ---
+
+// A toplevel: the host object a `ui.window` is. It is the runtime's box its
+// content is appended to, which keeps the title, visibility and handlers
+// until the window is made around it. The window manager's close is
+// reported as `visible = false` followed by `@closed`.
+#[marks.intrinsic("gtk4next:Toplevel")]
+component Toplevel(title string, :visible bool = true, @closed(), content ...component ui.node) root
+
+#[macro.cnative("sngl_toplevel_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelNew")]
+func _rtToplevelNew() Toplevel
+
+#[macro.cnative("sngl_toplevel_set_title")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelSetTitle")]
+func _rtToplevelSetTitle(w Toplevel, title string)
+
+#[macro.cnative("sngl_toplevel_set_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelSetVisible")]
+func _rtToplevelSetVisible(w Toplevel, visible bool)
+
+#[macro.cnative("sngl_toplevel_on_closed")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelOnClosed")]
+func _rtToplevelOnClosed(
+    w Toplevel,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_toplevel_on_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelOnVisible")]
+func _rtToplevelOnVisible(
+    w Toplevel,
+    #[c.type("SnglBoolFn")] fn func(visible bool),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_toplevel_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelAppend")]
+func _rtToplevelAppend(w Toplevel, child ui.node)
+
+#[macro.cnative("sngl_box_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBoxRemove")]
+func _rtToplevelRemove(w Toplevel, child ui.node)
+
+#[gen.protocol(create)]
+func _create_Toplevel() Toplevel {
+    return _rtToplevelNew()
+}
+
+#[gen.protocol(append)]
+func _append_Toplevel(parent Toplevel, child ui.node) {
+    _rtToplevelAppend(parent, child)
+}
+
+#[gen.protocol(remove)]
+func _remove_Toplevel(parent Toplevel, child ui.node) {
+    _rtToplevelRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Toplevel_title(w Toplevel, title string) {
+    _rtToplevelSetTitle(w, title)
+}
+
+#[gen.protocol(set)]
+func _set_Toplevel_visible(w Toplevel, visible bool) {
+    _rtToplevelSetVisible(w, visible)
+}
+
+#[gen.protocol(on)]
+func _on_Toplevel_closed(w Toplevel, closed func()) {
+    _rtToplevelOnClosed(w, closed)
+}
+
+#[gen.protocol(on)]
+func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
+    _rtToplevelOnVisible(w, visible)
+}
+
+const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
+    Toplevel(title=title, :visible=visible, @closed { closed() }) {
+        content
+    }
+}
+
+// --- Leaf widgets ---
+
+const component ui.text[platform](value, style) {
+    GtkLabel(label=value, xalign=0.0, look=lookOf(style)) {}
+}
+
+const component ui.button[platform](text, focusable, style, @click) {
+    GtkButton(label=text, canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
+}
+
+// --- Containers ---
+
+const component ui.vbox[platform](style, children) {
+    GtkBox(orientation="vertical", look=boxLookOf(style, 6)) {
+        children
+    }
+}

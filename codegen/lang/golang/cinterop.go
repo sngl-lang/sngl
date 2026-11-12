@@ -69,7 +69,7 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 	case ir.CConvertString:
 		return "C.CString(" + operand + ")"
 	case ir.CConvertNumber:
-		return gc.CType(x.To) + "(" + operand + ")"
+		return gc.castType(x) + "(" + operand + ")"
 	case ir.CConvertUTF16:
 		gc.RequireImport("duckfam.us/sngl/pkg/go/cbind")
 		gc.RequireImport("unsafe")
@@ -82,7 +82,17 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 	if !ir.CTypeOf(x.Operand.ExprType()).IsVoidPointer() {
 		operand = "unsafe.Pointer(" + operand + ")"
 	}
-	return "(" + gc.CType(x.To) + ")(" + operand + ")"
+	return "(" + gc.castType(x) + ")(" + operand + ")"
+}
+
+// castType is the type x converts to as Go spells it: the wrapper package's
+// where the struct declaring it has one (`cgo.PGtkLabel`), since a program
+// calling C through wrappers has no `C` of its own, and cgo's otherwise.
+func (gc *GoIRContext) castType(x *ir.CConvert) string {
+	if sd, ok := x.Type.Decl.(*ir.StructDef); ok && x.Type.Kind == ir.TypeStruct && gc.Wrapping == "" && wrapper(&sd.Foreign) != nil {
+		return gc.goType(x.Type)
+	}
+	return gc.CType(x.To)
 }
 
 // CCall is c, a call of a C function, with its arguments rendered. A C

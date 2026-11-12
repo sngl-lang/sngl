@@ -30,8 +30,13 @@ func CPreambleLines(links []*ir.CLink) string {
 	// Each flag once, in the order the headers first name it: a linker
 	// resolves a library against the ones after it, so pkg-config's order is
 	// meaningful and sorting would break it.
-	var cflags, ldflags []string
+	var cflags, ldflags, pkgs []string
 	for _, l := range links {
+		for _, p := range l.PkgConfig {
+			if !slices.Contains(pkgs, p) {
+				pkgs = append(pkgs, p)
+			}
+		}
 		for _, f := range l.CFlags {
 			if !slices.Contains(cflags, f) {
 				cflags = append(cflags, f)
@@ -45,6 +50,9 @@ func CPreambleLines(links []*ir.CLink) string {
 	}
 
 	var b strings.Builder
+	if len(pkgs) > 0 {
+		b.WriteString("#cgo pkg-config: " + strings.Join(pkgs, " ") + "\n")
+	}
 	if len(cflags) > 0 {
 		b.WriteString("#cgo CFLAGS: " + strings.Join(cflags, " ") + "\n")
 	}
