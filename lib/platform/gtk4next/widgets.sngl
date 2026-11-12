@@ -10,18 +10,18 @@ import c "sngl:x/c"
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkBox")]
 component GtkBox(
-    spacing int,
+    spacing     int,
     homogeneous bool,
     orientation string,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkBox),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_box_new")]
@@ -152,18 +152,18 @@ func _set_GtkBox_look(self GtkBox, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkButton")]
 component GtkButton(
-    label string,
-    hasFrame bool,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    label       string,
+    hasFrame    bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @clicked(self GtkButton),
     @destroy(self GtkButton),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_button_new")]
@@ -253,17 +253,17 @@ func _set_GtkButton_look(self GtkButton, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkCalendar")]
 component GtkCalendar(
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     #[gen.connects("day-selected")]
     @daySelected(self GtkCalendar),
     @destroy(self GtkCalendar),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_calendar_new")]
@@ -326,18 +326,18 @@ func _set_GtkCalendar_look(self GtkCalendar, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkCheckButton")]
 component GtkCheckButton(
-    active bool,
-    label string,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    active      bool,
+    label       string,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @toggled(self GtkCheckButton),
     @destroy(self GtkCheckButton),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_check_button_new")]
@@ -427,18 +427,18 @@ func _set_GtkCheckButton_look(self GtkCheckButton, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkEntry")]
 component GtkEntry(
-    text string,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    text        string,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @activate(self GtkEntry),
     @changed(self GtkEntry),
     @destroy(self GtkEntry),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_entry_new")]
@@ -515,15 +515,15 @@ func _set_GtkEntry_look(self GtkEntry, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkFrame")]
 component GtkFrame(
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkFrame),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_frame_new")]
@@ -590,16 +590,16 @@ func _set_GtkFrame_look(self GtkFrame, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkImage")]
 component GtkImage(
-    file string,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    file        string,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkImage),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_image_new")]
@@ -666,17 +666,17 @@ func _set_GtkImage_look(self GtkImage, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkLabel")]
 component GtkLabel(
-    label string,
-    xalign float,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    label       string,
+    xalign      float,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkLabel),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_label_new")]
@@ -752,19 +752,19 @@ func _set_GtkLabel_look(self GtkLabel, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkLinkButton")]
 component GtkLinkButton(
-    uri string,
-    label string,
-    hasFrame bool,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    uri         string,
+    label       string,
+    hasFrame    bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @clicked(self GtkLinkButton),
     @destroy(self GtkLinkButton),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_link_button_new")]
@@ -851,17 +851,17 @@ func _set_GtkLinkButton_look(self GtkLinkButton, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkPopover")]
 component GtkPopover(
-    autohide bool,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    autohide    bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @closed(self GtkPopover),
     @destroy(self GtkPopover),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_popover_new")]
@@ -942,18 +942,18 @@ func _set_GtkPopover_look(self GtkPopover, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkProgressBar")]
 component GtkProgressBar(
-    fraction float,
-    text string,
-    showText bool,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    fraction    float,
+    text        string,
+    showText    bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkProgressBar),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_progress_bar_new")]
@@ -1046,15 +1046,15 @@ func GtkProgressBar.pulse(w GtkProgressBar) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkScrolledWindow")]
 component GtkScrolledWindow(
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkScrolledWindow),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_scrolled_window_new")]
@@ -1122,15 +1122,15 @@ func _set_GtkScrolledWindow_look(self GtkScrolledWindow, look Look) {
 #[marks.intrinsic("gtk4:GtkSeparator")]
 component GtkSeparator(
     orientation string,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkSeparator),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_separator_new")]
@@ -1197,16 +1197,16 @@ func _set_GtkSeparator_look(self GtkSeparator, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkSpinner")]
 component GtkSpinner(
-    spinning bool,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    spinning    bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkSpinner),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_spinner_new")]
@@ -1273,15 +1273,15 @@ func _set_GtkSpinner_look(self GtkSpinner, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkStack")]
 component GtkStack(
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkStack),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_stack_new")]
@@ -1348,18 +1348,18 @@ func _set_GtkStack_look(self GtkStack, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkSwitch")]
 component GtkSwitch(
-    active bool,
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    active      bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkSwitch),
     #[gen.connects("notify::active")]
     @notifyActive(self GtkSwitch),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_switch_new")]
@@ -1431,15 +1431,15 @@ func _set_GtkSwitch_look(self GtkSwitch, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkWidget")]
 component GtkWidget(
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkWidget),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[gen.fires("destroy")]
@@ -1488,15 +1488,15 @@ func _set_GtkWidget_look(self GtkWidget, look Look) {
 #[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkWindow")]
 component GtkWindow(
-    visible bool,
-    sensitive bool,
-    hexpand bool,
-    vexpand bool,
-    canFocus bool,
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
     tooltipText string,
-    look Look = Look{},
+    look        Look = Look{},
     @destroy(self GtkWindow),
-    children ...component ui.node,
+    children    ...component ui.node,
 ) ui.node
 
 #[macro.cnative("gtk_window_new")]
@@ -1685,7 +1685,7 @@ const func _as_GtkWindow(p c.pointer) _p_GtkWindow
 #[macro.cnative("sngl_signal_connect")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSignalConnect")]
 func _rtSignalConnect(
-    w ui.node,
+    w      ui.node,
     signal string,
     #[c.type("SnglFn")] fn func(),
     #[c.context] ctx c.pointer,
@@ -1695,7 +1695,7 @@ func _rtSignalConnect(
 #[macro.cnative("sngl_notify_connect")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglNotifyConnect")]
 func _rtNotifyConnect(
-    w ui.node,
+    w      ui.node,
     signal string,
     #[c.type("SnglFn")] fn func(),
     #[c.context] ctx c.pointer,

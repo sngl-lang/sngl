@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"os"
 	"testing"
-
-	"duckfam.us/sngl/codegen/platform/gtk4"
 )
 
 // TestCommitted holds lib/platform/gtk4next/widgets.sngl to what gtk4gen
 // writes, the go.native marks cgogen adds beside each declaration aside.
 func TestCommitted(t *testing.T) {
-	want, err := gtk4.WidgetSource(header)
+	want, err := source()
 	if err != nil {
 		t.Fatal(err)
 	}
