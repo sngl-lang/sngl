@@ -66,12 +66,12 @@ func readClicks(members func() list[Entry]) {
         var line = in.text()
         var instance = clickField(line, "instance")
         if instance != "" {
-            var button = int.parse(clickField(line, "button"), 10)
-            var x = int.parse(clickField(line, "relative_x"), 10)
-            var y = int.parse(clickField(line, "relative_y"), 10)
+            var button = int.parse(clickField(line, "button")).or(0)
+            var x = int.parse(clickField(line, "relative_x")).or(0)
+            var y = int.parse(clickField(line, "relative_y")).or(0)
             async.do(func() {
                 var ms = members()
-                var i = int.parse(instance, 10)
+                var i = int.parse(instance).or(-1)
                 if i >= 0 && i < ms.length {
                     ms[i].click(button, x, y)
                 }

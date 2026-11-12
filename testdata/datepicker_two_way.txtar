@@ -678,7 +678,8 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/gtk4rt"
-	"strconv"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"time"
 )
 
@@ -733,16 +734,7 @@ func New() *Model {
 
 func (m *Model) __effect0_mount() {
 	if m.__effect0_key != nil {
-		gtk4rt.CalendarSelectDay(m.d, func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}())
+		gtk4rt.CalendarSelectDay(m.d, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -1185,7 +1177,7 @@ pass sha256:12eb12b75d7d682e49eeb4edcde90ecb
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:4476de1dc554b847a42313efb225e3a2
+pass sha256:4157db1841c3ab80ee3d79b258ced5bb
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --

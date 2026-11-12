@@ -37,8 +37,6 @@ type HelperSet struct {
 	// not: `float64("3.5")` builds no number, and `int("42")` is a rune. They
 	// go through strconv, and a string that is not a number reads as zero —
 	// which is what the interpreter and the JavaScript backend already do.
-	NeedParseInt   bool
-	NeedParseFloat bool
 	// A sngl:seq sequence that is not a loop head's own iterable: the loop
 	// head becomes a counting `for` and needs nothing, and everywhere else
 	// the sequence is the pull func iter[int] is spelled as. One helper says
@@ -87,30 +85,6 @@ func UnitStringConversion(n *ir.Conversion) *ir.UnitDef {
 		return nil
 	}
 	return ir.UnitDeclOf(n.Operand.ExprType())
-}
-
-// StringToNumberHelper names the helper a conversion needs, or "" when Go's
-// own cast will do. `float(s)` and `int(s)` are conversions the language
-// allows on a string and Go does not: `float64(s)` does not compile and
-// `int(s)` would be a rune.
-//
-// The operand's declared type is what decides: only a string operand takes a
-// helper, and every other one stays a plain cast.
-func StringToNumberHelper(n *ir.Conversion) string {
-	if n == nil || n.Type == nil || n.Operand == nil {
-		return ""
-	}
-	src := n.Operand.ExprType()
-	if src == nil || src.Kind != ir.TypeString {
-		return ""
-	}
-	switch n.Type.Kind {
-	case ir.TypeInt:
-		return "snglParseInt"
-	case ir.TypeFloat:
-		return "snglParseFloat"
-	}
-	return ""
 }
 
 // HelpersNeeded walks pkg and returns the helpers the generated code
@@ -221,9 +195,6 @@ func (h HelperSet) Imports() []string {
 	var imps []string
 	if h.NeedTimeImport {
 		imps = append(imps, "time")
-	}
-	if h.NeedParseInt || h.NeedParseFloat {
-		imps = append(imps, "strconv")
 	}
 	if len(h.UnitStrings) > 0 {
 		imps = append(imps, "fmt")
@@ -378,22 +349,6 @@ func (h HelperSet) Emit() string {
 
 `)
 	}
-	if h.NeedParseInt {
-		b.WriteString(`func snglParseInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
-}
-
-`)
-	}
-	if h.NeedParseFloat {
-		b.WriteString(`func snglParseFloat(s string) float64 {
-	f, _ := strconv.ParseFloat(s, 64)
-	return f
-}
-
-`)
-	}
 	if h.NeedDate {
 		b.WriteString(`func mustParseDate(s string) time.Time {
 	t, err := time.Parse("2006-01-02", s)
@@ -507,12 +462,6 @@ func recordExprHelpers(h *HelperSet, e ir.Expr) {
 	switch n := e.(type) {
 	case *ir.Conversion:
 		recordValueHelpers(h, n.Type)
-		switch StringToNumberHelper(n) {
-		case "snglParseInt":
-			h.NeedParseInt = true
-		case "snglParseFloat":
-			h.NeedParseFloat = true
-		}
 		recordExprHelpers(h, n.Operand)
 	case *ir.Literal:
 		recordValueHelpers(h, n.Type)

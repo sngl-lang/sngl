@@ -706,11 +706,17 @@ func wrapped() int {
 An explicit conversion is written `T(x)`, naming a type and an operand. The
 permitted conversions among primitives are:
 
-- to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum, or a
+- to `int` — from `int`, `float` (truncating), `bool`, an enum, or a
   single-base unit;
 - to `float` — from the same set as `int`;
-- to `bool` — from `bool` or `string`;
+- to `bool` — from `bool`;
 - to a string-representable type — from `string` or from itself.
+
+A string is parsed, not converted: `int(s)`, `float(s)` and `bool(s)` are
+rejected. `int.parse(s)` and `float.parse(s)` answer the number `s` writes, or
+`null` where it writes none, and `int.parse(s).or(0)` reads one with a
+default; all three are `sngl:builtin`'s. A bool is read from a string by
+comparing it, `s == "true"`.
 
 `string(x)` is no conversion: it is `x.format()`, the string `"{x}"` holds (see
 [String interpolation expressions](#string-interpolation-expressions)), and is

@@ -95,9 +95,9 @@ func readClicks(members func() list[Entry]) {
         var fields = in.text().trim().split(" ")
         async.do(func() {
             var ms = members()
-            var i = int.parse(fields[0], 10)
+            var i = int.parse(fields[0]).or(-1)
             if i < ms.length {
-                ms[i].click(int.parse(fields[1], 10))
+                ms[i].click(int.parse(fields[1]).or(0))
             }
         })
     }
@@ -150,13 +150,14 @@ package main
 import (
 	"bufio"
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -241,9 +242,9 @@ func ReadClicks(members func() []Entry) {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
 		__snglDo(func() {
 			ms := slices.Clone(members())
-			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
+			var i int = snglopt.Or(snglparse.Int(fields[0], 10), -1)
 			if i < len(ms) {
-				ms[i].Click(func() int { __v, _ := strconv.ParseInt(fields[1], 10, 64); return int(__v) }())
+				ms[i].Click(snglopt.Or(snglparse.Int(fields[1], 10), 0))
 			}
 		})
 	}
@@ -427,10 +428,11 @@ package main
 import (
 	"bufio"
 	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -503,9 +505,9 @@ func ReadClicks(members func() []Entry) {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
 		gtk4rt.Post(func() {
 			ms := slices.Clone(members())
-			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
+			var i int = snglopt.Or(snglparse.Int(fields[0], 10), -1)
 			if i < len(ms) {
-				ms[i].Click(func() int { __v, _ := strconv.ParseInt(fields[1], 10, 64); return int(__v) }())
+				ms[i].Click(snglopt.Or(snglparse.Int(fields[1], 10), 0))
 			}
 		})
 	}
@@ -671,6 +673,6 @@ func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
 	return gtk4rt.ToplevelWindow(app, m.__n0)
 }
 -- run/go/fyne --
-pass sha256:5fcac90c473f5490f4a265cc156fe57b
+pass sha256:51ce8cd5b986e25f8d146f29f76576c2
 -- run/go/gtk4 --
-pass sha256:2662743dfe8303c953ec2213312aecf7
+pass sha256:5ee1242bc0c1067218b8d069785acfc6

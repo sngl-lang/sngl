@@ -36,7 +36,7 @@ func requireAge(s string) int {
     if s.length == 0 {
         error.raise("an age is required", "validation")
     }
-    return int(s)
+    return int.parse(s).or(0)
 }
 
 func parseTwice(s string) int {
@@ -152,7 +152,7 @@ window {
     noRaise()
 }
 -- testrun/bubbletea/go/app.sngl/argument/1 --
-sha256:1086e5a07e15628f5fe1586d715edc98
+sha256:92a3b001d7a54e9ee84dc5ce84a319f8
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:ad6155e236f39abcc4c0964a76bb14c7
   ]
 }
 -- testrun/bubbletea/go/app.sngl/noRaise/1 --
-sha256:cacdff1eade50c5f4d92dabb4f1a7e95
+sha256:c8db2f3b707d6f9b8f0f69d037c465cb
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:cacdff1eade50c5f4d92dabb4f1a7e95
   ]
 }
 -- testrun/bubbletea/go/app.sngl/perCall/1 --
-sha256:2a10bb117d2ee9e251ebc17090f58a9d
+sha256:b1ea3242f456bf1b9353138429549743
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:2a10bb117d2ee9e251ebc17090f58a9d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/throughCalls/1 --
-sha256:de0db5fb16a2e4c3bf6c25bddb32828b
+sha256:d8fd58df091b03b82dcd3a7f6d07fb1e
 {
   "results": [
     {
@@ -202,7 +202,7 @@ sha256:de0db5fb16a2e4c3bf6c25bddb32828b
   ]
 }
 -- testrun/html/none/app.sngl/argument/1 --
-sha256:94073d46832265001e166f8b99098b56
+sha256:79c0d0a7fb3e0f09437defc38a0a5373
 {
   "results": [
     {
@@ -222,7 +222,7 @@ sha256:a72a7d0f4f80f871441e50db0c751d81
   ]
 }
 -- testrun/html/none/app.sngl/noRaise/1 --
-sha256:7d8f1d52169c8ee7da95ee9254334117
+sha256:e717b217871aa5e5438d8ce43529c765
 {
   "results": [
     {
@@ -232,7 +232,7 @@ sha256:7d8f1d52169c8ee7da95ee9254334117
   ]
 }
 -- testrun/html/none/app.sngl/perCall/1 --
-sha256:064392fc6fc00a00b6e9398a8466b3a3
+sha256:f164136577466f8585665a837488287d
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:064392fc6fc00a00b6e9398a8466b3a3
   ]
 }
 -- testrun/html/none/app.sngl/throughCalls/1 --
-sha256:e118a2c09ff1142902eb5923a447cc3c
+sha256:9fcd9769d35599b8958ad2db040e08c2
 {
   "results": [
     {

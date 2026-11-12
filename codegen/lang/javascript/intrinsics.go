@@ -74,7 +74,20 @@ func init() {
 	}
 
 	// --- string ---
-	reg("int.parse", func(a []string) string { return "parseInt(" + a[0] + ", " + a[1] + ")" })
+	// int.parse and float.parse read the grammar snglparse (Go) and the
+	// interpreter read, which parseInt and Number do not hold to: parseInt
+	// stops at the first stray character, and Number takes spaces and hex.
+	reg("int.parse", func(a []string) string {
+		base := "10"
+		if len(a) > 1 {
+			base = a[1]
+		}
+		return "((s, b) => { if (!(b >= 2 && b <= 36) || !/^[+-]?[0-9a-z]+$/i.test(s) || [...s.replace(/^[+-]/, \"\").toLowerCase()].some(c => parseInt(c, 36) >= b)) return null; const n = parseInt(s, b); return Math.abs(n) <= 9223372036854775807 ? n : null; })(" + a[0] + ", " + base + ")"
+	})
+	reg("option.or", func(a []string) string { return "(" + a[0] + " ?? " + a[1] + ")" })
+	reg("float.parse", func(a []string) string {
+		return "((s) => { if (!/^[+-]?(([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][+-]?[0-9]+)?|inf|infinity|nan)$/i.test(s)) return null; const t = s.replace(/^[+-]/, \"\").toLowerCase(); if (t === \"nan\") return NaN; if (t === \"inf\" || t === \"infinity\") return s[0] === \"-\" ? -Infinity : Infinity; const n = Number(s); return Number.isFinite(n) ? n : null; })(" + a[0] + ")"
+	})
 
 	reg("string.length", func(a []string) string { return a[0] + ".length" })
 	reg("string.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })

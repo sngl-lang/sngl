@@ -12,13 +12,13 @@ const func date.format(x date) string { return x }
 func date.appendFormat(x date, out ref[builder]) { out.add(date.format(x)) }
 
 // The year of a date.
-const func date.year(d date) => int.parse(string(d).substring(0, 4), 10)
+const func date.year(d date) => int.parse(string(d).substring(0, 4)).or(0)
 
 // The month of a date, from 1 for January.
-const func date.month(d date) => int.parse(string(d).substring(5, 7), 10)
+const func date.month(d date) => int.parse(string(d).substring(5, 7)).or(0)
 
 // The day of a date's month, from 1.
-const func date.day(d date) => int.parse(string(d).substring(8, 10), 10)
+const func date.day(d date) => int.parse(string(d).substring(8, 10)).or(0)
 
 // The date "YYYY-MM-DD" names, or null when the text is not one: a month past
 // 12, or a day past the last of its month, is no date. Text a program did not
@@ -34,9 +34,9 @@ const func parseDate(s string) option[date] {
     if !_digits(s.substring(0, 4) + s.substring(5, 7) + s.substring(8, 10)) {
         return unset
     }
-    var y = int.parse(s.substring(0, 4), 10)
-    var m = int.parse(s.substring(5, 7), 10)
-    var d = int.parse(s.substring(8, 10), 10)
+    var y = int.parse(s.substring(0, 4)).or(0)
+    var m = int.parse(s.substring(5, 7)).or(0)
+    var d = int.parse(s.substring(8, 10)).or(0)
     if m < 1 || m > 12 || d < 1 || d > _daysIn(y, m) {
         return unset
     }
