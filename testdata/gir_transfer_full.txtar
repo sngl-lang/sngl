@@ -150,8 +150,8 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void sngl_init(void) {
-	s_n = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
-	s_visible__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_n = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s___rel1 = sngl_cstring(SNGL_STR(""));
 	s___rel2 = sngl_cstring(SNGL_STR("go"));
 	s___rel5 = sngl_cstring(SNGL_STR("clicked"));
@@ -204,4 +204,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:0c9cb9d859798c83b83f275ed6a1ad40
+pass sha256:4469aca4648dad5b12fd76aeea425f44

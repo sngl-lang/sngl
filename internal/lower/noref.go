@@ -60,6 +60,29 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 			},
 		}
 	}
+	// A function's local a closure writes -- one NoLambda lifted, handed
+	// the local's address -- is boxed where it is declared, as a var is:
+	// the closure may outlive the call, and kept only the box's reference
+	// it wrote the box and not the stack. Left unboxed, its declaration and
+	// the closure's state disagreed, which C refused to compile.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok || lv.Sym == nil || !pkg.AddressedVars[lv.Sym] || boxed[lv.Sym] {
+			return nil
+		}
+		boxed[lv.Sym] = true
+		elem := lv.Type
+		boxDef := reg.boxFor(elem)
+		boxType := &ir.Type{Kind: ir.TypeStruct, Decl: boxDef}
+		lv.Sym.Type = boxType
+		lv.Type = boxType
+		lv.Init = &ir.StructLit{
+			Type:   boxType,
+			Def:    boxDef,
+			Fields: []ir.FieldInit{{Name: "value", Value: orNullLiteral(lv.Init, elem)}},
+		}
+		return nil
+	})
 
 	// Step 1.5: rewrite Var.Type for ALL Vars, not just addressed ones.
 	// Catches non-addressed Vars whose declared type is ref[T] (e.g.,

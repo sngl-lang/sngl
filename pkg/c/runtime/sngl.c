@@ -139,6 +139,16 @@ void *sngl_keep_alloc(size_t n) {
 	return p;
 }
 
+void *sngl_keep_copy(const void *p, size_t n) {
+	void *q = sngl_keep_alloc(n);
+	memcpy(q, p, n);
+	return q;
+}
+
+int64_t sngl_kept_blocks(void) {
+	return (int64_t)sngl_kept_live;
+}
+
 sngl_string sngl_string_keep(sngl_string s) {
 	if (s.len == 0) {
 		return SNGL_STR("");

@@ -678,12 +678,12 @@ static void s___lambda4(s___lambda4_caps state) {
 }
 
 static void sngl_init(void) {
-	s_n__inst0 = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
-	s_name__inst0 = ((s___ref_string *)sngl_heap_copy(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR(""))}}, sizeof(s___ref_string)));
-	s_on__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = false}}, sizeof(s___ref_bool)));
-	s_visible__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
-	s_value__inst0 = ((s___ref_string *)sngl_heap_copy(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(s_name__inst0->value)}}, sizeof(s___ref_string)));
-	s_checked__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = s_on__inst0->value}}, sizeof(s___ref_bool)));
+	s_n__inst0 = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
+	s_name__inst0 = ((s___ref_string *)sngl_keep_copy(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR(""))}}, sizeof(s___ref_string)));
+	s_on__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = false}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_value__inst0 = ((s___ref_string *)sngl_keep_copy(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(s_name__inst0->value)}}, sizeof(s___ref_string)));
+	s_checked__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = s_on__inst0->value}}, sizeof(s___ref_bool)));
 	s___effect0_key = sngl_string_keep(SNGL_STR(""));
 	s___effect0_live = sngl_list_string__keep(((sngl_list_string){0}));
 	s___effect0_desired = sngl_list_string__keep(((sngl_list_string){0}));
@@ -771,4 +771,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:760df566462d3eff162e32f53da12476
+pass sha256:0c819fc65fa2a59a649505ef25499585

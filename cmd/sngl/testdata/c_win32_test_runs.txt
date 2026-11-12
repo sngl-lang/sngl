@@ -86,6 +86,15 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=win32 --language=c callback.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A closure C keeps and calls after the function that made it returned
+# writes that function's local in a box: NoRef boxes a local a lifted
+# lambda is handed the address of, as it boxes a var. It boxed only vars,
+# so the local stayed a string the closure's state read as a box, and the
+# program did not compile.
+
+sngl test --platform=win32 --language=c retained.sngl
+stdout 'ok +1 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import test "sngl:test"
@@ -283,15 +292,55 @@ func testAWriteFromACallbackOutlivesIt(t test.Test) {
     })
     t.assert(got == "n5")
 }
+-- retained.sngl --
+import c "sngl:x/c"
+import macro "sngl:macro"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="calls.h", sources=["calls.c", "calls.h"])
+
+#[macro.cnative("sngl_keep_int")]
+func keepInt(#[c.type("int_cb")] #[macro.retains] f func(i int), #[c.context] data c.pointer)
+
+#[macro.cnative("sngl_fire")]
+func fire()
+
+var out = ""
+
+func arm() {
+    var got = ""
+    keepInt(func(i int) {
+        got = "{got}n{i}"
+        out = got
+    })
+}
+
+ui.window {
+    ui.button(text="arm", @click { arm() })
+}
+
+func testAKeptClosureWritesTheLocalItOutlived(t test.Test) {
+    arm()
+    fire()
+    fire()
+    t.assert(out == "n5n5")
+}
 -- calls.h --
 typedef void (*int_cb)(int, void *);
 void sngl_int(int_cb f, void *data);
+void sngl_keep_int(int_cb f, void *data);
+void sngl_fire(void);
 -- calls.c --
 #include "calls.h"
 void sngl_int(int_cb f, void *data) { f(5, data); }
+static int_cb kept;
+static void *kept_data;
+void sngl_keep_int(int_cb f, void *data) { kept = f; kept_data = data; }
+void sngl_fire(void) { if (kept) kept(5, kept_data); }
 
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:7d7f702c251225f95c265a3efedb2ec4
+sha256:a1048e90d9e0fac9f03c345246653efb
 {
   "results": [
     {
@@ -301,7 +350,7 @@ sha256:7d7f702c251225f95c265a3efedb2ec4
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:0da25ac9664b7bee0cf120a897d615f5
+sha256:de602a9dd3fdadf871b199bc50af92d8
 {
   "results": [
     {
@@ -311,7 +360,7 @@ sha256:0da25ac9664b7bee0cf120a897d615f5
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:fc847c29ca1541a89cf6ac677b7fb409
+sha256:19a7925dcad2733a77820164aa7fe82b
 {
   "results": [
     {
@@ -333,7 +382,7 @@ sha256:fc847c29ca1541a89cf6ac677b7fb409
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:a1209143277b9bdd03b07dde8db82c8b
+sha256:0337ada9f179872fcae098f98aa24bd7
 {
   "results": [
     {
@@ -351,7 +400,7 @@ sha256:a1209143277b9bdd03b07dde8db82c8b
   ]
 }
 -- testrun/win32/c/async.sngl/main/1 --
-sha256:3478b7ae95a458bb9179f6ee12895270
+sha256:235a1576527a79edd942b7289ff09e11
 {
   "results": [
     {
@@ -361,7 +410,7 @@ sha256:3478b7ae95a458bb9179f6ee12895270
   ]
 }
 -- testrun/win32/c/callback.sngl/_/1 --
-sha256:24a3d2c58da1ccc8b4dcb1dd5a62957e
+sha256:619285a49875b9ddbe16d2cee1e0c777
 {
   "results": [
     {
@@ -371,7 +420,7 @@ sha256:24a3d2c58da1ccc8b4dcb1dd5a62957e
   ]
 }
 -- testrun/win32/c/empty.sngl/main/1 --
-sha256:1c111a66a2e99f6765663950a22e7ef9
+sha256:4900674ae4563f9b40ae4e96d4501910
 {
   "results": [
     {
@@ -381,7 +430,7 @@ sha256:1c111a66a2e99f6765663950a22e7ef9
   ]
 }
 -- testrun/win32/c/rect.sngl/main/1 --
-sha256:1e6081ae8eaea22b752552d0da1065dd
+sha256:3735fe869bb5d550b7581c64857af23d
 {
   "results": [
     {
@@ -390,8 +439,18 @@ sha256:1e6081ae8eaea22b752552d0da1065dd
     }
   ]
 }
+-- testrun/win32/c/retained.sngl/_/1 --
+sha256:08000ab12e7f73b7027b0ce9f97105e8
+{
+  "results": [
+    {
+      "Desc": "AKeptClosureWritesTheLocalItOutlived",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/win32/c/store.sngl/_/1 --
-sha256:081368ac4b96c6d5220492f19273c357
+sha256:db23e21fa55487a3b7cf2136b4e38aac
 {
   "results": [
     {

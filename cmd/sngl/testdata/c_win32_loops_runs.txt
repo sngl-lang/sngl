@@ -276,7 +276,7 @@ func testAMethodReadsItsCopy(t test.Test, c main) {
     t.assert(c.r[1].shown == "<")
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:0e59a1143dbf54f1e2824394e3aa46af
+sha256:ab4451f7a9c3bfe38588b974e618b565
 {
   "results": [
     {
@@ -293,7 +293,7 @@ sha256:0e59a1143dbf54f1e2824394e3aa46af
   }
 }
 -- testrun/win32/c/methods.sngl/main/1 --
-sha256:03ad5009535093ee4ba4360721cddf6d
+sha256:518ec060fe5c1fd99b4f1c930213dd02
 {
   "results": [
     {
@@ -303,7 +303,7 @@ sha256:03ad5009535093ee4ba4360721cddf6d
   ]
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:47323073a16ab18cf21a7ccded4559bc
+sha256:12b04fceb6f8cbc98142b873303f0e0f
 {
   "results": [
     {
@@ -321,7 +321,7 @@ sha256:47323073a16ab18cf21a7ccded4559bc
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:0ed44d18ce6d4aa7e4c1ba2a721d699b
+sha256:eb8f5e7c1fd76c1a0b682bd27a4b5704
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:0ed44d18ce6d4aa7e4c1ba2a721d699b
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:95d04fc2e75f120b753ea0af923aded1
+sha256:3b5f08fbf4a3f6f11eaa1e82c8c6eac7
 {
   "results": [
     {
@@ -345,7 +345,7 @@ sha256:95d04fc2e75f120b753ea0af923aded1
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:63be26156f191e7811ea0b4f26dcda34
+sha256:ac4b5bbc2d85f760c1658c9564ade0a9
 {
   "results": [
     {

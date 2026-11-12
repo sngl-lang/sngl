@@ -953,7 +953,7 @@ static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double r
 }
 
 static s_dot__inst * s_dot__new(double r) {
-	s_dot__inst * __self = ((s_dot__inst *)sngl_heap_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_heap_copy(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float))), .n = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)))}}, sizeof(s_dot__inst)));
+	s_dot__inst * __self = ((s_dot__inst *)sngl_keep_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_keep_copy(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float))), .n = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)))}}, sizeof(s_dot__inst)));
 	__self->__n3 = sngl_win32_box((int)(1));
 	sngl_win32_set_vertical(__self->__n3, (int)(1));
 	sngl_win32_set_look(__self->__n3, sngl_to_platform_win32__Look(s_platform_win32__boxLookOf((s_ui__Style){.padding = ((sngl_opt_measurement){0}), .paddingTop = ((sngl_opt_measurement){0}), .paddingRight = ((sngl_opt_measurement){0}), .paddingBottom = ((sngl_opt_measurement){0}), .paddingLeft = ((sngl_opt_measurement){0}), .paddingX = ((sngl_opt_measurement){0}), .paddingY = ((sngl_opt_measurement){0}), .margin = ((sngl_opt_measurement){0}), .marginTop = ((sngl_opt_measurement){0}), .marginRight = ((sngl_opt_measurement){0}), .marginBottom = ((sngl_opt_measurement){0}), .marginLeft = ((sngl_opt_measurement){0}), .marginX = ((sngl_opt_measurement){0}), .marginY = ((sngl_opt_measurement){0}), .gap = ((sngl_opt_measurement){0}), .width = ((sngl_opt_measurement){0}), .minWidth = ((sngl_opt_measurement){0}), .height = ((sngl_opt_measurement){0}), .maxWidth = ((sngl_opt_measurement){0}), .maxHeight = ((sngl_opt_measurement){0}), .flex = ((sngl_opt_float){0}), .flexDirection = 0, .alignItems = 0, .justifyContent = 0, .position = 0, .top = ((sngl_opt_measurement){0}), .bottom = ((sngl_opt_measurement){0}), .left = ((sngl_opt_measurement){0}), .right = ((sngl_opt_measurement){0}), .zIndex = ((sngl_opt_int){0}), .color = ((sngl_opt_color){0}), .fontSize = ((sngl_opt_measurement){0}), .fontFamily = SNGL_STR(""), .fontWeight = 0, .fontStyle = 0, .textAlign = 0, .maxLines = ((sngl_opt_int){0}), .whiteSpace = 0, .background = ((sngl_opt_color){0}), .borderRadius = ((sngl_opt_measurement){0}), .borderColor = ((sngl_opt_color){0}), .borderWidth = ((sngl_opt_measurement){0}), .border = SNGL_STR(""), .borderBottom = SNGL_STR(""), .borderLeft = SNGL_STR(""), .borderCollapse = SNGL_STR(""), .borderStyle = 0, .opacity = ((sngl_opt_float){0}), .cursor = SNGL_STR(""), .display = 0, .listStyleType = 0}, 6)));
@@ -992,11 +992,11 @@ static void s_dot__set_r(s_dot__inst * __self, double __v) {
 }
 
 static void s_dot__destroy(s_dot__inst * __self) {
-	return;
+	sngl_drop(__self);
 }
 
 static s___canvas0__inst * s___canvas0__new(s___anon_id_elem_4ccb28 __p0, int64_t __p1, sngl_fn_void__void __on0) {
-	s___canvas0__inst * __self = ((s___canvas0__inst *)sngl_heap_copy(&(s___canvas0__inst[]){(s___canvas0__inst){.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_heap_copy(&(s___ref___anon_id_elem_4ccb28[]){(s___ref___anon_id_elem_4ccb28){.value = s___anon_id_elem_4ccb28__keep(__p0)}}, sizeof(s___ref___anon_id_elem_4ccb28))), .__prop___p1 = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = __p1}}, sizeof(s___ref_int))), .__prop___on0 = ((s___ref_func *)sngl_heap_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___canvas0__inst)));
+	s___canvas0__inst * __self = ((s___canvas0__inst *)sngl_keep_copy(&(s___canvas0__inst[]){(s___canvas0__inst){.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_keep_copy(&(s___ref___anon_id_elem_4ccb28[]){(s___ref___anon_id_elem_4ccb28){.value = s___anon_id_elem_4ccb28__keep(__p0)}}, sizeof(s___ref___anon_id_elem_4ccb28))), .__prop___p1 = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = __p1}}, sizeof(s___ref_int))), .__prop___on0 = ((s___ref_func *)sngl_keep_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___canvas0__inst)));
 	__self->__drawing2 = sngl_win32_canvas();
 	sngl_win32_set_canvas_width(__self->__drawing2, (int)(20));
 	sngl_win32_set_canvas_height(__self->__drawing2, (int)(20));
@@ -1047,7 +1047,7 @@ static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__voi
 }
 
 static void s___canvas0__destroy(s___canvas0__inst * __self) {
-	return;
+	sngl_drop(__self);
 }
 
 static void s___renderSlot0(HWND parent) {
@@ -1323,15 +1323,15 @@ static void s___lambda6(s___lambda6_caps state) {
 }
 
 static void sngl_init(void) {
-	s_hits = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
-	s_on = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_hits = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
+	s_on = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s_rs = sngl_list_float__keep(sngl_list_float_of(2, (double[]){4.0, 8.0}));
 	s___slot0 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
 	s___rendering0 = false;
 	s___renderAgain0 = false;
 	s___slot1 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
 	s___inst2_live = sngl_map_string__dot__inst__keep(((sngl_map_string__dot__inst){0}));
-	s___inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_heap_copy(&(s___ref_map_string_instance___canvas0[]){(s___ref_map_string_instance___canvas0){.value = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}))}}, sizeof(s___ref_map_string_instance___canvas0)));
+	s___inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_keep_copy(&(s___ref_map_string_instance___canvas0[]){(s___ref_map_string_instance___canvas0){.value = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}))}}, sizeof(s___ref_map_string_instance___canvas0)));
 	s___rendering1 = false;
 	s___renderAgain1 = false;
 }
@@ -1431,4 +1431,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:d537ab1e7024ad3f90f051de00208459
+pass sha256:983ff2405abec70532f283e3b2aff91f

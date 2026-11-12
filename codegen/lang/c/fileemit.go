@@ -108,8 +108,23 @@ func (fe *FileEmitter) FuncAs(fn *ir.Func, name, first string) {
 		ctx = ctx.WithLocal(p.Name)
 	}
 	fmt.Fprintf(&fe.body, "\nstatic %s {\n", sig)
-	for _, l := range irwalk.EvalBlock(ctx, fn.Block) {
+	block := fn.Block
+	if fn.Frees {
+		// A record's destroy ends in a return, which the box's giving back
+		// goes before.
+		if n := len(block); n > 0 {
+			if ret, ok := block[n-1].(*ir.Return); ok && ret.Value == nil {
+				block = block[:n-1]
+			}
+		}
+	}
+	for _, l := range irwalk.EvalBlock(ctx, block) {
 		fe.body.WriteString("\t" + l + "\n")
+	}
+	if fn.Frees {
+		for _, l := range ctx.frees(fn.Params[0]) {
+			fe.body.WriteString("\t" + l + "\n")
+		}
 	}
 	fe.body.WriteString("}\n")
 }

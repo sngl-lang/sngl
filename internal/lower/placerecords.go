@@ -44,7 +44,8 @@ type record struct {
 	// teardown is the component's teardown, now a function of the
 	// package's taking the record, or nil where it has none; destroy is
 	// what DestroyComponent calls, the teardown and letting go of what a
-	// test held of the record (holdRead).
+	// test held of the record (holdRead), after which the record is given
+	// back (ir.Func.Frees).
 	teardown *ir.Func
 	destroy  *ir.Func
 	// tops are the nodes the body makes and puts nowhere, which its root is
@@ -88,7 +89,7 @@ func collectRecords(pkg *ir.Package) map[*ir.Component]*record {
 		sd := &ir.StructDef{Name: comp.Name + "__inst", RefBox: true}
 		r := &record{comp: comp, sd: sd, typ: &ir.Type{Kind: ir.TypeStruct, Decl: sd}}
 		r.new = &ir.Func{Name: comp.Name + "__new", Return: r.typ}
-		r.destroy = &ir.Func{Name: comp.Name + "__destroy", Return: ir.TypVoid, Params: []*ir.Param{{Name: recordSelf, Type: r.typ}}}
+		r.destroy = &ir.Func{Name: comp.Name + "__destroy", Return: ir.TypVoid, Params: []*ir.Param{{Name: recordSelf, Type: r.typ}}, Frees: true}
 		for _, p := range comp.Props {
 			param := p.Sym
 			if param == nil {

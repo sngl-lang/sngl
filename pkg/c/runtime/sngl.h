@@ -55,8 +55,14 @@ void *sngl_keep_alloc(size_t n);
 sngl_string sngl_string_keep(sngl_string s);
 void sngl_drop(const void *p);
 
+/* sngl_keep_copy is a kept copy of the n bytes at p: a box, which the
+ * record it is gives back as it is destroyed. sngl_kept_blocks is how many
+ * blocks are kept, which a test of what a program holds reads. */
+void *sngl_keep_copy(const void *p, size_t n);
+int64_t sngl_kept_blocks(void);
+
 /* sngl_heap_copy is a copy of the n bytes at p on the heap, which outlives
- * every turn: a closure's environment, a box a `ref` became. */
+ * every turn: a closure's environment. */
 void *sngl_heap_copy(const void *p, size_t n);
 
 /* sngl_cstring is s as a C string the callee may keep and the program frees,

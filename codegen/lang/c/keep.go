@@ -218,3 +218,22 @@ func (c *Context) store(t *ir.Type, target, value string) string {
 	tn := c.typeName(t)
 	return "{\n\t" + tn + " " + kept + " = " + c.keep(t, value) + ";\n\t" + tn + " *" + slot + " = &(" + target + ");\n\t" + c.drop(t, "*"+slot) + "\n\t*" + slot + " = " + kept + ";\n}"
 }
+
+// frees is the statements giving back self, a record's box its destroy is
+// handed (ir.Func.Frees): what each field kept, then the box. Each is
+// dropped, so freed as the turn ends, which a handler still running reads
+// it until.
+func (c *Context) frees(self *ir.Param) []string {
+	sd, ok := self.Type.Decl.(*ir.StructDef)
+	if !ok || !sd.RefBox {
+		return []string{c.fail("giving back %s, which is no box", self.Type)}
+	}
+	ref := &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}
+	var out []string
+	for _, f := range sd.Fields {
+		if d := c.drop(f.Type, c.EvalExpr(&ir.Select{Operand: ref, Field: f.Name, Type: f.Type})); d != "" {
+			out = append(out, d)
+		}
+	}
+	return append(out, "sngl_drop("+c.EvalExpr(ref)+");")
+}

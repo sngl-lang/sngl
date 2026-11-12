@@ -476,7 +476,7 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_n = 0;
-	s_shown = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_shown = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s_stopped = false;
 	s___effect0_key = 0;
 	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
@@ -805,6 +805,6 @@ func main() {
 	}
 }
 -- run/c/gtk4 --
-pass sha256:b565cb2aec9e0a9d6f747a2f6b0597b9
+pass sha256:b2471f25e22cc688554db16b1d29a6af
 -- run/go/gtk4 --
 pass sha256:38cfe7923f54aa15155fe3560bb1ff22

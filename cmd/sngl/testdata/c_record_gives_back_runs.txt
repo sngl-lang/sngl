@@ -1,0 +1,82 @@
+# A component built at run time gives back what it kept when it is
+# destroyed, on each platform placement writes C for: its record's destroy
+# drops each field it kept -- a string, a list and its elements -- and then
+# the record, a box kept like any other block (ir.Func.Frees). It gave back
+# nothing, so each row a rebuilt list made grew the runtime's kept set by
+# its prop, its vars and, on win32, the record itself. The test counts the
+# kept blocks through the runtime's sngl_kept_blocks. Go collects what it
+# allocates, so the program is C's alone.
+
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import c "sngl:x/c"
+import macro "sngl:macro"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="sngl.h")
+
+// How many blocks the runtime keeps: what every holder holds.
+#[macro.cnative("sngl_kept_blocks")]
+func keptBlocks() int
+
+component row(label string) ui.node {
+    var note = "row {label}"
+    var tags list[string] = ["a {label}", "b {label}"]
+
+    ui.text(value="{note} {tags.length()}")
+}
+
+component rows ui.node {
+    var round = 0
+    var labels list[string] = ["r0a", "r0b", "r0c"]
+
+    ui.vbox {
+        ui.button #next(text="next", @click {
+            round += 1
+            labels = ["r{round}a", "r{round}b", "r{round}c"]
+        })
+        for var l = labels {
+            row(label=l)
+        }
+    }
+}
+
+func testARebuiltListKeepsNoMore(t test.Test, r rows) {
+    r.next.click()
+    var before = keptBlocks()
+    r.next.click()
+    r.next.click()
+    t.assert(keptBlocks() == before)
+}
+
+ui.window(title="t") {
+    rows
+}
+-- testrun/gtk4/c/app.sngl/rows/1 --
+sha256:7205aaa6a432fbb6c2226425ca63cabb
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListKeepsNoMore",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/rows/1 --
+sha256:14b547a2d9cd8085b191d2151bf7e9c4
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListKeepsNoMore",
+      "Passed": true
+    }
+  ]
+}

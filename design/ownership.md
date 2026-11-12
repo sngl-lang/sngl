@@ -970,6 +970,20 @@ A holder's own list or map grows in kept memory and drops the buffer it
 outgrew (`grow_kept`, `slot_kept`, chosen by `holder` as an element's keep
 is), and its `remove` and `clear` drop what they take out.
 
+**A record gives back its box and what its fields kept as it is
+destroyed.** A component built at run time -- a row a keyed `for` keeps -- is
+a record (`internal/lower/placerecords.go`), a box whose fields the
+constructor and each write keep. Placement marks the record's destroy
+`ir.Func.Frees`, and C writes, after its teardown, a drop of each field that
+keeps anything and then of the box, which `sngl_keep_copy` made a kept block
+for that. Before, the destroy ran the teardown alone, so each row a rebuilt
+list made held its prop, its vars and the record itself for the life of the
+process. `cmd/sngl/testdata/c_record_gives_back_runs.txt` counts the kept
+blocks (`sngl_kept_blocks`) across three rebuilds, on gtk4 and on win32. The
+drops wait for the turn's end, like any other, so a handler of the row still
+running reads the record until then; an `async` result that lands later finds
+its lifetime ended by the teardown and touches nothing.
+
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder
 is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only
@@ -985,6 +999,7 @@ not own.
   context, so a lambda a turn makes and drops -- a `filter`'s predicate --
   leaks its environment; `codegen/lang/c`'s sanitized `TestRun` checks no
   leaks for that reason.
-- A record's destroy frees the record, not what its fields keep.
+- A closure's environment is a plain heap copy, not a kept block: what it
+  captured is kept, and freeing the environment gives none of that back.
 - `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
   where the design above made it the identity.

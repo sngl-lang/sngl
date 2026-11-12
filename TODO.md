@@ -994,10 +994,12 @@ reaches it the same way.
      the wrappers, and a direct call of a class outside them is refused
      (step 3's `direct`).
 2. **A C record gives back what it kept**, in placement, for gtk4 and win32
-   alike, with a test in each language that a rebuilt list's kept set does
-   not grow. With it, a retained C closure that writes a captured local
-   writes a heap box, not the stack address it writes today. Weak holds
-   come with it.
+   alike. Done: a record's destroy drops each field it kept and the box,
+   which is a kept block now (`ir.Func.Frees`,
+   `cmd/sngl/testdata/c_record_gives_back_runs.txt`). **Not yet:** a
+   retained C closure that writes a captured local writes the stack address
+   C's lambda takes, not a heap box; a closure's environment gives back
+   nothing it kept; and weak holds.
 3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
    come with step 1. `purego` is attempted then, against the open questions
    below.
@@ -1010,6 +1012,17 @@ reaches it the same way.
    (`scroll_test.go`), `@reachEnd` along x in a sideways scroll
    (`reach_across_test.go`), and a fetch landing in the picture whose
    source still asks for it (`image_test.go`).
+5. **`#[macro.cnative]` becomes `#[c.native]`, in `sngl:x/c`.** C's other
+   marks are there -- `#[c.context]`, `#[c.release]`, `#[c.type]` -- and
+   `cnative` alone sits in `sngl:macro` beside `#[foreign]`
+   (`lib/macro/foreign.sngl`), whose doc argues it is language-neutral; so is
+   the rest of `sngl:x/c`. The checker finds the mark by package and name
+   (`{"macro", "cnative"}` in `internal/checker/marks_impl.go` and
+   `aliases.go`), and `CNativeFlag` moves with it. `sngl:x/c` marks its own
+   declarations with it (`str`, `cstring`, `cfree`), so the package must be
+   able to apply a mark it declares itself. About 40 files write it: the
+   gtk4, win32 and fyne packages, `win32gen`'s output, `cgogen`, the `c:`
+   scheme, fixtures, scripts and the design notes.
 
 ### Open questions
 

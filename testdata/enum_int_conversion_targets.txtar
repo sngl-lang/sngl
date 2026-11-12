@@ -111,7 +111,7 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_cap = 2;
-	s_visible__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 }
 
 static void sngl_build(void) {
@@ -554,6 +554,6 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/c/win32 --
-pass sha256:3463b422cdbadab1456d711b5ccbd4a6
+pass sha256:e06b1ec05d0da688856ae5c4151910ac
 -- run/go/bubbletea --
 pass sha256:12a7dab925f58b6228eb5ed6e7d24217

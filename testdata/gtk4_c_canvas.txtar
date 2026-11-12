@@ -827,7 +827,7 @@ static void s_platform_gtk4____drawing1_paint_handler(cairo_t * ctx) {
 }
 
 static s_dot__inst * s_dot__new(double r) {
-	s_dot__inst * __self = ((s_dot__inst *)sngl_heap_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_heap_copy(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float))), .n = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)))}}, sizeof(s_dot__inst)));
+	s_dot__inst * __self = ((s_dot__inst *)sngl_keep_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_keep_copy(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float))), .n = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)))}}, sizeof(s_dot__inst)));
 	__self->__n3 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(__self->__n3)), (GtkOrientation)((int)(1)));
 	char * __rel2 = sngl_cstring(SNGL_STR(""));
@@ -875,11 +875,11 @@ static void s_dot__set_r(s_dot__inst * __self, double __v) {
 }
 
 static void s_dot__destroy(s_dot__inst * __self) {
-	return;
+	sngl_drop(__self);
 }
 
 static s___canvas0__inst * s___canvas0__new(s___anon_id_elem_4ccb28 __p0, int64_t __p1, sngl_fn_void__void __on0) {
-	s___canvas0__inst * __self = ((s___canvas0__inst *)sngl_heap_copy(&(s___canvas0__inst[]){(s___canvas0__inst){.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_heap_copy(&(s___ref___anon_id_elem_4ccb28[]){(s___ref___anon_id_elem_4ccb28){.value = s___anon_id_elem_4ccb28__keep(__p0)}}, sizeof(s___ref___anon_id_elem_4ccb28))), .__prop___p1 = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = __p1}}, sizeof(s___ref_int))), .__prop___on0 = ((s___ref_func *)sngl_heap_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___canvas0__inst)));
+	s___canvas0__inst * __self = ((s___canvas0__inst *)sngl_keep_copy(&(s___canvas0__inst[]){(s___canvas0__inst){.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_keep_copy(&(s___ref___anon_id_elem_4ccb28[]){(s___ref___anon_id_elem_4ccb28){.value = s___anon_id_elem_4ccb28__keep(__p0)}}, sizeof(s___ref___anon_id_elem_4ccb28))), .__prop___p1 = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = __p1}}, sizeof(s___ref_int))), .__prop___on0 = ((s___ref_func *)sngl_keep_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___canvas0__inst)));
 	__self->__drawing2 = sngl_canvas_new();
 	sngl_canvas_set_width(__self->__drawing2, (int)(20));
 	sngl_canvas_set_height(__self->__drawing2, (int)(20));
@@ -930,7 +930,7 @@ static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__voi
 }
 
 static void s___canvas0__destroy(s___canvas0__inst * __self) {
-	return;
+	sngl_drop(__self);
 }
 
 static void s___renderSlot0(GtkWidget * parent) {
@@ -1185,15 +1185,15 @@ static void sngl_init(void) {
 	s___rel4 = sngl_cstring(SNGL_STR("grow"));
 	s___rel7 = sngl_cstring(SNGL_STR("clicked"));
 	s___rel10 = sngl_cstring(SNGL_STR("flip"));
-	s_hits = ((s___ref_int *)sngl_heap_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
-	s_on = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_hits = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
+	s_on = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s_rs = sngl_list_float__keep(sngl_list_float_of(2, (double[]){4.0, 8.0}));
 	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___rendering0 = false;
 	s___renderAgain0 = false;
 	s___slot1 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___inst2_live = sngl_map_string__dot__inst__keep(((sngl_map_string__dot__inst){0}));
-	s___inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_heap_copy(&(s___ref_map_string_instance___canvas0[]){(s___ref_map_string_instance___canvas0){.value = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}))}}, sizeof(s___ref_map_string_instance___canvas0)));
+	s___inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_keep_copy(&(s___ref_map_string_instance___canvas0[]){(s___ref_map_string_instance___canvas0){.value = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}))}}, sizeof(s___ref_map_string_instance___canvas0)));
 	s___rendering1 = false;
 	s___renderAgain1 = false;
 }
@@ -1295,4 +1295,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:f0570392426dac8175cddfb7003322b9
+pass sha256:0c0fbf386a5582ee782fcbfa7b685f36

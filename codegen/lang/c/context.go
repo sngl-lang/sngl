@@ -507,7 +507,8 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 				kept[i] = c.keep(sd.Fields[j].Type, c.nullAs(sd.Fields[j].Type, f.Value, kept[i]))
 			}
 		}
-		return "((" + name + " *)" + c.heapCopy(name, c.structLit(n, kept)) + ")"
+		// The box is kept itself, so the record it is can give it back.
+		return "((" + name + " *)sngl_keep_copy(&(" + name + "[]){" + c.structLit(n, kept) + "}, sizeof(" + name + ")))"
 	}
 	return c.structLit(n, fields)
 }

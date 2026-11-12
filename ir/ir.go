@@ -860,6 +860,11 @@ type Func struct {
 	Purity Purity
 	Const  bool `json:",omitempty"`
 	IsTest bool
+	// Frees is set on a record's destroy (internal/lower/placerecords.go):
+	// as it returns, the function gives back its first parameter, a box,
+	// and what each of the box's fields kept. A language that collects its
+	// memory has nothing to do for it.
+	Frees bool `json:",omitempty"`
 	// Trigger is the event of its component a target's override says how a
 	// test raises, for a method written as that override
 	// (`func ui.select[T].change[platform](value)`); empty for every other

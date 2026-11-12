@@ -482,7 +482,7 @@ static void sngl_init(void) {
 	s_n = 0;
 	s_stopped = false;
 	s_handle__inst0 = 0;
-	s_visible__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s___effect0_key = 0;
 	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
 	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
@@ -578,4 +578,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:c2fa4f587791561293ea7dd742564f58
+pass sha256:82c20449f2dfcee58d0b16beb374fb96

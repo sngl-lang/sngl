@@ -699,7 +699,7 @@ static void s___snglTeardown(void) {
 }
 
 static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_fn_void__void __on0) {
-	s___child0__inst * __self = ((s___child0__inst *)sngl_heap_copy(&(s___child0__inst[]){(s___child0__inst){.__prop___p0 = s___anon_id_elem_c6a818__keep(__p0), .__prop___on0 = ((s___ref_func *)sngl_heap_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___child0__inst)));
+	s___child0__inst * __self = ((s___child0__inst *)sngl_keep_copy(&(s___child0__inst[]){(s___child0__inst){.__prop___p0 = s___anon_id_elem_c6a818__keep(__p0), .__prop___on0 = ((s___ref_func *)sngl_keep_copy(&(s___ref_func[]){(s___ref_func){.value = __on0}}, sizeof(s___ref_func)))}}, sizeof(s___child0__inst)));
 	__self->__n0 = sngl_win32_button();
 	sngl_win32_set_text(__self->__n0, (const unsigned short *)sngl_utf16(__self->__prop___p0.elem));
 	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
@@ -727,7 +727,8 @@ static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void 
 }
 
 static void s___child0__destroy(s___child0__inst * __self) {
-	return;
+	s___anon_id_elem_c6a818__drop(__self->__prop___p0);
+	sngl_drop(__self);
 }
 
 static void s___lambda1(s___lambda1_caps state, bool __visible) {
@@ -738,7 +739,7 @@ static void s___lambda1(s___lambda1_caps state, bool __visible) {
 static void sngl_init(void) {
 	s_names = sngl_list_string__keep(sngl_list_string_of(3, (sngl_string[]){SNGL_STR("ann"), SNGL_STR("bob"), SNGL_STR("cy")}));
 	s_picked = sngl_string_keep(SNGL_STR(""));
-	s_visible__inst0 = ((s___ref_bool *)sngl_heap_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
 	s___slot0 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
 	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
 	s___rendering0 = false;
@@ -818,4 +819,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:b8326d73f3d1a9102883364bb15982d2
+pass sha256:1989768fc4f0b659abf9ebdea97b5591
