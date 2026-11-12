@@ -1,8 +1,9 @@
 # A window after html's document is a `<dialog>` in it, run in Chromium and on
-# the interpreter, which holds it to the same answers, and on fyne, gtk4 and
-# win32, where it is a toplevel of its own. A test's component may be a root
-# component, and its windows' handles are reached through it like any other
-# node's: a read of `c.log.visible` is the cell the window keeps for it.
+# the interpreter, which holds it to the same answers, and on fyne, gtk4,
+# gtk4next and win32, where it is a toplevel of its own. A test's component
+# may be a root component, and its windows' handles are reached through it
+# like any other node's: a read of `c.log.visible` is the cell the window
+# keeps for it.
 #
 # `log` starts hidden and `open`/`close` through its `#id` show and hide it,
 # writing the cell it keeps for its `visible`; a close the program makes is no
@@ -24,6 +25,11 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=gtk4next --language=c app.sngl
+stdout '3 tests, 0 failures'
+sngl test --platform=gtk4next --language=go app.sngl
 stdout '3 tests, 0 failures'
 
 sngl test --platform=win32 --language=c app.sngl
@@ -119,6 +125,42 @@ sha256:8f1cddee208690ed273d86ce2c81cba3
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
 sha256:3c196785763162049975f4b8df6fed99
+{
+  "results": [
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    },
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/app/1 --
+sha256:3d0de89a387c9a39488cd1f7399692bc
+{
+  "results": [
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/app/1 --
+sha256:2f8efae6008da7525f19b50d540509d2
 {
   "results": [
     {

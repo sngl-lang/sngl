@@ -308,7 +308,6 @@ static bool s___effects0_settling;
 static bool s___effects0_pending;
 static bool s___effects0_torn;
 static int64_t s___effects0_steps;
-static char * s___rel1;
 static char * s___rel3;
 static HWND s___n0;
 static HWND s___n1;
@@ -322,7 +321,9 @@ static void s_start(sngl_list_string args, sngl_fn_void__void run) {
 	if (sngl_list_string_index_of(args, SNGL_STR("--window")) >= 0) {
 		(run).fn((run).env);
 	}
-	puts(s___rel1);
+	char * __rel1 = sngl_cstring(SNGL_STR("after"));
+	puts(__rel1);
+	s_x_c__free(__rel1);
 }
 
 static void s___run(sngl_list_string args, sngl_fn_void__void run) {
@@ -465,7 +466,6 @@ static void s___snglTeardown(void) {
 	s___effects0_torn = true;
 	s___effect1_teardown();
 	s___effect0_teardown();
-	s_x_c__free(s___rel1);
 	s_x_c__free(s___rel3);
 }
 
@@ -492,7 +492,6 @@ static void sngl_init(void) {
 	s___effects0_pending = false;
 	s___effects0_torn = false;
 	s___effects0_steps = 0;
-	s___rel1 = sngl_cstring(SNGL_STR("after"));
 	s___rel3 = sngl_cstring(SNGL_STR("unmount"));
 }
 
@@ -579,4 +578,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:30fd5ecee0d842176edf3a722e0574d9
+pass sha256:c2fa4f587791561293ea7dd742564f58

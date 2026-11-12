@@ -413,6 +413,15 @@ here, although `ir.IsConst` says so: it is constant at each call site, not at
 package level. The interpreter's test teardown runs `Teardown` after the timers
 stop and before the leak check.
 
+**What an `@run` handler reaches holds no application-lifetime value**
+(`runReach`). Its code after `run()` runs after the application has torn
+down, so a constant there -- `say("after")`'s C string -- would be read after
+`Teardown` freed it. The handler's body, each function it calls and theirs,
+with the lambdas in each, make and release such a value per statement, as
+any other temp. C on win32 printed it by luck under Wine and gtk4next's
+printed garbage (`testdata/gtk4next_run_handler_runs.txtar`,
+`win32_c_run_handler_runs.txtar`).
+
 A package `var` of an owned type the program declares is released the same
 way, last of all (`packageVars`, `testdata/owned_package_var.sngl`,
 `testdata/application_teardown.txtar`): its initializer ran before any

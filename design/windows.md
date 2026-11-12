@@ -309,7 +309,13 @@ emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
 generator's (`appMain`): the runtime holds what the build attaches hidden,
 telling each window's `visible` so, until the handler's `run` presents it,
 and a loop started with nothing shown ends only as the program quits
-(`testdata/win32_c_run_handler_runs.txtar`).
+(`testdata/win32_c_run_handler_runs.txtar`). gtk4next's entries, C's and
+Go's, are win32's over GTK (`codegen/platform/gtk4next`'s `appMain` and
+`goRunMain`): `sngl_gtk_hold` makes GTK ready and the tree is built before
+the loop, the windows attached with no GtkWindow made yet; the loop
+`sngl_gtk_run` starts makes each one, and a hold still in place as it does
+reports each window's `visible` false, which `run`'s `sngl_gtk_present` lifts
+first. `gtk4next.quit()` ends the loop (`testdata/gtk4next_run_handler_runs.txtar`).
 
 **The package body is the application's view, and a window is a component.**
 Every node at the root of the package body is `lower.AppendChild(__app, n)`
@@ -337,6 +343,16 @@ application root does. A snapshot makes a window per call and destroys it
 after, so `ToplevelWindow` forgets that window and its bar on `destroy`: the
 next one builds its own, where the toplevel used to keep writing titles and
 menus to the destroyed one. `cmd/sngl/testdata/test_root_window_snapshot_runs.txt`.
+
+On gtk4next, placed, a root component renders its windows into the
+container `#[gen.protocol(contents)]` makes (`Contents`), as it renders any
+nodes at its top. A window is no child of a box: the runtime's
+`sngl_box_append` and `sngl_box_insert_before` attach a toplevel they are
+handed to the application, and the box keeps it, so the box's own attach --
+a test's, or the package body's -- shows its windows in no wrapper, and its
+remove and detach take them off screen. A snapshot draws the first window
+attached, as gtk4's BuildUI does (`cmd/sngl/testdata/gtk4next_test_runs.txt`,
+`windows.sngl`).
 
 What makes that reach the two platforms is generic: `ui.window` is an ordinary
 component, composed through its override like any other, and a builtin node

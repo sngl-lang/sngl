@@ -27,9 +27,12 @@ var passReleaseTemps = pass{
 		if !feats.Declarative {
 			blocks = append(blocks, viewBlocks(pkg)...)
 		}
+		afterApp := runReach(pkg)
 		for _, block := range blocks {
+			st.local = afterApp[block]
 			st.block(block)
 		}
+		st.local = false
 		st.packageVars()
 		if st.promote {
 			return lowerLibFuncs(pkg, feats, opts)
@@ -47,11 +50,49 @@ func ReleaseTemps(pkg *ir.Package) error {
 		return nil
 	}
 	st := newReleaseTemps(pkg)
+	afterApp := runReach(pkg)
 	for _, block := range reachedBlocks(pkg) {
+		st.local = afterApp[block]
 		st.block(block)
 	}
+	st.local = false
 	st.packageVars()
 	return nil
+}
+
+// runReach is each block the platform node's `@run` handler reaches: its
+// body, each function it calls, and theirs, with the lambdas in each. What
+// the handler does after `run` returns is after the application has torn
+// down, so a constant there is no application-lifetime value, which the
+// teardown would have released before it is read; it is made and released
+// where it is used, as any other temp is.
+func runReach(pkg *ir.Package) map[*[]ir.Stmt]bool {
+	out := map[*[]ir.Stmt]bool{}
+	if pkg == nil || pkg.Run == nil {
+		return out
+	}
+	seen := map[*ir.Func]bool{}
+	var visit func(f *ir.Func)
+	visit = func(f *ir.Func) {
+		if f == nil || seen[f] || f.Frozen || len(f.Block) == 0 {
+			return
+		}
+		seen[f] = true
+		out[&f.Block] = true
+		_ = ir.Walk(f, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.Lambda:
+				if x.Func != nil {
+					out[&x.Func.Block] = true
+				}
+			case *ir.Call:
+				visit(x.Func)
+			}
+			return nil
+		})
+	}
+	visit(pkg.Run)
+	return out
 }
 
 // packageVars releases what each owned package var holds at teardown, after
@@ -176,7 +217,10 @@ type releaseTemps struct {
 	released map[*ir.Var]bool
 	// promote says a library release was called after LibFuncs ran.
 	promote bool
-	event   *ir.Type
+	// local says the block being rewritten may run after the application
+	// has torn down (runReach), so it holds no application-lifetime value.
+	local bool
+	event *ir.Type
 }
 
 func newReleaseTemps(pkg *ir.Package) *releaseTemps {
@@ -297,7 +341,7 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 	var pre []ir.Stmt
 	var temps []temp
 	for _, f := range c.found {
-		if st.constant(f.expr) {
+		if !st.local && st.constant(f.expr) {
 			*f.slot = st.application(f.expr)
 			continue
 		}

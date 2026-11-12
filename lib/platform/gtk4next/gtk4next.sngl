@@ -29,6 +29,14 @@ component platform(
     const package       string,
     // Emit a standalone main() or a library-style module.
     const main          bool,
+    // The process start, wrapped: what the handler does before calling `run`
+    // happens before the event loop, and what it does after, once the loop
+    // has exited. `run` presents the windows and runs the loop. A handler
+    // that never calls it gets a process whose loop still runs -- timers,
+    // effects, posted work -- with no window on screen, which `quit` ends.
+    // The application has torn down when `run` returns, and a second call
+    // ends the process. `args` is the command line after the program's name.
+    @run(args list[string], run func()),
     // What its generated code introduces beside a program's names: the
     // runtime's prefix and the program's entry.
     const reservedNames list[string] = ["sngl_gtk", "sngl_app", "sngl_build", "sngl_main", "main"],
@@ -65,14 +73,44 @@ func _detach(n ui.node) {
     _rtDetach(n)
 }
 
-// What a component renders several nodes, or a slot, at its top into.
+// What a component renders several nodes, or a slot, at its top into: a box
+// down the page. A window among them is no child of it but a toplevel the
+// application shows, which the box keeps, so a root component's windows come
+// and go with it (rt's sngl_box_append).
+#[marks.intrinsic("gtk4next:Contents")]
+component Contents(content ...component ui.node) ui.node
+
 #[macro.cnative("sngl_contents_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglContentsNew")]
-func _rtContents() ui.node
+func _rtContents() Contents
+
+#[macro.cnative("sngl_box_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBoxRemove")]
+func _rtBoxRemove(box ui.node, child ui.node)
 
 #[gen.protocol(contents)]
-func _contents() ui.node {
+func _contents() Contents {
     return _rtContents()
+}
+
+#[gen.protocol(create)]
+func _create_Contents() Contents {
+    return _rtContents()
+}
+
+#[gen.protocol(append)]
+func _append_Contents(parent Contents, child ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Contents(parent Contents, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(remove)]
+func _remove_Contents(parent Contents, child ui.node) {
+    _rtBoxRemove(parent, child)
 }
 
 // Every widget's handlers are GLib signals.
@@ -139,6 +177,22 @@ func _rtMain(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 ) int
 
+// What an entry whose platform node wrote `@run` starts with, Go's through
+// the wrappers these give it: the windows the build attaches held hidden
+// until the handler's `run` presents them, and the loop run over the tree
+// already built.
+#[macro.cnative("sngl_gtk_hold")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkHold")]
+func _rtHold()
+
+#[macro.cnative("sngl_gtk_present")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkPresent")]
+func _rtPresent()
+
+#[macro.cnative("sngl_gtk_run")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkRun")]
+func _rtRun() int
+
 // GTK made ready without an application, and the loop run once: how a Go
 // test agent starts, and lets the loop run while a test waits.
 #[macro.cnative("sngl_gtk_init")]
@@ -149,7 +203,7 @@ func _rtInit()
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkStep")]
 func _rtStep()
 
-// What was shown last, drawn at width by height into the file at path as
+// The first window shown, drawn at width by height into the file at path as
 // its size and pixels (rt's sngl_gtk_capture_file): a Go test's snapshot.
 #[macro.cnative("sngl_gtk_capture_file")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkCaptureFile")]
@@ -160,6 +214,51 @@ func _rtCaptureFile(path string, width int, height int) int
 #[macro.cnative("sngl_gtk_carry_file")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkCarryFile")]
 func _rtCarryFile(name string, data string, len int)
+
+// Ends the loop, and with it the application, which tears down before the
+// entry returns: how a program whose windows are all hidden, or one an
+// `@run` handler started without calling run, stops.
+#[macro.cnative("sngl_gtk_quit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkQuit")]
+func quit()
+
+// --- The timer ---
+//
+// A GLib timeout, armed as the effect mounts and removed as it unmounts. Its
+// callback runs on the loop's thread, as a signal's handler does.
+#[macro.cnative("SnglSchedule *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.Schedule")]
+struct Schedule {}
+
+#[macro.cnative("sngl_every")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglEvery")]
+func _rtEvery(
+    ms int,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+) Schedule
+
+#[macro.cnative("sngl_schedule_cancel")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglScheduleCancel")]
+func _rtCancel(s Schedule)
+
+// `enabled` is where the effect is, not part of its key, so toggling it
+// mounts and unmounts the schedule; a schedule is the same one for as long as
+// its period is.
+const component time.timer[platform](interval, enabled, @tick) {
+    var handle Schedule
+
+    if enabled {
+        effect(
+            on = interval,
+            @mount(d) { handle = _rtEvery(int(d), tick) },
+            @unmount(d) {
+                _rtCancel(handle)
+            },
+        )
+    }
+}
 
 // --- Windows ---
 

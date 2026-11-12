@@ -904,9 +904,23 @@ reaches it the same way.
         yet fire an event an override connects on an inner widget -- a
         modal's close, a table's or a tree's select -- on gtk4 either.
      3. Toplevels, several windows, `@run` and the application's teardown.
+        Done: a root component's windows (`windows.sngl` in the same script,
+        and `window_dialog_runs.txt`), and `@run` in both languages
+        (`testdata/gtk4next_run_handler_runs.txtar`). A component renders
+        several nodes at its top into `Contents`, whose box hands a toplevel
+        to the application rather than packing it (`sngl_box_append`), and a
+        snapshot draws the first window, as gtk4's does. The entries hold the
+        windows hidden until the handler's `run` presents them
+        (`sngl_gtk_hold`, `sngl_gtk_present`, `sngl_gtk_run`), and
+        `gtk4next.quit()` ends the loop. `time.timer` came with it, which the
+        `@run` test ends by. Along the way: a constant the `@run` handler
+        reaches is no application-lifetime value, since the code after `run`
+        follows the teardown that freed it -- C printed garbage on gtk4next,
+        and win32's printed "after" only by luck. The window's error boundary
+        is not written, as on win32's placed window.
      4. Scroll, tabs, menus and the way back, keys.
      5. Images and the canvas, with its draw function (#294).
-     6. Async posting, timers, `sngl test`'s agent and `sngl snapshot`.
+     6. Async posting, `sngl test`'s agent and `sngl snapshot`.
      7. The swap: every gtk4 golden and recorded run on the new platform,
         weak holds, and the old generator deleted.
 2. **A C record gives back what it kept**, in placement, for gtk4 and win32

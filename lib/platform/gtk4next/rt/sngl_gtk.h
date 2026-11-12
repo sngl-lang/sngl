@@ -47,6 +47,15 @@ void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotif
 void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
                        SnglFn stop, void *stop_ctx, GDestroyNotify stop_release);
 void sngl_gtk_init(void);
+/* What an entry whose platform node wrote `@run` calls: sngl_gtk_hold makes
+ * GTK ready to build in and holds the windows the build attaches hidden as
+ * the loop starts, sngl_gtk_present has the loop show them after all, and
+ * sngl_gtk_run runs the application over the tree already built. */
+void sngl_gtk_hold(void);
+void sngl_gtk_present(void);
+int sngl_gtk_run(void);
+/* sngl_gtk_quit ends the application's loop, once it has one. */
+void sngl_gtk_quit(void);
 void sngl_gtk_step(void);
 int sngl_gtk_main(SnglFn build, void *ctx, GDestroyNotify release);
 /* A widget's signal and a property's notification, connected through

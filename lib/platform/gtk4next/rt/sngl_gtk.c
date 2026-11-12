@@ -23,6 +23,9 @@ typedef struct {
 static GtkApplication *sngl_app;
 static GPtrArray *sngl_attached;
 static bool sngl_started;
+/* Whether the windows are held hidden as the loop starts: an `@run` handler
+ * that has not called run. */
+static bool sngl_holding;
 
 static void sngl_toplevel_free(gpointer data) {
     SnglToplevel *t = data;
@@ -151,7 +154,47 @@ static GtkWidget *sngl_wrapper(GtkWidget *box, bool make) {
     return top;
 }
 
+/* The windows a box holds: what a component renders at its top beside, or
+ * instead of, its other nodes, which is no child of the box but a toplevel
+ * of the application, attached as it is added and detached as it is
+ * removed. The box keeps them, so that its own attach and detach, a root
+ * component's or a test's, reach them. */
+static GPtrArray *sngl_windows_of(GtkWidget *box, bool make) {
+    if (box == SNGL_APP) return NULL;
+    GPtrArray *ws = g_object_get_data(G_OBJECT(box), "sngl-windows");
+    if (ws == NULL && make) {
+        ws = g_ptr_array_new_with_free_func(g_object_unref);
+        g_object_set_data_full(G_OBJECT(box), "sngl-windows", ws, (GDestroyNotify)g_ptr_array_unref);
+    }
+    return ws;
+}
+
+static bool sngl_window_add(GtkWidget *box, GtkWidget *child) {
+    if (box == SNGL_APP || !sngl_top(child)) return false;
+    g_ptr_array_add(sngl_windows_of(box, true), g_object_ref_sink(child));
+    sngl_app_attach(child);
+    return true;
+}
+
+static bool sngl_window_remove(GtkWidget *box, GtkWidget *child) {
+    GPtrArray *ws = sngl_windows_of(box, false);
+    if (ws == NULL || !sngl_top(child) || !g_ptr_array_find(ws, child, NULL)) return false;
+    sngl_app_detach(child);
+    g_ptr_array_remove(ws, child);
+    return true;
+}
+
 void sngl_app_attach(GtkWidget *box) {
+    GPtrArray *ws = sngl_top(box) ? NULL : sngl_windows_of(box, false);
+    if (ws != NULL) {
+        /* A box of windows is shown as they are, in no wrapper, and kept
+         * while it is attached. */
+        if (g_object_get_data(G_OBJECT(box), "sngl-app-holds") == NULL) {
+            g_object_set_data(G_OBJECT(box), "sngl-app-holds", g_object_ref_sink(box));
+        }
+        for (guint i = 0; i < ws->len; i++) sngl_app_attach(g_ptr_array_index(ws, i));
+        return;
+    }
     if (!sngl_top(box)) box = sngl_wrapper(box, true);
     SnglToplevel *t = sngl_top(box);
     if (!t || t->attached) return;
@@ -174,6 +217,11 @@ static void sngl_activate(GtkApplication *app, gpointer data) {
     for (guint i = 0; sngl_attached && i < sngl_attached->len; i++) {
         SnglToplevel *t = g_ptr_array_index(sngl_attached, i);
         sngl_toplevel_create(t);
+        if (t->visible && sngl_holding) {
+            /* Held, which the window's `visible` hears. */
+            t->visible = false;
+            if (t->on_visible) t->on_visible(false, t->visible_ctx);
+        }
         if (t->visible) gtk_window_present(t->win);
     }
 }
@@ -184,7 +232,28 @@ int sngl_app_run(void (*build)(void)) {
     g_signal_connect(sngl_app, "activate", G_CALLBACK(sngl_activate), NULL);
     int status = g_application_run(G_APPLICATION(sngl_app), 0, NULL);
     g_object_unref(sngl_app);
+    sngl_app = NULL;
     return status;
+}
+
+void sngl_gtk_hold(void) {
+    sngl_holding = true;
+    gtk_init();
+}
+
+void sngl_gtk_present(void) {
+    sngl_holding = false;
+}
+
+static void sngl_built(void) {
+}
+
+int sngl_gtk_run(void) {
+    return sngl_app_run(sngl_built);
+}
+
+void sngl_gtk_quit(void) {
+    if (sngl_app) g_application_quit(G_APPLICATION(sngl_app));
 }
 
 /* What a language whose build is a closure runs the application with: its
@@ -388,6 +457,12 @@ void sngl_schedule_cancel(SnglSchedule *s) {
 /* sngl_app_detach takes a toplevel off the application, its window
  * destroyed: a slot at the package's root no longer renders it. */
 void sngl_app_detach(GtkWidget *box) {
+    GPtrArray *ws = sngl_top(box) ? NULL : sngl_windows_of(box, false);
+    if (ws != NULL) {
+        for (guint i = 0; i < ws->len; i++) sngl_app_detach(g_ptr_array_index(ws, i));
+        if (g_object_steal_data(G_OBJECT(box), "sngl-app-holds") != NULL) g_object_unref(box);
+        return;
+    }
     if (!sngl_top(box)) {
         box = sngl_wrapper(box, false);
         if (box == NULL) return;
@@ -416,12 +491,14 @@ static gboolean sngl_capture_tick(gpointer data) {
 }
 
 bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, int *w, int *h, const char **why) {
-    /* A node shown in a toplevel of its own, a test's component, is drawn
+    /* What is shown is the first window attached, as gtk4's BuildUI shows
+     * the first toplevel: a root component's first, or the package body's.
+     * A node shown in a toplevel of its own, a test's component, is drawn
      * as the window's whole content, as it is where it is a window's only
      * child, and put back after. */
     GtkWidget *wrapper = NULL;
     if (root == NULL && sngl_attached && sngl_attached->len > 0) {
-        SnglToplevel *t = g_ptr_array_index(sngl_attached, sngl_attached->len - 1);
+        SnglToplevel *t = g_ptr_array_index(sngl_attached, 0);
         root = t->box;
         GtkWidget *wrapped = g_object_get_data(G_OBJECT(root), "sngl-wraps");
         if (wrapped != NULL && gtk_widget_get_parent(root) == NULL) {
@@ -561,13 +638,14 @@ void sngl_box_append(GtkWidget *box, GtkWidget *child) {
         sngl_app_attach(child);
         return;
     }
-    if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
+    if (sngl_window_add(box, child) || sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
     box = sngl_slot_host(box);
     gtk_box_append(GTK_BOX(box), child);
     sngl_menu_moved(box, child);
 }
 
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
+    if (sngl_window_add(box, child)) return;
     box = sngl_slot_host(box);
     if (box == SNGL_APP || anchor == NULL || gtk_widget_get_parent(anchor) != box) {
         sngl_box_append(box, child);
@@ -586,7 +664,7 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
     /* What the box let go of may be gone once it has, and the bar and the
      * tabs ask what it was. */
     g_object_ref(child);
-    if (!sngl_tabs_remove(box, child) && !sngl_image_unadopt(box, child)) {
+    if (!sngl_window_remove(box, child) && !sngl_tabs_remove(box, child) && !sngl_image_unadopt(box, child)) {
         box = sngl_slot_host(box);
         gtk_box_remove(GTK_BOX(box), child);
         sngl_menu_moved(box, child);

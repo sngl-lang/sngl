@@ -9,6 +9,8 @@
 package gtk4next
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"maps"
@@ -18,6 +20,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
@@ -53,6 +56,40 @@ func (g *Generator) ProbeTest() (bool, string) {
 		return false, "gtk4 dev libraries not installed (pkg-config)"
 	}
 	return true, ""
+}
+
+var _ codegen.ProgramRunner = (*Generator)(nil)
+
+// RunProgram implements codegen.ProgramRunner for a C program, which the
+// host's compiler builds against the host's GTK and which runs in the display
+// this process has; a Go program is built and run as every Go target's is.
+func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.ProgramRun) (string, []codegen.ProgramRan, error) {
+	if ok, reason := g.ProbeTest(); !ok {
+		return "", nil, &codegen.SkipError{Reason: reason}
+	}
+	cc, err := clang.ForTarget(clang.TargetOf(dir), "")
+	if err != nil {
+		return "", nil, &codegen.SkipError{Reason: err.Error()}
+	}
+	bin := filepath.Join(dir, "app")
+	if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		return out, nil, err
+	}
+	bin = cc.Exe(bin)
+	var ran []codegen.ProgramRan
+	for _, r := range runs {
+		rctx, cancel := context.WithTimeout(ctx, time.Minute)
+		cmd := exec.CommandContext(rctx, bin, r.Args...)
+		cmd.WaitDelay = 5 * time.Second
+		cmd.Dir = dir
+		cmd.Stdin = bytes.NewReader(r.Stdin)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		cancel()
+		ran = append(ran, codegen.ProgramRan{Stdout: stdout.String(), Stderr: stderr.String(), Err: err})
+	}
+	return "", ran, nil
 }
 
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
@@ -92,12 +129,7 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		}
 		io.WriteString(fe, cTestMain)
 	} else {
-		teardown := ""
-		if pkg.Teardown != nil {
-			teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
-		}
-		io.WriteString(fe, "\nstatic void sngl_start(void) {\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n}\n")
-		io.WriteString(fe, "\nint main(void) {\n\tsngl_gtk_carry(sngl_assets);\n\tint status = sngl_app_run(sngl_start);\n"+teardown+"\treturn status;\n}\n")
+		io.WriteString(fe, appMain(fe.Context(), pkg))
 	}
 	if err := fe.Close(); err != nil {
 		return fmt.Errorf("%s: %w", platformName, err)
@@ -129,12 +161,56 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 	return nil
 }
 
+// appMain is a C program's entry. The program is built in a turn once GTK
+// is ready, and the application tears down as the loop ends.
+//
+// Where the platform node wrote `@run`, the tree is built before the loop,
+// the windows it attaches held hidden, and the handler is called, in a turn,
+// with the command line and a `run` presenting them and running the loop. A
+// handler that returns without calling it gets the loop with nothing shown,
+// which only quit ends; a second run is refused (design/windows.md).
+func appMain(c *clang.Context, pkg *ir.Package) string {
+	teardown := ""
+	if pkg.Teardown != nil {
+		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
+	}
+	build := "\tsngl_gtk_carry(sngl_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n"
+	if pkg.Run == nil {
+		return "\nstatic void sngl_start(void) {\n" + strings.Replace(build, "\tsngl_gtk_carry(sngl_assets);\n", "", 1) + "}\n" +
+			"\nint main(void) {\n\tsngl_gtk_carry(sngl_assets);\n\tint status = sngl_app_run(sngl_start);\n" + teardown + "\treturn status;\n}\n"
+	}
+	if len(pkg.Run.Block) == 0 || len(pkg.Run.Params) != 2 {
+		return "\nint main(void) {\n\tsngl_gtk_hold();\n" + build + "\tint status = sngl_gtk_run();\n" + teardown + "\treturn status;\n}\n"
+	}
+	c.Include("stdio.h", true)
+	c.Include("stdlib.h", true)
+	c.Include("string.h", true)
+	args, run := c.TypeName(pkg.Run.Params[0].Type), c.TypeName(pkg.Run.Params[1].Type)
+	var b strings.Builder
+	b.WriteString("\nstatic bool sngl_gtk_started;\n\n")
+	b.WriteString("static void sngl_gtk_start(void *env) {\n\t(void)env;\n\tif (sngl_gtk_started) {\n")
+	fmt.Fprintf(&b, "\t\tfprintf(stderr, \"%%s: run called again; an application runs once per process\\n\", %s);\n\t\texit(2);\n\t}\n", strconv.Quote(pkg.RunPos.String()))
+	b.WriteString("\tsngl_gtk_started = true;\n\tsngl_gtk_present();\n\tsngl_gtk_run();\n")
+	b.WriteString(teardown)
+	b.WriteString("}\n\n")
+	b.WriteString("int main(int argc, char **argv) {\n\tsngl_gtk_hold();\n")
+	b.WriteString(build)
+	fmt.Fprintf(&b, "\t%s args = {0};\n", args)
+	b.WriteString("\tif (argc > 1) {\n\t\targs.data = malloc(sizeof(sngl_string) * (size_t)(argc - 1));\n")
+	b.WriteString("\t\tfor (int i = 1; i < argc; i++) {\n\t\t\targs.data[args.len++] = (sngl_string){argv[i], strlen(argv[i])};\n\t\t}\n\t\targs.cap = args.len;\n\t}\n")
+	fmt.Fprintf(&b, "\tsngl_turn_enter();\n\t%s(args, (%s){sngl_gtk_start, NULL});\n\tsngl_turn_leave();\n", clang.Decl(&pkg.Run.DeclInfo), run)
+	b.WriteString("\tif (!sngl_gtk_started) {\n\t\tsngl_gtk_started = true;\n\t\tsngl_gtk_run();\n")
+	b.WriteString(strings.ReplaceAll(teardown, "\t", "\t\t"))
+	b.WriteString("\t}\n\treturn 0;\n}\n")
+	return b.String()
+}
+
 // cTestMain is a C program's entry built for `sngl test`, serving its tests
 // over stdin and stdout. A critical GLib logs is a program misusing GTK -- a
 // widget appended that is not one, a pointer gone stale -- which GTK survives
 // and a test reading the program's own state would not notice, so it fails
-// the test running. A snapshot is the window the program, or the test's
-// component, was last shown in, drawn at 800 by 600.
+// the test running. A snapshot is the first window the program, or the
+// test's component, is shown in, drawn at 800 by 600.
 const cTestMain = `
 static GLogWriterOutput sngl_test_log_writer(GLogLevelFlags level, const GLogField *fields, gsize n, gpointer data) {
 	if (level & G_LOG_LEVEL_CRITICAL) {
@@ -188,13 +264,55 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		}
 		io.WriteString(fe, strings.ReplaceAll(goAgentMain, "cgo.", cgo+"."))
 	} else {
-		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := "+cgo+".SnglGtkMain(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n")
+		switch {
+		case golang.RunsHandler(pkg):
+			fe.RequireImport("fmt")
+			io.WriteString(fe, strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain))
+		case pkg.Run != nil:
+			io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\t"+cgo+".SnglGtkHold()\n\tsnglInit()\n\tsnglBuild()\n\tstatus := "+cgo+".SnglGtkRun()\n\tsnglTeardown()\n\tos.Exit(status)\n}\n")
+		default:
+			io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := "+cgo+".SnglGtkMain(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n")
+		}
 	}
 	if err := fe.Close(); err != nil {
 		return err
 	}
 	return carryGo(sink, req.FileAssets)
 }
+
+// goRunMain is a Go program's entry where the platform node wrote `@run`,
+// as C's is (appMain): the tree is built before the loop, the windows it
+// attaches held hidden, and the handler is called with the command line and
+// a `run` presenting them and running the loop. A handler that returns
+// without calling it gets the loop with nothing shown; a second run is
+// refused.
+const goRunMain = `
+var snglStarted bool
+
+func snglStart() {
+	if snglStarted {
+		fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", POS)
+		os.Exit(2)
+	}
+	snglStarted = true
+	cgo.SnglGtkPresent()
+	cgo.SnglGtkRun()
+	snglTeardown()
+}
+
+func main() {
+	runtime.LockOSThread()
+	cgo.SnglGtkHold()
+	snglInit()
+	snglBuild()
+	snglRun(os.Args[1:], snglStart)
+	if !snglStarted {
+		snglStarted = true
+		cgo.SnglGtkRun()
+		snglTeardown()
+	}
+}
+`
 
 // goAgentMain is a Go program's entry built for `sngl test`: the test agent,
 // serving the driver over stdin and stdout on a goroutine, and running each
@@ -225,7 +343,7 @@ func main() {
 	}
 }
 
-// snglCapture is what was shown last, drawn at 800 by 600 as C's agent
+// snglCapture is the first window shown, drawn at 800 by 600 as C's agent
 // draws it, as a PNG.
 func snglCapture() (string, []byte, error) {
 	f, err := os.CreateTemp("", "sngl-snapshot-*")
