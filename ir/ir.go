@@ -182,6 +182,10 @@ type Package struct {
 	UsesI18n          bool
 	UsesAlert         bool
 	UsesErrorHandling bool
+	// NoTernary says lowering hoisted every ternary into statements, for a
+	// target that writes none, so nothing after it may put one back: the
+	// fold after lowering inlines no body still holding one.
+	NoTernary bool `json:",omitempty"`
 	// Teardown is the handler a platform calls when the program is going away,
 	// or nil where no effect declared an @unmount. Nothing guarantees it runs
 	// -- a killed process and a closed tab both skip it -- so what belongs in

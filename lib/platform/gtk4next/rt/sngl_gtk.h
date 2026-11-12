@@ -14,6 +14,11 @@ typedef void (*SnglBoolFn)(int v, void *ctx);
 typedef void (*SnglStrFn)(const char *s, void *ctx);
 typedef void (*SnglDrawFn)(cairo_t *cr, void *data);
 
+/* sngl_post runs fn from the main loop when it is next idle, then release
+ * with its ctx: how work another thread finished reaches GTK, which owns its
+ * widgets from the loop's thread. */
+void sngl_post(SnglFn fn, void *ctx, GDestroyNotify release);
+
 /* sngl_contents_new is the box an instance of a component holds its widgets
  * in, which the program never wrote: a child growing in it grows the box
  * too, in the box it sits in, as CSS's display: contents makes its children
@@ -304,6 +309,23 @@ GtkWidget *sngl_copy_get(GHashTable *copies, const char *key);
 /* sngl_flow_new is the label a flow of rich text is: wrapped, and starting
  * at the left as a paragraph does. Its spans' words are its markup. */
 GtkWidget *sngl_flow_new(void);
+
+/* sngl_span_new is a span of a flow's rich text (markup.c): no widget, but
+ * handed about as one. sngl_span_append, _insert and _remove put a span in
+ * a flow or in another span, and take it out, which lets it go. A span holds
+ * its words, its link and its style (sngl_span_set_style: a color's
+ * channels, written where its alpha is not 0; a size in px, 0 unset; a
+ * weight and a slant as markup.Weight's and markup.Slant's ordinals,
+ * inherit 0; a line under and through; a family, "" inherit). Any change
+ * sets the markup of the flow the span is in again. */
+GtkWidget *sngl_span_new(void);
+void sngl_span_append(GtkWidget *parent, GtkWidget *child);
+void sngl_span_insert(GtkWidget *parent, GtkWidget *child, GtkWidget *before);
+void sngl_span_remove(GtkWidget *parent, GtkWidget *child);
+void sngl_span_set_words(GtkWidget *w, const char *words);
+void sngl_span_set_href(GtkWidget *w, const char *href);
+void sngl_span_set_style(GtkWidget *w, int r, int g, int b, int a, double size, int weight, int slant,
+                         int underline, int strike, const char *family);
 
 /* sngl_editable_set_text_quiet writes an entry's text with its "changed"
  * blocked, which an override does when the program's value moves, so the

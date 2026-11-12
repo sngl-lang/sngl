@@ -110,6 +110,7 @@ type evalCtx struct {
 	language      string
 	dir           string
 	noCacheBust   bool
+	noTernary     bool
 	pkg           *ir.Package
 	nativeImports map[string]*ir.NativeImport // lazily built from pkg.Imports
 	nativeSchemes map[string]string           // import alias → scheme ("go", "js", ...)
@@ -561,6 +562,7 @@ func (r *optimizerRun) newCtx(pkg *ir.Package) *evalCtx {
 		language:        r.cfg.Language,
 		dir:             r.cfg.Dir,
 		noCacheBust:     r.cfg.NoCacheBust,
+		noTernary:       pkg.NoTernary,
 		pkg:             pkg,
 		values:          make(map[ir.Symbol]any),
 		inliningFuncs:   make(map[*ir.Func]bool),

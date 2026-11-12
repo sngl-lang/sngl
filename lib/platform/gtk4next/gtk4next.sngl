@@ -9,11 +9,12 @@ import time "sngl:time"
 import draw "sngl:ui/draw"
 import family "sngl:family"
 import math "sngl:math"
+import markup "sngl:ui/markup"
 
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c"])
 
 // The `gtk4next` node of a build directive: `output { c { gtk4next() } }`.
 //
@@ -555,12 +556,15 @@ func _on_MenuEntry(e MenuEntry, select func()) {
 //
 // Its favicon is a source the window takes as its icon (rt's image.c).
 //
-// The window's `@error` boundary is not written yet.
+// The window's `@error` is the outermost boundary of what it renders, and
+// catches whether or not the call site handles one.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
     Toplevel(title=title, :visible=visible, @closed { closed() }, @key {
         key(ui.KeyPress{key=_rtKeyHeard(), ctrl=_rtKeyHeld(0), alt=_rtKeyHeld(1), shift=_rtKeyHeld(2), meta=_rtKeyHeld(3), editing=_rtKeyHeld(4)}, func() { _rtKeyStop() })
     }) {
-        content
+        boundary(@error(e) { error(e) }) {
+            content
+        }
         #[family.crosses]
         favicon
         if canGoBack {
@@ -1334,6 +1338,186 @@ const component ui.modal[platform](style, open, title, closable, @close, content
     }
 }
 
+// --- Rich text ---
+
+// A flow is one GtkLabel, and the spans in it its Pango markup, which nests
+// as they do: `<b><i>x</i></b>` is what `bold { italic { … } }` means, so
+// Pango resolves the cascade. A span is the runtime's, no widget, holding its
+// words, its link and the tags its style opens and closes, which the runtime
+// writes from what the style sets; any change to one sets its flow's markup
+// again (rt's markup.c).
+#[marks.intrinsic("gtk4next:Flow")]
+component Flow(
+    look    Look,
+    content ...component markup.span,
+) ui.node
+
+#[marks.intrinsic("gtk4next:Span")]
+component Span(
+    words     string = "",
+    href      string = "",
+    spanStyle markup.SpanStyle,
+    content   ...component markup.span,
+) markup.span
+
+#[macro.cnative("sngl_flow_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglFlowNew")]
+func _rtFlowNew() Flow
+
+#[macro.cnative("sngl_span_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanNew")]
+func _rtSpanNew() Span
+
+#[macro.cnative("sngl_span_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanAppend")]
+func _rtSpanAppend(parent ui.node, child markup.span)
+
+#[macro.cnative("sngl_span_insert")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanInsert")]
+func _rtSpanInsert(parent ui.node, child markup.span, before markup.span)
+
+#[macro.cnative("sngl_span_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanRemove")]
+func _rtSpanRemove(parent ui.node, child markup.span)
+
+#[macro.cnative("sngl_span_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanAppend")]
+func _rtSpanAppendIn(parent markup.span, child markup.span)
+
+#[macro.cnative("sngl_span_insert")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanInsert")]
+func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span)
+
+#[macro.cnative("sngl_span_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanRemove")]
+func _rtSpanRemoveIn(parent markup.span, child markup.span)
+
+#[macro.cnative("sngl_span_set_words")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanSetWords")]
+func _rtSpanWords(w Span, words string)
+
+#[macro.cnative("sngl_span_set_href")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanSetHref")]
+func _rtSpanHref(w Span, href string)
+
+// A run's style: its color's channels, its size in px (0 unset), its weight
+// and slant as markup's enums, `inherit` first, its lines and its family.
+#[macro.cnative("sngl_span_set_style")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSpanSetStyle")]
+func _rtSpanStyle(
+    w         Span,
+    r         int,
+    g         int,
+    b         int,
+    a         int,
+    size      float,
+    weight    int,
+    slant     int,
+    underline bool,
+    strike    bool,
+    family    string,
+)
+
+#[gen.protocol(create)]
+func _create_Flow() Flow {
+    return _rtFlowNew()
+}
+
+#[gen.protocol(set)]
+func _set_Flow_look(w Flow, look Look) {
+    _setLook(w, look)
+}
+
+#[gen.protocol(append)]
+func _append_Flow(parent Flow, child markup.span) {
+    _rtSpanAppend(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Flow(parent Flow, child markup.span, before markup.span) {
+    _rtSpanInsert(parent, child, before)
+}
+
+#[gen.protocol(remove)]
+func _remove_Flow(parent Flow, child markup.span) {
+    _rtSpanRemove(parent, child)
+}
+
+#[gen.protocol(create)]
+func _create_Span() Span {
+    return _rtSpanNew()
+}
+
+#[gen.protocol(append)]
+func _append_Span(parent Span, child markup.span) {
+    _rtSpanAppendIn(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Span(parent Span, child markup.span, before markup.span) {
+    _rtSpanInsertIn(parent, child, before)
+}
+
+#[gen.protocol(remove)]
+func _remove_Span(parent Span, child markup.span) {
+    _rtSpanRemoveIn(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Span_words(w Span, words string) {
+    _rtSpanWords(w, words)
+}
+
+#[gen.protocol(set)]
+func _set_Span_href(w Span, href string) {
+    _rtSpanHref(w, href)
+}
+
+#[gen.protocol(set)]
+func _set_Span_spanStyle(w Span, spanStyle markup.SpanStyle) {
+    _rtSpanStyle(w, int(spanStyle.color.r), int(spanStyle.color.g), int(spanStyle.color.b), int(spanStyle.color.a), px(spanStyle.fontSize), int(spanStyle.fontWeight), int(spanStyle.fontStyle), spanStyle.underline, spanStyle.strike, spanStyle.fontFamily)
+}
+
+const component markup.richText[platform](style, content) {
+    Flow(look=lookOf(style)) {
+        content
+    }
+}
+
+const component markup.text[platform](value) {
+    Span(words=value) {}
+}
+
+const component markup.run[platform](style, content) {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// Pango has `<a href>` and GtkLabel follows one when it is clicked, so this
+// is the one target besides html where a link is a link.
+const component markup.link[platform](href, content) {
+    Span(href=href) {
+        content
+    }
+}
+
+// Pango takes a foreground and nothing a theme could answer, so the fallback
+// is a palette rather than the host: the light one, since the theme GTK
+// ships with is light.
+const component markup.token[platform](kind, content) {
+    Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
+        content
+    }
+}
+
+// Pango markup has no image, and a GtkLabel holds text. So the description
+// is what an image is here, in the brackets that say a picture stood where
+// they are.
+const component markup.image[platform](alt) {
+    Span(words="[{alt}]") {}
+}
+
 // --- Images ---
 
 // An image is the runtime's box holding the source it shows, fitted as `fit`
@@ -1734,6 +1918,16 @@ func _rtCanvasSetHeight(w Canvas, height int)
 #[macro.cnative("sngl_canvas_set_scaling")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglCanvasSetScaling")]
 func _rtCanvasSetScaling(w Canvas, mode int)
+
+// Runs `fn` from the main loop when it is next idle: how `async.do` hands
+// work a goroutine finished back in Go. C posts through sngl_post itself.
+#[macro.cnative("sngl_post")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglPost")]
+func _rtPost(
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
 #[macro.cnative("sngl_on_click")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglOnClick")]

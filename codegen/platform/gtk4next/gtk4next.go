@@ -129,6 +129,12 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 			return fmt.Errorf("%s: %w", platformName, err)
 		}
 		io.WriteString(fe, cTestMain)
+	} else if codegen.OptionBool(req.Options, snapshotOption) {
+		// Built for `sngl snapshot`: the program built, then its first
+		// window drawn at the size asked for into the file its first
+		// argument names.
+		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tgtk_init();\n\tsngl_gtk_carry(sngl_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_gtk_capture_file(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
+		fe.Context().Include("stdlib.h", true)
 	} else {
 		io.WriteString(fe, appMain(fe.Context(), pkg))
 	}
@@ -266,6 +272,10 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		io.WriteString(fe, strings.ReplaceAll(goAgentMain, "cgo.", cgo+"."))
 	} else {
 		switch {
+		case codegen.OptionBool(req.Options, snapshotOption):
+			// Built for `sngl snapshot`, as C's is.
+			fe.RequireImport("strconv")
+			io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tif len(os.Args) < 4 {\n\t\tos.Exit(2)\n\t}\n\tw, _ := strconv.Atoi(os.Args[2])\n\th, _ := strconv.Atoi(os.Args[3])\n\t"+cgo+".SnglGtkInit()\n\tsnglInit()\n\tsnglBuild()\n\tos.Exit("+cgo+".SnglGtkCaptureFile(os.Args[1], w, h))\n}\n")
 		case golang.RunsHandler(pkg):
 			fe.RequireImport("fmt")
 			io.WriteString(fe, strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain))

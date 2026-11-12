@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -144,6 +145,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 		if len(b) > 0 {
 			result = ir.InstantiateExpr(result, b)
 		}
+	}
+	// After lowering for a target that writes no ternary, one spliced here
+	// reaches a language with no way to write it, so it is written as
+	// NoTernary writes one with no statement list to hoist into: a library's
+	// `func f(s) => (a ? "x" : "") + …`, inlined into a render slot's call
+	// placement made, panicked Go's emitter.
+	if ctx != nil && ctx.noTernary && containsTernary(result) {
+		result = lower.ImmediateTernaries(result, "__lti")
 	}
 	return result
 }
@@ -491,6 +500,19 @@ func callsFuncInArgs(args []ir.CallArg, target *ir.Func) bool {
 // *ir.ContextRead. Used by inlineCall to defer inlining a context-reading
 // wrapper body until after NoContext (in lower) has threaded the hidden
 // context param and rewritten the ContextRead to a plain Ident.
+// containsTernary reports whether a ternary is anywhere in e.
+func containsTernary(e ir.Expr) bool {
+	found := false
+	_ = ir.Walk(e, func(n ir.Node) error {
+		if _, ok := n.(*ir.Ternary); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
 func containsContextRead(e ir.Expr) bool {
 	if e == nil {
 		return false
