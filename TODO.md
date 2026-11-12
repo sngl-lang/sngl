@@ -810,9 +810,9 @@ reaches it the same way.
   of a shape a callback cannot take, and whatever else needs a GObject
   subclass.
 - **The stdlib's GTK declarations are committed.** They are generated once
-  from the bundled GIR in `cnative` form into a tracked package
-  (`sngl:platform/gtk4/gtk`, as `win32/api` is), edited where needed, and
-  imported by `gtk4.sngl` instead of `gir:Gtk-4.0`. A program can still
+  from the bundled GIR into a tracked file beside `gtk4.sngl`, in the same
+  package, so a program writes `gtk4.GtkButton` as it writes `html.button`,
+  and `gtk4.sngl` no longer imports `gir:Gtk-4.0`. A program can still
   import `gir:`; a class it reaches there that has no wrapper is called
   directly.
 - **gtk4 moves onto placement** (`#[gen.wants(placement)]`), as win32 is, so
@@ -836,6 +836,33 @@ reaches it the same way.
   against `design/ownership.md`. The fix lands in placement, for both, once
   gtk4 is on it: the record's destroy drops each field it kept and the box,
   and a test in each language holds the kept set's size across a rebuild.
+
+### The steps
+
+1. **The widget declarations move into `sngl:platform/gtk4`.** The `gir:`
+   scheme's output for the bundled GIR is written by a tool to a tracked
+   file beside `gtk4.sngl` and kept current by `go generate ./lib`, as
+   `win32/api` is. A class keeps its C name (`gtk4.GtkButton`), as an HTML
+   element keeps its tag's. `gtk4.sngl` and `style.sngl` drop the `gir:`
+   import, and a program's `gir:Gtk-4.0` import is unchanged.
+2. **gtk4 moves onto placement, with its runtime in SNGL.** The protocol
+   becomes `gtk4.sngl`'s functions over `cnative` GTK, piece by piece: the
+   look and the layout, toplevels and the application, scroll, tabs, menus,
+   images, keys, posting. What stays C in `rt/` is the layout manager's
+   `measure` and `allocate`, the trampolines a callback cannot take, and any
+   GObject subclass. Go calls it through cgogen's wrappers, as win32 does.
+   `compiler_ir.go`, `c_emit.go`, `c_record.go`, `wrapped.go` and the
+   inline-cgo scaffold retire, and weak holds come with it. The canvas's
+   draw function (#294) may land first.
+3. **A C record gives back what it kept**, in placement, for gtk4 and win32
+   alike, with a test in each language that a rebuilt list's kept set does
+   not grow. With it, a retained C closure that writes a captured local
+   writes a heap box, not the stack address it writes today.
+4. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
+   come with step 2. `purego` is attempted then, against the open questions
+   below.
+5. **`pkg/go/gtk4rt` is deleted**, its tests moved to programs in both
+   languages.
 
 ### Open questions
 
