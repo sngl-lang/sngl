@@ -116,7 +116,7 @@ func parseExec(rest string, src map[string][]byte) (execution, error) {
 		case exitWord.MatchString(w):
 			e.exit, _ = strconv.Atoi(exitWord.FindStringSubmatch(w)[1])
 		case toplevelsWord.MatchString(w):
-			if platform != "gtk4" && platform != "gtk4next" {
+			if platform != "gtk4" {
 				return execution{}, fmt.Errorf("exec counts toplevels on %s; only gtk4 speaks Wayland to the compositor", platform)
 			}
 			m := toplevelsWord.FindStringSubmatch(w)

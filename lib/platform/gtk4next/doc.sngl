@@ -1,5 +1,0 @@
-// gtk4 as it is becoming, built beside sngl:platform/gtk4 until it does all
-// gtk4 does, and then named gtk4 in its place: a GTK 4 platform placed in
-// SNGL, its runtime C every language calls (rt/), and its widgets, one
-// component per GTK class of the bundled GIR named as C names it
-// (`GtkButton`), in widgets.sngl, which gtk4gen writes.

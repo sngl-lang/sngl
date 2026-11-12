@@ -1,5 +1,5 @@
-/* A window's menu and its way back on GTK for a program written in C, as
- * gtk4rt's menu.go is for Go. A menu entry is a hidden box among the
+/* A window's menu and its way back on GTK, for a program in either language.
+ * A menu entry is a hidden box among the
  * window's content, where it takes no room, holding its submenu's entries as
  * its children; the window builds its menu from the entries it holds -- a
  * GMenu behind the header bar's menu button -- whenever one comes, goes or
@@ -74,14 +74,14 @@ void sngl_menu_entry_set_label(GtkWidget *w, const char *label) {
     sngl_entry_changed(w);
 }
 
-void sngl_menu_entry_set_disabled(GtkWidget *w, bool v) {
+void sngl_menu_entry_set_disabled(GtkWidget *w, int v) {
     SnglMenuEntry *e = sngl_entry_of(w);
     if (!e || e->disabled == v) return;
     e->disabled = v;
     sngl_entry_changed(w);
 }
 
-void sngl_menu_entry_set_checked(GtkWidget *w, bool v) {
+void sngl_menu_entry_set_checked(GtkWidget *w, int v) {
     SnglMenuEntry *e = sngl_entry_of(w);
     if (!e || e->checked == v) return;
     e->checked = v;

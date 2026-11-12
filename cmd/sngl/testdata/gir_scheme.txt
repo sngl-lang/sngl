@@ -1,18 +1,23 @@
-# gtk4's widget declarations are the gir: scheme's package -- a library
-# plugin, lib/x/scheme/gir -- and sngl:platform/gtk4's wrappers import it. A
-# program naming a widget directly imports it the same way.
+# gtk4's own widgets are sngl:platform/gtk4's (widgets.sngl, from the bundled
+# GIR), which a program names as `gtk4.GtkProgressBar`. A program may instead
+# import `gir:Gtk-4.0`, the gir: scheme's package -- a library plugin,
+# lib/x/scheme/gir -- declared from the GIR the `gir` option selects, against
+# the platform's Look and `setLook`. Its classes have no wrapper, so a Go
+# program calls their C itself.
 
-# The platform package checks on its own, where nothing but the library
-# resolves its import.
+# The platform package checks on its own.
 sngl check sngl:platform/gtk4
 
-# A program reaches a widget, and a GIR action on it, through the import.
+# A program reaches a widget, and a GIR action on it, through the import, in
+# both languages: Go through the platform's wrappers, C directly.
 sngl generate --platform=gtk4 --lang=go --opt gir=builtin --out=out app.sngl
-grep 'gtk_progress_bar_pulse' out/model.go
+grep 'cgo\.GtkProgressBarPulse' out/main.go
+sngl generate --platform=gtk4 --lang=c --opt gir=builtin --out=outc app.sngl
+grep 'gtk_progress_bar_pulse' outc/main.c
 
-# The widgets are no longer sngl:platform/gtk4's.
-! sngl generate --platform=gtk4 --lang=go --opt gir=builtin --out=old old.sngl
-stderr 'GtkProgressBar'
+# The platform's own widget, and its action, through the wrapper.
+sngl generate --platform=gtk4 --lang=go --out=own own.sngl
+grep 'cgo\.GtkProgressBarPulse' own/main.go
 
 -- app.sngl --
 import gtk "gir:Gtk-4.0"
@@ -23,10 +28,12 @@ ui.window {
     gtk.GtkProgressBar #bar(fraction=0.0) {}
     time.timer(interval=100ms, @tick { bar.pulse() })
 }
--- old.sngl --
-import "sngl:platform/gtk4"
+-- own.sngl --
+import gtk4 "sngl:platform/gtk4"
 import ui "sngl:ui"
+import time "sngl:time"
 
 ui.window {
-    gtk4.GtkProgressBar(fraction=0.0) {}
+    gtk4.GtkProgressBar #bar(fraction=0.0) {}
+    time.timer(interval=100ms, @tick { bar.pulse() })
 }

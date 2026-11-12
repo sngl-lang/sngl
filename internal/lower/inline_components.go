@@ -1533,6 +1533,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Block = substituteParams(fn.Block, bindings)
 		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
 		fn.Block = substituteVars(fn.Block, provided)
+		// A method that read only its component's props was pure, and bound
+		// to the caller's var it reads state: `picked() => chosen != "" ?
+		// chosen : "fig"`, left pure, was folded at the var's first value.
+		if fn.Purity == ir.PurityPure && readsVar(fn.Block) {
+			fn.Purity = ir.PurityReadonly
+		}
 	}
 	// After the props, as passInlinePure does: a provided value is the
 	// caller's expression.
@@ -1610,6 +1616,21 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	return body, nil
 }
 
+// readsVar reports whether block reads a var that is not const.
+func readsVar(block []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && !v.IsConst {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
+}
+
 // spliceLifted gives a splice its own copy of every function passLambda
 // lifted out of the component that captures state the splice renamed. A
 // lifted function is the package's, so every splice of the component shared
@@ -1645,10 +1666,21 @@ func (st *inlineCompState) spliceLifted(body []ir.Stmt, varStart, funcStart int,
 				found = true
 			}
 		}
+		// A function of the component's it calls is the splice's copy too,
+		// which reads the splice's props: `all.filter(func(f) => f !=
+		// picked())` called the component's own `picked`, whose prop read
+		// the build folded to the prop's default.
 		for _, s := range f.Block {
 			_ = ir.Walk(s, func(n ir.Node) error {
-				if c, ok := n.(*ir.Closure); ok && c.Func != nil && needsCopy(c.Func) {
-					found = true
+				switch x := n.(type) {
+				case *ir.Closure:
+					if x.Func != nil && needsCopy(x.Func) {
+						found = true
+					}
+				case *ir.Call:
+					if _, ok := symRenames[x.Func]; ok && x.Func != nil {
+						found = true
+					}
 				}
 				return nil
 			})

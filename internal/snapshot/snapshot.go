@@ -238,9 +238,13 @@ func snapshotViaHTML(sourceFile, platform, lang string, width, height int, polic
 type BatchConfig struct {
 	Docs      []DocEntry // documents to snapshot
 	Platforms []string   // platforms to snapshot for
-	Width     int
-	Height    int
-	OutDir    string
+	// Langs is the language each platform is built in, the output block's;
+	// a platform it does not name is built in the first its generator
+	// supports (LangForPlatform).
+	Langs  map[string]string
+	Width  int
+	Height int
+	OutDir string
 	// Trust is what a build may run of the project's own code; nil refuses.
 	Trust *trust.Policy
 }
@@ -306,7 +310,10 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	var results []Result
 
 	for _, platform := range cfg.Platforms {
-		lang := LangForPlatform(platform)
+		lang := cfg.Langs[platform]
+		if lang == "" {
+			lang = LangForPlatform(platform)
+		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)

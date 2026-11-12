@@ -5,8 +5,8 @@
 # invoker an int where it takes a label: the test did not compile
 # (FuncLowering.CopyOf, keptCopies). One copy of a loop's is reached through
 # the copy's instance, `c.pick__state[1]` (nameInstance). Where a test still
-# cannot reach the node -- a copy bubbletea spliced into each element, a select
-# inside an instance a loop builds -- the build says so, naming #318, where the
+# cannot reach the node -- a copy bubbletea or gtk4 spliced into each element, a
+# select inside an instance a loop builds -- the build says so, naming #318, where the
 # invoker chose nothing or did not compile. android's test raises the event
 # with the value itself (valueTriggers), so only the nested case, through one
 # copy of a loop's, is refused there.
@@ -41,8 +41,8 @@ stderr 'loop.sngl:19:21: the test raises `change` through the target''s override
 sngl test --platform=fyne --language=go loop.sngl
 stdout '1 tests, 0 failures'
 
-sngl test --platform=gtk4 --language=go loop.sngl
-stdout '1 tests, 0 failures'
+! sngl test --platform=gtk4 --language=go loop.sngl
+stderr 'loop.sngl:19:21: the test raises `change` through the target''s override of the event.*#318'
 
 sngl test --platform=android --language=kotlin loop.sngl
 stdout '1 tests, 0 failures'
@@ -204,18 +204,8 @@ sha256:975e56a7f05d68411fd4d625b60fde3f
     }
   ]
 }
--- testrun/gtk4/go/loop.sngl/main/1 --
-sha256:64354db220229eff0b4b47650dda6792
-{
-  "results": [
-    {
-      "Desc": "SecondCopy",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/gtk4/go/unbound.sngl/main/1 --
-sha256:5c08db330523af48b385f7ac974c0b0f
+sha256:27fdf21836b8d2be61e7fdc6d52b5605
 {
   "results": [
     {

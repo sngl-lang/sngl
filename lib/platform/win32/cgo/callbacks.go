@@ -28,20 +28,28 @@ import (
 	"duckfam.us/sngl/pkg/go/cbind"
 )
 
+// snglContextBase is where contexts start: past NULL, and past the page
+// below which Go takes a pointer on its stack for a bad one and throws as it
+// copies the stack (runtime: bad pointer in frame), which a program's
+// thousandth callback reached. Go maps none of its heap this low.
+const snglContextBase = 1 << 16
+
 // snglContext registers fn and is the context C hands back to the callback
-// calling it: the registry's index, one past it so that none is NULL.
+// calling it: the registry's index, offset by snglContextBase.
 func snglContext(fn any) unsafe.Pointer {
-	return C.sngl_context(C.uintptr_t(cbind.Register(fn) + 1))
+	return C.sngl_context(C.uintptr_t(cbind.Register(fn) + snglContextBase))
 }
 
-func snglClosure(ctx unsafe.Pointer) any { return cbind.Lookup(int(uintptr(ctx)) - 1) }
+func snglClosure(ctx unsafe.Pointer) any {
+	return cbind.Lookup(int(uintptr(ctx)) - snglContextBase)
+}
 
 // snglRelease is what C calls with a context once it is done with the
 // callback, where the function takes a #[c.release]: GLib's
 // GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
 //
 //export snglRelease
-func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - 1) }
+func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglContextBase) }
 
 // snglReleasePtr is snglRelease as the function pointer C calls.
 func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }

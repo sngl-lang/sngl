@@ -3,6 +3,7 @@ package cgogen
 import (
 	"cmp"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -59,8 +60,14 @@ func Rewrite(src []byte, marks []Mark) ([]byte, error) {
 func rewriteAttrs(attrs []string, alias string, m Mark) []string {
 	var out []string
 	cnative := -1
+	// What the mark says beside the wrapper's name -- `schedules` on a timer
+	// whose callback the loop runs -- is the declaration's, kept.
+	flags := ""
 	for _, a := range attrs {
 		if strings.Contains(a, alias+".native(") && hasCNative(attrs) {
+			if f := nativeFlags.FindStringSubmatch(a); f != nil {
+				flags = f[1]
+			}
 			continue
 		}
 		if strings.Contains(a, "cnative(") {
@@ -72,9 +79,12 @@ func rewriteAttrs(attrs []string, alias string, m Mark) []string {
 		return out
 	}
 	indent := out[cnative][:len(out[cnative])-len(strings.TrimLeft(out[cnative], " \t"))]
-	mark := fmt.Sprintf("%s#[%s.native(%q, %q)]", indent, alias, m.Path, m.Name)
+	mark := fmt.Sprintf("%s#[%s.native(%q, %q%s)]", indent, alias, m.Path, m.Name, flags)
 	return slices.Insert(out, cnative+1, mark)
 }
+
+// nativeFlags reads what a `#[go.native(path, name, …)]` says after the name.
+var nativeFlags = regexp.MustCompile(`\.native\("[^"]*",\s*"[^"]*"((?:,\s*\w+)*)\)\]`)
 
 func hasCNative(attrs []string) bool {
 	return slices.ContainsFunc(attrs, func(a string) bool { return strings.Contains(a, "cnative(") })

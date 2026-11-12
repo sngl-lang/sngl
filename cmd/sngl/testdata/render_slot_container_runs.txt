@@ -5,8 +5,8 @@
 # handed the GtkScrolledWindow to gtk_box_append with a CRITICAL per call.
 #
 # stack.sngl: a reactive `for` directly inside gtk4's stack, a GtkStack holding
-# several children through a call of its own. It is refused by name, where it
-# used to fail to compile with the C types as the only explanation.
+# several children through a call of its own. The runtime renders the slot's
+# entries as the stack's own children, its layers.
 
 [!gtk4] skip 'gtk4 needs its development libraries to build'
 
@@ -16,8 +16,9 @@ sngl test --platform=gtk4 scroll.sngl
 stdout 'ok'
 ! stderr 'CRITICAL'
 
-! sngl test --platform=gtk4 stack.sngl
-stderr 'a reactive `if` or `for` directly inside a GtkStack cannot be rendered'
+sngl test --platform=gtk4 stack.sngl
+stdout 'ok'
+! stderr 'CRITICAL'
 
 -- scroll.sngl --
 import . "sngl:ui"
@@ -81,11 +82,21 @@ sha256:e6dd44ee561ea90f00757dd4aa30d6b5
   ]
 }
 -- testrun/gtk4/go/scroll.sngl/main/1 --
-sha256:4d4df1f113252be2202d60f16dd43fbf
+sha256:f658e44dd439c74412cc4db2289c0ac0
 {
   "results": [
     {
       "Desc": "Flip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/stack.sngl/main/1 --
+sha256:b9f00e39f2312b071427ae356d24c565
+{
+  "results": [
+    {
+      "Desc": "More",
       "Passed": true
     }
   ]

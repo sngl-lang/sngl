@@ -14,8 +14,10 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   1 tests, 0 failures'
 
-sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   1 tests, 0 failures'
+# gtk4 refuses the test: #always, a spliced instance with a function of its
+# own, leaves its root carrying neither its id nor its root prop (TODO.md).
+! sngl test --platform=gtk4 --language=go app.sngl
+stderr 'a test reading always, which the placed program holds in no var'
 
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -178,16 +180,6 @@ sha256:d3d9a6f069592782ec894f1456fe20e0
 }
 -- testrun/fyne/go/app.sngl/main/1 --
 sha256:2e46bb18de0ae4e66d1d6de38ce27958
-{
-  "results": [
-    {
-      "Desc": "SplicedCopies",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/main/1 --
-sha256:bb5b346184cf860ad0fa60990d722a22
 {
   "results": [
     {

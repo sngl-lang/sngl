@@ -67,7 +67,7 @@ func Unavailable(lang, platform string) string {
 			return needNode()
 		}
 		return ""
-	case "gtk4", "gtk4next":
+	case "gtk4":
 		if lang == "c" {
 			if len(clang.Compilers()) == 0 {
 				return "no C compiler on PATH"
@@ -131,7 +131,7 @@ func Unavailable(lang, platform string) string {
 // `go tool verify` still wraps the whole suite in a compositor, so the
 // courtesy is kept where it was always enforced.
 func PresentsWindows(platform string) string {
-	if platform != "gtk4" && platform != "gtk4next" {
+	if platform != "gtk4" {
 		return ""
 	}
 	if headless.Active() || headless.HasDisplay() || headless.Compositor() != "" {
@@ -190,7 +190,7 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 		return cBuild(dir)
 	}
 	switch platform {
-	case "bubbletea", "fyne", "gtk4", "gtk4next":
+	case "bubbletea", "fyne", "gtk4":
 		return goTest(ctx, dir)
 	case "html":
 		if lang == "go" {

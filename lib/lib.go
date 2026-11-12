@@ -41,17 +41,17 @@ import (
 	"strings"
 )
 
-//go:embed */*.sngl */*/*.sngl */*/*/*.sngl platform/gtk4/rt platform/gtk4next/rt platform/win32/rt
+//go:embed */*.sngl */*/*.sngl */*/*/*.sngl platform/gtk4/rt platform/win32/rt
 var FS embed.FS
 
 // The Go package wrapping win32's C declarations, platform/win32/cgo, and the
 // go.native marks beside them (internal/cgogen).
 //go:generate go run ../cmd/sngl tool cgogen sngl:platform/win32 --goos windows
 
-// gtk4next's widget declarations, from the bundled GIR (internal/cmd/gtk4gen),
-// then the Go package wrapping its C, platform/gtk4next/cgo.
+// gtk4's widget declarations, from the bundled GIR (internal/cmd/gtk4gen),
+// then the Go package wrapping its C, platform/gtk4/cgo.
 //go:generate go run ../internal/cmd/gtk4gen
-//go:generate go run ../cmd/sngl tool cgogen sngl:platform/gtk4next
+//go:generate go run ../cmd/sngl tool cgogen sngl:platform/gtk4
 
 // Packages returns the embedded package paths, sorted. A directory holding
 // .sngl files is a package, at whatever depth — lib/internal/stdlib is

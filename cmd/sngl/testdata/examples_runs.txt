@@ -1460,7 +1460,7 @@ sha256:068f27b598df3c2e00b00b8ae0dd4688
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:53241aeb2353f355ea38d57acb368268
+sha256:11e24cff6308ee616bb7e5ed1651c8e5
 {
   "results": [
     {
@@ -1478,7 +1478,7 @@ sha256:53241aeb2353f355ea38d57acb368268
   ]
 }
 -- testrun/gtk4/go/app.sngl/Tour/1 --
-sha256:39d98eb0a546a82b90fc500b1b0152bc
+sha256:11604600172eaa1d593c3de3abf47cac
 {
   "results": [
     {
@@ -1492,7 +1492,7 @@ sha256:39d98eb0a546a82b90fc500b1b0152bc
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:4a931997d900005e4ad8190955509e69
+sha256:5a844bafd02a642d72e61c9e0c09d14b
 {
   "results": [
     {
@@ -1586,7 +1586,7 @@ sha256:4a931997d900005e4ad8190955509e69
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/2 --
-sha256:702ddcd63d8c117fb985ad05f1483902
+sha256:24ba2d98cc921472bed7cb4ca3ae5199
 {
   "results": [
     {
@@ -1596,7 +1596,7 @@ sha256:702ddcd63d8c117fb985ad05f1483902
   ]
 }
 -- testrun/gtk4/go/app.sngl/back/1 --
-sha256:411356b4c9baae33abb252b7b1b36285
+sha256:9b46cf56725d4567308ba7f7f5ab9b6d
 {
   "results": [
     {
@@ -1606,7 +1606,7 @@ sha256:411356b4c9baae33abb252b7b1b36285
   ]
 }
 -- testrun/gtk4/go/app.sngl/chains/1 --
-sha256:0be925e7c18ce894388158df18296c67
+sha256:2d8788eb785be6332c1c69403fa4e86c
 {
   "results": [
     {
@@ -1616,7 +1616,7 @@ sha256:0be925e7c18ce894388158df18296c67
   ]
 }
 -- testrun/gtk4/go/app.sngl/detailPage/1 --
-sha256:0679ba080eed4103e9b5a6998fa62afd
+sha256:4c34166b3d72dc36688748f60e8d082c
 {
   "results": [
     {
@@ -1770,7 +1770,7 @@ sha256:0679ba080eed4103e9b5a6998fa62afd
   ]
 }
 -- testrun/gtk4/go/app.sngl/dexes/1 --
-sha256:2e064327fe2c864aaa61ed5ed1f2fa91
+sha256:03327bac379c818de038fd2d94f570e6
 {
   "results": [
     {
@@ -1780,7 +1780,7 @@ sha256:2e064327fe2c864aaa61ed5ed1f2fa91
   ]
 }
 -- testrun/gtk4/go/app.sngl/home/1 --
-sha256:3a5d4d40a3a9111726e0c9ac93d68125
+sha256:c264bd583b320cc287aab070963df056
 {
   "results": [
     {
@@ -1822,7 +1822,7 @@ sha256:3a5d4d40a3a9111726e0c9ac93d68125
   ]
 }
 -- testrun/gtk4/go/app.sngl/mons/1 --
-sha256:9e22384278807c16c9b3d531d376247f
+sha256:07572d983c4957e0e947a2c765884ac3
 {
   "results": [
     {
@@ -1832,7 +1832,7 @@ sha256:9e22384278807c16c9b3d531d376247f
   ]
 }
 -- testrun/gtk4/go/app.sngl/named/1 --
-sha256:4c6c6c093070341af45e91805f8806c2
+sha256:414091d81dbb9456233b0b0c82923454
 {
   "results": [
     {
@@ -1842,7 +1842,7 @@ sha256:4c6c6c093070341af45e91805f8806c2
   ]
 }
 -- testrun/gtk4/go/app.sngl/roam/1 --
-sha256:aa85c18be25f86eeaf1247e7f3d76d6c
+sha256:fe4dc45e0f76e471d31f06c3c91bd075
 {
   "results": [
     {
@@ -1852,7 +1852,7 @@ sha256:aa85c18be25f86eeaf1247e7f3d76d6c
   ]
 }
 -- testrun/gtk4/go/app.sngl/shapes/1 --
-sha256:64a7e583e5ad7e8b1227983625e9e1aa
+sha256:f7ac3b27b7c402f387c5c3019e4e7ece
 {
   "results": [
     {
@@ -1862,7 +1862,7 @@ sha256:64a7e583e5ad7e8b1227983625e9e1aa
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:45dcd34a4fa4e7a50a1c4022ecca8b47
+sha256:7dc4f9d58a4be5183021759e3cc1d935
 {
   "results": [
     {
@@ -1884,7 +1884,7 @@ sha256:45dcd34a4fa4e7a50a1c4022ecca8b47
   ]
 }
 -- testrun/gtk4/go/app.sngl/spark/1 --
-sha256:76919745f099d17070d9fdd6082d14b7
+sha256:6319ae1c0c23ed07aef324f2da3b8c1a
 {
   "results": [
     {
@@ -1894,7 +1894,7 @@ sha256:76919745f099d17070d9fdd6082d14b7
   ]
 }
 -- testrun/gtk4/go/app.sngl/species/1 --
-sha256:767c0db293aa7be8e698d704c4b6b900
+sha256:5d48a89a641e987cda5d2473c21d37c1
 {
   "results": [
     {
@@ -1904,7 +1904,7 @@ sha256:767c0db293aa7be8e698d704c4b6b900
   ]
 }
 -- testrun/gtk4/go/app.sngl/spray/1 --
-sha256:645e41ddf52c5a41cd344b7ee6b95b62
+sha256:5cf1fc8f53fbd3670bdb41701b840b4d
 {
   "results": [
     {
@@ -1914,7 +1914,7 @@ sha256:645e41ddf52c5a41cd344b7ee6b95b62
   ]
 }
 -- testrun/gtk4/go/app.sngl/trip/1 --
-sha256:b840f40c59976207df5a35afefbc8635
+sha256:ba7286a565cd6d0b6edb4f013b9dac6b
 {
   "results": [
     {
@@ -1924,7 +1924,7 @@ sha256:b840f40c59976207df5a35afefbc8635
   ]
 }
 -- testrun/gtk4/go/app.sngl/walk/1 --
-sha256:c988064fa6a3a2e1e8e9fd609bbb3b01
+sha256:1792c697dc161ed44d323a78c132b2b4
 {
   "results": [
     {

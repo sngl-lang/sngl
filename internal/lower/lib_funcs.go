@@ -38,10 +38,12 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// A method of a library struct travels with nothing: the struct is
 	// promoted by the shake as a declaration of the program's, and its
 	// methods are declared beside the program's own -- `http.Response`'s
-	// `checked`.
+	// `checked`. Nor does a method of a node the target makes itself, a GTK
+	// widget's action (`bar.pulse()`), since no component declaration is
+	// written for one.
 	wanted := func(fn *ir.Func) bool {
 		return fn != nil && !have[fn] && len(fn.Block) > 0 &&
-			(!fn.IsMethod() || libStructMethod(fn)) && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
+			(!fn.IsMethod() || libStructMethod(fn) || intrinsicMethod(fn)) && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
 			fn.PkgPath() != ""
 	}
 	// The package, rather than a list of roots assembled here: that list named
@@ -73,6 +75,13 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 func libStructMethod(fn *ir.Func) bool {
 	sd, ok := fn.RecvDecl().(*ir.StructDef)
 	return ok && sd.Builtin == "" && sd.Intrinsic == "" && fn.Lowered.HostReceiver == ""
+}
+
+// intrinsicMethod reports whether fn is a method a library declares on an
+// #[intrinsic] component, which is a function of the node.
+func intrinsicMethod(fn *ir.Func) bool {
+	comp, ok := fn.RecvDecl().(*ir.Component)
+	return ok && comp.Intrinsic != ""
 }
 
 func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, added *[]*ir.Func) {

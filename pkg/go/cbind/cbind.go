@@ -2,7 +2,7 @@
 // libraries. It offers an opaque native Handle and a registry that lets C
 // callbacks dispatch back into Go closures by integer index.
 //
-// A per-library cgo package (e.g. pkg/go/gtk4rt) builds its typed bindings on
+// A per-library cgo package (e.g. lib/platform/gtk4/cgo) builds its typed bindings on
 // top of cbind, so the callback plumbing and handle representation are written
 // once and reused across libraries. cbind itself contains no cgo: the C side
 // lives in the per-library package, which forwards its //export'd trampolines
@@ -38,11 +38,13 @@ var (
 // an index is handed to C and may not be reused, so a freed slot cannot be
 // filled and a slice would grow by one dead element per registration. That is
 // what a caller registering per callback rather than per program needs --
-// gtk4rt.Post does it once per idle tick.
+// gtk4's posting (sngl_post) does it once per continuation.
 //
-// The ceiling that buys is real and unguarded: gtk4rt hands the index to C as a
-// C.int, so the 2^31st registration truncates, Dispatch finds nothing, and
-// every posted continuation after it is dropped in silence. Release is what
+// An index is never reused, so a program registering in a hot loop spends one
+// per registration for its whole life: gtk4 hands C the index as a pointer,
+// offset past the first 64K, which no program exhausts, but a wrapper handing
+// it over as a C.int would truncate at the 2^31st, Dispatch would find
+// nothing, and every continuation after it would be dropped in silence. Release is what
 // makes a bounded free-list possible instead, and the reuse it would need is
 // safe only once a stray callback can be told from a live one -- a generation
 // in the high bits. Not built here; named so the next caller to register in a

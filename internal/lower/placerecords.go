@@ -268,9 +268,13 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	// any is handed it.
 	funcs := map[*ir.Func]bool{}
 	selfTaking := map[*ir.Func]bool{}
+	// arity is each function's parameter count before it is handed the
+	// record, which a call handing it one more names its instance itself.
+	arity := map[*ir.Func]int{}
 	for _, fn := range comp.Funcs {
 		funcs[fn] = true
 		selfTaking[fn] = takesSelf(fn, r)
+		arity[fn] = len(fn.Params)
 	}
 	// fieldOf is the record's field x reads, or nil.
 	fieldOf := func(x *ir.Ident) *ir.StructField {
@@ -305,6 +309,12 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 				}
 				cp := *x
 				if !selfTaking[x.Func] {
+					// A call naming the instance itself is another
+					// instance's: a recursive component's update of the
+					// copy it renders, `step____set_depth(next, …)`.
+					if len(x.Args) > arity[x.Func] {
+						break
+					}
 					cp.Args = append([]ir.CallArg{{Value: self()}}, x.Args...)
 					return &cp, nil
 				}

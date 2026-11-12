@@ -85,8 +85,8 @@ func TestExecDigestCoversTheRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	program := map[string][]byte{"model.go": []byte("package main\n\nimport _ \"duckfam.us/sngl/pkg/go/gtk4rt\"\n")}
-	alone := map[string][]byte{"model.go": []byte("package main\n")}
+	program := map[string][]byte{"main.go": []byte("package main\n\nimport _ \"duckfam.us/sngl/lib/platform/gtk4/cgo\"\n")}
+	alone := map[string][]byte{"main.go": []byte("package main\n")}
 	withRuntime, err := withExecs(program, execs["go/gtk4"], execSrc)
 	if err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestExecDigestCoversTheRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	if bytes.Equal(withRuntime["\x00exec/modules"], without["\x00exec/modules"]) {
-		t.Error("a program importing gtk4rt hashes the same runtime source as one importing nothing")
+		t.Error("a program importing gtk4's wrappers hashes the same runtime source as one importing nothing")
 	}
 }
 

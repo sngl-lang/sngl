@@ -20,7 +20,7 @@ import gtk "gir:Gtk-4.0"
 
 output {
     go {
-        gtk4(gir="builtin", cgo=true)
+        gtk4(gir="builtin")
     }
 }
 

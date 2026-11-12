@@ -308,4 +308,4 @@ func main() {
 -- out/go/win32/sngl.build --
 target windows/amd64
 -- run/go/win32 --
-pass sha256:a087593b62dbbf5828e6259e6c852d1b
+pass sha256:3e1cdb2f653e7a704e8f7fe3db2878d6

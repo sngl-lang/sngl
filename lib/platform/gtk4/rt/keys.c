@@ -1,8 +1,8 @@
 /* A window's keys on GTK: what a window's `@key` calls each key, the
  * controllers that hear them, and what a key nothing stopped does when a
- * test presses it by name. Compiled into every gtk4 program: pkg/go/gtk4rt
- * includes it for Go, and a C program compiles it beside its own. Each
- * language keeps the handler, and what Escape goes back through. */
+ * test presses it by name. Compiled into every gtk4 program: the Go wrappers
+ * include it, and a C program compiles it beside its own. Each language keeps
+ * the handler, and what Escape goes back through. */
 #include "sngl_gtk.h"
 
 #include <string.h>

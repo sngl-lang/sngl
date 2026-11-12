@@ -478,7 +478,7 @@ func (c *Context) isPointer(t *ir.Type) bool {
 // StructLit is a compound literal naming each field it sets; one it leaves
 // out is C's zero, which is SNGL's for every type C writes.
 func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
-	// A value a platform holds by pointer, a gtk4rt picture: its zero is
+	// A value a platform holds by pointer, a gtk4 picture: its zero is
 	// none.
 	if len(n.Fields) == 0 && c.isPointer(n.Type) && !isBox(n.Type) {
 		return "NULL"

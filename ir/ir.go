@@ -934,6 +934,9 @@ const (
 	// component built as a record renders into, where its body renders more
 	// than one node or a slot at its top.
 	ProtocolContents ProtocolOp = "contents"
+	// ProtocolAnchor is a build-target node's too: the hidden node a render
+	// slot keeps in its container, which its entries go before.
+	ProtocolAnchor ProtocolOp = "anchor"
 	// ProtocolRedraw is a component's: how a canvas is asked to paint its
 	// drawing again.
 	ProtocolRedraw ProtocolOp = "redraw"
@@ -963,6 +966,9 @@ type NodeProtocol struct {
 	// Contents makes the container a component's body renders into where
 	// it renders more than one node, or a slot, at its top.
 	Contents *Func
+	// Anchor is the node a render slot's entries go before, where the slot
+	// renders into a container it shares with nodes written around it.
+	Anchor *Func
 	// Redraw asks a canvas to paint its drawing again.
 	Redraw *Func
 	// Set is each prop's set, by the prop's name.
@@ -1024,6 +1030,8 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 		return p.Detach
 	case ProtocolContents:
 		return p.Contents
+	case ProtocolAnchor:
+		return p.Anchor
 	case ProtocolRedraw:
 		return p.Redraw
 	}

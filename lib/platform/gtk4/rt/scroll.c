@@ -1,7 +1,6 @@
 /* A scroll is what a `ui.scroll` is on gtk4: a GtkScrolledWindow that reports
  * the end of its content coming within half a viewport of showing -- as it
- * arrives, and again when the content changes size while it is there. It is
- * pkg/go/gtk4rt/scroll.go's, whose comments say why each part is as it is. */
+ * arrives, and again when the content changes size while it is there. */
 #include "sngl_gtk.h"
 
 #include <string.h>

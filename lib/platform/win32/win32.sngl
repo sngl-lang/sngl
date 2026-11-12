@@ -2008,7 +2008,7 @@ const func baseOf(s ui.Style) markup.SpanStyle {
 // Calls `fn` every `ms` milliseconds from the message loop, until the id it
 // answers is cancelled.
 #[macro.cnative("sngl_win32_every")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Every")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Every", schedules)]
 func _rtEvery(
     ms int,
     #[c.type("sngl_win32_fn")] fn func(),

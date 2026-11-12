@@ -209,6 +209,14 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		}
 	}
 	cgo := fe.RequireImport(wrappers)
+	// A main opens the place sngl:settings keeps values; a test never does.
+	open := golang.OpenSettings(pkg, golang.SettingsFile(codegen.OptionString(req.Options, "name")))
+	if open != "" {
+		fe.RequireImport(golang.SettingsImportPath)
+	}
+	opened := func(main string) string {
+		return strings.Replace(main, "\truntime.LockOSThread()\n", "\truntime.LockOSThread()\n"+open, 1)
+	}
 	fe.RequireImport("runtime")
 	switch {
 	case agent:
@@ -224,14 +232,19 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 	case golang.RunsHandler(pkg):
 		fe.RequireImport("fmt")
 		fe.RequireImport("os")
-		io.WriteString(fe, strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain))
+		io.WriteString(fe, opened(strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain)))
 	case pkg.Run != nil:
-		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\t"+cgo+".SnglWin32Hold()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n\tsnglTeardown()\n}\n")
+		io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\t"+cgo+".SnglWin32Hold()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n\tsnglTeardown()\n}\n"))
 	default:
-		io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n\tsnglTeardown()\n}\n")
+		io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tsnglInit()\n\tsnglBuild()\n\t"+cgo+".SnglWin32Run()\n\tsnglTeardown()\n}\n"))
 	}
 	if err := fe.Close(); err != nil {
 		return err
+	}
+	if golang.PackageUsesI18n(pkg) {
+		if err := golang.EmitI18nManifestEmbed(sink, "main", req.ProjectFS, ""); err != nil {
+			return fmt.Errorf("%s: i18n manifest embed: %w", platformName, err)
+		}
 	}
 	// What the program is built for, which the Go build reads as C's does.
 	if err := writeFile(sink, clang.BuildFile, []byte("target windows/"+arch(req)+"\n")); err != nil {

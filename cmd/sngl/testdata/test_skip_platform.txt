@@ -134,7 +134,7 @@ sha256:d077fc6b3946dc6cbdb3312dc862dbbf
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:3cdefd95819b0f5c0308da4915f552a8
+sha256:dd4a2d7724602af1da753e55cc684437
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:3cdefd95819b0f5c0308da4915f552a8
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/2 --
-sha256:3cdefd95819b0f5c0308da4915f552a8
+sha256:dd4a2d7724602af1da753e55cc684437
 {
   "results": [
     {
@@ -154,37 +154,7 @@ sha256:3cdefd95819b0f5c0308da4915f552a8
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/3 --
-sha256:3cdefd95819b0f5c0308da4915f552a8
-{
-  "results": [
-    {
-      "Desc": "ItRenders",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/main/1 --
-sha256:961b4905bf8e813e8137a8d90a497dba
-{
-  "results": [
-    {
-      "Desc": "ItRenders",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/main/2 --
-sha256:961b4905bf8e813e8137a8d90a497dba
-{
-  "results": [
-    {
-      "Desc": "ItRenders",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/main/3 --
-sha256:961b4905bf8e813e8137a8d90a497dba
+sha256:dd4a2d7724602af1da753e55cc684437
 {
   "results": [
     {

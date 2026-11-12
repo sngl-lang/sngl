@@ -240,7 +240,7 @@ makes. The record is a `ctl` reached by `GetPropW(w, "sngl.ctl")`, and holds:
   (`sngl_win32_set_mode`, `sngl_win32_set_vertical`).
 
 Layout reads only these records and each control's measured size. The shape
-is gtk4rt's `sngl_flex_measure` and `sngl_flex_allocate`, measure then
+is gtk4's runtime's `sngl_flex_measure` and `sngl_flex_allocate`, measure then
 allocate. The code is win32's own, because its modes and its controls'
 metrics are its own.
 

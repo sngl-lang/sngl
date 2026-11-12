@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 
 	"duckfam.us/sngl/codegen/platform/gtk4/gir"
@@ -21,15 +20,8 @@ import (
 //     whole of what the code generator reads back about each class. Its
 //     inputs are the GIR file it was parsed from and, when the file was found
 //     by probing, the locations before it that were not there.
-//   - gtk4.widgets is the widget declarations derived from that registry, the
-//     generated half of sngl:platform/gtk4. Its one input is the registry
-//     entry, so it is derived from the registry the generator will read and
-//     not from a second parse that could disagree with it.
-//
-// The declarations are what every build reads, since the checker walks every
-// platform's package; the registry only a build targeting gtk4 does. Kept
-// apart, a build for another platform checks one small file's inputs and
-// decodes nothing.
+//   - gtk4.widgets is the gir: scheme's package derived from that registry.
+//     Its one input is the registry entry, so it is derived from one parse.
 const (
 	registryProducer = "gtk4.registry"
 	widgetsProducer  = "gtk4.widgets"
@@ -53,12 +45,9 @@ func girRequest(producer, opt string) (gencache.Request, error) {
 	return gencache.Request{Producer: producer, Params: []string{opt}}, nil
 }
 
-// widgetsRequest names the declarations for the GIR opt selects, written over
-// C or over gtk4rt as cgo says.
-func widgetsRequest(opt string, cgo bool) (gencache.Request, error) {
-	req, err := girRequest(widgetsProducer, opt)
-	req.Params = append(req.Params, strconv.FormatBool(cgo))
-	return req, err
+// widgetsRequest names the gir: package for the GIR opt selects.
+func widgetsRequest(opt string) (gencache.Request, error) {
+	return girRequest(widgetsProducer, opt)
 }
 
 // parseGIR is gir.ParseGIR, a variable so a test can count the parses a
@@ -226,7 +215,7 @@ func decodeRegistryText(data []byte) (*gir.TypeRegistry, bool, error) {
 	return &reg, string(flag) == "true", nil
 }
 
-// produceWidgets writes the widget declarations for the registry the option
+// produceWidgets writes the gir: package for the registry the option
 // selects.
 func produceWidgets(s *gencache.Store, params []string) (gencache.Output, error) {
 	req, err := girRequest(registryProducer, params[0])
@@ -241,5 +230,5 @@ func produceWidgets(s *gencache.Store, params []string) (gencache.Output, error)
 	if err != nil {
 		return gencache.Output{}, err
 	}
-	return gencache.Output{Inputs: []gencache.Input{in}, Body: widgetSource(reg, params[1] == "true")}, nil
+	return gencache.Output{Inputs: []gencache.Input{in}, Body: girSource(reg)}, nil
 }

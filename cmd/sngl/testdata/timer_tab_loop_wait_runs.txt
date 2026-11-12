@@ -10,7 +10,7 @@
 # goroutine and their messages posted back to be delivered on it
 # (codegen/platform/bubbletea/post.go).
 #
-# On a placed target (gtk4next) a timer in a `for` is a record whose root,
+# On a placed target (gtk4) a timer in a `for` is a record whose root,
 # the box a component rendering no node of its own holds, was typed as the
 # timer's family parameter, which neither C nor Go writes; it is the
 # platform's handle now (passPlacement). And a keyed loop putting a timer it
@@ -39,9 +39,7 @@ stdout '^ok +2 tests, 0 failures$'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
-sngl test --platform=gtk4next --language=c app.sngl
-stdout '^ok +2 tests, 0 failures$'
-sngl test --platform=gtk4next --language=go app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -137,36 +135,22 @@ sha256:2496ae9b1edbc853d8063e325d4178a9
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:e7e4573cbd2a01904945f6498c59eb4b
+{
+  "results": [
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:a8e535d2d17c0010868acb7835fcf42e
-{
-  "results": [
-    {
-      "Desc": "AStatefulTimerInATabsLoopTicks",
-      "Passed": true
-    },
-    {
-      "Desc": "ATimerInATabsLoopTicks",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/main/1 --
-sha256:bcea9cba5e81d0c5bed7a6b7e5eb1536
-{
-  "results": [
-    {
-      "Desc": "ATimerInATabsLoopTicks",
-      "Passed": true
-    },
-    {
-      "Desc": "AStatefulTimerInATabsLoopTicks",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/main/1 --
-sha256:e4dc6d725183286f52226bae5cb60240
+sha256:90f4e1032d4137a85aeb3a30b67e5eb0
 {
   "results": [
     {

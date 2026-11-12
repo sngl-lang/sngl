@@ -252,14 +252,10 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    it `#[c.release]`. A `#[retains]` callback is never released; tie it to
    the node that called it (`design/ownership.md`'s node lifetime) as an
    owned value is, where C offers no release.
-   - **gtk4 under `cgo=true` connects through it**: declgen's
-     `signalConnect` is `g_signal_connect_data`, and a `notify::` event its
-     own `on` protocol (`testdata/gtk4_cgo_connect.txtar`,
-     `cmd/sngl/testdata/gtk4_cgo_connect_runs.txt`). The default build keeps
-     `gtk4rt.Connect`: a connect calling C there puts every program with a
-     handler on the cgo path (`design/architecture.md`, *Which file a
-     program gets*). GLib releases each handler through `destroy`, marked
-     `#[c.release]`, so a handler goes with its widget.
+   - **gtk4 connects through it**: the runtime's `sngl_signal_connect`
+     takes the handler as its context and the release GLib calls, marked
+     `#[c.release]`, so a handler goes with its widget
+     (`cmd/sngl/testdata/gtk4_test_runs.txt`).
 5. **Structs and `ref` out-parameters** (design item 6). Done:
    `testdata/c_struct_argument.txtar` passes a struct by value, has C fill
    one and two `ref[int]`s, and a field written with a typedef's alias; the
@@ -329,13 +325,13 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    C's one namespace with GTK's headers. What C does not yet write is refused
    at generation, naming the construct.
 2. **gtk4 writes C for the smallest program**: a window, a box, a label and a
-   button whose click counts (the program `gtk4_cgo_connect.txtar` holds).
+   button whose click counts.
    gtk4's generator gains a C emitter beside its Go one, the gtk4rt calls such
    a program makes move to `lib/platform/gtk4/rt/`, and callbacks cross as the
    C translator's closures. Golden `out/c/gtk4`, and a script test that
    builds and runs it under cage.
-   Done for that program: `testdata/gtk4_c_counter.txtar` (built with every
-   compiler under both standards) and `cmd/sngl/testdata/c_gtk4_build.txt`.
+   Done for that program: `cmd/sngl/testdata/c_gtk4_build.txt`, and since
+   Part 5 every gtk4 program in C (`cmd/sngl/testdata/gtk4_test_runs.txt`).
    - Under C, gtk4 runs its cgo declarations whatever the option says: a
      platform's Configure is handed the language (`build.LangOption`).
    - What a cgo build still calls in gtk4rt -- a window, a box's append, a
@@ -864,9 +860,9 @@ reaches it the same way.
      subclass.
    - **Slices**, each in both languages with a script test and snapshots:
      1. A window, a box, a label and a button whose click counts. Done:
-        `cmd/sngl/testdata/gtk4next_test_runs.txt`, in both languages,
+        `cmd/sngl/testdata/gtk4_test_runs.txt`, in both languages,
         its snapshots held to gtk4's C. The runtime is a copy of `rt/` in
-        `lib/platform/gtk4next/rt` until the swap; what it gained:
+        `lib/platform/gtk4next/rt` until the swap (now `lib/platform/gtk4/rt`); what it gained:
         `sngl_gtk_main`, `sngl_gtk_init` and `sngl_gtk_step` for Go's
         entry and agent, `sngl_signal_connect`/`sngl_notify_connect`/
         `sngl_signal_emit` (a handler crosses as `SnglFn` and its context,
@@ -906,7 +902,7 @@ reaches it the same way.
      3. Toplevels, several windows, `@run` and the application's teardown.
         Done: a root component's windows (`windows.sngl` in the same script,
         and `window_dialog_runs.txt`), and `@run` in both languages
-        (`testdata/gtk4next_run_handler_runs.txtar`). A component renders
+        (`testdata/gtk4_run_handler_runs.txtar`). A component renders
         several nodes at its top into `Contents`, whose box hands a toplevel
         to the application rather than packing it (`sngl_box_append`), and a
         snapshot draws the first window, as gtk4's does. The entries hold the
@@ -939,7 +935,7 @@ reaches it the same way.
      5. Images and the canvas, with its draw function (#294). Done:
         `canvas.sngl` and `pictures.sngl` in the same script, gtk4next in
         `image_sources_runs.txt` and `image_remote_runs.txt`, and
-        `testdata/gtk4next_c_canvas.txtar`. A canvas is placed through its
+        `testdata/gtk4_c_canvas.txtar`. A canvas is placed through its
         protocol, as win32's is: its shapes are the handler of its `@paint`,
         handed cairo's context, and a write to what they read its redraw; a
         `draw.image` is painted the same way into a texture. An image, a
@@ -952,18 +948,68 @@ reaches it the same way.
         of the pictures wrong, which the swap retires: its C keeps the
         drawing it painted first, and its Go shows a root component's
         window's favicon as a picture in the window.
-     6. Async posting, `sngl test`'s agent and `sngl snapshot`.
-     7. The swap: every gtk4 golden and recorded run on the new platform,
-        weak holds, and the old generator deleted.
+     6. Async posting, `sngl test`'s agent and `sngl snapshot`. Done: Go's
+        `async.do` posts through the runtime's `sngl_post`, as C's did;
+        `sngl snapshot` builds the program for it, whose entry draws its
+        first window into a file, in either language
+        (`cmd/sngl/testdata/gtk4_snapshot.txt`); rich text is the runtime's
+        spans (`rt/markup.c`), so a `for` among them works; and the window's
+        `@error` is its boundary. Along the way: the fold after lowering
+        spliced a library body's ternary back into a package NoTernary had
+        run on; `sngl snapshot` built every platform in its first language,
+        whatever the output block named.
+     7. The swap. Done: gtk4next is gtk4, the old generator and
+        `pkg/go/gtk4rt` are deleted, and every gtk4 golden and recorded run
+        is the placed platform's. A program's `gir:Gtk-4.0` import is the
+        same declarations against the platform's `Look` and `setLook`,
+        calling C directly. Along the way, on placement: a test build
+        declared its root's methods twice in Go; a recursive component's
+        update of its copy was handed the record twice; a two-way prop's
+        change on a spliced component was connected as a signal its node
+        has not; a loop's variable and a node of its name shadowed each
+        other; a node named as the test's instance (`#c`), or as an import
+        (`c`), was read as either; a function named as a struct (`tree`,
+        `Tree`) was declared twice in Go; a render slot in a container of one
+        child had no insert; and a node no protocol makes is named as every
+        platform names one.
+   - **Not yet:** weak holds -- a widget the program keeps reads null once
+     GTK let it go, as `sngl_hold` did for the old C -- are not written, on
+     gtk4 or win32. A test raising an override's event on one copy a loop
+     renders, or inside an instance built at run time, is refused (#318),
+     as on bubbletea (`typed_select_reach_runs.txt`,
+     `typed_select_in_built_block_runs.txt`,
+     `select_rebuilt_by_its_choice_runs.txt`,
+     `slot_render_reentered_runs.txt`). A test null-testing a spliced
+     instance with functions of its own by its `#id` is refused: its root
+     carries neither the id nor the instance's root prop
+     (`indexed_ref_null_test_spliced_runs.txt`, `#always`). An `effect` or a
+     `timer` written in a drawing, or a shape's own owned state, is no shape,
+     and a canvas painted through its protocol refuses it rather than placing
+     it beside the canvas (`testdata/component_treeless_in_canvas.txtar` and
+     `canvas_for_shape_state.txtar` leave gtk4 out). win32 declares no
+     `#[gen.protocol(anchor)]`, so a render slot emptied and filled again
+     there goes after the nodes written below it, as gtk4's did
+     (`render_slot_keeps_its_place_runs.txt` is gtk4's). A `gir:` package for a
+     GIR the platform has no wrappers for is C's alone: Go calls GTK through
+     the wrappers, and a direct call of a class outside them is refused
+     (step 3's `direct`).
 2. **A C record gives back what it kept**, in placement, for gtk4 and win32
    alike, with a test in each language that a rebuilt list's kept set does
    not grow. With it, a retained C closure that writes a captured local
-   writes a heap box, not the stack address it writes today.
+   writes a heap box, not the stack address it writes today. Weak holds
+   come with it.
 3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
    come with step 1. `purego` is attempted then, against the open questions
    below.
-4. **`pkg/go/gtk4rt` is deleted**, its tests moved to programs in both
-   languages.
+4. **`pkg/go/gtk4rt` is deleted.** Done with the swap. Its tests went with
+   it; what they held that no script holds yet is to be written as programs
+   in both languages: a button given a `background` shading it hovered and
+   pressed (`paint_test.go`), a box growing not for what its child holds and
+   the contents box growing by it (`flex_test.go`), a vertical scroll no
+   wider than its content's minimum and its pictures drawn at a height
+   (`scroll_test.go`), `@reachEnd` along x in a sideways scroll
+   (`reach_across_test.go`), and a fetch landing in the picture whose
+   source still asks for it (`image_test.go`).
 
 ### Open questions
 

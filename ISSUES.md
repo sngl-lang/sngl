@@ -181,10 +181,10 @@ reports.
   NoStructSpread was moved after it, and nothing in `lib/` needs another yet.
 - A map's `==` is the host's on every target, and the interpreter does not
   answer it either.
-- Under gtk4's `cgo` option, which sets `orientation` and makes widgets
-  through GIR's own calls, an `orientation` written on a box gtk4rt lays out
-  is lost, and a widget's expand carries up to its ancestors as GTK carries
-  it.
+- gtk4 sets a box's `orientation` through GIR's own call, which an
+  orientation written after the runtime has laid the box out would lose (every
+  override writes it before the look today), and a widget's expand carries up
+  to its ancestors as GTK carries it.
 - A zero `borderWidth` drew a border on bubbletea while
   `TestReactiveStyleRunsInTheEmittedProgram` said so; it is fixed, but how
   `verify` passed over that test is not known.
@@ -200,8 +200,8 @@ reports.
 - **Android embedding** has no Gradle snippet or versions (material3 ≥ 1.3
   for `PullToRefreshBox`, activity-compose, the Compose compiler plugin), and
   `--opt main=true` producing a whole project is undocumented for android.
-- **gtk4 embedding** has no host example; its `BuildUI` takes a
-  `gtk4rt.Handle`, unlike fyne's.
+- **gtk4 embedding** has no host API: a program's build attaches its windows
+  to the application it runs, and has no `BuildUI` as fyne's has.
 - **Tour lesson 34** never says where translations come from, so the `es-MX`
   block shows English.
 - **"Use a persistence package for that platform"** (getting-started) has no

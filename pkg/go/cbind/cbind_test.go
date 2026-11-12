@@ -65,7 +65,7 @@ func TestReleaseDropsTheSlotAndTheIndex(t *testing.T) {
 }
 
 // Registering without releasing retains whatever the closure captured. This is
-// the property gtk4rt.Post depends on: it registers once per idle tick, so the
+// the property gtk4's posting depends on: it registers once per continuation, so the
 // dispatch has to drop the slot or a program leaks one closure per tick.
 func TestDispatchOnceDropsTheSlot(t *testing.T) {
 	var n int

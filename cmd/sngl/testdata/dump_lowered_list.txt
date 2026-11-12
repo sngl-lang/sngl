@@ -30,11 +30,9 @@ stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,Reactivity,Declarative,ViewS
 stdout '^passes: \w+( → \w+)+$'
 stdout ' → Effect → '
 
-# fyne and gtk4 carry ComponentProps and InstanceBodies for the same reason
-# html does: a component the build cannot inline is built as a record with its
-# own state. Their capabilities are identical, so the gate cannot tell them
-# apart and neither can this list -- which is what the cmp says, rather than
-# two copies of one chain saying it by coincidence.
+# fyne carries ComponentProps and InstanceBodies for the same reason html
+# does: a component the build cannot inline is built as a record with its own
+# state.
 #
 # SlotChildInstances runs on all three: a slot body's node that reads state is
 # lifted into a record the slot keeps, so a write patches it where it stands
@@ -44,10 +42,17 @@ stdout ' → Effect → '
 sngl dump --stage lowered --lang go --platform fyne --list main.sngl
 stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,AsyncPost,AsyncSpawn,Match,MatchValue,StringBuilders,StructComponents,StdlibContextParam,Canvas,ReactiveCanvas$'
 stdout ' → SlotChildInstances → '
-cp stdout fyne.txt
+
+# gtk4 and win32 are placed: the capabilities are identical, so the gate
+# cannot tell them apart and neither can this list -- which is what the cmp
+# says, rather than two copies of one chain saying it by coincidence.
+sngl dump --stage lowered --lang go --platform win32 --list main.sngl
+stdout '^caps: Toggle,Lambda,Ref,Unit,Enum,Computed,ImplicitRecv,ViewStatements,InstanceState,InsertBefore,AsyncPost,AsyncSpawn,Match,MatchValue,StringBuilders,StdlibContextParam,Canvas,ReactiveCanvas,Placement$'
+stdout ' → Placement → '
+cp stdout win32.txt
 
 sngl dump --stage lowered --lang go --platform gtk4 --list main.sngl
-cmp stdout fyne.txt
+cmp stdout win32.txt
 
 # html emits HTML and JS; the language emits only the server half of route
 # mode. So a restriction that exists because the language lacks a construct is

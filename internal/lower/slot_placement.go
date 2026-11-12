@@ -2,6 +2,7 @@ package lower
 
 import (
 	"strconv"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -43,6 +44,11 @@ type slotPlacement struct {
 	refs int
 	// parent is the container being placed into.
 	parent ir.Expr
+	// anchor is the hidden node the slot keeps in parent, which an entry past
+	// the old ones goes before, where the platform declares one
+	// (#[gen.protocol(anchor)]); nil otherwise, and such an entry goes last.
+	anchor   *ir.Var
+	anchorOp *ir.Func
 }
 
 // newSlotPlacement is the placement state for one slot render, or nil when the
@@ -53,21 +59,37 @@ func (st *reactivityState) newSlotPlacement(slotID string, slotVar *ir.Var, pare
 	}
 	n := strconv.Itoa(st.instCounter)
 	st.instCounter++
-	return &slotPlacement{
+	sp := &slotPlacement{
 		prev:   &ir.Var{Name: "__place" + n + "_prev", Type: slotVar.Type, Synthesized: true},
 		slot:   slotVar,
 		idx:    &ir.Var{Name: "__place" + n + "_i", Type: ir.TypInt, Synthesized: true},
 		parent: parent,
 	}
+	// A slot rendering into a container it shares keeps its place there: one
+	// emptied and filled again went after every node written below it.
+	if st.caps.platform != nil && st.caps.platform.Op(ir.ProtocolAnchor) != nil {
+		sp.anchor = &ir.Var{Name: "__anchor" + strings.TrimPrefix(slotID, ir.SlotVarPrefix), Type: slotVar.Type.Elems[0], Synthesized: true}
+		st.owner.addVar(sp.anchor)
+		sp.anchorOp = nodeOpFunc(ir.NodeOpSlotAnchor)
+	}
+	return sp
 }
 
 // open records the order the parent already holds and starts the cursor.
 func (sp *slotPlacement) open() []ir.Stmt {
-	return []ir.Stmt{
+	var keep []ir.Stmt
+	if sp.anchor != nil {
+		keep = append(keep, &ir.CallStmt{Call: &ir.Call{
+			Type: ir.TypVoid,
+			Func: sp.anchorOp,
+			Args: []ir.CallArg{{Value: ir.CloneExprSharingDecls(sp.parent)}, {Value: varRef(sp.anchor)}},
+		}})
+	}
+	return append(keep,
 		&ir.LocalVar{Name: sp.prev.Name, Type: sp.prev.Type, Sym: sp.prev, Init: varRef(sp.slot)},
 		&ir.LocalVar{Name: sp.idx.Name, Type: ir.TypInt, Sym: sp.idx, Init: intLiteralLit(0)},
 		&ir.Assign{Target: varRef(sp.slot), Op: ast.AssignSet, Value: &ir.ListLit{Type: sp.slot.Type}},
-	}
+	)
 }
 
 // place puts one node where the desired order says it goes, or leaves it alone
@@ -92,8 +114,14 @@ func (st *reactivityState) place(sp *slotPlacement, ref0 *ir.Ident) []ir.Stmt {
 	// null, so the same comparison falls through to the insert.
 	ref := &ir.Var{Name: sp.idx.Name + "_ref" + strconv.Itoa(sp.refs), Type: ir.OptionOf(elem), Synthesized: true}
 	sp.refs++
+	// Past the old entries, an entry goes before the slot's anchor where it
+	// keeps one.
+	var end ir.Expr = &ir.Literal{Type: ir.TypNull}
+	if sp.anchor != nil {
+		end = &ir.Conversion{Type: ref.Type, Operand: varRef(sp.anchor)}
+	}
 	return []ir.Stmt{
-		&ir.LocalVar{Name: ref.Name, Type: ref.Type, Sym: ref, Init: &ir.Literal{Type: ir.TypNull}},
+		&ir.LocalVar{Name: ref.Name, Type: ref.Type, Sym: ref, Init: end},
 		&ir.If{
 			Cond: inRange(),
 			// Wrapped as the option it is assigned to, which a language

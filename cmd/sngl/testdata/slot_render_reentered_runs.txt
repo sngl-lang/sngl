@@ -5,7 +5,9 @@
 # the @load asked for the same render while it was running. Re-entered, the
 # render built the instance afresh -- the list it reuses from is set only at
 # its end -- whose mount answered again, until gtk4's stack overflowed. A
-# render asked for while it runs now runs after it (renderOnce).
+# render asked for while it runs now runs after it (renderOnce). gtk4 refuses
+# the test, whose trigger reaches a select inside an instance built at run
+# time (#318).
 
 sngl test --platform=none app.sngl
 stdout 'ok +1 tests, 0 failures'
@@ -15,8 +17,8 @@ sngl test --platform=bubbletea --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
-sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+! sngl test --platform=gtk4 --language=go app.sngl
+stderr 'app.sngl:54:22: the test raises `change` through the target''s override of the event.*#318'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok +1 tests, 0 failures'
 
@@ -106,16 +108,6 @@ sha256:d8c1659a70274b1238ffad6bac7c4071
 }
 -- testrun/fyne/go/app.sngl/page/1 --
 sha256:c868b2682a2be4e2d8d22e9951479a6a
-{
-  "results": [
-    {
-      "Desc": "EachChoiceTakes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/page/1 --
-sha256:0cd3152cd60e0cb5c1be9976fc6388ab
 {
   "results": [
     {

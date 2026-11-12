@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/ast"
@@ -104,11 +105,17 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 	}
 	path := u.headline()
 
+	// The output block names each platform's language too, which a platform
+	// the flag names is built in where the block names it.
 	platforms := flagPlatforms
-	if len(platforms) == 0 {
-		pkg, err := checkDoc(doc, u.dir, true, nil)
-		if err == nil && pkg != nil {
-			for _, o := range pkg.Outputs {
+	langs := map[string]string{}
+	pkg, err := checkDoc(doc, u.dir, true, nil)
+	if err == nil && pkg != nil {
+		for _, o := range pkg.Outputs {
+			if _, seen := langs[o.Platform]; !seen {
+				langs[o.Platform] = o.Lang
+			}
+			if len(flagPlatforms) == 0 && !slices.Contains(platforms, o.Platform) {
 				platforms = append(platforms, o.Platform)
 			}
 		}
@@ -174,6 +181,7 @@ func snapshotUnit(u unit, flagPlatforms []string, outOverride string, width, hei
 		Trust:     cliTrust,
 		Docs:      docs,
 		Platforms: platforms,
+		Langs:     langs,
 		Width:     width,
 		Height:    height,
 		OutDir:    effectiveOutDir,

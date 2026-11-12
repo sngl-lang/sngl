@@ -150,7 +150,13 @@ and its captures (`ir.Package.LiftedCaptures`) named the component's
 declarations rather than the splice's: the root's `language` was
 `language__inst0` after the inliner, and the handler's write was of a var
 no update follows. The splice copies each lifted function capturing what it
-renamed (`spliceLifted`), with the closures of it the copy's body makes.
+renamed (`spliceLifted`), with the closures of it the copy's body makes, and
+one calling a function of the component's, which the copy calls as the
+splice's own. A function of the component's that read only its props was
+pure, and bound to the caller's var its copy reads state: left pure, the
+fold ran `picked() => chosen != "" ? chosen : "fig"` at the var's first
+value and every later write was lost, so the copy is marked readonly
+(`expandCall`; `cmd/sngl/testdata/slot_method_reads_prop_runs.txt`).
 
 On html a loop over records a page writes into its markup unrolls with each
 record's handler a constant: in a document's fold a function literal is a

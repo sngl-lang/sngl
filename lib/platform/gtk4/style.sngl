@@ -1,5 +1,4 @@
 import ui "sngl:ui"
-import gtk "gir:Gtk-4.0"
 
 // What a Style may say that GTK does not answer:
 //
@@ -118,24 +117,24 @@ const func wrapOf(w ui.WhiteSpace) int {
 //
 // `flex` is a child's share of its box's spare room, and `justifyContent`
 // where a box puts what its children leave of it: a GtkBox splits the room
-// evenly and packs from the start, so gtk4rt lays out a box that asks for
-// either otherwise.
-const func lookOf(s ui.Style) gtk.Look {
+// evenly and packs from the start, so the runtime lays out a box that asks
+// for either otherwise.
+const func lookOf(s ui.Style) Look {
     var look = lookHidden(s, s.display == ui.Display.none, false, 0)
     return look
 }
 
 // The look of a GtkBox, which holds its spacing: its gap, or what the
-// override spaces its children by. gtk4rt sets it, since a box it lays out
-// is one GtkBox's own setter cannot reach.
-const func boxLookOf(s ui.Style, otherwise int) gtk.Look {
+// override spaces its children by. The runtime sets it, since a box it lays
+// out is one GtkBox's own setter cannot reach.
+const func boxLookOf(s ui.Style, otherwise int) Look {
     var look = lookHidden(s, s.display == ui.Display.none, true, spacingOf(s, otherwise))
     return look
 }
 
 // The look of a grid's GtkBox: a box's, laid out `columns` to a row, or
 // flowing where it has none.
-const func gridLookOf(s ui.Style, columns option[int]) gtk.Look {
+const func gridLookOf(s ui.Style, columns option[int]) Look {
     var look = lookHidden(s, s.display == ui.Display.none, true, spacingOf(s, 6))
     look.grid = true
     look.columns = columns == null ? 0 : columns
@@ -144,13 +143,13 @@ const func gridLookOf(s ui.Style, columns option[int]) gtk.Look {
 
 // The look of a widget whose visibility a prop drives, which answers
 // `display` itself through shown.
-const func lookBesideVisible(s ui.Style) gtk.Look {
+const func lookBesideVisible(s ui.Style) Look {
     var look = lookHidden(s, false, false, 0)
     return look
 }
 
 // lookBesideVisible for a GtkBox.
-const func boxLookBesideVisible(s ui.Style, otherwise int) gtk.Look {
+const func boxLookBesideVisible(s ui.Style, otherwise int) Look {
     var look = lookHidden(s, false, true, spacingOf(s, otherwise))
     return look
 }
@@ -168,8 +167,8 @@ const func justifyOf(j ui.Justification) int {
     }
 }
 
-const func lookHidden(s ui.Style, hidden bool, spaced bool, spacing int) gtk.Look {
-    var look gtk.Look = {
+const func lookHidden(s ui.Style, hidden bool, spaced bool, spacing int) Look {
+    var look Look = {
         css = cssOf(s),
         width = inset(s.width),
         height = inset(s.height),
@@ -193,8 +192,8 @@ const func bordered(s ui.Style) => s.border != "" || s.borderBottom != "" || s.b
 // The look of the frame a clickable card's button holds: the button draws the
 // card's border, so the frame draws the theme's only where the Style says
 // nothing of one.
-const func innerFrameLookOf(s ui.Style) gtk.Look {
-    var look gtk.Look = {css=bordered(s) ? "border-style: none; " : ""}
+const func innerFrameLookOf(s ui.Style) Look {
+    var look Look = {css=bordered(s) ? "border-style: none; " : ""}
     return look
 }
 

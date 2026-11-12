@@ -14,7 +14,7 @@ stderr 'a program renders something at the root of a file'
 # A library package the command line names is exempt: generating one is a
 # request for its declarations, and a library renders nothing by construction.
 sngl generate --lang go --platform gtk4 -o libout sngl:platform/gtk4
-exists libout/model.go
+exists libout/main.go
 
 # The same file with a window builds.
 sngl generate --lang=none --platform=html --out=ok window.sngl

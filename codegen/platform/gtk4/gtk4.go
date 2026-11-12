@@ -1,438 +1,482 @@
-// Package gtk4 is the SNGL platform generator for GTK4 applications.
+// Package gtk4 is the SNGL platform generator for GTK 4.
+//
+// It places nothing: the platform asks for `placement`, which leaves a
+// program of plain functions, structs and calls of its protocol functions
+// (lib/platform/gtk4), and each language writes that whole. What is left
+// here is the program's entry, per language, and the files beside it, and
+// the gir: scheme's package, which a program importing `gir:Gtk-4.0` is
+// declared from (declgen.go).
 package gtk4
 
 import (
-	"errors"
+	"bytes"
+	"context"
 	"fmt"
+	"io"
+	"maps"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
-	"sync"
+	"time"
 
 	"duckfam.us/sngl/codegen"
+	clang "duckfam.us/sngl/codegen/lang/c"
 	"duckfam.us/sngl/codegen/lang/golang"
-	"duckfam.us/sngl/codegen/platform/gtk4/gir"
-	"duckfam.us/sngl/internal/gencache"
 	"duckfam.us/sngl/ir"
 )
-
-// pickPrimaryConstructorInfo returns the full ConstructorInfo for the first
-// constructor in the class, and the zero value when GIR declares none. There
-// is no name to derive for that case: GTK ships no gtk_<lower>_new for 46 of
-// the 47 classes without one, so a derived name would only move a link error
-// into the user's build. OnCreateNode refuses those with a diagnostic.
-func pickPrimaryConstructorInfo(info *gir.ClassInfo) gir.ConstructorInfo {
-	if len(info.Constructors) == 0 {
-		return gir.ConstructorInfo{}
-	}
-	return info.Constructors[0]
-}
-
-// girAutoPaths are the standard locations checked when --opt gir= is not set.
-var girAutoPaths = []string{
-	"/usr/share/gir-1.0/Gtk-4.0.gir",
-	"/usr/local/share/gir-1.0/Gtk-4.0.gir",
-	"/opt/homebrew/share/gir-1.0/Gtk-4.0.gir",
-}
 
 func init() {
 	g := &Generator{}
 	codegen.RegisterNative(platformName, g)
-	registerGIRScheme(g)
-	// The widget reads gtk4.sngl declares (`checkActive` and its siblings)
-	// are answered where a handler body is translated (readWidgets), since
-	// which getter a read becomes depends on the mode the file is emitted in.
-	codegen.DeclarePlatformImplements(platformName, "sngl:platform/gtk4")
+	registerGIRScheme(&g.gir)
 }
 
-// Generator implements codegen.PlatformGenerator for GTK4.
-type Generator struct {
-	// mu guards everything below it but store: the generator is one value
-	// shared by every check and build in the process, and the option is read
-	// by the gir: scheme's setting and intrinsic while Configure and a build's
-	// own option write it.
-	mu       sync.Mutex
-	loaded   bool // registry, minimal and initErr answer girOpt
-	registry *gir.TypeRegistry
-	initErr  error // set if autodetect GIR load fails
-	minimal  bool  // registry is the bundled subset, not the host's GIR
-	girOpt   string
-	// cgoOpt is the "cgo" option: the widget declarations make, fill and
-	// write a GIR class through the C functions GIR names rather than gtk4rt.
-	cgoOpt   bool
-	fsLoaded bool // fsErr answers girOpt and cgoOpt
-	fsErr    error
-	// store is where the registry and the declarations derived from it are
-	// kept between builds. Nil means the process's default store.
-	store *gencache.Store
-}
-
-func (g *Generator) genStore() *gencache.Store {
-	if g == nil || g.store == nil {
-		return gencache.Default()
-	}
-	return g.store
-}
-
-// Configure implements codegen.OptionConfigurable. Reads the "gir" option so
-// the gir: import sngl:platform/gtk4 makes (resolved during type-check, before
-// code generation) can honor the CLI-supplied GIR path. Resets the cached
-// registry and the declarations built from it so both re-load against the new
-// path.
-func (g *Generator) Configure(opts map[string]string) error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.setGIROpt(opts["gir"])
-	// C reaches GTK only as C does: its widgets are the ones the cgo option
-	// declares, whatever the option says.
-	g.cgoOpt = opts["cgo"] == "true" || opts["lang"] == "c"
-	return nil
-}
-
-// setGIROpt selects the GIR and forgets everything loaded from the last one.
-// The caller holds mu.
-func (g *Generator) setGIROpt(opt string) {
-	g.girOpt = opt
-	g.loaded, g.fsLoaded = false, false
-	g.registry, g.initErr, g.fsErr = nil, nil, nil
-}
-
-// platformName is this platform's registry identifier, and the name a
-// diagnostic spells so the reader knows which target rejected their program.
 const platformName = "gtk4"
+
+// Generator implements codegen.PlatformGenerator for GTK 4.
+type Generator struct {
+	gir girState
+}
 
 func (g *Generator) PlatformIdentifier() string { return platformName }
 func (g *Generator) Description() string {
-	return "Native Linux/GNOME desktop GUI using GTK4."
+	return "Native Linux/GNOME desktop GUI using GTK 4."
 }
+
+var _ codegen.OptionConfigurable = (*Generator)(nil)
+
+// Configure implements codegen.OptionConfigurable: the "gir" option selects
+// the GIR a program's gir: import is declared from -- "builtin" for the
+// bundled subset, a path to a Gtk-4.0.gir, or unset to probe the system's
+// locations and fall back to the bundled subset.
+func (g *Generator) Configure(opts map[string]string) error {
+	g.gir.setOption(opts["gir"])
+	return nil
+}
+
+// LibraryState is the "gir" option, which decides what a gir: import
+// declares.
+func (g *Generator) LibraryState() string { return g.gir.option() }
+
 func (g *Generator) SupportedLangs() []string { return []string{"go", "c"} }
 
-// Unavailable implements codegen.PlatformAvailability. It is answered from the
-// declarations rather than the registry: the checker asks it of every
-// registered platform on every build, and the declarations are what such a
-// build reads anyway.
-func (g *Generator) Unavailable() error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.widgets()
-	return g.fsErr
-}
+var _ codegen.TestProber = (*Generator)(nil)
 
-// LibraryState is the GIR and cgo settings, which decide the widgets
-// sngl:platform/gtk4 declares and what they call.
-func (g *Generator) LibraryState() string {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.cgoOpt {
-		return g.girOpt + "\x00cgo"
+// ProbeTest implements codegen.TestProber: a program builds against the
+// host's GTK, which pkg-config finds.
+func (g *Generator) ProbeTest() (bool, string) {
+	if _, err := exec.LookPath("pkg-config"); err != nil {
+		return false, "pkg-config is not on PATH"
 	}
-	return g.girOpt
-}
-
-// gir lazy-loads the widget registry, caching both the registry and the
-// failure. Configure resets the cache when --opt gir= changes.
-func (g *Generator) gir() (*gir.TypeRegistry, error) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.girLocked()
-}
-
-func (g *Generator) girLocked() (*gir.TypeRegistry, error) {
-	if !g.loaded {
-		g.registry, g.minimal, g.initErr = girRegistryIn(g.genStore(), g.girOpt)
-		g.loaded = true
+	if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
+		return false, "gtk4 dev libraries not installed (pkg-config)"
 	}
-	return g.registry, g.initErr
+	return true, ""
 }
 
-// useGIR is how everything that needs the registry gets it, including the code
-// generator, which used to resolve its own. Passing the option rather than
-// reading it means one resolver, one cache and one answer: a caller holding a
-// Config built from the same --opt cannot end up with a different registry than
-// type-check used, which is what happened when there were two.
-//
-// A nil Generator answers from the resolver directly, for a test that builds a
-// compilation without one.
-func (g *Generator) useGIR(opt string) (*gir.TypeRegistry, error) {
-	if g == nil {
-		reg, _, err := girRegistry(opt)
-		return reg, err
+var _ codegen.ProgramRunner = (*Generator)(nil)
+
+// RunProgram implements codegen.ProgramRunner for a C program, which the
+// host's compiler builds against the host's GTK and which runs in the display
+// this process has; a Go program is built and run as every Go target's is.
+func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.ProgramRun) (string, []codegen.ProgramRan, error) {
+	if ok, reason := g.ProbeTest(); !ok {
+		return "", nil, &codegen.SkipError{Reason: reason}
 	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if opt != "" && opt != g.girOpt {
-		// A Config naming a GIR the generator was not configured with wins, and
-		// re-arms the cache so every later reader agrees with it.
-		g.setGIROpt(opt)
-	}
-	return g.girLocked()
-}
-
-// girRegistry resolves the "gir" option to a widget registry, and reports
-// whether the result is the bundled subset. It is the one place that decides,
-// because the code generator used to resolve its own and the two could disagree
-// -- and the generator's copy discarded the parse error, so a path that did not
-// load left it with no registry and every widget reported as undeclared.
-//
-//   - "builtin": the bundled subset, whatever the host has.
-//   - any other non-empty value: that path, and a failure to load it is an
-//     error, since the caller named it.
-//   - empty: the host's Gtk-4.0.gir if the probe finds one, else the bundled
-//     subset -- a host without GTK 4 development files can still check and
-//     document the widgets codegen/platform/gtk4 wraps.
-//
-// The answer is the gtk4.registry entry of the default store (girstore.go), so
-// an unchanged GIR is parsed once rather than once per build.
-func girRegistry(opt string) (*gir.TypeRegistry, bool, error) {
-	return girRegistryIn(gencache.Default(), opt)
-}
-
-func girRegistryIn(store *gencache.Store, opt string) (*gir.TypeRegistry, bool, error) {
-	req, err := girRequest(registryProducer, opt)
+	cc, err := clang.ForTarget(clang.TargetOf(dir), "")
 	if err != nil {
-		return nil, false, err
+		return "", nil, &codegen.SkipError{Reason: err.Error()}
 	}
-	data, err := store.Get(req)
-	if err != nil {
-		return nil, false, err
+	bin := filepath.Join(dir, "app")
+	if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		return out, nil, err
 	}
-	return decodeRegistry(data)
+	bin = cc.Exe(bin)
+	var ran []codegen.ProgramRan
+	for _, r := range runs {
+		rctx, cancel := context.WithTimeout(ctx, time.Minute)
+		cmd := exec.CommandContext(rctx, bin, r.Args...)
+		cmd.WaitDelay = 5 * time.Second
+		cmd.Dir = dir
+		cmd.Stdin = bytes.NewReader(r.Stdin)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		cancel()
+		ran = append(ran, codegen.ProgramRan{Stdout: stdout.String(), Stderr: stderr.String(), Err: err})
+	}
+	return "", ran, nil
 }
 
-// usingMinimalGIR reports whether the registry is the bundled subset.
-func (g *Generator) usingMinimalGIR() bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	_, _ = g.girLocked()
-	return g.minimal
-}
-
-// Generate writes gtk4 source files directly into sink. This is the
-// sink-based path platforms migrate to during the codegen unification.
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
-	// Targeting gtk4 without the GIR file is the one case that must be loud:
-	// the widget overrides were withheld, so generation would otherwise
-	// silently emit an empty UI.
-	if _, err := g.gir(); err != nil {
-		return fmt.Errorf("platform gtk4 is unavailable here: %w", err)
+	switch lang := req.Lang.LanguageIdentifier(); lang {
+	case "c":
+		return generateC(req, sink)
+	case "go":
+		return generateGo(req, sink)
+	default:
+		return fmt.Errorf("%s: generating %s is not written yet", platformName, lang)
 	}
-	if req.Lang != nil && req.Lang.LanguageIdentifier() == "c" {
-		return g.generateC(req, sink)
-	}
-	// Agent-mode test build: suppress the user's main() loop and force
-	// the package name to "main" so the agent's func main() compiles
-	// alongside it. The launcher's `go build .` step expects a main
-	// package on disk.
-	agentMode := codegen.OptionString(req.Options, "testMode") == "agent"
-	if agentMode {
-		if req.Options == nil {
-			req.Options = &ir.StructLit{}
-		}
-		codegen.SetOptionField(req.Options, "main", false)
-		codegen.SetOptionField(req.Options, "package", "main")
-	}
+}
 
-	// gtk4 has no error-boundary emitter. Left to travel on, the boundary
-	// reaches the Go renderer, which panics on a statement kind no platform
-	// was meant to hand it.
-	if err := codegen.FirstUnimplementedNode(req.Pkg, platformName, string(ir.BuiltinErrorBoundary)); err != nil {
+// generateC writes req's program as C: main.c, the program and its entry,
+// beside the C runtime (pkg/c), the platform's (its c.link's sources) and the
+// manifest naming what it links. The program is built in a turn once GTK is
+// ready, and the application tears down as the loop ends.
+func generateC(req *codegen.Request, sink codegen.Sink) error {
+	pkg := req.Pkg
+	agent := codegen.OptionString(req.Options, "testMode") == "agent"
+	fe := clang.NewFile(sink, codegen.FileOptions{Name: "main.c", Source: req.Source, Platform: platformName}, pkg, platformName)
+	links := reachedLinks(pkg)
+	sources, err := clang.Links(fe.Context(), links)
+	if err != nil {
+		return fmt.Errorf("%s: %w", platformName, err)
+	}
+	if agent {
+		fe.RequireImport(clang.TestHeader)
+	}
+	if err := clang.WriteProgram(fe, pkg); err != nil {
+		return fmt.Errorf("%s: %w", platformName, err)
+	}
+	if agent {
+		// A test waits by running what GTK has ready, as the loop would, and
+		// starts with the last one's windows gone.
+		if err := clang.WriteTests(fe, pkg, "g_main_context_iteration(NULL, FALSE)", "sngl_gtk_reset()"); err != nil {
+			return fmt.Errorf("%s: %w", platformName, err)
+		}
+		io.WriteString(fe, cTestMain)
+	} else if codegen.OptionBool(req.Options, snapshotOption) {
+		// Built for `sngl snapshot`: the program built, then its first
+		// window drawn at the size asked for into the file its first
+		// argument names.
+		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tgtk_init();\n\tsngl_gtk_carry(sngl_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_gtk_capture_file(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
+		fe.Context().Include("stdlib.h", true)
+	} else {
+		io.WriteString(fe, appMain(fe.Context(), pkg))
+	}
+	if err := fe.Close(); err != nil {
+		return fmt.Errorf("%s: %w", platformName, err)
+	}
+	if err := writeFile(sink, clang.BuildFile, clang.Manifest(links)); err != nil {
 		return err
 	}
-
-	c := &compilation{gen: g}
-	// gtk4NoWrap is a manual escape hatch that pins the inline-cgo path. Agent
-	// and Snapshot builds no longer force it: they emit a harness that matches
-	// the model's chosen mode (wrapped harnesses call BuildUI over gtk4rt.Handle
-	// and snapshot via gtk4rt). After EmitFromMutation, c.wrapped reflects the
-	// model's actual mode (the emitIR scan sets it), so the harness can match.
-	c.disableWrapped = codegen.OptionBool(req.Options, "gtk4NoWrap") || codegen.OptionBool(req.Options, "cgo")
-	m, err := c.BuildMutationModel(req, codegen.AnalyzeCommon(req.Pkg))
+	// The files the program carries, which the runtime's images show.
+	assets, err := clang.Assets(req.FileAssets, "sngl_gtk.h", "SnglAsset", "sngl_assets")
 	if err != nil {
+		return fmt.Errorf("%s: %w", platformName, err)
+	}
+	if err := writeFile(sink, "sngl_assets.c", assets); err != nil {
 		return err
 	}
-	if err := c.EmitFromMutation(m, req, sink); err != nil {
-		return err
+	// The platform's runtime is a c.link's sources, the same for every
+	// program, so a golden holds their digest too; and so is the C runtime's.
+	runtime := clang.Runtime()
+	if agent {
+		maps.Copy(runtime, clang.TestRuntime())
 	}
-	if err := golang.EmitAssetEmbed(sink, c.cfg.Package, req.FileAssets); err != nil {
-		return fmt.Errorf("gtk4: assets: %w", err)
-	}
-	if golang.PackageUsesI18n(req.Pkg) {
-		if err := golang.EmitI18nManifestEmbed(sink, c.cfg.Package, req.ProjectFS, ""); err != nil {
-			return fmt.Errorf("gtk4: i18n manifest embed: %w", err)
-		}
-	}
-
-	if codegen.OptionBool(req.Options, "test") {
-		testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
-		if len(testFns) > 0 {
-			if agentMode {
-				src := golang.LowerTestFile(c.cfg.Package, platformName, req.Pkg, testFns, suffixes, methodFields, golang.TestEmitAgent)
-				if err := writeRawFile(sink, "testagent_main.go", []byte(src)); err != nil {
-					return err
-				}
-				// gtk4's New() returns *Model; the agent helper file boots
-				// GTK in headless mode and calls buildWidgetTree() to
-				// materialize widgets so per-id event invokers fire against
-				// real GTK objects. BuildUI is intentionally NOT called here —
-				// sngl_test_activate calls it with the snapshot app so that
-				// m.__root has no prior parent when gtk_window_set_child runs.
-				mainSrc := []byte(`package ` + c.cfg.Package + `
-
-/*
-#include <gtk/gtk.h>
-*/
-import "C"
-
-import (
-	"sync"
-
-	"duckfam.us/sngl/pkg/go/testagent"
-)
-
-var gtkInit sync.Once
-
-var currentModel *Model
-
-func setCurrentTestModel(m *Model) { currentModel = m }
-
-// A test's Model starts bare: what the test sets up before it needs the
-// component is written into it, and mountTestComponent initializes the rest
-// and builds it.
-func newTestComponent() *Model {
-	gtkInit.Do(func() { C.gtk_init() })
-	return &Model{}
-}
-
-func mountTestComponent(m *Model, preset map[string]bool) *Model {
-	m.__init(preset)
-	m.buildWidgetTree()
-	return m
-}
-
-func main() { testagent.Main() }
-`)
-				if err := writeRawFile(sink, "agent_main.go", agentMainBytes(c.cfg.Package, c.wrapped, mainSrc)); err != nil {
-					return err
-				}
-				// snapshot.go: reuses the gtk4SnapshotCgo preamble.
-				// Uses g_application_register (not g_application_run) so
-				// BuildUI and sngl_pump_until_mapped run in the Go call
-				// stack — outside any signal callback — making it safe to
-				// call blocking g_main_context_iteration calls there.
-				snapshotSrc := []byte("package " + c.cfg.Package + "\n\n" + gtk4SnapshotCgo + `
-import (
-	"fmt"
-	"os"
-	"runtime"
-	"unsafe"
-
-	"duckfam.us/sngl/pkg/go/testagent"
-)
-
-func currentTestModel() *Model { return currentModel }
-
-// snglSnapshotApp is the application every snapshot in this test process
-// builds its window in. One, because a registered application stays exported
-// on the session bus while a window holds it, and a second registered at the
-// same path fails with "An object is already exported".
-var snglSnapshotApp *C.GtkApplication
-
-// snglSnapshotApplication registers snglSnapshotApp the first time, without
-// running its main loop, so BuildUI and the pump execute on the current
-// (locked) OS thread without re-entrancy.
-func snglSnapshotApplication() (*C.GtkApplication, error) {
-	if snglSnapshotApp != nil {
-		return snglSnapshotApp, nil
-	}
-	cAppID := C.CString("dev.sngl.test.snapshot")
-	defer C.free(unsafe.Pointer(cAppID))
-	app := C.gtk_application_new(cAppID, C.G_APPLICATION_NON_UNIQUE)
-	var gerr *C.GError
-	if C.g_application_register((*C.GApplication)(unsafe.Pointer(app)), nil, &gerr) == 0 {
-		msg := "no reason given"
-		if gerr != nil {
-			msg = C.GoString(gerr.message)
-			C.g_error_free(gerr)
-		}
-		C.g_object_unref(C.gpointer(unsafe.Pointer(app)))
-		return nil, fmt.Errorf("g_application_register failed: %s", msg)
-	}
-	snglSnapshotApp = app
-	return app, nil
-}
-
-func snapshotBytesGtk(m *Model) (string, []byte, error) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	if m == nil {
-		return "", nil, fmt.Errorf("no current model registered")
-	}
-
-	f, err := os.CreateTemp("", "sngl-snap-*.png")
-	if err != nil {
-		return "", nil, err
-	}
-	f.Close()
-	defer os.Remove(f.Name())
-
-	app, err := snglSnapshotApplication()
-	if err != nil {
-		return "", nil, err
-	}
-
-	win := m.BuildUI(app)
-	if win == nil {
-		return "", nil, fmt.Errorf("BuildUI returned nil")
-	}
-	// The Model keeps its widget tree across snapshots and BuildUI hands the
-	// same root to a new window each time, so the root is taken back out of
-	// this one -- held, since the window was what kept it alive -- before the
-	// window goes. Left in it, the next window was given a widget that
-	// already had a parent and captured nothing.
-	defer func() {
-		w := (*C.GtkWindow)(unsafe.Pointer(win))
-		if child := C.gtk_window_get_child(w); child != nil {
-			C.g_object_ref(C.gpointer(unsafe.Pointer(child)))
-			C.gtk_window_set_child(w, nil)
-		}
-		C.gtk_window_destroy(w)
-	}()
-	C.gtk_window_set_default_size((*C.GtkWindow)(unsafe.Pointer(win)), 800, 600)
-	C.gtk_window_present((*C.GtkWindow)(unsafe.Pointer(win)))
-	C.sngl_pump_until_mapped(win, 1000)
-
-	cPath := C.CString(f.Name())
-	defer C.free(unsafe.Pointer(cPath))
-	if rc := C.sngl_snapshot(win, 800, 600, cPath); rc != 0 {
-		return "", nil, fmt.Errorf("sngl_snapshot rc=%d", int(rc))
-	}
-
-	data, err := os.ReadFile(f.Name())
-	if err != nil {
-		return "", nil, err
-	}
-	return "image/png", data, nil
-}
-
-func init() {
-	testagent.RegisterSnapshot(func() (string, []byte, error) {
-		return snapshotBytesGtk(currentTestModel())
-	})
-}
-`)
-				if err := writeRawFile(sink, "snapshot.go", agentSnapshotBytes(c.cfg.Package, c.wrapped, snapshotSrc)); err != nil {
-					return err
-				}
-			}
+	maps.Copy(runtime, sources)
+	for name, data := range runtime {
+		codegen.MarkBoilerplate(sink, name)
+		if err := writeFile(sink, name, data); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-// writeRawFile writes pre-formatted content directly to sink without
-// running it through the language file emitter (which would re-attach
-// source maps and headers we don't want on synthetic test/agent files).
-func writeRawFile(sink codegen.Sink, name string, content []byte) error {
+// appMain is a C program's entry. The program is built in a turn once GTK
+// is ready, and the application tears down as the loop ends.
+//
+// Where the platform node wrote `@run`, the tree is built before the loop,
+// the windows it attaches held hidden, and the handler is called, in a turn,
+// with the command line and a `run` presenting them and running the loop. A
+// handler that returns without calling it gets the loop with nothing shown,
+// which only quit ends; a second run is refused (design/windows.md).
+func appMain(c *clang.Context, pkg *ir.Package) string {
+	teardown := ""
+	if pkg.Teardown != nil {
+		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
+	}
+	build := "\tsngl_gtk_carry(sngl_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n"
+	if pkg.Run == nil {
+		return "\nstatic void sngl_start(void) {\n" + strings.Replace(build, "\tsngl_gtk_carry(sngl_assets);\n", "", 1) + "}\n" +
+			"\nint main(void) {\n\tsngl_gtk_carry(sngl_assets);\n\tint status = sngl_app_run(sngl_start);\n" + teardown + "\treturn status;\n}\n"
+	}
+	if len(pkg.Run.Block) == 0 || len(pkg.Run.Params) != 2 {
+		return "\nint main(void) {\n\tsngl_gtk_hold();\n" + build + "\tint status = sngl_gtk_run();\n" + teardown + "\treturn status;\n}\n"
+	}
+	c.Include("stdio.h", true)
+	c.Include("stdlib.h", true)
+	c.Include("string.h", true)
+	args, run := c.TypeName(pkg.Run.Params[0].Type), c.TypeName(pkg.Run.Params[1].Type)
+	var b strings.Builder
+	b.WriteString("\nstatic bool sngl_gtk_started;\n\n")
+	b.WriteString("static void sngl_gtk_start(void *env) {\n\t(void)env;\n\tif (sngl_gtk_started) {\n")
+	fmt.Fprintf(&b, "\t\tfprintf(stderr, \"%%s: run called again; an application runs once per process\\n\", %s);\n\t\texit(2);\n\t}\n", strconv.Quote(pkg.RunPos.String()))
+	b.WriteString("\tsngl_gtk_started = true;\n\tsngl_gtk_present();\n\tsngl_gtk_run();\n")
+	b.WriteString(teardown)
+	b.WriteString("}\n\n")
+	b.WriteString("int main(int argc, char **argv) {\n\tsngl_gtk_hold();\n")
+	b.WriteString(build)
+	fmt.Fprintf(&b, "\t%s args = {0};\n", args)
+	b.WriteString("\tif (argc > 1) {\n\t\targs.data = malloc(sizeof(sngl_string) * (size_t)(argc - 1));\n")
+	b.WriteString("\t\tfor (int i = 1; i < argc; i++) {\n\t\t\targs.data[args.len++] = (sngl_string){argv[i], strlen(argv[i])};\n\t\t}\n\t\targs.cap = args.len;\n\t}\n")
+	fmt.Fprintf(&b, "\tsngl_turn_enter();\n\t%s(args, (%s){sngl_gtk_start, NULL});\n\tsngl_turn_leave();\n", clang.Decl(&pkg.Run.DeclInfo), run)
+	b.WriteString("\tif (!sngl_gtk_started) {\n\t\tsngl_gtk_started = true;\n\t\tsngl_gtk_run();\n")
+	b.WriteString(strings.ReplaceAll(teardown, "\t", "\t\t"))
+	b.WriteString("\t}\n\treturn 0;\n}\n")
+	return b.String()
+}
+
+// cTestMain is a C program's entry built for `sngl test`, serving its tests
+// over stdin and stdout. A critical GLib logs is a program misusing GTK -- a
+// widget appended that is not one, a pointer gone stale -- which GTK survives
+// and a test reading the program's own state would not notice, so it fails
+// the test running. A snapshot is the first window the program, or the
+// test's component, is shown in, drawn at 800 by 600.
+const cTestMain = `
+static GLogWriterOutput sngl_test_log_writer(GLogLevelFlags level, const GLogField *fields, gsize n, gpointer data) {
+	if (level & G_LOG_LEVEL_CRITICAL) {
+		for (gsize i = 0; i < n; i++) {
+			if (strcmp(fields[i].key, "MESSAGE") == 0 && fields[i].length < 0) {
+				sngl_test_fault(fields[i].value);
+			}
+		}
+	}
+	return g_log_writer_default(level, fields, n, data);
+}
+
+static bool sngl_test_draw(unsigned char **rgba, int *width, int *height, const char **why) {
+	return sngl_capture(NULL, 800, 600, rgba, width, height, why);
+}
+
+int main(void) {
+	g_log_set_writer_func(sngl_test_log_writer, NULL, NULL);
+	gtk_init();
+	sngl_gtk_carry(sngl_assets);
+	sngl_test_capture = sngl_test_draw;
+	return sngl_test_main(sngl_tests, sngl_ntests);
+}
+`
+
+// wrappers is the Go package wrapping the platform's C (sngl tool cgogen),
+// which a Go program calls the runtime and GTK through.
+const wrappers = "duckfam.us/sngl/lib/platform/gtk4/cgo"
+
+// generateGo writes req's program as Go: main.go, the program
+// (golang.WriteProgram) and its entry, which runs the application through
+// the wrappers, building the program once GTK is ready.
+func generateGo(req *codegen.Request, sink codegen.Sink) error {
+	pkg := req.Pkg
+	fe := req.Lang.NewFileEmitter(sink, codegen.FileOptions{Name: "main.go", Source: req.Source, Platform: platformName, PackageName: "main"})
+	if err := golang.WriteProgram(fe, pkg, platformName); err != nil {
+		return fmt.Errorf("%s: %w", platformName, err)
+	}
+	agent := codegen.OptionString(req.Options, "testMode") == "agent"
+	cgo := fe.RequireImport(wrappers)
+	// A main opens the place sngl:settings keeps values; a test never does.
+	open := golang.OpenSettings(pkg, golang.SettingsFile(codegen.OptionString(req.Options, "name")))
+	if open != "" {
+		fe.RequireImport(golang.SettingsImportPath)
+	}
+	opened := func(main string) string {
+		return strings.Replace(main, "\truntime.LockOSThread()\n", "\truntime.LockOSThread()\n"+open, 1)
+	}
+	if agent {
+		if err := golang.WriteTests(fe, pkg, cgo+".SnglGtkReset()"); err != nil {
+			return fmt.Errorf("%s: %w", platformName, err)
+		}
+	}
+	fe.RequireImport("os")
+	fe.RequireImport("runtime")
+	if agent {
+		for _, p := range []string{"bytes", "encoding/binary", "errors", "fmt", "image", "image/png", "duckfam.us/sngl/pkg/go/testagent"} {
+			fe.RequireImport(p)
+		}
+		io.WriteString(fe, strings.ReplaceAll(goAgentMain, "cgo.", cgo+"."))
+	} else {
+		switch {
+		case codegen.OptionBool(req.Options, snapshotOption):
+			// Built for `sngl snapshot`, as C's is.
+			fe.RequireImport("strconv")
+			io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tif len(os.Args) < 4 {\n\t\tos.Exit(2)\n\t}\n\tw, _ := strconv.Atoi(os.Args[2])\n\th, _ := strconv.Atoi(os.Args[3])\n\t"+cgo+".SnglGtkInit()\n\tsnglInit()\n\tsnglBuild()\n\tos.Exit("+cgo+".SnglGtkCaptureFile(os.Args[1], w, h))\n}\n")
+		case golang.RunsHandler(pkg):
+			fe.RequireImport("fmt")
+			io.WriteString(fe, opened(strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain)))
+		case pkg.Run != nil:
+			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\t"+cgo+".SnglGtkHold()\n\tsnglInit()\n\tsnglBuild()\n\tstatus := "+cgo+".SnglGtkRun()\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
+		default:
+			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := "+cgo+".SnglGtkMain(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
+		}
+	}
+	if err := fe.Close(); err != nil {
+		return err
+	}
+	if golang.PackageUsesI18n(pkg) {
+		if err := golang.EmitI18nManifestEmbed(sink, "main", req.ProjectFS, ""); err != nil {
+			return fmt.Errorf("%s: i18n manifest embed: %w", platformName, err)
+		}
+	}
+	return carryGo(sink, req.FileAssets)
+}
+
+// goRunMain is a Go program's entry where the platform node wrote `@run`,
+// as C's is (appMain): the tree is built before the loop, the windows it
+// attaches held hidden, and the handler is called with the command line and
+// a `run` presenting them and running the loop. A handler that returns
+// without calling it gets the loop with nothing shown; a second run is
+// refused.
+const goRunMain = `
+var snglStarted bool
+
+func snglStart() {
+	if snglStarted {
+		fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", POS)
+		os.Exit(2)
+	}
+	snglStarted = true
+	cgo.SnglGtkPresent()
+	cgo.SnglGtkRun()
+	snglTeardown()
+}
+
+func main() {
+	runtime.LockOSThread()
+	cgo.SnglGtkHold()
+	snglInit()
+	snglBuild()
+	snglRun(os.Args[1:], snglStart)
+	if !snglStarted {
+		snglStarted = true
+		cgo.SnglGtkRun()
+		snglTeardown()
+	}
+}
+`
+
+// goAgentMain is a Go program's entry built for `sngl test`: the test agent,
+// serving the driver over stdin and stdout on a goroutine, and running each
+// run of tests on the thread GTK was made ready on, which main locks.
+const goAgentMain = `
+func main() {
+	runtime.LockOSThread()
+	cgo.SnglGtkInit()
+	testagent.RegisterSnapshot(snglCapture)
+	rpcIn, rpcOut := os.Stdin, os.Stdout
+	if devnull, err := os.Open(os.DevNull); err == nil {
+		os.Stdin = devnull
+	}
+	os.Stdout = os.Stderr
+	runs := make(chan func(), 8)
+	done := make(chan struct{})
+	go func() {
+		testagent.Serve(rpcIn, rpcOut, func(run func()) { runs <- run })
+		close(done)
+	}()
+	for {
+		select {
+		case run := <-runs:
+			run()
+		case <-done:
+			return
+		}
+	}
+}
+
+// snglCapture is the first window shown, drawn at 800 by 600 as C's agent
+// draws it, as a PNG.
+func snglCapture() (string, []byte, error) {
+	f, err := os.CreateTemp("", "sngl-snapshot-*")
+	if err != nil {
+		return "", nil, err
+	}
+	path := f.Name()
+	f.Close()
+	defer os.Remove(path)
+	if cgo.SnglGtkCaptureFile(path, 800, 600) != 0 {
+		return "", nil, errors.New("nothing is shown to draw")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(raw) < 8 {
+		return "", nil, fmt.Errorf("a capture of %d bytes", len(raw))
+	}
+	w, h := int(binary.LittleEndian.Uint32(raw[0:4])), int(binary.LittleEndian.Uint32(raw[4:8]))
+	if pix := raw[8:]; w <= 0 || h <= 0 || len(pix) != w*h*4 {
+		return "", nil, fmt.Errorf("a capture of %d bytes of pixels for %d by %d", len(pix), w, h)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, &image.NRGBA{Pix: raw[8:], Stride: w * 4, Rect: image.Rect(0, 0, w, h)}); err != nil {
+		return "", nil, err
+	}
+	return "image/png", buf.Bytes(), nil
+}
+`
+
+// carryGo writes assets.go, which embeds each file the program carries and
+// hands it to the runtime before main runs.
+func carryGo(sink codegen.Sink, assets []codegen.FileAsset) error {
+	if len(assets) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	b.WriteString("// Code generated by sngl (" + platformName + "). DO NOT EDIT.\n\npackage main\n\nimport (\n\t_ \"embed\"\n\n\t\"" + wrappers + "\"\n)\n")
+	var init strings.Builder
+	for i, fa := range assets {
+		data := fa.Data
+		if data == nil {
+			d, err := os.ReadFile(fa.SrcPath)
+			if err != nil {
+				return err
+			}
+			data = d
+		}
+		name := filepath.ToSlash(fa.OutPath)
+		if err := writeFile(sink, name, data); err != nil {
+			return err
+		}
+		fmt.Fprintf(&b, "\n//go:embed %s\nvar snglAsset%d string\n", name, i)
+		fmt.Fprintf(&init, "\tcgo.SnglGtkCarryFile(%s, snglAsset%d, len(snglAsset%d))\n", strconv.Quote(name), i, i)
+	}
+	fmt.Fprintf(&b, "\nfunc init() {\n%s}\n", init.String())
+	return writeFile(sink, "assets.go", []byte(b.String()))
+}
+
+// reachedLinks are the c.links of the program and of each package whose C
+// it calls, among them the platform's own, whose runtime the protocol calls
+// call: the program imports none of the target's packages, and what it calls
+// of them is what placement wrote.
+func reachedLinks(pkg *ir.Package) []*ir.CLink {
+	out := ir.ReachedCLinks(pkg)
+	add := func(p *ir.Package) {
+		for _, l := range ir.ReachedCLinks(p) {
+			if !slices.Contains(out, l) {
+				out = append(out, l)
+			}
+		}
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Func != nil && x.Func.Foreign.Path == ir.CPath {
+				add(x.Func.Pkg)
+			}
+		case *ir.CConvert:
+			if x.Via != nil {
+				add(x.Via.Pkg)
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+func writeFile(sink codegen.Sink, name string, content []byte) error {
 	wc, err := sink.Create(name)
 	if err != nil {
 		return err
@@ -442,30 +486,4 @@ func writeRawFile(sink codegen.Sink, name string, content []byte) error {
 		return err
 	}
 	return wc.Close()
-}
-
-// girBuiltin selects the bundled subset explicitly, for a test that wants a
-// registry that does not vary with the host's GTK version.
-const girBuiltin = "builtin"
-
-// resolveGIRPath returns the path to the Gtk-4.0.gir file.
-// If girPath is non-empty it validates that path. Otherwise it probes the
-// standard autodetect locations.
-func resolveGIRPath(girPath string) (string, error) {
-	if girPath != "" {
-		if _, err := os.Stat(girPath); err != nil {
-			return "", fmt.Errorf("--opt gir=%s: %w", girPath, err)
-		}
-		return girPath, nil
-	}
-	for _, p := range girAutoPaths {
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
-		}
-	}
-	return "", errors.New("GTK 4 introspection data (Gtk-4.0.gir) not found in " +
-		strings.Join(girAutoPaths, ", ") +
-		" — install the GTK 4 development package (Debian/Ubuntu: libgtk-4-dev, " +
-		"Fedora: gtk4-devel, Arch: gtk4, macOS: brew install gtk4) " +
-		"or point at the file with --opt gir=/path/to/Gtk-4.0.gir")
 }

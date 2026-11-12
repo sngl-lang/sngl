@@ -40,34 +40,24 @@ does with it is each target's:
   (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
   inside renders into.
-- gtk4: a gtk4rt image box and a `GtkPicture` per source, which fits itself to
-  the image it lands in by watching its own `notify::parent`. A URL's picture
-  is an owned derived value of its source (`ui.file`'s and `ui.remote`'s
-  `picture`, a `gtk4rt.Picture`), decoded once per URL and released when the
-  URL changes or the source unmounts; the source shows it and `canvasImage`
-  paints it, scaled once per box size rather than per frame
-  (`testdata/gtk4_image_pictures.txtar`, and
+- gtk4: the runtime's image box and a `GtkPicture` per source (rt's
+  `image.c`), reached through protocol functions. A URL's picture is an
+  owned derived value of its source (`ui.file`'s and `ui.remote`'s
+  `picture`, the runtime's `SnglPicture`), decoded once per URL and released
+  when the URL changes or the source unmounts; the source shows it and
+  `canvasImage` paints it (`testdata/gtk4_image_pictures.txtar`, and
   `cmd/sngl/testdata/simulate_gtk4_image_pictures.txt` for the leak check).
-  Before, a source fetched its own URL and a drawing downloaded and scaled
-  the texture on every frame (see [ownership.md](ownership.md)). A drawing makes
-  every gtk4 build inline cgo (a canvas does), so the image runtime is called
-  from cgo-mode code too, which is why gtk4rt's exported callbacks are
-  `snglRt*`: the cgo scaffold exports `snglGoDispatch` and `snglActivate` of
-  its own. GTK 4 sets a window's icon by name only, so the picture is written
-  into a private icon-theme directory (`iconize`).
-- gtk4next: gtk4's, placed (`lib/platform/gtk4next`, rt's `image.c`). The
-  image box, the source and the picture are the runtime's C, reached through
-  protocol functions, and the picture is still an owned derived value of the
-  source. An image's `@failed` takes nothing and the override reads why off
-  the image (`imageFailure`), as win32's does. A drawn source is painted
-  through its protocol as a canvas is (`design/nodes.md`): its shapes are
-  the handler of its `@paint`, which paints a texture of its size, and a
-  write to what they read is its redraw. A URL is fetched over a
-  `GSocketClient` rather than GIO's `GFile`, whose http is GVfs's, which a
-  test's session bus does not run (`image_remote_runs.txt`). A window takes a
-  source appended to it as its icon (`sngl_image_adopt`), from a root
-  component's window too, which gtk4 in Go shows as a picture in the window
-  (`cmd/sngl/testdata/gtk4next_test_runs.txt`'s `pictures.sngl`).
+  An image's `@failed` takes nothing and the override reads why off the image
+  (`imageFailure`), as win32's does. A drawn source is painted through its
+  protocol as a canvas is (`design/nodes.md`): its shapes are the handler of
+  its `@paint`, which paints a texture of its size, and a write to what they
+  read is its redraw. A URL is fetched over a `GSocketClient` rather than
+  GIO's `GFile`, whose http is GVfs's, which a test's session bus does not
+  run (`image_remote_runs.txt`). A window takes a source appended to it as
+  its icon (`sngl_image_adopt`), from a root component's window too; GTK 4
+  sets a window's icon by name only, so the picture is written into a private
+  icon-theme directory (`cmd/sngl/testdata/gtk4_test_runs.txt`'s
+  `pictures.sngl`).
 - bubbletea: a drawing is a canvas; a URL is half-block cells fitted into a
   fixed box (`tui.Picture`), and a fetch arriving sends the program a message
   (`snglimage.OnArrive`).
@@ -100,5 +90,4 @@ the Go targets load bytes: embedded, from the working directory, or fetched
 once per URL. `testdata/image_sources.txtar`,
 `codegen/platform/html/image_browser_test.go`,
 `cmd/sngl/testdata/image_sources_runs.txt` and `image_remote_runs.txt`, which
-fetches from the script harness's server on android, fyne, gtk4 and
-gtk4next.
+fetches from the script harness's server on android, fyne and gtk4.

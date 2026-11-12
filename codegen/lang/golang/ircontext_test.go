@@ -425,7 +425,7 @@ func TestRequireImportAs_Idempotent(t *testing.T) {
 
 func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
 	// Bare: the name is already pointer-like or an interface, so no "*".
-	for _, name := range []string{"unsafe.Pointer", "fyne.CanvasObject", "gtk4rt.Handle"} {
+	for _, name := range []string{"unsafe.Pointer", "fyne.CanvasObject", "cbind.Handle"} {
 		if got := IRTypeToGo(ir.NativeGoNamed(name)); got != name {
 			t.Errorf("IRTypeToGo(NativeGoNamed %q) = %q; want %q", name, got, name)
 		}

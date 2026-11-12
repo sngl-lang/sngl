@@ -20,9 +20,7 @@ stdout '^ok +1 tests, 0 failures$'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
-sngl test --platform=gtk4next --language=c app.sngl
-stdout '^ok +1 tests, 0 failures$'
-sngl test --platform=gtk4next --language=go app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -102,28 +100,18 @@ sha256:262c905f8e2667edcbafd6381c6e2192
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/shelf/1 --
+sha256:01f25eea8c17a724a5b6aa3cad0be3b3
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:dc3fd6f055fc47aa37094fd05d853777
-{
-  "results": [
-    {
-      "Desc": "ACardInAPanelIsItsCopy",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/shelf/1 --
-sha256:5430fc3a124d129771a71f3c61518fae
-{
-  "results": [
-    {
-      "Desc": "ACardInAPanelIsItsCopy",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/shelf/1 --
-sha256:48755b946d16e3a197a5d715c076f748
+sha256:51c4e3639c543a2856efd83ee4690e40
 {
   "results": [
     {

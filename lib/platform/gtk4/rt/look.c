@@ -1,7 +1,7 @@
 /* What a widget's look is on GTK: sngl:ui's Style as gtk4.sngl translates it
  * (style.sngl), applied by sngl_set_look -- its CSS, size, flex, alignment,
- * spacing and a box's layout. Compiled into every gtk4 program: pkg/go/gtk4rt
- * includes it for Go, and a C program compiles it beside its own. */
+ * spacing and a box's layout. Compiled into every gtk4 program: the Go
+ * wrappers include it, and a C program compiles it beside its own. */
 #include "sngl_gtk.h"
 
 #include <stdlib.h>
@@ -37,7 +37,7 @@ typedef struct {
     int justify;
     gboolean spaced;
     int spacing;
-    // GTK's own layout of a box, kept while gtk4rt's lays the box out.
+    // GTK's own layout of a box, kept while the runtime's lays the box out.
     GtkLayoutManager *box_layout;
     // A box that is no box of the program's: its grow is its children's.
     gboolean contents;
@@ -68,9 +68,9 @@ static SnglLook *sngl_look_of(GtkWidget *w) {
 }
 
 // The axis of a box. GtkBox keeps its orientation in its layout manager, so
-// once gtk4rt has given a box a layout of its own, the box answers through
-// one that is not a GtkBoxLayout -- horizontal, with a critical on stderr --
-// and its own, kept aside, is what knows. flex.go asks too.
+// once the runtime has given a box a layout of its own, the box answers
+// through one that is not a GtkBoxLayout -- horizontal, with a critical on
+// stderr -- and its own, kept aside, is what knows.
 GtkOrientation sngl_box_axis(GtkWidget *box) {
     SnglLook *l = sngl_look_of(box);
     if (l && l->box_layout) return gtk_orientable_get_orientation(GTK_ORIENTABLE(l->box_layout));
@@ -138,7 +138,7 @@ static void sngl_restore_expand(GtkWidget *w, SnglLook *l) {
     l->grow_axis = -1;
 }
 
-// --- A box laid out by gtk4rt ---
+// --- A box laid out by the runtime ---
 //
 // A GtkBox packs its children from the start and splits its spare room evenly
 // between the ones that expand. CSS places them as justify-content says and
@@ -460,7 +460,7 @@ static void sngl_look_set_grid(GtkWidget *box, SnglLook *l, int grid, int column
         l->grid = TRUE;
         GtkLayoutManager *own = gtk_widget_get_layout_manager(box);
         if (l->box_layout) {
-            // gtk4rt's flex layout had it, and kept GTK's aside already.
+            // The flex layout had it, and kept GTK's aside already.
         } else if (GTK_IS_BOX_LAYOUT(own)) {
             l->box_layout = g_object_ref(own);
         }
@@ -500,7 +500,7 @@ static void sngl_box_update(GtkWidget *box) {
     }
 }
 
-// A box's spacing, which its look holds while gtk4rt lays the box out.
+// A box's spacing, which its look holds while the runtime lays the box out.
 static void sngl_look_set_spacing(GtkWidget *w, SnglLook *l, int spaced, int spacing) {
     if (!spaced || !GTK_IS_BOX(w)) return;
     l->spaced = TRUE;
@@ -616,7 +616,7 @@ static void sngl_look_place_kids(GtkWidget *box) {
         sngl_look_place(c);
 }
 
-// GtkBox sets its orientation on its layout manager, so a box gtk4rt lays
+// GtkBox sets its orientation on its layout manager, so a box the runtime lays
 // out is turned with GTK's layout back in place, and taken again if it still
 // asks; the children's shares then run along the new axis.
 void sngl_set_orientation(GtkWidget *w, GtkOrientation o) {

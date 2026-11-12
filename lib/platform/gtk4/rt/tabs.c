@@ -1,7 +1,7 @@
 /* A `ui.tabs` on GTK for a program written in C: a box holding a
  * GtkNotebook. A page appended or inserted into the box is a page of the
  * notebook, and removing one takes it out; the box itself holds only the
- * notebook. gtk4rt's tabs.go is the same for Go. */
+ * notebook. */
 #include "sngl_gtk.h"
 
 typedef struct SnglTabs SnglTabs;
@@ -158,7 +158,7 @@ void sngl_tab_page_set_title(GtkWidget *page, const char *title) {
     if (pg->host) sngl_tabs_title(pg->host, page, pg);
 }
 
-void sngl_tab_page_set_disabled(GtkWidget *page, bool disabled) {
+void sngl_tab_page_set_disabled(GtkWidget *page, int disabled) {
     SnglTabPage *pg = sngl_tab_page_of(page);
     if (!pg) return;
     pg->disabled = disabled;

@@ -67,7 +67,13 @@ func liftRoot(pkg *ir.Package) {
 		return
 	}
 	pkg.Vars = append(pkg.Vars, root.Vars...)
-	pkg.Funcs = append(pkg.Funcs, root.Funcs...)
+	// A method a language lifting methods to functions has already made the
+	// package's is there once: twice, Go declared it twice.
+	for _, f := range root.Funcs {
+		if !slices.Contains(pkg.Funcs, f) {
+			pkg.Funcs = append(pkg.Funcs, f)
+		}
+	}
 	pkg.Body = append(pkg.Body, root.Stmts...)
 	// The root's methods are functions of the package's now, as they are
 	// where the build is rooted at the package body: the root's state is the
@@ -83,7 +89,7 @@ func liftRoot(pkg *ir.Package) {
 		}
 	}
 	if len(demoted) > 0 {
-		_ = ir.Walk(pkg, func(n ir.Node) error {
+		drop := func(n ir.Node) error {
 			if call, ok := n.(*ir.Call); ok && demoted[call.Func] {
 				call.Receiver = nil
 				if len(call.Args) == len(call.Func.Params)+1 {
@@ -91,7 +97,13 @@ func liftRoot(pkg *ir.Package) {
 				}
 			}
 			return nil
-		})
+		}
+		_ = ir.Walk(pkg, drop)
+		// A closure's function is a reference the walk does not follow: a
+		// handler under a boundary calling `submit()`.
+		for _, fn := range closureFuncs(pkg) {
+			_ = ir.Walk(fn, drop)
+		}
 	}
 	root.Vars, root.Funcs, root.Stmts = nil, nil, nil
 }
@@ -190,6 +202,13 @@ func (p *placement) instanceRead(pkg *ir.Package, sel *ir.Select) ir.Expr {
 		v = packageVar(pkg, sel.Field)
 	}
 	if v == nil {
+		// A computed the instance declares, a function of the program's
+		// now: the read is its call.
+		for _, fn := range pkg.Funcs {
+			if fn.Name == sel.Field && len(fn.Params) == 0 && !fn.IsTest && fn.Return != nil && fn.Return != ir.TypVoid {
+				return &ir.Call{Func: fn, Type: fn.Return}
+			}
+		}
 		p.fail("a test reading %s, which the placed program holds in no var", sel.Field)
 		return sel
 	}
@@ -506,14 +525,21 @@ func holdAssign(v *ir.Var, value ir.Expr) ir.Stmt {
 // a test reaches one copy of: the node goes in the package's map from each
 // copy's key, which the test's trigger reads it out of.
 func (p *placement) copyWrite(node *ir.Ident, key ir.Expr) ir.Stmt {
+	return p.copyWriteAs(node.Name, node, key)
+}
+
+// copyWriteAs is copyWrite into the map of the `#id` name, which a spliced
+// instance's root is held in by the copy of the instance it is
+// (ir.InstanceRootProp), as a node is by its own.
+func (p *placement) copyWriteAs(name string, node *ir.Ident, key ir.Expr) ir.Stmt {
 	if p.copies == nil {
 		p.copies = map[string]*ir.Var{}
 	}
-	v := p.copies[node.Name]
+	v := p.copies[name]
 	if v == nil {
 		t := ir.MapOf(ir.TypString, node.Type)
-		v = &ir.Var{Name: node.Name + "__copies", Type: t, Init: &ir.MapLitIR{Type: t}, Synthesized: true}
-		p.copies[node.Name] = v
+		v = &ir.Var{Name: name + "__copies", Type: t, Init: &ir.MapLitIR{Type: t}, Synthesized: true}
+		p.copies[name] = v
 		p.pkg.Vars = append(p.pkg.Vars, v)
 	}
 	return &ir.Assign{
@@ -536,6 +562,7 @@ func (p *placement) clearCopies(pkg *ir.Package) {
 	for _, v := range p.copies {
 		held[v] = true
 	}
+	p.dropCopies(held)
 	stamps := func(fn *ir.Func) []*ir.Var {
 		var out []*ir.Var
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
@@ -596,6 +623,96 @@ func (p *placement) clearCopies(pkg *ir.Package) {
 	}
 }
 
+// dropCopies has a record's destroy take its node out of each map of copies
+// its functions stamp, where its key still holds it: an instance a render
+// destroys is no copy a test reaches, and the render that destroyed it, the
+// record's of the instance holding it, does not start the map afresh, which
+// each of the holder's instances shares. The map is built again without the
+// key, as SNGL removes none.
+func (p *placement) dropCopies(held map[*ir.Var]bool) {
+	for _, r := range p.recordList() {
+		self := r.destroy.Params[0]
+		// Read off self alone, so the destroy reads it off its own.
+		ofSelf := func(e ir.Expr, from *ir.Param) (ir.Expr, bool) {
+			ok := true
+			_ = ir.Walk(e, func(n ir.Node) error {
+				if id, isId := n.(*ir.Ident); isId && id.Sym != ir.Symbol(from) {
+					ok = false
+				}
+				return nil
+			})
+			if !ok {
+				return nil, false
+			}
+			out, _ := ir.RewriteExpr(ir.CloneExprSharingDecls(e), func(n ir.Node) (ir.Node, error) {
+				if _, isId := n.(*ir.Ident); isId {
+					return &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}, nil
+				}
+				return n, nil
+			})
+			return out, true
+		}
+		done := map[*ir.Var]bool{}
+		var drops []ir.Stmt
+		for _, fn := range r.funcs() {
+			if fn == r.destroy || len(fn.Params) == 0 {
+				continue
+			}
+			_ = ir.Walk(fn.Block, func(n ir.Node) error {
+				a, ok := n.(*ir.Assign)
+				if !ok {
+					return nil
+				}
+				ix, ok := a.Target.(*ir.Index)
+				if !ok {
+					return nil
+				}
+				id, ok := ix.Operand.(*ir.Ident)
+				v, _ := id.Sym.(*ir.Var)
+				if !ok || !held[v] || done[v] {
+					return nil
+				}
+				key, ok := ofSelf(ix.Idx, fn.Params[0])
+				node, ok2 := ofSelf(a.Value, fn.Params[0])
+				if !ok || !ok2 {
+					return nil
+				}
+				done[v] = true
+				drops = append(drops, dropCopy(v, key, node))
+				return nil
+			})
+		}
+		r.destroy.Block = append(drops, r.destroy.Block...)
+	}
+}
+
+// dropCopy is copies made again without key where key holds node.
+func dropCopy(copies *ir.Var, key, node ir.Expr) ir.Stmt {
+	ref := func() ir.Expr { return &ir.Ident{Name: copies.Name, Sym: copies, Type: copies.Type, Synthesized: true} }
+	keyT, elemT := copies.Type.Elems[0], copies.Type.Elems[1]
+	keptVar := &ir.Var{Name: copies.Name + "__kept", Type: copies.Type, Synthesized: true}
+	kept := &ir.LocalVar{Name: keptVar.Name, Type: copies.Type, Init: &ir.MapLitIR{Type: copies.Type}, Sym: keptVar}
+	keptRef := func() ir.Expr {
+		return &ir.Ident{Name: keptVar.Name, Sym: keptVar, Type: keptVar.Type, Synthesized: true}
+	}
+	k := &ir.LoopVar{Name: copies.Name + "__k", Type: keyT}
+	kRef := func() ir.Expr { return &ir.Ident{Name: k.Name, Sym: k, Type: keyT, Synthesized: true} }
+	keys := &ir.Call{Type: ir.ListOf(keyT), Func: ir.IntrinsicMethod("keys", "map.keys", copies.Type, ir.ListOf(keyT)), Args: []ir.CallArg{{Value: ref()}}}
+	at := func(i ir.Expr) ir.Expr { return &ir.Index{Operand: ref(), Idx: i, Type: elemT} }
+	holds := &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
+		Left:  copyHeld(copies, ir.CloneExprSharingDecls(key)),
+		Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: at(ir.CloneExprSharingDecls(key)), Right: node},
+	}
+	return &ir.If{Cond: holds, Body: []ir.Stmt{
+		kept,
+		&ir.For{Key: k.Name, KeySym: k, Iter: keys, ElemType: keyT, Body: []ir.Stmt{&ir.If{
+			Cond: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: kRef(), Right: ir.CloneExprSharingDecls(key)},
+			Body: []ir.Stmt{&ir.Assign{Target: &ir.Index{Operand: keptRef(), Idx: kRef(), Type: elemT}, Op: ast.AssignSet, Value: at(kRef())}},
+		}}},
+		&ir.Assign{Target: ref(), Op: ast.AssignSet, Value: keptRef()},
+	}}
+}
+
 // copyRead is ix, a test's read of one copy of a node loops render,
 // `c.row[1]`, as the copy its key holds, or null where the render made none
 // there. ok is false where ix reads no copy.
@@ -625,11 +742,21 @@ func (p *placement) copyNullTest(b *ir.Binary, comp string) (ir.Expr, bool) {
 		}
 		side = b.Right
 	}
-	ix, ok := side.(*ir.Index)
-	if !ok {
-		return nil, false
+	var copies *ir.Var
+	var key ir.Expr
+	for conv, ok := side.(*ir.Conversion); ok; conv, ok = side.(*ir.Conversion) {
+		side = conv.Operand
 	}
-	copies, key := p.copyOf(ix, comp)
+	switch x := side.(type) {
+	case *ir.Index:
+		copies, key = p.copyOf(x, comp)
+	case *ir.Select:
+		// A spliced instance rendered once, held by its roots under the
+		// key "" (ir.InstanceRootProp), where nothing else holds it.
+		if id, ok := x.Operand.(*ir.Ident); ok && id.Name == comp && p.held[x.Field] == nil && packageVar(p.pkg, x.Field) == nil {
+			copies, key = p.copies[x.Field], &ir.Literal{Type: ir.TypString, Value: ""}
+		}
+	}
 	if copies == nil {
 		return nil, false
 	}

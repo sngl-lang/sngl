@@ -477,14 +477,21 @@ func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr
 	}
 	fn, args := n.Component.Protocol.Handler(event), []ir.Expr{node}
 	if fn == nil {
-		if st.connect == nil {
+		// The platform's connect is for an event the node declares. One it
+		// does not is a spliced component's, its two-way prop's change, which
+		// the component's own body raises and no signal of the node's does.
+		var declared *ir.EventDecl
+		for _, e := range n.Component.Events {
+			if e.Name == event {
+				declared = e
+			}
+		}
+		if st.connect == nil || declared == nil {
 			return nil
 		}
 		name := event
-		for _, e := range n.Component.Events {
-			if e.Name == event && e.Connects != "" {
-				name = e.Connects
-			}
+		if declared.Connects != "" {
+			name = declared.Connects
 		}
 		fn, args = st.connect, append(args, &ir.Literal{Type: ir.TypString, Value: name})
 	}

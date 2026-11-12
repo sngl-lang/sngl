@@ -22,9 +22,7 @@ stdout 'ok   3 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout 'ok   3 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=c app.sngl
-stdout 'ok   3 tests, 0 failures'
-sngl test --platform=gtk4next --language=go app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout 'ok   3 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -152,44 +150,26 @@ sha256:8e1b27a3c7bd54fafd187246e1556eee
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/app/1 --
+sha256:b04dc678ad88633ae9c0d19a4bff785a
+{
+  "results": [
+    {
+      "Desc": "APickedEntryIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryAfterTheLoopIsChecked",
+      "Passed": true
+    },
+    {
+      "Desc": "AToggleEntryFollowsItsState",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:0a3d3587c8525e42a51ada5f886cf12e
-{
-  "results": [
-    {
-      "Desc": "APickedEntryIsChecked",
-      "Passed": true
-    },
-    {
-      "Desc": "AToggleEntryFollowsItsState",
-      "Passed": true
-    },
-    {
-      "Desc": "AnEntryAfterTheLoopIsChecked",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/app/1 --
-sha256:7bd00fd63912bedf9a5359f421c29289
-{
-  "results": [
-    {
-      "Desc": "APickedEntryIsChecked",
-      "Passed": true
-    },
-    {
-      "Desc": "AnEntryAfterTheLoopIsChecked",
-      "Passed": true
-    },
-    {
-      "Desc": "AToggleEntryFollowsItsState",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/app/1 --
-sha256:1cdb4efce69fcd84fb491de569b734a5
+sha256:b076013072cd9e66e5575b0fa51cee21
 {
   "results": [
     {

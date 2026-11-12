@@ -1,6 +1,6 @@
-# An unusable gtk4 platform must not affect compiles for other platforms, and
-# must fail with one actionable message when it is the target. `--opt
-# gir=<missing>` reproduces a machine with no GTK 4 introspection data
+# GTK 4's introspection data decides only what a program's `gir:Gtk-4.0`
+# import declares: the platform's own widgets are committed (widgets.sngl).
+# `--opt gir=<missing>` reproduces a machine with no GTK 4 introspection data
 # regardless of what is installed here.
 
 # Compiling for html is completely unaffected: no gtk4 diagnostics.
@@ -8,10 +8,14 @@ sngl generate --lang=none --platform=html --opt gir=/nonexistent/Gtk-4.0.gir --o
 exists out/index.html
 ! stderr 'gtk4'
 
-# Targeting gtk4 itself names the missing file and how to supply it.
-! sngl generate --platform=gtk4 --lang=go --opt gir=/nonexistent/Gtk-4.0.gir --out=g app.sngl
-stderr 'platform gtk4 is unavailable'
-stderr '--opt gir='
+# Nor is a gtk4 program that imports no gir: package.
+sngl generate --platform=gtk4 --lang=go --opt gir=/nonexistent/Gtk-4.0.gir --out=g app.sngl
+exists g/main.go
+
+# One that does names the missing file and how to supply it.
+! sngl generate --platform=gtk4 --lang=go --opt gir=/nonexistent/Gtk-4.0.gir --out=g2 gir.sngl
+stderr 'import "gir:Gtk-4.0"'
+stderr '--opt gir=/nonexistent/Gtk-4.0.gir'
 
 -- app.sngl --
 import . "sngl:ui"
@@ -23,4 +27,11 @@ component main node {
 
 window {
     main
+}
+-- gir.sngl --
+import gtk "gir:Gtk-4.0"
+import ui "sngl:ui"
+
+ui.window {
+    gtk.GtkLabel(label="hi") {}
 }

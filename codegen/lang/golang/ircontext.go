@@ -958,6 +958,13 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	if gc.Ctx.FreeBody || gc.FreeFuncScope {
 		_, kind := gc.Ctx.Resolve(name)
 		v, _ := n.Sym.(*ir.Var)
+		// A var the package holds is that var whatever else the name is: an
+		// import's alias, `#c` beside sngl:x/c's `c`, a test's instance `c`,
+		// whose reads placement made the program's, and a render slot's
+		// `parent` beside a component's var of the name.
+		if v != nil && !v.IsConst && gc.Ctx.Pkg != nil && slices.Contains(gc.Ctx.Pkg.Vars, v) {
+			return gc.recvFor(v) + "." + gc.StateFieldName(name)
+		}
 		if kind == codegen.NameLocal || kind == codegen.NameUnknown && (n.IsElementRef || v != nil && v.NodeHandle) {
 			return gc.Ctx.RenamedName(name)
 		}

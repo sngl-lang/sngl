@@ -127,13 +127,12 @@ writes `gobuild <pkgs>` rather than `exec go build`, answered the same way
 is off in a script's config so its counters do not move that digest. What still
 compiles in a plain run is sngl's own behavior: the `go://` const evaluator
 `trust_eval` runs, and `serve`'s build of sngl. And a package keeping a `testdata/test_run` --
-`pkg/go/gtk4rt`, whose tests link the host's GTK and skip in CI for want of a
-compositor -- is left out of the test step while that digest of what its tests
-build stands (`internal/cmd/verify/testrun.go`), `-update` running them and
-writing it again. Both compiled in CI: a GTK call CI's 4.8 lacked failed its
-link in three scripts and gtk4rt's own build, where every record stood.
-`go vet` still reads gtk4rt's C, which preprocesses it with the host's headers
-but links nothing.
+one whose tests link what CI lacks, as the host's GTK with a compositor -- is
+left out of the test step while that digest of what its tests build stands
+(`internal/cmd/verify/testrun.go`), `-update` running them and writing it
+again. `go vet` still reads the C a cgo package compiles (gtk4's
+`lib/platform/gtk4/cgo`), which preprocesses it with the host's headers but
+links nothing.
 
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
@@ -150,15 +149,6 @@ Chromium, through `inBrowser`, and recorded the same way in
 `codegen/platform/html/testdata/browser_runs/<Test>`: a digest of the page it
 serves and the test's own source file, so an edit to the assertions asks for a
 run too.
-
-**And so is a gtk4 test's `go build` or `go test`** of the program it
-generated (`runGo` in `codegen/platform/gtk4`), recorded in
-`codegen/platform/gtk4/testdata/go_runs/<Test>`: a digest of the files the
-command runs over, its arguments, and the source of every package of this
-module those files import, transitively -- so an edit to `gtk4rt` asks for a
-run as an edit to the codegen does, and only a run that succeeded is recorded.
-The program never depends on the host's GIR, because no test reads one (see
-gtk4 in design/architecture.md).
 
 **And so is each C compiler's build and run in `codegen/lang/c`'s
 `TestRun`**, recorded in `codegen/lang/c/testdata/run_records/<archive>/<cc>-<variant>`:
@@ -257,8 +247,8 @@ once its tests pass and runs each line inside the headless compositor the root
 test binary re-execs under, and the target's `run/` digest covers the lines,
 the files they name and the source of every package of this module the
 program imports (`toolchain.HashModuleImports`), so the ordinary run replays
-them as it does the build and an edit to `gtk4rt` or `fynelayout` asks for a
-run. A program meant to be run carries the scenario that drives it -- a
+them as it does the build and an edit to a runtime package (`fynelayout`)
+asks for a run. A program meant to be run carries the scenario that drives it -- a
 timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
 `<name>_runs.txtar` beside the `<name>.txtar` showing the plain code.
 

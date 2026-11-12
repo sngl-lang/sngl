@@ -138,7 +138,7 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 - `cmd/sngl/testdata/*.txt` — CLI script tests, including anything that runs
   generated code.
 - Toolchain, browser and gtk4 runs are recorded, in the goldens, the scripts
-  and the packages' own records (gtk4, html, `internal/build`). After a codegen
+  and the packages' own records (html, win32, `internal/build`). After a codegen
   change, `go tool verify -update` rerecords all of them (scripts' android runs
   want `ANDROID_HOME` set); `-verify` on one package reruns it whatever its
   records say.

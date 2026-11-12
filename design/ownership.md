@@ -71,8 +71,9 @@ does not reach: a composed type -- `list[T]` for a `T` with a retain --
 copied var to var is still released by each, as before; and a local's
 reassignment, which releases nothing today, retains nothing either.
 
-gtk4's `Picture` is the first use: `gtk4rt.Picture.refs` counts its holders,
-`RefPicture` adds one and `UnrefPicture` gives the decode back at the last,
+gtk4's `Picture` is the first use: the runtime's `SnglPicture` counts its
+holders, `sngl_picture_ref` adds one and `sngl_picture_unref` gives the
+decode back at the last,
 so a program keeping the picture a source derived -- the last one shown while
 the URL moves on -- holds a reference, not a second decode. A `gir:` class
 whose chain reaches `GObject.Object` would be declared
@@ -148,13 +149,12 @@ written by hand, and gtk4 has none to write: what it declares --
 and strings cairo and GTK copy (`cairo_select_font_face` builds a toy face
 that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that
 keep a pointer -- a signal's, an idle's, a timeout's, a draw func's or a weak
-ref's user data, `g_object_set_data` -- are in gtk4rt and the inline-cgo
-scaffold, outside the IR, and are handed `GINT_TO_POINTER(idx)` or `NULL`,
-nothing allocated. `lib/retains_test.go` pins it: no function a library
+ref's user data, `g_object_set_data` -- are in the runtime, outside the IR,
+and are handed what it allocates and frees itself, a handler's closure
+crossing as its context with the release GLib calls (`sngl_signal_connect`). `lib/retains_test.go` pins it: no function a library
 package or what it imports declares has a `#[retains]` parameter, so the
-first one written is noticed as the decision it is. The scaffold's `gtkPost`
-hands `g_idle_add` a Go pointer, `&f`, which GLib keeps past the call as cgo
-forbids; nothing calls it, and gtk4rt's `Post` passes an index instead.
+first one written is noticed as the decision it is. A Go closure crosses to C as a handle the wrappers keep, never as a Go
+pointer GLib would keep past the call, as cgo forbids.
 
 **An owned value has one of four lifetimes**, the narrowest that fits:
 
@@ -330,7 +330,7 @@ temp already bound is an identifier, and `released` remembers an argument
 already given a release. On a target without declarative views the view
 bodies are reached too (`viewBlocks`): `passDeclarative` flattened each into
 the statements that build it, and a widget's declared constructor hands C a
-string there (`testdata/gtk4_declared_create.txtar`). On the interpreter,
+string there (`testdata/win32_c_counter.txtar`). On the interpreter,
 `ReleaseTemps` reaches every body the program does, library ones included,
 the way `CMarshal` does, since nothing there is spliced.
 
@@ -418,8 +418,8 @@ stop and before the leak check.
 down, so a constant there -- `say("after")`'s C string -- would be read after
 `Teardown` freed it. The handler's body, each function it calls and theirs,
 with the lambdas in each, make and release such a value per statement, as
-any other temp. C on win32 printed it by luck under Wine and gtk4next's
-printed garbage (`testdata/gtk4next_run_handler_runs.txtar`,
+any other temp. C on win32 printed it by luck under Wine and gtk4's
+printed garbage (`testdata/gtk4_run_handler_runs.txtar`,
 `win32_c_run_handler_runs.txtar`).
 
 A package `var` of an owned type the program declares is released the same
@@ -453,39 +453,19 @@ empty function the program wrote is inlined away with its calls, and a
 release is called after the inliner ran. `codegen.HasBody` is the test, on
 Go, Kotlin and JavaScript alike (`testdata/owned_release_empty_body.txtar`).
 `c.free` calls cgo's `C.free`, which `<stdlib.h>`
-declares: gtk4's preamble includes it, and fyne's and bubbletea's
-(`EmitCHeader`) include it beside the program's links, since every `c.str`
+declares: gtk4's and win32's programs include it, and fyne's and
+bubbletea's (`EmitCHeader`) include it beside the program's links, since every `c.str`
 those targets make is freed.
 
 **gtk4's widget protocol is declared, so its strings are the passes'.** The
-inline-cgo translator used to build the calls that make a widget, add a
-child, write a prop and connect a handler after lowering, writing
-`C.CString` into them where no pass saw the allocation, and
-`emitShared.ownCStrings` wrote by hand the release `ReleaseTemps` would have:
-a literal's copy kept in a package `var` for the application and never freed,
-any other bound to a `__ctmpN` and freed after its statement. #293 moved each
-of those calls into SNGL as a `#[gen.protocol(op)]` function -- declgen
-writes a GIR class's, `gtk4.sngl` the tags no GIR class is behind -- which
-`passDeclarative` splices into the op it makes and marshals there
-(`design/nodes.md`, `design/architecture.md`). With no call left building a
-string, `ownCStrings` went, and `constCString`, `cTempName` and the `__cstrN`
-vars with it.
-
-Where a string goes now depends on what the declared call takes. By default
-a protocol calls gtk4rt as a `#[go.native]` with a Go string, which gtk4rt
-copies into C and frees itself -- the constructor's class name, a signal
-name, a setter's text, the window's title and a flow's markup -- so a
-program's temps are only what it hands C on its own (`design/architecture.md`, *Which file
-a program gets*). Under `gtk4(cgo=true)` a protocol is the class's own `#[cnative]`s,
-so a string it hands GTK is a `CMarshal` temp `ReleaseTemps` frees after the
-call, or for a literal an application-lifetime value freed at teardown, where
-the translator's `__cstr` was never freed; a constructor refusing NULL is
-handed one such `""` (`testdata/gtk4_translator_strings.txtar`,
-`testdata/gtk4_declared_create.txtar`). Either way `--simulate gtk4` runs the
-same protocol functions, so every `c.str` a widget is handed is one the
-tracker follows (below). The canvas's draw function and click
-are still the translator's, and make no C string; they go with #294, which
-retires `passShapeDraw`.
+calls that make a widget, add a child, write a prop and connect a handler are
+`#[gen.protocol(op)]` functions -- declgen writes a GIR class's, `gtk4.sngl`
+the runtime's -- calling `#[cnative]`s, which placement splices into the op
+and `CMarshal` marshals there (`design/nodes.md`), so a string one hands GTK
+is a temp `ReleaseTemps` frees after the call, or for a literal an
+application-lifetime value freed at teardown. `--simulate gtk4` runs the same
+protocol functions, so every `c.str` a widget is handed is one the tracker
+follows (below).
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective
@@ -531,17 +511,9 @@ pokedex's pages, and the pictures they held, were held until the process
 ended (`testdata/teardown_page_registries.txtar`, found by the ASan check
 below). The entry points, and where each calls it:
 
-- **gtk4**, `main` of a program whose root is the application
-  (`emitGTK4AppMain`): after `gtk4rt.RunWindows` returns, inside `run` where
-  the program wrote `@run` and after the hidden loop where the handler never
-  called it.
-- **gtk4**, `main` of a build rooted at a component (the `rootComponent`
-  option): `gtk4rt.Run`/`RunHidden` with `@run` (`emitGTK4RunMainWrapped`),
-  the same way; `gtk4rt.Run` without (`emitGTK4MainWrapped`), whose Model is
-  made on activate, so the teardown asks whether one was. Neither tore down
-  before.
-- **gtk4**, inline-cgo `main`: after `g_application_run`, through the package
-  `snglModel`. It refuses `@run`, and has no `gtk4rt` to quit on a signal.
+- **gtk4** and **win32**, the entries their generators write (`appMain`,
+  `goRunMain`): after the loop returns, inside `run` where the program wrote
+  `@run` and after the hidden loop where the handler never called it.
 - **fyne**, `main` rooted at the application (`emitIRAppMain`) or a component
   (`emitIRRunMain` with `@run`, `emitIRMain` without): after
   `fynelayout.RunWindows`, `ShowAndRun` or `a.Run` returns, inside `run` as on
@@ -570,7 +542,7 @@ below). The entry points, and where each calls it:
   holds nothing the activity made.
 
 A loop exits when the last window closes or when the process is asked to
-stop: `gtk4rt` and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
+stop: gtk4's runtime (`sngl_app_run`) and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
 ctrl+c does, so a terminal's ctrl+c or i3 restarting a bar tears down rather
 than killing the process mid-loop. fyne's driver quits on both already, but
 registers from a goroutine `Run` starts and missed a signal sent during
@@ -690,9 +662,8 @@ and has no teardown to leak check at. A node whose component declares its
 protocol is made, filled and connected through it after every settle
 (`Env.hostProtocols`): its create once, its sets for each prop written and
 again when the value changes, its connect once per handler, the stubbed
-natives handed what the target hands them. Under `gtk4(cgo=true)` that is
-each `c.str` a widget is handed, which the tracker follows; by default the
-protocol is gtk4rt's `#[go.native]`s, which copy a Go string themselves
+natives handed what the target hands them: on gtk4 each `c.str` a widget
+is handed, which the tracker follows
 (`cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`,
 `cmd/sngl/testdata/simulate_cnative_owned.txt`).
 
@@ -803,7 +774,7 @@ nothing the check is for.
 were freed by the translator's own statements and never appeared here, so
 the check neither found them nor could tell whether a future site forgot
 one. Every call that made one is a declared protocol now (above), so its
-strings are `CMarshal`'s and `ReleaseTemps`' or gtk4rt's, and the tracker
+strings are `CMarshal`'s and `ReleaseTemps`', and the tracker
 holds the first under `--simulate gtk4` on every commit.
 
 **To rerun it**, which a toolkit upgrade or a change to the instance emitter

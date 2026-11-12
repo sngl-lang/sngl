@@ -335,10 +335,13 @@ the slot sits in, so each slot keeps a hidden anchor there
 (`codegen.SlotAnchorField`), added by its first render -- which runs while the
 container is built, at the slot's position -- and inserts its entries before
 it. Appending instead moved a re-rendered slot after every sibling below it
-(`testdata/render_slot_in_place.txtar`); gtk4's cgo mode does the same through
-two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
-record also holds a reference on its root, since the slot holding it removes
-it before appending it again and GTK frees a widget its parent held alone. In
+(`testdata/render_slot_in_place.txtar`); gtk4's runtime keeps the anchor
+(`sngl_slot_anchor`) and inserts before it (`sngl_box_insert_before`). A child
+another box holds is taken out of it, referenced, before it goes in: a render
+that builds its container afresh puts each instance it kept into the new one,
+and left in the old, the instance's root went with it when GTK freed it
+(`sngl_moved_from`; `examples/pokedex`'s tabs, in
+`cmd/sngl/testdata/examples_runs.txt`). In
 a table part -- a `tbody`, a `tr` -- html writes the anchor as a `template`,
 which the parser leaves where it is written where it moves a span out before
 the table, and the boot puts the span in its place

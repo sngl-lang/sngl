@@ -113,6 +113,14 @@ const (
 	// lowering emits the op only where one does -- so a target without it
 	// keeps the rebuild it has always done, correct and less direct.
 	NodeOpInsertBefore = "InsertBefore"
+	// NodeOpSlotAnchor keeps a render slot's anchor, the hidden node its
+	// entries go before: SlotAnchor(parent, anchor) writes the slot's var
+	// anchor with the platform's #[gen.protocol(anchor)], which hands back
+	// the one it holds while that is still the parent's. Emitted only for a
+	// platform declaring the op, which asks for placement, so placement
+	// answers every one and no codegen walk meets it: it is no member of
+	// NodeOps.
+	NodeOpSlotAnchor = "SlotAnchor"
 )
 
 // ComponentSetter is the function an instance carries for one prop it can

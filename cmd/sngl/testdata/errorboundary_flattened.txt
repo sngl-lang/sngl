@@ -16,8 +16,8 @@ grep 'm.caught__inst0 = e.Message' fy/model.go
 ! stderr 'panic'
 
 sngl generate --platform=gtk4 --lang=go --out=gt boundary.sngl
-grep 'recover\(\)' gt/model.go
-grep 'm.caught__inst0 = e.Message' gt/model.go
+grep 'recover\(\)' gt/main.go
+grep 'm.caught__inst0 = e.Message' gt/main.go
 
 sngl generate --platform=html --lang=none --out=ht boundary.sngl
 sngl generate --platform=bubbletea --lang=go --out=bt boundary.sngl

@@ -11,7 +11,9 @@
 # the selection is done.
 #
 # It needs the page's weight to show: a picture, a request's answer, a
-# context, forty rows; a select alone in a slot survived.
+# context, forty rows; a select alone in a slot survived. gtk4 now refuses the
+# test, whose trigger reaches a select inside an instance built at run time
+# (#318).
 
 env G_DEBUG=gc-friendly
 sngl test --platform=none app.sngl
@@ -22,8 +24,8 @@ sngl test --platform=bubbletea --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
-sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+! sngl test --platform=gtk4 --language=go app.sngl
+stderr 'app.sngl:112:28: the test raises `change` through the target''s override of the event.*#318'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok +1 tests, 0 failures'
 
@@ -166,16 +168,6 @@ sha256:d931953a2b1024f39006e51c8cae8d09
 }
 -- testrun/fyne/go/app.sngl/main/1 --
 sha256:0299a911c820c3de1a72be5fdcaf9bd1
-{
-  "results": [
-    {
-      "Desc": "ChoosingRebuildsThePanel",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/main/1 --
-sha256:e12ac02006ea4365eb77ce01dc45af35
 {
   "results": [
     {

@@ -1,6 +1,6 @@
 # A window after html's document is a `<dialog>` in it, run in Chromium and on
-# the interpreter, which holds it to the same answers, and on fyne, gtk4,
-# gtk4next and win32, where it is a toplevel of its own. A test's component
+# the interpreter, which holds it to the same answers, and on fyne, gtk4 and
+# win32, where it is a toplevel of its own. A test's component
 # may be a root component, and its windows' handles are reached through it
 # like any other node's: a read of `c.log.visible` is the cell the window
 # keeps for it.
@@ -27,9 +27,7 @@ stdout '3 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '3 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=c app.sngl
-stdout '3 tests, 0 failures'
-sngl test --platform=gtk4next --language=go app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '3 tests, 0 failures'
 
 sngl test --platform=win32 --language=c app.sngl
@@ -123,44 +121,26 @@ sha256:8f1cddee208690ed273d86ce2c81cba3
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/app/1 --
+sha256:9c2691fbb0f29b2b8960cced2aa816f7
+{
+  "results": [
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:3c196785763162049975f4b8df6fed99
-{
-  "results": [
-    {
-      "Desc": "ADialogUnderAnIfComesAndGoes",
-      "Passed": true
-    },
-    {
-      "Desc": "OpenAndCloseADialog",
-      "Passed": true
-    },
-    {
-      "Desc": "TheDocumentWindowKeepsItsCell",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/app/1 --
-sha256:92be1472ad136b4b162271b26309d439
-{
-  "results": [
-    {
-      "Desc": "OpenAndCloseADialog",
-      "Passed": true
-    },
-    {
-      "Desc": "TheDocumentWindowKeepsItsCell",
-      "Passed": true
-    },
-    {
-      "Desc": "ADialogUnderAnIfComesAndGoes",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/app/1 --
-sha256:ba29531c92701743048f00358a15fa4a
+sha256:d76dffd03727b2712b50eb92e8fe3db7
 {
   "results": [
     {

@@ -1082,6 +1082,10 @@ func markGenProtocol(m *mark) error {
 		if len(fn.Params) != 0 || fn.Return == nil || fn.Return.Kind != ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(contents)] takes nothing and returns the container it makes: func f() Box")
 		}
+	case ir.ProtocolAnchor:
+		if len(fn.Params) != 2 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent || fn.Params[1].Type == nil || fn.Params[1].Type.Kind != ir.TypeComponent || fn.Return == nil || fn.Return.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(anchor)] takes the container and the anchor a render slot holds, and returns the anchor: func f(parent ui.node, anchor ui.node) ui.node")
+		}
 	case ir.ProtocolRedraw:
 		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
 			return fmt.Errorf("#[gen.protocol(redraw)] takes the #[intrinsic] canvas it asks to paint again: func f(w C)")

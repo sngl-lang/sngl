@@ -28,7 +28,7 @@ const root = "../.."
 // TestCommitted holds each committed wrapper package, and the marks its
 // platform's .sngl files carry, to what the tool writes now.
 func TestCommitted(t *testing.T) {
-	for _, p := range []struct{ name, goos string }{{"win32", "windows"}, {"gtk4next", ""}} {
+	for _, p := range []struct{ name, goos string }{{"win32", "windows"}, {"gtk4", ""}} {
 		t.Run(p.name, func(t *testing.T) { committed(t, p.name, p.goos) })
 	}
 }

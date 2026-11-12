@@ -248,8 +248,8 @@ enum NativeFlag {
     // method; only the API knows which it is.
     method
     // The identifier runs a callback it is handed from the loop it owns,
-    // rather than inline on the thread that called it: `gtk4rt.Every` gives
-    // its function to a GLib timeout source, and the source runs it from the
+    // rather than inline on the thread that called it: gtk4's `sngl_every`
+    // gives its function to a GLib timeout source, and the source runs it from the
     // main loop, which is the thread the target draws on.
     //
     // passAsyncOffload reads it to know the callback is a body it may enter.

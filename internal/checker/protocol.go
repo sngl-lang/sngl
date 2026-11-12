@@ -33,7 +33,7 @@ func (c *checker) bindProtocols() {
 		fn := pm.fn
 		op := fn.Protocol
 		switch op {
-		case ir.ProtocolConnect, ir.ProtocolHandle, ir.ProtocolAttach, ir.ProtocolDetach, ir.ProtocolContents:
+		case ir.ProtocolConnect, ir.ProtocolHandle, ir.ProtocolAttach, ir.ProtocolDetach, ir.ProtocolContents, ir.ProtocolAnchor:
 			c.bindPlatformOp(pm)
 			continue
 		}
@@ -136,6 +136,8 @@ func (c *checker) bindPlatformOp(pm protocolMark) {
 		node.Protocol.Detach = pm.fn
 	case ir.ProtocolContents:
 		node.Protocol.Contents = pm.fn
+	case ir.ProtocolAnchor:
+		node.Protocol.Anchor = pm.fn
 	}
 }
 

@@ -75,8 +75,8 @@ prop, whose report reaches the node as an event of its name (`bindOn`,
 one per event. `passDeclarative` splices it in place of the platform's
 connect, with the node bound and the handler left for the platform as
 `connect` leaves it. gtk4's scroll is the first: GTK raises no signal for
-the end of the content arriving, so `@reachEnd` is gtk4rt's
-`ScrollOnReachEnd`, not a `g_signal_connect` (`testdata/gtk4_declared_scroll.txtar`).
+the end of the content arriving, so `@reachEnd` is the runtime's
+`sngl_scroll_on_reach_end`, not a `g_signal_connect`.
 
 `set` writes one prop: a function of the widget, typed as the component, and
 the value, whose parameter is named as the prop it sets (`bindSet`,
@@ -139,7 +139,7 @@ win32's generator writes only the program's entry
 `#[gen.protocol(redraw)]`**, a function of the widget asking it to paint again,
 which the checker allows only on a component whose rest slot takes shapes
 (`TestGenProtocolPlacement`). win32's `Canvas` is one, which its
-`draw.canvas` override renders, and gtk4next's, and gtk4next's
+`draw.canvas` override renders, and gtk4's, and gtk4's
 `ImageDrawing`, a `draw.image`, whose paint is a texture's. `passCanvasPaint` (`internal/lower/canvas_paint.go`)
 runs right after `passShapeDraw` and hands the drawing -- the statements that
 pass put in place of the shapes -- to the canvas's event whose one parameter is
@@ -159,7 +159,7 @@ it holds any (`hoistShared`, which walks `closureFuncs` for a handler's
 closure as `hoistNodes` does, and `holdRead`, which still nulls such a node as
 its branch goes). `testdata/win32_c_canvas.txtar` holds it, and
 `TestSnapshotCanvas` (`codegen/platform/win32`) what GDI+ paints;
-`testdata/gtk4next_c_canvas.txtar` holds gtk4next's, whose snapshots draw a
+`testdata/gtk4_c_canvas.txtar` holds gtk4's, whose snapshots draw a
 canvas afresh and so cannot see a redraw left out.
 
 **A component built at run time is placed as a record**
@@ -234,7 +234,10 @@ wrote -- is the record's own copy of it (`recordReads`). A trigger fires the nod
 is held by its key (`ir.CopyProp`) in a package map that each
 render stamping the keys starts afresh (`copyWrite`, `clearCopies`): a
 record's builder does, since a keyed render updates every prop of each
-instance it keeps, the key among them. A trigger of the copy fires the node
+instance it keeps, the key among them. A record's own render does not, the
+map being every instance's, so its destroy takes its node out where its key
+still holds it (`dropCopies`; `page_write_reaches_instance_runs.txt`, the
+`#extra` of a row whose `if` went false). A trigger of the copy fires the node
 the key holds, and a null test of it is whether the key holds one. A method
 lowering wrote for the instance is handed null for it, its state being the
 program's. A test's trigger, `c.save.click()`, is the
@@ -339,8 +342,10 @@ declaration itself. Two things about the name that are easy to get wrong:
   `EnumWindows` share. Go exports a dispatcher per callback type, named for
   it (`snglCallback_int__int`), in `sngl_callbacks.go`
   (`codegen/lang/golang/ccallback.go`), which finds the closure through
-  `cbind`'s registry by the index the context holds, one past it so that none
-  is NULL. They sit in a file of their own because a Go file that exports to
+  `cbind`'s registry by the index the context holds, offset past the first
+  64K so that none is NULL and none is a pointer Go calls bad: an
+  `unsafe.Pointer` below 4096 on a goroutine's stack throws as Go copies the
+  stack, which `examples/pokedex`'s thousandth callback reached on gtk4. They sit in a file of their own because a Go file that exports to
   C may define nothing in its preamble that another unit links, and a
   platform's preamble may. An unmarked callback is held for the call, a
   `#[retains]` one for the rest of the program, and one whose function marks
@@ -349,10 +354,9 @@ declaration itself. Two things about the name that are easy to get wrong:
   finding its closure released does nothing, since C may still call a
   callback it has let go, as GLib does after a disconnect.
   (`testdata/c_callback_argument.txtar`, `error_c_callback.sngl`,
-  `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4's
-  `cgo=true` connects every handler this way; its default build keeps
-  `gtk4rt.Connect`, because a `C.` in every program with a handler is what
-  wrapped mode exists to avoid (`design/architecture.md`). The C files a
+  `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4
+  connects every handler through its runtime's `sngl_signal_connect` this
+  way. The C files a
   language adds -- a link's sources, the dispatchers -- are written by
   `codegen.Generate`, which a build, a test's launch and a dump all call:
   `sngl test` called the platform alone and built without them.
@@ -607,7 +611,12 @@ composed. The two splices that move the call site's `#id` onto the body's
 first node leave a program component to passNoInlineComponents where that
 node is one an `if`, a `for` or a boundary's fallback decides
 (`ir.NodeIDRendersWithBody`). A null test of a node nothing decides is one
-too, answered present (`testdata/indexed_ref_null_test_spliced.txtar`).
+too, answered present (`testdata/indexed_ref_null_test_spliced.txtar`). A
+placed node's var is typed as the host holds it, a fieldless foreign struct
+(gtk4's `Widget`, a `GtkWidget *`), which the fold does not take for present:
+a node under an `if` a context's provider settled false is never built, and
+`c.p.w == null` folded to false (`alwaysPresent`;
+`cmd/sngl/testdata/test_reach_review_runs.txt`, `context.sngl`).
 
 **An event's parameters are its declaration's, and an override reads what the
 host reports and writes the prop it reports.** A platform override handles
@@ -648,14 +657,12 @@ matched. Each target reads its host its own way, in its own `.sngl`:
 - **gtk4**'s GIR signals hand their callback the instance they fired on, which
   is what every generated event now declares, `@toggled(self GtkCheckButton)`; a component may name itself in its own signature for this.
   The override reads that widget with a getter `gtk4.sngl` declares --
-  `checkActive`, `switchActive`, `entryText`, `calendarDate`, platform
-  intrinsics answered where a handler body is translated (`readWidgets`),
-  since which getter they become depends on the file's mode. The trampoline
-  passes nothing, so a signal handler's `self` is the node it is connected
-  on (`selfIsNode`); a widget a handler lifted out of a component built at
-  run time hands on arrives as a value and is asserted to its field's Go type.
-  On gtk4next the getters are the runtime's C, `sngl_check_active` and its
-  kin, taking the widget a node is, which each language calls as it calls C.
+  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- the
+  runtime's C, `sngl_check_active` and its kin, taking the widget a node is,
+  which each language calls as it calls C. The trampoline passes nothing, so
+  a signal handler's `self` is the node it is connected on: placement wraps a
+  handler taking the widget in one taking nothing that hands it the node
+  (`handedTheNode`).
 - **android**'s Compose callbacks pass the value: `func(on) { checked = on; change(on) }`; one passing nothing (radio's `onClick`) names the loop's
   option.
 - **bubbletea**'s key press flips the state itself: `checked = !checked; change(checked)`.
@@ -673,20 +680,12 @@ not guarded, since pressing Enter commits whatever the value. A host whose
 write fires its signal more than once is written quietly instead: gtk4's entry
 overrides do not bind `text` but push it from
 `effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
-`setEntryText` (`gtk4rt.EditableSetTextQuiet` as a `#[go.native]`, which
-`readWidgets` hands the entry as a `Handle` in either mode) blocking
-"changed", because gtk_editable_set_text deletes and
-reinserts and a runtime instance's handler writing the text back re-entered
-itself until the stack overflowed (`codegen/platform/gtk4/entry_echo_test.go`).
-`sngl_calendar_select` blocks "day-selected" the same way; a test's invoker
-fires the signal itself after selecting.
-
-A handler attached in a statement list `readWidgets` reads names its widget
-through its parameter, which `signalLambda` maps to the node once the node is
-in scope, so `readWidgets` leaves those reads alone; read early, the parameter
-was taken for a widget handed in as a value (`e.(gtk4rt.Handle)`).
-`spellLocalNodes` then respells a node the slot declared as a local, which the
-Go renderer otherwise writes as the receiver's field (`c.__n1`).
+`setEntryText` (the runtime's `sngl_editable_set_text_quiet`) blocking
+"changed", because gtk_editable_set_text deletes and reinserts and a runtime
+instance's handler writing the text back re-entered itself until the stack
+overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
+`sngl_calendar_select` blocks "day-selected" the same way; a test's fire
+puts the value in place first and emits the signal itself (`sngl_fire_day`).
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
@@ -703,7 +702,7 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 **An event no host widget reports is a primitive of the platform's own.**
 `ui.scroll`'s `@reachEnd` has no signal on any target, so each answers it with
 something it ships: android's `SnglScroll` (`scroll.kt`), html's
-`sngl-reach-end` element (`reachend.go`), gtk4rt's `Scroll` and fynelayout's
+`sngl-reach-end` element (`reachend.go`), gtk4's runtime's scroll (`rt/scroll.c`) and fynelayout's
 `ReachScroll`. Each fires as the end arrives and again when the content
 grows while it is there, so a short first page loads the next without a
 scroll; content shrinking while it is there -- a row removed, a filter
@@ -718,7 +717,7 @@ handler while the toolkit lays the tree out, and one report answers every
 measure before it runs. fyne used to call it from the renderer and look again
 100 ms later, so a first page fetched slower than that never loaded the next;
 gtk4 never heard content shorter than its viewport grow
-(`pkg/go/fynelayout/scroll_test.go`, `pkg/go/gtk4rt/reach_test.go`). A fyne
+(`pkg/go/fynelayout/scroll_test.go`, `cmd/sngl/testdata/gtk4_test_runs.txt`'s `scroll.sngl`). A fyne
 test build queues `fynelayout.Post` for `t.wait`, since fyne's test driver
 runs `fyne.Do` at once. html's sentinel dispatches `reachEnd`, which `html.element` declares,
 because html names a test's invoker after the DOM event a handler listens
@@ -742,7 +741,7 @@ holds is the override's to convert: it shows `ui.choiceLabel(options, value)`
 and writes the value of the choice `ui.choiceLabeled(options, label)` finds.
 A test hands a value, and each target's override of the event says how its
 control takes it (`func ui.select[T].change[platform](value)`, see
-design/testing.md): gtk4 selects the label through `gtk4rt.DropDownSelect`
+design/testing.md): gtk4 selects the label through the runtime's `sngl_drop_down_select`
 and fyne through `Select.SetSelected`, each of which reports the change as a
 pick does; html sets the `<select>`'s value to the label and dispatches
 `change`, and checks the radio button at the choice's index under the
@@ -767,18 +766,15 @@ holds the bound value even before a choice carries it, since choices may
 be state that arrives later, and neither offering choices nor writing the
 value is reported as a choice:
 
-- **gtk4** offers a GtkStringList through `offerChoices`,
-  `gtk4rt.DropDownOffer` as a `#[go.native]` in both modes, which copies the
-  labels into C itself and blocks `notify::selected` meanwhile
-  (`testdata/gtk4_declared_dropdown.txtar`); the
+- **gtk4** offers a GtkStringList through `offerChoices`, the runtime's
+  `sngl_drop_down_offer`, which blocks `notify::selected` meanwhile; the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
   own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's
   one handle, shared, made two selects in a component one handle rendered
-  twice, which the build refused. A select a render slot builds reads its
-  dropdown through the signal's parameter, which `readWidgets` leaves for
-  `signalLambda` as above; spelled early, it read an unbound `d`
-  (`cmd/sngl/testdata/controls_several_runs.txt`). The invoker holds the
+  twice, which the build refused. A select a render slot builds is a local
+  of the slot's render, held in a package var a test reads besides, each
+  named apart (`hoistShared`; `cmd/sngl/testdata/controls_several_runs.txt`). The invoker holds the
   drop-down until the selection is done: a choice whose handler renders afresh
   the slot the select is in let go of its last reference while
   `gtk_drop_down_set_selected` was still running
@@ -899,7 +895,7 @@ coming back started it again: a counter at zero, a query asked again. A null
 test asks whether a node is mounted, so a node of a panel not shown is
 present (`tabs_runs.txt`, `tabs_panel_presence_runs.txt`). The interpreter
 keeps that body; every other target overrides it, and shows one panel its own
-way. gtk4's `Tabs` is gtk4rt's GtkNotebook, each panel a `TabPage` the notebook
+way. gtk4's `Tabs` is the runtime's GtkNotebook, each panel a `TabPage` the notebook
 holds -- a GtkStackSwitcher over a GtkStack drew a row of linked buttons, no
 tabs (`TestTabsAreANotebook`); fyne's is fynelayout's AppTabs, each panel a
 `TabPage` whose box is an item's content; html keeps a `role=tabpanel` per tab
@@ -910,8 +906,8 @@ displayed none (design/instances.md's *A stop that draws nothing is passed
 over*; `TestTabPassesOverAHiddenTabPanel`).
 
 A page reaches the stack, or the AppTabs, however the render slot of the
-strip's loop hands it to the tabs: gtk4rt's `BoxAppend`, `InsertBefore` and
-`BoxRemove` route a child of a `Tabs` to its stack, and fynelayout's `Tabs`
+strip's loop hands it to the tabs: the runtime's `sngl_box_append`, `sngl_box_insert_before` and
+`sngl_box_remove` route a child of a `Tabs` to its stack (`rt/tabs.c`), and fynelayout's `Tabs`
 is a widget drawing the AppTabs whose `Container` -- the box the slot inserts
 into, drawn nowhere -- holds the pages, its layout making their items the
 AppTabs'. A `Tabs` that embedded the box drew nothing, since Fyne walks into a
@@ -1052,7 +1048,7 @@ it `Text` — and against a gtk4 handle that is an `unsafe.Pointer` with no
 fields at all. On html it reaches the emitter and renders an empty element
 nothing fills. The one read that does work is a `#[cnative]` method's receiver,
 above. Closing the rest needs a language↔platform read hook that does not
-exist, and on gtk4 a getter is a call (`gtk4rt.EntryGetText`) whose name GIR
+exist, and on gtk4 a getter is a call (`gtk_editable_get_text`) whose name GIR
 would have to supply per property, not a field. Until then a read is answered
 at build time wherever the tree says the node is gone — see
 `#[gen.renders(identity)]` under `sngl:x/gen`.

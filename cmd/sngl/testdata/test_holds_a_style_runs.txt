@@ -5,10 +5,10 @@
 sngl test --platform=bubbletea --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=go app.sngl
+sngl test --platform=gtk4 --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=c app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout 'ok +1 tests, 0 failures'
 
 -- app.sngl --
@@ -32,8 +32,8 @@ sha256:46099cb3d331a263f1e90074f423ac43
     }
   ]
 }
--- testrun/gtk4next/c/app.sngl/_/1 --
-sha256:ebb395e17face6f65586dae48fdc59e8
+-- testrun/gtk4/c/app.sngl/_/1 --
+sha256:2d7d9d3c07d7c9ffc593ecc965e3b155
 {
   "results": [
     {
@@ -42,8 +42,8 @@ sha256:ebb395e17face6f65586dae48fdc59e8
     }
   ]
 }
--- testrun/gtk4next/go/app.sngl/_/1 --
-sha256:2ff097e982d34e8de4c8311009562a05
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:8b992dd624b8c8b1b45a216e0075f223
 {
   "results": [
     {

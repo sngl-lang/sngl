@@ -306,15 +306,15 @@ funcs, or as the package's top level, is renamed, since a target holds the
 two in one scope there: a spliced override's `for var k, row = rows` read the
 program's `row` it was handed, which a test build keeps as a Go package var
 and a C closure captures by name
-(`cmd/sngl/testdata/gtk4next_test_runs.txt`).
+(`cmd/sngl/testdata/gtk4_test_runs.txt`).
 
-**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
+**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme, as a program may import `gir:`, whose package gtk4 declares from the host's introspection data.
 
 The point is that the checker does not know where a package comes from: a lib/ directory or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.
 
 A target that is unavailable contributes no package, which is a whole-package decision on purpose: `mergePlatformExtensions` walks *every* registered platform's source, so a platform loading overrides whose widgets it cannot also declare would report them as undefined in a build targeting something else. gtk4 is unavailable when its `gir` option names a file it cannot read; `DeclaredPlatform.Unavailable` asks the generator its node names.
 
-**A platform is configured before the check, from the `output` block as well as the command line.** gtk4's `gir` option decides what the `gir:` import declares, so it is a check-time option, and `build.Check` hands each `codegen.OptionConfigurable` the literal options the first `output` block naming it declares -- `true` and `false` read by name, since both are declared, so a block's `gtk4(cgo=true)` selects the per-class protocol -- overlaid by `CheckConfig.Opts` (`--opt`). Only the command line configured it before, so a program whose block named a GIR was checked against the probed one and built against its own: a `#[moves]` the named GIR declared was not there to check, and its argument was freed (`testdata/gir_transfer_full.txtar`, `TestGIRSchemeFollowsTheOption`). A path is relative to the working directory, as `--opt`'s is.
+**A platform is configured before the check, from the `output` block as well as the command line.** gtk4's `gir` option decides what the `gir:` import declares, so it is a check-time option, and `build.Check` hands each `codegen.OptionConfigurable` the literal options the first `output` block naming it declares -- `true` and `false` read by name, since both are declared -- overlaid by `CheckConfig.Opts` (`--opt`). Only the command line configured it before, so a program whose block named a GIR was checked against the probed one and built against its own: a `#[moves]` the named GIR declared was not there to check, and its argument was freed (`testdata/gir_transfer_full.txtar`). A path is relative to the working directory, as `--opt`'s is.
 
 The `#[builtin]` mark only stamps the kind on whichever IR the declaration
 became. What a kind then *requires* — that a node kind names a component, that
@@ -465,6 +465,9 @@ Notable stdlib packages:
     MainActivity.
   - JavaScript emits a test body's entry-point call with the locale NoContext
     threaded, as Go does.
+  - Every Go target embeds the manifest beside the program it writes
+    (`golang.EmitI18nManifestEmbed`): gtk4 and win32 wrote none, and a plural
+    a fold could not answer read the source's words.
 
 ## HTTP and JSON
 
@@ -621,7 +624,7 @@ every access, so a write went nowhere a later read looked.
 **Only the program's own entry point opens the platform's place**, so a
 test never touches the reader's settings and each test starts with none,
 without a flag saying it is one: a Go `main` calls `snglsettings.Open`
-(gtk4 and bubbletea a JSON file in `os.UserConfigDir()/<output name>`, fyne
+(gtk4, win32 and bubbletea a JSON file in `os.UserConfigDir()/<output name>`, fyne
 its Preferences, made with `app.NewWithID(<output name>)`), android's
 MainActivity calls `SnglSettings.init`, and a Go test, the test agent's
 `main` and a Robolectric test on a plain `ComponentActivity` run none of

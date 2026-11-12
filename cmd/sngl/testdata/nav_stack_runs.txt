@@ -36,9 +36,7 @@ stdout '5 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '5 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=c app.sngl
-stdout '5 tests, 0 failures'
-sngl test --platform=gtk4next --language=go app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '5 tests, 0 failures'
 
 sngl test --platform=android --opt testRunner=robolectric app.sngl
@@ -263,60 +261,34 @@ sha256:397370df32ac6a5e06a0b9678d75a6be
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/site/1 --
+sha256:3883e3d1730fab4368c542d4110565f7
+{
+  "results": [
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    },
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/site/1 --
-sha256:641e875f651ec4527f3005bee36ca4bf
-{
-  "results": [
-    {
-      "Desc": "ALinkGoesToItsPage",
-      "Passed": true
-    },
-    {
-      "Desc": "APageNotShowingIsNotMounted",
-      "Passed": true
-    },
-    {
-      "Desc": "AStackStartsAtTheRootPage",
-      "Passed": true
-    },
-    {
-      "Desc": "GoShowsThePageAndBackReturns",
-      "Passed": true
-    },
-    {
-      "Desc": "ParamsTravelWithTheEntry",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/site/1 --
-sha256:d5166f6092aec0869d732152f1444801
-{
-  "results": [
-    {
-      "Desc": "AStackStartsAtTheRootPage",
-      "Passed": true
-    },
-    {
-      "Desc": "GoShowsThePageAndBackReturns",
-      "Passed": true
-    },
-    {
-      "Desc": "ParamsTravelWithTheEntry",
-      "Passed": true
-    },
-    {
-      "Desc": "ALinkGoesToItsPage",
-      "Passed": true
-    },
-    {
-      "Desc": "APageNotShowingIsNotMounted",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/site/1 --
-sha256:e0a374a96e8494a806e53d065f434f2b
+sha256:294c88a5d118da189a57201d1b5baa99
 {
   "results": [
     {

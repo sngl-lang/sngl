@@ -17,11 +17,9 @@ stdout '3 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '3 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=c app.sngl
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '3 tests, 0 failures'
 
-sngl test --platform=gtk4next --language=go app.sngl
-stdout '3 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -118,8 +116,32 @@ sha256:b2dfde87c0a5e417a8b75a96a6124916
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/moved/1 --
+sha256:75e067e0f64e86e724876218131ff7d7
+{
+  "results": [
+    {
+      "Desc": "RemoteFollowsItsURL",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/pictures/1 --
+sha256:e05522d095b1304112f928f2942f5255
+{
+  "results": [
+    {
+      "Desc": "RemoteLoads",
+      "Passed": true
+    },
+    {
+      "Desc": "RemoteFails",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/moved/1 --
-sha256:7d42dd6c904d1aec151c637a927fabbf
+sha256:03d8d566cecd991af7b0f9ed98380525
 {
   "results": [
     {
@@ -129,55 +151,7 @@ sha256:7d42dd6c904d1aec151c637a927fabbf
   ]
 }
 -- testrun/gtk4/go/app.sngl/pictures/1 --
-sha256:8dcd56b935af228535f6d9756beb3586
-{
-  "results": [
-    {
-      "Desc": "RemoteFails",
-      "Passed": true
-    },
-    {
-      "Desc": "RemoteLoads",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/moved/1 --
-sha256:f84525e81fbf5b0b467d0b5ac2487b54
-{
-  "results": [
-    {
-      "Desc": "RemoteFollowsItsURL",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/c/app.sngl/pictures/1 --
-sha256:f1103e1c02988848946077489ff8afa4
-{
-  "results": [
-    {
-      "Desc": "RemoteLoads",
-      "Passed": true
-    },
-    {
-      "Desc": "RemoteFails",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/moved/1 --
-sha256:9eb1119476a60b59640ae84a35c61ce6
-{
-  "results": [
-    {
-      "Desc": "RemoteFollowsItsURL",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4next/go/app.sngl/pictures/1 --
-sha256:7c5f2230daa9c1797f20f1d9cd669104
+sha256:0cb5a8985ad32b9760c0dff8988af55e
 {
   "results": [
     {

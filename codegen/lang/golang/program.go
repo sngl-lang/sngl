@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -28,10 +29,20 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 		return fmt.Errorf("golang.WriteProgram: %T is not a Go file", fe)
 	}
 	gc := f.gc
+	// A `#[cnative]` the program calls directly -- its own `c:` import, a
+	// class no wrapper covers -- is reached through the headers its c.link
+	// directives name; the platform's own C is its wrappers'.
+	if f.opts.CgoPreamble == "" {
+		if links := CLinks(pkg); len(links) > 0 {
+			f.opts.CgoPreamble = (&Translator{}).EmitCHeader(links)
+		}
+	}
 	gc.Ctx = codegen.NewExprCtx(pkg)
 	gc.Ctx.Platform = platform
 	gc.Ctx.FreeBody = true
 	gc.FreeFuncScope = true
+	gc.Ctx.FreeFuncs = placedFreeFuncs(pkg)
+	gc.AlertFunc = placedAlert
 
 	a := codegen.AnalyzeCommon(pkg)
 	var b strings.Builder
@@ -194,4 +205,55 @@ func mountsProgram(fn *ir.Func) bool {
 		return nil
 	})
 	return found
+}
+
+// placedFreeFuncs is the name each function of a placed program is declared
+// and called by: exported, and kept off a type's name, which Go declares in
+// the same scope -- a component's `tree()` beside a struct `Tree`.
+func placedFreeFuncs(pkg *ir.Package) map[string]string {
+	types := map[string]bool{}
+	for _, sd := range pkg.Structs {
+		types[ExportName(sd.Name)] = true
+	}
+	for _, ed := range pkg.Enums {
+		types[ExportName(ed.Name)] = true
+	}
+	for _, ud := range pkg.Units {
+		types[ExportName(ud.Name)] = true
+	}
+	out := map[string]string{}
+	for _, fn := range pkg.Funcs {
+		// A method WriteProgram declares on its type is named there.
+		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
+			continue
+		}
+		name := ExportName(fn.Name)
+		for types[name] {
+			name += "Func"
+		}
+		out[fn.Name] = name
+	}
+	return out
+}
+
+// placedAlert is sngl:dialog's Alert on a placed program, whose platform
+// shows no toast of its own: the message on stderr, tagged with its variant.
+// The fallback wrote a Model's toast list, which no placed program declares.
+func placedAlert(gc *GoIRContext, method string, args []ir.CallArg) []string {
+	variant := strconv.Quote(method)
+	switch method {
+	case "toast":
+		variant = `"info"`
+		if len(args) > 1 {
+			variant = gc.EvalExpr(args[1].Value)
+		}
+	case "info", "warn", "error":
+	case "confirm":
+		return []string{"true"}
+	default:
+		return []string{"// unsupported Alert." + method}
+	}
+	gc.RequireImport("fmt")
+	gc.RequireImport("os")
+	return []string{fmt.Sprintf("fmt.Fprintln(os.Stderr, %s+\": \"+%s)", variant, gc.EvalExpr(args[0].Value))}
 }

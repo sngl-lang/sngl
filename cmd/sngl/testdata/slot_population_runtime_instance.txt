@@ -20,7 +20,7 @@ grep 'textContent = "top"' html/index.html
 sngl generate --lang go --platform fyne --out fy instance.sngl
 grep '"named "' fy/model.go
 sngl generate --lang go --platform gtk4 --out gt instance.sngl
-grep '"named "' gt/model.go
+grep '"named "' gt/main.go
 sngl generate --lang go --platform bubbletea --out bt2 instance.sngl
 grep '"named "' bt2/model.go
 sngl generate --lang kotlin --platform android --out an entry.sngl

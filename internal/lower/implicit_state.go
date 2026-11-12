@@ -724,12 +724,23 @@ func refuseUnsplicedHandleCalls(pkg *ir.Package) error {
 		if fn.Intrinsic != "" || fn.Foreign.Name != "" || len(fn.Block) == 0 {
 			return nil
 		}
-		if h, _ := handleReceiver(call); h != nil {
+		if h, _ := handleReceiver(call); h != nil && !intrinsicHandle(h) {
 			bad = fmt.Errorf("%s: `%s.%s()` calls a method of the node `#%s`, which this target does not splice where it is written, so there is no one instance's method to call", handleCallPos(call), h.WrittenName(), fn.Name, h.WrittenName())
 		}
 		return nil
 	})
 	return bad
+}
+
+// intrinsicHandle reports whether h names a node the target makes itself, an
+// #[intrinsic] component, whose method is a function of the node -- a GTK
+// widget's action, `bar.pulse()` -- and not one instance's.
+func intrinsicHandle(h *ir.Var) bool {
+	if h.Type == nil {
+		return false
+	}
+	comp, ok := h.Type.Decl.(*ir.Component)
+	return ok && comp.Intrinsic != ""
 }
 
 // handleReceiver is the node handle a method call is made through, and

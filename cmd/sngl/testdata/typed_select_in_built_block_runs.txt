@@ -3,7 +3,8 @@
 # a select per call site, its effects being state, and builds the wrapper
 # there as an instance whose method the select's trigger is, which a test had
 # no route to: the trigger was restored to the event, whose invoker takes a
-# label, so the int choice did not compile.
+# label, so the int choice did not compile. gtk4 now refuses the test, whose
+# trigger reaches a select inside an instance built at run time (#318).
 
 sngl test --platform=none app.sngl
 stdout '2 tests, 0 failures'
@@ -17,8 +18,8 @@ stdout '2 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout '2 tests, 0 failures'
 
-sngl test --platform=gtk4 --language=go app.sngl
-stdout '2 tests, 0 failures'
+! sngl test --platform=gtk4 --language=go app.sngl
+stderr 'app.sngl:49:22: the test raises `change` through the target''s override of the event.*#318'
 
 sngl test --platform=android --language=kotlin app.sngl
 stdout '2 tests, 0 failures'
@@ -141,21 +142,11 @@ sha256:105b0f4f9d0206e341cf445a158e397a
   ]
 }
 -- testrun/gtk4/go/app.sngl/branch/1 --
-sha256:3c2f39ea29271324dcc0f57fa2f0cb8e
+sha256:6671fdf4a0e19c25d1568531b8809f5a
 {
   "results": [
     {
       "Desc": "ATypedSelectUnderAnIf",
-      "Passed": true
-    }
-  ]
-}
--- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:08c45b92605146cc095033fb52b7ac32
-{
-  "results": [
-    {
-      "Desc": "ATypedSelectInATab",
       "Passed": true
     }
   ]
