@@ -751,6 +751,9 @@ func (c *Context) AssignText(n *ir.Assign, target, value string) string {
 		if c.holder(n.Target) && owns(t) {
 			return c.store(t, target, value)
 		}
+		if c.throughRef(n.Target) && owns(t) {
+			return c.turnCopy(t, target, value)
+		}
 		return target + " = " + value + ";"
 	}
 	if t != nil && (t.Kind == ir.TypeString || t.Kind == ir.TypeInt && (op == ast.AssignDiv || op == ast.AssignMod)) {
@@ -766,6 +769,23 @@ func (c *Context) AssignText(n *ir.Assign, target, value string) string {
 		return target + " = fmod(" + target + ", " + value + ");"
 	}
 	return target + " " + op.String() + " " + value + ";"
+}
+
+// throughRef reports whether target is a local a closure writes, which it
+// holds the address of.
+func (c *Context) throughRef(target ir.Expr) bool {
+	id, ok := target.(*ir.Ident)
+	return ok && c.refs[id.Name]
+}
+
+// turnCopy is target, a local a closure writes, written with value copied
+// to the heap and dropped at once, so the copy lasts until the turn ends:
+// the closure may run as a C callback, whose call gives back the arena it
+// used as it returns (sngl_call_leave), and the local is read after.
+func (c *Context) turnCopy(t *ir.Type, target, value string) string {
+	kept := fmt.Sprintf("__turn%d", c.file.next())
+	tn := c.typeName(t)
+	return "{\n\t" + tn + " " + kept + " = " + c.keep(t, value) + ";\n\t" + c.drop(t, kept) + "\n\t" + target + " = " + kept + ";\n}"
 }
 
 func (c *Context) ToggleText(_ *ir.Toggle, target string) string {

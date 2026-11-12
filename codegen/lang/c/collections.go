@@ -173,8 +173,8 @@ func (c *Context) kept(recv ir.Expr) (string, bool) {
 	return "", false
 }
 
-// listAt is the element of list xs of type t at i, which raises past the
-// end as every target does.
+// listAt is the element of list xs of type t at i, which stops the program
+// past the end (sngl_panic) as every target does: no handler catches it.
 func (c *Context) listAt(t *ir.Type, xs, i string) string {
 	at := c.listOp(t, "at", "T *NAME(L l, int64_t i)", `	if (i < 0 || i >= l.len) {
 		sngl_panic("index out of range");
@@ -289,8 +289,14 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 	case "list.insert":
 		suffix, held := c.kept(recv)
 		grow := c.listGrow(t, held)
+		// The holder's copy, kept as the argument was, goes back where the
+		// index is out of range and nothing takes it.
+		drop := ""
+		if held && owns(t.Elems[0]) {
+			drop = "\t\t" + c.drop(t.Elems[0], "v") + "\n"
+		}
 		ins := c.listOp(t, "insert"+suffix, "void NAME(L *l, int64_t i, T v)", `	if (i < 0 || i > l->len) {
-		return;
+`+drop+`		return;
 	}
 	`+grow+`(l, 1);
 	memmove(&l->data[i + 1], &l->data[i], sizeof(T) * (size_t)(l->len - i));

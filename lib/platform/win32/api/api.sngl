@@ -57,12 +57,14 @@ struct WPARAM = int
 // --- Structs ---
 
 #[macro.cnative("POINT")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.POINT")]
 struct POINT {
     x LONG
     y LONG
 }
 
 #[macro.cnative("RECT")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RECT")]
 struct RECT {
     left   LONG
     top    LONG
@@ -71,6 +73,7 @@ struct RECT {
 }
 
 #[macro.cnative("SIZE")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SIZE")]
 struct SIZE {
     cx LONG
     cy LONG

@@ -10,7 +10,8 @@
 // of the declaration and writes it with the Go language's own emitter, so a
 // string, a struct and a callback cross exactly as they do there. A handle
 // type the functions cross is an alias of cgo's (`type HWND = C.HWND`), and
-// a C struct with fields the program's own Go struct, declared here.
+// each C struct with fields the package declares is a Go struct declared
+// here, which a program's own literal of one names too.
 //
 // Where a wrapper is, the declaration says so with `#[go.native(path,
 // name)]` beside its `cnative` mark (Marks), which the Go language reads in
@@ -19,6 +20,7 @@ package cgogen
 
 import (
 	"cmp"
+	"crypto/sha256"
 	"fmt"
 	"go/format"
 	"maps"
@@ -66,7 +68,8 @@ type Result struct {
 	Files map[string][]byte
 	Marks []Mark
 	// Skipped are the declarations no wrapper is written for, each with
-	// why: a Go program calls one directly, in its own cgo.
+	// why: a Go program calling one is refused, since it links none of the
+	// package's C to call it through.
 	Skipped []string
 }
 
@@ -150,6 +153,13 @@ func (g *gen) collect(p *ir.Package) {
 	for _, l := range p.CLinks {
 		if !slices.Contains(g.links, l) {
 			g.links = append(g.links, l)
+		}
+	}
+	// Each C struct with fields, crossed or not: a Go program's own literal
+	// of one names the wrapper package's, as a call crossing it does.
+	for _, sd := range p.Structs {
+		if sd.Foreign.Path == ir.CPath && sd.IsCStruct() {
+			g.goType(&ir.Type{Kind: ir.TypeStruct, Decl: sd})
 		}
 	}
 	for _, fn := range p.Funcs {
@@ -350,6 +360,7 @@ func (g *gen) header(cgo string) string {
 	if g.opts.GOOS != "" {
 		b.WriteString("//go:build " + g.opts.GOOS + "\n\n")
 	}
+	b.WriteString(g.sourcesDigest())
 	b.WriteString("package " + g.pkgName() + "\n\n")
 	if cgo != "" {
 		b.WriteString("/*\n" + cgo + "*/\nimport \"C\"\n\n")
@@ -423,7 +434,7 @@ func (g *gen) write() error {
 	}
 	src.WriteString(types.String() + body.String())
 	if len(g.res.Skipped) > 0 {
-		src.WriteString("\n// Not wrapped, which a Go program calls directly:\n//\n")
+		src.WriteString("\n// Not wrapped, which a Go program cannot call:\n//\n")
 		for _, s := range g.res.Skipped {
 			src.WriteString("//   - " + s + "\n")
 		}
@@ -452,12 +463,33 @@ func (g *gen) write() error {
 				if g.opts.GOOS != "" {
 					b.WriteString("//go:build " + g.opts.GOOS + "\n\n")
 				}
+				b.WriteString(g.sourcesDigest())
 				fmt.Fprintf(&b, "#include %q\n", path.Join(dir, s.Path))
 				g.res.Files[path.Base(s.Name)] = []byte(b.String())
 			}
 		}
 	}
 	return nil
+}
+
+// sourcesDigest is a comment naming the C the package compiles by its
+// digest, every source of each package's links. Go's build cache does not
+// see a file outside the package that one of its files includes, so a
+// change to the C changes the files that include it, which builds the
+// package again, and `go generate` writes the change.
+func (g *gen) sourcesDigest() string {
+	h := sha256.New()
+	for _, p := range slices.SortedFunc(maps.Keys(g.opts.Sources), func(a, b *ir.Package) int { return cmp.Compare(a.Path, b.Path) }) {
+		for _, l := range p.CLinks {
+			for _, s := range l.Sources {
+				fmt.Fprintf(h, "%s\x00%d\x00%s", s.Name, len(s.Text), s.Text)
+			}
+		}
+	}
+	if len(g.opts.Sources) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("// The C sources, as a change to them builds this package again: %x\n\n", h.Sum(nil)[:12])
 }
 
 // cflags is the #cgo line that finds each package's headers where its

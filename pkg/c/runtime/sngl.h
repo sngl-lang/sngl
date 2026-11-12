@@ -171,8 +171,9 @@ bool sngl_async_ended(int64_t id);
  * platform's runtime defines it. */
 void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx));
 
-/* Integer division and remainder, raising on a zero divisor as every target
- * does, rather than C's undefined behavior. */
+/* Integer division and remainder, stopping the program on a zero divisor
+ * (sngl_panic) as every target does, rather than C's undefined behavior: no
+ * handler or boundary catches it. */
 int64_t sngl_div(int64_t a, int64_t b);
 int64_t sngl_mod(int64_t a, int64_t b);
 

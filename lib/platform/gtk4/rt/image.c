@@ -304,9 +304,21 @@ static void sngl_picture_arrive(SnglPicture *pic, const guchar *data, gsize len,
         if (!pic->tex) pic->err = g_strdup_printf("%s: not an image GTK can read", pic->url);
     }
     pic->arrived = true;
-    for (guint i = 0; pic->watching && i < pic->watching->len; i++) {
-        sngl_source_take(g_ptr_array_index(pic->watching, i), pic);
+    if (!pic->watching) return;
+    /* Telling a source runs the program's @load or @error, which may give
+     * the picture back or show another in a source: the picture is held
+     * until each is told, and each is told from a copy of the list, if it
+     * is still watching. */
+    sngl_picture_ref(pic);
+    GPtrArray *told = g_ptr_array_copy(pic->watching, NULL, NULL);
+    for (guint i = 0; i < told->len; i++) {
+        SnglSource *s = g_ptr_array_index(told, i);
+        if (!pic->released && g_ptr_array_find(pic->watching, s, NULL)) {
+            sngl_source_take(s, pic);
+        }
     }
+    g_ptr_array_unref(told);
+    sngl_picture_unref(pic);
 }
 
 static void sngl_picture_fetched(GObject *o, GAsyncResult *res, gpointer data) {

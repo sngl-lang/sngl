@@ -2,4 +2,6 @@
 
 //go:build windows
 
+// The C sources, as a change to them builds this package again: dfe23043d7a159e390dc5b5a
+
 #include "../rt/sngl_win32.c"

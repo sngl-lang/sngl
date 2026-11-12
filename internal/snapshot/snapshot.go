@@ -476,9 +476,6 @@ func LangForPlatform(platform string) string {
 	return "js"
 }
 
-// lowerOptions is what a snapshot hands lower.Lower for platform in lang, as
-// a build does (build.LowerOptions): a pass asking which intrinsics the
-// platform writes itself, or which language it writes, was answered nothing.
 // prepare is pkg's copy for platform and lang, prepared as every build's
 // is: a snapshot runs no test, so the program it draws holds none
 // (build.PrepareTarget).
@@ -488,6 +485,9 @@ func prepare(pkg *ir.Package, platform, lang string) *ir.Package {
 	return pkg
 }
 
+// lowerOptions is what a snapshot hands lower.Lower for platform in lang, as
+// a build does (build.LowerOptions): a pass asking which intrinsics the
+// platform writes itself, or which language it writes, was answered nothing.
 func lowerOptions(platform, lang string) lower.Options {
 	opts := lower.Options{Platform: platform, Language: lang}
 	if plat := codegen.LookupPlatform(platform); plat != nil {

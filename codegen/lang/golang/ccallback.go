@@ -60,11 +60,26 @@ func cClosureType(sig *ir.FuncSig) string {
 	return out
 }
 
+// callbackToken is t's part of a dispatcher's name. A bool crosses as C's
+// int and is named for itself, since its dispatcher differs: it asserts a
+// closure taking a bool, which one taking an int is not.
 func callbackToken(t *ir.Type) string {
 	if ct := ir.CTypeOf(t); ct != nil {
 		return strings.ReplaceAll(ct.Name, " ", "_") + strings.Repeat("_p", ct.Ptr)
 	}
+	if t.Kind == ir.TypeBool {
+		return "bool"
+	}
 	return callbackCType(t).Name
+}
+
+// exportedCType is the C type cgo's _cgo_export.h declares a dispatcher's
+// parameter or result as, which drops a const the Go side cannot spell:
+// the preamble's extern must match it.
+func exportedCType(t *ir.Type) string {
+	ct := *callbackCType(t)
+	ct.Const = false
+	return ct.String()
 }
 
 // callbackCType is the C type a callback's parameter or result crosses as:
@@ -108,12 +123,12 @@ func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, wrap
 		sig := byName[n]
 		var params []string
 		for _, p := range sig.Params {
-			params = append(params, callbackCType(p.Type).String())
+			params = append(params, exportedCType(p.Type))
 		}
 		params = append(params, "void *")
 		ret := "void"
 		if r := sig.Return; r != nil && r.Kind != ir.TypeVoid {
-			ret = callbackCType(r).String()
+			ret = exportedCType(r)
 		}
 		fmt.Fprintf(&b, "extern %s %s(%s);\n", ret, n, strings.Join(params, ", "))
 	}

@@ -258,14 +258,19 @@ func isCConvert(e ir.Expr) bool {
 }
 
 // insertCContext writes into c the arguments for its callee's #[c.context]
-// and #[c.release] parameters, which no caller passes and CallDefaults
-// leaves to a native: the placeholder each defaults to, which callbackArg
-// makes what the translator writes.
+// and #[c.release] parameters, which no caller passes, and for each other
+// parameter with a default the call leaves out: CallDefaults leaves a
+// native's to it, and a C function takes every parameter it declares. A
+// context's or release's default is the placeholder callbackArg makes what
+// the translator writes.
 func insertCContext(c *ir.Call) {
 	params := c.Func.Params
+	omitted := func(p *ir.Param) bool {
+		return (p.CompilerPassed() || p.Default != nil) && !p.Receiver && c.ArgFor(p.Name) == nil
+	}
 	passed := 0
 	for _, p := range params {
-		if p.CompilerPassed() && c.ArgFor(p.Name) == nil {
+		if omitted(p) {
 			passed++
 		}
 	}
@@ -279,7 +284,7 @@ func insertCContext(c *ir.Call) {
 		return
 	}
 	for _, p := range params {
-		if p.CompilerPassed() && c.ArgFor(p.Name) == nil {
+		if omitted(p) {
 			c.Args = slices.Insert(c.Args, at, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(p.Default)})
 		}
 		at++

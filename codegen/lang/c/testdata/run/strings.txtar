@@ -1,0 +1,38 @@
+Strings whose bytes are no valid UTF-8, and a number past an int's range,
+answered as Go answers them: each byte no valid sequence starts or finishes
+is one U+FFFD, an overlong form included, so a cut-short sequence counts a
+code point per byte and upper writes U+FFFD for each; and int of a number
+out of range is the nearer end, as strconv.Atoi answers it.
+
+-- app.sngl --
+func runes(s string) => s.length()
+
+func shout(s string) => s.upper()
+
+func parse(s string) => int(s)
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+static void print(sngl_string s) { printf("%.*s\n", (int)s.len, s.ptr); }
+
+int main(void) {
+	print(sngl_int_format(s_runes((sngl_string){"\xe4\xb8", 2})));
+	print(sngl_int_format(s_runes((sngl_string){"\xf0\x9f\x98", 3})));
+	print(sngl_int_format(s_runes((sngl_string){"\xc0\x80", 2})));
+	print(sngl_int_format(s_runes((sngl_string){"\xed\xa0\x80", 3})));
+	print(sngl_int_format(s_runes(SNGL_STR("h\xc3\xa9"))));
+	print(s_shout((sngl_string){"a\xff" "b", 3}));
+	print(sngl_int_format(s_parse(SNGL_STR("99999999999999999999"))));
+	print(sngl_int_format(s_parse(SNGL_STR("-9223372036854775808"))));
+	return 0;
+}
+-- want --
+2
+3
+2
+3
+2
+A�B
+9223372036854775807
+-9223372036854775808

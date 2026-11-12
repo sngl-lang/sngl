@@ -197,8 +197,8 @@ static void s___lambda2__inst0(s___lambda2_caps state);
 static s_ui__menuItem__record s___lambda1__inst0(s___lambda1_caps state, sngl_string l);
 static s___lambda2_caps s___lambda2_caps__keep(s___lambda2_caps v);
 static void s___renderSlot0(GtkBox * parent);
-static void sngl_list_GtkButton__drop(sngl_list_GtkButton v);
 static sngl_list_GtkButton sngl_list_GtkButton__keep(sngl_list_GtkButton v);
+static void sngl_list_GtkButton__drop(sngl_list_GtkButton v);
 static s_ui__menuItem__record s_ui__menuItem__record__keep(s_ui__menuItem__record v);
 static sngl_list_menuItem__record sngl_list_menuItem__record__keep(sngl_list_menuItem__record v);
 static void sngl_lambda5(void *env_);
@@ -219,10 +219,6 @@ static s___lambda2_caps s___lambda2_caps__keep(s___lambda2_caps v) {
 	return v;
 }
 
-static void sngl_list_GtkButton__drop(sngl_list_GtkButton v) {
-	sngl_drop(v.data);
-}
-
 static sngl_list_GtkButton sngl_list_GtkButton__keep(sngl_list_GtkButton v) {
 	GtkButton * *data = sngl_keep_alloc(sizeof(GtkButton *) * (size_t)(v.len + 1));
 	if (v.len > 0) {
@@ -231,6 +227,10 @@ static sngl_list_GtkButton sngl_list_GtkButton__keep(sngl_list_GtkButton v) {
 	v.data = data;
 	v.cap = v.len;
 	return v;
+}
+
+static void sngl_list_GtkButton__drop(sngl_list_GtkButton v) {
+	sngl_drop(v.data);
 }
 
 static sngl_list_menuItem__record sngl_list_string_map_menuItem__record(sngl_list_string l, sngl_fn_string__menuItem__record f) {
@@ -385,9 +385,10 @@ static GtkWidget *s___slot0__anchor;
 
 static void s___lambda2__inst0(s___lambda2_caps state) {
 	{
+	sngl_string __kept1 = sngl_string_keep(state.l);
 	sngl_string *__slot1 = &(state.language->value);
 	sngl_drop((*__slot1).ptr);
-	*__slot1 = sngl_string_keep(state.l);
+	*__slot1 = __kept1;
 }
 	s___setsummary_label___lambda2__inst0(state);
 	s___renderSlot0(s_p);
@@ -414,9 +415,10 @@ static void s___renderSlot0(GtkBox * parent) {
 					}
 					(sngl_hold((GtkWidget **)&s_pick, NULL));
 					{
+	sngl_list_GtkButton __kept3 = sngl_list_GtkButton__keep(((sngl_list_GtkButton){0}));
 	sngl_list_GtkButton *__slot3 = &(s___slot0);
 	sngl_list_GtkButton__drop(*__slot3);
-	*__slot3 = sngl_list_GtkButton__keep(((sngl_list_GtkButton){0}));
+	*__slot3 = __kept3;
 }
 					sngl_slot_anchor(GTK_WIDGET(parent), &s___slot0__anchor);
 					for (struct { sngl_list_menuItem__record l; int64_t i; } __loop4 = {sngl_list_menuItem__record_cat(sngl_list_string_map_menuItem__record(s_languages, ((sngl_fn_string__menuItem__record){s___lambda1__inst0__fn, sngl_heap_copy(&(s___lambda1_caps[]){(s___lambda1_caps){.language = s_language__inst0}}, sizeof(s___lambda1_caps))})), ((sngl_list_menuItem__record){0})), 0}; __loop4.i < __loop4.l.len; __loop4.i++) { s_ui__menuItem__record it = __loop4.l.data[__loop4.i];
@@ -2180,7 +2182,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:14efe0f4b71e0a6b101008fc41ccef4f
+pass sha256:253f08103287fb4d6a96374aed3dfc8b
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

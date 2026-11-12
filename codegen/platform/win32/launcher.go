@@ -172,6 +172,18 @@ func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.P
 	return "", ran, nil
 }
 
+// WineEnv is the environment a Windows program runs under Wine in, in the
+// prefix every test agent runs in (winePrefix): a test running one of its
+// own takes it, since Wine's default prefix, made on the first run, offers
+// to install what a test wants none of and waits for an answer.
+func WineEnv(ctx context.Context) ([]string, error) {
+	prefix, err := winePrefix(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return wineEnv(prefix), nil
+}
+
 // wineEnv is the environment a program runs under Wine in: the prefix, no
 // display -- the prefix draws through Wine's null driver, so no window
 // reaches the developer's desktop -- and none of Wine's own diagnostics.

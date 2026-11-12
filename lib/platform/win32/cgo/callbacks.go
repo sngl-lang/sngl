@@ -2,6 +2,8 @@
 
 //go:build windows
 
+// The C sources, as a change to them builds this package again: dfe23043d7a159e390dc5b5a
+
 package cgo
 
 /*
@@ -11,7 +13,7 @@ package cgo
 #include <stdlib.h>
 #include <stdint.h>
 
-extern void snglCallback_int__void(int, void *);
+extern void snglCallback_bool__void(int, void *);
 extern void snglCallback_sngl_win32_gfx_p__void(sngl_win32_gfx *, void *);
 extern void snglCallback_void__void(void *);
 extern void snglRelease(void *);
@@ -44,16 +46,16 @@ func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - 1) }
 // snglReleasePtr is snglRelease as the function pointer C calls.
 func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 
-//export snglCallback_int__void
-func snglCallback_int__void(a0 C.int, ctx unsafe.Pointer) {
+//export snglCallback_bool__void
+func snglCallback_bool__void(a0 C.int, ctx unsafe.Pointer) {
 	fn, ok := snglClosure(ctx).(func(bool))
 	if ok {
 		fn(a0 != 0)
 	}
 }
 
-// snglCallback_int__voidPtr is snglCallback_int__void as the function pointer C calls.
-func snglCallback_int__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_int__void) }
+// snglCallback_bool__voidPtr is snglCallback_bool__void as the function pointer C calls.
+func snglCallback_bool__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_bool__void) }
 
 //export snglCallback_sngl_win32_gfx_p__void
 func snglCallback_sngl_win32_gfx_p__void(a0 *C.sngl_win32_gfx, ctx unsafe.Pointer) {

@@ -1,0 +1,26 @@
+// An `option` crosses to C as a pointer, NULL for `null`: a string's, as an
+// `option[utf16]` does. C has no NULL number or bool, so an option of an
+// alias of one is refused, and a C function answers no alias of string,
+// since a string it answers is read as a `char *`.
+import c "sngl:x/c"
+import macro "sngl:macro"
+
+c.link(include="h.h")
+
+#[macro.cnative("UINT")]
+struct UINT = int
+
+#[macro.cnative("BOOL")]
+struct BOOL = bool
+
+#[macro.cnative("takeU")]
+func takeU(x option[UINT]) int // ERROR(check) "C has no NULL UINT"
+
+#[macro.cnative("takeB")]
+func takeB(x option[BOOL]) int // ERROR(check) "C has no NULL BOOL"
+
+#[macro.cnative("takeW")]
+func takeW(s option[c.utf16]) int
+
+#[macro.cnative("giveW")] // ERROR(check) "answers a utf16"
+func giveW() c.utf16

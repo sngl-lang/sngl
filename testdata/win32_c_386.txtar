@@ -255,13 +255,13 @@ static int64_t s_platform_win32__inset(sngl_opt_measurement m);
 static int64_t s_platform_win32__rgb(sngl_opt_color c);
 static void s___effect0_mount(void);
 static void s___effect0_down(void);
-static void sngl_list_string__drop(sngl_list_string v);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
+static void sngl_list_string__drop(sngl_list_string v);
 static void s___effect0_up(void);
 static void s___effects0_settle(void);
 static void s___renderSlot0(HWND parent);
-static void sngl_list_HWND__drop(sngl_list_HWND v);
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v);
+static void sngl_list_HWND__drop(sngl_list_HWND v);
 static void sngl_lambda7(void *env_);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
 static void s___lambda1(s___lambda1_caps state);
@@ -299,13 +299,6 @@ static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
 	return l;
 }
 
-static void sngl_list_string__drop(sngl_list_string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.data[i]).ptr);
-	}
-	sngl_drop(v.data);
-}
-
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
 	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
 	if (v.len > 0) {
@@ -317,6 +310,13 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
 	v.data[i] = sngl_string_keep(v.data[i]);
 	}
 	return v;
+}
+
+static void sngl_list_string__drop(sngl_list_string v) {
+	for (int64_t i = 0; i < v.len; i++) {
+	sngl_drop((v.data[i]).ptr);
+	}
+	sngl_drop(v.data);
 }
 
 static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
@@ -351,10 +351,6 @@ static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
 	return &l.data[i];
 }
 
-static void sngl_list_HWND__drop(sngl_list_HWND v) {
-	sngl_drop(v.data);
-}
-
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
 	HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
 	if (v.len > 0) {
@@ -363,6 +359,10 @@ static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
 	v.data = data;
 	v.cap = v.len;
 	return v;
+}
+
+static void sngl_list_HWND__drop(sngl_list_HWND v) {
+	sngl_drop(v.data);
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
@@ -503,9 +503,10 @@ static void s___effect0_mount(void) {
 
 static void s___effect0_down(void) {
 	{
+	sngl_list_string __kept1 = sngl_list_string__keep(((sngl_list_string){0}));
 	sngl_list_string *__slot1 = &(s___effect0_desired);
 	sngl_list_string__drop(*__slot1);
-	*__slot1 = sngl_list_string__keep(((sngl_list_string){0}));
+	*__slot1 = __kept1;
 }
 	sngl_list_string_push_kept(&(s___effect0_desired), sngl_string_keep(s_value__inst0->value));
 }
@@ -514,26 +515,29 @@ static void s___effect0_up(void) {
 	for (struct { sngl_list_string l; int64_t i; } __loop2 = {s___effect0_desired, 0}; __loop2.i < __loop2.l.len; __loop2.i++) { int64_t __effect0_i = __loop2.i; sngl_string __effect0_k = __loop2.l.data[__loop2.i];
 		if (__effect0_i >= (s___effect0_live).len) {
 			{
+	sngl_string __kept3 = sngl_string_keep(__effect0_k);
 	sngl_string *__slot3 = &(s___effect0_key);
 	sngl_drop((*__slot3).ptr);
-	*__slot3 = sngl_string_keep(__effect0_k);
+	*__slot3 = __kept3;
 }
 			s___effect0_mount();
 		} else {
 			if (!sngl_string_eq((*sngl_list_string_at(s___effect0_live, __effect0_i)), __effect0_k)) {
 				{
+	sngl_string __kept4 = sngl_string_keep(__effect0_k);
 	sngl_string *__slot4 = &(s___effect0_key);
 	sngl_drop((*__slot4).ptr);
-	*__slot4 = sngl_string_keep(__effect0_k);
+	*__slot4 = __kept4;
 }
 				s___effect0_mount();
 			}
 		}
 	}
 	{
+	sngl_list_string __kept5 = sngl_list_string__keep(s___effect0_desired);
 	sngl_list_string *__slot5 = &(s___effect0_live);
 	sngl_list_string__drop(*__slot5);
-	*__slot5 = sngl_list_string__keep(s___effect0_desired);
+	*__slot5 = __kept5;
 }
 }
 
@@ -574,9 +578,10 @@ static void s___renderSlot0(HWND parent) {
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
+	sngl_list_HWND __kept6 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
 	sngl_list_HWND *__slot6 = &(s___slot0);
 	sngl_list_HWND__drop(*__slot6);
-	*__slot6 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
+	*__slot6 = __kept6;
 }
 					if (s_n__inst0->value > 2) {
 						HWND __n2 = sngl_win32_text();
@@ -630,9 +635,10 @@ static void s___lambda1(s___lambda1_caps state) {
 static void s___lambda2(s___lambda2_caps state) {
 	if (!sngl_string_eq(sngl_string_copy(sngl_win32_get_text(state.who)), state.value__inst0->value)) {
 		{
+	sngl_string __kept10 = sngl_string_keep(sngl_string_copy(sngl_win32_get_text(state.who)));
 	sngl_string *__slot10 = &(state.value__inst0->value);
 	sngl_drop((*__slot10).ptr);
-	*__slot10 = sngl_string_keep(sngl_string_copy(sngl_win32_get_text(state.who)));
+	*__slot10 = __kept10;
 }
 	}
 	s___effects0_settle();
@@ -641,14 +647,16 @@ static void s___lambda2(s___lambda2_caps state) {
 static void s___lambda3(s___lambda3_caps state) {
 	sngl_string __input_value_wrote1 = sngl_string_copy(sngl_win32_get_text(state.who));
 	{
+	sngl_string __kept11 = sngl_string_keep(__input_value_wrote1);
 	sngl_string *__slot11 = &(state.value__inst0->value);
 	sngl_drop((*__slot11).ptr);
-	*__slot11 = sngl_string_keep(__input_value_wrote1);
+	*__slot11 = __kept11;
 }
 	{
+	sngl_string __kept12 = sngl_string_keep(__input_value_wrote1);
 	sngl_string *__slot12 = &(state.name__inst0->value);
 	sngl_drop((*__slot12).ptr);
-	*__slot12 = sngl_string_keep(__input_value_wrote1);
+	*__slot12 = __kept12;
 }
 	s___effects0_settle();
 }
@@ -756,4 +764,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:8ced9d7d2ab4940cec6511859334c413
+pass sha256:4d985020188aebd5edf67fa5184554e5

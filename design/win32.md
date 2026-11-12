@@ -93,8 +93,9 @@ every package that imports `"C"`, so a program calling C directly paid for it
 on each build. `sngl tool cgogen sngl:platform/win32` (`internal/cgogen`, run
 by `go generate ./lib`) writes `lib/platform/win32/cgo`: one exported Go
 function per C function the platform and `api` declare, named for it
-(`sngl_win32_append` is `SnglWin32Append`), and the Go type each handle and C
-struct they cross is (`type HWND = C.HWND`, `type Look struct`). Both SNGL
+(`sngl_win32_append` is `SnglWin32Append`), and the Go type each handle they
+cross and each C struct they declare is (`type HWND = C.HWND`, `type Look struct`): a struct no function crosses still gets one, since a program's own
+literal of it names the wrapper package's. Both SNGL
 packages go into one Go package, because a handle is a type of the cgo
 package declaring it, and `C.HWND` in two packages is two types.
 
@@ -109,7 +110,17 @@ the callbacks' dispatchers are written into the wrapper package
 NULL only where a call writes null. A declaration with a `ref` parameter has
 no wrapper yet: a call of one hands back a record of its results that the
 program's package declares, which the wrapper package cannot name. The file
-lists each, with why.
+lists each, with why, and a Go program calling one is refused at generate
+(`unwrappedCalls`, `codegen/lang/golang/ccompiler.go`): the program links
+none of the package's C, which is the wrapper package's, so it has no cgo of
+its own to call it through.
+
+**A change to the runtime's C builds the wrappers again.** The package
+compiles `rt/sngl_win32.c` through a stub including it, and Go's build cache
+does not see a file outside the package that one includes: a test agent built
+after a change to the runtime linked the old one from the cache. So each file
+cgogen writes carries the digest of the C sources (`sourcesDigest`), and a
+change to them is a change to the package, which `go generate ./lib` writes.
 
 **Each declaration names its wrapper.** The tool writes
 `#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]`

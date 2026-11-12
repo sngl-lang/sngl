@@ -15,7 +15,7 @@ targets in parallel) is not a saving.
 - **An AST is immutable once parsed.** Nothing after the parser writes to one,
   which is what lets the embedded library tiers (`parseStdlibDocs`), target
   packages included, be parsed once per process and shared by every check.
-  `TestProvidedDocsSurviveBuilds` builds every golden fixture and then compares
+  `TestGolden`, once it has built every fixture, compares
   each target package's shared document with a fresh parse; a phase that needs a modified tree
   builds IR or a new node, never an edit.
 - **A library package is loaded against the targets it belongs to.**

@@ -517,7 +517,7 @@ func protocolSplice(fn *ir.Func, args []ir.Expr, language string) (ir.Expr, erro
 		return nil, fmt.Errorf("#[gen.protocol(%s)] %s is spliced where its op is made, so its body is one return or one call", fn.Protocol, fn.Name)
 	}
 	spliced := bindSplice(fn, body, args)
-	if c, ok := spliced.(*ir.Call); ok && c.Func != nil && c.Func.Foreign.Name == "" && c.Func.Intrinsic == "" && spliceBody(c.Func) != nil && len(c.Args) == len(c.Func.Params) {
+	if c, ok := spliced.(*ir.Call); ok && c.Func != nil && c.Receiver == nil && c.Func.Foreign.Name == "" && c.Func.Intrinsic == "" && spliceBody(c.Func) != nil && len(c.Args) == len(c.Func.Params) {
 		inner := make([]ir.Expr, len(c.Args))
 		for i, a := range c.Args {
 			inner[i] = a.Value

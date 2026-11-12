@@ -36,7 +36,8 @@ struct double {}
 // one (`LPCWSTR`). An argument for a parameter written with it is the string
 // encoded, valid for the call, and an `option[utf16]` one takes `null` as
 // NULL. It is a `string` wherever it is written; only the call reads the
-// alias.
+// alias, and a C function answers no `utf16`, since a string it answers is
+// read as a `char *`.
 #[macro.cnative("const unsigned short *")]
 struct utf16 = string
 
@@ -74,7 +75,8 @@ struct pointer {}
 // The callback is the function's one `func` parameter, and C hands the
 // context to it as its last argument, after the ones its type declares: a
 // `func(int) int` is C's `int (*)(int, void *)`. Each parameter and the result
-// is an `int`, `float`, `bool` or `#[cnative]` struct. Unmarked, the callback
+// is an `int`, `float`, `bool` or `#[cnative]` handle, a struct declaring no
+// fields; a C struct with fields does not cross a callback. Unmarked, the callback
 // is held for the call; `#[macro.retains]`, for the rest of the program; and
 // where the function takes `#[release]`, until C calls it.
 func context() ir.Macro

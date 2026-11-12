@@ -22,7 +22,7 @@ func loneContext(#[c.context] data c.pointer) // ERROR(check) "and loneContext t
 func twoCallbacks(f func(), g func(), #[c.context] data c.pointer) // ERROR(check) "takes a second func, \"g\", and C hands its one context to one callback"
 
 #[macro.cnative("takes_string")]
-func takesString(f func(s string), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a string: a callback crosses an int, float, bool or #[cnative] struct"
+func takesString(f func(s string), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a string: a callback crosses an int, float, bool or #[cnative] handle"
 
 #[macro.cnative("answers_list")]
 func answersList(f func() list[int], #[c.context] data c.pointer) // ERROR(check) "callback \"f\" answers a list[int]"
@@ -50,3 +50,13 @@ func retainedReleased(#[macro.retains] f func(), #[c.context] data c.pointer, #[
 
 #[go.native("strings", "Repeat")]
 func goRelease(f func(), #[c.release] r c.pointer) // ERROR(check) "and goRelease is not a C function"
+
+#[macro.cnative("FLOAT")]
+struct FLOAT = float
+
+// A callback's float crosses as C's double, which a 4-byte alias is not.
+#[macro.cnative("takes_float")]
+func takesFloat(f func(x FLOAT), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" crosses a FLOAT, C's FLOAT"
+
+#[macro.cnative("answers_float")]
+func answersFloat(f func() FLOAT, #[c.context] data c.pointer) // ERROR(check) "callback \"f\" crosses a FLOAT"

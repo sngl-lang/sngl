@@ -80,11 +80,34 @@ func wrapped(p *ir.Package) bool {
 	return slices.ContainsFunc(p.Funcs, func(fn *ir.Func) bool { return wrapper(&fn.Foreign) != nil })
 }
 
+// unwrappedCalls refuses a call of a C function a wrapper package declares
+// no wrapper for, where the package's C is that wrapper package's: the
+// program links none of it, so it has no C of its own to call it through.
+func unwrappedCalls(pkg *ir.Package) error {
+	var err error
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil || err != nil {
+			return nil
+		}
+		fn := c.Func
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || wrapper(&fn.Foreign) != nil || fn.Pkg == nil || !wrapped(fn.Pkg) {
+			return nil
+		}
+		err = fmt.Errorf("%s.%s has no Go wrapper (sngl tool cgogen lists why), and Go calls %s's C through its wrappers alone", fn.Pkg.Path, fn.Name, fn.Pkg.Path)
+		return ir.SkipAll
+	})
+	return err
+}
+
 // CSources implements codegen.CCompiler: cgo compiles every .c file in the
 // package's directory, and the preamble includes a header there by its name,
 // so each source sits beside the generated Go under its own. The dispatchers
 // a C function's callback crosses through join them (ccallback.go).
 func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map[string][]byte, error) {
+	if err := unwrappedCalls(pkg); err != nil {
+		return nil, err
+	}
 	links := CLinks(pkg)
 	var out map[string][]byte
 	for _, l := range links {
