@@ -827,6 +827,15 @@ reaches it the same way.
 - **`pkg/go/gtk4rt` is deleted**, and its tests become tests of the runtime
   through a program (`cmd/sngl/testdata`, the gtk4 records), in both
   languages.
+- **A C record gives back what it kept when it is destroyed.** A component
+  built at run time -- a row a keyed `for` keeps -- is a record, and in C its
+  destroy runs the teardown and gives back nothing else: not its vars' and
+  props' kept values, not the boxes and closure environments it made, and,
+  on win32, not the record itself. Every row a list rebuilds leaks.
+  `c_record.go` (gtk4) and placement's records (win32) both do this today,
+  against `design/ownership.md`. The fix lands in placement, for both, once
+  gtk4 is on it: the record's destroy drops each field it kept and the box,
+  and a test in each language holds the kept set's size across a rebuild.
 
 ### Open questions
 
