@@ -839,29 +839,46 @@ reaches it the same way.
 
 ### The steps
 
-1. **The widget declarations move into `sngl:platform/gtk4`.** The `gir:`
-   scheme's output for the bundled GIR is written by a tool to a tracked
-   file beside `gtk4.sngl` and kept current by `go generate ./lib`, as
-   `win32/api` is. A class keeps its C name (`gtk4.GtkButton`), as an HTML
-   element keeps its tag's. `gtk4.sngl` and `style.sngl` drop the `gir:`
-   import, and a program's `gir:Gtk-4.0` import is unchanged.
-2. **gtk4 moves onto placement, with its runtime in SNGL.** The protocol
-   becomes `gtk4.sngl`'s functions over `cnative` GTK, piece by piece: the
-   look and the layout, toplevels and the application, scroll, tabs, menus,
-   images, keys, posting. What stays C in `rt/` is the layout manager's
-   `measure` and `allocate`, the trampolines a callback cannot take, and any
-   GObject subclass. Go calls it through cgogen's wrappers, as win32 does.
-   `compiler_ir.go`, `c_emit.go`, `c_record.go`, `wrapped.go` and the
-   inline-cgo scaffold retire, and weak holds come with it. The canvas's
-   draw function (#294) may land first.
-3. **A C record gives back what it kept**, in placement, for gtk4 and win32
+1. **gtk4 moves onto placement, with its widgets in its own package and its
+   runtime in SNGL.** One step, since the widget declarations can be
+   committed in only one form: the one calling GTK's C, which C needs. In the
+   old generator that puts cgo in every Go program; placement's
+   `golang.WriteProgram` calls cgogen's wrappers instead, as win32's Go
+   does, so a Go program keeps no `import "C"` of its own.
+   - **Built beside gtk4, then swapped in.** The new platform is
+     `sngl:platform/gtk4next` (`codegen/platform/gtk4next`) while it grows,
+     so every slice is tested and gtk4 keeps working. Once it does all gtk4
+     does it is renamed `gtk4`, and the old generator, `compiler_ir.go`,
+     `c_emit.go`, `c_record.go`, `wrapped.go` and the inline-cgo scaffold
+     are deleted.
+   - **The widgets.** `internal/cmd/gtk4gen` writes `widgets.sngl` beside
+     the platform's own SNGL from the bundled GIR (`gtk4.WidgetSource`), and
+     `go generate ./lib` runs it before cgogen. A class keeps its C name
+     (`gtk4.GtkButton`), as an HTML element keeps its tag's. A program's
+     `gir:Gtk-4.0` import is unchanged.
+   - **The runtime** is `rt/`'s C, already there for gtk4's C programs,
+     which the protocol calls through `cnative` as win32's calls
+     `sngl_win32_*`. What gtk4rt does in Go and `rt/` does not, moves to
+     `rt/` or to SNGL. What stays C is the layout manager's `measure` and
+     `allocate`, the trampolines a callback cannot take, and any GObject
+     subclass.
+   - **Slices**, each in both languages with a script test and snapshots:
+     1. A window, a box, a label and a button whose click counts.
+     2. The look and the layout (`style.sngl`), and every leaf widget.
+     3. Toplevels, several windows, `@run` and the application's teardown.
+     4. Scroll, tabs, menus and the way back, keys.
+     5. Images and the canvas, with its draw function (#294).
+     6. Async posting, timers, `sngl test`'s agent and `sngl snapshot`.
+     7. The swap: every gtk4 golden and recorded run on the new platform,
+        weak holds, and the old generator deleted.
+2. **A C record gives back what it kept**, in placement, for gtk4 and win32
    alike, with a test in each language that a rebuilt list's kept set does
    not grow. With it, a retained C closure that writes a captured local
    writes a heap box, not the stack address it writes today.
-4. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
-   come with step 2. `purego` is attempted then, against the open questions
+3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
+   come with step 1. `purego` is attempted then, against the open questions
    below.
-5. **`pkg/go/gtk4rt` is deleted**, its tests moved to programs in both
+4. **`pkg/go/gtk4rt` is deleted**, its tests moved to programs in both
    languages.
 
 ### Open questions
