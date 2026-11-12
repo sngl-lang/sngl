@@ -184,8 +184,9 @@ func (p *placement) instanceOp(call *ir.Call) (ir.Expr, bool) {
 					}
 				}
 			}
-			if v == nil {
-				v = prop.Default
+			if v == nil && prop.Default != nil {
+				// A copy per construction: each site's is a node of its own.
+				v = ir.CloneExprSharingDecls(prop.Default)
 			}
 			if v == nil {
 				v = ir.ZeroExpr(prop.Type)
@@ -299,9 +300,23 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 				// typed as what the box holds, and the var says it is a box.
 				return &ir.Select{Operand: self(), Field: f.Name, Type: f.Type}, ir.SkipDir
 			case *ir.Call:
-				if x.Func != nil && funcs[x.Func] && !selfTaking[x.Func] {
-					cp := *x
+				if x.Func == nil || !funcs[x.Func] {
+					break
+				}
+				cp := *x
+				if !selfTaking[x.Func] {
 					cp.Args = append([]ir.CallArg{{Value: self()}}, x.Args...)
+					return &cp, nil
+				}
+				// A method's call inside the component hands it the
+				// component, `row.decorate()`, or nothing, where the
+				// receiver was implicit: the record is self.
+				if len(x.Args) < len(x.Func.Params) {
+					cp.Args = append([]ir.CallArg{{Value: self()}}, x.Args...)
+					return &cp, nil
+				}
+				if id, ok := x.Args[0].Value.(*ir.Ident); ok && id.Sym == ir.Symbol(comp) {
+					cp.Args = append([]ir.CallArg{{Name: x.Args[0].Name, Value: self()}}, x.Args[1:]...)
 					return &cp, nil
 				}
 			}
@@ -327,7 +342,7 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 			continue
 		}
 		init := ir.CloneExprSharingDecls(v.Init)
-		if readsRecord(init, vars) {
+		if readsRecord(init, vars, funcs) {
 			after = append(after, &ir.Assign{Target: field(v.Name, v.Type), Op: ast.AssignSet, Value: init})
 			continue
 		}
@@ -366,8 +381,12 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 		r.named[fn.Name] = fn
 		var self *ir.Param
 		if selfTaking[fn] {
+			// A method is a function taking the record first, as the
+			// rest are: its receiver is no longer a component's.
 			self = fn.Params[0]
 			self.Type = r.typ
+			self.Receiver, self.Ambient = false, false
+			fn.Receiver = nil
 		} else {
 			self = &ir.Param{Name: recordSelf, Type: r.typ}
 			fn.Params = append([]*ir.Param{self}, fn.Params...)
@@ -376,7 +395,11 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 		through(fn.Block, param)
 		hosts = append(hosts, closureHost{fn, param})
 		fn.Name = comp.Name + "__" + strings.TrimPrefix(fn.Name, "__")
-		pkg.Funcs = append(pkg.Funcs, fn)
+		// A method may be the package's already, as a language whose
+		// methods are functions lifted it.
+		if !slices.Contains(pkg.Funcs, fn) {
+			pkg.Funcs = append(pkg.Funcs, fn)
+		}
 	}
 	r.owned = comp.Funcs
 	comp.Funcs = nil
@@ -613,15 +636,23 @@ func (p *placement) placeRoot(pkg *ir.Package) {
 	attach(ref())
 }
 
-// readsRecord reports whether e reads one of a record's vars.
-func readsRecord(e ir.Expr, vars map[*ir.Var]bool) bool {
+// readsRecord reports whether e reads one of a record's vars or calls one of
+// its functions, which read it.
+func readsRecord(e ir.Expr, vars map[*ir.Var]bool, funcs map[*ir.Func]bool) bool {
 	found := false
 	_ = ir.Walk(e, func(n ir.Node) error {
-		if id, ok := n.(*ir.Ident); ok {
-			if v, ok := id.Sym.(*ir.Var); ok && vars[v] {
+		switch x := n.(type) {
+		case *ir.Ident:
+			if v, ok := x.Sym.(*ir.Var); ok && vars[v] {
 				found = true
-				return ir.SkipAll
 			}
+		case *ir.Call:
+			if x.Func != nil && funcs[x.Func] {
+				found = true
+			}
+		}
+		if found {
+			return ir.SkipAll
 		}
 		return nil
 	})

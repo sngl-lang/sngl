@@ -111,6 +111,13 @@ func WriteTests(fe *FileEmitter, pkg *ir.Package, step string) error {
 		teardown = "\t\t" + Decl(&pkg.Teardown.DeclInfo) + "();\n"
 	}
 	var b strings.Builder
+	// What the last test's package vars kept goes back before sngl_init
+	// sets them afresh.
+	for _, v := range append(append([]*ir.Var(nil), pkg.Consts...), pkg.Vars...) {
+		if v.Init != nil && owns(v.Type) {
+			teardown += "\t\t" + ctx.drop(v.Type, Decl(&v.DeclInfo)) + "\n"
+		}
+	}
 	b.WriteString("\nstatic void sngl_reset(void) {\n\tstatic bool run;\n\tif (run) {\n" + teardown + "\t}\n\trun = true;\n\tsngl_init();\n}\n")
 	var table []string
 	for _, fn := range pkg.Funcs {

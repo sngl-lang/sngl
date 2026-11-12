@@ -37,6 +37,12 @@ stdout 'ok +4 tests, 0 failures'
 sngl test --platform=win32 --language=c async.sngl
 stdout 'ok +1 tests, 0 failures'
 
+# A handler the program wrote empty connects nothing, and a test can still
+# trigger the event: it presses the button, which runs nothing.
+
+sngl test --platform=win32 --language=c empty.sngl
+stdout 'ok +1 tests, 0 failures'
+
 # The same programs in Go, which calls the runtime through the wrappers
 # `sngl tool cgogen` writes (lib/platform/win32/cgo) and serves its tests
 # over TCP as C's agent does, draw what C's drew: each snapshot is held to
@@ -48,6 +54,36 @@ stdout 'ok +4 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt arch=386 app.sngl
 stdout 'ok +4 tests, 0 failures'
 sngl test --platform=win32 --language=go async.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go empty.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A C struct of api's no wrapper crosses is still the wrapper package's, so
+# the program's own literal of one builds in Go as in C.
+
+sngl test --platform=win32 --language=c rect.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go rect.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A function cgogen writes no wrapper for -- one taking a ref -- is refused
+# in Go, which links none of api's C to call it through.
+
+! sngl generate --platform=win32 --lang=go -o out ref.sngl
+stderr 'sngl:platform/win32/api.GetClientRect has no Go wrapper'
+
+# A write to an element of a list C holds keeps the value before it takes
+# the element's address: working the value out grows the list, which moves
+# its elements, and the write lands in the list as it is after.
+
+sngl test --platform=win32 --language=c store.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A closure C calls back writes a local through its address, and what it
+# writes is a copy that lasts the turn: the callback's call gives back the
+# arena it used as it returns.
+
+sngl test --platform=win32 --language=c callback.sngl
 stdout 'ok +1 tests, 0 failures'
 
 -- app.sngl --
@@ -144,8 +180,118 @@ func testWorkRunsOnTheLoop(t test.Test, c main) {
 ui.window {
     main()
 }
+-- empty.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var n = 0
+    ui.vbox {
+        ui.button #b(text="b", @click {})
+        ui.text("{n}")
+    }
+}
+
+ui.window {
+    main()
+}
+
+func testAnEmptyHandlerIsTriggered(t test.Test, c main) {
+    c.b.click()
+    t.assert(c.n == 0)
+}
+
+-- rect.sngl --
+import api "sngl:platform/win32/api"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func width(right int) int {
+    var r = api.RECT{left = 2, top = 0, right = right, bottom = 0}
+    return r.right - r.left
+}
+
+component main ui.node {
+    var right = 7
+    ui.text("{width(right)}")
+}
+
+ui.window(title="x") {
+    main()
+}
+
+func testARectOfTheProgramsOwn(t test.Test, c main) {
+    t.assert(width(c.right) == 5)
+}
+
+-- ref.sngl --
+import api "sngl:platform/win32/api"
+import ui "sngl:ui"
+
+func width() int {
+    var r = api.RECT{}
+    api.GetClientRect(api.GetFocus(), r)
+    return r.right
+}
+
+ui.window(title="x") {
+    ui.text("{width()}")
+}
+
+-- store.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+var held list[string] = ["a"]
+
+func grow() string {
+    held.push("b")
+    held.push("c")
+    held.push("d")
+    held.push("e")
+    return "z"
+}
+
+ui.window {
+    ui.text("{held.length()}")
+}
+
+func testAWriteLandsAfterTheGrowth(t test.Test) {
+    held[0] = grow()
+    t.assert(held[0] == "z")
+}
+
+-- callback.sngl --
+import c "sngl:x/c"
+import macro "sngl:macro"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="calls.h", sources=["calls.c", "calls.h"])
+
+#[macro.cnative("sngl_int")]
+func withInt(#[c.type("int_cb")] #[macro.retains] f func(i int), #[c.context] data c.pointer)
+
+ui.window {
+    ui.text("t")
+}
+
+func testAWriteFromACallbackOutlivesIt(t test.Test) {
+    var got = ""
+    withInt(func(i int) {
+        got = "n{i}"
+    })
+    t.assert(got == "n5")
+}
+-- calls.h --
+typedef void (*int_cb)(int, void *);
+void sngl_int(int_cb f, void *data);
+-- calls.c --
+#include "calls.h"
+void sngl_int(int_cb f, void *data) { f(5, data); }
+
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:74a4085d07398273d51dc43f8356a283
+sha256:7d7f702c251225f95c265a3efedb2ec4
 {
   "results": [
     {
@@ -155,7 +301,7 @@ sha256:74a4085d07398273d51dc43f8356a283
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:d8f0fb18a9570dec490112744db3cf68
+sha256:0da25ac9664b7bee0cf120a897d615f5
 {
   "results": [
     {
@@ -165,7 +311,7 @@ sha256:d8f0fb18a9570dec490112744db3cf68
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:0eb380642f8a3ea6dcfff157f8472c1c
+sha256:fc847c29ca1541a89cf6ac677b7fb409
 {
   "results": [
     {
@@ -187,7 +333,7 @@ sha256:0eb380642f8a3ea6dcfff157f8472c1c
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:4d36f8b82a9ed38d1f1a7be845ba3523
+sha256:a1209143277b9bdd03b07dde8db82c8b
 {
   "results": [
     {
@@ -205,11 +351,51 @@ sha256:4d36f8b82a9ed38d1f1a7be845ba3523
   ]
 }
 -- testrun/win32/c/async.sngl/main/1 --
-sha256:63c9a45e9b15b4c2ed7c78f277d408ef
+sha256:3478b7ae95a458bb9179f6ee12895270
 {
   "results": [
     {
       "Desc": "WorkRunsOnTheLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/callback.sngl/_/1 --
+sha256:24a3d2c58da1ccc8b4dcb1dd5a62957e
+{
+  "results": [
+    {
+      "Desc": "AWriteFromACallbackOutlivesIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/empty.sngl/main/1 --
+sha256:1c111a66a2e99f6765663950a22e7ef9
+{
+  "results": [
+    {
+      "Desc": "AnEmptyHandlerIsTriggered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/rect.sngl/main/1 --
+sha256:1e6081ae8eaea22b752552d0da1065dd
+{
+  "results": [
+    {
+      "Desc": "ARectOfTheProgramsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/store.sngl/_/1 --
+sha256:081368ac4b96c6d5220492f19273c357
+{
+  "results": [
+    {
+      "Desc": "AWriteLandsAfterTheGrowth",
       "Passed": true
     }
   ]
@@ -276,6 +462,26 @@ sha256:a1e36eec93199440f1fdbac8aefaaf71
   "results": [
     {
       "Desc": "WorkRunsOnTheLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/empty.sngl/main/1 --
+sha256:ec517d9c806d11d32307f94daa0c5687
+{
+  "results": [
+    {
+      "Desc": "AnEmptyHandlerIsTriggered",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/rect.sngl/main/1 --
+sha256:ee364e550925af46ce5f0b0121d78f9e
+{
+  "results": [
+    {
+      "Desc": "ARectOfTheProgramsOwn",
       "Passed": true
     }
   ]

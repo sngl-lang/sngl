@@ -60,9 +60,10 @@ void *sngl_alloc(size_t n) {
 }
 
 /* The kept blocks, an open-addressed set of their addresses, and those
- * dropped this turn, freed as it ends. */
+ * dropped this turn, freed as it ends. live counts the blocks in the set,
+ * used the slots a probe cannot stop at: the blocks and the tombs. */
 static uintptr_t *sngl_kept;
-static size_t sngl_kept_cap, sngl_kept_len;
+static size_t sngl_kept_cap, sngl_kept_live, sngl_kept_used;
 static void **sngl_dropped;
 static size_t sngl_dropped_len, sngl_dropped_cap;
 static int sngl_depth;
@@ -77,29 +78,41 @@ static size_t sngl_slot(uintptr_t p) {
 	return (size_t)h & (sngl_kept_cap - 1);
 }
 
-static void sngl_track(uintptr_t p) {
-	if ((sngl_kept_len + 1) * 2 > sngl_kept_cap) {
-		uintptr_t *old = sngl_kept;
-		size_t old_cap = sngl_kept_cap;
-		sngl_kept_cap = old_cap == 0 ? 64 : old_cap * 2;
-		sngl_kept = calloc(sngl_kept_cap, sizeof *sngl_kept);
-		if (sngl_kept == NULL) {
-			sngl_panic("out of memory");
-		}
-		sngl_kept_len = 0;
-		for (size_t i = 0; i < old_cap; i++) {
-			if (old[i] != 0 && old[i] != SNGL_TOMB) {
-				sngl_track(old[i]);
-			}
-		}
-		free(old);
-	}
+/* sngl_insert puts p in a set with room for it. */
+static void sngl_insert(uintptr_t p) {
 	size_t i = sngl_slot(p);
 	while (sngl_kept[i] != 0 && sngl_kept[i] != SNGL_TOMB) {
 		i = (i + 1) & (sngl_kept_cap - 1);
 	}
+	if (sngl_kept[i] == 0) {
+		sngl_kept_used++;
+	}
 	sngl_kept[i] = p;
-	sngl_kept_len++;
+	sngl_kept_live++;
+}
+
+static void sngl_track(uintptr_t p) {
+	if ((sngl_kept_used + 1) * 2 > sngl_kept_cap) {
+		/* Rebuilt without its tombs, and twice the size only where the
+		 * blocks themselves fill a quarter of it: a set whose blocks are
+		 * dropped as fast as kept stays the size it is. */
+		uintptr_t *old = sngl_kept;
+		size_t old_cap = sngl_kept_cap;
+		sngl_kept_cap = old_cap == 0 ? 64 : (sngl_kept_live + 1) * 4 > old_cap ? old_cap * 2 : old_cap;
+		sngl_kept = calloc(sngl_kept_cap, sizeof *sngl_kept);
+		if (sngl_kept == NULL) {
+			sngl_panic("out of memory");
+		}
+		sngl_kept_live = 0;
+		sngl_kept_used = 0;
+		for (size_t i = 0; i < old_cap; i++) {
+			if (old[i] != 0 && old[i] != SNGL_TOMB) {
+				sngl_insert(old[i]);
+			}
+		}
+		free(old);
+	}
+	sngl_insert(p);
 }
 
 /* sngl_untrack takes p out of the kept set, and is whether it was there. */
@@ -110,6 +123,7 @@ static bool sngl_untrack(uintptr_t p) {
 	for (size_t i = sngl_slot(p); sngl_kept[i] != 0; i = (i + 1) & (sngl_kept_cap - 1)) {
 		if (sngl_kept[i] == p) {
 			sngl_kept[i] = SNGL_TOMB;
+			sngl_kept_live--;
 			return true;
 		}
 	}
@@ -215,35 +229,46 @@ void *sngl_heap_copy(const void *p, size_t n) {
 	return q;
 }
 
-/* sngl_utf8_next is the code point at s[*i], moving *i past it: U+FFFD for
- * a byte that begins no sequence, or a sequence cut short or overlong. */
+/* sngl_utf8_next is the code point at s[*i], moving *i past it. */
 static uint32_t sngl_utf8_next(sngl_string s, size_t *i) {
+	/* As Go's utf8.DecodeRune: a byte no valid sequence starts, or that
+	 * starts one the string ends inside or a byte breaks, is U+FFFD and
+	 * one byte wide. lo and hi bound the second byte, which excludes the
+	 * overlong forms and the surrogates. */
 	const unsigned char *p = (const unsigned char *)s.ptr + *i;
 	size_t left = s.len - *i;
-	uint32_t c = p[0];
-	size_t n = c < 0x80 ? 1 : (c & 0xe0) == 0xc0 ? 2 : (c & 0xf0) == 0xe0 ? 3 : (c & 0xf8) == 0xf0 ? 4 : 0;
-	if (n == 0 || n > left) {
-		*i += 1;
-		return 0xfffd;
-	}
-	if (n == 1) {
-		*i += 1;
+	unsigned char c = p[0];
+	if (c < 0x80) {
+		(*i)++;
 		return c;
 	}
-	c &= 0x7fu >> n;
-	for (size_t k = 1; k < n; k++) {
-		if ((p[k] & 0xc0) != 0x80) {
-			*i += 1;
-			return 0xfffd;
-		}
-		c = (c << 6) | (p[k] & 0x3f);
+	int n = 0;
+	unsigned char lo = 0x80, hi = 0xbf;
+	uint32_t r = 0;
+	if (c >= 0xc2 && c <= 0xdf) {
+		n = 1, r = c & 0x1f;
+	} else if (c >= 0xe0 && c <= 0xef) {
+		n = 2, r = c & 0x0f;
+		lo = c == 0xe0 ? 0xa0 : 0x80;
+		hi = c == 0xed ? 0x9f : 0xbf;
+	} else if (c >= 0xf0 && c <= 0xf4) {
+		n = 3, r = c & 0x07;
+		lo = c == 0xf0 ? 0x90 : 0x80;
+		hi = c == 0xf4 ? 0x8f : 0xbf;
 	}
-	static const uint32_t least[] = {0, 0, 0x80, 0x800, 0x10000};
-	*i += n;
-	if (c < least[n] || c > 0x10ffff || (c >= 0xd800 && c <= 0xdfff)) {
+	if (n == 0 || left < (size_t)n + 1 || p[1] < lo || p[1] > hi) {
+		(*i)++;
 		return 0xfffd;
 	}
-	return c;
+	for (int k = 1; k <= n; k++) {
+		if (k > 1 && (p[k] < 0x80 || p[k] > 0xbf)) {
+			(*i)++;
+			return 0xfffd;
+		}
+		r = r << 6 | (p[k] & 0x3f);
+	}
+	*i += (size_t)n + 1;
+	return r;
 }
 
 const unsigned short *sngl_utf16(sngl_string s) {
@@ -435,6 +460,7 @@ int64_t sngl_int_of(sngl_string s) {
 		return 0;
 	}
 	char *end;
+	/* Out of range is the nearer end, as strconv.Atoi answers it. */
 	long long v = strtoll(c, &end, 10);
 	bool whole = *end == '\0';
 	free(c);
@@ -521,24 +547,6 @@ int64_t sngl_mod(int64_t a, int64_t b) {
 	return a % b;
 }
 
-/* sngl_decode is the code point at s[*i], moving *i past it. A byte that
- * begins no code point is one of its own. */
-static uint32_t sngl_decode(sngl_string s, size_t *i) {
-	unsigned char c = (unsigned char)s.ptr[*i];
-	int n = c < 0x80 ? 0 : c >= 0xf0 ? 3 : c >= 0xe0 ? 2 : c >= 0xc0 ? 1 : 0;
-	if (*i + (size_t)n >= s.len + 1) {
-		/* A sequence the string ends inside is its bytes. */
-		n = 0;
-	}
-	uint32_t r = n == 0 ? c : n == 1 ? (uint32_t)(c & 0x1f) : n == 2 ? (uint32_t)(c & 0x0f) : (uint32_t)(c & 0x07);
-	(*i)++;
-	for (int k = 0; k < n && *i < s.len; k++) {
-		r = r << 6 | ((unsigned char)s.ptr[*i] & 0x3f);
-		(*i)++;
-	}
-	return r;
-}
-
 /* sngl_encode writes r into buf as UTF-8, and is how many bytes it took. */
 static size_t sngl_encode(char *buf, uint32_t r) {
 	if (r < 0x80) {
@@ -566,7 +574,7 @@ static size_t sngl_encode(char *buf, uint32_t r) {
 int64_t sngl_string_length(sngl_string s) {
 	int64_t n = 0;
 	for (size_t i = 0; i < s.len;) {
-		sngl_decode(s, &i);
+		sngl_utf8_next(s, &i);
 		n++;
 	}
 	return n;
@@ -591,7 +599,7 @@ int64_t sngl_string_index_of(sngl_string s, sngl_string sub) {
 	}
 	int64_t n = 0;
 	for (size_t i = 0; i < (size_t)at;) {
-		sngl_decode(s, &i);
+		sngl_utf8_next(s, &i);
 		n++;
 	}
 	return n;
@@ -623,7 +631,7 @@ sngl_string sngl_string_substring(sngl_string s, int64_t start, int64_t end) {
 		if (i == s.len) {
 			break;
 		}
-		sngl_decode(s, &i);
+		sngl_utf8_next(s, &i);
 	}
 	return sngl_string_bytes(s.ptr + from, to - from);
 }
@@ -649,10 +657,11 @@ static uint32_t sngl_lower(uint32_t r) {
 }
 
 static sngl_string sngl_map_runes(sngl_string s, uint32_t (*f)(uint32_t)) {
-	char *out = sngl_alloc(s.len * 2 + 1);
+	/* A byte at most three: U+FFFD for one that begins nothing. */
+	char *out = sngl_alloc(s.len * 3 + 1);
 	size_t n = 0;
 	for (size_t i = 0; i < s.len;) {
-		n += sngl_encode(out + n, f(sngl_decode(s, &i)));
+		n += sngl_encode(out + n, f(sngl_utf8_next(s, &i)));
 	}
 	out[n] = '\0';
 	return (sngl_string){out, n};
@@ -670,7 +679,7 @@ sngl_string sngl_string_trim(sngl_string s) {
 	size_t from = s.len, to = 0;
 	for (size_t i = 0; i < s.len;) {
 		size_t at = i;
-		if (!sngl_space(sngl_decode(s, &i))) {
+		if (!sngl_space(sngl_utf8_next(s, &i))) {
 			if (from == s.len) {
 				from = at;
 			}
@@ -692,7 +701,7 @@ sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_
 		sngl_string out = new_;
 		for (size_t i = 0; i < s.len;) {
 			size_t at = i;
-			sngl_decode(s, &i);
+			sngl_utf8_next(s, &i);
 			out = sngl_concat(out, sngl_concat(sngl_string_bytes(s.ptr + at, i - at), new_));
 		}
 		return out;

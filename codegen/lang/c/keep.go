@@ -209,9 +209,12 @@ func (c *Context) holder(target ir.Expr) bool {
 }
 
 // store is target written with value, as a holder keeps it: the value kept,
-// and what it held before dropped.
+// and what it held before dropped. The value is kept before the target's
+// address is taken: evaluating it may grow the list or map the target is
+// in, which moves its elements.
 func (c *Context) store(t *ir.Type, target, value string) string {
-	slot := fmt.Sprintf("__slot%d", c.file.next())
+	n := c.file.next()
+	slot, kept := fmt.Sprintf("__slot%d", n), fmt.Sprintf("__kept%d", n)
 	tn := c.typeName(t)
-	return "{\n\t" + tn + " *" + slot + " = &(" + target + ");\n\t" + c.drop(t, "*"+slot) + "\n\t*" + slot + " = " + c.keep(t, value) + ";\n}"
+	return "{\n\t" + tn + " " + kept + " = " + c.keep(t, value) + ";\n\t" + tn + " *" + slot + " = &(" + target + ");\n\t" + c.drop(t, "*"+slot) + "\n\t*" + slot + " = " + kept + ";\n}"
 }

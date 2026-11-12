@@ -91,6 +91,8 @@ typedef struct {
 	/* A scroll's axes, where it is along each, and whether its end was
 	 * reported and has not been left since; reach is its handler. */
 	int scroll_v, scroll_h, pos_x, pos_y, at_end;
+	/* wheel is the wheel's turn not yet a whole line. */
+	int wheel;
 	handler reach;
 	/* A modal is a node holding no room in its box, and dialog the window
 	 * it shows what it holds in while open, over the window it is in,
@@ -136,11 +138,11 @@ static int ready;
 static int firing;
 static HWND park;
 /* The message font at each DPI a window has been shown at. */
-static struct {
+static struct message_font {
 	int dpi;
 	HFONT font;
-} message_fonts[8];
-static int nmessage_fonts;
+} *message_fonts;
+static int nmessage_fonts, capmessage_fonts;
 static int system_dpi = 96;
 /* What Windows 10 1607 added for a per-monitor DPI, found at run time so the
  * program still starts where it is missing, as system-aware. */
@@ -191,11 +193,15 @@ static HFONT message_font(int dpi) {
 	if (!f) {
 		f = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 	}
-	if (nmessage_fonts < (int)(sizeof message_fonts / sizeof message_fonts[0])) {
-		message_fonts[nmessage_fonts].dpi = dpi;
-		message_fonts[nmessage_fonts].font = f;
-		nmessage_fonts++;
+	/* Kept for as long as the program runs, since a control may be
+	 * drawing with it: a DPI is met once. */
+	if (nmessage_fonts == capmessage_fonts) {
+		capmessage_fonts = capmessage_fonts ? capmessage_fonts * 2 : 4;
+		message_fonts = realloc(message_fonts, sizeof *message_fonts * (size_t)capmessage_fonts);
 	}
+	message_fonts[nmessage_fonts].dpi = dpi;
+	message_fonts[nmessage_fonts].font = f;
+	nmessage_fonts++;
 	return f;
 }
 
@@ -244,11 +250,34 @@ static void set_handler(handler *h, sngl_win32_fn fn, void *ctx, sngl_win32_rele
 	h->release = release;
 }
 
+static int step(MSG *m);
+
+/* A menu entry's command id is what WM_COMMAND carries in 16 bits: those
+ * in use are marked, so an id handed out again once they wrap is free. */
+#define SNGL_ENTRY_FIRST 1000
+static unsigned char entry_ids[0x10000 / 8];
+static UINT next_entry = SNGL_ENTRY_FIRST;
+
+static UINT entry_id(void) {
+	for (UINT n = 0; n < 0x10000 - SNGL_ENTRY_FIRST; n++) {
+		UINT id = next_entry;
+		next_entry = next_entry == 0xffff ? SNGL_ENTRY_FIRST : next_entry + 1;
+		if (!(entry_ids[id / 8] & (1u << (id % 8)))) {
+			entry_ids[id / 8] |= (unsigned char)(1u << (id % 8));
+			return id;
+		}
+	}
+	return 0;
+}
+
 /* forget frees what w's record holds, as w goes. */
 static void forget(HWND w) {
 	ctl *c = ctl_of(w);
 	if (!c) {
 		return;
+	}
+	if (c->kind == K_ENTRY && c->id >= SNGL_ENTRY_FIRST && c->id <= 0xffff) {
+		entry_ids[c->id / 8] &= (unsigned char)~(1u << (c->id % 8));
 	}
 	RemovePropW(w, SNGL_PROP);
 	drop_handler(&c->click);
@@ -1302,7 +1331,7 @@ static void fit(HWND top, int min_w, int min_h) {
 		return;
 	}
 	RECT wr = {0, 0, want_w > w ? want_w : w, want_h > h ? want_h : h};
-	AdjustWindowRectEx(&wr, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
+	AdjustWindowRectEx(&wr, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), GetMenu(top) != NULL, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
 	SetWindowPos(top, NULL, 0, 0, wr.right - wr.left, wr.bottom - wr.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
@@ -1438,7 +1467,7 @@ static void show_modal(HWND m, ctl *c) {
 		SIZE s;
 		measure(c->dialog, &s);
 		RECT r = {0, 0, s.cx < px(240, d->dpi) ? px(240, d->dpi) : s.cx, s.cy < px(80, d->dpi) ? px(80, d->dpi) : s.cy};
-		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(c->dialog, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(c->dialog, GWL_EXSTYLE));
+		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(c->dialog, GWL_STYLE), GetMenu(c->dialog) != NULL, (DWORD)GetWindowLongPtrW(c->dialog, GWL_EXSTYLE));
 		int ww = r.right - r.left, wh = r.bottom - r.top, x = 0, y = 0;
 		RECT o;
 		if (owner && GetWindowRect(owner, &o)) {
@@ -1669,7 +1698,7 @@ typedef struct {
 } fetch;
 
 /* fetched saves the URL a fetch names to the cache, off the loop, and
- * hands the loop the file. */
+ * hands the loop the file and the URL it was fetched for. */
 static DWORD WINAPI fetched(void *arg) {
 	fetch *f = arg;
 	WCHAR path[MAX_PATH];
@@ -1677,10 +1706,10 @@ static DWORD WINAPI fetched(void *arg) {
 	if (SUCCEEDED(URLDownloadToCacheFileW(NULL, f->url, path, MAX_PATH, 0, NULL))) {
 		saved = _wcsdup(path);
 	}
-	if (!PostMessageW(f->w, SNGL_WM_FETCHED, 0, (LPARAM)saved)) {
+	if (!PostMessageW(f->w, SNGL_WM_FETCHED, (WPARAM)f->url, (LPARAM)saved)) {
 		free(saved);
+		free(f->url);
 	}
-	free(f->url);
 	free(f);
 	return 0;
 }
@@ -2207,16 +2236,20 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			}
 		}
 		return 0;
-	case SNGL_WM_FETCHED:
-		if (c && c->kind == K_PICTURE) {
-			WCHAR *path = (WCHAR *)lp;
+	case SNGL_WM_FETCHED: {
+		WCHAR *url = (WCHAR *)wp, *path = (WCHAR *)lp;
+		/* A fetch for a URL the picture no longer shows is dropped: a
+		 * slow one may land after the one for its new URL. */
+		if (c && c->kind == K_PICTURE && c->url && wcscmp(c->url, url) == 0) {
 			const char *why = "the image could not be fetched";
 			int bw = 0, bh = 0;
 			HBITMAP bmp = path ? decode(NULL, 0, path, &bw, &bh, &why) : NULL;
-			free(path);
 			shown_as(w, c, bmp, bw, bh, bmp ? NULL : why);
 		}
+		free(url);
+		free(path);
 		return 0;
+	}
 	case WM_PAINT:
 	case WM_PRINTCLIENT:
 		if (c && c->kind == K_FLOW) {
@@ -2359,7 +2392,11 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		break;
 	case WM_MOUSEWHEEL:
 		if (c && c->kind == K_SCROLL) {
-			int lines = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+			/* What a precision touchpad sends a notch in pieces is
+			 * added up until it makes a line. */
+			c->wheel += GET_WHEEL_DELTA_WPARAM(wp);
+			int lines = c->wheel / WHEEL_DELTA;
+			c->wheel -= lines * WHEEL_DELTA;
 			for (int i = 0; i < (lines < 0 ? -lines : lines); i++) {
 				scrolled(w, c, c->scroll_v ? SB_VERT : SB_HORZ, lines < 0 ? SB_LINEDOWN : SB_LINEUP);
 			}
@@ -2419,10 +2456,22 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		}
 		if (c && c->kind == K_TOP) {
 			sngl_win32_set_visible(w, 0);
+			/* The program's write-back of :visible may take the window
+			 * away, and its record with it: @closed is held out of the
+			 * record while the two run, and handed back to it if it is
+			 * still there. */
+			handler closed = c->closed;
+			memset(&c->closed, 0, sizeof c->closed);
 			if (c->visible.fn) {
 				((sngl_win32_bool_fn)(void (*)(void))c->visible.fn)(0, c->visible.ctx);
 			}
-			fire(&c->closed);
+			fire(&closed);
+			ctl *still = IsWindow(w) ? ctl_of(w) : NULL;
+			if (still && !still->closed.fn) {
+				still->closed = closed;
+			} else {
+				drop_handler(&closed);
+			}
 			return 0;
 		}
 		break;
@@ -2442,6 +2491,17 @@ static LRESULT CALLBACK control_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp, UIN
 	(void)id;
 	(void)data;
 	switch (msg) {
+	case WM_GETDLGCODE: {
+		/* An edit taking Enter as its activation claims the key, which
+		 * IsDialogMessage would take as the dialog's default button and
+		 * send the window, where it does nothing. */
+		ctl *c = ctl_of(w);
+		MSG *m = (MSG *)lp;
+		if (c && c->kind == K_EDIT && c->activate.fn && m && (m->message == WM_KEYDOWN || m->message == WM_CHAR) && (m->wParam == VK_RETURN || m->wParam == '\r')) {
+			return DefSubclassProc(w, msg, wp, lp) | DLGC_WANTALLKEYS;
+		}
+		break;
+	}
 	case WM_KEYDOWN:
 		if (wp == VK_RETURN) {
 			ctl *c = ctl_of(w);
@@ -2859,12 +2919,11 @@ HWND sngl_win32_modal(void) {
 }
 
 HWND sngl_win32_entry(void) {
-	static UINT next_entry = 1000;
 	HWND w = control(SNGL_BOX_CLASS, 0, 0, K_ENTRY);
 	ctl *c = ctl_of(w);
 	if (c) {
 		c->off_prop = 1;
-		c->id = next_entry++;
+		c->id = entry_id();
 		ShowWindow(w, SW_HIDE);
 	}
 	return w;
@@ -3663,7 +3722,7 @@ void sngl_win32_attach(HWND top) {
 	SIZE s;
 	measure(top, &s);
 	RECT r = {0, 0, s.cx < 200 ? 200 : s.cx, s.cy < 100 ? 100 : s.cy};
-	AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
+	AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), GetMenu(top) != NULL, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
 	SetWindowPos(top, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	if (holding) {
 		/* Not shown yet, which the window's :visible hears. */
@@ -3704,6 +3763,12 @@ void sngl_win32_detach(HWND top) {
 		if (made != park) {
 			top = made;
 		}
+	}
+	/* Hidden first, so it is counted out of what is on screen: Windows
+	 * hides a window it destroys before telling it, which no count sees. */
+	ctl *t = ctl_of(top);
+	if (t && t->kind == K_TOP && !t->modal_of) {
+		sngl_win32_set_visible(top, 0);
 	}
 	DestroyWindow(top);
 }
@@ -4040,7 +4105,10 @@ void sngl_win32_fire_activate(HWND w, const unsigned short *text) {
 		notify(w, EN_KILLFOCUS);
 		return;
 	}
-	SendMessageW(w, WM_KEYDOWN, VK_RETURN, 0);
+	/* Through the loop's own step, as a key the user presses reaches it:
+	 * IsDialogMessage first. */
+	MSG m = {.hwnd = w, .message = WM_KEYDOWN, .wParam = VK_RETURN};
+	step(&m);
 }
 
 void sngl_win32_fire_select(HWND w, const unsigned short *label) {
@@ -4231,7 +4299,7 @@ int sngl_win32_snapshot(const char *path, int width, int height) {
 	HWND top = sngl_win32_shown();
 	if (top != NULL && width > 0 && height > 0) {
 		RECT r = {0, 0, width, height};
-		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), FALSE, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
+		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(top, GWL_STYLE), GetMenu(top) != NULL, (DWORD)GetWindowLongPtrW(top, GWL_EXSTYLE));
 		SetWindowPos(top, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 	}
 	unsigned char *rgba = NULL;

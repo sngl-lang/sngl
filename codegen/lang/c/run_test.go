@@ -18,6 +18,7 @@ import (
 
 	"duckfam.us/sngl/codegen"
 	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/platform/win32"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
@@ -245,6 +246,13 @@ func run(t *testing.T, cc clang.Compiler, exe string) string {
 	}
 	var out, stderr bytes.Buffer
 	cmd := exec.Command(name, args...)
+	if cc.Windows {
+		env, err := win32.WineEnv(t.Context())
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd.Env = env
+	}
 	cmd.Stdout, cmd.Stderr = &out, &stderr
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("%s: %v\n%s", exe, err, stderr.String())

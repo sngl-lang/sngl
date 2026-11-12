@@ -32,6 +32,13 @@ stdout 'ok +2 tests, 0 failures'
 sngl test --platform=win32 --language=c nested.sngl
 stdout 'ok +3 tests, 0 failures'
 
+# A copy's own method, called from its view and from a var's initializer,
+# is a function of the package's handed the record: the var it initializes
+# is set once the record holds what the method reads.
+
+sngl test --platform=win32 --language=c methods.sngl
+stdout 'ok +1 tests, 0 failures'
+
 # A sngl:seq sequence held or passed is the list of what it counts, which is
 # what C holds an iter[T] as; one a loop walks where it is written is counted
 # and never built.
@@ -54,6 +61,8 @@ stdout 'ok +2 tests, 0 failures'
 sngl test --platform=win32 --language=go nested.sngl
 stdout 'ok +3 tests, 0 failures'
 sngl test --platform=win32 --language=go seq.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go methods.sngl
 stdout 'ok +1 tests, 0 failures'
 
 -- app.sngl --
@@ -237,8 +246,37 @@ func testHeldAndPassed(t test.Test, c main) {
 ui.window {
     main()
 }
+-- methods.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component row(label string) ui.node {
+    var base = "<"
+    var shown = decorate()
+    func decorate() string {
+        return base
+    }
+    ui.button #b(text="{label}{decorate()}{shown}")
+}
+
+component main ui.node {
+    var names = ["ann", "bob"]
+    ui.vbox {
+        for var name = names {
+            row #r(label=name)
+        }
+    }
+}
+
+ui.window {
+    main()
+}
+
+func testAMethodReadsItsCopy(t test.Test, c main) {
+    t.assert(c.r[1].shown == "<")
+}
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:9ae315a9df37fe5a47373400ae6a3137
+sha256:82b7bf2f52fa36f56febbc83254644db
 {
   "results": [
     {
@@ -254,8 +292,18 @@ sha256:9ae315a9df37fe5a47373400ae6a3137
     "dropped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABuCAIAAADtf8s6AAAC1ElEQVR4nOzcS6riTBgGYKtwA5KRc524/wW4CUfZgXgZibPk55A/1SG31iRCH3zqg0arz5k9vFXQXe/6crmcTqfb7VaW5cqy5q0QQpZlh8MhHI/H7Xa72+1ijPXfWtbEVRRFnufn8zne73eqqFpE1Wq1ijHu9/vr9RrLsqSKqkVUJVs/qNJ3YxYcsMACCyywfjusEEL9ESywloMlsSTWRxLLzJx1/cEJ2H8Cpp30LxPdHbDAGoMVQmjpae2UZdndqX8bLLAGYPVOyqeRHbDAehtWN5Ok1FBKubxPubyLrreiS2L9SazqCjW0UwVVdwcssP4C68WDr7vjKHQUTj8KrbcWWGCBBdYvghVCKIqi/mpZc1dRFDHGmGVZnudssbWIrer/vG82m+CVjlc6H3ml83g86k2Xd5d3l3eX93/88l5/kFgSS2JJLIklsSSWxJJYiyXW+vl8KgVRCqIURCmIUhClIEpBlIIoBVEKohREKYhSEKUgSkGUgigF+XgpiJk5HlP8/5givb3xXOLF5xJgvQSr6cnb+ZG3847C6UdhejzY/LP6Wk3ra9qRWBKrJ7F6J6VXM8bS5+6OxJJYg4nVHFyaXMBaDJaZNmD1wHKutc41d6xZd6x0B+9VlW70zR8Y/xWwvhzWD6xeGa3N7s90dxyFjsLBo9Adyx3rI3esF0dcDcUVWLNgmZFRCqIURCmIUhClIEpBlIIoBVEKohREKYhSEKUgSkGUgigFUQqiFEQpiFKQry0FAQsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILrK+B5YMPMz78NwCP7PdsgcHMiAAAAABJRU5ErkJggg=="
   }
 }
+-- testrun/win32/c/methods.sngl/main/1 --
+sha256:03ad5009535093ee4ba4360721cddf6d
+{
+  "results": [
+    {
+      "Desc": "AMethodReadsItsCopy",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:f632cc3ede785465e4059f364c9f3504
+sha256:47323073a16ab18cf21a7ccded4559bc
 {
   "results": [
     {
@@ -273,7 +321,7 @@ sha256:f632cc3ede785465e4059f364c9f3504
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:01240b5fd632b9930270938fd67fe765
+sha256:a4f421eb91410d578a505b3a23789c9a
 {
   "results": [
     {
@@ -287,7 +335,7 @@ sha256:01240b5fd632b9930270938fd67fe765
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:b372bc7cc46ffe60b61e09e7b413719f
+sha256:95d04fc2e75f120b753ea0af923aded1
 {
   "results": [
     {
@@ -297,7 +345,7 @@ sha256:b372bc7cc46ffe60b61e09e7b413719f
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:ed259f36774df9d414d23a8ef72cc205
+sha256:6e74bf7e938d3ec5a236f9ab303ceca2
 {
   "results": [
     {
@@ -316,6 +364,16 @@ sha256:1eb54b058430612424735fa96df9f876
     },
     {
       "Desc": "ARenderReplacesTheCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/methods.sngl/main/1 --
+sha256:f77f5950e296e10a4116028964278ced
+{
+  "results": [
+    {
+      "Desc": "AMethodReadsItsCopy",
       "Passed": true
     }
   ]

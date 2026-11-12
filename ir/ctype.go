@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -48,8 +49,64 @@ func ParseCType(s string) (*CType, error) {
 	if len(words) == 0 {
 		return nil, fmt.Errorf("C type %q names no type", s)
 	}
-	t.Name = strings.Join(words, " ")
+	name, err := builtinCName(words)
+	if err != nil {
+		return nil, fmt.Errorf("C type %q: %w", s, err)
+	}
+	t.Name = name
 	return t, nil
+}
+
+// cBuiltinWords are the words C spells its builtin arithmetic types with.
+var cBuiltinWords = map[string]bool{"signed": true, "unsigned": true, "short": true, "long": true, "int": true, "char": true, "float": true, "double": true}
+
+// cBuiltinNames are the builtin arithmetic types as one spelling each, the
+// one cgo names (codegen/lang/golang's cgoNames), keyed by the words in
+// order with `int` and a redundant `signed` dropped.
+var cBuiltinNames = map[string]string{
+	"char": "char", "signed char": "signed char", "unsigned char": "unsigned char",
+	"short": "short", "unsigned short": "unsigned short",
+	"": "int", "unsigned": "unsigned int",
+	"long": "long", "unsigned long": "unsigned long",
+	"long long": "long long", "unsigned long long": "unsigned long long",
+	"float": "float", "double": "double",
+}
+
+// builtinCName is words as one name: a typedef's own, or a builtin type's
+// one spelling, `short int` and `signed short` both `short`.
+func builtinCName(words []string) (string, error) {
+	for _, w := range words {
+		if !cBuiltinWords[w] {
+			if len(words) > 1 {
+				return "", fmt.Errorf("%q is no word of a C builtin type, and a typedef is one word", w)
+			}
+			return w, nil
+		}
+	}
+	var kept []string
+	ints := 0
+	for _, w := range words {
+		if w == "int" {
+			ints++
+			continue
+		}
+		kept = append(kept, w)
+	}
+	key := strings.Join(kept, " ")
+	if ints > 1 {
+		key = "!"
+	}
+	if !slices.Contains(kept, "char") {
+		key = strings.TrimPrefix(strings.TrimPrefix(key, "signed"), " ")
+	}
+	if ints > 0 && (slices.Contains(kept, "char") || slices.Contains(kept, "float") || slices.Contains(kept, "double")) {
+		key = "!"
+	}
+	name, ok := cBuiltinNames[key]
+	if !ok {
+		return "", fmt.Errorf("%q is no C type a SNGL value crosses as", strings.Join(words, " "))
+	}
+	return name, nil
 }
 
 // cTokens splits s into words and `*`, and anything else one rune at a time

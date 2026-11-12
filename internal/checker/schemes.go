@@ -617,7 +617,19 @@ func (c *checker) checkCCallbacks() {
 				}
 			}
 		}
+		// A string result is read back as the `char *` C answers; a wide
+		// string, which an alias of string spells, is not read back.
+		if fn.AST.ReturnType != nil {
+			if a := c.cAliasOf(fn.AST.ReturnType, fn.Return); a != nil && a.Type != nil && a.Type.Kind == ir.TypeString {
+				c.error(fn.AST.Pos, "C function %q answers a %s, and a string C answers is read as a `char *`: declare it c.pointer and copy it in C", fn.Foreign.Name, a.Name)
+			}
+		}
 		for i, p := range fn.Params {
+			// NULL is a pointer's: an option crosses as one where its alias
+			// is a string, and a number or bool has none to be.
+			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
+				c.error(pos(i), "parameter %q is an option of %s, and C has no NULL %s: an option crosses to C as a pointer, a string's", p.Name, p.CAlias.Name, p.CAlias.Name)
+			}
 			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) {
 				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[cnative] alias of one, or a C struct", p.Name, p.Type)
 			}
@@ -640,10 +652,37 @@ func (c *checker) checkCCallbacks() {
 		for _, i := range callbacks {
 			p := fn.Params[i]
 			if why := cCallbackRefusal(p.Type.Sig); why != "" {
-				c.error(pos(i), "callback %q %s: a callback crosses an int, float, bool or #[cnative] struct, which C has a type for", p.Name, why)
+				c.error(pos(i), "callback %q %s: a callback crosses an int, float, bool or #[cnative] handle (a struct declaring no fields), which C has a type for", p.Name, why)
+			}
+			if j := i - skip; j >= 0 && j < len(fn.AST.Params.Params) {
+				c.checkCallbackAliases(p.Name, fn.AST.Params.Params[j].Type, pos(i))
 			}
 		}
 	}
+}
+
+// checkCallbackAliases refuses an alias of float in a callback's
+// signature that is not C's double: the dispatcher a translator writes
+// takes and answers a float as a double, the signature's aliases expanded,
+// and C passing a 4-byte float where a double is read hands it garbage.
+func (c *checker) checkCallbackAliases(name string, te ast.TypeExpr, at ast.Pos) {
+	ft, ok := te.(*ast.FuncType)
+	if !ok {
+		return
+	}
+	check := func(te ast.TypeExpr) {
+		if te == nil {
+			return
+		}
+		a := c.cAliasOf(te, nil)
+		if a != nil && a.Type != nil && a.Type.Kind == ir.TypeFloat && a.C != nil && a.C.Name != "double" {
+			c.error(at, "callback %q crosses a %s, C's %s, and a callback's float crosses as a double: write float", name, a.Name, a.C.Name)
+		}
+	}
+	for _, p := range ft.Params {
+		check(p.Type)
+	}
+	check(ft.Return)
 }
 
 // cCallbackRefusal says what in sig no C callback can carry, or "".

@@ -239,8 +239,8 @@ static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s);
 static int64_t s_platform_win32__inset(sngl_opt_measurement m);
 static int64_t s_platform_win32__rgb(sngl_opt_color c);
 static void s___renderSlot0(HWND parent);
-static void sngl_list_HWND__drop(sngl_list_HWND v);
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v);
+static void sngl_list_HWND__drop(sngl_list_HWND v);
 static void s___lambda0(s___lambda0_caps state);
 static void s___lambda1(s___lambda1_caps state);
 
@@ -274,10 +274,6 @@ static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
 	return l;
 }
 
-static void sngl_list_HWND__drop(sngl_list_HWND v) {
-	sngl_drop(v.data);
-}
-
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
 	HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
 	if (v.len > 0) {
@@ -286,6 +282,10 @@ static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
 	v.data = data;
 	v.cap = v.len;
 	return v;
+}
+
+static void sngl_list_HWND__drop(sngl_list_HWND v) {
+	sngl_drop(v.data);
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
@@ -405,9 +405,10 @@ static void s___renderSlot0(HWND parent) {
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
+	sngl_list_HWND __kept1 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
 	sngl_list_HWND *__slot1 = &(s___slot0);
 	sngl_list_HWND__drop(*__slot1);
-	*__slot1 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
+	*__slot1 = __kept1;
 }
 					for (struct { sngl_list_int l; int64_t i; } __loop2 = {sngl_list_int_of(1, (int64_t[]){0}), 0}; __loop2.i < __loop2.l.len; __loop2.i++) {
 						HWND __n1 = sngl_win32_flow();
@@ -547,4 +548,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:489c52e2592b68818644d0c202395849
+pass sha256:e6a002874588c80f7c1b2f3f6b1158a1

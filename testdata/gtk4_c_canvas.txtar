@@ -211,10 +211,10 @@ static cairo_line_join_t s_platform_gtk4__lineJoin(int64_t join);
 static void s___lambda1(s___lambda1_caps state);
 static void s_x_c__free(char * s);
 static void s___renderSlot0(GtkBox * parent);
-static void sngl_list_node__drop(sngl_list_node v);
 static sngl_list_node sngl_list_node__keep(sngl_list_node v);
-static void sngl_map_string__instance_dot___drop(sngl_map_string__instance_dot_ v);
+static void sngl_list_node__drop(sngl_list_node v);
 static sngl_map_string__instance_dot_ sngl_map_string__instance_dot___keep(sngl_map_string__instance_dot_ v);
+static void sngl_map_string__instance_dot___drop(sngl_map_string__instance_dot_ v);
 static void s___snglTeardown(void);
 static void s__canvasDraw1(cairo_t *ctx, void *data);
 static sngl_list_float sngl_list_float__keep(sngl_list_float v);
@@ -300,10 +300,6 @@ static void sngl_list___anon_id_elem_4ccb28_push(sngl_list___anon_id_elem_4ccb28
 	l->data[l->len++] = v;
 }
 
-static void sngl_list_node__drop(sngl_list_node v) {
-	sngl_drop(v.data);
-}
-
 static sngl_list_node sngl_list_node__keep(sngl_list_node v) {
 	GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
 	if (v.len > 0) {
@@ -312,6 +308,10 @@ static sngl_list_node sngl_list_node__keep(sngl_list_node v) {
 	v.data = data;
 	v.cap = v.len;
 	return v;
+}
+
+static void sngl_list_node__drop(sngl_list_node v) {
+	sngl_drop(v.data);
 }
 
 static int64_t sngl_map_string__instance_dot__find(sngl_map_string__instance_dot_ m, sngl_string k) {
@@ -375,14 +375,6 @@ static void sngl_list_node_push_kept(sngl_list_node *l, GtkWidget * v) {
 	l->data[l->len++] = v;
 }
 
-static void sngl_map_string__instance_dot___drop(sngl_map_string__instance_dot_ v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
-	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
-}
-
 static sngl_map_string__instance_dot_ sngl_map_string__instance_dot___keep(sngl_map_string__instance_dot_ v) {
 	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
 	s_dot__inst * *vals = sngl_keep_alloc(sizeof(s_dot__inst *) * (size_t)(v.len + 1));
@@ -397,6 +389,14 @@ static sngl_map_string__instance_dot_ sngl_map_string__instance_dot___keep(sngl_
 	v.keys[i] = sngl_string_keep(v.keys[i]);
 	}
 	return v;
+}
+
+static void sngl_map_string__instance_dot___drop(sngl_map_string__instance_dot_ v) {
+	for (int64_t i = 0; i < v.len; i++) {
+	sngl_drop((v.keys[i]).ptr);
+	}
+	sngl_drop(v.keys);
+	sngl_drop(v.vals);
 }
 
 static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
@@ -570,9 +570,10 @@ static void s___renderSlot0(GtkBox * parent) {
 					}
 					(void)0;
 					{
+	sngl_list_node __kept4 = sngl_list_node__keep(((sngl_list_node){0}));
 	sngl_list_node *__slot4 = &(s___slot0);
 	sngl_list_node__drop(*__slot4);
-	*__slot4 = sngl_list_node__keep(((sngl_list_node){0}));
+	*__slot4 = __kept4;
 }
 					sngl_slot_anchor(GTK_WIDGET(parent), &s___slot0__anchor);
 					sngl_map_string__instance_dot_ __inst0_next = ((sngl_map_string__instance_dot_){0});
@@ -606,9 +607,10 @@ static void s___renderSlot0(GtkBox * parent) {
 						}
 					}
 					{
+	sngl_map_string__instance_dot_ __kept7 = sngl_map_string__instance_dot___keep(__inst0_next);
 	sngl_map_string__instance_dot_ *__slot7 = &(s___inst0_live);
 	sngl_map_string__instance_dot___drop(*__slot7);
-	*__slot7 = sngl_map_string__instance_dot___keep(__inst0_next);
+	*__slot7 = __kept7;
 }
 				}
 				sngl_catching = __finally8.up;
@@ -628,9 +630,10 @@ static void s___snglTeardown(void) {
 		s_dot__destroy(__inst0_live_dv);
 	}
 	{
+	sngl_map_string__instance_dot_ __kept10 = sngl_map_string__instance_dot___keep(((sngl_map_string__instance_dot_){0}));
 	sngl_map_string__instance_dot_ *__slot10 = &(s___inst0_live);
 	sngl_map_string__instance_dot___drop(*__slot10);
-	*__slot10 = sngl_map_string__instance_dot___keep(((sngl_map_string__instance_dot_){0}));
+	*__slot10 = __kept10;
 }
 	s_x_c__free(s___rel0);
 	s_x_c__free(s___rel1);
@@ -696,4 +699,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:e7c7bdf6248cb4539f89be79db5a2a60
+pass sha256:4ff2e338f41776d40f6a7a0338603d32

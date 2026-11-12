@@ -476,6 +476,12 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 	case ir.NodeOpAttachHandler:
 		handler := arg(2)
 		if unwrittenHandler(handler) {
+			// Nothing to connect, the program's `@click {}` included, which
+			// a test can still trigger: it fires the control, which runs
+			// nothing.
+			if event, ok := arg(1).(*ir.Literal); ok && len(call.Args) == 4 {
+				p.recordFire(arg(0), event.Value, handler)
+			}
 			return nil
 		}
 		if len(call.Args) != 4 {

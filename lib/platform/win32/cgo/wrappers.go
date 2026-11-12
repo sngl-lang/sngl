@@ -2,6 +2,8 @@
 
 //go:build windows
 
+// The C sources, as a change to them builds this package again: dfe23043d7a159e390dc5b5a
+
 package cgo
 
 /*
@@ -50,6 +52,26 @@ type Look struct {
 	Background int
 	FontPx     int
 	Hidden     int
+}
+
+// POINT is C's POINT, field by field.
+type POINT struct {
+	X int
+	Y int
+}
+
+// RECT is C's RECT, field by field.
+type RECT struct {
+	Left   int
+	Top    int
+	Right  int
+	Bottom int
+}
+
+// SIZE is C's SIZE, field by field.
+type SIZE struct {
+	Cx int
+	Cy int
 }
 
 // CreateSolidBrush calls CreateSolidBrush.
@@ -536,7 +558,7 @@ func SnglWin32OnReachEnd(w HWND, fn func()) {
 
 // SnglWin32OnVisible calls sngl_win32_on_visible.
 func SnglWin32OnVisible(w HWND, fn func(bool)) {
-	C.sngl_win32_on_visible(w, snglCallback_int__voidPtr(), snglContext(fn), snglReleasePtr())
+	C.sngl_win32_on_visible(w, snglCallback_bool__voidPtr(), snglContext(fn), snglReleasePtr())
 }
 
 // SnglWin32PickDate calls sngl_win32_pick_date.
@@ -960,7 +982,7 @@ func free(s *C.char) {
 	C.free(unsafe.Pointer(s))
 }
 
-// Not wrapped, which a Go program calls directly:
+// Not wrapped, which a Go program cannot call:
 //
 //   - GetClientRect (GetClientRect): a ref parameter, which crosses as a record of the results only lowering declares
 //   - GetWindowRect (GetWindowRect): a ref parameter, which crosses as a record of the results only lowering declares

@@ -93,7 +93,9 @@ func Unavailable(lang, platform string) string {
 			}
 		}
 		// Which architecture the program is for is its manifest's to say,
-		// which a probe has not seen; the build names the missing one.
+		// which a probe has not seen, so both MinGW compilers are wanted.
+		// Running it off Windows wants Wine besides, which the launch asks
+		// for: this asks only whether the program builds.
 		for _, cc := range clang.Matrix() {
 			if cc.Windows && cc.Path == "" {
 				return cc.Name + " not on PATH"
