@@ -104,7 +104,7 @@ func widgetDecls(reg *gir.TypeRegistry, cgo, placed bool) string {
 		// A class made with another object, a GtkApplicationWindow with its
 		// application, is the runtime's to make on a placed platform: a Go
 		// program cannot hand C an untyped pointer where it takes a typed one.
-		if placed && ctorTakesPointer(reg, info) {
+		if placed && ctorTakesPointer(reg, info, true) {
 			continue
 		}
 		declared[info.CType] = true
@@ -169,7 +169,7 @@ func widgetDecls(reg *gir.TypeRegistry, cgo, placed bool) string {
 			}
 			events[n] = true
 			writeEvent(&b, n, s.Name, info.CType)
-			if placed {
+			if placed && !valuedFires[info.CType+"::"+s.Name] {
 				fires = append(fires, [2]string{n, s.Name})
 			}
 		}
@@ -188,7 +188,11 @@ func widgetDecls(reg *gir.TypeRegistry, cgo, placed bool) string {
 		// from, so a body would be emitted by nobody. The checker refuses one on
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
-		writeCreate(&b, reg, info, casts, cgo)
+		var ptrs map[string]bool
+		if placed {
+			ptrs = children.ptrs
+		}
+		writeCreate(&b, reg, info, casts, cgo, ptrs)
 		for _, f := range fires {
 			fmt.Fprintf(&b, "\n#[gen.fires(%q)]\nfunc _fire_%s_%s(w %s) {\n    _rtSignalEmit(w, %q)\n}\n", f[0], info.CType, f[0], info.CType, f[1])
 		}
@@ -258,18 +262,45 @@ func widgetDecls(reg *gir.TypeRegistry, cgo, placed bool) string {
 	return b.String()
 }
 
+// valuedFires is each signal whose handler reads a value off the widget, a
+// check button's state or an entry's text, which a test hands its fire: the
+// platform declares those fires itself, putting the value in place first.
+var valuedFires = map[string]bool{
+	"GtkCheckButton::toggled":   true,
+	"GtkEntry::changed":         true,
+	"GtkEntry::activate":        true,
+	"GtkCalendar::day-selected": true,
+}
+
 // ctorTakesPointer reports whether info's primary constructor takes a
-// pointer, which it is handed as an untyped one (ctorParam).
-func ctorTakesPointer(reg *gir.TypeRegistry, info *gir.ClassInfo) bool {
+// pointer, which it is handed as an untyped one (ctorParam). typed leaves out
+// a nullable typed pointer, which a placed platform hands its own type
+// (typedNull).
+func ctorTakesPointer(reg *gir.TypeRegistry, info *gir.ClassInfo, typed bool) bool {
 	if len(info.Constructors) == 0 {
 		return false
 	}
 	for _, p := range pickPrimaryConstructorInfo(info).Params {
 		if spelled, err := ctorParam(reg, p); err == nil && spelled.typ == "option[c.pointer]" {
+			if typed && typedNull(p) != "" {
+				continue
+			}
 			return true
 		}
 	}
 	return false
+}
+
+// typedNull is the C type a nullable pointer parameter points to, which a
+// placed platform's create hands null as a pointer of: gtk_drop_down_new's
+// model is a GListModel *, and Go hands C no untyped pointer where it takes a
+// typed one. "" for any other parameter.
+func typedNull(p gir.ConstructorParam) string {
+	base, ok := strings.CutSuffix(p.CType, "*")
+	if !ok || !p.Nullable || strings.ContainsAny(base, "* ") || base == "" {
+		return ""
+	}
+	return base
 }
 
 // writeConnect declares signalConnect, which gtk4.sngl's connect protocol
@@ -386,7 +417,10 @@ func writeEvent(b *strings.Builder, n, signal, cType string) {
 // parameter no zero can be spelled for gets neither (unconstructible says
 // why). casts collects the C types a zero crosses through a cast to, with
 // the SNGL type the cast takes.
-func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string, cgo bool) {
+//
+// ptrs, a placed platform's, collects the C type each nullable pointer
+// parameter is handed null as (typedNull).
+func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string, cgo bool, ptrs map[string]bool) {
 	if len(info.Constructors) == 0 {
 		return
 	}
@@ -402,6 +436,10 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 		name, ok := snglName(p.Name)
 		if !ok {
 			return
+		}
+		if base := typedNull(p); ptrs != nil && spelled.typ == "option[c.pointer]" && base != "" {
+			ptrs[base] = true
+			spelled.typ = "option[" + ptrType(base) + "]"
 		}
 		params[i] = name + " " + spelled.typ
 		zeros[i] = spelled.zero
@@ -471,6 +509,13 @@ func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call g
 		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[macro.cnative(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
 		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    _sngl_box_append(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
 			op, op, info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"))
+		// A child a render slot renders goes before the slot's anchor, which
+		// the runtime puts in place as it puts any child of a box.
+		if op == "append" {
+			o.native(b, "_sngl_box_insert_before", fmt.Sprintf("\n#[macro.cnative(\"sngl_box_insert_before\")]\nfunc _sngl_box_insert_before(parent %s, anchor %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget"), ptrType("GtkWidget")))
+			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    _sngl_box_insert_before(%s(_ptr_%s(parent)), %s(_widget(before)), %s(_widget(child)))\n}\n",
+				info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"), ptrFunc("GtkWidget"))
+		}
 		return
 	}
 	if !o.cgo || call.Func == "gtk_box_append" {

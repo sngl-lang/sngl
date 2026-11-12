@@ -1818,6 +1818,7 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 
 // binaryValues is e applied to its operands' values, left and right.
 func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
+	left, right = enumOrdinals(e.Left, left, right), enumOrdinals(e.Right, right, left)
 	lu, leftIsUnit := left.(unitValue)
 	ru, rightIsUnit := right.(unitValue)
 
@@ -3693,4 +3694,30 @@ func (env *Env) refPresent(e ir.Expr) (bool, error) {
 		return env.refPresent(sel.Operand)
 	}
 	return true, nil
+}
+
+// enumOrdinals is v, a value of x, as its member's ordinal where the value it
+// is compared with is an int: a lowering that makes ints of an enum's
+// members (lower's NoEnum) writes the member it compares with as one, and a
+// fold after it reads the zero of an enum field as its first member's name,
+// so `Style{}.borderStyle != 0` was true.
+func enumOrdinals(x ir.Expr, v, other any) any {
+	name, ok := v.(string)
+	if _, isInt := other.(int); !ok || !isInt || x == nil {
+		return v
+	}
+	t := x.ExprType()
+	if t == nil || t.Kind != ir.TypeEnum || ir.PayloadEnum(t) != nil {
+		return v
+	}
+	ed, _ := t.Decl.(*ir.EnumDef)
+	if ed == nil {
+		return v
+	}
+	for i, m := range ed.Members {
+		if m.Name == name {
+			return i
+		}
+	}
+	return v
 }

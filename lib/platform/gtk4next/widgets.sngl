@@ -50,6 +50,15 @@ func _append_GtkBox(parent GtkBox, child ui.node) {
     _sngl_box_append(_as_GtkWidget(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))
 }
 
+#[macro.cnative("sngl_box_insert_before")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBoxInsertBefore")]
+func _sngl_box_insert_before(parent _p_GtkWidget, anchor _p_GtkWidget, child _p_GtkWidget)
+
+#[gen.protocol(insertBefore)]
+func _insert_GtkBox(parent GtkBox, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
 #[macro.cnative("gtk_box_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.GtkBoxRemove")]
 func _gtk_box_remove(parent _p_GtkBox, child _p_GtkWidget)
@@ -275,11 +284,6 @@ func _create_GtkCalendar() GtkCalendar {
     return _gtk_calendar_new()
 }
 
-#[gen.fires("daySelected")]
-func _fire_GtkCalendar_daySelected(w GtkCalendar) {
-    _rtSignalEmit(w, "day-selected")
-}
-
 #[gen.fires("destroy")]
 func _fire_GtkCalendar_destroy(w GtkCalendar) {
     _rtSignalEmit(w, "destroy")
@@ -347,11 +351,6 @@ func _gtk_check_button_new() GtkCheckButton
 #[gen.protocol(create)]
 func _create_GtkCheckButton() GtkCheckButton {
     return _gtk_check_button_new()
-}
-
-#[gen.fires("toggled")]
-func _fire_GtkCheckButton_toggled(w GtkCheckButton) {
-    _rtSignalEmit(w, "toggled")
 }
 
 #[gen.fires("destroy")]
@@ -425,6 +424,79 @@ func _set_GtkCheckButton_look(self GtkCheckButton, look Look) {
 }
 
 #[gen.renders(identity)]
+#[marks.intrinsic("gtk4:GtkDropDown")]
+component GtkDropDown(
+    visible     bool,
+    sensitive   bool,
+    hexpand     bool,
+    vexpand     bool,
+    canFocus    bool,
+    tooltipText string,
+    look        Look = Look{},
+    @destroy(self GtkDropDown),
+    #[gen.connects("notify::selected")]
+    @notifySelected(self GtkDropDown),
+    children    ...component ui.node,
+) ui.node
+
+#[macro.cnative("gtk_drop_down_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.GtkDropDownNew")]
+func _gtk_drop_down_new(model option[_p_GListModel], expression option[_p_GtkExpression]) GtkDropDown
+
+#[gen.protocol(create)]
+func _create_GtkDropDown() GtkDropDown {
+    return _gtk_drop_down_new(null, null)
+}
+
+#[gen.fires("destroy")]
+func _fire_GtkDropDown_destroy(w GtkDropDown) {
+    _rtSignalEmit(w, "destroy")
+}
+
+#[gen.protocol(on)]
+func _on_GtkDropDown_notifySelected(w GtkDropDown, notifySelected func()) {
+    _rtNotifyConnect(w, "notify::selected", notifySelected)
+}
+
+#[macro.cnative("void *", cast)]
+const func _ptr_GtkDropDown(w GtkDropDown) c.pointer
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_visible(self GtkDropDown, visible bool) {
+    _gtk_widget_set_visible(_as_GtkWidget(_ptr_GtkDropDown(self)), _to_gboolean(visible ? 1 : 0))
+}
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_sensitive(self GtkDropDown, sensitive bool) {
+    _gtk_widget_set_sensitive(_as_GtkWidget(_ptr_GtkDropDown(self)), _to_gboolean(sensitive ? 1 : 0))
+}
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_hexpand(self GtkDropDown, hexpand bool) {
+    _gtk_widget_set_hexpand(_as_GtkWidget(_ptr_GtkDropDown(self)), _to_gboolean(hexpand ? 1 : 0))
+}
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_vexpand(self GtkDropDown, vexpand bool) {
+    _gtk_widget_set_vexpand(_as_GtkWidget(_ptr_GtkDropDown(self)), _to_gboolean(vexpand ? 1 : 0))
+}
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_canFocus(self GtkDropDown, canFocus bool) {
+    _gtk_widget_set_can_focus(_as_GtkWidget(_ptr_GtkDropDown(self)), _to_gboolean(canFocus ? 1 : 0))
+}
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_tooltipText(self GtkDropDown, tooltipText string) {
+    _gtk_widget_set_tooltip_text(_as_GtkWidget(_ptr_GtkDropDown(self)), tooltipText)
+}
+
+#[gen.protocol(set)]
+func _set_GtkDropDown_look(self GtkDropDown, look Look) {
+    _setLook(self, look)
+}
+
+#[gen.renders(identity)]
 #[marks.intrinsic("gtk4:GtkEntry")]
 component GtkEntry(
     text        string,
@@ -448,16 +520,6 @@ func _gtk_entry_new() GtkEntry
 #[gen.protocol(create)]
 func _create_GtkEntry() GtkEntry {
     return _gtk_entry_new()
-}
-
-#[gen.fires("activate")]
-func _fire_GtkEntry_activate(w GtkEntry) {
-    _rtSignalEmit(w, "activate")
-}
-
-#[gen.fires("changed")]
-func _fire_GtkEntry_changed(w GtkEntry) {
-    _rtSignalEmit(w, "changed")
 }
 
 #[gen.fires("destroy")]
@@ -1563,6 +1625,12 @@ func _set_GtkWindow_look(self GtkWindow, look Look) {
 #[macro.cnative("void *", cast)]
 const func _widget(w ui.node) c.pointer
 
+#[macro.cnative("GListModel *")]
+struct _p_GListModel {}
+
+#[macro.cnative("GListModel *", cast)]
+const func _as_GListModel(p c.pointer) _p_GListModel
+
 #[macro.cnative("GtkBox *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.PGtkBox")]
 struct _p_GtkBox {}
@@ -1590,6 +1658,12 @@ struct _p_GtkEditable {}
 
 #[macro.cnative("GtkEditable *", cast)]
 const func _as_GtkEditable(p c.pointer) _p_GtkEditable
+
+#[macro.cnative("GtkExpression *")]
+struct _p_GtkExpression {}
+
+#[macro.cnative("GtkExpression *", cast)]
+const func _as_GtkExpression(p c.pointer) _p_GtkExpression
 
 #[macro.cnative("GtkFrame *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.PGtkFrame")]

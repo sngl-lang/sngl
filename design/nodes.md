@@ -115,7 +115,14 @@ append, remove or insert its parent's, a handler's attach the connect or
 `on`, and an op on the application the platform's attach or detach. An
 insert whose reference is an `option` -- a render slot's cursor -- appends
 where it is null. A handler nobody wrote, which lowering attaches in place of
-an event the program left alone, is dropped rather than connected. Every node
+an event the program left alone, is dropped rather than connected. A handler
+taking the widget it fired on, `@toggled(b)`, connected through a `connect`
+whose handler takes nothing, is wrapped in one calling it with the node it is
+connected to (`handedTheNode`), as gtk4's trampoline hands it nothing. A
+test's fire of an event whose handler reads a value off the widget -- a check
+button's state, an entry's text -- is a `#[gen.fires]` the platform declares
+itself, putting the value there first; declgen leaves those out of the
+widgets it writes (`valuedFires`). Every node
 is then retyped as the `handle`'s return type, through lists and options too,
 and the package body's node locals, which handlers reach, become package vars.
 What is left is plain functions, structs and calls, which a language writes
@@ -635,6 +642,8 @@ matched. Each target reads its host its own way, in its own `.sngl`:
   passes nothing, so a signal handler's `self` is the node it is connected
   on (`selfIsNode`); a widget a handler lifted out of a component built at
   run time hands on arrives as a value and is asserted to its field's Go type.
+  On gtk4next the getters are the runtime's C, `sngl_check_active` and its
+  kin, taking the widget a node is, which each language calls as it calls C.
 - **android**'s Compose callbacks pass the value: `func(on) { checked = on; change(on) }`; one passing nothing (radio's `onClick`) names the loop's
   option.
 - **bubbletea**'s key press flips the state itself: `checked = !checked; change(checked)`.

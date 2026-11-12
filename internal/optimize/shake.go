@@ -114,6 +114,11 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		haveEnum[ed] = true
 	}
 	var addedEnums []*ir.EnumDef
+	haveUnit := map[*ir.UnitDef]bool{}
+	for _, ud := range pkg.Units {
+		haveUnit[ud] = true
+	}
+	var addedUnits []*ir.UnitDef
 	var want func(t *ir.Type)
 	// A payload enum's declaration names what each member carries, as a
 	// struct's names its fields: `async.Result[http.Response]` is a Go
@@ -145,6 +150,15 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			}
 			if !namesBuiltinStruct(t.Sig.Return) {
 				want(t.Sig.Return)
+			}
+			return
+		}
+		// A unit is a type of its own on a target that declares one, as
+		// Go's `Measurement` is, which a ui.Style's fields name.
+		if t != nil && t.Kind == ir.TypeUnit {
+			if ud, ok := t.Decl.(*ir.UnitDef); ok && ud != nil && !haveUnit[ud] && ud.PkgPath() != "" && ud.Builtin == "" {
+				haveUnit[ud] = true
+				addedUnits = append(addedUnits, ud)
 			}
 			return
 		}
@@ -278,6 +292,7 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	}
 	pkg.Structs = append(pkg.Structs, added...)
 	pkg.Enums = append(pkg.Enums, addedEnums...)
+	pkg.Units = append(pkg.Units, addedUnits...)
 	return nil
 }
 

@@ -493,8 +493,8 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 		// unbound.
 		connect, err := ir.RewriteExpr(ir.CloneExprSharingDecls(arg(3)), func(n ir.Node) (ir.Node, error) {
 			if id, ok := n.(*ir.Ident); ok {
-				if _, ok := id.Sym.(*ir.Param); ok {
-					return ir.CloneExprSharingDecls(handler), ir.SkipDir
+				if param, ok := id.Sym.(*ir.Param); ok {
+					return handedTheNode(ir.CloneExprSharingDecls(handler), param.Type, arg(0)), ir.SkipDir
 				}
 			}
 			return n, nil
@@ -517,6 +517,23 @@ func (p *placement) call(s ir.Stmt, call *ir.Call) []ir.Stmt {
 		p.fail("a component built at run time (%s) is not placed yet", op)
 		return nil
 	}
+}
+
+// handedTheNode is handler as a connect taking want hands it: where want
+// takes nothing and the handler takes the widget it fired on, as a GTK
+// signal's does (`@toggled(b)`), a function taking nothing that calls the
+// handler with node, the widget it is connected to.
+func handedTheNode(handler ir.Expr, want *ir.Type, node ir.Expr) ir.Expr {
+	ht := handler.ExprType()
+	if want == nil || want.Kind != ir.TypeFunc || want.Sig == nil || len(want.Sig.Params) != 0 ||
+		ht == nil || ht.Kind != ir.TypeFunc || ht.Sig == nil || len(ht.Sig.Params) == 0 {
+		return handler
+	}
+	call := &ir.Call{Type: ht.Sig.Return, Callee: handler}
+	for range ht.Sig.Params {
+		call.Args = append(call.Args, ir.CallArg{Value: ir.CloneExprSharingDecls(node)})
+	}
+	return &ir.Lambda{Type: want, Func: &ir.Func{Block: []ir.Stmt{&ir.CallStmt{Call: call}}}}
 }
 
 // through is the protocol call a node operation carried, as a statement:

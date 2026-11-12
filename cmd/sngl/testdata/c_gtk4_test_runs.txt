@@ -1198,7 +1198,7 @@ sha256:e2d16369031d3ef62f67fc8f5639f3cb
   ]
 }
 -- testrun/gtk4/c/holders.sngl/framed/1 --
-sha256:c2b1c25d54a72aaafe671ceeab98b0cc
+sha256:3f772963ad23aa88f032f8bf1f9689e2
 {
   "results": [
     {

@@ -882,7 +882,27 @@ reaches it the same way.
         (`gtk4.WidgetSource`) skip a class made with another object
         (GtkApplicationWindow), and an action is a method casting its
         receiver.
-     2. The look and the layout (`style.sngl`), and every leaf widget.
+     2. The look and the layout (`style.sngl`), and every leaf widget. Done:
+        every override gtk4 has but the window's own, scroll, tabs, image
+        and the timer, tested in both languages and drawn as gtk4 draws them
+        (`widgets.sngl` in the same script). The runtime gained readers that
+        take a node's `GtkWidget *` (`sngl_check_active`,
+        `sngl_switch_active`, `sngl_entry_text`, `sngl_calendar_day`; the
+        calendar and drop-down calls take one now) and a test's fires that
+        put a value in place first (`sngl_fire_flip`, `sngl_fire_text`,
+        `sngl_fire_day`), which `gtk4next.sngl` declares as `#[gen.fires]`;
+        and a capture draws a test's component as its window's only child,
+        as gtk4 does. A placed class made with a nullable pointer is made
+        with a typed null (GtkDropDown), and a box takes a render slot's
+        child through `sngl_box_insert_before`. Along the way: placement
+        wraps a handler taking the widget it fired on; a local named as its
+        component's var is renamed away from it; a fold after C's enums are
+        ints compares an enum field's zero by its ordinal, so a clickable
+        card's frame on C keeps the border every other target draws; and
+        the shake declares a unit a kept struct's fields hold (a test's
+        `ui.Style` named an undefined `Measurement` in Go). A test cannot
+        yet fire an event an override connects on an inner widget -- a
+        modal's close, a table's or a tree's select -- on gtk4 either.
      3. Toplevels, several windows, `@run` and the application's teardown.
      4. Scroll, tabs, menus and the way back, keys.
      5. Images and the canvas, with its draw function (#294).

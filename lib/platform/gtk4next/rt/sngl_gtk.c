@@ -146,6 +146,7 @@ static GtkWidget *sngl_wrapper(GtkWidget *box, bool make) {
         top = sngl_toplevel_new();
         sngl_toplevel_append(top, box);
         g_object_set_data(G_OBJECT(box), "sngl-wrapper", top);
+        g_object_set_data(G_OBJECT(top), "sngl-wraps", box);
     }
     return top;
 }
@@ -415,9 +416,19 @@ static gboolean sngl_capture_tick(gpointer data) {
 }
 
 bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, int *w, int *h, const char **why) {
+    /* A node shown in a toplevel of its own, a test's component, is drawn
+     * as the window's whole content, as it is where it is a window's only
+     * child, and put back after. */
+    GtkWidget *wrapper = NULL;
     if (root == NULL && sngl_attached && sngl_attached->len > 0) {
         SnglToplevel *t = g_ptr_array_index(sngl_attached, sngl_attached->len - 1);
         root = t->box;
+        GtkWidget *wrapped = g_object_get_data(G_OBJECT(root), "sngl-wraps");
+        if (wrapped != NULL && gtk_widget_get_parent(root) == NULL) {
+            wrapper = root;
+            root = g_object_ref(wrapped);
+            sngl_box_remove(wrapper, root);
+        }
     }
     if (root == NULL) {
         *why = "nothing is shown";
@@ -499,6 +510,10 @@ bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, 
     g_object_unref(paintable);
     gtk_window_set_child(GTK_WINDOW(win), NULL);
     gtk_window_destroy(GTK_WINDOW(win));
+    if (wrapper != NULL) {
+        sngl_toplevel_append(wrapper, root);
+        g_object_unref(root);
+    }
     return ok;
 }
 

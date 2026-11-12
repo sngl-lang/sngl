@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"maps"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -135,6 +136,12 @@ type reservedRenamer struct {
 	// component's own var or func is renamed away from while it is collected
 	// (see collect).
 	shadowed map[string]bool
+	// outer is what a body's own locals and loop variables are renamed away
+	// from while the body is walked: the package's top level and, in a
+	// component, its vars and funcs. A spliced override's `for var row` read
+	// the program's `row` it was handed where a target holds both in scope at
+	// once -- Go's package var, C's closure capturing it by name.
+	outer map[string]bool
 	// tests is each test's instance. A test's select of a node an instance
 	// the build spliced renders names the node by the id its splice gave it,
 	// and the node then stands in the body of whatever rendered the instance,
@@ -340,12 +347,12 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 		switch x := n.(type) {
 		case *ir.LocalVar:
 			if x.Sym != nil {
-				r.sym(x.Sym, x.Sym.Name, func(s string) { x.Sym.Name = s })
+				r.local(x.Sym, x.Sym.Name, func(s string) { x.Sym.Name = s })
 			}
 		case *ir.For:
 			for _, lv := range []*ir.LoopVar{x.KeySym, x.ValueSym} {
 				if lv != nil {
-					r.sym(lv, lv.Name, func(s string) { lv.Name = s })
+					r.local(lv, lv.Name, func(s string) { lv.Name = s })
 				}
 			}
 		case *ir.NodeInst:
@@ -373,6 +380,7 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 		}
 		return nil
 	}
+	r.outer = top
 	for _, fn := range pkg.Funcs {
 		_ = ir.Walk(fn, visit)
 	}
@@ -381,8 +389,28 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 	}
 	_ = ir.Walk(pkg.Body, visit)
 	for _, comp := range pkg.Components {
+		r.outer = maps.Clone(top)
+		for _, v := range comp.Vars {
+			r.outer[v.Name] = true
+		}
+		for _, fn := range comp.Funcs {
+			r.outer[fn.Name] = true
+		}
 		_ = ir.Walk(comp, visit)
 	}
+	r.outer = nil
+}
+
+// local renames a body's local or loop variable whose name is reserved or
+// one outer holds, once, as sym does.
+func (r *reservedRenamer) local(s ir.Symbol, name string, set func(string)) {
+	if _, done := r.syms[s]; done || !r.outer[name] || strings.HasPrefix(name, "__") {
+		r.sym(s, name, set)
+		return
+	}
+	n := r.fresh(name)
+	r.syms[s] = n
+	set(n)
 }
 
 // node renames a node's reserved ID, and its handle with it.

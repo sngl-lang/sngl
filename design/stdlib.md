@@ -300,7 +300,13 @@ A component's own var or func that shadows a name the package declares at
 its top level is renamed the same way, since a target holds both in one
 namespace -- Android's test state class, html's state object -- where the
 two were one member (`cmd/sngl/testdata/state_member_shares_a_name_runs.txt`).
-A name the lowering synthesized (`__root`) is left to the lowering.
+A name the lowering synthesized (`__root`) is left to the lowering. And a
+body's own local or loop variable named as one of its component's vars or
+funcs, or as the package's top level, is renamed, since a target holds the
+two in one scope there: a spliced override's `for var k, row = rows` read the
+program's `row` it was handed, which a test build keeps as a Go package var
+and a C closure captures by name
+(`cmd/sngl/testdata/gtk4next_test_runs.txt`).
 
 **A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
 

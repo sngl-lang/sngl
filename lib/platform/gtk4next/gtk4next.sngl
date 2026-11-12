@@ -5,6 +5,7 @@ import macro "sngl:macro"
 import gen "sngl:x/gen"
 import c "sngl:x/c"
 import go "sngl:language/go"
+import time "sngl:time"
 
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
@@ -250,18 +251,507 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 
 // --- Leaf widgets ---
 
+// What a control holds, read off its widget. A GTK signal hands its handler
+// the widget it fired on and nothing else, so an override reporting a change
+// asks that widget: `@toggled(b) { checked = checkActive(b) }`.
+#[macro.cnative("sngl_check_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglCheckActive")]
+func checkActive(b ui.node) bool
+
+#[macro.cnative("sngl_switch_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglSwitchActive")]
+func switchActive(s ui.node) bool
+
+#[macro.cnative("sngl_entry_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglEntryText")]
+func entryText(e ui.node) string
+
+// Writes an entry's text with its "changed" blocked, which an override does
+// itself rather than binding `text`: see ui.input.
+#[macro.cnative("sngl_editable_set_text_quiet")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglEditableSetTextQuiet")]
+func setEntryText(e ui.node, text string)
+
+#[macro.cnative("sngl_calendar_day")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglCalendarDay")]
+func _rtCalendarDay(c ui.node) string
+
+// The day a calendar has selected. A calendar always has one, so this is null
+// only where GTK reports no date at all.
+func calendarDate(c ui.node) option[time.date] {
+    return time.parseDate(_rtCalendarDay(c))
+}
+
+// Selects y-m-d on a calendar as a click on the day does, without reporting
+// it.
+#[macro.cnative("sngl_calendar_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglCalendarSelect")]
+func selectDay(cal ui.node, y int, m int, d int)
+
+// Offers a drop-down the labels `labels` joins with newlines, and selects
+// `chosen` where one of them is it and nothing where none is. A drop-down
+// takes its choices as a GListModel, which no SNGL expression produces, so
+// the runtime builds one. Neither is a choice anyone made, so the drop-down
+// reports neither.
+#[macro.cnative("sngl_drop_down_offer")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglDropDownOffer")]
+func offerChoices(d ui.node, labels string, chosen string)
+
+// Selects the choice labeled `label`, as a pick does: unlike an offer, the
+// drop-down notifies, so its @notifySelected handler runs. A label among none
+// of its choices selects nothing.
+#[macro.cnative("sngl_drop_down_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglDropDownSelect")]
+func selectLabel(d ui.node, label string)
+
+// The label a drop-down has selected, or "" where it has none.
+#[macro.cnative("sngl_drop_down_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglDropDownLabel")]
+func dropDownLabel(d ui.node) string
+
+// A test's fire of an event whose handler reads a value off the widget puts
+// the value there first, as the user's flip, typing or click on a day does.
+#[macro.cnative("sngl_fire_flip")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglFireFlip")]
+func _rtFireFlip(w ui.node, v int)
+
+#[macro.cnative("sngl_fire_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglFireText")]
+func _rtFireText(e ui.node, text string, signal string)
+
+#[macro.cnative("sngl_fire_day")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglFireDay")]
+func _rtFireDay(c ui.node, day string)
+
+#[gen.fires("toggled")]
+func _fire_GtkCheckButton_toggled(b GtkCheckButton, checked bool) {
+    _rtFireFlip(b, checked ? 1 : 0)
+}
+
+#[gen.fires("notifyActive")]
+func _fire_GtkSwitch_notifyActive(s GtkSwitch, checked bool) {
+    _rtFireFlip(s, checked ? 1 : 0)
+}
+
+#[gen.fires("changed")]
+func _fire_GtkEntry_changed(e GtkEntry, text string) {
+    _rtFireText(e, text, "changed")
+}
+
+#[gen.fires("activate")]
+func _fire_GtkEntry_activate(e GtkEntry, text string) {
+    _rtFireText(e, text, "activate")
+}
+
+#[gen.fires("daySelected")]
+func _fire_GtkCalendar_daySelected(c GtkCalendar, day option[time.date]) {
+    _rtFireDay(c, day == null ? "" : day.format())
+}
+
+// A text starts at the left of its box, as html's does: a GtkLabel centers
+// its words in whatever room it is given.
 const component ui.text[platform](value, style) {
     GtkLabel(label=value, xalign=0.0, look=lookOf(style)) {}
 }
 
+// A control written `focusable=false` is given `can-focus` false, which keeps
+// focus off the widget and off what it holds -- an entry's focus is on the
+// text widget inside it, and a drop-down's on its button -- by Tab and by a
+// click alike, and a click still presses it.
 const component ui.button[platform](text, focusable, style, @click) {
     GtkButton(label=text, canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
 }
 
-// --- Containers ---
+const component ui.checkbox[platform](label, checked, focusable, style, @change) {
+    GtkCheckButton(label=label, active=checked, canFocus=focusable, look=lookOf(style), @toggled(b) {
+        if checkActive(b) != checked {
+            checked = checkActive(b)
+            change(checked)
+        }
+    }) {}
+}
+
+// The value is pushed by an effect rather than bound: setting an entry's text
+// deletes and reinserts it, firing "changed" for each, so writing back the
+// text "changed" just reported re-entered the handler until the stack
+// overflowed. Only a value the entry does not already show is written.
+const component ui.input[platform](value, focusable, style, @input, @change) {
+    GtkEntry #entry(
+        canFocus = focusable,
+        look = lookOf(style),
+        @changed(e) {
+            if entryText(e) != value {
+                value = entryText(e)
+                input(value)
+            }
+        },
+        @activate(e) {
+            value = entryText(e)
+            change(value)
+        },
+    ) {}
+    effect(on=value, @mount(v) {
+        if entryText(entry) != v {
+            setEntryText(entry, v)
+        }
+    })
+}
+
+// gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so
+// the value binding + changed handler compile and round-trip. (Rich
+// multi-line GtkTextView support is a future enhancement.)
+const component ui.textarea[platform](value, focusable, style, @input, @change) {
+    GtkEntry #entry(
+        canFocus = focusable,
+        look = lookOf(style),
+        @changed(e) {
+            if entryText(e) != value {
+                value = entryText(e)
+                input(value)
+            }
+        },
+        @activate(e) {
+            value = entryText(e)
+            change(value)
+        },
+    ) {}
+    effect(on=value, @mount(v) {
+        if entryText(entry) != v {
+            setEntryText(entry, v)
+        }
+    })
+}
+
+// --- Container widgets ---
 
 const component ui.vbox[platform](style, children) {
     GtkBox(orientation="vertical", look=boxLookOf(style, 6)) {
         children
+    }
+}
+
+const component ui.hbox[platform](style, children) {
+    GtkBox(orientation="horizontal", look=boxLookOf(style, 6)) {
+        children
+    }
+}
+
+// A grid is a GtkBox the runtime lays out a row at a time, so its children come
+// and go as a box's do. GtkFlowBox wraps each child in one of its own, which
+// a render slot's anchor is no sibling of, and GtkGrid places each by a
+// position a child append cannot give it.
+const component ui.grid[platform](columns, style, children) {
+    GtkBox(orientation="horizontal", look=gridLookOf(style, columns)) {
+        children
+    }
+}
+
+// --- Indicators ---
+
+// GtkProgressBar's fraction is 0..1, so the value is measured against max here
+// rather than passed through as if it already were one.
+//
+// GTK spells indeterminate as repeated gtk_progress_bar_pulse() calls rather
+// than as a property, and an override has no clock to drive them, so a bar
+// given no value is an empty one. Written as two calls rather than as one with
+// a ternary because a ternary is lowered to a temporary on a language with no
+// conditional expression, and that happens before the fold that would have
+// settled it -- `C.double(__lt0)` where `__lt0 = (2 / 10)`, which is Go
+// integer division.
+const component ui.progress[platform](style, value, max, label, showValue) {
+    if value != null {
+        GtkProgressBar(fraction=value / max, text=label, showText=showValue, look=lookOf(style)) {}
+    } else {
+        GtkProgressBar(fraction=0.0, text=label, showText=showValue, look=lookOf(style)) {}
+    }
+}
+
+const component ui.spinner[platform](label, style) {
+    GtkSpinner(spinning=true, tooltipText=label, look=lookOf(style)) {}
+}
+
+// `direction` is not forwarded: orientation is a GtkOrientation, and the
+// only SNGL value that reaches a GTK enum is a string literal naming one of
+// its members, which the prop's set folds to the member's value where it is
+// written — a prop reference has no compile-time member to name. A separator is therefore horizontal, which is what
+// `direction` defaults to.
+const component ui.divider[platform](style) {
+    GtkSeparator(look=lookOf(style)) {}
+}
+
+const component ui.link[platform](text, href, disabled, focusable, style, @click) {
+    GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
+}
+
+// A flip reaches the program through `notify::active`: GtkSwitch's own
+// `state-set` returns a gboolean, which the connect trampoline cannot carry.
+const component ui.toggle[platform](checked, disabled, focusable, style, @change) {
+    GtkSwitch(active=checked, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifyActive(s) {
+        if switchActive(s) != checked {
+            checked = switchActive(s)
+            change(checked)
+        }
+    }) {}
+}
+
+// One calendar, which a bound date selects whenever it changes. With no date
+// it shows GTK's own, today: a calendar always has a day selected.
+const component ui.datepicker[platform](value, disabled, style, @change) {
+    GtkCalendar #cal(sensitive=(disabled == false), look=lookOf(style), @daySelected(c) {
+        value = calendarDate(c)
+        change(value)
+    }) {}
+    effect(on=value, @mount(v) {
+        if v != null {
+            selectDay(cal, v.year(), v.month(), v.day())
+        }
+    })
+}
+
+// --- Layout ---
+
+const component ui.spacer[platform](style) {
+    GtkBox(look=lookOf({flex=1, ...style})) {}
+}
+
+// The same shape html uses: a wrapper carrying the tooltip text, with the
+// wrapped content inside it.
+const component ui.tooltip[platform](style, text, trigger) {
+    GtkBox(tooltipText=text, look=lookOf(style)) {
+        trigger
+    }
+}
+
+// A clickable card is its frame inside a frameless GtkButton, which gives it
+// the hover, the press and the focus stop a button has.
+const component ui.card[platform](style, clickable, @click, content) {
+    if clickable {
+        GtkButton(hasFrame=false, look=lookOf(style), @clicked { click() }) {
+            GtkFrame(look=innerFrameLookOf(style)) {
+                content
+            }
+        }
+    } else {
+        GtkFrame(look=lookOf(style)) {
+            content
+        }
+    }
+}
+
+const component ui.stack[platform](style, layers) {
+    GtkStack(look=lookOf(style)) {
+        layers
+    }
+}
+
+// `open` reaches the popover as widget visibility rather than as
+// gtk_popover_popup: the emitter has one setter path per property and
+// popup/popdown is a pair of calls chosen by the value. `position` is a
+// GtkPositionType, so it is unreachable for the same reason as divider's
+// orientation.
+const component ui.popover[platform](style, open, @close, content) {
+    GtkPopover(visible=open && shown(style), autohide=true, look=lookBesideVisible(style), @closed { close() }) {
+        content
+    }
+}
+
+// A check button's `active` marks a table's or a tree's selection. Clicking
+// the selected one unchecks it on screen and changes nothing, since GTK has no
+// way here to refuse the toggle.
+
+// A row per box, each homogeneous so every cell takes an equal share and the
+// columns line up. GtkColumnView is GTK's table, but it is fed through a list
+// model and item factories, which nothing here can declare. A selectable table
+// leads each row with a check button that selects it; a sortable header's
+// cells are buttons reporting the column.
+const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
+    GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
+        GtkBox(orientation="horizontal", homogeneous=true) {
+            if selectable {
+                GtkLabel(label="") {}
+            }
+            for var col = columns {
+                if sortable {
+                    GtkButton(label=col, @clicked { sort(col) }) {}
+                } else {
+                    GtkLabel(label=col, xalign=0.0) {}
+                }
+            }
+        }
+        GtkSeparator() {}
+        for var k, row = rows {
+            GtkBox(orientation="horizontal", homogeneous=true) {
+                if selectable {
+                    GtkCheckButton(active=(k == selected), @toggled(b) {
+                        if checkActive(b) && selected != k {
+                            selected = k
+                            select()
+                        }
+                    }) {}
+                }
+                for var cell = row.cells {
+                    GtkLabel(label=cell, xalign=0.0) {}
+                }
+            }
+        }
+    }
+}
+
+// A tree's row: a node's label, and the spaces that indent it to its depth.
+struct _TreeRow {
+    label  string
+    indent string
+}
+
+// A tree's rows in traversal order, each node's below it and indented one step
+// further.
+const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
+    var out list[_TreeRow] = []
+    for var it = items {
+        out = [...out, _TreeRow{label=it.label, indent=indent}, ..._treeRows(it.children, indent + "    ")]
+    }
+    return out
+}
+
+// Every node is shown, expanded or not: a row cannot be hidden and shown by
+// its parent's state without a var, which a const component has none of.
+const component ui.tree[platform](style, selected, @select, items) {
+    GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
+        for var row = _treeRows(items, "") {
+            GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
+                if checkActive(b) && selected != row.label {
+                    selected = row.label
+                    select()
+                }
+            }) {}
+        }
+    }
+}
+
+const component ui.radio[platform](value, disabled, direction, style, @change, options) {
+    // A choice of the option holding `v`, a button's or a test's.
+    func pickValue(v T) {
+        if v != value {
+            value = v
+            change(v)
+        }
+    }
+    if direction == ui.Orientation.horizontal {
+        GtkBox(orientation="horizontal", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
+            for var opt = options {
+                GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                    if checkActive(b) {
+                        pickValue(opt.value)
+                    }
+                }) {}
+            }
+        }
+    } else {
+        GtkBox(orientation="vertical", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
+            for var opt = options {
+                GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                    if checkActive(b) {
+                        pickValue(opt.value)
+                    }
+                }) {}
+            }
+        }
+    }
+}
+
+// A test picks the option holding `value` as pressing its button does.
+func ui.radio[T].change[platform](value) {
+    pickValue(value)
+}
+
+// One drop-down, offered the choices' labels whenever they change and
+// selecting the label of the bound value whenever it does. `placeholder` and
+// the focus events have nothing to reach.
+const component ui.select[platform](value, disabled, focusable, style, @change, options) {
+    GtkDropDown #drop(sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifySelected(d) {
+        var at = ui.choiceLabeled(options, dropDownLabel(d))
+        if at >= 0 && options[at].value != value {
+            value = options[at].value
+            change(options[at].value)
+        }
+    }) {}
+    // Keyed on the drop-down as well as its labels, so a render that builds
+    // the drop-down afresh offers the new one its choices: an effect whose
+    // key reads a node mounts again wherever the node is built.
+    effect(on={labels=options.map(func(o) => o.label).format("\n"), drop=drop}, @mount(k) {
+        offerChoices(drop, k.labels, ui.choiceLabel(options, value))
+    })
+    effect(on=value, @mount(v) {
+        offerChoices(drop, options.map(func(o) => o.label).format("\n"), ui.choiceLabel(options, v))
+    })
+}
+
+// A test picks the choice holding `value` through the drop-down, which
+// knows its choices by label.
+func ui.select[T].change[platform](value) {
+    selectLabel(drop, ui.choiceLabel(options, value))
+}
+
+// A menu's top-level entries, as html shows them; a submenu has nowhere to
+// open without a var.
+const component ui.menubar[platform](style, items) {
+    GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
+        for var it = items {
+            GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
+        }
+    }
+}
+
+const component ui.menu[platform](style, open, items) {
+    if open {
+        GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
+            for var it = items {
+                GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
+            }
+        }
+    }
+}
+
+const component ui.toolbar[platform](style, controls) {
+    GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
+        controls
+    }
+}
+
+// GtkPaned holds exactly two panes, so the panes share a box evenly instead
+// and `position` and its bounds have nothing to reach.
+const component ui.splitview[platform](style, direction, panes) {
+    if direction == "vertical" {
+        GtkBox(orientation="vertical", homogeneous=true, look=lookOf(style)) {
+            panes
+        }
+    } else {
+        GtkBox(orientation="horizontal", homogeneous=true, look=lookOf(style)) {
+            panes
+        }
+    }
+}
+
+const component ui.drawer[platform](style, open, content) {
+    GtkBox(orientation="vertical", visible=open && shown(style), look=boxLookBesideVisible(style, 6)) {
+        content
+    }
+}
+
+// Shown in place rather than in a window of its own, as html shows it in the
+// page.
+const component ui.modal[platform](style, open, title, closable, @close, content) {
+    GtkFrame(visible=open && shown(style), look=lookBesideVisible(style)) {
+        GtkBox(orientation="vertical", spacing=6) {
+            if title != "" || closable {
+                GtkBox(orientation="horizontal", spacing=6) {
+                    GtkLabel(label=title, xalign=0.0, hexpand=true) {}
+                    if closable {
+                        GtkButton(label="Close", @clicked { close() }) {}
+                    }
+                }
+            }
+            content
+        }
     }
 }
