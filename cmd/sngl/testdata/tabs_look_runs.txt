@@ -300,7 +300,7 @@ sha256:b8feac57d73db5f025ece4ebbf3a631a
   }
 }
 -- testrun/gtk4next/c/app.sngl/grows/1 --
-sha256:06b9f26f37d73e5fa8e7326c357c7d6b
+sha256:ebd2fc3b235d5c5cd978bfd0c2ca1916
 {
   "results": [
     {
@@ -310,7 +310,7 @@ sha256:06b9f26f37d73e5fa8e7326c357c7d6b
   ]
 }
 -- testrun/gtk4next/c/app.sngl/pills/1 --
-sha256:d169f199758f4fe02ec22431763b3d79
+sha256:fb5f2c8ea098ae48bfc71ec6d7fca36d
 {
   "results": [
     {
@@ -320,7 +320,7 @@ sha256:d169f199758f4fe02ec22431763b3d79
   ]
 }
 -- testrun/gtk4next/c/app.sngl/strip/1 --
-sha256:20e77ee1f56e3221448cb2c7726a2036
+sha256:418af680ca87fd68d6114b97a40e45c1
 {
   "results": [
     {
@@ -334,7 +334,7 @@ sha256:20e77ee1f56e3221448cb2c7726a2036
   ]
 }
 -- testrun/gtk4next/go/app.sngl/grows/1 --
-sha256:cb7b6684e0bde38819869c2ecd617008
+sha256:c2931091893f54ff5ed4719cdb9b4a5a
 {
   "results": [
     {
@@ -344,7 +344,7 @@ sha256:cb7b6684e0bde38819869c2ecd617008
   ]
 }
 -- testrun/gtk4next/go/app.sngl/pills/1 --
-sha256:97c2fed366c9ede429606cd52d9547b7
+sha256:2a515de5a8f157334bf454aa4542d205
 {
   "results": [
     {
@@ -354,7 +354,7 @@ sha256:97c2fed366c9ede429606cd52d9547b7
   ]
 }
 -- testrun/gtk4next/go/app.sngl/strip/1 --
-sha256:6d5035a74e5c3842168b8ec8688d7661
+sha256:f1a02256e4a049e22cc8dbae96b37b7b
 {
   "results": [
     {

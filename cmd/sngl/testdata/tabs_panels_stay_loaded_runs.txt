@@ -292,7 +292,7 @@ sha256:d65434f8151165ced8e4c44b910ccc54
   ]
 }
 -- testrun/gtk4next/c/app.sngl/panels/1 --
-sha256:8647a0b971ff8b60d587a1dc1dee5a36
+sha256:ce4f0baf80f6fa81da12526d0088db81
 {
   "results": [
     {
@@ -310,7 +310,7 @@ sha256:8647a0b971ff8b60d587a1dc1dee5a36
   ]
 }
 -- testrun/gtk4next/go/app.sngl/panels/1 --
-sha256:f202af219264e8e943693f21279a76b7
+sha256:9264d2112e122262c190f39ce4766959
 {
   "results": [
     {

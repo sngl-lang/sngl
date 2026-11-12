@@ -168,11 +168,16 @@ GtkWidget *sngl_image_new(void);
 void sngl_image_set_fit(GtkWidget *box, const char *fit);
 void sngl_image_on_click(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_image_on_load(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_image_on_error(GtkWidget *box, SnglStrFn fn, void *ctx, GDestroyNotify release);
+void sngl_image_on_failed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
+const char *sngl_image_failure(GtkWidget *box);
 void sngl_image_click(GtkWidget *box);
 GtkWidget *sngl_image_source_new(void);
+void sngl_image_source_set_url(GtkWidget *w, const char *url);
 void sngl_image_source_set_picture(GtkWidget *w, SnglPicture *pic);
-void sngl_image_paint(GtkWidget *w, int width, int height, SnglDrawFn draw, void *data);
+void sngl_drawing_set_width(GtkWidget *w, double width);
+void sngl_drawing_set_height(GtkWidget *w, double height);
+void sngl_drawing_on_paint(GtkWidget *w, SnglDrawFn draw, void *ctx, GDestroyNotify release);
+void sngl_drawing_redraw(GtkWidget *w);
 SnglPicture *sngl_picture_load(const char *url);
 SnglPicture *sngl_picture_ref(SnglPicture *pic);
 void sngl_picture_unref(SnglPicture *pic);
@@ -181,18 +186,27 @@ bool sngl_image_adopt(GtkWidget *box, GtkWidget *child);
 bool sngl_image_unadopt(GtkWidget *box, GtkWidget *child);
 void sngl_toplevel_icon_refresh(GtkWidget *toplevel);
 
-/* A canvas is a GtkDrawingArea of w by h, whose drawing draw paints with
- * data. Where the area GTK lays it out in is another size, mode says what the
- * drawing's coordinates are scaled by: "stretch" each axis to fit, "fill"
- * the larger scale on both, and else the smaller, which "" leaves alone. A
- * canvas that scales other than "center" expands to take the room. */
-GtkWidget *sngl_canvas_new(int w, int h, const char *mode, SnglDrawFn draw, void *data);
-/* sngl_canvas_on_click runs fn with ctx on a press of w, which a drawing
- * area has no signal of its own for: a GtkGestureClick's, which releases
- * ctx with the gesture. */
-void sngl_canvas_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-/* sngl_canvas_click is a press of w, as a test makes one. */
-void sngl_canvas_click(GtkWidget *w);
+/* A canvas is a GtkDrawingArea whose drawing is the handler of its paint,
+ * handed the context, in a space of width by height that the scaling mode
+ * -- `draw.ScalingMode`'s ordinal -- maps onto the room it is given. A
+ * redraw asks it to paint again. */
+GtkWidget *sngl_canvas_new(void);
+void sngl_canvas_set_width(GtkWidget *w, int width);
+void sngl_canvas_set_height(GtkWidget *w, int height);
+void sngl_canvas_set_scaling(GtkWidget *w, int mode);
+void sngl_canvas_on_paint(GtkWidget *w, SnglDrawFn draw, void *data, GDestroyNotify release);
+void sngl_canvas_redraw(GtkWidget *w);
+void sngl_cairo_line_cap(cairo_t *cr, int cap);
+void sngl_cairo_line_join(cairo_t *cr, int join);
+void sngl_cairo_font(cairo_t *cr, const char *family, double size);
+/* sngl_on_click runs fn with ctx on a press of w, which a drawing area or
+ * a label has no signal of its own for: a GtkGestureClick's, which releases
+ * ctx with the gesture, and a second call replaces the first's handler. */
+void sngl_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
+/* sngl_click is a press of w, as a test makes one. */
+void sngl_click(GtkWidget *w);
+GtkWidget *sngl_text_new(void);
+void sngl_text_set_value(GtkWidget *w, const char *value);
 
 
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main

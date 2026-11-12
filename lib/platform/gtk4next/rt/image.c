@@ -18,9 +18,11 @@ typedef struct {
     SnglFn on_load;
     void *load_ctx;
     GDestroyNotify load_release;
-    SnglStrFn on_error;
-    void *error_ctx;
-    GDestroyNotify error_release;
+    SnglFn on_failed;
+    void *failed_ctx;
+    GDestroyNotify failed_release;
+    /* failure is why the last picture the image was told of failed. */
+    char *failure;
 } SnglImage;
 
 typedef struct {
@@ -35,6 +37,12 @@ typedef struct {
     bool told;
     /* icon is the toplevel whose icon the source is, or NULL. */
     GtkWidget *icon;
+    /* What a drawing paints its picture with, width by height: the
+     * program's shapes, as the handler of its paint. */
+    int dw, dh;
+    SnglDrawFn draw;
+    void *draw_ctx;
+    GDestroyNotify draw_release;
 } SnglSource;
 
 /* A picture is what a URL names, decoded once: the program's `ui.file` and
@@ -71,7 +79,8 @@ static void sngl_image_free(gpointer data) {
     SnglImage *img = data;
     if (img->click_release) img->click_release(img->click_ctx);
     if (img->load_release) img->load_release(img->load_ctx);
-    if (img->error_release) img->error_release(img->error_ctx);
+    if (img->failed_release) img->failed_release(img->failed_ctx);
+    g_free(img->failure);
     g_free(img);
 }
 
@@ -137,16 +146,21 @@ void sngl_image_on_load(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify rel
     img->load_release = release;
 }
 
-void sngl_image_on_error(GtkWidget *box, SnglStrFn fn, void *ctx, GDestroyNotify release) {
+void sngl_image_on_failed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release) {
     SnglImage *img = sngl_image_of(box);
     if (!img) {
         if (release) release(ctx);
         return;
     }
-    if (img->error_release) img->error_release(img->error_ctx);
-    img->on_error = fn;
-    img->error_ctx = ctx;
-    img->error_release = release;
+    if (img->failed_release) img->failed_release(img->failed_ctx);
+    img->on_failed = fn;
+    img->failed_ctx = ctx;
+    img->failed_release = release;
+}
+
+const char *sngl_image_failure(GtkWidget *box) {
+    SnglImage *img = sngl_image_of(box);
+    return img && img->failure ? img->failure : "";
 }
 
 void sngl_image_click(GtkWidget *box) {
@@ -161,8 +175,10 @@ static void sngl_source_report(SnglSource *s) {
     SnglImage *img = sngl_image_of(parent);
     if (!img || !s->ready || s->told) return;
     s->told = true;
-    if (s->err && img->on_error) {
-        img->on_error(s->err, img->error_ctx);
+    if (s->err) {
+        g_free(img->failure);
+        img->failure = g_strdup(s->err);
+        if (img->on_failed) img->on_failed(img->failed_ctx);
     } else if (!s->err && img->on_load) {
         img->on_load(img->load_ctx);
     }
@@ -200,6 +216,7 @@ static void sngl_source_free(gpointer data) {
     SnglSource *s = data;
     sngl_source_watch(s, NULL);
     if (s->tex) g_object_unref(s->tex);
+    if (s->draw_release) s->draw_release(s->draw_ctx);
     g_free(s->err);
     g_free(s);
 }
@@ -231,6 +248,12 @@ GtkWidget *sngl_image_source_new(void) {
     return pic;
 }
 
+/* The URL a source says it shows, kept on it for what reads it: it shows the
+ * picture it is handed, not one it fetches itself. */
+void sngl_image_source_set_url(GtkWidget *w, const char *url) {
+    g_object_set_data_full(G_OBJECT(w), "sngl-url", g_strdup(url), g_free);
+}
+
 void sngl_image_source_set_picture(GtkWidget *w, SnglPicture *pic) {
     SnglSource *s = sngl_source_of(w);
     if (!s) return;
@@ -244,25 +267,58 @@ void sngl_image_source_set_picture(GtkWidget *w, SnglPicture *pic) {
     if (pic->arrived) sngl_source_take(s, pic);
 }
 
-/* GDK_MEMORY_DEFAULT is cairo's ARGB32, so the surface's pixels are the
- * texture's as they stand. */
-void sngl_image_paint(GtkWidget *w, int width, int height, SnglDrawFn draw, void *data) {
-    SnglSource *s = sngl_source_of(w);
-    if (!s || width <= 0 || height <= 0) return;
-    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+/* A drawing paints its picture again whenever it is asked, once it knows
+ * its size and what to paint: a texture of what the handler draws on a
+ * surface of that size. GDK_MEMORY_DEFAULT is cairo's ARGB32, so the
+ * surface's pixels are the texture's as they stand. */
+static void sngl_drawing_paint(SnglSource *s) {
+    if (!s->draw || s->dw <= 0 || s->dh <= 0) return;
+    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, s->dw, s->dh);
     cairo_t *cr = cairo_create(surface);
-    draw(cr, data);
+    s->draw(cr, s->draw_ctx);
     cairo_destroy(cr);
     cairo_surface_flush(surface);
     int stride = cairo_image_surface_get_stride(surface);
-    GBytes *px = g_bytes_new(cairo_image_surface_get_data(surface), (gsize)stride * height);
-    GdkTexture *tex = gdk_memory_texture_new(width, height, GDK_MEMORY_DEFAULT, px, stride);
+    GBytes *px = g_bytes_new(cairo_image_surface_get_data(surface), (gsize)stride * s->dh);
+    GdkTexture *tex = gdk_memory_texture_new(s->dw, s->dh, GDK_MEMORY_DEFAULT, px, stride);
     g_bytes_unref(px);
     cairo_surface_destroy(surface);
     sngl_source_watch(s, NULL);
     g_free(s->err);
     s->err = NULL;
     sngl_source_set_texture(s, tex);
+}
+
+void sngl_drawing_set_width(GtkWidget *w, double width) {
+    SnglSource *s = sngl_source_of(w);
+    if (!s) return;
+    s->dw = (int)ceil(width);
+    sngl_drawing_paint(s);
+}
+
+void sngl_drawing_set_height(GtkWidget *w, double height) {
+    SnglSource *s = sngl_source_of(w);
+    if (!s) return;
+    s->dh = (int)ceil(height);
+    sngl_drawing_paint(s);
+}
+
+void sngl_drawing_on_paint(GtkWidget *w, SnglDrawFn draw, void *ctx, GDestroyNotify release) {
+    SnglSource *s = sngl_source_of(w);
+    if (!s) {
+        if (release) release(ctx);
+        return;
+    }
+    if (s->draw_release) s->draw_release(s->draw_ctx);
+    s->draw = draw;
+    s->draw_ctx = ctx;
+    s->draw_release = release;
+    sngl_drawing_paint(s);
+}
+
+void sngl_drawing_redraw(GtkWidget *w) {
+    SnglSource *s = sngl_source_of(w);
+    if (s) sngl_drawing_paint(s);
 }
 
 /* GdkPixbuf rather than gdk_texture_new_from_bytes: its loaders read SVG as
@@ -321,21 +377,158 @@ static void sngl_picture_arrive(SnglPicture *pic, const guchar *data, gsize len,
     sngl_picture_unref(pic);
 }
 
-static void sngl_picture_fetched(GObject *o, GAsyncResult *res, gpointer data) {
-    SnglPicture *pic = data;
+/* A fetch is an HTTP/1.0 GET over a GSocketClient, TLS for https, read to
+ * the connection's close: GIO's own http is GVfs's, which a host -- or a
+ * test's session bus -- may not run. A redirect is followed five deep. */
+typedef struct {
+    SnglPicture *pic;
+    char *url;
+    int redirects;
+    GSocketConnection *conn;
+    GByteArray *got;
+    char *request;
+} SnglFetch;
+
+static void sngl_fetch_start(SnglFetch *f);
+
+static void sngl_fetch_free(SnglFetch *f) {
+    if (f->conn) g_object_unref(f->conn);
+    if (f->got) g_byte_array_unref(f->got);
+    g_free(f->request);
+    g_free(f->url);
+    g_free(f);
+}
+
+/* done hands the picture what arrived, or why nothing did. */
+static void sngl_fetch_done(SnglFetch *f, const guchar *data, gsize len, const char *err) {
+    SnglPicture *pic = f->pic;
     pic->pending = false;
-    char *bytes = NULL;
-    gsize len = 0;
-    GError *err = NULL;
-    g_file_load_contents_finish(G_FILE(o), res, &bytes, &len, NULL, &err);
-    g_object_unref(o);
     if (pic->released) {
         sngl_picture_free(pic);
     } else {
-        sngl_picture_arrive(pic, (const guchar *)bytes, len, err ? err->message : NULL);
+        sngl_picture_arrive(pic, data, len, err);
     }
-    g_clear_error(&err);
-    g_free(bytes);
+    sngl_fetch_free(f);
+}
+
+static void sngl_fetch_answered(SnglFetch *f) {
+    const guchar *d = f->got->data;
+    gsize n = f->got->len;
+    const guchar *end = NULL;
+    for (gsize i = 0; i + 3 < n; i++) {
+        if (d[i] == '\r' && d[i + 1] == '\n' && d[i + 2] == '\r' && d[i + 3] == '\n') {
+            end = d + i;
+            break;
+        }
+    }
+    if (!end) {
+        sngl_fetch_done(f, NULL, 0, "no HTTP response");
+        return;
+    }
+    char *head = g_strndup((const char *)d, end - d);
+    const guchar *body = end + 4;
+    gsize blen = n - (body - d);
+    char **lines = g_strsplit(head, "\r\n", -1);
+    int status = 0;
+    if (lines[0]) sscanf(lines[0], "HTTP/%*s %d", &status);
+    if (status >= 300 && status < 400 && f->redirects < 5) {
+        for (int i = 1; lines[i]; i++) {
+            if (g_ascii_strncasecmp(lines[i], "location:", 9) == 0) {
+                char *to = g_uri_resolve_relative(f->url, g_strstrip(lines[i] + 9), G_URI_FLAGS_NONE, NULL);
+                g_strfreev(lines);
+                g_free(head);
+                if (to) {
+                    g_free(f->url);
+                    f->url = to;
+                    f->redirects++;
+                    g_clear_object(&f->conn);
+                    g_byte_array_set_size(f->got, 0);
+                    sngl_fetch_start(f);
+                    return;
+                }
+                sngl_fetch_done(f, NULL, 0, "a redirect to nowhere");
+                return;
+            }
+        }
+    }
+    g_strfreev(lines);
+    g_free(head);
+    if (status < 200 || status >= 300) {
+        char *why = g_strdup_printf("HTTP %d", status);
+        sngl_fetch_done(f, NULL, 0, why);
+        g_free(why);
+        return;
+    }
+    sngl_fetch_done(f, body, blen, NULL);
+}
+
+static void sngl_fetch_read(GObject *o, GAsyncResult *res, gpointer data) {
+    SnglFetch *f = data;
+    GError *err = NULL;
+    GBytes *b = g_input_stream_read_bytes_finish(G_INPUT_STREAM(o), res, &err);
+    if (!b) {
+        sngl_fetch_done(f, NULL, 0, err->message);
+        g_error_free(err);
+        return;
+    }
+    gsize n = 0;
+    const guchar *p = g_bytes_get_data(b, &n);
+    if (n == 0) {
+        g_bytes_unref(b);
+        sngl_fetch_answered(f);
+        return;
+    }
+    g_byte_array_append(f->got, p, n);
+    g_bytes_unref(b);
+    g_input_stream_read_bytes_async(G_INPUT_STREAM(o), 65536, G_PRIORITY_DEFAULT, NULL, sngl_fetch_read, f);
+}
+
+static void sngl_fetch_sent(GObject *o, GAsyncResult *res, gpointer data) {
+    SnglFetch *f = data;
+    GError *err = NULL;
+    if (!g_output_stream_write_all_finish(G_OUTPUT_STREAM(o), res, NULL, &err)) {
+        sngl_fetch_done(f, NULL, 0, err->message);
+        g_error_free(err);
+        return;
+    }
+    GInputStream *in = g_io_stream_get_input_stream(G_IO_STREAM(f->conn));
+    g_input_stream_read_bytes_async(in, 65536, G_PRIORITY_DEFAULT, NULL, sngl_fetch_read, f);
+}
+
+static void sngl_fetch_connected(GObject *o, GAsyncResult *res, gpointer data) {
+    SnglFetch *f = data;
+    GError *err = NULL;
+    f->conn = g_socket_client_connect_to_uri_finish(G_SOCKET_CLIENT(o), res, &err);
+    g_object_unref(o);
+    if (!f->conn) {
+        sngl_fetch_done(f, NULL, 0, err->message);
+        g_error_free(err);
+        return;
+    }
+    GOutputStream *out = g_io_stream_get_output_stream(G_IO_STREAM(f->conn));
+    g_output_stream_write_all_async(out, f->request, strlen(f->request), G_PRIORITY_DEFAULT, NULL, sngl_fetch_sent, f);
+}
+
+static void sngl_fetch_start(SnglFetch *f) {
+    GUri *uri = g_uri_parse(f->url, G_URI_FLAGS_NONE, NULL);
+    if (!uri || !g_uri_get_host(uri)) {
+        if (uri) g_uri_unref(uri);
+        sngl_fetch_done(f, NULL, 0, "not a URL");
+        return;
+    }
+    bool tls = g_ascii_strcasecmp(g_uri_get_scheme(uri), "https") == 0;
+    const char *path = g_uri_get_path(uri);
+    const char *query = g_uri_get_query(uri);
+    int port = g_uri_get_port(uri);
+    char *host = port > 0 ? g_strdup_printf("%s:%d", g_uri_get_host(uri), port) : g_strdup(g_uri_get_host(uri));
+    g_free(f->request);
+    f->request = g_strdup_printf("GET %s%s%s HTTP/1.0\r\nHost: %s\r\nUser-Agent: sngl\r\nConnection: close\r\n\r\n",
+                                 path && *path ? path : "/", query ? "?" : "", query ? query : "", host);
+    g_free(host);
+    g_uri_unref(uri);
+    GSocketClient *c = g_socket_client_new();
+    g_socket_client_set_tls(c, tls);
+    g_socket_client_connect_to_uri_async(c, f->url, tls ? 443 : 80, NULL, sngl_fetch_connected, f);
 }
 
 /* The files the program carries: its entry's table, and each Go hands. */
@@ -357,7 +550,7 @@ void sngl_gtk_carry_file(const char *name, const char *data, int len) {
 
 /* A file the program carries is read at once, from those it was handed
  * (sngl_gtk_carry) or else beside it; one fetched arrives from the main
- * loop, through GIO, which fetches http where the host's GVfs does. */
+ * loop, through the runtime's fetch. */
 SnglPicture *sngl_picture_load(const char *url) {
     SnglPicture *pic = g_new0(SnglPicture, 1);
     pic->url = g_strdup(url);
@@ -365,7 +558,11 @@ SnglPicture *sngl_picture_load(const char *url) {
     pic->refs = 1;
     if (g_str_has_prefix(url, "http://") || g_str_has_prefix(url, "https://")) {
         pic->pending = true;
-        g_file_load_contents_async(g_file_new_for_uri(url), NULL, sngl_picture_fetched, pic);
+        SnglFetch *f = g_new0(SnglFetch, 1);
+        f->pic = pic;
+        f->url = g_strdup(url);
+        f->got = g_byte_array_new();
+        sngl_fetch_start(f);
         return pic;
     }
     const char *name = url[0] == '/' ? url + 1 : url;

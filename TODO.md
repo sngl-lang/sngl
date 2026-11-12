@@ -935,8 +935,23 @@ reaches it the same way.
         record's; C lifted a menu handler calling through a `#id` with the
         node captured, which the inliner never repointed; and a var two
         copies of a panel share was boxed twice. The window's error boundary
-        and its favicon are not written yet.
-     5. Images and the canvas, with its draw function (#294).
+        is not written yet.
+     5. Images and the canvas, with its draw function (#294). Done:
+        `canvas.sngl` and `pictures.sngl` in the same script, gtk4next in
+        `image_sources_runs.txt` and `image_remote_runs.txt`, and
+        `testdata/gtk4next_c_canvas.txtar`. A canvas is placed through its
+        protocol, as win32's is: its shapes are the handler of its `@paint`,
+        handed cairo's context, and a write to what they read its redraw; a
+        `draw.image` is painted the same way into a texture. An image, a
+        picture, `canvasImage` and the favicon are gtk4's, through the
+        runtime; an image's `@failed` takes nothing and the override reads
+        why off the image. A fetch is the runtime's own HTTP over a
+        `GSocketClient`, since GIO's http is GVfs's. Along the way: a
+        `ui.text`'s `@click` was connected as a GLib signal no GtkLabel has,
+        so a text is the runtime's label with a click gesture. gtk4 gets two
+        of the pictures wrong, which the swap retires: its C keeps the
+        drawing it painted first, and its Go shows a root component's
+        window's favicon as a picture in the window.
      6. Async posting, `sngl test`'s agent and `sngl snapshot`.
      7. The swap: every gtk4 golden and recorded run on the new platform,
         weak holds, and the old generator deleted.
@@ -955,7 +970,5 @@ reaches it the same way.
 - Which parts of the runtime must stay C, and how `purego` reaches them:
   through `purego.NewCallback`, through a shared library built from `rt/`, or
   not at all. A GObject subclass through purego is the hardest case.
-- Whether the canvas's draw function (#294) lands first, since it is the
-  last of gtk4's Go-only callbacks.
 - What a program's build costs in each mode, measured as Part 3's table
   measured wrapped against cgo.

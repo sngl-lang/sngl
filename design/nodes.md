@@ -139,7 +139,8 @@ win32's generator writes only the program's entry
 `#[gen.protocol(redraw)]`**, a function of the widget asking it to paint again,
 which the checker allows only on a component whose rest slot takes shapes
 (`TestGenProtocolPlacement`). win32's `Canvas` is one, which its
-`draw.canvas` override renders. `passCanvasPaint` (`internal/lower/canvas_paint.go`)
+`draw.canvas` override renders, and gtk4next's, and gtk4next's
+`ImageDrawing`, a `draw.image`, whose paint is a texture's. `passCanvasPaint` (`internal/lower/canvas_paint.go`)
 runs right after `passShapeDraw` and hands the drawing -- the statements that
 pass put in place of the shapes -- to the canvas's event whose one parameter is
 typed as the context those statements paint through, as a handler marked
@@ -157,7 +158,9 @@ redraw the protocol's call of the node, a read by name that placement holds as
 it holds any (`hoistShared`, which walks `closureFuncs` for a handler's
 closure as `hoistNodes` does, and `holdRead`, which still nulls such a node as
 its branch goes). `testdata/win32_c_canvas.txtar` holds it, and
-`TestSnapshotCanvas` (`codegen/platform/win32`) what GDI+ paints.
+`TestSnapshotCanvas` (`codegen/platform/win32`) what GDI+ paints;
+`testdata/gtk4next_c_canvas.txtar` holds gtk4next's, whose snapshots draw a
+canvas afresh and so cannot see a redraw left out.
 
 **A component built at run time is placed as a record**
 (`internal/lower/placerecords.go`): a row a keyed `for` keeps, a slot body

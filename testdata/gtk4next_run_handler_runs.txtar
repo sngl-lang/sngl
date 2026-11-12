@@ -311,7 +311,7 @@ static void s_start(sngl_list_string args, sngl_fn_void__void run) {
 	s_x_c__free(__rel0);
 	s_n = (args).len;
 	char * __rel1 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
-	gtk_label_set_label((GtkLabel *)((void *)(s___n1)), __rel1);
+	sngl_text_set_value(s___n1, __rel1);
 	s_x_c__free(__rel1);
 	if (sngl_list_string_index_of(args, SNGL_STR("--window")) >= 0) {
 		(run).fn((run).env);
@@ -496,11 +496,10 @@ static void sngl_build(void) {
 	sngl_toplevel_set_title(s___n0, s___rel5);
 	sngl_toplevel_set_visible(s___n0, (int)((s_shown->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){((sngl_fn_bool__void){s___lambda0__fn, sngl_heap_copy(&(s___lambda0_caps[]){(s___lambda0_caps){.shown = s_shown}}, sizeof(s___lambda0_caps))})}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
-	s___n1 = gtk_label_new(NULL);
+	s___n1 = sngl_text_new();
 	char * __rel6 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
-	gtk_label_set_label((GtkLabel *)((void *)(s___n1)), __rel6);
+	sngl_text_set_value(s___n1, __rel6);
 	s_x_c__free(__rel6);
-	gtk_label_set_xalign((GtkLabel *)((void *)(s___n1)), (float)((double)(0.0)));
 	char * __rel7 = sngl_cstring(SNGL_STR(""));
 	char * __rel8 = sngl_cstring(SNGL_STR(""));
 	sngl_set_look(s___n1, __rel7, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel8, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
@@ -583,7 +582,6 @@ import (
 	"runtime"
 	"slices"
 	"time"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -614,7 +612,7 @@ var m = &snglState{}
 func Start(args []string, run func()) {
 	fmt.Println(("before " + fmt.Sprint(len(args))))
 	m.n = len(args)
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 	if slices.Index(args, "--window") >= 0 {
 		run()
 	}
@@ -765,9 +763,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.shown)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.GtkLabelNew(nil)
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), cgo.CFloat(0.0))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -808,6 +805,6 @@ func main() {
 	}
 }
 -- run/c/gtk4next --
-pass sha256:5b759cd61db430774fa3ccef806182cd
+pass sha256:fb3a28c4faee20e2b7cb14b2eddd6a1b
 -- run/go/gtk4next --
-pass sha256:e6396e44cf4472471029fac1396d5f99
+pass sha256:e829a0a57a023763019736c09481552d

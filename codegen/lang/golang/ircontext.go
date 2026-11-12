@@ -1183,6 +1183,13 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			return gc.recvFor(fsym) + "." + gc.StateFieldName(fname) + "(" + strings.Join(args, ", ") + ")"
 		}
 
+		// A declaration called is never the local or the state a name
+		// resolves to, though one shares its name: a paint handler calling
+		// the platform's `paint` beside a root's `#paint` called the button.
+		if kind != codegen.NameUnknown && (gc.FreeFuncScope || gc.Ctx != nil && gc.Ctx.FreeFuncs[fname] != "") {
+			return gc.FreeFuncName(fname) + "(" + strings.Join(args, ", ") + ")"
+		}
+
 		codegen.RequireIntrinsicFallback(langGo, n.Func)
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
