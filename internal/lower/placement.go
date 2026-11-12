@@ -46,6 +46,17 @@ func lowerPlacement(pkg *ir.Package, feats Features, opts Options) error {
 	if handle == nil {
 		return fmt.Errorf("a platform asking for placement declares the type its nodes are held as: #[gen.protocol(handle)]")
 	}
+	// A generic component renders into whatever family its caller's slot
+	// hosts, and one whose call site binds nothing of it -- a timer, which
+	// takes no children, built at run time in a loop -- holds its root as
+	// the parameter, which no language writes. Every node is the handle
+	// here, so the parameter is.
+	for _, c := range pkg.Components {
+		if fp := c.FamilyParam; fp != nil && fp.Kind == ir.TypeTypeParam {
+			bound := map[string]*ir.Type{fp.ParamName: handle.Return}
+			ir.RewriteTypes(c, func(t *ir.Type) *ir.Type { return t.Substitute(bound) })
+		}
+	}
 	p := &placement{plat: plat, records: collectRecords(pkg), pkg: pkg, language: feats.language}
 	// Read off the node operations, which the rewrite below makes calls.
 	if root := pkg.RootDecl(); root != nil {

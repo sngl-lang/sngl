@@ -203,6 +203,12 @@ func _rtInit()
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkStep")]
 func _rtStep()
 
+// Every window taken down, as a test agent starts each test after the
+// first: the last test's build put them up.
+#[macro.cnative("sngl_gtk_reset")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglGtkReset")]
+func _rtReset()
+
 // The first window shown, drawn at width by height into the file at path as
 // its size and pixels (rt's sngl_gtk_capture_file): a Go test's snapshot.
 #[macro.cnative("sngl_gtk_capture_file")]
@@ -266,8 +272,14 @@ const component time.timer[platform](interval, enabled, @tick) {
 // content is appended to, which keeps the title, visibility and handlers
 // until the window is made around it. The window manager's close is
 // reported as `visible = false` followed by `@closed`.
+//
+// `@key` is each key pressed in the window, which a controller on the window
+// hears as the key goes down to the focused widget, before anything in it.
+// The handler takes nothing, since C hands a callback no function to call:
+// what it hears is the runtime's to tell while it runs (`_rtKeyHeard`,
+// `_rtKeyHeld`), and `_rtKeyStop` stops it.
 #[marks.intrinsic("gtk4next:Toplevel")]
-component Toplevel(title string, :visible bool = true, @closed(), content ...component ui.node) root
+component Toplevel(title string, :visible bool = true, @closed(), @key(), content ...component ui.node) root
 
 #[macro.cnative("sngl_toplevel_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelNew")]
@@ -299,9 +311,66 @@ func _rtToplevelOnVisible(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
+#[macro.cnative("sngl_toplevel_on_key")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelOnKey")]
+func _rtToplevelOnKey(
+    w Toplevel,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+// The key a window's `@key` handler is hearing: its name, and whether a
+// modifier was held -- 0 Control, 1 Alt, 2 Shift, 3 Super or Meta -- or, at
+// 4, whether the focused field's text was being edited. Read while the
+// handler runs, and nothing after.
+#[macro.cnative("sngl_key_heard")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglKeyHeard")]
+func _rtKeyHeard() string
+
+#[macro.cnative("sngl_key_held")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglKeyHeld")]
+func _rtKeyHeld(which int) bool
+
+// Stops the key the handler is hearing: the window takes it, so a focused
+// entry types none of it, a focused button is not activated and Tab moves
+// no focus.
+#[macro.cnative("sngl_key_stop")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglKeyStop")]
+func _rtKeyStop()
+
+// A test's key, pressed as the test describes it: the handler hears it, a
+// stop it calls calls the test's, and a key it leaves goes on where it would
+// have gone.
+#[macro.cnative("sngl_toplevel_key")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelKey")]
+func _rtToplevelKey(
+    w       Toplevel,
+    key     string,
+    ctrl    bool,
+    alt     bool,
+    shift   bool,
+    meta    bool,
+    editing bool,
+    #[c.type("SnglFn")] stop func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[gen.fires("key")]
+func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
+    _rtToplevelKey(w, e.key, e.ctrl, e.alt, e.shift, e.meta, e.editing, stop)
+}
+
+// A toplevel's content is a box's, whose append hands the window an entry of
+// its menu or its way back (rt's sngl_box_append).
 #[macro.cnative("sngl_toplevel_append")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelAppend")]
 func _rtToplevelAppend(w Toplevel, child ui.node)
+
+#[macro.cnative("sngl_toplevel_insert_before")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglToplevelInsertBefore")]
+func _rtToplevelInsert(w Toplevel, before ui.node, child ui.node)
 
 #[macro.cnative("sngl_box_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBoxRemove")]
@@ -315,6 +384,11 @@ func _create_Toplevel() Toplevel {
 #[gen.protocol(append)]
 func _append_Toplevel(parent Toplevel, child ui.node) {
     _rtToplevelAppend(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Toplevel(parent Toplevel, child ui.node, before ui.node) {
+    _rtToplevelInsert(parent, before, child)
 }
 
 #[gen.protocol(remove)]
@@ -342,9 +416,156 @@ func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
     _rtToplevelOnVisible(w, visible)
 }
 
+#[gen.protocol(on)]
+func _on_Toplevel_key(w Toplevel, key func()) {
+    _rtToplevelOnKey(w, key)
+}
+
+// A window's way back, while it can go back: a widget the runtime keeps
+// hidden among the window's content, which has the window show a back button
+// that presses it (rt's menu.c).
+#[marks.intrinsic("gtk4next:Back")]
+component Back(@press()) ui.node
+
+#[macro.cnative("sngl_back_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBackNew")]
+func _rtBackNew() Back
+
+#[macro.cnative("sngl_back_on_press")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBackOnPress")]
+func _rtBackOnPress(
+    b Back,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_back_press")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglBackPress")]
+func _rtBackPress(b Back)
+
+#[gen.protocol(create)]
+func _create_Back() Back {
+    return _rtBackNew()
+}
+
+#[gen.protocol(on)]
+func _on_Back(b Back, press func()) {
+    _rtBackOnPress(b, press)
+}
+
+#[gen.fires("press")]
+func _fire_Back_press(b Back) {
+    _rtBackPress(b)
+}
+
+// One entry of a window's menu, and its submenu's entries: a box the runtime
+// keeps hidden among the window's content, from which the window builds the
+// GMenu behind its header bar's menu button (rt's menu.c). Picking one is no
+// GTK signal on it but the action the runtime makes for it.
+#[marks.intrinsic("gtk4next:MenuEntry")]
+component MenuEntry(
+    label    string,
+    disabled bool = false,
+    checked  bool = false,
+    @select(),
+    entries  ...component ui.node,
+) ui.node
+
+#[macro.cnative("sngl_menu_entry_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglMenuEntryNew")]
+func _rtMenuEntryNew() MenuEntry
+
+#[macro.cnative("sngl_menu_entry_set_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglMenuEntrySetLabel")]
+func _rtMenuEntrySetLabel(e MenuEntry, label string)
+
+#[macro.cnative("sngl_menu_entry_set_disabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglMenuEntrySetDisabled")]
+func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
+
+#[macro.cnative("sngl_menu_entry_set_checked")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglMenuEntrySetChecked")]
+func _rtMenuEntrySetChecked(e MenuEntry, v bool)
+
+#[macro.cnative("sngl_menu_entry_on_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglMenuEntryOnSelect")]
+func _rtMenuEntryOnSelect(
+    e MenuEntry,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[gen.protocol(create)]
+func _create_MenuEntry() MenuEntry {
+    return _rtMenuEntryNew()
+}
+
+#[gen.protocol(append)]
+func _append_MenuEntry(parent MenuEntry, child ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_MenuEntry(parent MenuEntry, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(remove)]
+func _remove_MenuEntry(parent MenuEntry, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_label(e MenuEntry, label string) {
+    _rtMenuEntrySetLabel(e, label)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_disabled(e MenuEntry, disabled bool) {
+    _rtMenuEntrySetDisabled(e, disabled)
+}
+
+#[gen.protocol(set)]
+func _set_MenuEntry_checked(e MenuEntry, checked bool) {
+    _rtMenuEntrySetChecked(e, checked)
+}
+
+#[gen.protocol(on)]
+func _on_MenuEntry(e MenuEntry, select func()) {
+    _rtMenuEntryOnSelect(e, select)
+}
+
+// Its `@key` is each key pressed in the window, heard before the focused
+// widget, which the runtime names as a browser names the key -- its character,
+// or "Enter", "Tab", "ArrowUp", "F1" and the rest -- and with Control, Alt,
+// Super or Meta held a letter is its own, lowercase unless Shift is held
+// (rt's keys.c). A stop is the window taking the key. A key pressed while the
+// focused field's input method is composing is the input method's, and the
+// window does not hear it. Escape goes back while the window can, after
+// nothing took it: not the handler, not a focused widget.
+//
+// Its menu's entries are drawn two deep: a top-level entry and its submenu. A
+// window whose call site gives it no `canGoBack` writes no Back, the `if`
+// folding away, and nor does one with no menu write an entry.
+//
+// The window's `@error` boundary and its favicon are not written yet.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
-    Toplevel(title=title, :visible=visible, @closed { closed() }) {
+    Toplevel(title=title, :visible=visible, @closed { closed() }, @key {
+        key(ui.KeyPress{key=_rtKeyHeard(), ctrl=_rtKeyHeld(0), alt=_rtKeyHeld(1), shift=_rtKeyHeld(2), meta=_rtKeyHeld(3), editing=_rtKeyHeld(4)}, func() { _rtKeyStop() })
+    }) {
         content
+        if canGoBack {
+            Back(@press { back() })
+        }
+        for var it = menu {
+            MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
+                for var sub = it.children {
+                    MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() })
+                }
+            }
+        }
     }
 }
 
@@ -542,6 +763,220 @@ const component ui.hbox[platform](style, children) {
 const component ui.grid[platform](columns, style, children) {
     GtkBox(orientation="horizontal", look=gridLookOf(style, columns)) {
         children
+    }
+}
+
+// A scroll is the runtime's GtkScrolledWindow, which moves along `direction`
+// and reports the end of its content coming within half a viewport of
+// showing -- as it arrives, and when the content changes size while it is
+// there (rt's scroll.c). GTK has no signal saying so; the changes of the
+// adjustment along the axis the end is read on are what answer it.
+#[marks.intrinsic("gtk4next:Scroll")]
+component Scroll(
+    direction string,
+    look      Look,
+    @reachEnd(),
+    content   ...component option[ui.node],
+) ui.node
+
+#[macro.cnative("sngl_scroll_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglScrollNew")]
+func _rtScrollNew() Scroll
+
+#[macro.cnative("sngl_scroll_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglScrollSetChild")]
+func _rtScrollSetChild(sw Scroll, child ui.node)
+
+#[macro.cnative("sngl_scroll_set_direction")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglScrollSetDirection")]
+func _rtScrollSetDirection(sw Scroll, direction string)
+
+#[macro.cnative("sngl_scroll_on_reach_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglScrollOnReachEnd")]
+func _rtScrollOnReachEnd(
+    sw Scroll,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_scroll_reach_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglScrollReachEnd")]
+func _rtScrollReachEnd(sw Scroll)
+
+#[gen.protocol(create)]
+func _create_Scroll() Scroll {
+    return _rtScrollNew()
+}
+
+#[gen.protocol(append)]
+func _append_Scroll(parent Scroll, child ui.node) {
+    _rtScrollSetChild(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_direction(w Scroll, direction string) {
+    _rtScrollSetDirection(w, direction)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_look(w Scroll, look Look) {
+    _setLook(w, look)
+}
+
+#[gen.protocol(on)]
+func _on_Scroll(sw Scroll, reachEnd func()) {
+    _rtScrollOnReachEnd(sw, reachEnd)
+}
+
+#[gen.fires("reachEnd")]
+func _fire_Scroll_reachEnd(sw Scroll) {
+    _rtScrollReachEnd(sw)
+}
+
+const component ui.scroll[platform](style, direction, @reachEnd, content) {
+    Scroll(direction=string(direction), look=lookOf(style), @reachEnd { reachEnd() }) {
+        content
+    }
+}
+
+// A `ui.tabs`: the runtime's box of a GtkNotebook (rt's tabs.c). Each
+// TabPage it holds is a page of the notebook, and `selected` the one shown.
+#[marks.intrinsic("gtk4next:Tabs")]
+component Tabs(
+    selected int,
+    look     Look,
+    pages    ...component ui.node,
+) ui.node
+
+// One tab: its panel, a page the notebook shows a tab titled `title` for.
+// The user choosing it is no GTK signal on it but the notebook's page
+// changing, which the runtime reports as `@change`, and only the user's.
+// Named for the tabs' event it raises, which is what a test's press of it
+// calls.
+#[marks.intrinsic("gtk4next:TabPage")]
+component TabPage(
+    title    string,
+    disabled bool = false,
+    @change(),
+    content  ...component ui.node,
+) ui.node
+
+#[macro.cnative("sngl_tabs_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabsNew")]
+func _rtTabsNew() Tabs
+
+#[macro.cnative("sngl_tabs_set_selected")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabsSetSelected")]
+func _rtTabsSetSelected(t Tabs, k int)
+
+#[macro.cnative("sngl_tab_page_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabPageNew")]
+func _rtTabPageNew() TabPage
+
+#[macro.cnative("sngl_tab_page_set_title")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabPageSetTitle")]
+func _rtTabPageSetTitle(p TabPage, title string)
+
+#[macro.cnative("sngl_tab_page_set_disabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabPageSetDisabled")]
+func _rtTabPageSetDisabled(p TabPage, disabled bool)
+
+#[macro.cnative("sngl_tab_page_on_shown")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabPageOnShown")]
+func _rtTabPageOnShown(
+    p TabPage,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[macro.cnative("sngl_tab_page_show")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4next/cgo", "cgo.SnglTabPageShow")]
+func _rtTabPageShow(p TabPage)
+
+#[gen.protocol(create)]
+func _create_Tabs() Tabs {
+    return _rtTabsNew()
+}
+
+#[gen.protocol(append)]
+func _append_Tabs(parent Tabs, page ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(page)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Tabs(parent Tabs, page ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(page)))
+}
+
+#[gen.protocol(remove)]
+func _remove_Tabs(parent Tabs, page ui.node) {
+    _rtBoxRemove(parent, page)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_selected(t Tabs, selected int) {
+    _rtTabsSetSelected(t, selected)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_look(t Tabs, look Look) {
+    _setLook(t, look)
+}
+
+#[gen.protocol(create)]
+func _create_TabPage() TabPage {
+    return _rtTabPageNew()
+}
+
+#[gen.protocol(append)]
+func _append_TabPage(parent TabPage, child ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_TabPage(parent TabPage, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(remove)]
+func _remove_TabPage(parent TabPage, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_title(p TabPage, title string) {
+    _rtTabPageSetTitle(p, title)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_disabled(p TabPage, disabled bool) {
+    _rtTabPageSetDisabled(p, disabled)
+}
+
+#[gen.protocol(on)]
+func _on_TabPage(p TabPage, change func()) {
+    _rtTabPageOnShown(p, change)
+}
+
+#[gen.fires("change")]
+func _fire_TabPage_change(p TabPage) {
+    _rtTabPageShow(p)
+}
+
+// A tab is a page of a GtkNotebook, which shows a tab for it. `variant` is
+// the notebook's look, which GTK's theme draws.
+const component ui.tabs[platform](selected, style, @change, items) {
+    Tabs(selected=selected, look=lookOf(style)) {
+        for var k, t = items {
+            TabPage(title=t.label, disabled=t.disabled, @change {
+                selected = k
+                change(k)
+            }) {
+                t.content
+            }
+        }
     }
 }
 

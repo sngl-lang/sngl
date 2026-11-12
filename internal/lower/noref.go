@@ -38,10 +38,15 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	rw := &refRewriter{pkg: pkg, reg: reg, handlers: map[*ir.Func]bool{}, done: map[ir.Expr]ir.Expr{}}
 
 	// Step 1: rewrite addressed Var declarations and their initializers.
+	// Once each: two copies of a component can share a var, as a block's
+	// state rendered by two instances does, and boxed twice it was a box of
+	// a box its closures did not take.
+	boxed := map[*ir.Var]bool{}
 	for _, v := range collectAllVars(pkg) {
-		if !pkg.AddressedVars[v] {
+		if !pkg.AddressedVars[v] || boxed[v] {
 			continue
 		}
+		boxed[v] = true
 		elem := v.Type
 		boxDef := reg.boxFor(elem)
 		boxType := &ir.Type{Kind: ir.TypeStruct, Decl: boxDef}

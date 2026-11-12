@@ -317,6 +317,15 @@ the loop, the windows attached with no GtkWindow made yet; the loop
 reports each window's `visible` false, which `run`'s `sngl_gtk_present` lifts
 first. `gtk4next.quit()` ends the loop (`testdata/gtk4next_run_handler_runs.txtar`).
 
+**A window's `@key` on gtk4next takes nothing.** The runtime's key controller
+hears the key as gtk4's does (`rt/keys.c`), but C hands a callback no
+function to call, so the Toplevel's `@key` passes no `stop`: the override
+reads the key off the runtime while its handler runs (`sngl_key_heard`,
+`sngl_key_held`) and hands the program's handler a stop that is the runtime's
+(`sngl_key_stop`), which also calls a test's own. A test presses a key
+through `sngl_toplevel_key` (`cmd/sngl/testdata/gtk4next_test_runs.txt`,
+`keys.sngl`).
+
 **The package body is the application's view, and a window is a component.**
 Every node at the root of the package body is `lower.AppendChild(__app, n)`
 (`ir.AppParent`, written by passDeclarative), and a render slot there is
@@ -352,7 +361,12 @@ handed to the application, and the box keeps it, so the box's own attach --
 a test's, or the package body's -- shows its windows in no wrapper, and its
 remove and detach take them off screen. A snapshot draws the first window
 attached, as gtk4's BuildUI does (`cmd/sngl/testdata/gtk4next_test_runs.txt`,
-`windows.sngl`).
+`windows.sngl`): the window itself, its header bar and all, made then where a
+test's build attached it with no application to show it; a test's component
+alone is drawn as a window's whole content. Each test starts with the last
+one's windows taken down (`sngl_gtk_reset`, the reset a platform hands
+`WriteTests`): left attached, the second test's snapshot drew the first's
+window.
 
 What makes that reach the two platforms is generic: `ui.window` is an ordinary
 component, composed through its override like any other, and a builtin node
@@ -543,7 +557,9 @@ making it its wrapper's prop. Each target:
   main menu. A `Back` node under `if canGoBack` is the way back: gtk4 puts its
   button in the header bar where the window has one -- made as the window is,
   since GTK warns setting a title bar on a realized window -- and over the
-  content where it has none, as fyne does.
+  content where it has none, as fyne does. gtk4next's are the runtime's own
+  (`rt/menu.c`), the toplevel's append and insert being a box's
+  (`sngl_box_append`), which tells the window.
 - html draws a `<header>` with the title, the menu as `ui.menubar` (a
   `<details>` per top-level entry) and an up arrow in a `sngl-back`, which
   keeps a history entry while it is there: the browser's back pops it and the

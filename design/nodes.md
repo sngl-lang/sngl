@@ -125,6 +125,11 @@ itself, putting the value there first; declgen leaves those out of the
 widgets it writes (`valuedFires`). Every node
 is then retyped as the `handle`'s return type, through lists and options too,
 and the package body's node locals, which handlers reach, become package vars.
+A generic component whose call site binds nothing of the family it renders
+into -- a timer, which takes no children, built at run time in a loop -- holds
+its root as that parameter, which no language writes; every node is the
+handle, so the parameter is too
+(`cmd/sngl/testdata/timer_tab_loop_wait_runs.txt`).
 What is left is plain functions, structs and calls, which a language writes
 whole (`clang.WriteProgram`), so a platform on placement needs no translator:
 win32's generator writes only the program's entry
@@ -206,7 +211,11 @@ program it writes for any build. A test's `c.n` is then the package var, its
 `.value` where NoRef boxed it, and `c.save` the node's var. A node a function
 other than the package body makes -- a render slot's, made and taken away as
 the slot renders -- is held in a package var of its option that the
-function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. The package body's own branches are held
+function's every render starts by setting null (`holdRead`), so `c.big == null` once a branch took it away. A record's function renders for
+each of the record's instances, so it lets go of only what its own instance
+made, which a field of the record notes: each tab's panel is a record, and the
+second panel's render said the first's button was gone
+(`cmd/sngl/testdata/tabs_runs.txt`). The package body's own branches are held
 the same way, and a node a record holds is held as the record's constructor
 makes it and let go by its destroy, unless another record's took its place
 -- a keyed render builds the new before destroying the old -- so it too is

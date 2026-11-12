@@ -277,8 +277,20 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 	// is made of is declared first and set after, from the instances kept
 	// or a new one, so it is held as it is set, and let go as it is
 	// destroyed, unless another took its place.
-	hold := func(block []ir.Stmt) ([]ir.Stmt, []ir.Stmt) {
+	//
+	// A record's function renders for each instance of the record, which
+	// holds what it made in a field of its own (mine): its render lets go
+	// of only what it made, so a second tab's panel rendering after the
+	// first leaves the first's button held.
+	hold := func(block []ir.Stmt, r *record, self *ir.Param) ([]ir.Stmt, []ir.Stmt) {
 		var held []*ir.Var
+		hold := func(v *ir.Var, value ir.Expr) []ir.Stmt {
+			out := []ir.Stmt{holdAssign(v, value)}
+			if r != nil {
+				out = append(out, &ir.Assign{Target: p.mine(r, self, v), Op: ast.AssignSet, Value: &ir.Conversion{Type: v.Type, Operand: ir.CloneExprSharingDecls(value)}})
+			}
+			return out
+		}
 		instances := map[ir.Symbol]*ir.Var{}
 		_ = ir.Walk(block, func(n ir.Node) error {
 			lv, ok := n.(*ir.LocalVar)
@@ -302,11 +314,11 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 				switch x := s.(type) {
 				case *ir.LocalVar:
 					if v := instances[x.Sym]; v != nil && x.Sym != nil && x.Init != nil {
-						out = append(out, holdAssign(v, &ir.Ident{Name: x.Name, Sym: x.Sym, Type: x.Type, Synthesized: true}))
+						out = append(out, hold(v, &ir.Ident{Name: x.Name, Sym: x.Sym, Type: x.Type, Synthesized: true})...)
 					}
 				case *ir.Assign:
 					if id, ok := x.Target.(*ir.Ident); ok && id.Sym != nil && instances[id.Sym] != nil {
-						out = append(out, holdAssign(instances[id.Sym], ir.CloneExprSharingDecls(id)))
+						out = append(out, hold(instances[id.Sym], ir.CloneExprSharingDecls(id))...)
 					}
 				}
 				lv, ok := s.(*ir.LocalVar)
@@ -319,13 +331,30 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 				if lv.Sym != nil {
 					local.Sym = lv.Sym
 				}
-				out = append(out, holdAssign(v, local))
+				out = append(out, hold(v, local)...)
 			}
 			return out
 		})
 		var reset []ir.Stmt
 		for _, v := range held {
-			reset = append(reset, holdAssign(v, &ir.Literal{Type: ir.TypNull, Value: "null"}))
+			null := func() ir.Expr { return &ir.Literal{Type: ir.TypNull, Value: "null"} }
+			if r == nil {
+				reset = append(reset, holdAssign(v, null()))
+				continue
+			}
+			ref := func() ir.Expr { return &ir.Ident{Name: v.Name, Sym: v, Type: v.Type, Synthesized: true} }
+			t := v.Type.Elems[0]
+			made := &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
+				Left: &ir.Binary{Type: ir.TypBool, Op: ast.BinAnd,
+					Left:  &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: ref(), Right: null()},
+					Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinNeq, Left: p.mine(r, self, v), Right: null()},
+				},
+				Right: &ir.Binary{Type: ir.TypBool, Op: ast.BinEq, Left: &ir.Conversion{Type: t, Operand: ref()}, Right: &ir.Conversion{Type: t, Operand: p.mine(r, self, v)}},
+			}
+			reset = append(reset,
+				&ir.If{Cond: made, Body: []ir.Stmt{holdAssign(v, null())}},
+				&ir.Assign{Target: p.mine(r, self, v), Op: ast.AssignSet, Value: null()},
+			)
 		}
 		return block, reset
 	}
@@ -333,11 +362,16 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 		if f.IsTest {
 			continue
 		}
-		block, reset := hold(f.Block)
+		var self *ir.Param
+		r := p.recordFunc(f)
+		if r != nil {
+			self = f.Params[0]
+		}
+		block, reset := hold(f.Block, r, self)
 		f.Block = append(reset, block...)
 	}
 	// The package body's, under a branch it renders once.
-	body, reset := hold(pkg.Body)
+	body, reset := hold(pkg.Body, nil, nil)
 	pkg.Body = append(reset, body...)
 	// A record's, held as its constructor makes it and let go as it is
 	// destroyed, unless another record's took its place. In order, since
@@ -416,6 +450,31 @@ func (p *placement) letGo(r *record, v *ir.Var, t *ir.Type, of func(self ir.Expr
 	}
 	clear := &ir.If{Cond: mine, Body: []ir.Stmt{holdAssign(v, &ir.Literal{Type: ir.TypNull, Value: "null"})}}
 	r.destroy.Block = append([]ir.Stmt{clear}, r.destroy.Block...)
+}
+
+// recordFunc is the record whose function fn is, taking the record as its
+// first parameter, or nil.
+func (p *placement) recordFunc(fn *ir.Func) *record {
+	if len(fn.Params) == 0 {
+		return nil
+	}
+	for _, r := range p.records {
+		if slices.Contains(r.owned, fn) && fn.Params[0].Type.Equal(r.typ) {
+			return r
+		}
+	}
+	return nil
+}
+
+// mine is the field of r, read through self, holding what the instance
+// self is made the held var v hold, which its render lets go of: made the
+// first time one is asked for.
+func (p *placement) mine(r *record, self *ir.Param, v *ir.Var) ir.Expr {
+	name := v.Name + "__mine"
+	if !slices.ContainsFunc(r.sd.Fields, func(f *ir.StructField) bool { return f.Name == name }) {
+		r.sd.Fields = append(r.sd.Fields, &ir.StructField{Name: name, Type: v.Type})
+	}
+	return &ir.Select{Operand: &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}, Field: name, Type: v.Type}
 }
 
 // heldVar is the package var holding the node a test reads named name,

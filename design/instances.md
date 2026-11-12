@@ -584,7 +584,12 @@ Under a `for` it gives each of the spliced vars one cell per copy
 of a node the copy renders, called through the node's `#id`, is keyed as a
 cell-touching func is (`nodeMethods`): the node is spliced under the same
 loops, so its own method takes the key, and a caller is handed it; one whose
-clone touches no cell drops it as repointHandleCalls points the call. An
+clone touches no cell drops it as repointHandleCalls points the call. C lifts
+a lambda before the inliner runs, and a method called through a `#id` in one
+captures nothing (`analyzeCaptures`): captured, the call reached the handle
+through the closure's state, which repointHandleCalls never looked in, and
+the closure held a node no scope declared
+(`cmd/sngl/testdata/menu_item_calls_its_window_node_runs.txt`). An
 openapi adapter's `refresh` under a `for` called its query's short an
 argument on bubbletea (`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`). On every
 target a function a splice hoists out of loops takes the loop variables it

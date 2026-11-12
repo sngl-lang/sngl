@@ -93,9 +93,24 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 				walkExpr(arm.Value)
 			}
 		case *ir.Call:
+			// A method of a component called through its `#id` names the
+			// instance, and is no read of a value: the inliner points the
+			// call at the method's copy for that instance, which takes no
+			// handle, once it splices it. Captured, the call reached the
+			// handle through the closure's state, where the inliner never
+			// looked, and the closure held a node no scope declared.
+			h, asArg := (*ir.Var)(nil), false
+			if x.Func != nil {
+				h, asArg = handleReceiver(x)
+			}
+			if h == nil || asArg {
+				walkExpr(x.Receiver)
+			}
 			walkExpr(x.Callee)
-			walkExpr(x.Receiver)
 			for i := range x.Args {
+				if h != nil && asArg && i == 0 {
+					continue
+				}
 				walkExpr(x.Args[i].Value)
 			}
 		case *ir.Conversion:

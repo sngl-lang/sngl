@@ -10,6 +10,13 @@
 # goroutine and their messages posted back to be delivered on it
 # (codegen/platform/bubbletea/post.go).
 #
+# On a placed target (gtk4next) a timer in a `for` is a record whose root,
+# the box a component rendering no node of its own holds, was typed as the
+# timer's family parameter, which neither C nor Go writes; it is the
+# platform's handle now (passPlacement). And a keyed loop putting a timer it
+# kept before another moved a widget its box already held, which GTK
+# refuses: the runtime's insert moves it, as the DOM's insertBefore does.
+#
 # android's test runner lowered no t.wait at all; it moves Compose's test
 # clock on while it asks the predicate. And android hoisted every timer to
 # the top of the screen, which dropped one under a loop -- it has none of the
@@ -30,6 +37,11 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4next --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+sngl test --platform=gtk4next --language=go app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -127,6 +139,34 @@ sha256:2496ae9b1edbc853d8063e325d4178a9
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
 sha256:a8e535d2d17c0010868acb7835fcf42e
+{
+  "results": [
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/main/1 --
+sha256:69e74427f68dd2b4c7563d18523ac8cb
+{
+  "results": [
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/main/1 --
+sha256:4d2c0ed880ee25d1c72aa8489d1e020e
 {
   "results": [
     {

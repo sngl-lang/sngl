@@ -90,9 +90,11 @@ func strayClosures(root any, write func(*ir.Func)) {
 // test builds the program where it mounts the component it takes, or first
 // where it takes none, each from state set afresh. step is the call that
 // lets the program's loop run a moment, which a test's wait makes between
-// asking its predicate; a placed test's every other call is the program's
-// own (passPlacement), so nothing here knows a platform.
-func WriteTests(fe *FileEmitter, pkg *ir.Package, step string) error {
+// asking its predicate, and reset the call that takes down what the last
+// test's build put up -- its windows -- before its teardown, or "" for
+// none; a placed test's every other call is the program's own
+// (passPlacement), so nothing here knows a platform.
+func WriteTests(fe *FileEmitter, pkg *ir.Package, step, reset string) error {
 	ctx := fe.Context()
 	var tName string
 	prev := ctx.Native
@@ -107,8 +109,11 @@ func WriteTests(fe *FileEmitter, pkg *ir.Package, step string) error {
 	}
 	defer func() { ctx.Native = prev }()
 	teardown := ""
+	if reset != "" {
+		teardown = "\t\t" + reset + ";\n"
+	}
 	if pkg.Teardown != nil {
-		teardown = "\t\t" + Decl(&pkg.Teardown.DeclInfo) + "();\n"
+		teardown += "\t\t" + Decl(&pkg.Teardown.DeclInfo) + "();\n"
 	}
 	var b strings.Builder
 	// What the last test's package vars kept goes back before sngl_init

@@ -918,7 +918,24 @@ reaches it the same way.
         follows the teardown that freed it -- C printed garbage on gtk4next,
         and win32's printed "after" only by luck. The window's error boundary
         is not written, as on win32's placed window.
-     4. Scroll, tabs, menus and the way back, keys.
+     4. Scroll, tabs, menus and the way back, keys. Done: `keys.sngl`,
+        `menus.sngl` and `scroll.sngl` in the same script, and gtk4next in
+        every script that runs gtk4's tabs, menus and stacks
+        (`tabs_runs.txt` and its kin, `tabs_look_runs.txt` held to gtk4's
+        snapshots, `window_menu_*`, `nav_stack_runs.txt`). The toplevel's
+        content is a box's, whose append hands the window its menu entries
+        and its way back; a window's `@key` takes nothing, and the override
+        reads the key off the runtime and stops it there, since C hands a
+        callback no function to call. A snapshot draws the window itself, its
+        bar and all, retrying until it has drawn, and each test starts with
+        the last one's windows taken down. Along the way, on placement in C
+        and Go: a timer in a `for` held its root as its family parameter; a
+        keyed loop's move of a row it kept inserted a widget its box already
+        held; a record's render cleared what a test reads of another
+        record's; C lifted a menu handler calling through a `#id` with the
+        node captured, which the inliner never repointed; and a var two
+        copies of a panel share was boxed twice. The window's error boundary
+        and its favicon are not written yet.
      5. Images and the canvas, with its draw function (#294).
      6. Async posting, `sngl test`'s agent and `sngl snapshot`.
      7. The swap: every gtk4 golden and recorded run on the new platform,

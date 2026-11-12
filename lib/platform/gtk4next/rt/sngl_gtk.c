@@ -15,7 +15,7 @@ typedef struct {
     SnglBoolFn on_visible;
     void *visible_ctx;
     GDestroyNotify visible_release;
-    SnglKeyFn on_key;
+    SnglFn on_key;
     void *key_ctx;
     GDestroyNotify key_release;
 } SnglToplevel;
@@ -88,8 +88,14 @@ void sngl_toplevel_on_visible(GtkWidget *box, SnglBoolFn fn, void *ctx, GDestroy
     t->visible_release = release;
 }
 
+/* A toplevel's content is a box's, whose append hands the window an entry
+ * of its menu or its way back. */
 void sngl_toplevel_append(GtkWidget *box, GtkWidget *child) {
-    gtk_box_append(GTK_BOX(box), child);
+    sngl_box_append(box, child);
+}
+
+void sngl_toplevel_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child) {
+    sngl_box_insert_before(box, anchor, child);
 }
 
 /* Whether any attached toplevel has a window on screen. */
@@ -112,7 +118,7 @@ static gboolean sngl_close_request(GtkWindow *win, gpointer data) {
         if (t->on_visible) t->on_visible(false, t->visible_ctx);
     }
     if (t->on_closed) t->on_closed(t->closed_ctx);
-    if (!sngl_any_on_screen()) g_application_quit(G_APPLICATION(sngl_app));
+    if (!sngl_any_on_screen() && sngl_app) g_application_quit(G_APPLICATION(sngl_app));
     return TRUE;
 }
 
@@ -126,7 +132,8 @@ static bool sngl_top_back(void *data) {
 
 static void sngl_toplevel_create(SnglToplevel *t) {
     if (t->win) return;
-    t->win = GTK_WINDOW(gtk_application_window_new(sngl_app));
+    /* A test draws a window no application runs. */
+    t->win = GTK_WINDOW(sngl_app ? gtk_application_window_new(sngl_app) : gtk_window_new());
     gtk_window_set_default_size(t->win, 480, 640);
     if (t->title) gtk_window_set_title(t->win, t->title);
     gtk_window_set_child(t->win, t->box);
@@ -484,6 +491,14 @@ void sngl_app_detach(GtkWidget *box) {
     }
 }
 
+void sngl_gtk_reset(void) {
+    while (sngl_attached && sngl_attached->len > 0) {
+        SnglToplevel *t = g_ptr_array_index(sngl_attached, 0);
+        sngl_app_detach(t->box);
+        if (sngl_attached->len > 0 && g_ptr_array_index(sngl_attached, 0) == t) g_ptr_array_remove_index(sngl_attached, 0);
+    }
+}
+
 /* A tick that keeps a blocking iteration from parking past a deadline. */
 static gboolean sngl_capture_tick(gpointer data) {
     (void)data;
@@ -495,8 +510,11 @@ bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, 
      * the first toplevel: a root component's first, or the package body's.
      * A node shown in a toplevel of its own, a test's component, is drawn
      * as the window's whole content, as it is where it is a window's only
-     * child, and put back after. */
+     * child, and put back after. A window of the program's own is drawn as
+     * it is shown, its bar and all, made now where nothing showed it yet: a
+     * test's. */
     GtkWidget *wrapper = NULL;
+    SnglToplevel *top = NULL;
     if (root == NULL && sngl_attached && sngl_attached->len > 0) {
         SnglToplevel *t = g_ptr_array_index(sngl_attached, 0);
         root = t->box;
@@ -505,24 +523,35 @@ bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, 
             wrapper = root;
             root = g_object_ref(wrapped);
             sngl_box_remove(wrapper, root);
+        } else if (wrapped == NULL) {
+            top = t;
         }
     }
     if (root == NULL) {
         *why = "nothing is shown";
         return false;
     }
-    if (gtk_widget_get_parent(root) != NULL) {
-        *why = "what is shown is in a window already";
-        return false;
+    GtkWidget *win;
+    if (top != NULL) {
+        if (top->win == NULL) {
+            sngl_toplevel_create(top);
+            gtk_window_set_default_size(top->win, width, height);
+        }
+        win = GTK_WIDGET(top->win);
+    } else {
+        if (gtk_widget_get_parent(root) != NULL) {
+            *why = "what is shown is in a window already";
+            return false;
+        }
+        /* What made it may hold it only weakly, and the window's leaving
+         * would free it: the capture keeps it, once. */
+        if (g_object_is_floating(root)) {
+            g_object_ref_sink(root);
+        }
+        win = gtk_window_new();
+        gtk_window_set_default_size(GTK_WINDOW(win), width, height);
+        gtk_window_set_child(GTK_WINDOW(win), root);
     }
-    /* What made it may hold it only weakly, and the window's leaving would
-     * free it: the capture keeps it, once. */
-    if (g_object_is_floating(root)) {
-        g_object_ref_sink(root);
-    }
-    GtkWidget *win = gtk_window_new();
-    gtk_window_set_default_size(GTK_WINDOW(win), width, height);
-    gtk_window_set_child(GTK_WINDOW(win), root);
     gtk_window_present(GTK_WINDOW(win));
     /* Mapped is not yet laid out: the compositor's map arrives before GTK
      * allocates, and a widget of no width draws nothing. */
@@ -531,14 +560,21 @@ bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, 
     while (!(gtk_widget_get_mapped(win) && gtk_widget_get_width(win) > 0) && g_get_monotonic_time() < deadline) {
         g_main_context_iteration(NULL, TRUE);
     }
-    g_source_remove(tick);
     while (g_main_context_iteration(NULL, FALSE)) {
     }
     bool ok = false;
+    /* Nor is laid out drawn: a window the compositor has mapped may have
+     * had no frame yet, and draws nothing until the loop gives it one. */
     GdkPaintable *paintable = gtk_widget_paintable_new(win);
-    GtkSnapshot *snap = gtk_snapshot_new();
-    gdk_paintable_snapshot(paintable, GDK_SNAPSHOT(snap), width, height);
-    GskRenderNode *node = gtk_snapshot_free_to_node(snap);
+    GskRenderNode *node = NULL;
+    for (;;) {
+        GtkSnapshot *snap = gtk_snapshot_new();
+        gdk_paintable_snapshot(paintable, GDK_SNAPSHOT(snap), width, height);
+        node = gtk_snapshot_free_to_node(snap);
+        if (node != NULL || g_get_monotonic_time() >= deadline) break;
+        g_main_context_iteration(NULL, TRUE);
+    }
+    g_source_remove(tick);
     GskRenderer *renderer = gsk_cairo_renderer_new();
 #if GTK_CHECK_VERSION(4, 14, 0)
     bool realized = gsk_renderer_realize_for_display(renderer, gdk_display_get_default(), NULL);
@@ -585,8 +621,10 @@ bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, 
         gsk_render_node_unref(node);
     }
     g_object_unref(paintable);
-    gtk_window_set_child(GTK_WINDOW(win), NULL);
-    gtk_window_destroy(GTK_WINDOW(win));
+    if (top == NULL) {
+        gtk_window_set_child(GTK_WINDOW(win), NULL);
+        gtk_window_destroy(GTK_WINDOW(win));
+    }
     if (wrapper != NULL) {
         sngl_toplevel_append(wrapper, root);
         g_object_unref(root);
@@ -640,7 +678,12 @@ void sngl_box_append(GtkWidget *box, GtkWidget *child) {
     }
     if (sngl_window_add(box, child) || sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
     box = sngl_slot_host(box);
-    gtk_box_append(GTK_BOX(box), child);
+    if (gtk_widget_get_parent(child) == box) {
+        GtkWidget *last = gtk_widget_get_last_child(box);
+        if (child != last) gtk_box_reorder_child_after(GTK_BOX(box), child, last);
+    } else {
+        gtk_box_append(GTK_BOX(box), child);
+    }
     sngl_menu_moved(box, child);
 }
 
@@ -652,7 +695,14 @@ void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child)
         return;
     }
     if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
-    gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+    /* A child the box already holds moves, as the DOM's insertBefore moves
+     * one: a keyed loop putting a row it kept in its new place. */
+    if (gtk_widget_get_parent(child) == box) {
+        GtkWidget *after = gtk_widget_get_prev_sibling(anchor);
+        if (child != anchor && child != after) gtk_box_reorder_child_after(GTK_BOX(box), child, after);
+    } else {
+        gtk_box_insert_child_after(GTK_BOX(box), child, gtk_widget_get_prev_sibling(anchor));
+    }
     sngl_menu_moved(box, child);
 }
 
@@ -722,18 +772,31 @@ void sngl_editable_set_text_quiet(GtkWidget *e, const char *t) {
     g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 
-/* What a stop the handler calls does: notes the key stopped, and calls the
- * test's own stop where a test pressed it. */
+/* The key a window's `@key` handler is hearing, while it runs: its name,
+ * what was held, and whether the handler has stopped it. A test's press
+ * also hands the test's own stop, which a stop calls. */
 typedef struct {
+    const char *key;
+    bool held[5];
     bool stopped;
     SnglFn then;
     void *then_ctx;
-} SnglStop;
+} SnglHeard;
 
-static void sngl_stop(void *data) {
-    SnglStop *s = data;
-    s->stopped = true;
-    if (s->then) s->then(s->then_ctx);
+static SnglHeard *sngl_heard;
+
+const char *sngl_key_heard(void) {
+    return sngl_heard ? sngl_heard->key : "";
+}
+
+int sngl_key_held(int which) {
+    return sngl_heard && which >= 0 && which < 5 && sngl_heard->held[which];
+}
+
+void sngl_key_stop(void) {
+    if (!sngl_heard) return;
+    sngl_heard->stopped = true;
+    if (sngl_heard->then) sngl_heard->then(sngl_heard->then_ctx);
 }
 
 /* sngl_hear runs the window's `@key`, and is whether its handler stopped the
@@ -741,16 +804,19 @@ static void sngl_stop(void *data) {
 static bool sngl_hear(SnglToplevel *t, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
         SnglFn then, void *then_ctx) {
     if (!t || !t->on_key) return false;
-    SnglStop s = {false, then, then_ctx};
-    t->on_key(key, ctrl, alt, shift, meta, editing, sngl_stop, &s, t->key_ctx);
-    return s.stopped;
+    SnglHeard h = {key, {ctrl, alt, shift, meta, editing}, false, then, then_ctx};
+    SnglHeard *outer = sngl_heard;
+    sngl_heard = &h;
+    t->on_key(t->key_ctx);
+    sngl_heard = outer;
+    return h.stopped;
 }
 
 static bool sngl_top_hear(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data) {
     return sngl_hear(data, key, ctrl, alt, shift, meta, editing, NULL, NULL);
 }
 
-void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotify release) {
+void sngl_toplevel_on_key(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release) {
     SnglToplevel *t = sngl_top(box);
     if (!t) {
         if (release) release(ctx);
@@ -763,7 +829,7 @@ void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotif
 }
 
 /* An Escape the handler leaves goes back while the window can. */
-void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
+void sngl_toplevel_key(GtkWidget *box, const char *key, int ctrl, int alt, int shift, int meta, int editing,
         SnglFn stop, void *stop_ctx, GDestroyNotify stop_release) {
     SnglToplevel *t = sngl_top(box);
     bool stopped = sngl_hear(t, key, ctrl, alt, shift, meta, editing, stop, stop_ctx);

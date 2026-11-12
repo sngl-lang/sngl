@@ -21,6 +21,12 @@
 # and the interpreter finds the loop in the panel, which is the population
 # of the strip's hidden content slot.
 #
+# On gtk4next, placed, a test's null test of a node in a panel read one var
+# each panel's record cleared as it rendered, so the second panel's render
+# said the first's button was gone; a record lets go of only what it made
+# (holdRead). And in C a panel's `var` a handler writes was boxed twice, once
+# for each copy of the panel sharing it (passNoRef).
+#
 # testdata/component_tabs.txtar is the code.
 
 sngl test --platform=none app.sngl
@@ -36,6 +42,11 @@ sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   6 tests, 0 failures'
+
+sngl test --platform=gtk4next --language=c app.sngl
+stdout 'ok   6 tests, 0 failures'
+sngl test --platform=gtk4next --language=go app.sngl
 stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -300,6 +311,90 @@ sha256:8a471c26349e12138d635e5d898b9d8e
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
 sha256:dd6d4913671213895b268e88a11ba315
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/app/1 --
+sha256:153347f98836484b84cfd9bc12f91884
+{
+  "results": [
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/pair/1 --
+sha256:0ab4f8b16abbdf0fdc7f1740f95f901f
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/wrapped/1 --
+sha256:06cff2a7ade6048f39040016f356bfdd
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/app/1 --
+sha256:584344c653936e174311a362483f8277
+{
+  "results": [
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    },
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/pair/1 --
+sha256:d0c8fbb1e5ea28055250db293b5989e6
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/wrapped/1 --
+sha256:aafe20b166a042280e7fb815e18e56ee
 {
   "results": [
     {

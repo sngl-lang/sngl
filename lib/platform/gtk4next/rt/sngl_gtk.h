@@ -34,17 +34,22 @@ void sngl_toplevel_set_visible(GtkWidget *box, int visible);
 void sngl_toplevel_on_closed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_toplevel_on_visible(GtkWidget *box, SnglBoolFn fn, void *ctx, GDestroyNotify release);
 void sngl_toplevel_append(GtkWidget *box, GtkWidget *child);
+void sngl_toplevel_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 
 /* A window's `@key`: fn hears each key pressed in the window before
- * anything in it (keys.c), with the stop that keeps the key from going
- * further, which it calls with stop_ctx. sngl_toplevel_key presses a key as
- * a test describes it: fn hears it, stop is called with stop_ctx by the
- * handler's stop and released after, and a key the handler leaves goes on
- * where it would have gone. */
-typedef void (*SnglKeyFn)(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
-                          SnglFn stop, void *stop_ctx, void *ctx);
-void sngl_toplevel_on_key(GtkWidget *box, SnglKeyFn fn, void *ctx, GDestroyNotify release);
-void sngl_toplevel_key(GtkWidget *box, const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing,
+ * anything in it (keys.c). While it runs, sngl_key_heard is the key's name
+ * and sngl_key_held whether a modifier was held -- 0 Control, 1 Alt, 2
+ * Shift, 3 Super or Meta -- or, at 4, whether the focused field was being
+ * edited; sngl_key_stop keeps the key from going further. Neither is
+ * anything once fn returns. sngl_toplevel_key presses a key as a test
+ * describes it: fn hears it, stop is called with stop_ctx by the handler's
+ * stop and released after, and a key the handler leaves goes on where it
+ * would have gone. */
+void sngl_toplevel_on_key(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
+const char *sngl_key_heard(void);
+int sngl_key_held(int which);
+void sngl_key_stop(void);
+void sngl_toplevel_key(GtkWidget *box, const char *key, int ctrl, int alt, int shift, int meta, int editing,
                        SnglFn stop, void *stop_ctx, GDestroyNotify stop_release);
 void sngl_gtk_init(void);
 /* What an entry whose platform node wrote `@run` calls: sngl_gtk_hold makes
@@ -57,6 +62,9 @@ int sngl_gtk_run(void);
 /* sngl_gtk_quit ends the application's loop, once it has one. */
 void sngl_gtk_quit(void);
 void sngl_gtk_step(void);
+/* sngl_gtk_reset takes down every toplevel attached, its window destroyed:
+ * what a test agent does before the next test builds afresh. */
+void sngl_gtk_reset(void);
 int sngl_gtk_main(SnglFn build, void *ctx, GDestroyNotify release);
 /* A widget's signal and a property's notification, connected through
  * trampolines that hand fn only its context. */
@@ -112,7 +120,7 @@ bool sngl_tabs_add(GtkWidget *box, GtkWidget *page);
 bool sngl_tabs_remove(GtkWidget *box, GtkWidget *page);
 GtkWidget *sngl_tab_page_new(void);
 void sngl_tab_page_set_title(GtkWidget *page, const char *title);
-void sngl_tab_page_set_disabled(GtkWidget *page, bool disabled);
+void sngl_tab_page_set_disabled(GtkWidget *page, int disabled);
 void sngl_tab_page_on_shown(GtkWidget *page, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_tab_page_show(GtkWidget *page);
 
@@ -125,8 +133,8 @@ void sngl_tab_page_show(GtkWidget *page);
  * among a window's content, and is whether there was one. */
 GtkWidget *sngl_menu_entry_new(void);
 void sngl_menu_entry_set_label(GtkWidget *w, const char *label);
-void sngl_menu_entry_set_disabled(GtkWidget *w, bool v);
-void sngl_menu_entry_set_checked(GtkWidget *w, bool v);
+void sngl_menu_entry_set_disabled(GtkWidget *w, int v);
+void sngl_menu_entry_set_checked(GtkWidget *w, int v);
 void sngl_menu_entry_on_select(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_menu_entry_select(GtkWidget *w);
 GtkWidget *sngl_back_new(void);

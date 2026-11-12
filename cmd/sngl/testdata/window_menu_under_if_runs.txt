@@ -22,6 +22,10 @@ sngl test --platform=fyne --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4next --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4next --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok +1 tests, 0 failures'
 
@@ -86,6 +90,26 @@ sha256:c06bc91bab11295ef239d31d720e9a44
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
 sha256:b3b5f0a219ce3e70126b5648e1c0e7f1
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/app/1 --
+sha256:69b19280de2172efb409846daa94470e
+{
+  "results": [
+    {
+      "Desc": "APickInAMenuShownLaterRuns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/app/1 --
+sha256:dab92c44788999425d894f54d0a45a50
 {
   "results": [
     {

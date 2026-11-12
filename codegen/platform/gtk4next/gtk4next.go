@@ -123,8 +123,9 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		return fmt.Errorf("%s: %w", platformName, err)
 	}
 	if agent {
-		// A test waits by running what GTK has ready, as the loop would.
-		if err := clang.WriteTests(fe, pkg, "g_main_context_iteration(NULL, FALSE)"); err != nil {
+		// A test waits by running what GTK has ready, as the loop would, and
+		// starts with the last one's windows gone.
+		if err := clang.WriteTests(fe, pkg, "g_main_context_iteration(NULL, FALSE)", "sngl_gtk_reset()"); err != nil {
 			return fmt.Errorf("%s: %w", platformName, err)
 		}
 		io.WriteString(fe, cTestMain)
@@ -250,12 +251,12 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		return fmt.Errorf("%s: %w", platformName, err)
 	}
 	agent := codegen.OptionString(req.Options, "testMode") == "agent"
+	cgo := fe.RequireImport(wrappers)
 	if agent {
-		if err := golang.WriteTests(fe, pkg); err != nil {
+		if err := golang.WriteTests(fe, pkg, cgo+".SnglGtkReset()"); err != nil {
 			return fmt.Errorf("%s: %w", platformName, err)
 		}
 	}
-	cgo := fe.RequireImport(wrappers)
 	fe.RequireImport("os")
 	fe.RequireImport("runtime")
 	if agent {

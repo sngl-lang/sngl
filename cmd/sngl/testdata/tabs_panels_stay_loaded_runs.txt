@@ -13,6 +13,9 @@
 # nothing, and the snapshot holds the second panel and not the first. html
 # keeps every tabpanel in the document with all but one `hidden`. android
 # pages through the panels in a HorizontalPager that keeps every page composed.
+# gtk4next, placed, held the counter a test reads in one var the render of
+# each panel's record started by clearing; each record now lets go of only
+# what it made (holdRead).
 #
 # A swipe is sngl:test/mobile's, answered on android and html. Swiping left
 # chooses the next tab that is not disabled, as pressing it would: android's
@@ -34,6 +37,11 @@ sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
+sngl test --platform=gtk4next --language=c app.sngl
+stdout 'ok   3 tests, 0 failures'
+sngl test --platform=gtk4next --language=go app.sngl
 stdout 'ok   3 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -267,6 +275,42 @@ sha256:f140db0ba1eac2a0aae50d9ad19136b8
 }
 -- testrun/gtk4/go/app.sngl/panels/1 --
 sha256:d65434f8151165ced8e4c44b910ccc54
+{
+  "results": [
+    {
+      "Desc": "ABlockKeepsItsStateAcrossASwitch",
+      "Passed": true
+    },
+    {
+      "Desc": "APanelKeepsItsStateAcrossASwitch",
+      "Passed": true
+    },
+    {
+      "Desc": "EveryPanelMountsWithTheTabs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/c/app.sngl/panels/1 --
+sha256:8647a0b971ff8b60d587a1dc1dee5a36
+{
+  "results": [
+    {
+      "Desc": "APanelKeepsItsStateAcrossASwitch",
+      "Passed": true
+    },
+    {
+      "Desc": "ABlockKeepsItsStateAcrossASwitch",
+      "Passed": true
+    },
+    {
+      "Desc": "EveryPanelMountsWithTheTabs",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4next/go/app.sngl/panels/1 --
+sha256:f202af219264e8e943693f21279a76b7
 {
   "results": [
     {

@@ -135,7 +135,7 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		return fmt.Errorf("win32: %w", err)
 	}
 	if agent {
-		if err := clang.WriteTests(fe, pkg, "sngl_win32_step()"); err != nil {
+		if err := clang.WriteTests(fe, pkg, "sngl_win32_step()", ""); err != nil {
 			return fmt.Errorf("win32: %w", err)
 		}
 		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tsngl_win32_carry(sngl_win32_assets);\n\treturn sngl_win32_serve(sngl_tests, sngl_ntests, argc, argv);\n}\n")
@@ -204,7 +204,7 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 	}
 	agent := codegen.OptionString(req.Options, "testMode") == "agent"
 	if agent {
-		if err := golang.WriteTests(fe, pkg); err != nil {
+		if err := golang.WriteTests(fe, pkg, ""); err != nil {
 			return fmt.Errorf("win32: %w", err)
 		}
 	}

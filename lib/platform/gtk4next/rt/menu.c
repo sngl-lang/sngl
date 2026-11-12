@@ -74,14 +74,14 @@ void sngl_menu_entry_set_label(GtkWidget *w, const char *label) {
     sngl_entry_changed(w);
 }
 
-void sngl_menu_entry_set_disabled(GtkWidget *w, bool v) {
+void sngl_menu_entry_set_disabled(GtkWidget *w, int v) {
     SnglMenuEntry *e = sngl_entry_of(w);
     if (!e || e->disabled == v) return;
     e->disabled = v;
     sngl_entry_changed(w);
 }
 
-void sngl_menu_entry_set_checked(GtkWidget *w, bool v) {
+void sngl_menu_entry_set_checked(GtkWidget *w, int v) {
     SnglMenuEntry *e = sngl_entry_of(w);
     if (!e || e->checked == v) return;
     e->checked = v;

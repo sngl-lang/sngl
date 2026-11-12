@@ -126,8 +126,10 @@ func RunsHandler(pkg *ir.Package) bool {
 // component it takes, or first where it takes none, each from state set
 // afresh; a placed test's every other call is the program's own
 // (passPlacement), so nothing here knows a platform. A test's wait is the
-// platform's TestWaitID intrinsic, which lets its loop run meanwhile.
-func WriteTests(fe codegen.FileEmitter, pkg *ir.Package) error {
+// platform's TestWaitID intrinsic, which lets its loop run meanwhile, and
+// reset the platform's call taking down what the last test's build put up
+// -- its windows -- before its teardown, or "" for none.
+func WriteTests(fe codegen.FileEmitter, pkg *ir.Package, reset string) error {
 	f, ok := fe.(*fileEmitter)
 	if !ok {
 		return fmt.Errorf("golang.WriteTests: %T is not a Go file", fe)
@@ -136,7 +138,10 @@ func WriteTests(fe codegen.FileEmitter, pkg *ir.Package) error {
 	gc.placedTests = true
 	gc.RequireImport(testagentPkg)
 	var b strings.Builder
-	b.WriteString("\nvar snglRan bool\n\nfunc snglReset() {\n\tif snglRan {\n\t\tsnglTeardown()\n\t}\n\tsnglRan = true\n\tsnglInit()\n}\n")
+	if reset != "" {
+		reset = "\t\t" + reset + "\n"
+	}
+	b.WriteString("\nvar snglRan bool\n\nfunc snglReset() {\n\tif snglRan {\n" + reset + "\t\tsnglTeardown()\n\t}\n\tsnglRan = true\n\tsnglInit()\n}\n")
 	var register strings.Builder
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {
