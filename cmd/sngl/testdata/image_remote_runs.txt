@@ -7,6 +7,13 @@
 # picture to a 404, and reports the failure. android's loader kept the last
 # URL's picture and reported it loaded, since a picture already there skipped
 # the fetch -- a grid's cards kept their pictures when its list changed.
+#
+# A fetch arriving after its image moved on to another URL is the image's no
+# longer: `overtaken` asks for a picture the server holds back, moves to a
+# 404 before it comes, and hears only the failure. gtk4's runtime once painted
+# a fetch that outlived its picture into the picture made since at the same
+# address. android's driver waits for every fetch in flight before a click
+# lands, so there the picture has come before the image moves on.
 
 sngl test --platform=android --language=kotlin app.sngl
 stdout '3 tests, 0 failures'
@@ -19,6 +26,15 @@ stdout '3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=c app.sngl
 stdout '3 tests, 0 failures'
+
+sngl test --platform=fyne --language=go late.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go late.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c late.sngl
+stdout '1 tests, 0 failures'
 
 
 -- app.sngl --
@@ -68,6 +84,33 @@ func testRemoteFails(t Test, c pictures) {
 window {
     pictures
 }
+-- late.sngl --
+import . "sngl:test"
+import . "sngl:ui"
+
+const server = "http://127.0.0.1:47819"
+
+component overtaken node {
+    var url = "{server}/dot.png?after=800"
+    var loaded = false
+    var failed = ""
+    image(@load { loaded = true }, @error(e) { failed = e.message }) {
+        remote(url=url)
+    }
+    button #away(text="Away", @click { url = "{server}/status/404" })
+}
+
+func testALateFetchLeavesTheImageThatMovedOn(t Test, c overtaken) {
+    c.away.click()
+    t.wait(func() => c.failed != "", 5000)
+    t.wait(func() => c.loaded, 1500)
+    t.assert(c.failed != "")
+    t.assert(!c.loaded)
+}
+
+window {
+    overtaken
+}
 -- testrun/android/kotlin/app.sngl/moved/1 --
 sha256:b1cf52f317cd9121d1024381b659c9f2
 {
@@ -116,6 +159,16 @@ sha256:b2dfde87c0a5e417a8b75a96a6124916
     }
   ]
 }
+-- testrun/fyne/go/late.sngl/overtaken/1 --
+sha256:21ad29440b4ed30abaa2630bbc753297
+{
+  "results": [
+    {
+      "Desc": "ALateFetchLeavesTheImageThatMovedOn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/c/app.sngl/moved/1 --
 sha256:2a718dfb8c164356f4633c97f97e1e3c
 {
@@ -140,6 +193,16 @@ sha256:df044999ba950c1bdde1c88bdda4bdb2
     }
   ]
 }
+-- testrun/gtk4/c/late.sngl/overtaken/1 --
+sha256:f77f6e1a76289b2cb7514b629c374beb
+{
+  "results": [
+    {
+      "Desc": "ALateFetchLeavesTheImageThatMovedOn",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/moved/1 --
 sha256:03d8d566cecd991af7b0f9ed98380525
 {
@@ -160,6 +223,16 @@ sha256:0cb5a8985ad32b9760c0dff8988af55e
     },
     {
       "Desc": "RemoteLoads",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/late.sngl/overtaken/1 --
+sha256:8d4fbf2f77530a6a70835a507e5da571
+{
+  "results": [
+    {
+      "Desc": "ALateFetchLeavesTheImageThatMovedOn",
       "Passed": true
     }
   ]

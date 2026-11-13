@@ -1014,19 +1014,21 @@ reaches it the same way.
    come with step 1. `purego` is attempted then, against the open questions
    below.
 4. **`pkg/go/gtk4rt` is deleted.** Done with the swap. Its tests went with
-   it; what they held that no script holds yet is to be written as programs
-   in both languages: a button given a `background` shading it hovered and
-   pressed (`paint_test.go`), a box growing not for what its child holds and
-   the contents box growing by it (`flex_test.go`), a vertical scroll no
-   wider than its content's minimum and its pictures drawn at a height
-   (`scroll_test.go`), `@reachEnd` along x in a sideways scroll
-   (`reach_across_test.go`), and a fetch landing in the picture whose
-   source still asks for it (`image_test.go`).
+   it, and what they held is written as programs in both languages: a box
+   laid out as CSS's flex is and a scroll's pictures drawn at their height
+   (`cmd/sngl/testdata/gtk4_layout_runs.txt`), `@reachEnd` along x in a
+   sideways scroll (`testdata/gtk4_scroll_reach_across_runs.txtar`, a
+   running program, since a test's component is laid out only as a snapshot
+   draws it), and a fetch outliving the picture that asked for it
+   (`late.sngl` in `image_remote_runs.txt`). Not yet: a button given a
+   `background` shading it hovered and pressed (`paint_test.go`), which no
+   test can reach -- `sngl:test` has no hover or press, and the agent sets no
+   widget's state.
 5. **`#[macro.cnative]` becomes `#[c.native]`, in `sngl:x/c`.** Done.
    `sngl:x/c` declares `native` and `NativeFlag` beside `context`, `release`
    and `type`, and marks its own declarations with it unqualified. A mark
-   whose package is not imported now names the library package it most
-   likely meant (`testdata/error_mark_import_hint.sngl`).
+   whose package is not imported names the one library package declaring
+   that mark, where exactly one does (`testdata/error_mark_import_hint.sngl`).
 
 ### Open questions
 
