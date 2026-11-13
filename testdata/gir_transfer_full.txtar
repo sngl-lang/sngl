@@ -38,14 +38,16 @@ ui.window(title="t") {
 
 #include "sngl.h"
 #include "sngl_gtk.h"
-#include <stdlib.h>
+#include <string.h>
 
 typedef struct s___ref_int s___ref_int;
 typedef struct s___ref_bool s___ref_bool;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
+typedef struct s___lambda0_caps__env s___lambda0_caps__env;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
+typedef struct s___lambda1_caps__env s___lambda1_caps__env;
 
 typedef struct s___ref_int {
 	int64_t value;
@@ -68,10 +70,20 @@ typedef struct sngl_fn_bool__void {
 	void *env;
 } sngl_fn_bool__void;
 
+typedef struct s___lambda0_caps__env {
+	sngl_env hdr;
+	s___lambda0_caps caps;
+} s___lambda0_caps__env;
+
 typedef struct sngl_fn_void__void {
 	void (*fn)(void *env);
 	void *env;
 } sngl_fn_void__void;
+
+typedef struct s___lambda1_caps__env {
+	sngl_env hdr;
+	s___lambda1_caps caps;
+} s___lambda1_caps__env;
 
 
 static void s_Widget_setMarkup(GtkWidget * w, sngl_string str);
@@ -80,9 +92,25 @@ static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
 static void s___lambda1(s___lambda1_caps state);
+static void *s___lambda0_caps__env__keep(const void *p);
+static void s___lambda0_caps__env__drop(void *p);
+static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
+static void *s___lambda1_caps__env__keep(const void *p);
+static void s___lambda1_caps__env__drop(void *p);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
+
+static void *s___lambda0_caps__env__keep(const void *p) {
+	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	return e;
+}
+
+static void s___lambda0_caps__env__drop(void *p) {
+	s___lambda0_caps__env *e = p;
+	sngl_drop(e);
+}
 
 static void s___lambda0__fn(void *env, bool a0) {
-	s___lambda0(*(s___lambda0_caps *)env, a0);
+	s___lambda0(((s___lambda0_caps__env *)env)->caps, a0);
 }
 
 static void sngl_dispatch_bool__void(bool a0, void *ctx) {
@@ -93,11 +121,26 @@ static void sngl_dispatch_bool__void(bool a0, void *ctx) {
 }
 
 static void sngl_release(void *ctx) {
-	free(ctx);
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
+}
+
+static void *s___lambda1_caps__env__keep(const void *p) {
+	s___lambda1_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda1_caps__env));
+	return e;
+}
+
+static void s___lambda1_caps__env__drop(void *p) {
+	s___lambda1_caps__env *e = p;
+	sngl_drop(e);
 }
 
 static void s___lambda1__fn(void *env) {
-	s___lambda1(*(s___lambda1_caps *)env);
+	s___lambda1(((s___lambda1_caps__env *)env)->caps);
 }
 
 static void sngl_dispatch_void__void(void *ctx) {
@@ -105,6 +148,11 @@ static void sngl_dispatch_void__void(void *ctx) {
 	sngl_mark m = sngl_call_enter();
 	f->fn(f->env);
 	sngl_call_leave(m);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
 }
 
 static s___ref_int * s_n;
@@ -162,7 +210,7 @@ static void sngl_build(void) {
 	s___n0 = sngl_toplevel_new();
 	sngl_toplevel_set_title(s___n0, s___rel6);
 	sngl_toplevel_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
-	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){((sngl_fn_bool__void){s___lambda0__fn, sngl_heap_copy(&(s___lambda0_caps[]){(s___lambda0_caps){.visible__inst0 = s_visible__inst0}}, sizeof(s___lambda0_caps))})}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, s___lambda0_caps__env__drop}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s_l = gtk_label_new(NULL);
 	gtk_label_set_label((GtkLabel *)((void *)(s_l)), s___rel1);
 	sngl_toplevel_append(s___n0, s_l);
@@ -174,7 +222,7 @@ static void sngl_build(void) {
 	sngl_set_look(s___n1, __rel3, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel4, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
 	s_x_c__free(__rel4);
 	s_x_c__free(__rel3);
-	sngl_signal_connect(s___n1, s___rel5, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){((sngl_fn_void__void){s___lambda1__fn, sngl_heap_copy(&(s___lambda1_caps[]){(s___lambda1_caps){.n = s_n}}, sizeof(s___lambda1_caps))})}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+	sngl_signal_connect(s___n1, s___rel5, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, s___lambda1_caps__env__drop}, (s___lambda1_caps){.n = s_n}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_toplevel_append(s___n0, s___n1);
 	sngl_app_attach(s___n0);
 }
@@ -204,4 +252,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:b8aa8ceea319abe7fecdab9b1cd7ce84
+pass sha256:12f79f32d10d1e4fb2159c8eb249fce4

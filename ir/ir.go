@@ -1815,6 +1815,10 @@ type StructField struct {
 	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
 	// rule, for the same reason.
 	CAlias *Alias `json:",omitempty"`
+	// OwnsBox says the field holds a box (StructDef.RefBox) its record made
+	// for itself, which the record gives back as it is destroyed
+	// (Func.Frees); a box handed in -- a two-way prop's -- is its maker's.
+	OwnsBox bool `json:",omitempty"`
 }
 
 // EnumDef is a resolved enum type declaration.

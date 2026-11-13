@@ -984,6 +984,22 @@ drops wait for the turn's end, like any other, so a handler of the row still
 running reads the record until then; an `async` result that lands later finds
 its lifetime ended by the teardown and touches nothing.
 
+**A closure's environment is a value of the turn's, kept like any other.**
+C has no closure, so a function value is its function and an environment,
+which begins with how it is kept and given back (`sngl_env`) and is made in
+the turn's arena, as a string is. A holder storing a closure keeps a copy of
+the environment, keeping what it captured with it, and dropping the value
+drops each capture and then the copy; one the turn made is left alone, since
+what it captured is the turn's or held by what it was read from. A callback
+crossing to C is kept as it crosses and given back when C releases it
+(`sngl_closure_release`). A record's prop a closure of its body writes is a
+box the record made (`ir.StructField.OwnsBox`), which its destroy gives back
+with the handler in it. Before, an environment was a heap copy nothing
+freed, holding a kept copy of each capture, so a `filter`'s predicate leaked
+each call and each row a rebuilt list made kept its handlers' captures;
+`c_record_gives_back_runs.txt`'s `closure.sngl` counts the kept blocks, and
+`codegen/lang/c`'s sanitized `TestRun` checks leaks.
+
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder
 is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only
@@ -995,11 +1011,8 @@ not own.
 
 **Not yet, each a leak rather than a fault:**
 
-- A closure's environment is freed only where C releases a callback's
-  context, so a lambda a turn makes and drops -- a `filter`'s predicate --
-  leaks its environment; `codegen/lang/c`'s sanitized `TestRun` checks no
-  leaks for that reason.
-- A closure's environment is a plain heap copy, not a kept block: what it
-  captured is kept, and freeing the environment gives none of that back.
+- A local NoRef boxes because a closure writes it (`lowerNoRef`) is a kept
+  block nothing gives back: every closure capturing it shares it, and none
+  knows it is the last.
 - `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
   where the design above made it the identity.

@@ -1002,8 +1002,13 @@ reaches it the same way.
    `letGo`), which an AddressSanitizer run of every gtk4 C script finds
    nothing past. What the runtime held past a record was a render slot's
    anchor, which the instance's teardown now gives back (`destroyHeld`, the
-   script's `anchor.sngl`). **Not yet:** a closure's environment gives back
-   nothing it kept.
+   script's `anchor.sngl`). A closure's environment is made in the turn's
+   arena and kept by the holder storing it, which gives it back with what it
+   captured; a record gives back the box it made for a prop
+   (`ir.StructField.OwnsBox`; the script's `closure.sngl`), and C's sanitized
+   `TestRun` checks leaks. **Not yet:** a local NoRef boxes for the closures
+   writing it is a kept block nothing gives back, since every closure
+   sharing it holds it.
 3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
    come with step 1. `purego` is attempted then, against the open questions
    below.

@@ -62,8 +62,26 @@ void *sngl_keep_copy(const void *p, size_t n);
 int64_t sngl_kept_blocks(void);
 
 /* sngl_heap_copy is a copy of the n bytes at p on the heap, which outlives
- * every turn: a closure's environment. */
+ * every turn: a callback's context, which its release frees. */
 void *sngl_heap_copy(const void *p, size_t n);
+
+/* sngl_alloc_copy is a copy of the n bytes at p in the turn's arena. */
+void *sngl_alloc_copy(const void *p, size_t n);
+
+/* A closure's environment begins with how it is kept and given back: it is
+ * made in the turn's arena, as a string is, and a holder keeps a copy,
+ * keeping what the closure captured with it. sngl_env_keep is env kept,
+ * NULL for none; sngl_env_drop gives back a kept env and what it kept, and
+ * leaves alone one the turn made. sngl_closure_release is the release of a
+ * callback's context, a function value on the heap whose environment was
+ * kept as it crossed to C. */
+typedef struct sngl_env {
+	void *(*keep)(const void *env);
+	void (*drop)(void *env);
+} sngl_env;
+void *sngl_env_keep(const void *env);
+void sngl_env_drop(void *env);
+void sngl_closure_release(void *ctx);
 
 /* sngl_cstring is s as a C string the callee may keep and the program frees,
  * as Go's C.CString makes one. */

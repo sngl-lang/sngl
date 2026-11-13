@@ -562,7 +562,7 @@ func testBoard(t test.Test, c board) {
     t.snapshot("painted")
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:f5342873cbe7b413fbb78d0bdf71d6a9
+sha256:c29c8330939dc4436ff4fa5acdef0fa8
 {
   "results": [
     {
@@ -576,7 +576,7 @@ sha256:f5342873cbe7b413fbb78d0bdf71d6a9
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:578fe77e7687d12578e7a2aef596f8d4
+sha256:8681c0987a0d3252a87bd9bbd08e1425
 {
   "results": [
     {
@@ -590,7 +590,7 @@ sha256:578fe77e7687d12578e7a2aef596f8d4
   }
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:e73bfbeae61e926ac49c5d3547d67555
+sha256:a6c349782d2f735cd04c1298733b3b16
 {
   "results": [
     {
@@ -600,7 +600,7 @@ sha256:e73bfbeae61e926ac49c5d3547d67555
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:e5e0032b1ff0907643ee4bd5a5e4c772
+sha256:e71a89b5bb6022ad69974e07486d7877
 {
   "results": [
     {
@@ -614,7 +614,7 @@ sha256:e5e0032b1ff0907643ee4bd5a5e4c772
   ]
 }
 -- testrun/gtk4/c/pictures.sngl/board/1 --
-sha256:e17cccf9976c2489a7433a1dcf594cdd
+sha256:192961e6c3d6fbcb05226996f6c44e91
 {
   "results": [
     {
@@ -628,7 +628,7 @@ sha256:e17cccf9976c2489a7433a1dcf594cdd
   }
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:8a66ef6df867aae338f70e90df04f425
+sha256:836adeb338d98a3cca4f1aa4914ba29f
 {
   "results": [
     {
@@ -645,7 +645,7 @@ sha256:8a66ef6df867aae338f70e90df04f425
   }
 }
 -- testrun/gtk4/c/snap.sngl/_/1 --
-sha256:964881b53010a96cacd2e2cdb1750123
+sha256:6f007c2687f828143faf114b3dc1d484
 {
   "results": [
     {
@@ -658,7 +658,7 @@ sha256:964881b53010a96cacd2e2cdb1750123
   }
 }
 -- testrun/gtk4/c/snap.sngl/main/1 --
-sha256:1b3c33719f5669c53e646d1f704bf1f8
+sha256:7ed013f0e792c79d1eeab5fd73b9213f
 {
   "results": [
     {
@@ -672,7 +672,7 @@ sha256:1b3c33719f5669c53e646d1f704bf1f8
   }
 }
 -- testrun/gtk4/c/widgets.sngl/calendar/1 --
-sha256:ec252697531bddb79876a552d3150d5a
+sha256:8498fe97db5f0d7b42998fdc8f8fc063
 {
   "results": [
     {
@@ -685,7 +685,7 @@ sha256:ec252697531bddb79876a552d3150d5a
   }
 }
 -- testrun/gtk4/c/widgets.sngl/form/1 --
-sha256:2280c2301538e40d4049031e41f2cc79
+sha256:8d8f85490fe3bb52b7ded3b345bf5865
 {
   "results": [
     {
@@ -726,7 +726,7 @@ sha256:2280c2301538e40d4049031e41f2cc79
   }
 }
 -- testrun/gtk4/c/windows.sngl/app/1 --
-sha256:3d157add1b26cfe112e558093b164312
+sha256:dd8a8d6402eac54df7314407974ce34c
 {
   "results": [
     {

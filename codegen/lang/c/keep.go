@@ -18,7 +18,8 @@ import (
 // never kept -- a literal, the zero a var starts at -- is dropped as nothing.
 
 // owns reports whether a value of t holds memory a holder keeps: a string's
-// bytes, a list's or a map's elements, or a value holding one of those.
+// bytes, a list's or a map's elements, a closure's environment, or a value
+// holding one of those.
 func owns(t *ir.Type) bool { return ownsSeen(t, map[ir.Symbol]bool{}) }
 
 func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
@@ -30,7 +31,7 @@ func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
 		return true
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeList, ir.TypeMap:
+	case ir.TypeString, ir.TypeList, ir.TypeMap, ir.TypeFunc:
 		return true
 	case ir.TypeOption:
 		return len(t.Elems) == 1 && ownsSeen(t.Elems[0], seen)
@@ -116,6 +117,13 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 		}
 	}
 	switch {
+	case t.Kind == ir.TypeFunc:
+		// The environment knows what it captured (sngl_env).
+		if op == "keep" {
+			b.WriteString("\tv.env = sngl_env_keep(v.env);\n")
+		} else {
+			b.WriteString("\tsngl_env_drop(v.env);\n")
+		}
 	case t.Kind == ir.TypeList:
 		el := c.typeName(t.Elems[0])
 		if op == "keep" {
@@ -220,7 +228,8 @@ func (c *Context) store(t *ir.Type, target, value string) string {
 }
 
 // frees is the statements giving back self, a record's box its destroy is
-// handed (ir.Func.Frees): what each field kept, then the box. Each is
+// handed (ir.Func.Frees): what each field kept, a box the record made for
+// a field (ir.StructField.OwnsBox) with what it holds, then the record. Each is
 // dropped, so freed as the turn ends, which a handler still running reads
 // it until.
 func (c *Context) frees(self *ir.Param) []string {
@@ -231,7 +240,18 @@ func (c *Context) frees(self *ir.Param) []string {
 	ref := &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}
 	var out []string
 	for _, f := range sd.Fields {
-		if d := c.drop(f.Type, c.EvalExpr(&ir.Select{Operand: ref, Field: f.Name, Type: f.Type})); d != "" {
+		field := &ir.Select{Operand: ref, Field: f.Name, Type: f.Type}
+		if f.OwnsBox {
+			// The box and what it holds are the record's.
+			box := f.Type.Decl.(*ir.StructDef)
+			vt := box.Fields[0].Type
+			if d := c.drop(vt, c.EvalExpr(&ir.Select{Operand: field, Field: box.Fields[0].Name, Type: vt})); d != "" {
+				out = append(out, d)
+			}
+			out = append(out, "sngl_drop("+c.EvalExpr(field)+");")
+			continue
+		}
+		if d := c.drop(f.Type, c.EvalExpr(field)); d != "" {
 			out = append(out, d)
 		}
 	}

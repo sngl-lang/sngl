@@ -21,9 +21,11 @@ import (
 // one a protocol's template writes, spliced after them -- is lifted here
 // (Lambda), capturing what it reads of the scope it is written in.
 //
-// An environment is never freed: a closure is held by what it is handed to,
-// which on gtk4 is a widget's signal for the life of the widget. A callback
-// handed to C is freed when C releases it (cCallback).
+// An environment is made in the turn's arena, as a string is, behind a
+// header saying how it is kept and given back (sngl_env): a holder storing a
+// closure keeps a copy of its environment and what that captured, and gives
+// both back as it drops it. A callback handed to C is kept as it crosses,
+// and given back when C releases it (cCallback).
 
 // fnType is the C struct a value of the function type t is, defined in the
 // file.
@@ -89,8 +91,9 @@ func (c *Context) Closure(n *ir.Closure) string {
 	stateT := c.typeName(state.Type)
 	thunk := funcName(n.Func) + "__fn"
 	sig := n.Type.Sig
+	envT := stateT + "__env"
 	params := []string{"void *env"}
-	args := []string{"*(" + stateT + " *)env"}
+	args := []string{"((" + envT + " *)env)->caps"}
 	for i, p := range sig.Params {
 		params = append(params, c.typeName(p.Type)+fmt.Sprintf(" a%d", i))
 		args = append(args, fmt.Sprintf("a%d", i))
@@ -107,15 +110,46 @@ func (c *Context) Closure(n *ir.Closure) string {
 	} else if ret != "void" {
 		body = "return " + body
 	}
+	c.file.define(envT, "typedef struct "+envT+" {\n\tsngl_env hdr;\n\t"+stateT+" caps;\n} "+envT+";\n", stateT)
+	c.envOps(envT, map[string]*ir.Type{"caps": state.Type}, []string{"caps"})
 	c.file.helper(thunk, fmt.Sprintf("static %s %s(%s) {\n\t%s;\n}\n", ret, thunk, strings.Join(params, ", "), body))
-	// What a closure captures lives as long as the closure: it is kept.
-	env := c.heapCopy(stateT, c.keep(state.Type, c.EvalExpr(n.State)))
+	env := c.arenaCopy(envT, "{{"+envT+"__keep, "+envT+"__drop}, "+c.EvalExpr(n.State)+"}")
 	return "((" + fnT + "){" + thunk + ", " + env + "})"
+}
+
+// envOps defines the keep and drop of envT, an environment whose fields
+// named in order, of the types in fields, are what it captured: keep copies
+// it out of the arena and keeps each, and drop gives each back and then it.
+func (c *Context) envOps(envT string, fields map[string]*ir.Type, order []string) {
+	if c.file.helperNames[envT+"__keep"] {
+		return
+	}
+	var keep, drop strings.Builder
+	fmt.Fprintf(&keep, "static void *%s__keep(const void *p) {\n\t%s *e = sngl_keep_copy(p, sizeof(%s));\n", envT, envT, envT)
+	fmt.Fprintf(&drop, "static void %s__drop(void *p) {\n\t%s *e = p;\n", envT, envT)
+	for _, f := range order {
+		t := fields[f]
+		if t == nil || !owns(t) {
+			continue
+		}
+		fmt.Fprintf(&keep, "\te->%s = %s;\n", f, c.keep(t, "e->"+f))
+		fmt.Fprintf(&drop, "\t%s\n", c.drop(t, "e->"+f))
+	}
+	keep.WriteString("\treturn e;\n}\n")
+	drop.WriteString("\tsngl_drop(e);\n}\n")
+	c.file.protos = append(c.file.protos, "static void *"+envT+"__keep(const void *p);", "static void "+envT+"__drop(void *p);")
+	c.file.helper(envT+"__keep", keep.String())
+	c.file.helper(envT+"__drop", drop.String())
 }
 
 // heapCopy is v, of the C type t, copied to the heap.
 func (c *Context) heapCopy(t, v string) string {
 	return "sngl_heap_copy(&(" + t + "[]){" + v + "}, sizeof(" + t + "))"
+}
+
+// arenaCopy is v, of the C type t, copied to the turn's arena.
+func (c *Context) arenaCopy(t, v string) string {
+	return "sngl_alloc_copy(&(" + t + "[]){" + v + "}, sizeof(" + t + "))"
 }
 
 // funcValue is fn, a declared function, as a function value: a thunk that
@@ -185,7 +219,9 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		}
 		return nil
 	})
-	var fields, inits []string
+	fields, inits := []string{"\tsngl_env hdr;"}, []string{".hdr = {" + envT + "__keep, " + envT + "__drop}"}
+	kept := map[string]*ir.Type{}
+	var order []string
 	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, Closures: c.Closures, file: c.file, locals: map[string]bool{}, refs: map[string]bool{}, ret: n.Type.Sig.Return}
 	var deps []string
 	for _, name := range caps {
@@ -199,7 +235,8 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		fields = append(fields, "\t"+c.typeName(t)+" "+ref+Local(name)+";")
 		capture := c.Ident(&ir.Ident{Name: name, Sym: c.localSym(n.Func.Block, name), Type: t})
 		if addr == "" {
-			capture = c.keep(t, capture)
+			kept[Local(name)] = t
+			order = append(order, Local(name))
 		}
 		inits = append(inits, "."+Local(name)+" = "+addr+capture)
 		inner.locals[name] = true
@@ -214,10 +251,10 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		inits = append(inits, "."+self+" = "+self)
 		inner.Self = c.Self
 	}
-	if len(fields) == 0 {
-		fields = []string{"\tchar unused;"}
-	}
 	c.file.define(envT, "typedef struct "+envT+" {\n"+strings.Join(fields, "\n")+"\n} "+envT+";\n", deps...)
+	if len(caps) > 0 || self != "" {
+		c.envOps(envT, kept, order)
+	}
 	params := []string{"void *env_"}
 	for _, p := range n.Func.Params {
 		params = append(params, c.typeName(p.Type)+" "+Local(p.Name))
@@ -248,7 +285,7 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 	c.file.lifted = append(c.file.lifted, b.String())
 	env := "NULL"
 	if len(caps) > 0 || self != "" {
-		env = c.heapCopy(envT, "{"+strings.Join(inits, ", ")+"}")
+		env = c.arenaCopy(envT, "{"+strings.Join(inits, ", ")+"}")
 	}
 	return "((" + fnT + "){" + name + ", " + env + "})"
 }
@@ -330,9 +367,10 @@ func (c *Context) cCallback(sig *ir.FuncSig, value string, valueType *ir.Type) (
 		call = ret + " r = " + call + ";\n\treturn r"
 	}
 	c.file.helper(name, fmt.Sprintf("static %s %s(%s) {\n\t%s *f = ctx;\n\tsngl_mark m = sngl_call_enter();\n\t%s;\n}\n", ret, name, strings.Join(params, ", "), fnT, call))
-	c.file.helper("sngl_release", "static void sngl_release(void *ctx) {\n\tfree(ctx);\n}\n")
-	c.file.include("stdlib.h", true)
-	return name, c.heapCopy(fnT, value)
+	c.file.helper("sngl_release", "static void sngl_release(void *ctx) {\n\tsngl_closure_release(ctx);\n}\n")
+	// The closure is kept as it crosses: C holds it past the turn that
+	// made it, until it releases it.
+	return name, c.heapCopy(fnT, c.keep(valueType, value))
 }
 
 // Bodiless reports whether fn is a function with no body and nothing else

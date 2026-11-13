@@ -89,6 +89,7 @@ typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_lambda1_env sngl_lambda1_env;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
+typedef struct s___lambda0_caps__env s___lambda0_caps__env;
 typedef struct s_platform_win32__Look s_platform_win32__Look;
 
 typedef struct s___ref_bool {
@@ -119,7 +120,7 @@ typedef struct sngl_fn_void__void {
 } sngl_fn_void__void;
 
 typedef struct sngl_lambda1_env {
-	char unused;
+	sngl_env hdr;
 } sngl_lambda1_env;
 
 typedef struct s___lambda0_caps {
@@ -130,6 +131,11 @@ typedef struct sngl_fn_bool__void {
 	void (*fn)(void *env, bool);
 	void *env;
 } sngl_fn_bool__void;
+
+typedef struct s___lambda0_caps__env {
+	sngl_env hdr;
+	s___lambda0_caps caps;
+} s___lambda0_caps__env;
 
 typedef struct s_platform_win32__Look {
 	double flex;
@@ -151,6 +157,7 @@ static void s_start(sngl_list_string args, sngl_fn_void__void run);
 static void s___run(sngl_list_string args, sngl_fn_void__void run);
 static void s___effect0_mount(void);
 static void sngl_lambda1(void *env_);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___effect0_unmount(void);
 static void s___effect0_down(void);
 static sngl_list_int sngl_list_int__keep(sngl_list_int v);
@@ -167,6 +174,9 @@ static void s___effects0_settle(void);
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
+static void *s___lambda0_caps__env__keep(const void *p);
+static void s___lambda0_caps__env__drop(void *p);
+static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
 
 static int64_t sngl_list_string_index_of(sngl_list_string l, sngl_string v) {
 	for (int64_t i = 0; i < l.len; i++) {
@@ -185,7 +195,12 @@ static void sngl_dispatch_void__void(void *ctx) {
 }
 
 static void sngl_release(void *ctx) {
-	free(ctx);
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
 }
 
 static sngl_list_int sngl_list_int__keep(sngl_list_int v) {
@@ -280,8 +295,18 @@ static bool *sngl_list_bool_at(sngl_list_bool l, int64_t i) {
 	return &l.data[i];
 }
 
+static void *s___lambda0_caps__env__keep(const void *p) {
+	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	return e;
+}
+
+static void s___lambda0_caps__env__drop(void *p) {
+	s___lambda0_caps__env *e = p;
+	sngl_drop(e);
+}
+
 static void s___lambda0__fn(void *env, bool a0) {
-	s___lambda0(*(s___lambda0_caps *)env, a0);
+	s___lambda0(((s___lambda0_caps__env *)env)->caps, a0);
 }
 
 static void sngl_dispatch_bool__void(bool a0, void *ctx) {
@@ -289,6 +314,11 @@ static void sngl_dispatch_bool__void(bool a0, void *ctx) {
 	sngl_mark m = sngl_call_enter();
 	f->fn(f->env, a0);
 	sngl_call_leave(m);
+}
+
+static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
@@ -331,7 +361,7 @@ static void s___run(sngl_list_string args, sngl_fn_void__void run) {
 }
 
 static void s___effect0_mount(void) {
-	s_handle__inst0 = (int64_t)sngl_win32_every((int)(s___effect0_key), (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){((sngl_fn_void__void){sngl_lambda1, NULL})}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	s_handle__inst0 = (int64_t)sngl_win32_every((int)(s___effect0_key), (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda1, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 }
 
 static void s___effect0_unmount(void) {
@@ -499,7 +529,7 @@ static void sngl_build(void) {
 	s___n0 = sngl_win32_toplevel();
 	(int64_t)SetWindowTextW((HWND)(s___n0), (const unsigned short *)sngl_utf16(SNGL_STR("")));
 	sngl_win32_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
-	sngl_win32_on_visible(s___n0, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){((sngl_fn_bool__void){s___lambda0__fn, sngl_heap_copy(&(s___lambda0_caps[]){(s___lambda0_caps){.visible__inst0 = s_visible__inst0}}, sizeof(s___lambda0_caps))})}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	sngl_win32_on_visible(s___n0, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, s___lambda0_caps__env__drop}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	s___n1 = sngl_win32_text();
 	sngl_win32_set_text(s___n1, (const unsigned short *)sngl_utf16(sngl_int_format((int64_t)(s_n))));
 	sngl_win32_set_look(s___n1, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
@@ -578,4 +608,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:82c20449f2dfcee58d0b16beb374fb96
+pass sha256:cd2bc5161decf131b9cbbe2b95099bbe

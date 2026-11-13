@@ -239,6 +239,46 @@ void *sngl_heap_copy(const void *p, size_t n) {
 	return q;
 }
 
+void *sngl_alloc_copy(const void *p, size_t n) {
+	void *q = sngl_alloc(n);
+	memcpy(q, p, n);
+	return q;
+}
+
+/* sngl_tracked reports whether p is a kept block. */
+static bool sngl_tracked(uintptr_t p) {
+	if (sngl_kept_cap == 0 || p == 0) {
+		return false;
+	}
+	for (size_t i = sngl_slot(p); sngl_kept[i] != 0; i = (i + 1) & (sngl_kept_cap - 1)) {
+		if (sngl_kept[i] == p) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void *sngl_env_keep(const void *env) {
+	return env == NULL ? NULL : ((const sngl_env *)env)->keep(env);
+}
+
+void sngl_env_drop(void *env) {
+	/* One the turn made kept nothing: what it captured is the turn's, or
+	 * held by whatever it was read from. */
+	if (env != NULL && sngl_tracked((uintptr_t)env)) {
+		((sngl_env *)env)->drop(env);
+	}
+}
+
+void sngl_closure_release(void *ctx) {
+	struct {
+		void (*fn)(void);
+		void *env;
+	} *f = ctx;
+	sngl_env_drop(f->env);
+	free(ctx);
+}
+
 /* sngl_utf8_next is the code point at s[*i], moving *i past it. */
 static uint32_t sngl_utf8_next(sngl_string s, size_t *i) {
 	/* As Go's utf8.DecodeRune: a byte no valid sequence starts, or that

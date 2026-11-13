@@ -14,6 +14,14 @@
 # has not finalized, through a gtk_label_new of count.c's that the runtime's
 # calls resolve to.
 
+# A closure gives back what it captured. Its environment is made in the
+# turn's arena behind a header saying how it is kept and dropped (sngl_env),
+# a holder storing it keeps a copy, and the copy is dropped with the holder's
+# value: a package var's replaced, a record's prop box (ir.StructField.OwnsBox)
+# as the record is destroyed, a callback's context as C releases it. Each
+# closure.sngl test fails where the environment was a heap copy nothing gave
+# back, which kept what it captured.
+
 [!gtk4] skip 'gtk4 needs its development libraries to build'
 
 sngl test --platform=gtk4 --language=c app.sngl
@@ -24,6 +32,12 @@ stdout 'ok +1 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=c anchor.sngl
 stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c closure.sngl
+stdout 'ok +2 tests, 0 failures'
+
+sngl test --platform=win32 --language=c closure.sngl
+stdout 'ok +2 tests, 0 failures'
 
 -- app.sngl --
 import c "sngl:x/c"
@@ -159,8 +173,68 @@ int64_t labels_alive(void) {
     }
     return alive;
 }
+-- closure.sngl --
+import c "sngl:x/c"
+import macro "sngl:macro"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="sngl.h")
+
+// How many blocks the runtime keeps: what every holder holds.
+#[macro.cnative("sngl_kept_blocks")]
+func keptBlocks() int
+
+var said = ""
+var greet = func() {}
+
+func setGreeting(name string) {
+    greet = func() {
+        said = "hello {name}"
+    }
+}
+
+component rows ui.node {
+    var round = 0
+    var labels list[string] = ["r0a", "r0b", "r0c"]
+    var picked = ""
+
+    ui.vbox {
+        ui.button #next(text="next", @click {
+            round += 1
+            labels = ["r{round}a", "r{round}b", "r{round}c"]
+        })
+        for var l = labels {
+            ui.button(text=l, @click {
+                picked = "{l} picked"
+            })
+        }
+    }
+}
+
+func testARebuiltListsHandlersKeepNoMore(t test.Test, r rows) {
+    r.next.click()
+    var before = keptBlocks()
+    r.next.click()
+    r.next.click()
+    t.assert(keptBlocks() == before)
+}
+
+func testAReplacedClosureGivesBackWhatItCaptured(t test.Test, r rows) {
+    setGreeting("a{r.round}")
+    var before = keptBlocks()
+    setGreeting("b{r.round}")
+    setGreeting("c{r.round}")
+    t.assert(keptBlocks() == before)
+    greet()
+    t.assert(said == "hello c0")
+}
+
+ui.window(title="t") {
+    rows
+}
 -- testrun/gtk4/c/anchor.sngl/rows/1 --
-sha256:cdd69b7b7bf35864462e98bbec32fd0b
+sha256:0052745e305c187f58d46d0876dd2b73
 {
   "results": [
     {
@@ -170,7 +244,7 @@ sha256:cdd69b7b7bf35864462e98bbec32fd0b
   ]
 }
 -- testrun/gtk4/c/app.sngl/rows/1 --
-sha256:4b1159869881dbee15cfd94ecb3c7616
+sha256:d3d169d9d1c506eba3fd2986e0d3f2d4
 {
   "results": [
     {
@@ -179,12 +253,40 @@ sha256:4b1159869881dbee15cfd94ecb3c7616
     }
   ]
 }
+-- testrun/gtk4/c/closure.sngl/rows/1 --
+sha256:12d74170363cb41e493af5e1594faa9a
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListsHandlersKeepNoMore",
+      "Passed": true
+    },
+    {
+      "Desc": "AReplacedClosureGivesBackWhatItCaptured",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/win32/c/app.sngl/rows/1 --
-sha256:14b547a2d9cd8085b191d2151bf7e9c4
+sha256:18164620c9320aba4655bf91b1d887a4
 {
   "results": [
     {
       "Desc": "ARebuiltListKeepsNoMore",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/closure.sngl/rows/1 --
+sha256:4fcf0bc5469e51312cc8daa2a7452114
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListsHandlersKeepNoMore",
+      "Passed": true
+    },
+    {
+      "Desc": "AReplacedClosureGivesBackWhatItCaptured",
       "Passed": true
     }
   ]

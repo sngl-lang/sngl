@@ -71,9 +71,8 @@ func TestRun(t *testing.T) {
 			for _, cc := range clang.Matrix() {
 				// Built again under AddressSanitizer and UBSan, which stop it at
 				// the first undefined behavior or bad access, the arena's
-				// included, where the compiler has them. Leaks are not checked:
-				// a closure's environment is never given back
-				// (design/ownership.md).
+				// included, and at exit at a block nothing reaches, where the
+				// compiler has them.
 				builds := map[string][]string{}
 				if !cc.Windows {
 					builds["sanitized"] = sanitize
@@ -98,9 +97,6 @@ func TestRun(t *testing.T) {
 						exe := filepath.Join(dir, cc.Name+"-"+variant)
 						if err := cc.Build(dir, []string{"main.c", "sngl.c"}, exe, std, extra...); err != nil {
 							t.Fatalf("%v\nprogram.c:\n%s", err, program)
-						}
-						if extra != nil {
-							t.Setenv("ASAN_OPTIONS", "detect_leaks=0")
 						}
 						if got, want := run(t, cc, exe), string(files["want"]); got != want {
 							t.Fatalf("printed\n%s\nwant\n%s\nprogram.c:\n%s", got, want, program)
