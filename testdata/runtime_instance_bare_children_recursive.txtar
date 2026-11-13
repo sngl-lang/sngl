@@ -570,6 +570,7 @@ func Frame__slot2__snglTeardown(__self *Frame__slot2__inst) {
 		Frame__slot2__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*Frame__slot2__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Frame__slot2__destroy(__self *Frame__slot2__inst) {
@@ -976,6 +977,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:035c54f7d204e8c1ebf889a7f44805ea
 -- run/go/gtk4 --
-pass sha256:ed70c6af58ed6f3e29be8366431e2655
+pass sha256:45168b658aaf5ee87c6493053fa34ace
 -- run/none/html --
 pass sha256:00edcaac7919c76befa7f9a7b7e1645a

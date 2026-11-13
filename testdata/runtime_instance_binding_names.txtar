@@ -1727,6 +1727,7 @@ func Frame__slot6__snglTeardown(__self *Frame__slot6__inst) {
 		Frame__slot6__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*Frame__slot6__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Frame__slot6__destroy(__self *Frame__slot6__inst) {
@@ -1861,6 +1862,7 @@ func Frame__slot5__snglTeardown(__self *Frame__slot5__inst) {
 		Frame__slot5__destroy(__self.__inst3_live[__inst3_live_dj])
 	}
 	__self.__inst3_live = []*Frame__slot5__inst{}
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
 }
 
 func Frame__slot5__destroy(__self *Frame__slot5__inst) {
@@ -1995,6 +1997,7 @@ func Frame__slot4__snglTeardown(__self *Frame__slot4__inst) {
 		Frame__slot4__destroy(__self.__inst5_live[__inst5_live_dj])
 	}
 	__self.__inst5_live = []*Frame__slot4__inst{}
+	__self.__anchor2 = cgo.SnglSlotAnchor(nil, __self.__anchor2)
 }
 
 func Frame__slot4__destroy(__self *Frame__slot4__inst) {
@@ -3435,7 +3438,7 @@ pass sha256:c2ee3d88455eec99037351c6f6de8156
 -- run/go/fyne --
 pass sha256:5e87eeebb57bdd44d94be7ec8aa717e0
 -- run/go/gtk4 --
-pass sha256:9c52d02b26b2e6bba82f8ae30a5b761d
+pass sha256:421db96c6c301ffeddd68accb6d0e33c
 -- run/kotlin/android --
 pass sha256:67255b602693438bdaef79a5ddf7c0fe
 -- run/none/html --

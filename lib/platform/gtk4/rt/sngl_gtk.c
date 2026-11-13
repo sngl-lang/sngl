@@ -776,7 +776,12 @@ static bool sngl_stack_put(GtkWidget *box, GtkWidget *child, GtkWidget *before) 
 }
 
 GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor) {
-    if (box == SNGL_APP) return NULL;
+    /* The application keeps none, and no box at all is a record destroyed
+     * letting go of the one its var held. */
+    if (box == SNGL_APP) {
+        if (anchor != NULL) g_object_unref(anchor);
+        return NULL;
+    }
     box = sngl_slot_host(box);
     if (anchor != NULL && gtk_widget_get_parent(anchor) == box) return anchor;
     /* The slot's var held the last one, which its container let go of. */

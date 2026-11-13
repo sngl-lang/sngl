@@ -70,6 +70,9 @@ func (st *reactivityState) newSlotPlacement(slotID string, slotVar *ir.Var, pare
 	if st.caps.platform != nil && st.caps.platform.Op(ir.ProtocolAnchor) != nil {
 		sp.anchor = &ir.Var{Name: "__anchor" + strings.TrimPrefix(slotID, ir.SlotVarPrefix), Type: slotVar.Type.Elems[0], Synthesized: true}
 		st.owner.addVar(sp.anchor)
+		if o, ok := st.owner.(compOwner); ok {
+			st.anchors[o.c] = append(st.anchors[o.c], sp.anchor)
+		}
 		sp.anchorOp = nodeOpFunc(ir.NodeOpSlotAnchor)
 	}
 	return sp

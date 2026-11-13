@@ -764,4 +764,4 @@ func main() {
 -- run/go/fyne --
 pass sha256:139a5aacbd0aa0a6b5456875662cccdd
 -- run/go/gtk4 --
-pass sha256:a4d5b94ad778d8517d25e86083a1c834
+pass sha256:0d7a7d57b1300270baa49331f9f7c81d

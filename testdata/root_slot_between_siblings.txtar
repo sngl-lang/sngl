@@ -1042,7 +1042,13 @@ func Card__renderSlot1(__self *Card__inst, parent cgo.Widget) {
 	}
 }
 
+func Card__snglTeardown(__self *Card__inst) {
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
+}
+
 func Card__destroy(__self *Card__inst) {
+	Card__snglTeardown(__self)
 	return
 }
 
@@ -1104,4 +1110,4 @@ func main() {
 -- run/go/fyne --
 pass sha256:659d2b64920dfd62a90dd917b2c0a1de
 -- run/go/gtk4 --
-pass sha256:b985956e435b233530ae7ae177f85063
+pass sha256:bf79edf863eb94d1d0e9564b54cbca1a

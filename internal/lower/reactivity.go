@@ -95,6 +95,10 @@ type reactivityState struct {
 	// they were opened, so its teardown can destroy what it holds. Keyed by
 	// component because a window's registries live as long as the page does.
 	held map[*ir.Component][]*slotInstance
+	// anchors is each render slot's anchor a component keeps, which an
+	// instance's teardown lets go of: the platform hands back one it
+	// holds a reference to, and a destroyed record held it to the end.
+	anchors map[*ir.Component][]*ir.Var
 	// pageHeld is every registry the page scope holds, in the order the
 	// walks opened them: the package body's and those of a component the
 	// build spliced into it, whose vars are the page's.
@@ -232,6 +236,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 		undriven:     map[string]bool{},
 		intrinsics:   make(map[string]*ir.Func),
 		held:         make(map[*ir.Component][]*slotInstance),
+		anchors:      make(map[*ir.Component][]*ir.Var),
 		root:         rootComponent(pkg, opts),
 		wrote:        map[*ir.Var]*ir.Func{},
 		setters:      map[setterKey]*ir.Func{},

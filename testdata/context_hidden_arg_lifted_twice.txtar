@@ -1841,6 +1841,7 @@ func Page__snglTeardown(__self *Page__inst) {
 		__child0__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*__child0__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Page__destroy(__self *Page__inst) {
@@ -2313,6 +2314,6 @@ pass sha256:42687eac7013e390cfc0d4a2ef3fb2cf
 -- run/go/fyne --
 pass sha256:35ec395dee8bf5785d13ad2e06598ccd
 -- run/go/gtk4 --
-pass sha256:381510a3a571f8aa8485dca0d09f3b75
+pass sha256:4934f85e785c80a4d7b7004c6129652f
 -- run/none/html --
 pass sha256:500954e11540027f6cc4044aae3b6c2a

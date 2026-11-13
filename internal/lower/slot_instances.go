@@ -151,27 +151,38 @@ type pageRegistry struct {
 // holds was built after the instance mounted, and may be holding something the
 // instance handed it. Recursion falls out -- destroying a held instance runs
 // its teardown, which empties its registries in turn.
+//
+// The teardown then lets go of each render slot's anchor the instance keeps,
+// SlotAnchor with no parent: the platform holds a reference for the var,
+// and each row a rebuilt list destroyed kept its anchor alive.
 func (st *reactivityState) destroyHeld() {
 	for _, comp := range st.pkg.Components {
 		// Only an instance has a teardown to hang this on. A component the
 		// build inlined holds nothing: its registries were hoisted into
 		// whatever it was inlined into, and live as long as that does.
-		if comp == nil || !comp.RuntimeInstance || len(st.held[comp]) == 0 {
+		if comp == nil || !comp.RuntimeInstance || len(st.held[comp])+len(st.anchors[comp]) == 0 {
 			continue
 		}
-		var body []ir.Stmt
+		var body, after []ir.Stmt
 		for _, si := range slices.Backward(st.held[comp]) {
 			body = append(body, st.emptyRegistry(si)...)
 		}
+		for _, a := range st.anchors[comp] {
+			after = append(after, &ir.CallStmt{Call: &ir.Call{
+				Type: ir.TypVoid,
+				Func: nodeOpFunc(ir.NodeOpSlotAnchor),
+				Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull, Value: "null"}}, {Value: varRef(a)}},
+			}})
+		}
 		if fn := funcNamed(comp.Funcs, TeardownFunc); fn != nil {
-			fn.Block = append(body, fn.Block...)
+			fn.Block = append(append(body, fn.Block...), after...)
 			continue
 		}
 		comp.Funcs = append(comp.Funcs, &ir.Func{
 			Name:   TeardownFunc,
 			Return: ir.TypVoid,
 			Purity: ir.PurityMutates,
-			Block:  body,
+			Block:  append(body, after...),
 		})
 	}
 	st.destroyPageHeld()

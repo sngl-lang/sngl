@@ -561,7 +561,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
        (`internal/lower/placerecords.go`, `design/nodes.md`): a record is a
        box struct in plain IR, and a component rendering several nodes or a
        slot at its top renders into the platform's
-       `#[gen.protocol(contents)]`. Weak holds come with gtk4's move.
+       `#[gen.protocol(contents)]`. Weak holds are not needed (Part 5, step 2).
    - What the slice does not cover is refused by the check, per target,
      naming the component (`reportBodylessLibComponents`), as on every
      platform; no built-in node kind is left unwritten, a boundary included
@@ -814,7 +814,7 @@ reaches it the same way.
 - **gtk4 moves onto placement** (`#[gen.wants(placement)]`), as win32 is, so
   Go writes the program with `golang.WriteProgram` and C with its own, and
   `compiler_ir.go`, `c_emit.go`, `c_record.go`, `wrapped.go` and the
-  inline-cgo scaffold retire. Weak holds come with it (Part 3, step 4).
+  inline-cgo scaffold retire. Weak holds are not needed (Part 5, step 2).
 - **`cgo` becomes an enum: `direct`, `wrapper` or `purego`, defaulting to
   `wrapper`.** `direct` calls C from the program. `wrapper` calls the
   package `sngl tool cgogen` writes (Part 4), and falls back to `direct` for
@@ -972,9 +972,7 @@ reaches it the same way.
         `Tree`) was declared twice in Go; a render slot in a container of one
         child had no insert; and a node no protocol makes is named as every
         platform names one.
-   - **Not yet:** weak holds -- a widget the program keeps reads null once
-     GTK let it go, as `sngl_hold` did for the old C -- are not written, on
-     gtk4 or win32. A test raising an override's event on one copy a loop
+   - **Not yet:** a test raising an override's event on one copy a loop
      renders, or inside an instance built at run time, is refused (#318),
      as on bubbletea (`typed_select_reach_runs.txt`,
      `typed_select_in_built_block_runs.txt`,
@@ -996,10 +994,16 @@ reaches it the same way.
 2. **A C record gives back what it kept**, in placement, for gtk4 and win32
    alike. Done: a record's destroy drops each field it kept and the box,
    which is a kept block now (`ir.Func.Frees`,
-   `cmd/sngl/testdata/c_record_gives_back_runs.txt`). **Not yet:** a
-   retained C closure that writes a captured local writes the stack address
-   C's lambda takes, not a heap box; a closure's environment gives back
-   nothing it kept; and weak holds.
+   `cmd/sngl/testdata/c_record_gives_back_runs.txt`). A local a retained
+   closure writes is boxed (`lowerNoRef`); C read it through a box it was
+   never put in, and did not build. Weak holds are not needed: `sngl_hold`
+   read null a widget a branch, a loop or a destroyed record let go of, and
+   placement nulls each in plain IR (the held vars, the copies tables,
+   `letGo`), which an AddressSanitizer run of every gtk4 C script finds
+   nothing past. What the runtime held past a record was a render slot's
+   anchor, which the instance's teardown now gives back (`destroyHeld`, the
+   script's `anchor.sngl`). **Not yet:** a closure's environment gives back
+   nothing it kept.
 3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
    come with step 1. `purego` is attempted then, against the open questions
    below.

@@ -758,7 +758,12 @@ func __child0__renderSlot1(__self *__child0__inst, parent cgo.Widget) {
 	}
 }
 
+func __child0__snglTeardown(__self *__child0__inst) {
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
+}
+
 func __child0__destroy(__self *__child0__inst) {
+	__child0__snglTeardown(__self)
 	return
 }
 
@@ -1103,7 +1108,7 @@ pass sha256:5bfc00b7d2334179215bb6aea70b0eae
 -- run/go/fyne --
 pass sha256:b53d42ebc05e54d244e10ff88239ff71
 -- run/go/gtk4 --
-pass sha256:744e36e0eb2d232a47fe95b7c3950812
+pass sha256:309a6e7e101844e0c45f38d07ec4078d
 -- run/kotlin/android --
 pass sha256:6f0c6b92e9db9093c588d597be6a4660
 -- run/none/html --

@@ -2472,6 +2472,10 @@ func Badge__site0__renderSlot4(__self *Badge__site0__inst, parent cgo.Widget) {
 	}
 }
 
+func Badge__site0__snglTeardown(__self *Badge__site0__inst) {
+	__self.__anchor4 = cgo.SnglSlotAnchor(nil, __self.__anchor4)
+}
+
 func Badge__site0__destroy(__self *Badge__site0__inst) {
 	if (m.hit__reach0__held != nil) && ((*(m.hit__reach0__held)) == __self.Hit__reach0) {
 		m.hit__reach0__held = nil
@@ -2479,6 +2483,7 @@ func Badge__site0__destroy(__self *Badge__site0__inst) {
 	if (m.b__held != nil) && ((*(m.b__held)) == __self) {
 		m.b__held = nil
 	}
+	Badge__site0__snglTeardown(__self)
 	return
 }
 
@@ -2591,6 +2596,7 @@ func Badge__site1__snglTeardown(__self *Badge__site1__inst) {
 		__child0__destroy(__self.__inst9_live[__inst9_live_dj])
 	}
 	__self.__inst9_live = []*__child0__inst{}
+	__self.__anchor5 = cgo.SnglSlotAnchor(nil, __self.__anchor5)
 }
 
 func Badge__site1__destroy(__self *Badge__site1__inst) {
@@ -2692,6 +2698,10 @@ func Badge__site2__renderSlot6(__self *Badge__site2__inst, parent cgo.Widget) {
 	}
 }
 
+func Badge__site2__snglTeardown(__self *Badge__site2__inst) {
+	__self.__anchor6 = cgo.SnglSlotAnchor(nil, __self.__anchor6)
+}
+
 func Badge__site2__destroy(__self *Badge__site2__inst) {
 	if (m.hit__reach2__held != nil) && ((*(m.hit__reach2__held)) == __self.Hit__reach2) {
 		m.hit__reach2__held = nil
@@ -2699,6 +2709,7 @@ func Badge__site2__destroy(__self *Badge__site2__inst) {
 	if (m.inner__held != nil) && ((*(m.inner__held)) == __self) {
 		m.inner__held = nil
 	}
+	Badge__site2__snglTeardown(__self)
 	return
 }
 
@@ -4202,7 +4213,7 @@ pass sha256:f9f193db9f96e2bb52261d0f7b5d3b5e
 -- run/go/fyne --
 pass sha256:452a08693fd3f60750cf87bb003c4991
 -- run/go/gtk4 --
-pass sha256:2dcbd46ec630ef27ac6876dd48b01ae0
+pass sha256:62f543a39983a8004a10109db65bf027
 -- run/kotlin/android --
 pass sha256:7aa818aaa9b7d27103a0fecabb1f4ab4
 -- run/none/html --

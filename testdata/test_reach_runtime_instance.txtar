@@ -2164,6 +2164,10 @@ func Badge__renderSlot0(__self *Badge__inst, parent cgo.Widget) {
 	}
 }
 
+func Badge__snglTeardown(__self *Badge__inst) {
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
+}
+
 func Badge__destroy(__self *Badge__inst) {
 	if (m.hit__held != nil) && ((*(m.hit__held)) == __self.Hit) {
 		m.hit__held = nil
@@ -2171,6 +2175,7 @@ func Badge__destroy(__self *Badge__inst) {
 	if (m.b__held != nil) && ((*(m.b__held)) == __self) {
 		m.b__held = nil
 	}
+	Badge__snglTeardown(__self)
 	return
 }
 
@@ -2288,6 +2293,7 @@ func Tile__snglTeardown(__self *Tile__inst) {
 		__child0__destroy(__self.__inst2_live[__inst2_live_dj])
 	}
 	__self.__inst2_live = []*__child0__inst{}
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
 }
 
 func Tile__destroy(__self *Tile__inst) {
@@ -3477,7 +3483,7 @@ pass sha256:b16162b15de60306c9eba6ab14ef1852
 -- run/go/fyne --
 pass sha256:4e615a93f7b7fa0624931dfcd80ef245
 -- run/go/gtk4 --
-pass sha256:98ce7583f18a4911668e942b2f47edf9
+pass sha256:b9efeea8318dcc46ac2c0730c9b31dc5
 -- run/kotlin/android --
 pass sha256:282c53c30ebf0f79bb1ad4e8f45cda84
 -- run/none/html --

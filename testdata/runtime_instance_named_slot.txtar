@@ -2164,6 +2164,7 @@ func Card__snglTeardown(__self *Card__inst) {
 		__child1__destroy(__inst1_live_dv)
 	}
 	__self.__inst1_live = map[string]*__child1__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Card__destroy(__self *Card__inst) {
@@ -2360,6 +2361,7 @@ func Card__slot0__snglTeardown(__self *Card__slot0__inst) {
 		__child0__destroy(__inst3_live_dv)
 	}
 	__self.__inst3_live = map[string]*__child0__inst{}
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
 }
 
 func Card__slot0__destroy(__self *Card__slot0__inst) {
@@ -3585,7 +3587,7 @@ pass sha256:b29a027ddbe5a1d39a755c3e0dd9d236
 -- run/go/fyne --
 pass sha256:3c8d5a97138490f72d810fc3de89d211
 -- run/go/gtk4 --
-pass sha256:96e3f7557ab96b4e1d2ea0466c048ed7
+pass sha256:592fd67b81d4c6c8fd25c896b6698fb0
 -- run/kotlin/android --
 pass sha256:50138b384a1f3345b43fbbe40f76f5ce
 -- run/none/html --

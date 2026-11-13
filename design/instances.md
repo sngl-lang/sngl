@@ -336,7 +336,11 @@ the slot sits in, so each slot keeps a hidden anchor there
 container is built, at the slot's position -- and inserts its entries before
 it. Appending instead moved a re-rendered slot after every sibling below it
 (`testdata/render_slot_in_place.txtar`); gtk4's runtime keeps the anchor
-(`sngl_slot_anchor`) and inserts before it (`sngl_box_insert_before`). A child
+(`sngl_slot_anchor`) and inserts before it (`sngl_box_insert_before`). The
+slot's var holds a reference on the anchor, which an instance's teardown gives
+back by asking for it with no box (`destroyHeld`): each row a rebuilt list
+destroyed kept its hidden label alive
+(`cmd/sngl/testdata/c_record_gives_back_runs.txt`'s `anchor.sngl`). A child
 another box holds is taken out of it, referenced, before it goes in: a render
 that builds its container afresh puts each instance it kept into the new one,
 and left in the old, the instance's root went with it when GTK freed it

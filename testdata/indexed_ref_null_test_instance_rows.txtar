@@ -1664,6 +1664,7 @@ func __block_state0__snglTeardown(__self *__block_state0__inst) {
 		Badge__destroy(__inst3_live_dv)
 	}
 	__self.__inst3_live = map[string]*Badge__inst{}
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
 }
 
 func __block_state0__destroy(__self *__block_state0__inst) {
@@ -2500,7 +2501,7 @@ pass sha256:ae79b3d72cd7258394c159105b8ed4f5
 -- run/go/fyne --
 pass sha256:ea72792e5d5328f6097202023a4eab2b
 -- run/go/gtk4 --
-pass sha256:4e2e6c2c7ab0b73fad563cdf764a723d
+pass sha256:f6aadf6b40cbba5b86eddaa34701a9d1
 -- run/kotlin/android --
 pass sha256:4d27ff52ab85e086b8a8075794272285
 -- run/none/html --

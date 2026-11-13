@@ -1134,6 +1134,7 @@ func Row__slot1__snglTeardown(__self *Row__slot1__inst) {
 		Card__slot3__destroy(__inst1_live_dv)
 	}
 	__self.__inst1_live = map[string]*Card__slot3__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Row__slot1__destroy(__self *Row__slot1__inst) {
@@ -1247,6 +1248,7 @@ func Row__slot0__snglTeardown(__self *Row__slot0__inst) {
 		Card__slot2__destroy(__inst3_live_dv)
 	}
 	__self.__inst3_live = map[string]*Card__slot2__inst{}
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
 }
 
 func Row__slot0__destroy(__self *Row__slot0__inst) {
@@ -1770,6 +1772,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:263e189cca3e4f2c644d4c4dfb869670
 -- run/go/gtk4 --
-pass sha256:acdd66064216f467da2fbf9893dce696
+pass sha256:f03651e38596e32bcf6478df136b6877
 -- run/none/html --
 pass sha256:7fceab787c70aef462b10e1657eda577

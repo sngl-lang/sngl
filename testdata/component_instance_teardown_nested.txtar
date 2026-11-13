@@ -786,6 +786,7 @@ func Nest__snglTeardown(__self *Nest__inst) {
 	__self.__inst1_live = map[string]*Nest__inst{}
 	__self.__effects0_torn = true
 	Nest__effect0_teardown(__self)
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Nest__set_tag(__self *Nest__inst, __v string) {
@@ -1595,7 +1596,7 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:8ef6e18076acb53df0b36d94495c5d3e
 -- run/go/gtk4 --
-pass sha256:95e05592cdfdc5095b5df70b5020760d
+pass sha256:da216494a3e18aa325eaa395e767d2d3
 -- run/kotlin/android --
 pass sha256:48864b6ad9d1802a77bfdbfcf724744d
 -- run/none/html --

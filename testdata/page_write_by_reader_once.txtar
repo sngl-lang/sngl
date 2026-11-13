@@ -647,6 +647,7 @@ func Flip__snglTeardown(__self *Flip__inst) {
 		__child0__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*__child0__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Flip__destroy(__self *Flip__inst) {
@@ -973,6 +974,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:777b8828e8b149389ba6283c14c26657
 -- run/go/gtk4 --
-pass sha256:447f518bfac0cfabe7bb56f292bf6c2f
+pass sha256:7bb6fd1aa78b697516e666ee94fe5a68
 -- run/none/html --
 pass sha256:9f0bd7ddb6a7b470bacec53bc94a80be

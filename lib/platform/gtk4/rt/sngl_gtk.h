@@ -106,7 +106,8 @@ int sngl_gtk_capture_file(const char *path, int width, int height);
  * still the box's: what keeps a slot's children in their place among the
  * box's others as it renders again. The slot's var holds a reference on it,
  * so one its box let go of is still there to ask, and given back as the
- * next is made. NULL where the slot renders into the application. */
+ * next is made, or as a record destroyed asks with no box (SNGL_APP). NULL
+ * where the slot renders into the application. */
 GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 void sngl_box_remove(GtkWidget *box, GtkWidget *child);

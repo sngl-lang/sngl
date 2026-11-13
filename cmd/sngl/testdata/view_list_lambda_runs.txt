@@ -124,7 +124,7 @@ sha256:9ec0fbe6bcebf0a6a95f4b9b4f40f147
   ]
 }
 -- testrun/gtk4/c/app.sngl/names/1 --
-sha256:660fdd6e07ca048fdac4baddb18a5fe6
+sha256:4ed8aff6dbb948288290392803e1a075
 {
   "results": [
     {

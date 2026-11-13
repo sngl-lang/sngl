@@ -540,7 +540,12 @@ func __child0__renderSlot0(__self *__child0__inst, parent cgo.Widget) {
 	}
 }
 
+func __child0__snglTeardown(__self *__child0__inst) {
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
+}
+
 func __child0__destroy(__self *__child0__inst) {
+	__child0__snglTeardown(__self)
 	return
 }
 
@@ -792,6 +797,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:332a036c7d3e70ba8a5d3eb5d129be91
 -- run/go/gtk4 --
-pass sha256:3abf35b2eb21f6441cf1a05be040ed93
+pass sha256:f74ac1773215cbc5478790f2a31b1144
 -- run/none/html --
 pass sha256:bbedb331cf34d7bc70344094ca9569fc

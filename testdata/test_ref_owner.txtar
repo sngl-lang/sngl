@@ -1898,6 +1898,7 @@ func Panel__snglTeardown(__self *Panel__inst) {
 		Badge__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*Badge__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Panel__destroy(__self *Panel__inst) {
@@ -3058,7 +3059,7 @@ pass sha256:e0efb4c501799b8d30410fe24ca03379
 -- run/go/fyne --
 pass sha256:fbd7cd3f456da9036f5e4e7bfb4de52e
 -- run/go/gtk4 --
-pass sha256:4356ee22f3618bb976ede3c41b6f07e3
+pass sha256:a60b4e74a6df642987be04f9e6f1b319
 -- run/kotlin/android --
 pass sha256:63425cdbfc34bf9fb90e62ac2e364a39
 -- run/none/html --

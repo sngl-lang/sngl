@@ -462,6 +462,7 @@ func Panel__snglTeardown(__self *Panel__inst) {
 		__child0__destroy(__inst1_live_dv)
 	}
 	__self.__inst1_live = map[string]*__child0__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Panel__destroy(__self *Panel__inst) {
@@ -543,4 +544,4 @@ func main() {
 	os.Exit(status)
 }
 -- run/go/gtk4 --
-pass sha256:9c85a2764edcae81c385c4132d02dc80
+pass sha256:d6cc225ac1530a0004d7da182b5ac870

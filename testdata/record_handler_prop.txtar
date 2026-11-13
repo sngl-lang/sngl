@@ -1909,7 +1909,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:d8f8788d1b412318c8d3c917760faf66
+pass sha256:8e29d5c8fc0094f551e52daf222c4191
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

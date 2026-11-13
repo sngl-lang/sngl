@@ -1146,6 +1146,7 @@ func Asked__snglTeardown(__self *Asked__inst) {
 		__sign_state0__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*__sign_state0__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Asked__destroy(__self *Asked__inst) {
@@ -1827,7 +1828,7 @@ pass sha256:f5824ff11bf792868bec9a1eda5a0265
 -- run/go/fyne --
 pass sha256:e0015d90b5994bb812a7ce1c16a508ee
 -- run/go/gtk4 --
-pass sha256:f39d7a41370344f3df63017ccf32f6d7
+pass sha256:95c41364a034f03773202f866f4140cd
 -- run/kotlin/android --
 pass sha256:5fa77237af9f5038de2cc309219b3bc4
 -- run/none/html --

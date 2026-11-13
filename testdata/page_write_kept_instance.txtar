@@ -708,6 +708,7 @@ func Row__snglTeardown(__self *Row__inst) {
 		__child0__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*__child0__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Row__destroy(__self *Row__inst) {
@@ -782,4 +783,4 @@ func main() {
 -- run/go/fyne --
 pass sha256:358de864d799ec48f9f3f665c40b7171
 -- run/go/gtk4 --
-pass sha256:da8eb6f50d2ed03441ba32d9e8ca638b
+pass sha256:0a5361923c45e02b307b975d60d446a7

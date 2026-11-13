@@ -644,6 +644,7 @@ func Card__snglTeardown(__self *Card__inst) {
 		__child0__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
 	__self.__inst1_live = []*__child0__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
 func Card__destroy(__self *Card__inst) {
@@ -706,4 +707,4 @@ func main() {
 -- run/go/fyne --
 pass sha256:f8b2d485bb364a3a7a5dd39b8243606f
 -- run/go/gtk4 --
-pass sha256:005da91784fdf8352ce72701dc247ced
+pass sha256:11dd21748b63f1d0ab63b5148f91f7a4
