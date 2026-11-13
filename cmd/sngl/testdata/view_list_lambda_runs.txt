@@ -124,7 +124,7 @@ sha256:9ec0fbe6bcebf0a6a95f4b9b4f40f147
   ]
 }
 -- testrun/gtk4/c/app.sngl/names/1 --
-sha256:37eb4fe02456dd3742d5357ed061fa5d
+sha256:44c54c07cc5bd097572cac8630a50aca
 {
   "results": [
     {
@@ -166,7 +166,7 @@ sha256:c2314db6a1c4e7837571780aba439842
   ]
 }
 -- testrun/win32/c/app.sngl/names/1 --
-sha256:567fbced215c8a07a3fe8704896b9b29
+sha256:80ff499c46a53b7236db51dae71cc85c
 {
   "results": [
     {

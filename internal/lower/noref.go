@@ -283,7 +283,9 @@ func (r *refRewriter) rewriteExpr1(e ir.Expr) ir.Expr {
 			// which yields the boxed elem rather than the box itself.
 			if id, ok := x.Operand.(*ir.Ident); ok {
 				if v, isVar := id.Sym.(*ir.Var); isVar && r.pkg.AddressedVars[v] {
-					return id
+					box := *id
+					box.Type = v.Type
+					return &box
 				}
 			}
 			return r.rewriteExpr(x.Operand)
@@ -300,18 +302,21 @@ func (r *refRewriter) rewriteExpr1(e ir.Expr) ir.Expr {
 		return x
 	case *ir.Ident:
 		if v, ok := x.Sym.(*ir.Var); ok && r.pkg.AddressedVars[v] {
-			// Reads of an addressed Var go through .value. The Ident's Type
-			// has already been swapped to the box type by step 1; the read
-			// result is the original elem type, recoverable from the box's
-			// "value" field.
+			// Reads of an addressed Var go through .value. The Var's Type
+			// was swapped to the box type by step 1, but the Ident still
+			// carries the elem type, which the read result is: the operand
+			// is a copy typed as the box, so a backend asking what the
+			// select reads through sees one.
 			elem := v.Type
 			if v.Type != nil && v.Type.Kind == ir.TypeStruct {
 				if def, ok := v.Type.Decl.(*ir.StructDef); ok && len(def.Fields) > 0 {
 					elem = def.Fields[0].Type
 				}
 			}
+			box := *x
+			box.Type = v.Type
 			return &ir.Select{
-				Operand: x,
+				Operand: &box,
 				Field:   "value",
 				Type:    elem,
 			}

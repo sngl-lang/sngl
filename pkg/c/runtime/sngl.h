@@ -61,15 +61,26 @@ void sngl_drop(const void *p);
 void *sngl_keep_copy(const void *p, size_t n);
 int64_t sngl_kept_blocks(void);
 
+/* sngl_visit is handed each counted block a value holds, by the visit of a
+ * counted block or an environment, which the collector of cycles walks
+ * them by. */
+typedef void (*sngl_visit)(void *box);
+
 /* A counted block is shared by every holder of it, a var a closure writes
  * boxed: sngl_counted_new is a kept copy of the n bytes at p, which no
- * holder holds yet; release gives back what it holds, and rekeep keeps it
- * again. sngl_counted_retain is a holder taking p, and sngl_counted_release
- * one letting go: the last to let go gives it back, as a holder's drop
- * does, and one taking it again the same turn keeps it again. One the turn
- * made and no holder took is given back as the turn ends, as a string the
- * turn made is. */
-void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *));
+ * holder holds yet; release gives back what it holds, rekeep keeps it
+ * again, and visit hands fn each counted block it holds, NULL where it can
+ * hold none. sngl_counted_retain
+ * is a holder taking p, and sngl_counted_release one letting go: the last
+ * to let go gives it back, as a holder's drop does, and one taking it again
+ * the same turn keeps it again. One the turn made and no holder took is
+ * given back as the turn ends, as a string the turn made is.
+ *
+ * Counting gives back no cycle -- a closure stored in the var it calls --
+ * so the turn's end collects them, once nothing but holders can reach a
+ * block: a block let go of but still held is tried, and those its holders
+ * all hold from inside the blocks tried are given back. */
+void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *), void (*visit)(void *, sngl_visit));
 void *sngl_counted_retain(void *p);
 void sngl_counted_release(void *p);
 
@@ -84,15 +95,18 @@ void *sngl_alloc_copy(const void *p, size_t n);
  * made in the turn's arena, as a string is, and a holder keeps a copy,
  * keeping what the closure captured with it. sngl_env_keep is env kept,
  * NULL for none; sngl_env_drop gives back a kept env and what it kept, and
- * leaves alone one the turn made. sngl_closure_release is the release of a
+ * leaves alone one the turn made; sngl_env_visit hands fn each counted
+ * block a kept env holds. sngl_closure_release is the release of a
  * callback's context, a function value on the heap whose environment was
  * kept as it crossed to C. */
 typedef struct sngl_env {
 	void *(*keep)(const void *env);
 	void (*drop)(void *env);
+	void (*visit)(const void *env, sngl_visit fn);
 } sngl_env;
 void *sngl_env_keep(const void *env);
 void sngl_env_drop(void *env);
+void sngl_env_visit(const void *env, sngl_visit fn);
 void sngl_closure_release(void *ctx);
 
 /* sngl_cstring is s as a C string the callee may keep and the program frees,

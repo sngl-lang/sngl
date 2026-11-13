@@ -209,36 +209,47 @@ void sngl_turn_leave(void) {
 	}
 }
 
-/* A counted block's count, how it gives back what it holds and keeps it
- * again, and whether it was given back.
+/* A counted block's count, how it gives back what it holds, keeps it again
+ * and visits it, whether it was given back, whether it is to be tried as a
+ * cycle's, and its color in the try.
  * It is ahead of what it holds. */
 typedef union sngl_counted {
 	struct {
 		int64_t count;
 		void (*release)(void *);
 		void (*rekeep)(void *);
+		void (*visit)(void *, sngl_visit);
 		bool gone;
+		bool tried;
+		unsigned char color;
 	} h;
 	max_align_t align;
 } sngl_counted;
 
-/* The counted blocks no holder has taken, which the turn's end gives back
- * if none has by then. */
-static sngl_counted **sngl_pending;
-static size_t sngl_pending_len, sngl_pending_cap;
+enum { SNGL_BLACK, SNGL_GRAY, SNGL_WHITE };
 
-static void sngl_pend(sngl_counted *c) {
-	if (sngl_pending_len == sngl_pending_cap) {
-		size_t cap = sngl_pending_cap == 0 ? 16 : sngl_pending_cap * 2;
-		sngl_counted **grown = realloc(sngl_pending, cap * sizeof *grown);
+typedef struct sngl_blocks {
+	sngl_counted **at;
+	size_t len, cap;
+} sngl_blocks;
+
+static void sngl_push(sngl_blocks *l, sngl_counted *c) {
+	if (l->len == l->cap) {
+		size_t cap = l->cap == 0 ? 16 : l->cap * 2;
+		sngl_counted **grown = realloc(l->at, cap * sizeof *grown);
 		if (grown == NULL) {
 			sngl_panic("out of memory");
 		}
-		sngl_pending = grown;
-		sngl_pending_cap = cap;
+		l->at = grown;
+		l->cap = cap;
 	}
-	sngl_pending[sngl_pending_len++] = c;
+	l->at[l->len++] = c;
 }
+
+/* The counted blocks no holder has taken, which the turn's end gives back
+ * if none has by then; those a holder let go of and another still holds,
+ * which may be held only by a cycle; and those the try found are. */
+static sngl_blocks sngl_pending, sngl_tried, sngl_garbage;
 
 /* sngl_undrop takes p, dropped this turn, back: kept, and not freed as the
  * turn ends. */
@@ -259,14 +270,17 @@ static void sngl_give_back(sngl_counted *c) {
 	sngl_drop(c);
 }
 
-void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *)) {
+void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *), void (*visit)(void *, sngl_visit)) {
 	sngl_counted *c = sngl_keep_alloc(sizeof(sngl_counted) + n);
 	c->h.count = 0;
 	c->h.release = release;
 	c->h.rekeep = rekeep;
+	c->h.visit = visit;
 	c->h.gone = false;
+	c->h.tried = false;
+	c->h.color = SNGL_BLACK;
 	memcpy(c + 1, p, n);
-	sngl_pend(c);
+	sngl_push(&sngl_pending, c);
 	return c + 1;
 }
 
@@ -291,21 +305,152 @@ void sngl_counted_release(void *p) {
 		return;
 	}
 	sngl_counted *c = (sngl_counted *)p - 1;
-	if (--c->h.count <= 0 && !c->h.gone) {
-		sngl_give_back(c);
+	if (--c->h.count <= 0) {
+		if (!c->h.gone) {
+			sngl_give_back(c);
+		}
+	} else if (!c->h.gone && !c->h.tried && c->h.visit != NULL) {
+		c->h.tried = true;
+		sngl_push(&sngl_tried, c);
 	}
+}
+
+/* Cycles are collected by trial deletion (Bacon and Rajan's synchronous
+ * collector), at the turn's end, when the only holds left are holders',
+ * each of them counted. From each block tried, every hold one block reached
+ * has on another is taken off its count (gray); a block with a count left
+ * is held from outside them, so it and all it reaches have their holds put
+ * back (black), and those left at none (white) are garbage. Each walk
+ * recurses as deep as the chain of blocks it follows. */
+static sngl_counted *sngl_head(void *p) {
+	return (sngl_counted *)p - 1;
+}
+
+/* sngl_visit_in hands fn each counted block c holds; one holding none has
+ * no visit, and is never tried, since it closes no cycle. */
+static void sngl_visit_in(sngl_counted *c, sngl_visit fn) {
+	if (c->h.visit != NULL) {
+		c->h.visit(c + 1, fn);
+	}
+}
+
+static void sngl_mark_gray(sngl_counted *c);
+
+static void sngl_gray_child(void *p) {
+	sngl_counted *c = sngl_head(p);
+	c->h.count--;
+	sngl_mark_gray(c);
+}
+
+static void sngl_mark_gray(sngl_counted *c) {
+	if (c->h.color != SNGL_GRAY) {
+		c->h.color = SNGL_GRAY;
+		sngl_visit_in(c, sngl_gray_child);
+	}
+}
+
+static void sngl_scan_black(sngl_counted *c);
+
+static void sngl_black_child(void *p) {
+	sngl_counted *c = sngl_head(p);
+	c->h.count++;
+	if (c->h.color != SNGL_BLACK) {
+		sngl_scan_black(c);
+	}
+}
+
+static void sngl_scan_black(sngl_counted *c) {
+	c->h.color = SNGL_BLACK;
+	sngl_visit_in(c, sngl_black_child);
+}
+
+static void sngl_scan(sngl_counted *c);
+
+static void sngl_scan_child(void *p) {
+	sngl_scan(sngl_head(p));
+}
+
+static void sngl_scan(sngl_counted *c) {
+	if (c->h.color != SNGL_GRAY) {
+		return;
+	}
+	if (c->h.count > 0) {
+		sngl_scan_black(c);
+		return;
+	}
+	c->h.color = SNGL_WHITE;
+	sngl_visit_in(c, sngl_scan_child);
+}
+
+static void sngl_gather(sngl_counted *c);
+
+static void sngl_gather_child(void *p) {
+	sngl_gather(sngl_head(p));
+}
+
+/* sngl_gather finds the garbage c reaches, marked gone, so letting go of
+ * one of them gives nothing back. */
+static void sngl_gather(sngl_counted *c) {
+	if (c->h.color != SNGL_WHITE) {
+		return;
+	}
+	c->h.color = SNGL_BLACK;
+	c->h.gone = true;
+	sngl_push(&sngl_garbage, c);
+	sngl_visit_in(c, sngl_gather_child);
+}
+
+static void sngl_restore_child(void *p) {
+	sngl_head(p)->h.count++;
+}
+
+static void sngl_collect_cycles(void) {
+	/* A release giving the garbage back may leave another block still
+	 * held, which the next turn's end tries. */
+	sngl_blocks tried = sngl_tried;
+	sngl_tried = (sngl_blocks){0};
+	size_t n = 0;
+	for (size_t i = 0; i < tried.len; i++) {
+		sngl_counted *c = tried.at[i];
+		c->h.tried = false;
+		if (!c->h.gone && c->h.count > 0) {
+			tried.at[n++] = c;
+			sngl_mark_gray(c);
+		}
+	}
+	for (size_t i = 0; i < n; i++) {
+		sngl_scan(tried.at[i]);
+	}
+	for (size_t i = 0; i < n; i++) {
+		sngl_gather(tried.at[i]);
+	}
+	free(tried.at);
+	/* What the garbage holds is counted again, so giving each back lets go
+	 * of each hold once: of another's, which is gone, and of a block held
+	 * from outside it too, whose count is then right. */
+	for (size_t i = 0; i < sngl_garbage.len; i++) {
+		sngl_counted *c = sngl_garbage.at[i];
+		sngl_visit_in(c, sngl_restore_child);
+	}
+	for (size_t i = 0; i < sngl_garbage.len; i++) {
+		sngl_counted *c = sngl_garbage.at[i];
+		c->h.release(c + 1);
+		sngl_drop(c);
+	}
+	sngl_garbage.len = 0;
 }
 
 void sngl_turn_end(void) {
 	sngl_depth = 0;
 	/* What the turn made and no holder took is the turn's. Giving one back
 	 * gives back what it holds, which may be another's last hold. */
-	while (sngl_pending_len > 0) {
-		sngl_counted *c = sngl_pending[--sngl_pending_len];
+	while (sngl_pending.len > 0) {
+		sngl_counted *c = sngl_pending.at[--sngl_pending.len];
 		if (c->h.count <= 0 && !c->h.gone) {
 			sngl_give_back(c);
 		}
 	}
+	sngl_collect_cycles();
 	for (size_t i = 0; i < sngl_dropped_len; i++) {
 		free(sngl_dropped[i]);
 	}
@@ -363,6 +508,12 @@ void sngl_env_drop(void *env) {
 	 * held by whatever it was read from. */
 	if (env != NULL && sngl_tracked((uintptr_t)env)) {
 		((sngl_env *)env)->drop(env);
+	}
+}
+
+void sngl_env_visit(const void *env, sngl_visit fn) {
+	if (env != NULL && sngl_tracked((uintptr_t)env)) {
+		((const sngl_env *)env)->visit(env, fn);
 	}
 }
 

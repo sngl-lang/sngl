@@ -1612,7 +1612,7 @@ sha256:ef334e891590ddeac3e035e2a15942da
   ]
 }
 -- testrun/gtk4/c/sitecall.sngl/main/1 --
-sha256:c3a9031070a415341cf6da15294644ad
+sha256:733275217c54270da547470c806287d5
 {
   "results": [
     {
@@ -1976,7 +1976,7 @@ sha256:69fa338ac3a47580f1a195411947cf2d
   ]
 }
 -- testrun/win32/c/sitecall.sngl/main/1 --
-sha256:827e24e35f760789fd521c122cd01174
+sha256:ecdb25f4ce2d07eb3612d6ae2f450192
 {
   "results": [
     {

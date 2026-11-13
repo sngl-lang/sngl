@@ -1007,9 +1007,9 @@ reaches it the same way.
    captured (the script's `closure.sngl`). A var a closure writes is a box
    its holders count, the last of which gives it back
    (`ir.StructDef.Counted`, `codegen/lang/c/testdata/run/closures.txtar`), and
-   C's sanitized `TestRun` checks leaks. **Not yet:** a cycle through
-   counted boxes -- a closure stored in the var it writes -- is never given
-   back.
+   C's sanitized `TestRun` checks leaks. A cycle through counted boxes --
+   a closure stored in the var it calls -- is collected at the turn's end
+   (`sngl_collect_cycles`, `codegen/lang/c/testdata/run/cycles.txtar`).
 3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
    come with step 1. `purego` is attempted then, against the open questions
    below.

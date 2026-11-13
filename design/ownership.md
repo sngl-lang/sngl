@@ -1017,6 +1017,29 @@ sharing a local across turns, lets go of them one at a time, and takes a
 box again the turn it was let go of, under AddressSanitizer and
 LeakSanitizer.
 
+**The turn's end collects a cycle of counted boxes.** Counting gives back no
+cycle, and a closure stored in the var it calls is one: the box holds the
+closure, whose environment holds the box. So does a closure in a list in
+it, or two vars whose closures call each other. Only counted boxes can
+close one -- every other value is copied into each holder, and a record is
+given back by its destroy -- so the runtime collects them by trial deletion
+(Bacon and Rajan's synchronous collector, `sngl_collect_cycles`). A release
+leaving a box still held marks it to be tried. At the turn's end, after the
+boxes the turn made and no holder took are given back, the holds the tried
+boxes have on one another are taken off their counts; a box with a count
+left is held from outside them, and it and all it reaches get theirs back;
+the rest are garbage, given back with what they hold. The turn's end is
+what makes this exact: no local is left, so every hold on a box is a
+holder's, and each is counted -- no stack is scanned. Each box carries a
+visit handing the collector the boxes it holds, generated with its release
+(`boxOps`), and an environment's header carries one too (`sngl_env`), which
+reaches through what it captured, a function value's environment, a list's
+elements and so on (`visits`, the `visit` of `ownHelper`); the walk passes
+through each environment, which one holder owns, and stops at each box.
+`codegen/lang/c/testdata/run/cycles.txtar` lets go of each such cycle, and
+of one half of a pair C still holds the other half of, which the try keeps
+and the next call runs through, under AddressSanitizer and LeakSanitizer.
+
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder
 is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only
@@ -1028,7 +1051,5 @@ not own.
 
 **Not yet, each a leak rather than a fault:**
 
-- A cycle through counted boxes -- a closure stored in the var it writes
-  -- is never given back, as counting gives back no cycle.
 - `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
   where the design above made it the identity.

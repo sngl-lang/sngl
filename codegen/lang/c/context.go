@@ -511,8 +511,8 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 		if sd.Counted {
 			// Shared by its holders, the last of which gives it back with
 			// what it holds.
-			release, rekeep := c.boxOps(sd)
-			return "((" + name + " *)sngl_counted_new(" + lit + ", " + release + ", " + rekeep + "))"
+			release, rekeep, visit := c.boxOps(sd)
+			return "((" + name + " *)sngl_counted_new(" + lit + ", " + release + ", " + rekeep + ", " + visit + "))"
 		}
 		// The box is kept itself, so the record it is can give it back.
 		return "((" + name + " *)sngl_keep_copy(" + lit + "))"
@@ -548,31 +548,45 @@ func (c *Context) Box(sd *ir.StructDef) {
 }
 
 // boxOps are the functions giving back what a counted box of sd holds,
-// which its last holder letting go runs, and keeping it again, which a
-// holder taking it again the same turn runs.
-func (c *Context) boxOps(sd *ir.StructDef) (release, rekeep string) {
+// which its last holder letting go runs; keeping it again, which a holder
+// taking it again the same turn runs; and visiting the counted boxes it
+// holds, which the collector of cycles runs.
+func (c *Context) boxOps(sd *ir.StructDef) (release, rekeep, visit string) {
 	name := Decl(&sd.DeclInfo)
-	release, rekeep = name+"__release", name+"__rekeep"
+	release, rekeep, visit = name+"__release", name+"__rekeep", "NULL"
+	if slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool { return visits(f.Type) }) {
+		// One holding no box closes no cycle, and has no visit.
+		visit = name + "__visit"
+	}
 	if c.file.helperNames[release] {
-		return release, rekeep
+		return release, rekeep, visit
 	}
 	c.file.helper(release, "")
 	c.file.helper(rekeep, "")
 	c.file.protos = append(c.file.protos, "static void "+release+"(void *p);", "static void "+rekeep+"(void *p);")
-	var rel, keep strings.Builder
+	var rel, keep, vis strings.Builder
 	fmt.Fprintf(&rel, "static void %s(void *p) {\n\t%s *b = p;\n", release, name)
 	fmt.Fprintf(&keep, "static void %s(void *p) {\n\t%s *b = p;\n", rekeep, name)
+	fmt.Fprintf(&vis, "static void %s(void *p, sngl_visit fn) {\n\t%s *b = p;\n", visit, name)
 	for _, f := range sd.Fields {
 		if d := c.drop(f.Type, "b->"+Local(f.Name)); d != "" {
 			rel.WriteString("\t" + d + "\n")
 			fmt.Fprintf(&keep, "\tb->%s = %s;\n", Local(f.Name), c.keep(f.Type, "b->"+Local(f.Name)))
 		}
+		if v := c.visit(f.Type, "b->"+Local(f.Name), "fn"); v != "" {
+			vis.WriteString("\t" + v + "\n")
+		}
 	}
-	rel.WriteString("\t(void)b;\n}\n")
-	keep.WriteString("\t(void)b;\n}\n")
+	for _, b := range []*strings.Builder{&rel, &keep, &vis} {
+		b.WriteString("\t(void)b;\n}\n")
+	}
 	c.file.setHelper(release, rel.String())
 	c.file.setHelper(rekeep, keep.String())
-	return release, rekeep
+	if visit != "NULL" {
+		c.file.helper(visit, vis.String())
+		c.file.protos = append(c.file.protos, "static void "+visit+"(void *p, sngl_visit fn);")
+	}
+	return release, rekeep, visit
 }
 
 // Spread is the list a spread reads, which the list literal it is in joins

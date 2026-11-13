@@ -1,0 +1,110 @@
+Closures that reach themselves through counted boxes: a closure stored in
+the var it calls, one in a list in it, and two vars whose closures call
+each other. Counting
+gives no cycle back, so the turn's end collects them: a box a holder let
+go of that is still held is tried, and one held only from inside its cycle
+is given back with what it holds. A cycle C still holds part of survives
+the try and runs on, and once C lets go of the last of it the turn gives it
+all back. The sanitized build reads no freed box and leaks none.
+
+-- app.sngl --
+struct Pair {
+    ping func(int) int
+    pong func(int) int
+}
+
+func walker() func(int) int {
+    var walk = func(n int) int {
+        return n
+    }
+    walk = func(n int) int {
+        if n <= 0 {
+            return 0
+        }
+        return n + walk(n - 1)
+    }
+    return walk
+}
+
+func listed() func(int) int {
+    var steps list[func(int) int] = []
+    steps = [func(n int) int {
+        if n <= 0 {
+            return 0
+        }
+        return 100 + steps[0](n - 1)
+    }]
+    return steps[0]
+}
+
+func pair() Pair {
+    var ping = func(n int) int {
+        return n
+    }
+    var pong = func(n int) int {
+        return n
+    }
+    ping = func(n int) int {
+        if n <= 0 {
+            return 0
+        }
+        return 1 + pong(n - 1)
+    }
+    pong = func(n int) int {
+        if n <= 0 {
+            return 0
+        }
+        return 10 + ping(n - 1)
+    }
+    return Pair{ping = ping, pong = pong}
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+int main(void) {
+	sngl_turn_enter();
+	sngl_fn_int__int w = s_walker();
+	w.env = sngl_env_keep(w.env);
+	sngl_turn_leave();
+	sngl_turn_enter();
+	printf("walk %lld\n", (long long)w.fn(w.env, 4));
+	sngl_env_drop(w.env);
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+
+	sngl_turn_enter();
+	sngl_fn_int__int l = s_listed();
+	l.env = sngl_env_keep(l.env);
+	sngl_turn_leave();
+	sngl_turn_enter();
+	printf("listed %lld\n", (long long)l.fn(l.env, 2));
+	sngl_env_drop(l.env);
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+
+	sngl_turn_enter();
+	s_Pair p = s_pair();
+	p.ping.env = sngl_env_keep(p.ping.env);
+	p.pong.env = sngl_env_keep(p.pong.env);
+	sngl_turn_leave();
+	sngl_turn_enter();
+	printf("ping %lld\n", (long long)p.ping.fn(p.ping.env, 3));
+	sngl_env_drop(p.ping.env);
+	sngl_turn_leave();
+	/* ping's box is held only by pong's environment, which C holds. */
+	sngl_turn_enter();
+	printf("pong %lld\n", (long long)p.pong.fn(p.pong.env, 3));
+	sngl_env_drop(p.pong.env);
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+	return 0;
+}
+-- want --
+walk 10
+0 kept
+listed 200
+0 kept
+ping 12
+pong 21
+0 kept

@@ -20,21 +20,34 @@ import (
 // owns reports whether a value of t holds memory a holder keeps: a string's
 // bytes, a list's or a map's elements, a closure's environment, a counted
 // box, or a value holding one of those.
-func owns(t *ir.Type) bool { return ownsSeen(t, map[ir.Symbol]bool{}) }
+func owns(t *ir.Type) bool { return ownsSeen(t, map[ir.Symbol]bool{}, true) }
 
-func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
+// visits reports whether a value of t may hold a counted box, which the
+// collector of cycles visits: one itself, a closure's environment, or a
+// value holding one of those.
+func visits(t *ir.Type) bool { return ownsSeen(t, map[ir.Symbol]bool{}, false) }
+
+// ownsSeen is owns, or visits where strs is false, which a string's bytes
+// do not answer.
+func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool, strs bool) bool {
 	t = listed(t)
 	if t == nil {
 		return false
 	}
 	if textual(t) {
-		return true
+		return strs
 	}
 	switch t.Kind {
-	case ir.TypeString, ir.TypeList, ir.TypeMap, ir.TypeFunc:
+	case ir.TypeString:
+		return strs
+	case ir.TypeFunc:
 		return true
+	case ir.TypeList:
+		return strs || ownsSeen(t.Elems[0], seen, strs)
+	case ir.TypeMap:
+		return strs || ownsSeen(t.Elems[0], seen, strs) || ownsSeen(t.Elems[1], seen, strs)
 	case ir.TypeOption:
-		return len(t.Elems) == 1 && ownsSeen(t.Elems[0], seen)
+		return len(t.Elems) == 1 && ownsSeen(t.Elems[0], seen, strs)
 	case ir.TypeStruct:
 		sd, ok := t.Decl.(*ir.StructDef)
 		if ok && sd.Counted {
@@ -48,7 +61,7 @@ func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
 		}
 		seen[sd] = true
 		for _, f := range sd.Fields {
-			if ownsSeen(f.Type, seen) {
+			if ownsSeen(f.Type, seen, strs) {
 				return true
 			}
 		}
@@ -59,7 +72,7 @@ func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
 		}
 		seen[ed] = true
 		for _, m := range ed.Members {
-			if ownsSeen(ir.MemberPayload(t, m.Name), seen) {
+			if ownsSeen(ir.MemberPayload(t, m.Name), seen, strs) {
 				return true
 			}
 		}
@@ -98,7 +111,22 @@ func (c *Context) drop(t *ir.Type, v string) string {
 	return c.ownHelper(t, "drop") + "(" + v + ");"
 }
 
-// ownHelper is the function the file defines to keep or drop a value of t,
+// visit is the statement handing fn, a sngl_visit, each counted box v, a
+// value of t a holder holds, holds: nothing where it can hold none.
+func (c *Context) visit(t *ir.Type, v, fn string) string {
+	switch {
+	case isCounted(t):
+		return "if ((" + v + ") != NULL) {\n\t\t" + fn + "(" + v + ");\n\t}"
+	case !visits(t) || c.isPointer(t):
+		return ""
+	case listed(t).Kind == ir.TypeFunc:
+		return "sngl_env_visit((" + v + ").env, " + fn + ");"
+	}
+	return c.ownHelper(t, "visit") + "(" + v + ", " + fn + ");"
+}
+
+// ownHelper is the function the file defines to keep, drop or visit a value
+// of t,
 // declared ahead, since a recursive type's reaches it again.
 func (c *Context) ownHelper(t *ir.Type, op string) string {
 	t = listed(t)
@@ -108,37 +136,50 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 		return name
 	}
 	sig := fmt.Sprintf("static %s %s(%s v)", tn, name, tn)
-	if op == "drop" {
+	switch op {
+	case "drop":
 		sig = fmt.Sprintf("static void %s(%s v)", name, tn)
+	case "visit":
+		sig = fmt.Sprintf("static void %s(%s v, sngl_visit fn)", name, tn)
 	}
 	c.file.helper(name, "")
 	c.file.protos = append(c.file.protos, sig+";")
 	var b strings.Builder
 	b.WriteString(sig + " {\n")
+	holds := owns
+	if op == "visit" {
+		holds = visits
+	}
 	each := func(ft *ir.Type, f string) {
-		if !owns(ft) {
+		if !holds(ft) {
 			return
 		}
-		if op == "keep" {
+		switch op {
+		case "keep":
 			fmt.Fprintf(&b, "\t%s = %s;\n", f, c.keep(ft, f))
-		} else {
+		case "drop":
 			fmt.Fprintf(&b, "\t%s\n", c.drop(ft, f))
+		default:
+			fmt.Fprintf(&b, "\t%s\n", c.visit(ft, f, "fn"))
 		}
 	}
 	switch {
 	case t.Kind == ir.TypeFunc:
 		// The environment knows what it captured (sngl_env).
-		if op == "keep" {
+		switch op {
+		case "keep":
 			b.WriteString("\tv.env = sngl_env_keep(v.env);\n")
-		} else {
+		case "drop":
 			b.WriteString("\tsngl_env_drop(v.env);\n")
+		default:
+			b.WriteString("\tsngl_env_visit(v.env, fn);\n")
 		}
 	case t.Kind == ir.TypeList:
 		el := c.typeName(t.Elems[0])
 		if op == "keep" {
 			fmt.Fprintf(&b, "\t%s *data = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\tif (v.len > 0) {\n\t\tmemcpy(data, v.data, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.data = data;\n\tv.cap = v.len;\n", el, el, el)
 		}
-		if owns(t.Elems[0]) {
+		if holds(t.Elems[0]) {
 			b.WriteString("\tfor (int64_t i = 0; i < v.len; i++) {\n")
 			each(t.Elems[0], "v.data[i]")
 			b.WriteString("\t}\n")
@@ -151,7 +192,7 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 		if op == "keep" {
 			fmt.Fprintf(&b, "\t%s *keys = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\t%s *vals = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\tif (v.len > 0) {\n\t\tmemcpy(keys, v.keys, sizeof(%s) * (size_t)v.len);\n\t\tmemcpy(vals, v.vals, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.keys = keys;\n\tv.vals = vals;\n\tv.cap = v.len;\n", kt, kt, vt, vt, kt, vt)
 		}
-		if owns(t.Elems[0]) || owns(t.Elems[1]) {
+		if holds(t.Elems[0]) || holds(t.Elems[1]) {
 			b.WriteString("\tfor (int64_t i = 0; i < v.len; i++) {\n")
 			each(t.Elems[0], "v.keys[i]")
 			each(t.Elems[1], "v.vals[i]")
@@ -167,7 +208,7 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 	case ir.PayloadEnum(t) != nil:
 		b.WriteString("\tswitch (v.tag) {\n")
 		for i, m := range ir.PayloadEnum(t).Members {
-			if pt := ir.MemberPayload(t, m.Name); owns(pt) {
+			if pt := ir.MemberPayload(t, m.Name); holds(pt) {
 				fmt.Fprintf(&b, "\tcase %d:\n", i)
 				each(pt, "v."+Local(m.Name))
 				b.WriteString("\t\tbreak;\n")
