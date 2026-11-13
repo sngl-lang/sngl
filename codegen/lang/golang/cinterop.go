@@ -89,7 +89,7 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 // where the struct declaring it has one (`cgo.PGtkLabel`), since a program
 // calling C through wrappers has no `C` of its own, and cgo's otherwise.
 func (gc *GoIRContext) castType(x *ir.CConvert) string {
-	if sd, ok := x.Type.Decl.(*ir.StructDef); ok && x.Type.Kind == ir.TypeStruct && gc.Wrapping == "" && wrapper(&sd.Foreign) != nil {
+	if sd, ok := x.Type.Decl.(*ir.StructDef); ok && x.Type.Kind == ir.TypeStruct && gc.Wrapping == "" && wrapper(&sd.Foreign, gc.direct()) != nil {
 		return gc.goType(x.Type)
 	}
 	return gc.CType(x.To)
@@ -264,10 +264,11 @@ func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string) string {
 
 // wrapper is the Go wrapper of a C declaration f describes, which `sngl tool
 // cgogen` marks beside its C spelling (design/win32.md), or nil where it has
-// none. Go calls the wrapper and spells the type as the wrapper package's,
-// and lower.CMarshal converts nothing for it.
-func wrapper(f *ir.Foreign) *ir.Foreign {
-	if f.Scheme != "c" {
+// none, or in a build that calls C directly (ir.Package.CallsCDirectly). Go
+// calls the wrapper and spells the type as the wrapper package's, and
+// lower.CMarshal converts nothing for it.
+func wrapper(f *ir.Foreign, direct bool) *ir.Foreign {
+	if f.Scheme != "c" || direct {
 		return nil
 	}
 	return f.In("go")
@@ -275,8 +276,8 @@ func wrapper(f *ir.Foreign) *ir.Foreign {
 
 // spelling is how Go names the declaration f describes: its wrapper where it
 // has one, and f otherwise.
-func spelling(f *ir.Foreign) *ir.Foreign {
-	if g := wrapper(f); g != nil {
+func spelling(f *ir.Foreign, direct bool) *ir.Foreign {
+	if g := wrapper(f, direct); g != nil {
 		return g
 	}
 	return f

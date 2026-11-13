@@ -156,6 +156,32 @@ a C type as C spells it (`CallbacksSource`'s `wrapping`). A Go program's own
 package links: compiled into the program as well, its sources would define
 each symbol twice.
 
+**Or the program calls C itself.** The Go language's `cgo` option says how
+Go calls C: `"wrapper"`, the default, as above; `"direct"`, every C
+declaration from the program; and `"purego"`. The build records `"direct"`
+on its copy of the program (`ir.Package.CallsCDirectly`, `build.ApplyCgo`,
+which `PrepareTarget` and a test's launch run), and every reader of a
+wrapper reads it there: lowering has no wrapper language, so `CMarshal`
+converts every call; the Go writer's `wrapper` answers nil, so a call is
+`C.` and a handle or struct is cgo's type; and `CLinks` leaves out no
+package, so the program writes `import "C"`, compiles each link's sources
+beside it and imports no wrapper package, which would define each runtime
+symbol a second time. The program declares each library C struct it reaches
+(`libraryCStructs`), as the wrapper package declares it, and discards a C
+call's converted result where the call is a statement. Nothing rewrites a
+declaration here either: a protocol function a splice reaches is the frozen
+library's. A function no wrapper is written for -- one taking a `ref` -- is
+callable this way (`c_win32_test_runs.txt`'s `refrun.sngl`), and a gtk4
+program runs whole (`testdata/gtk4_go_direct_runs.txtar`).
+
+**A platform's entry calls the runtime through functions of the program's
+own.** The entry, the test agent, `async.do`'s post, a test's wait and the
+carried files call `sngl_rt.go`'s `snglWin32Run`, `snglPost` and the rest
+(`goshim.go` in each platform), which hand the call to the wrapper package
+or, called directly, make it themselves, a closure crossing as a context
+their own trampoline looks up. The platform's `reservedNames` holds each, so
+the hooks and the entry are written once whatever the option says.
+
 **Its test holds both, and builds the package.** `TestCommitted` regenerates
 the package and the marks and compares them with what is committed;
 `TestBuilds` builds the package with both MinGW compilers, recorded in
@@ -172,7 +198,7 @@ what `passPlacement` left: the program's types, each package var a field of
 the one state `m`, each const a file-scope var, each function free (a method
 as the free function `LiftsToFreeFunc` names, as on every Go platform), and
 `snglInit`, `snglBuild` and `snglTeardown`. win32 writes the entry, which runs
-the loop through the wrappers (`SnglWin32Run`). The loop's calls and the
+the loop (`snglWin32Run`, `sngl_rt.go`). The loop's calls and the
 snapshot's are declared in `win32.sngl` for the wrappers to carry (`_rtRun`,
 `_rtSnapshot`, `_rtStep`), though no SNGL calls them. Where the platform node
 wrote `@run`, WriteProgram writes the handler as `snglRun` and the entry is

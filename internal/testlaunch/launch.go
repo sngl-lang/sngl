@@ -99,6 +99,9 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		build.IsolateRootComponent(groupPkg, group.Component)
+		if err := build.ApplyCgo(groupPkg, build.Target{Lang: LangIdent(lang), Platform: plat.PlatformIdentifier(), Options: opts}); err != nil {
+			return results, err
+		}
 		if group.Component == "" && !groupPkg.IsProgram() {
 			// Tests taking no component, in a package whose body renders
 			// nothing, render nothing either. Left in, every component was

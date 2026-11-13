@@ -14,7 +14,7 @@ func init() {
 		if len(args) != 1 {
 			return "", nil
 		}
-		return "cgo.SnglPost(" + tr(args[0]) + ")", []string{wrappers}
+		return "snglPost(" + tr(args[0]) + ")", nil
 	})
 	// A Go test waiting for what the loop drives runs the loop while it
 	// waits, since the test runs on the loop's own thread, as C's does.
@@ -22,6 +22,6 @@ func init() {
 		if len(args) != 3 {
 			return "", nil
 		}
-		return "for __snglWait, __snglEnd := " + tr(args[1]) + ", time.Now().Add(time.Duration(" + tr(args[2]) + ")*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { cgo.SnglWin32Step() }", []string{wrappers, "time"}
+		return "for __snglWait, __snglEnd := " + tr(args[1]) + ", time.Now().Add(time.Duration(" + tr(args[2]) + ")*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { snglWin32Step() }", []string{"time"}
 	})
 }

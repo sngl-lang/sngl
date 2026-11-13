@@ -72,6 +72,17 @@ stdout 'ok +1 tests, 0 failures'
 ! sngl generate --platform=win32 --lang=go -o out ref.sngl
 stderr 'sngl:platform/win32/api.GetClientRect has no Go wrapper'
 
+# Calling C itself (the Go language's `cgo` option set to "direct"), Go
+# compiles api's C beside the program and calls the function as C does. The
+# whole program is called so: its snapshots are C's.
+
+sngl test --platform=win32 --language=go --opt cgo=direct refrun.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
+stdout 'ok +4 tests, 0 failures'
+! sngl generate --platform=win32 --lang=go --opt cgo=cgo -o out app.sngl
+stderr 'cgo="cgo": Go calls C "wrapper", "direct" or "purego"'
+
 # A write to an element of a list C holds keeps the value before it takes
 # the element's address: working the value out grows the list, which moves
 # its elements, and the write lands in the list as it is after.
@@ -247,6 +258,28 @@ ui.window(title="x") {
     ui.text("{width()}")
 }
 
+-- refrun.sngl --
+import api "sngl:platform/win32/api"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func width() int {
+    var r = api.RECT{right=-1}
+    api.GetClientRect(api.GetFocus(), r)
+    return r.right
+}
+
+component shown ui.node {
+    ui.text("{width()}")
+}
+
+func testARefCallFillsItsStruct(t test.Test, c shown) {
+    t.assert(width() >= 0)
+}
+
+ui.window(title="x") {
+    shown()
+}
 -- store.sngl --
 import test "sngl:test"
 import ui "sngl:ui"
@@ -460,7 +493,7 @@ sha256:07c7b5b1f1725c5bb49914c4dfb0904b
   ]
 }
 -- testrun/win32/go/app.sngl/_/1 --
-sha256:b7063397688a6074cf1952c6c538b328
+sha256:731c37d8c9eb6ebb8d90d81c5650b094
 {
   "results": [
     {
@@ -470,7 +503,17 @@ sha256:b7063397688a6074cf1952c6c538b328
   ]
 }
 -- testrun/win32/go/app.sngl/_/2 --
-sha256:48141d3fc360baf9c1b40423b28bade0
+sha256:ce81796c98223799bac2ad37a29b3d1e
+{
+  "results": [
+    {
+      "Desc": "TheWindowBuilds",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/3 --
+sha256:d43fe894b0a3fbb5735111e961225a4d
 {
   "results": [
     {
@@ -480,7 +523,7 @@ sha256:48141d3fc360baf9c1b40423b28bade0
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:f26c7dd9c2b50184f720eab68db988e0
+sha256:63ca85d66a9e759083b7ca4e2598339b
 {
   "results": [
     {
@@ -498,7 +541,25 @@ sha256:f26c7dd9c2b50184f720eab68db988e0
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:8e87a7712dcfca10dc9e5b102ded9256
+sha256:b1b41be3cbe8737c1bdbdd70425fc97e
+{
+  "results": [
+    {
+      "Desc": "DrawsTheWindow",
+      "Passed": true
+    },
+    {
+      "Desc": "PressesReachTheirHandlers",
+      "Passed": true
+    },
+    {
+      "Desc": "ValuesReachTheirHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/3 --
+sha256:a1d2302faec23e5868ba0214133f6a33
 {
   "results": [
     {
@@ -516,7 +577,7 @@ sha256:8e87a7712dcfca10dc9e5b102ded9256
   ]
 }
 -- testrun/win32/go/async.sngl/main/1 --
-sha256:a1e36eec93199440f1fdbac8aefaaf71
+sha256:77ade34a57c6aaf340167d1569afc2e3
 {
   "results": [
     {
@@ -526,7 +587,7 @@ sha256:a1e36eec93199440f1fdbac8aefaaf71
   ]
 }
 -- testrun/win32/go/empty.sngl/main/1 --
-sha256:ec517d9c806d11d32307f94daa0c5687
+sha256:739ef221a58e357f9ff2170e6a5ef45d
 {
   "results": [
     {
@@ -536,11 +597,21 @@ sha256:ec517d9c806d11d32307f94daa0c5687
   ]
 }
 -- testrun/win32/go/rect.sngl/main/1 --
-sha256:ee364e550925af46ce5f0b0121d78f9e
+sha256:40813ffc0dc142c7c6eb4582ce7aa113
 {
   "results": [
     {
       "Desc": "ARectOfTheProgramsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/refrun.sngl/shown/1 --
+sha256:4d11301aa10d725f3e9fa3c3a127e891
+{
+  "results": [
+    {
+      "Desc": "ARefCallFillsItsStruct",
       "Passed": true
     }
   ]

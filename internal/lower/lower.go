@@ -296,6 +296,11 @@ func namesOrOwn(r renamer) renamer {
 // when opts.StopAfter names a pass that does not exist.
 func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	ir.InstallOverlay(pkg)
+	if pkg.CallsCDirectly {
+		// No C declaration is called through its spelling in the build's
+		// language: CMarshal converts every call.
+		feats.language = ""
+	}
 	if opts.StopAfter == "none" {
 		return nil
 	}

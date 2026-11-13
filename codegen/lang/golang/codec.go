@@ -39,16 +39,16 @@ func (gc *GoIRContext) codecCall(n *ir.Call) (string, bool) {
 		}
 		return ""
 	}
-	rt := IRTypeToGo(n.Type)
+	rt := typeToGo(n.Type, gc.site())
 	str := ir.TypString
 	switch n.Func.Intrinsic {
 	case ir.JSONEncodeIntrinsic:
 		gc.RequireImport(jsonRuntime)
-		return fmt.Sprintf("sngljson.Encode[%s](%s, %s)", IRTypeToGo(t), arg("value"), goCodec(ir.PlanCodec(t, format))), true
+		return fmt.Sprintf("sngljson.Encode[%s](%s, %s)", typeToGo(t, gc.site()), arg("value"), goCodec(ir.PlanCodec(t, format))), true
 	case ir.JSONDecodeIntrinsic:
 		gc.RequireImport(jsonRuntime)
 		var b strings.Builder
-		fmt.Fprintf(&b, "func() %s { __snglV, __snglMsg := sngljson.Decode[%s](%s, %s); ", rt, IRTypeToGo(t), arg("text"), goCodec(ir.PlanCodec(t, format)))
+		fmt.Fprintf(&b, "func() %s { __snglV, __snglMsg := sngljson.Decode[%s](%s, %s); ", rt, typeToGo(t, gc.site()), arg("text"), goCodec(ir.PlanCodec(t, format)))
 		fmt.Fprintf(&b, "if __snglMsg != \"\" { return %s }; ", gc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__snglMsg", str))))
 		fmt.Fprintf(&b, "return %s }()", gc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__snglV", t))))
 		return b.String(), true

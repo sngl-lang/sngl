@@ -638,38 +638,5 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	_ = m.View()
 	return m
 }
--- out/go/bubbletea/rect.c --
-#include "rect.h"
-
-int sngl_area(SnglRect r) {
-	return (r.right - r.left) * (r.bottom - r.top);
-}
-
-void sngl_grow(SnglRect *r, int by) {
-	r->left -= by;
-	r->top -= by;
-	r->right += by;
-	r->bottom += by;
-	r->tag++;
-}
-
-void sngl_divide(int a, int b, int *q, int *rem) {
-	*q = a / b;
-	*rem = a % b;
-}
--- out/go/bubbletea/rect.h --
-typedef struct {
-	int left, top, right, bottom;
-	unsigned short tag;
-} SnglRect;
-
-// The rectangle's area, handed by value.
-int sngl_area(SnglRect r);
-
-// Moves each edge of *r out by by, and counts the move in its tag.
-void sngl_grow(SnglRect *r, int by);
-
-// Writes a / b to *q and a % b to *rem.
-void sngl_divide(int a, int b, int *q, int *rem);
 -- run/go/bubbletea --
 pass sha256:a180ffeb1c74ddffdc88ba16989304d6

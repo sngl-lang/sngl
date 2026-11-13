@@ -1377,7 +1377,7 @@ sha256:6356d3dd3c754425e9069481a0c2390e
   ]
 }
 -- testrun/gtk4/go/snap.sngl/_/1 --
-sha256:967534d2c5ded3d429b522ed899d72ed
+sha256:39f58ffba1f04a179a48ad2ee51d84f0
 {
   "results": [
     {
@@ -1387,7 +1387,7 @@ sha256:967534d2c5ded3d429b522ed899d72ed
   ]
 }
 -- testrun/gtk4/go/snap.sngl/main/1 --
-sha256:b1e13a0351531df8ca3757a3e84bf9c2
+sha256:e3201823378ab38e6fe430a2078ec8b5
 {
   "results": [
     {

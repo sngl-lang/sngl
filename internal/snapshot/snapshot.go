@@ -488,7 +488,8 @@ func LangForPlatform(platform string) string {
 // (build.PrepareTarget).
 func prepare(pkg *ir.Package, platform, lang string) *ir.Package {
 	pkg = ir.ClonePackageFor(pkg, platform, lang)
-	build.PrepareTarget(pkg, build.Target{Platform: platform, Lang: lang})
+	// No options, so no option it could refuse.
+	_ = build.PrepareTarget(pkg, build.Target{Platform: platform, Lang: lang})
 	return pkg
 }
 

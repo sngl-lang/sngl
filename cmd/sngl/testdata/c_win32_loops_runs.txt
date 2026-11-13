@@ -355,7 +355,7 @@ sha256:111b048b6f95c8804279eac3b2bb7caf
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:c8a3c5b25d5acedae22332c3f92f71eb
+sha256:b4ab3c20dc90ca574d55582d521c52e1
 {
   "results": [
     {
@@ -369,7 +369,7 @@ sha256:c8a3c5b25d5acedae22332c3f92f71eb
   ]
 }
 -- testrun/win32/go/methods.sngl/main/1 --
-sha256:f77f5950e296e10a4116028964278ced
+sha256:37ace771a192888bd39b9fed0b3b474a
 {
   "results": [
     {
@@ -379,7 +379,7 @@ sha256:f77f5950e296e10a4116028964278ced
   ]
 }
 -- testrun/win32/go/nested.sngl/main/1 --
-sha256:b8a385eae7ccdf6b7fcab0874f2e3df3
+sha256:71d653882666d5a58f623d2048e9e303
 {
   "results": [
     {
@@ -397,7 +397,7 @@ sha256:b8a385eae7ccdf6b7fcab0874f2e3df3
   ]
 }
 -- testrun/win32/go/rows.sngl/main/1 --
-sha256:0105da52d45ba48bd409adba3ae17a04
+sha256:a6f515c511aa897e384601649c4823f9
 {
   "results": [
     {
@@ -411,7 +411,7 @@ sha256:0105da52d45ba48bd409adba3ae17a04
   ]
 }
 -- testrun/win32/go/seq.sngl/main/1 --
-sha256:d537ac281a9a620b8fd02db4fabdfb21
+sha256:73372b2063ee9b11beb6c1a45dd0ded5
 {
   "results": [
     {
@@ -421,7 +421,7 @@ sha256:d537ac281a9a620b8fd02db4fabdfb21
   ]
 }
 -- testrun/win32/go/top.sngl/main/1 --
-sha256:ee94814acb8863047b66478260ac12ba
+sha256:95748baf46fb5e1147d5bb865a6c1de2
 {
   "results": [
     {

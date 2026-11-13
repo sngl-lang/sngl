@@ -205,7 +205,7 @@ sha256:975e56a7f05d68411fd4d625b60fde3f
   ]
 }
 -- testrun/gtk4/go/unbound.sngl/main/1 --
-sha256:27fdf21836b8d2be61e7fdc6d52b5605
+sha256:24583a579721ac9e9ce0d241d908c16a
 {
   "results": [
     {

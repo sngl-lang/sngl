@@ -47,8 +47,26 @@ component platform(
     // it says.
     const gir           string,
     // What its generated code introduces beside a program's names: the
-    // runtime's prefix and the program's entry.
-    const reservedNames list[string] = ["sngl_gtk", "sngl_app", "sngl_build", "sngl_main", "main"],
+    // runtime's prefix, the program's entry, and the runtime calls a Go
+    // program makes as functions of its own (codegen/platform/gtk4's
+    // shimFile).
+    const reservedNames list[string] = [
+        "sngl_gtk",
+        "sngl_app",
+        "sngl_build",
+        "sngl_main",
+        "main",
+        "snglGtkMain",
+        "snglGtkInit",
+        "snglGtkHold",
+        "snglGtkPresent",
+        "snglGtkRun",
+        "snglGtkStep",
+        "snglGtkReset",
+        "snglGtkCaptureFile",
+        "snglGtkCarryFile",
+        "snglPost",
+    ],
 ) build.platform
 
 // Every node is a widget, held as its pointer. A protocol function handing a

@@ -17,7 +17,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -130,7 +129,7 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 	pkg := req.Pkg
 	agent := codegen.OptionString(req.Options, "testMode") == "agent"
 	fe := clang.NewFile(sink, codegen.FileOptions{Name: "main.c", Source: req.Source, Platform: platformName}, pkg, platformName)
-	links := reachedLinks(pkg)
+	links := ir.CalledCLinks(pkg)
 	sources, err := clang.Links(fe.Context(), links)
 	if err != nil {
 		return fmt.Errorf("%s: %w", platformName, err)
@@ -262,13 +261,9 @@ int main(void) {
 }
 `
 
-// wrappers is the Go package wrapping the platform's C (sngl tool cgogen),
-// which a Go program calls the runtime and GTK through.
-const wrappers = "duckfam.us/sngl/lib/platform/gtk4/cgo"
-
 // generateGo writes req's program as Go: main.go, the program
 // (golang.WriteProgram) and its entry, which runs the application through
-// the wrappers, building the program once GTK is ready.
+// the runtime (shimFile), building the program once GTK is ready.
 func generateGo(req *codegen.Request, sink codegen.Sink) error {
 	pkg := req.Pkg
 	fe := req.Lang.NewFileEmitter(sink, codegen.FileOptions{Name: "main.go", Source: req.Source, Platform: platformName, PackageName: "main"})
@@ -276,7 +271,6 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		return fmt.Errorf("%s: %w", platformName, err)
 	}
 	agent := codegen.OptionString(req.Options, "testMode") == "agent"
-	cgo := fe.RequireImport(wrappers)
 	// A main opens the place sngl:settings keeps values; a test never does.
 	open := golang.OpenSettings(pkg, golang.SettingsFile(codegen.OptionString(req.Options, "name")))
 	if open != "" {
@@ -286,7 +280,7 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		return strings.Replace(main, "\truntime.LockOSThread()\n", "\truntime.LockOSThread()\n"+open, 1)
 	}
 	if agent {
-		if err := golang.WriteTests(fe, pkg, cgo+".SnglGtkReset()"); err != nil {
+		if err := golang.WriteTests(fe, pkg, "snglGtkReset()"); err != nil {
 			return fmt.Errorf("%s: %w", platformName, err)
 		}
 	}
@@ -296,23 +290,26 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 		for _, p := range []string{"bytes", "encoding/binary", "errors", "fmt", "image", "image/png", "duckfam.us/sngl/pkg/go/testagent"} {
 			fe.RequireImport(p)
 		}
-		io.WriteString(fe, strings.ReplaceAll(goAgentMain, "cgo.", cgo+"."))
+		io.WriteString(fe, goAgentMain)
 	} else {
 		switch {
 		case codegen.OptionBool(req.Options, snapshotOption):
 			// Built for `sngl snapshot`, as C's is.
 			fe.RequireImport("strconv")
-			io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tif len(os.Args) < 4 {\n\t\tos.Exit(2)\n\t}\n\tw, _ := strconv.Atoi(os.Args[2])\n\th, _ := strconv.Atoi(os.Args[3])\n\t"+cgo+".SnglGtkInit()\n\tsnglInit()\n\tsnglBuild()\n\tos.Exit("+cgo+".SnglGtkCaptureFile(os.Args[1], w, h))\n}\n")
+			io.WriteString(fe, "\nfunc main() {\n\truntime.LockOSThread()\n\tif len(os.Args) < 4 {\n\t\tos.Exit(2)\n\t}\n\tw, _ := strconv.Atoi(os.Args[2])\n\th, _ := strconv.Atoi(os.Args[3])\n\tsnglGtkInit()\n\tsnglInit()\n\tsnglBuild()\n\tos.Exit(snglGtkCaptureFile(os.Args[1], w, h))\n}\n")
 		case golang.RunsHandler(pkg):
 			fe.RequireImport("fmt")
-			io.WriteString(fe, opened(strings.NewReplacer("cgo.", cgo+".", "POS", strconv.Quote(pkg.RunPos.String())).Replace(goRunMain)))
+			io.WriteString(fe, opened(strings.ReplaceAll(goRunMain, "POS", strconv.Quote(pkg.RunPos.String()))))
 		case pkg.Run != nil:
-			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\t"+cgo+".SnglGtkHold()\n\tsnglInit()\n\tsnglBuild()\n\tstatus := "+cgo+".SnglGtkRun()\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
+			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tsnglGtkHold()\n\tsnglInit()\n\tsnglBuild()\n\tstatus := snglGtkRun()\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
 		default:
-			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := "+cgo+".SnglGtkMain(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
+			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := snglGtkMain(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
 		}
 	}
 	if err := fe.Close(); err != nil {
+		return err
+	}
+	if err := writeFile(sink, shimFile, []byte(shim(pkg.CallsCDirectly))); err != nil {
 		return err
 	}
 	if golang.PackageUsesI18n(pkg) {
@@ -338,20 +335,20 @@ func snglStart() {
 		os.Exit(2)
 	}
 	snglStarted = true
-	cgo.SnglGtkPresent()
-	cgo.SnglGtkRun()
+	snglGtkPresent()
+	snglGtkRun()
 	snglTeardown()
 }
 
 func main() {
 	runtime.LockOSThread()
-	cgo.SnglGtkHold()
+	snglGtkHold()
 	snglInit()
 	snglBuild()
 	snglRun(os.Args[1:], snglStart)
 	if !snglStarted {
 		snglStarted = true
-		cgo.SnglGtkRun()
+		snglGtkRun()
 		snglTeardown()
 	}
 }
@@ -363,7 +360,7 @@ func main() {
 const goAgentMain = `
 func main() {
 	runtime.LockOSThread()
-	cgo.SnglGtkInit()
+	snglGtkInit()
 	testagent.RegisterSnapshot(snglCapture)
 	rpcIn, rpcOut := os.Stdin, os.Stdout
 	if devnull, err := os.Open(os.DevNull); err == nil {
@@ -396,7 +393,7 @@ func snglCapture() (string, []byte, error) {
 	path := f.Name()
 	f.Close()
 	defer os.Remove(path)
-	if cgo.SnglGtkCaptureFile(path, 800, 600) != 0 {
+	if snglGtkCaptureFile(path, 800, 600) != 0 {
 		return "", nil, errors.New("nothing is shown to draw")
 	}
 	raw, err := os.ReadFile(path)
@@ -425,7 +422,7 @@ func carryGo(sink codegen.Sink, assets []codegen.FileAsset) error {
 		return nil
 	}
 	var b strings.Builder
-	b.WriteString("// Code generated by sngl (" + platformName + "). DO NOT EDIT.\n\npackage main\n\nimport (\n\t_ \"embed\"\n\n\t\"" + wrappers + "\"\n)\n")
+	b.WriteString("// Code generated by sngl (" + platformName + "). DO NOT EDIT.\n\npackage main\n\nimport _ \"embed\"\n")
 	var init strings.Builder
 	for i, fa := range assets {
 		data := fa.Data
@@ -441,39 +438,10 @@ func carryGo(sink codegen.Sink, assets []codegen.FileAsset) error {
 			return err
 		}
 		fmt.Fprintf(&b, "\n//go:embed %s\nvar snglAsset%d string\n", name, i)
-		fmt.Fprintf(&init, "\tcgo.SnglGtkCarryFile(%s, snglAsset%d, len(snglAsset%d))\n", strconv.Quote(name), i, i)
+		fmt.Fprintf(&init, "\tsnglGtkCarryFile(%s, snglAsset%d, len(snglAsset%d))\n", strconv.Quote(name), i, i)
 	}
 	fmt.Fprintf(&b, "\nfunc init() {\n%s}\n", init.String())
 	return writeFile(sink, "assets.go", []byte(b.String()))
-}
-
-// reachedLinks are the c.links of the program and of each package whose C
-// it calls, among them the platform's own, whose runtime the protocol calls
-// call: the program imports none of the target's packages, and what it calls
-// of them is what placement wrote.
-func reachedLinks(pkg *ir.Package) []*ir.CLink {
-	out := ir.ReachedCLinks(pkg)
-	add := func(p *ir.Package) {
-		for _, l := range ir.ReachedCLinks(p) {
-			if !slices.Contains(out, l) {
-				out = append(out, l)
-			}
-		}
-	}
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		switch x := n.(type) {
-		case *ir.Call:
-			if x.Func != nil && x.Func.Foreign.Path == ir.CPath {
-				add(x.Func.Pkg)
-			}
-		case *ir.CConvert:
-			if x.Via != nil {
-				add(x.Via.Pkg)
-			}
-		}
-		return nil
-	})
-	return out
 }
 
 func writeFile(sink codegen.Sink, name string, content []byte) error {

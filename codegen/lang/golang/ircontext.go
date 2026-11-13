@@ -498,7 +498,7 @@ func (gc *GoIRContext) StructLit(n *ir.StructLit, fieldStrs []string) string {
 		return "[]byte(nil)"
 	}
 	gc.requireForeignStructImport(n)
-	name := structLitTypeName(n)
+	name := gc.structLitTypeName(n)
 	if sd, ok := n.Type.Decl.(*ir.StructDef); ok && sd.RefBox {
 		return "&" + strings.TrimPrefix(name, "*") + "{" + strings.Join(gc.structLitParts(n, fieldStrs), ", ") + "}"
 	}
@@ -569,6 +569,11 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 			return lines
 		}
 	}
+	// A C call's result converted to Go's type (cCall) is an expression no
+	// statement may discard.
+	if fn := n.Call.Func; fn != nil && fn.Foreign.Path == ir.CPath && !fn.IsCCast() && wrapper(&fn.Foreign, gc.direct()) == nil && fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+		return []string{"_ = " + gc.EvalExpr(n.Call)}
+	}
 	return []string{gc.EvalExpr(n.Call)}
 }
 
@@ -609,7 +614,7 @@ func (gc *GoIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 	// names no package, and requiring one there left it imported and unused.
 	goType := "any"
 	if n.Type != nil {
-		goType = IRTypeToGo(n.Type)
+		goType = typeToGo(n.Type, gc.site())
 	}
 	// `x := nil` is not Go -- an untyped nil has no type to infer one from --
 	// and the declared form says the same thing, since nil is the zero of
@@ -1227,7 +1232,7 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	f := &n.Func.Foreign
 	if gc.Wrapping == "" {
-		f = spelling(f)
+		f = spelling(f, gc.direct())
 	}
 	if f.Path == "" || f.Marked {
 		return "", false
@@ -1782,7 +1787,7 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if ir.IsOptionWrap(n) {
 		return "snglSome(" + gc.EvalExpr(n.Operand) + ")"
 	}
-	goType := IRTypeToGo(n.Type)
+	goType := typeToGo(n.Type, gc.site())
 	operand := gc.EvalExpr(n.Operand)
 	if src, dst, ok := ir.NumericListConversion(n); ok {
 		gc.requireTypeImports(n.Type)
@@ -1959,7 +1964,7 @@ func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
 	if sd == nil || sd.Foreign.Name == "" || sd.Foreign.Marked {
 		return
 	}
-	if p := spelling(&sd.Foreign).Path; p != "" && p != "C" {
+	if p := spelling(&sd.Foreign, gc.direct()).Path; p != "" && p != "C" {
 		gc.RequireImport(p)
 	}
 }
@@ -1967,7 +1972,10 @@ func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
 // TypeImports is every package IRTypeToGo's spelling of t names: a struct
 // declaration's field types are spelled with no expression beside them to
 // have required one.
-func TypeImports(t *ir.Type) []string {
+func TypeImports(t *ir.Type) []string { return typeImports(t, false) }
+
+// typeImports is TypeImports for a build that calls C directly or not.
+func typeImports(t *ir.Type, direct bool) []string {
 	var out []string
 	add := func(p string) {
 		if !slices.Contains(out, p) {
@@ -1983,8 +1991,8 @@ func TypeImports(t *ir.Type) []string {
 		case ClassifyUnit(unitDeclOf(e)) == UnitDuration:
 			add("time")
 		default:
-			if sd, ok := e.Decl.(*ir.StructDef); ok && wrapper(&sd.Foreign) != nil {
-				add(wrapper(&sd.Foreign).Path)
+			if sd, ok := e.Decl.(*ir.StructDef); ok && wrapper(&sd.Foreign, direct) != nil {
+				add(wrapper(&sd.Foreign, direct).Path)
 			} else if ct := ir.CTypeOf(e); ct != nil && strings.Contains(CTypeToGo(ct), "unsafe.") {
 				add("unsafe")
 			} else if sd, ok := e.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked && sd.Foreign.Path != "" && sd.Foreign.Path != ir.CPath {
@@ -1996,7 +2004,7 @@ func TypeImports(t *ir.Type) []string {
 	return out
 }
 
-func structLitTypeName(n *ir.StructLit) string {
+func (gc *GoIRContext) structLitTypeName(n *ir.StructLit) string {
 	if n == nil {
 		return "struct{}"
 	}
@@ -2020,7 +2028,7 @@ func structLitTypeName(n *ir.StructLit) string {
 	// `http.Result{…}` wrote a name the output did not declare while every
 	// other mention of that type wrote `http.Response`.
 	if n.Type != nil && n.Type.Kind == ir.TypeStruct && n.Type.Decl != nil {
-		return IRTypeToGo(n.Type)
+		return typeToGo(n.Type, gc.site())
 	}
 	if name := ExportName(def.Name); name != "" {
 		return name
@@ -2046,11 +2054,11 @@ func structLitTypeName(n *ir.StructLit) string {
 // included, or "" for a function that returns nothing.
 //
 // Nothing is the answer for a nil or void return.
-func goReturnType(ret *ir.Type) string {
+func goReturnType(ret *ir.Type, at site) string {
 	if ret == nil || ret.Kind == ir.TypeVoid {
 		return ""
 	}
-	return " " + IRTypeToGo(ret)
+	return " " + typeToGo(ret, at)
 }
 
 func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
@@ -2070,7 +2078,7 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 		for i, p := range n.Func.Params {
 			params[i] = p.Name + " " + gc.goType(p.Type)
 		}
-		ft := "func(" + strings.Join(params, ", ") + ")" + goReturnType(n.Func.Return)
+		ft := "func(" + strings.Join(params, ", ") + ")" + goReturnType(n.Func.Return, gc.site())
 		m := codegen.ModelReceiver
 		live, body := gc.withLiveModel(n)
 		snapshot := m + " := " + m + "." + snap + "()\n\t\t"
@@ -2093,7 +2101,7 @@ func (gc *GoIRContext) evalLambda(n *ir.Lambda) string {
 	// says nothing, so an event handler reads `func()` and can be assigned to
 	// a host callback field of that type. It used to read `func() any`, which
 	// Go rejected at the assignment and again for the missing return.
-	retType := goReturnType(n.Func.Return)
+	retType := goReturnType(n.Func.Return, gc.site())
 
 	// The body reads its parameters as the locals they are: one sharing a
 	// field's name -- a platform override's `func(on bool)` inlined into a
@@ -2175,17 +2183,17 @@ func (gc *GoIRContext) ForComponent(comp *ir.Component) *GoIRContext {
 	}
 }
 
-// goType is IRTypeToGo(t), with each package that spelling names required
+// goType is gc.goType(t), with each package that spelling names required
 // of the file gc writes.
 func (gc *GoIRContext) goType(t *ir.Type) string {
 	gc.requireTypeImports(t)
-	return typeToGo(t, gc.Wrapping)
+	return typeToGo(t, gc.site())
 }
 
 // requireTypeImports requires of the file gc writes each package
 // IRTypeToGo's spelling of t names, where the output spells it.
 func (gc *GoIRContext) requireTypeImports(t *ir.Type) {
-	for _, p := range TypeImports(t) {
+	for _, p := range typeImports(t, gc.direct()) {
 		if p != gc.Wrapping {
 			gc.RequireImport(p)
 		}
@@ -2193,12 +2201,30 @@ func (gc *GoIRContext) requireTypeImports(t *ir.Type) {
 }
 
 // IRTypeToGo converts an IR type to a Go type string.
-func IRTypeToGo(t *ir.Type) string { return typeToGo(t, "") }
+func IRTypeToGo(t *ir.Type) string { return typeToGo(t, site{}) }
 
-// typeToGo is IRTypeToGo for a file in the Go package own, which names its
-// own types unqualified: a wrapper package (sngl tool cgogen) naming the
-// C struct it declares.
-func typeToGo(t *ir.Type, own string) string {
+// site is where a type is spelled: a file in the Go package own, which names
+// its own types unqualified -- a wrapper package (sngl tool cgogen) naming the
+// C struct it declares -- of a build that calls C directly or not
+// (ir.Package.CallsCDirectly).
+type site struct {
+	own    string
+	direct bool
+}
+
+// site is where gc's file spells a type.
+func (gc *GoIRContext) site() site {
+	return site{own: gc.Wrapping, direct: gc.direct()}
+}
+
+// direct says gc's build calls C directly, so no declaration's Go wrapper is
+// its spelling.
+func (gc *GoIRContext) direct() bool {
+	return gc.Ctx != nil && gc.Ctx.Pkg != nil && gc.Ctx.Pkg.CallsCDirectly
+}
+
+// typeToGo is IRTypeToGo for a file at, which names a type as at says.
+func typeToGo(t *ir.Type, at site) string {
 	if t == nil {
 		return "any"
 	}
@@ -2222,22 +2248,22 @@ func typeToGo(t *ir.Type, own string) string {
 		return "string"
 	case ir.TypeList:
 		if len(t.Elems) > 0 {
-			return "[]" + typeToGo(t.Elems[0], own)
+			return "[]" + typeToGo(t.Elems[0], at)
 		}
 		return "[]any"
 	case ir.TypeMap:
 		if len(t.Elems) == 2 {
-			return "map[" + typeToGo(t.Elems[0], own) + "]" + typeToGo(t.Elems[1], own)
+			return "map[" + typeToGo(t.Elems[0], at) + "]" + typeToGo(t.Elems[1], at)
 		}
 		return "map[any]any"
 	case ir.TypeRef:
 		if len(t.Elems) > 0 {
-			return "*" + typeToGo(t.Elems[0], own)
+			return "*" + typeToGo(t.Elems[0], at)
 		}
 		return "unsafe.Pointer"
 	case ir.TypeOption:
 		if len(t.Elems) > 0 {
-			return "*" + typeToGo(t.Elems[0], own)
+			return "*" + typeToGo(t.Elems[0], at)
 		}
 		return "*any"
 	case ir.TypeStruct:
@@ -2250,7 +2276,7 @@ func typeToGo(t *ir.Type, own string) string {
 		}
 		if isChanType(t) {
 			if len(t.Elems) == 1 {
-				return "chan " + typeToGo(t.Elems[0], own)
+				return "chan " + typeToGo(t.Elems[0], at)
 			}
 			return "chan any"
 		}
@@ -2264,8 +2290,8 @@ func typeToGo(t *ir.Type, own string) string {
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
 			// A C type with a Go wrapper is the wrapper package's.
-			if g := wrapper(&sd.Foreign); g != nil {
-				if g.Path == own {
+			if g := wrapper(&sd.Foreign, at.direct); g != nil {
+				if g.Path == at.own {
 					return g.Name[strings.LastIndexByte(g.Name, '.')+1:]
 				}
 				return g.Name
@@ -2298,7 +2324,7 @@ func typeToGo(t *ir.Type, own string) string {
 				}
 				fb.WriteString(ExportName(f.Name))
 				fb.WriteString(" ")
-				fb.WriteString(typeToGo(f.Type, own))
+				fb.WriteString(typeToGo(f.Type, at))
 			}
 			fb.WriteString(" }")
 			return fb.String()
@@ -2322,7 +2348,7 @@ func typeToGo(t *ir.Type, own string) string {
 		return "any"
 	case ir.TypeFunc:
 		if t.Sig != nil {
-			return irFuncSigToGo(t.Sig, own)
+			return irFuncSigToGo(t.Sig, at)
 		}
 		return "func()"
 	case ir.TypeNull:
@@ -2338,7 +2364,7 @@ func typeToGo(t *ir.Type, own string) string {
 		// position is wrapped by evalConversion, and the wrapper yields the
 		// elements one at a time -- so no list is ever built to be iterated.
 		if len(t.Elems) == 1 {
-			return "func(func(" + typeToGo(t.Elems[0], own) + ") bool)"
+			return "func(func(" + typeToGo(t.Elems[0], at) + ") bool)"
 		}
 		return "func(func(any) bool)"
 	case ir.TypeInstance:
@@ -2482,14 +2508,14 @@ func irLambdaLiteralToGo(n *ir.Lambda) string {
 	return "func(" + strings.Join(params, ", ") + ")" + retType + " {" + body + "}"
 }
 
-func irFuncSigToGo(sig *ir.FuncSig, own string) string {
+func irFuncSigToGo(sig *ir.FuncSig, at site) string {
 	params := make([]string, len(sig.Params))
 	for i, p := range sig.Params {
-		params[i] = typeToGo(p.Type, own)
+		params[i] = typeToGo(p.Type, at)
 	}
 	ret := ""
 	if sig.Return != nil {
-		ret = " " + typeToGo(sig.Return, own)
+		ret = " " + typeToGo(sig.Return, at)
 	}
 	return "func(" + strings.Join(params, ", ") + ")" + ret
 }
@@ -2632,7 +2658,7 @@ func (gc *GoIRContext) EmitFuncDef(fn *ir.Func) []string {
 		params[i] = p.Name + " " + gc.goType(p.Type)
 	}
 	extra := gc.ExtraParam
-	retType := goReturnType(fn.Return)
+	retType := goReturnType(fn.Return, gc.site())
 
 	sig := "func "
 	switch {

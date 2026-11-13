@@ -96,11 +96,12 @@ func callbackCType(t *ir.Type) *ir.CType {
 
 // CallbacksSource is the Go file exporting a dispatcher for each of sigs, in
 // package pkgName, its preamble including what links does so a pointer
-// type's C name resolves. Nil where there is no callback. wrapping says
-// pkgName is a wrapper package (sngl tool cgogen), where the closure a C
-// type crosses into takes it as C spells it: the wrapper's own type for it
-// is an alias of that, and a package naming itself does not compile.
-func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, wrapping bool) []byte {
+// type's C name resolves. Nil where there is no callback. cSpelled says the
+// closure a C type crosses into takes it as C spells it: in a wrapper package
+// (sngl tool cgogen), whose own type for it is an alias of that and which
+// cannot name itself, and in a program calling C directly, which spells every
+// C type as cgo does.
+func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, cSpelled bool) []byte {
 	byName := map[string]*ir.FuncSig{}
 	for _, s := range sigs {
 		byName[callbackName(s)] = s
@@ -184,7 +185,7 @@ func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 		// A closure released already answers C's zero: a callback C calls
 		// after it let the context go finds nothing, as cbind.Dispatch does.
 		closure := IRTypeToGo(ir.FuncOf(sig.Params, sig.Return))
-		if wrapping {
+		if cSpelled {
 			closure = cClosureType(sig)
 		}
 		lookup := "fn, ok := snglClosure(ctx).(" + closure + ")"

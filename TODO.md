@@ -1010,9 +1010,18 @@ reaches it the same way.
    C's sanitized `TestRun` checks leaks. A cycle through counted boxes --
    a closure stored in the var it calls -- is collected at the turn's end
    (`sngl_collect_cycles`, `codegen/lang/c/testdata/run/cycles.txtar`).
-3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
-   come with step 1. `purego` is attempted then, against the open questions
-   below.
+3. **`cgo` becomes `direct`, `wrapper` or `purego`.** The Go language's
+   `cgo` option (`go(cgo="direct")`, `--opt cgo=direct`), a string as
+   win32's `arch` is. `wrapper` and `direct` are done: called directly, the
+   program compiles each c.link's sources itself and calls every C
+   declaration as it calls a `c:` import's, a function no wrapper is written
+   for among them (`design/win32.md`, *Or the program calls C itself*;
+   `testdata/gtk4_go_direct_runs.txtar`, `--opt cgo=direct` runs in
+   `gtk4_test_runs.txt` and `c_win32_test_runs.txt`). A platform's entry and
+   hooks call the runtime through functions of the program's own
+   (`sngl_rt.go`). `purego` is next, for a package whose C is declarations
+   alone: one whose c.link ships sources -- gtk4's and win32's runtimes, until
+   step 6 -- is refused, naming them.
 4. **`pkg/go/gtk4rt` is deleted.** Done with the swap. Its tests went with
    it, and what they held is written as programs in both languages: a box
    laid out as CSS's flex is and a scroll's pictures drawn at their height
@@ -1029,6 +1038,13 @@ reaches it the same way.
    and `type`, and marks its own declarations with it unqualified. A mark
    whose package is not imported names the one library package declaring
    that mark, where exactly one does (`testdata/error_mark_import_hint.sngl`).
+6. **The runtimes become SNGL.** `rt/`'s C (about 4,000 lines for gtk4 and
+   4,400 for win32) is ordinary GTK and Win32 calls SNGL could make through
+   `c.native` declarations, piece by piece in both languages. What must stay
+   C is small: the rich-text span's GObject subclass (`markup.c`). The
+   layout managers take function pointers (`gtk_custom_layout_new`) and
+   win32's window procedures are callbacks, both of which SNGL hands C. Once
+   it lands, `purego` reaches gtk4 and win32.
 
 ### Open questions
 

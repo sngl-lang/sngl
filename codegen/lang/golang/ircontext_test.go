@@ -435,7 +435,7 @@ func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
 // A concrete host type reaches the Go printer as a native type, spelled as
 // itself in a result clause.
 func TestGoReturnType_Native(t *testing.T) {
-	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject")); got != " fyne.CanvasObject" {
+	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject"), site{}); got != " fyne.CanvasObject" {
 		t.Errorf("goReturnType(native) = %q; want %q", got, " fyne.CanvasObject")
 	}
 }

@@ -116,10 +116,18 @@ component platform(
     // compiler for it, and `sngl run` runs the program under Wine.
     const arch          string = "amd64",
     // What its generated code introduces beside a program's names: the
-    // runtime's prefix and the program's entry, and the annotations
-    // windows.h defines as macros.
+    // runtime's prefix, the program's entry, the runtime calls a Go program
+    // makes as functions of its own (codegen/platform/win32's shimFile), and
+    // the annotations windows.h defines as macros.
     const reservedNames list[string] = [
         "sngl_win32",
+        "snglWin32Hold",
+        "snglWin32Present",
+        "snglWin32Run",
+        "snglWin32Step",
+        "snglWin32Snapshot",
+        "snglWin32CarryFile",
+        "snglPost",
         "sngl_build",
         "sngl_main",
         "main",

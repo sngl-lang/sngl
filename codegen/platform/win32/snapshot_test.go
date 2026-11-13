@@ -231,7 +231,7 @@ func snapshot(t *testing.T, src string, width, height int) image.Image {
 		}
 		entry, call := "main.c", "sngl_win32_snapshot(argv[1]"
 		if id == "go" {
-			entry, call = "main.go", "SnglWin32Snapshot(os.Args[1]"
+			entry, call = "main.go", "snglWin32Snapshot(os.Args[1]"
 		}
 		if !bytes.Contains(sink.Files()[entry], []byte(call)) {
 			t.Fatalf("%s was not built for a snapshot: its entry draws nothing", entry)

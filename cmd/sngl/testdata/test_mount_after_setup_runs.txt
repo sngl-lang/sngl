@@ -98,7 +98,7 @@ sha256:03bbfc1527fb2c0355463bf68cf06f7e
   ]
 }
 -- testrun/gtk4/go/app.sngl/box/1 --
-sha256:22aa42d5d92ea77d51270d0790a7ce24
+sha256:5122684ed3268fc8af838225b93c335e
 {
   "results": [
     {

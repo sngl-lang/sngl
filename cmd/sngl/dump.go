@@ -415,8 +415,7 @@ func dumpPrepare(cmd *cobra.Command, pkg *ir.Package, target build.Target) error
 	if err := build.ApplyCLIOpts(target.Options, build.ParseCLIOpts(optSlice)); err != nil {
 		return err
 	}
-	build.PrepareTarget(pkg, target)
-	return nil
+	return build.PrepareTarget(pkg, target)
 }
 
 func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (build.Target, error) {

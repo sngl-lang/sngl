@@ -551,25 +551,5 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	_ = m.View()
 	return m
 }
--- out/go/bubbletea/names.c --
-#include <stdio.h>
-
-#include "names.h"
-
-const char *sngl_name(int i) {
-	static char buf[32];
-	snprintf(buf, sizeof buf, "n\xc3\xa9" "e %d", i);
-	return buf;
-}
-
-int sngl_even(int i) {
-	return i % 2 == 0;
-}
--- out/go/bubbletea/names.h --
-// A name for i, in a buffer the next call overwrites.
-const char *sngl_name(int i);
-
-// 1 for an even i, 0 for an odd one.
-int sngl_even(int i);
 -- run/go/bubbletea --
 pass sha256:dcf06336e86279db3d9abbd7af181251

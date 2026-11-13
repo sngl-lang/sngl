@@ -68,7 +68,12 @@ type Package struct {
 	// every ordinary build, where a window is the root and a component is
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
-	Contexts      []*Context
+	// CallsCDirectly says a Go build calls every C declaration from the
+	// program, its Go wrapper's spelling (`#[go.native]` beside `#[c.native]`)
+	// ignored: the Go language's `cgo` option set to "direct". The build sets
+	// it on its copy, and lowering and the Go emitter read it there.
+	CallsCDirectly bool `json:",omitempty"`
+	Contexts       []*Context
 	// Symbols is the scope chain the package's names resolve through, an
 	// index over declarations a dump writes where they stand.
 	Symbols *SymbolTable `json:"-"`
@@ -584,6 +589,39 @@ func ReachedCLinksExcept(pkg *Package, skip func(*Package) bool) []*CLink {
 		}
 	}
 	walk(pkg)
+	return out
+}
+
+// CalledCLinks are the c.links of pkg and its imports (ReachedCLinks), and of
+// each package whose C its code calls, among them a platform's own, whose
+// runtime the protocol calls call: a program imports none of its target's
+// packages, and what it calls of them is what placement wrote.
+func CalledCLinks(pkg *Package) []*CLink { return CalledCLinksExcept(pkg, nil) }
+
+// CalledCLinksExcept is CalledCLinks without the links of each package skip
+// reports (ReachedCLinksExcept).
+func CalledCLinksExcept(pkg *Package, skip func(*Package) bool) []*CLink {
+	out := ReachedCLinksExcept(pkg, skip)
+	add := func(p *Package) {
+		for _, l := range ReachedCLinksExcept(p, skip) {
+			if !slices.Contains(out, l) {
+				out = append(out, l)
+			}
+		}
+	}
+	_ = Walk(pkg, func(n Node) error {
+		switch x := n.(type) {
+		case *Call:
+			if x.Func != nil && x.Func.Foreign.Path == CPath {
+				add(x.Func.Pkg)
+			}
+		case *CConvert:
+			if x.Via != nil {
+				add(x.Via.Pkg)
+			}
+		}
+		return nil
+	})
 	return out
 }
 

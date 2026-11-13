@@ -85,6 +85,7 @@ func intrinsicMethod(fn *ir.Func) bool {
 }
 
 func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, added *[]*ir.Func) {
+	copies := map[*ir.Func]*ir.Func{}
 	for len(*roots) > 0 {
 		root := (*roots)[0]
 		*roots = (*roots)[1:]
@@ -98,15 +99,62 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 			case *ir.Ident:
 				fn, _ = x.Sym.(*ir.Func)
 			}
+			if c := copies[fn]; c != nil {
+				repoint(e, c)
+				return nil
+			}
 			if !wanted(fn) {
 				return nil
 			}
 			have[fn] = true
+			// The checked library's own declaration, which a body spliced
+			// after the build's copy was made still calls: the program's is a
+			// copy, since the passes after this one rename and fold what the
+			// program declares.
+			if fn.Frozen {
+				c := thaw(fn)
+				copies[fn], have[c] = c, true
+				repoint(e, c)
+				fn = c
+			}
 			*added = append(*added, fn)
 			// A promoted helper may call a second one.
 			push(fn.Block)
 			return nil
 		})
+	}
+}
+
+// thaw is a copy of the frozen fn the build may write: its parameters and
+// body its own, every declaration it names shared.
+func thaw(fn *ir.Func) *ir.Func {
+	c := ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func
+	c.Frozen = false
+	params := map[ir.Symbol]*ir.Param{}
+	c.Params = make([]*ir.Param, len(fn.Params))
+	for i, p := range fn.Params {
+		cp := *p
+		c.Params[i] = &cp
+		params[p] = &cp
+	}
+	_ = ir.Walk(c.Block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if p := params[id.Sym]; p != nil {
+				id.Sym = p
+			}
+		}
+		return nil
+	})
+	return c
+}
+
+// repoint makes e, a call of a function or a reference to one, name fn.
+func repoint(e ir.Expr, fn *ir.Func) {
+	switch x := e.(type) {
+	case *ir.Call:
+		x.Func = fn
+	case *ir.Ident:
+		x.Sym = fn
 	}
 }
 

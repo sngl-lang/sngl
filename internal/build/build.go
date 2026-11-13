@@ -134,7 +134,9 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
 		codegen.SetOptionField(target.Options, "projectDir", o.Dir)
 	}
-	PrepareTarget(tpkg, target)
+	if err := PrepareTarget(tpkg, target); err != nil {
+		return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
+	}
 	installRun(tpkg, target)
 
 	// Ahead of the optimizer, which has no reason to keep a bodyless host it
@@ -282,15 +284,17 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 }
 
 // PrepareTarget is what target's options make of pkg before it is optimized:
-// the root a harness renders, and no tests for a build that runs none. Before
+// the root a harness renders, no tests for a build that runs none, and C called
+// as Go's `cgo` option says (ApplyCgo). Before
 // optimize, not after: the root decides what the inliner flattens into what,
 // so the isolation has to be in place before anything moves. `sngl dump` does
 // the same, or it lowers a tree no build makes.
-func PrepareTarget(pkg *ir.Package, target Target) {
+func PrepareTarget(pkg *ir.Package, target Target) error {
 	IsolateRootComponent(pkg, codegen.OptionString(target.Options, "rootComponent"))
 	if !optionBool(target.Options, "test") && !IsInterpreted(target) {
 		dropTests(pkg)
 	}
+	return ApplyCgo(pkg, target)
 }
 
 // LowerOptions is what lower.Lower is handed for target on plat.

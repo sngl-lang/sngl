@@ -35,6 +35,10 @@ stdout 'ok +9 tests, 0 failures'
 env SNGL_UPDATE_SNAPSHOTS=
 sngl test --platform=gtk4 --language=go widgets.sngl
 stdout 'ok +9 tests, 0 failures'
+# Called directly (`cgo=direct`), Go compiles the runtime beside the program
+# and draws the same.
+sngl test --platform=gtk4 --language=go --opt cgo=direct widgets.sngl
+stdout 'ok +9 tests, 0 failures'
 
 # A root component's windows are the application's, not children of the box
 # it renders them into: a window under an `if` comes and goes with it, its
@@ -740,7 +744,7 @@ sha256:0796e8f4fdf2226911117757bb2a05bc
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:a3050a9f60d9167b273befea8f7cb525
+sha256:c2a64913391ee4efe0ceea811f08469a
 {
   "results": [
     {
@@ -754,7 +758,7 @@ sha256:a3050a9f60d9167b273befea8f7cb525
   ]
 }
 -- testrun/gtk4/go/canvas.sngl/main/1 --
-sha256:0f0604d2cdb0e9a3e32db3708659b6b3
+sha256:30c971b1da3a810f821aa0878fc58869
 {
   "results": [
     {
@@ -764,7 +768,7 @@ sha256:0f0604d2cdb0e9a3e32db3708659b6b3
   ]
 }
 -- testrun/gtk4/go/keys.sngl/app/1 --
-sha256:0157f0cf0c8242a36cf88f5295748f76
+sha256:d4524711b7ed49004d111309750bab82
 {
   "results": [
     {
@@ -774,7 +778,7 @@ sha256:0157f0cf0c8242a36cf88f5295748f76
   ]
 }
 -- testrun/gtk4/go/menus.sngl/app/1 --
-sha256:2925918422a3425efd6d1d19623de01f
+sha256:a7f2442a779c03b5df2e9974b11f8f9c
 {
   "results": [
     {
@@ -791,7 +795,7 @@ sha256:2925918422a3425efd6d1d19623de01f
   }
 }
 -- testrun/gtk4/go/pictures.sngl/board/1 --
-sha256:bfe5d0c5c351f0ed8e8e91625d37dd81
+sha256:c1b48668df035d1ccc2ba0280f1a3ace
 {
   "results": [
     {
@@ -801,7 +805,7 @@ sha256:bfe5d0c5c351f0ed8e8e91625d37dd81
   ]
 }
 -- testrun/gtk4/go/scroll.sngl/main/1 --
-sha256:63ab07c7c5ecdbc6c9608e99b1252de0
+sha256:89b972475957cc080bbd4cd9b671678e
 {
   "results": [
     {
@@ -815,7 +819,7 @@ sha256:63ab07c7c5ecdbc6c9608e99b1252de0
   ]
 }
 -- testrun/gtk4/go/snap.sngl/_/1 --
-sha256:967534d2c5ded3d429b522ed899d72ed
+sha256:39f58ffba1f04a179a48ad2ee51d84f0
 {
   "results": [
     {
@@ -825,7 +829,7 @@ sha256:967534d2c5ded3d429b522ed899d72ed
   ]
 }
 -- testrun/gtk4/go/snap.sngl/main/1 --
-sha256:b1e13a0351531df8ca3757a3e84bf9c2
+sha256:e3201823378ab38e6fe430a2078ec8b5
 {
   "results": [
     {
@@ -835,7 +839,17 @@ sha256:b1e13a0351531df8ca3757a3e84bf9c2
   ]
 }
 -- testrun/gtk4/go/widgets.sngl/calendar/1 --
-sha256:e2781a636a40bcfe04b658ec69972fc3
+sha256:ea6368f9a052963c7cc8345ed03c81e1
+{
+  "results": [
+    {
+      "Desc": "Datepicker",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/widgets.sngl/calendar/2 --
+sha256:2886ddad2809fd63f3db5803a8dc4851
 {
   "results": [
     {
@@ -845,7 +859,45 @@ sha256:e2781a636a40bcfe04b658ec69972fc3
   ]
 }
 -- testrun/gtk4/go/widgets.sngl/form/1 --
-sha256:f6b2f39c291930ede6b18154da01f9d2
+sha256:3e7dc85dbf5d58fc54fa7e57f195fe90
+{
+  "results": [
+    {
+      "Desc": "Card",
+      "Passed": true
+    },
+    {
+      "Desc": "Checkbox",
+      "Passed": true
+    },
+    {
+      "Desc": "DrawsTheWidgets",
+      "Passed": true
+    },
+    {
+      "Desc": "Input",
+      "Passed": true
+    },
+    {
+      "Desc": "InputActivates",
+      "Passed": true
+    },
+    {
+      "Desc": "Radio",
+      "Passed": true
+    },
+    {
+      "Desc": "Select",
+      "Passed": true
+    },
+    {
+      "Desc": "Toggle",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/widgets.sngl/form/2 --
+sha256:3b608d585e148f3c77afdfb447aeb638
 {
   "results": [
     {
@@ -883,7 +935,7 @@ sha256:f6b2f39c291930ede6b18154da01f9d2
   ]
 }
 -- testrun/gtk4/go/windows.sngl/app/1 --
-sha256:b843f6754129b700adea9be82602bba2
+sha256:67ae34f4a668cab8143cf402eb414e9e
 {
   "results": [
     {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+
+	"duckfam.us/sngl/ir"
 )
 
 // Generate is what plat writes for req, and beside it what req's language
@@ -25,11 +27,22 @@ func Generate(plat PlatformGenerator, req *Request, sink Sink) error {
 	if err != nil {
 		return err
 	}
+	// A c.link's sources are the same for every program, so a golden holds
+	// their digest, as a C build's (gtk4's generateC).
+	shipped := map[string]bool{}
+	for _, l := range ir.CalledCLinks(req.Pkg) {
+		for _, src := range l.Sources {
+			shipped[src.Name] = true
+		}
+	}
 	for name, data := range srcs {
 		if _, dup := files[name]; dup {
 			return fmt.Errorf("the program ships %s, which the platform also generates", name)
 		}
 		files[name] = data
+		if shipped[name] {
+			MarkBoilerplate(sink, name)
+		}
 	}
 	for name := range mem.Boilerplate() {
 		MarkBoilerplate(sink, name)

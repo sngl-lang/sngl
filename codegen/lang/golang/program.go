@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -57,13 +58,17 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 	b.WriteString(EmitMergeFuncs(pkg.MergeStructs, pkg.MergeSets))
 	b.WriteString(EmitUnitTypeDecls(a.Units))
 	b.WriteString(EmitEnumTypeDecls(a.Enums))
-	for _, sd := range a.Structs {
+	structs := a.Structs
+	if pkg.CallsCDirectly {
+		structs = append(structs, libraryCStructs(pkg)...)
+	}
+	for _, sd := range structs {
 		fmt.Fprintf(&b, "type %s struct {\n", ExportName(sd.Name))
 		for _, fd := range sd.Fields {
-			for _, p := range TypeImports(fd.Type) {
+			for _, p := range typeImports(fd.Type, pkg.CallsCDirectly) {
 				gc.RequireImport(p)
 			}
-			fmt.Fprintf(&b, "\t%s %s\n", ExportName(fd.Name), IRTypeToGo(fd.Type))
+			fmt.Fprintf(&b, "\t%s %s\n", ExportName(fd.Name), typeToGo(fd.Type, site{direct: pkg.CallsCDirectly}))
 		}
 		b.WriteString("}\n\n")
 	}
@@ -71,10 +76,10 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 
 	b.WriteString("type snglState struct {\n")
 	for _, v := range pkg.Vars {
-		for _, p := range TypeImports(v.Type) {
+		for _, p := range typeImports(v.Type, pkg.CallsCDirectly) {
 			gc.RequireImport(p)
 		}
-		fmt.Fprintf(&b, "\t%s %s\n", gc.StateFieldName(v.Name), IRTypeToGo(v.Type))
+		fmt.Fprintf(&b, "\t%s %s\n", gc.StateFieldName(v.Name), typeToGo(v.Type, site{direct: pkg.CallsCDirectly}))
 	}
 	fmt.Fprintf(&b, "}\n\nvar %s = &snglState{}\n", gc.RecvName())
 
@@ -256,4 +261,36 @@ func placedAlert(gc *GoIRContext, method string, args []ir.CallArg) []string {
 	gc.RequireImport("fmt")
 	gc.RequireImport("os")
 	return []string{fmt.Sprintf("fmt.Fprintln(os.Stderr, %s+\": \"+%s)", variant, gc.EvalExpr(args[0].Value))}
+}
+
+// libraryCStructs are the C structs with fields (ir.StructDef.IsCStruct)
+// another package declares that a program calling C directly reaches: a
+// wrapper package declares each for a program calling through it, and one
+// calling C itself declares its own, as it does a C struct it declares.
+func libraryCStructs(pkg *ir.Package) []*ir.StructDef {
+	var out []*ir.StructDef
+	var add func(t *ir.Type)
+	add = func(t *ir.Type) {
+		t.Any(func(e *ir.Type) bool {
+			sd := ir.CStructOf(e)
+			if sd == nil || sd.Pkg == pkg || slices.Contains(out, sd) {
+				return false
+			}
+			out = append(out, sd)
+			for _, f := range sd.Fields {
+				add(f.Type)
+			}
+			return false
+		})
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if e, ok := n.(ir.Expr); ok {
+			add(e.ExprType())
+		}
+		return nil
+	})
+	for _, v := range pkg.Vars {
+		add(v.Type)
+	}
+	return out
 }

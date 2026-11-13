@@ -668,7 +668,7 @@ sha256:6ca072681e734eb9beeaaf77456febfd
   }
 }
 -- testrun/win32/go/controls.sngl/main/1 --
-sha256:0c625f6eaeca91abfadb51f803fa6c3e
+sha256:66085e2c6e86d327872db807c1a3fc3d
 {
   "results": [
     {
@@ -690,7 +690,7 @@ sha256:0c625f6eaeca91abfadb51f803fa6c3e
   ]
 }
 -- testrun/win32/go/data.sngl/main/1 --
-sha256:81c2c59bb6d4403be716dbd4161f92f5
+sha256:44fe2c91e826d6bb77fa01f5a0e748d3
 {
   "results": [
     {
@@ -712,7 +712,7 @@ sha256:81c2c59bb6d4403be716dbd4161f92f5
   ]
 }
 -- testrun/win32/go/image.sngl/main/1 --
-sha256:fea6d7f6803e6a55f3a971014e65c3f4
+sha256:13eab1be30c9f90c4a72d9652e310e5c
 {
   "results": [
     {
@@ -730,7 +730,7 @@ sha256:fea6d7f6803e6a55f3a971014e65c3f4
   ]
 }
 -- testrun/win32/go/layout.sngl/main/1 --
-sha256:7fb3d47cf9d7a399fcbed55d1117dd38
+sha256:f3f8d63c0085444e2927dcc1b5e4f1e4
 {
   "results": [
     {
@@ -744,7 +744,7 @@ sha256:7fb3d47cf9d7a399fcbed55d1117dd38
   ]
 }
 -- testrun/win32/go/menus.sngl/_/1 --
-sha256:fe0e68d629d2346bba02ba77440ed8f5
+sha256:b0ba3e259df1fe2c559ec76918eafde5
 {
   "results": [
     {
@@ -754,7 +754,7 @@ sha256:fe0e68d629d2346bba02ba77440ed8f5
   ]
 }
 -- testrun/win32/go/menus.sngl/main/1 --
-sha256:cc6c60f4987450c6973a46cbb90879ed
+sha256:8653d5c8db4bc39e73a3765c6188568d
 {
   "results": [
     {
@@ -768,7 +768,7 @@ sha256:cc6c60f4987450c6973a46cbb90879ed
   ]
 }
 -- testrun/win32/go/panels.sngl/main/1 --
-sha256:52c2fda150ce35d6a4b3e1156ffe6134
+sha256:49a9cc6eef0880c619ba4b3bbd9a2068
 {
   "results": [
     {

@@ -224,7 +224,8 @@ type Features struct {
 	// language is the language node's #[gen.name], which is also the scheme
 	// its native marks spell a declaration in: a C declaration with a
 	// spelling there beside its C one is called through it, and CMarshal
-	// leaves the call alone (cWrapped).
+	// leaves the call alone (cWrapped). Empty for a Go build calling C
+	// directly (ir.Package.CallsCDirectly).
 	language string
 
 	// connect is the platform node's #[gen.protocol(connect)], which
