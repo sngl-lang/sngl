@@ -1,7 +1,6 @@
 package checker
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"slices"
@@ -179,7 +178,11 @@ func (c *checker) resolveMacro(attr ast.MacroAttr) (uri string, fn *ir.Func, ok 
 	}
 	nsSym, found := c.scope.Lookup(attr.Alias)
 	if !found {
-		c.error(attr.Pos, "unknown macro package %q: import it with import %q", attr.Alias, macroImportHint(attr.Alias))
+		if hint := macroImportHint(attr.Alias, attr.Name); hint != "" {
+			c.error(attr.Pos, "unknown macro package %q: import it with import %q", attr.Alias, hint)
+		} else {
+			c.error(attr.Pos, "unknown macro package %q: nothing is imported as %s, and no library package declares a mark %s.%s", attr.Alias, attr.Alias, attr.Alias, attr.Name)
+		}
 		return "", nil, false
 	}
 	ns, isNS := nsSym.(*ir.Namespace)
@@ -517,22 +520,23 @@ func MacroIsImplemented(pkg, name string) bool {
 	return ok
 }
 
-// macroImportHint is the import a mark's alias most likely wanted, for the
-// error that says the alias names nothing: the one package declaring marks
-// the compiler implements whose last element is the alias (`c` is
-// sngl:x/c, `go` sngl:language/go), and otherwise `sngl:<alias>`.
-func macroImportHint(alias string) string {
+// macroImportHint is the import a mark written with an alias nothing imports
+// wanted: the one package declaring a mark of that name the compiler
+// implements whose path is the alias or ends in it, so `c.native` is
+// sngl:x/c and `go.native` sngl:language/go. It is empty where no package or
+// more than one does, which a diagnostic says rather than guess.
+func macroImportHint(alias, name string) string {
 	found := ""
 	for k := range markImpls {
-		if k.pkg != alias && !strings.HasSuffix(k.pkg, "/"+alias) || k.pkg == found {
+		if k.name != name || k.pkg != alias && !strings.HasSuffix(k.pkg, "/"+alias) {
 			continue
 		}
 		if found != "" {
-			return "sngl:" + alias
+			return ""
 		}
-		found = k.pkg
+		found = "sngl:" + k.pkg
 	}
-	return "sngl:" + cmp.Or(found, alias)
+	return found
 }
 
 // pkgURIOf names a package the way an import writes it, for a diagnostic about

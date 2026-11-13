@@ -1,9 +1,14 @@
-// A mark whose package is not imported is refused with the import it most
-// likely wanted: the library package declaring marks whose last element is
-// the alias, which for `c` is sngl:x/c and for `go` sngl:language/go.
+// A mark whose package is not imported is refused with the import it wanted:
+// the one library package declaring a mark of that name whose path is the
+// alias or ends in it, which for `c.native` is sngl:x/c and for `go.native`
+// sngl:language/go. Where no package declares the mark, the refusal says so
+// rather than name a package that would not resolve it either.
 
 #[c.native("puts")] // ERROR(check) "unknown macro package \"c\": import it with import \"sngl:x/c\""
 func puts(s string)
 
 #[go.native("fmt", "Println")] // ERROR(check) "import it with import \"sngl:language/go\""
 func println(s string)
+
+#[c.nosuch] // ERROR(check) "unknown macro package \"c\": nothing is imported as c, and no library package declares a mark c.nosuch"
+func exit(code int)
