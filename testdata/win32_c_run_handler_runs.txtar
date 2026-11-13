@@ -174,6 +174,10 @@ static void s___effects0_settle(void);
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
+static void s___ref_bool__release(void *p);
+static void s___ref_bool__rekeep(void *p);
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
+static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void *s___lambda0_caps__env__keep(const void *p);
 static void s___lambda0_caps__env__drop(void *p);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
@@ -295,13 +299,34 @@ static bool *sngl_list_bool_at(sngl_list_bool l, int64_t i) {
 	return &l.data[i];
 }
 
+static void s___ref_bool__release(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static void s___ref_bool__rekeep(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
+	v.visible__inst0 = ((s___ref_bool *)sngl_counted_retain(v.visible__inst0));
+	return v;
+}
+
+static void s___lambda0_caps__drop(s___lambda0_caps v) {
+	sngl_counted_release(v.visible__inst0);
+}
+
 static void *s___lambda0_caps__env__keep(const void *p) {
 	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	e->caps = s___lambda0_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda0_caps__env__drop(void *p) {
 	s___lambda0_caps__env *e = p;
+	s___lambda0_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -512,7 +537,7 @@ static void sngl_init(void) {
 	s_n = 0;
 	s_stopped = false;
 	s_handle__inst0 = 0;
-	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep))));
 	s___effect0_key = 0;
 	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
 	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
@@ -608,4 +633,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:cd2bc5161decf131b9cbbe2b95099bbe
+pass sha256:e54e6a9926c91fa3e3601b2533027acd

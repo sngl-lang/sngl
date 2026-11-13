@@ -85,17 +85,42 @@ typedef struct s_platform_win32__Look {
 
 
 static void s___lambda0(s___lambda0_caps state, bool __visible);
+static void s___ref_bool__release(void *p);
+static void s___ref_bool__rekeep(void *p);
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
+static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void *s___lambda0_caps__env__keep(const void *p);
 static void s___lambda0_caps__env__drop(void *p);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
 
+static void s___ref_bool__release(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static void s___ref_bool__rekeep(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
+	v.visible__inst0 = ((s___ref_bool *)sngl_counted_retain(v.visible__inst0));
+	return v;
+}
+
+static void s___lambda0_caps__drop(s___lambda0_caps v) {
+	sngl_counted_release(v.visible__inst0);
+}
+
 static void *s___lambda0_caps__env__keep(const void *p) {
 	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	e->caps = s___lambda0_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda0_caps__env__drop(void *p) {
 	s___lambda0_caps__env *e = p;
+	s___lambda0_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -135,7 +160,7 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_cap = 2;
-	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep))));
 }
 
 static void sngl_build(void) {
@@ -578,6 +603,6 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/c/win32 --
-pass sha256:461647a6daab7a619e09deeb3f18c20f
+pass sha256:7b622ede7703faa810dd41a45a21f54c
 -- run/go/bubbletea --
 pass sha256:12a7dab925f58b6228eb5ed6e7d24217

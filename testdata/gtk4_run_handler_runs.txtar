@@ -170,6 +170,10 @@ static void s___effects0_settle(void);
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
+static void s___ref_bool__release(void *p);
+static void s___ref_bool__rekeep(void *p);
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
+static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void *s___lambda0_caps__env__keep(const void *p);
 static void s___lambda0_caps__env__drop(void *p);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
@@ -291,13 +295,34 @@ static bool *sngl_list_bool_at(sngl_list_bool l, int64_t i) {
 	return &l.data[i];
 }
 
+static void s___ref_bool__release(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static void s___ref_bool__rekeep(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
+	v.shown = ((s___ref_bool *)sngl_counted_retain(v.shown));
+	return v;
+}
+
+static void s___lambda0_caps__drop(s___lambda0_caps v) {
+	sngl_counted_release(v.shown);
+}
+
 static void *s___lambda0_caps__env__keep(const void *p) {
 	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	e->caps = s___lambda0_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda0_caps__env__drop(void *p) {
 	s___lambda0_caps__env *e = p;
+	s___lambda0_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -506,7 +531,7 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_n = 0;
-	s_shown = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_shown = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep))));
 	s_stopped = false;
 	s___effect0_key = 0;
 	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
@@ -835,6 +860,6 @@ func main() {
 	}
 }
 -- run/c/gtk4 --
-pass sha256:3dcfbe503d484166897e2a7b82a33591
+pass sha256:15a78482554f5dfe3cd91da9a6788e1b
 -- run/go/gtk4 --
 pass sha256:4377578c90ec9cd84c1a601acfbd6d94

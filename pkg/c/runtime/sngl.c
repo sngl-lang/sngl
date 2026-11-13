@@ -145,6 +145,7 @@ void *sngl_keep_copy(const void *p, size_t n) {
 	return q;
 }
 
+
 int64_t sngl_kept_blocks(void) {
 	return (int64_t)sngl_kept_live;
 }
@@ -208,8 +209,103 @@ void sngl_turn_leave(void) {
 	}
 }
 
+/* A counted block's count, how it gives back what it holds and keeps it
+ * again, and whether it was given back.
+ * It is ahead of what it holds. */
+typedef union sngl_counted {
+	struct {
+		int64_t count;
+		void (*release)(void *);
+		void (*rekeep)(void *);
+		bool gone;
+	} h;
+	max_align_t align;
+} sngl_counted;
+
+/* The counted blocks no holder has taken, which the turn's end gives back
+ * if none has by then. */
+static sngl_counted **sngl_pending;
+static size_t sngl_pending_len, sngl_pending_cap;
+
+static void sngl_pend(sngl_counted *c) {
+	if (sngl_pending_len == sngl_pending_cap) {
+		size_t cap = sngl_pending_cap == 0 ? 16 : sngl_pending_cap * 2;
+		sngl_counted **grown = realloc(sngl_pending, cap * sizeof *grown);
+		if (grown == NULL) {
+			sngl_panic("out of memory");
+		}
+		sngl_pending = grown;
+		sngl_pending_cap = cap;
+	}
+	sngl_pending[sngl_pending_len++] = c;
+}
+
+/* sngl_undrop takes p, dropped this turn, back: kept, and not freed as the
+ * turn ends. */
+static void sngl_undrop(void *p) {
+	for (size_t i = 0; i < sngl_dropped_len; i++) {
+		if (sngl_dropped[i] == p) {
+			sngl_dropped[i] = sngl_dropped[--sngl_dropped_len];
+			sngl_track((uintptr_t)p);
+			return;
+		}
+	}
+}
+
+/* sngl_give_back gives back c and what it holds, freed as the turn ends. */
+static void sngl_give_back(sngl_counted *c) {
+	c->h.gone = true;
+	c->h.release(c + 1);
+	sngl_drop(c);
+}
+
+void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *)) {
+	sngl_counted *c = sngl_keep_alloc(sizeof(sngl_counted) + n);
+	c->h.count = 0;
+	c->h.release = release;
+	c->h.rekeep = rekeep;
+	c->h.gone = false;
+	memcpy(c + 1, p, n);
+	sngl_pend(c);
+	return c + 1;
+}
+
+void *sngl_counted_retain(void *p) {
+	if (p == NULL) {
+		return p;
+	}
+	sngl_counted *c = (sngl_counted *)p - 1;
+	if (c->h.gone) {
+		/* Let go of by its last holder this turn, and taken again: what
+		 * it held is still there to keep anew. */
+		sngl_undrop(c);
+		c->h.rekeep(p);
+		c->h.gone = false;
+	}
+	c->h.count++;
+	return p;
+}
+
+void sngl_counted_release(void *p) {
+	if (p == NULL) {
+		return;
+	}
+	sngl_counted *c = (sngl_counted *)p - 1;
+	if (--c->h.count <= 0 && !c->h.gone) {
+		sngl_give_back(c);
+	}
+}
+
 void sngl_turn_end(void) {
 	sngl_depth = 0;
+	/* What the turn made and no holder took is the turn's. Giving one back
+	 * gives back what it holds, which may be another's last hold. */
+	while (sngl_pending_len > 0) {
+		sngl_counted *c = sngl_pending[--sngl_pending_len];
+		if (c->h.count <= 0 && !c->h.gone) {
+			sngl_give_back(c);
+		}
+	}
 	for (size_t i = 0; i < sngl_dropped_len; i++) {
 		free(sngl_dropped[i]);
 	}

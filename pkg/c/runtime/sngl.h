@@ -61,6 +61,18 @@ void sngl_drop(const void *p);
 void *sngl_keep_copy(const void *p, size_t n);
 int64_t sngl_kept_blocks(void);
 
+/* A counted block is shared by every holder of it, a var a closure writes
+ * boxed: sngl_counted_new is a kept copy of the n bytes at p, which no
+ * holder holds yet; release gives back what it holds, and rekeep keeps it
+ * again. sngl_counted_retain is a holder taking p, and sngl_counted_release
+ * one letting go: the last to let go gives it back, as a holder's drop
+ * does, and one taking it again the same turn keeps it again. One the turn
+ * made and no holder took is given back as the turn ends, as a string the
+ * turn made is. */
+void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *));
+void *sngl_counted_retain(void *p);
+void sngl_counted_release(void *p);
+
 /* sngl_heap_copy is a copy of the n bytes at p on the heap, which outlives
  * every turn: a callback's context, which its release frees. */
 void *sngl_heap_copy(const void *p, size_t n);

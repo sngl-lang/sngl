@@ -296,15 +296,23 @@ static void sngl_map_string____child0__inst__drop(sngl_map_string____child0__ins
 static void s___snglTeardown(void);
 static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_fn_void__void __on0);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
+static void s___ref_func__release(void *p);
+static void s___ref_func__rekeep(void *p);
+static void sngl_fn_void__void__drop(sngl_fn_void__void v);
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
+static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void *s___lambda0_caps__env__keep(const void *p);
 static void s___lambda0_caps__env__drop(void *p);
 static void s___lambda0(s___lambda0_caps state);
 static void s___child0__set___p0(s___child0__inst * __self, s___anon_id_elem_c6a818 __v);
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v);
-static void sngl_fn_void__void__drop(sngl_fn_void__void v);
 static void s___child0__destroy(s___child0__inst * __self);
 static void s___lambda1(s___lambda1_caps state, bool __visible);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
+static void s___ref_bool__release(void *p);
+static void s___ref_bool__rekeep(void *p);
+static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v);
+static void s___lambda1_caps__drop(s___lambda1_caps v);
 static void *s___lambda1_caps__env__keep(const void *p);
 static void s___lambda1_caps__env__drop(void *p);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
@@ -554,17 +562,44 @@ static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
 	return v;
 }
 
+static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
+	sngl_env_drop(v.env);
+}
+
+static void s___ref_func__release(void *p) {
+	s___ref_func *b = p;
+	sngl_fn_void__void__drop(b->value);
+	(void)b;
+}
+
+static void s___ref_func__rekeep(void *p) {
+	s___ref_func *b = p;
+	b->value = sngl_fn_void__void__keep(b->value);
+	(void)b;
+}
+
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
 	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
+	v.__prop___on0 = ((s___ref_func *)sngl_counted_retain(v.__prop___on0));
+	return v;
+}
+
+static void s___lambda0_caps__drop(s___lambda0_caps v) {
+	sngl_counted_release(v.__prop___on0);
+}
+
 static void *s___lambda0_caps__env__keep(const void *p) {
 	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	e->caps = s___lambda0_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda0_caps__env__drop(void *p) {
 	s___lambda0_caps__env *e = p;
+	s___lambda0_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -581,10 +616,6 @@ static void sngl_dispatch_void__void(void *ctx) {
 
 static void sngl_release(void *ctx) {
 	sngl_closure_release(ctx);
-}
-
-static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
-	sngl_env_drop(v.env);
 }
 
 static sngl_list_string sngl_list_string_of(int64_t n, const sngl_string *xs) {
@@ -606,13 +637,34 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
 	return v;
 }
 
+static void s___ref_bool__release(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static void s___ref_bool__rekeep(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v) {
+	v.visible__inst0 = ((s___ref_bool *)sngl_counted_retain(v.visible__inst0));
+	return v;
+}
+
+static void s___lambda1_caps__drop(s___lambda1_caps v) {
+	sngl_counted_release(v.visible__inst0);
+}
+
 static void *s___lambda1_caps__env__keep(const void *p) {
 	s___lambda1_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda1_caps__env));
+	e->caps = s___lambda1_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda1_caps__env__drop(void *p) {
 	s___lambda1_caps__env *e = p;
+	s___lambda1_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -782,7 +834,7 @@ static void s___snglTeardown(void) {
 }
 
 static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_fn_void__void __on0) {
-	s___child0__inst * __self = ((s___child0__inst *)sngl_keep_copy(&(s___child0__inst[]){(s___child0__inst){.__prop___p0 = s___anon_id_elem_c6a818__keep(__p0), .__prop___on0 = ((s___ref_func *)sngl_keep_copy(&(s___ref_func[]){(s___ref_func){.value = sngl_fn_void__void__keep(__on0)}}, sizeof(s___ref_func)))}}, sizeof(s___child0__inst)));
+	s___child0__inst * __self = ((s___child0__inst *)sngl_keep_copy(&(s___child0__inst[]){(s___child0__inst){.__prop___p0 = s___anon_id_elem_c6a818__keep(__p0), .__prop___on0 = ((s___ref_func *)sngl_counted_retain(((s___ref_func *)sngl_counted_new(&(s___ref_func[]){(s___ref_func){.value = sngl_fn_void__void__keep(__on0)}}, sizeof(s___ref_func), s___ref_func__release, s___ref_func__rekeep))))}}, sizeof(s___child0__inst)));
 	__self->__n0 = sngl_win32_button();
 	sngl_win32_set_text(__self->__n0, (const unsigned short *)sngl_utf16(__self->__prop___p0.elem));
 	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
@@ -816,8 +868,7 @@ static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void 
 
 static void s___child0__destroy(s___child0__inst * __self) {
 	s___anon_id_elem_c6a818__drop(__self->__prop___p0);
-	sngl_fn_void__void__drop(__self->__prop___on0->value);
-	sngl_drop(__self->__prop___on0);
+	sngl_counted_release(__self->__prop___on0);
 	sngl_drop(__self);
 }
 
@@ -829,7 +880,7 @@ static void s___lambda1(s___lambda1_caps state, bool __visible) {
 static void sngl_init(void) {
 	s_names = sngl_list_string__keep(sngl_list_string_of(3, (sngl_string[]){SNGL_STR("ann"), SNGL_STR("bob"), SNGL_STR("cy")}));
 	s_picked = sngl_string_keep(SNGL_STR(""));
-	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep))));
 	s___slot0 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
 	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
 	s___rendering0 = false;
@@ -909,4 +960,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:7dfba027fc1bebd84fa7743d9e6231d6
+pass sha256:ab942a0c0f42470a69c80685684c02d9

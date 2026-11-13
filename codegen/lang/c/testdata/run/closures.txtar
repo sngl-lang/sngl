@@ -1,0 +1,82 @@
+Closures sharing a local they write: NoRef boxes it as a counted block, a
+holder keeping a closure retains it, and the last to let go gives it back
+with what it holds. The closures are kept across turns, as a holder keeps
+them, written to through one and read through the other, then let go of one
+at a time; and a box its last holder let go of is taken again the same
+turn, which keeps what it holds anew. The sanitized build reads no freed
+box and leaks none.
+
+-- app.sngl --
+struct Counter {
+    inc func()
+    get func() string
+}
+
+func counter(name string) Counter {
+    var n = 0
+    var last = "{name} none"
+    return Counter{
+        inc = func() {
+            n += 1
+            last = "{name} {n}"
+        },
+        get = func() string {
+            return last
+        },
+    }
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+static void print(sngl_string s) { printf("%.*s\n", (int)s.len, s.ptr); }
+
+int main(void) {
+	sngl_turn_enter();
+	s_Counter c = s_counter(SNGL_STR("c"));
+	c.inc.env = sngl_env_keep(c.inc.env);
+	c.get.env = sngl_env_keep(c.get.env);
+	sngl_turn_leave();
+
+	for (int i = 0; i < 3; i++) {
+		sngl_turn_enter();
+		c.inc.fn(c.inc.env);
+		sngl_turn_leave();
+	}
+	sngl_turn_enter();
+	print(c.get.fn(c.get.env));
+	sngl_env_drop(c.inc.env);
+	sngl_turn_leave();
+
+	sngl_turn_enter();
+	print(c.get.fn(c.get.env));
+	sngl_env_drop(c.get.env);
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+
+	/* Its last holders let go, and another takes it the same turn, from
+	 * an environment given back, which the turn still reads. */
+	sngl_turn_enter();
+	s_Counter d = s_counter(SNGL_STR("d"));
+	d.inc.env = sngl_env_keep(d.inc.env);
+	d.get.env = sngl_env_keep(d.get.env);
+	sngl_turn_leave();
+	sngl_turn_enter();
+	d.inc.fn(d.inc.env);
+	sngl_env_drop(d.inc.env);
+	sngl_env_drop(d.get.env);
+	d.get.env = sngl_env_keep(d.get.env);
+	sngl_turn_leave();
+	sngl_turn_enter();
+	print(d.get.fn(d.get.env));
+	sngl_env_drop(d.get.env);
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+	return 0;
+}
+-- want --
+c 3
+c 3
+0 kept
+d 1
+0 kept

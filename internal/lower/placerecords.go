@@ -255,9 +255,6 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	for _, v := range comp.Vars {
 		vars[v] = true
 		add(v.Name, v.Type)
-		if lit, ok := v.Init.(*ir.StructLit); ok && isBoxType(lit.Type) {
-			fields[v.Name].OwnsBox = true
-		}
 	}
 	bodyLocals(comp.Stmts, func(_ []ir.Stmt, _ int, lv *ir.LocalVar) {
 		if isPlacedNode(lv.Type) || p.recordOf(lv.Type) != nil {
@@ -671,13 +668,4 @@ func readsRecord(e ir.Expr, vars map[*ir.Var]bool, funcs map[*ir.Func]bool) bool
 		return nil
 	})
 	return found
-}
-
-// isBoxType reports whether t is a box NoRef made (ir.StructDef.RefBox).
-func isBoxType(t *ir.Type) bool {
-	if t == nil || t.Kind != ir.TypeStruct {
-		return false
-	}
-	sd, ok := t.Decl.(*ir.StructDef)
-	return ok && sd.RefBox
 }

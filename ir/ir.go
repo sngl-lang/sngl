@@ -1755,6 +1755,12 @@ type StructDef struct {
 	// shares. A language whose struct is a value, as C's is, holds a box
 	// through a pointer.
 	RefBox bool `json:",omitempty"`
+	// Counted says the box is one NoRef made for a `ref`, which every
+	// holder of it shares: a language that gives memory back counts its
+	// holders, and the last to let go gives it back with what it holds. A
+	// record (a RefBox placement makes) is given back by its destroy
+	// instead (Func.Frees).
+	Counted bool `json:",omitempty"`
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.
@@ -1815,10 +1821,6 @@ type StructField struct {
 	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
 	// rule, for the same reason.
 	CAlias *Alias `json:",omitempty"`
-	// OwnsBox says the field holds a box (StructDef.RefBox) its record made
-	// for itself, which the record gives back as it is destroyed
-	// (Func.Frees); a box handed in -- a two-way prop's -- is its maker's.
-	OwnsBox bool `json:",omitempty"`
 }
 
 // EnumDef is a resolved enum type declaration.

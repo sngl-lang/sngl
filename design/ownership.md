@@ -992,13 +992,30 @@ the environment, keeping what it captured with it, and dropping the value
 drops each capture and then the copy; one the turn made is left alone, since
 what it captured is the turn's or held by what it was read from. A callback
 crossing to C is kept as it crosses and given back when C releases it
-(`sngl_closure_release`). A record's prop a closure of its body writes is a
-box the record made (`ir.StructField.OwnsBox`), which its destroy gives back
-with the handler in it. Before, an environment was a heap copy nothing
+(`sngl_closure_release`). Before, an environment was a heap copy nothing
 freed, holding a kept copy of each capture, so a `filter`'s predicate leaked
 each call and each row a rebuilt list made kept its handlers' captures;
 `c_record_gives_back_runs.txt`'s `closure.sngl` counts the kept blocks, and
 `codegen/lang/c`'s sanitized `TestRun` checks leaks.
+
+**A var a closure writes is a counted box its holders share.** NoRef boxes
+such a var -- a function's local, a record's prop a handler of its body
+writes -- and marks the box `ir.StructDef.Counted`. C makes it a counted
+block (`sngl_counted_new`) and treats it as a value a holder keeps: keeping
+it retains it, dropping it releases it, and an environment, a record's field
+or a package var holding it does each as it holds anything. The last holder
+letting go gives it back at once with what it holds, as a holder's drop
+does, freed as the turn ends; one the turn made and no holder took -- a
+local no closure kept -- is the turn's and is given back as the turn ends.
+A holder taking a box again in the turn its last holder let go of it keeps
+it again, what it holds kept anew from memory the turn still has
+(`sngl_counted_retain`). Before, a box was a kept block nothing gave back,
+so each call making a closure that writes a local leaked the box and what
+it held; a record gave back the box it made for a prop and not one handed
+to it. `codegen/lang/c/testdata/run/closures.txtar` keeps two closures
+sharing a local across turns, lets go of them one at a time, and takes a
+box again the turn it was let go of, under AddressSanitizer and
+LeakSanitizer.
 
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder
@@ -1011,8 +1028,7 @@ not own.
 
 **Not yet, each a leak rather than a fault:**
 
-- A local NoRef boxes because a closure writes it (`lowerNoRef`) is a kept
-  block nothing gives back: every closure capturing it shares it, and none
-  knows it is the last.
+- A cycle through counted boxes -- a closure stored in the var it writes
+  -- is never given back, as counting gives back no cycle.
 - `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
   where the design above made it the identity.

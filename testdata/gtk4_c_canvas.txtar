@@ -377,11 +377,19 @@ static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double r
 static void s_x_c__free(char * s);
 static void s_platform_gtk4____drawing1_paint_handler(cairo_t * ctx);
 static s_dot__inst * s_dot__new(double r);
+static void s___ref_float__release(void *p);
+static void s___ref_float__rekeep(void *p);
+static void s___ref_int__release(void *p);
+static void s___ref_int__rekeep(void *p);
 static void sngl_lambda3(void *env_);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
+static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void *s___lambda0_caps__env__keep(const void *p);
 static void s___lambda0_caps__env__drop(void *p);
 static sngl_fn_cairo_t_p__void sngl_fn_cairo_t_p__void__keep(sngl_fn_cairo_t_p__void v);
+static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v);
+static void s___lambda1_caps__drop(s___lambda1_caps v);
 static void *s___lambda1_caps__env__keep(const void *p);
 static void s___lambda1_caps__env__drop(void *p);
 static void s___lambda0(s___lambda0_caps state, cairo_t * ctx);
@@ -390,17 +398,25 @@ static void s_dot__set_r(s_dot__inst * __self, double __v);
 static void s_dot__destroy(s_dot__inst * __self);
 static s___canvas0__inst * s___canvas0__new(s___anon_id_elem_4ccb28 __p0, int64_t __p1, sngl_fn_void__void __on0);
 static s___anon_id_elem_4ccb28 s___anon_id_elem_4ccb28__keep(s___anon_id_elem_4ccb28 v);
+static void s___ref___anon_id_elem_4ccb28__release(void *p);
+static void s___ref___anon_id_elem_4ccb28__rekeep(void *p);
+static void s___anon_id_elem_4ccb28__drop(s___anon_id_elem_4ccb28 v);
+static void s___ref_func__release(void *p);
+static void s___ref_func__rekeep(void *p);
+static void sngl_fn_void__void__drop(sngl_fn_void__void v);
+static s___lambda2_caps s___lambda2_caps__keep(s___lambda2_caps v);
+static void s___lambda2_caps__drop(s___lambda2_caps v);
 static void *s___lambda2_caps__env__keep(const void *p);
 static void s___lambda2_caps__env__drop(void *p);
+static s___lambda3_caps s___lambda3_caps__keep(s___lambda3_caps v);
+static void s___lambda3_caps__drop(s___lambda3_caps v);
 static void *s___lambda3_caps__env__keep(const void *p);
 static void s___lambda3_caps__env__drop(void *p);
 static void s___lambda2(s___lambda2_caps state);
 static void s___lambda3(s___lambda3_caps state, cairo_t * ctx);
 static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4ccb28 __v);
-static void s___anon_id_elem_4ccb28__drop(s___anon_id_elem_4ccb28 v);
 static void s___canvas0__set___p1(s___canvas0__inst * __self, int64_t __v);
 static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__void __v);
-static void sngl_fn_void__void__drop(sngl_fn_void__void v);
 static void s___canvas0__destroy(s___canvas0__inst * __self);
 static void s___renderSlot0(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
@@ -418,11 +434,21 @@ static void s___snglTeardown(void);
 static void s___lambda4(s___lambda4_caps state);
 static void s___lambda5(s___lambda5_caps state, cairo_t * ctx);
 static void s___lambda6(s___lambda6_caps state);
+static void s___ref_bool__release(void *p);
+static void s___ref_bool__rekeep(void *p);
 static sngl_list_float sngl_list_float__keep(sngl_list_float v);
+static void s___ref_map_string_instance___canvas0__release(void *p);
+static void s___ref_map_string_instance___canvas0__rekeep(void *p);
+static s___lambda4_caps s___lambda4_caps__keep(s___lambda4_caps v);
+static void s___lambda4_caps__drop(s___lambda4_caps v);
 static void *s___lambda4_caps__env__keep(const void *p);
 static void s___lambda4_caps__env__drop(void *p);
+static s___lambda5_caps s___lambda5_caps__keep(s___lambda5_caps v);
+static void s___lambda5_caps__drop(s___lambda5_caps v);
 static void *s___lambda5_caps__env__keep(const void *p);
 static void s___lambda5_caps__env__drop(void *p);
+static s___lambda6_caps s___lambda6_caps__keep(s___lambda6_caps v);
+static void s___lambda6_caps__drop(s___lambda6_caps v);
 static void *s___lambda6_caps__env__keep(const void *p);
 static void s___lambda6_caps__env__drop(void *p);
 
@@ -492,6 +518,26 @@ static sngl_list__step__record sngl_list__step__record_of(int64_t n, const s_ui_
 	return l;
 }
 
+static void s___ref_float__release(void *p) {
+	s___ref_float *b = p;
+	(void)b;
+}
+
+static void s___ref_float__rekeep(void *p) {
+	s___ref_float *b = p;
+	(void)b;
+}
+
+static void s___ref_int__release(void *p) {
+	s___ref_int *b = p;
+	(void)b;
+}
+
+static void s___ref_int__rekeep(void *p) {
+	s___ref_int *b = p;
+	(void)b;
+}
+
 static void sngl_dispatch_void__void(void *ctx) {
 	sngl_fn_void__void *f = ctx;
 	sngl_mark m = sngl_call_enter();
@@ -508,13 +554,26 @@ static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
 	return v;
 }
 
+static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
+	v.__prop_r = ((s___ref_float *)sngl_counted_retain(v.__prop_r));
+	v.n = ((s___ref_int *)sngl_counted_retain(v.n));
+	return v;
+}
+
+static void s___lambda0_caps__drop(s___lambda0_caps v) {
+	sngl_counted_release(v.__prop_r);
+	sngl_counted_release(v.n);
+}
+
 static void *s___lambda0_caps__env__keep(const void *p) {
 	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
+	e->caps = s___lambda0_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda0_caps__env__drop(void *p) {
 	s___lambda0_caps__env *e = p;
+	s___lambda0_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -534,13 +593,24 @@ static sngl_fn_cairo_t_p__void sngl_fn_cairo_t_p__void__keep(sngl_fn_cairo_t_p__
 	return v;
 }
 
+static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v) {
+	v.n = ((s___ref_int *)sngl_counted_retain(v.n));
+	return v;
+}
+
+static void s___lambda1_caps__drop(s___lambda1_caps v) {
+	sngl_counted_release(v.n);
+}
+
 static void *s___lambda1_caps__env__keep(const void *p) {
 	s___lambda1_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda1_caps__env));
+	e->caps = s___lambda1_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda1_caps__env__drop(void *p) {
 	s___lambda1_caps__env *e = p;
+	s___lambda1_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -553,13 +623,56 @@ static s___anon_id_elem_4ccb28 s___anon_id_elem_4ccb28__keep(s___anon_id_elem_4c
 	return v;
 }
 
+static void s___anon_id_elem_4ccb28__drop(s___anon_id_elem_4ccb28 v) {
+	sngl_drop((v.id).ptr);
+}
+
+static void s___ref___anon_id_elem_4ccb28__release(void *p) {
+	s___ref___anon_id_elem_4ccb28 *b = p;
+	s___anon_id_elem_4ccb28__drop(b->value);
+	(void)b;
+}
+
+static void s___ref___anon_id_elem_4ccb28__rekeep(void *p) {
+	s___ref___anon_id_elem_4ccb28 *b = p;
+	b->value = s___anon_id_elem_4ccb28__keep(b->value);
+	(void)b;
+}
+
+static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
+	sngl_env_drop(v.env);
+}
+
+static void s___ref_func__release(void *p) {
+	s___ref_func *b = p;
+	sngl_fn_void__void__drop(b->value);
+	(void)b;
+}
+
+static void s___ref_func__rekeep(void *p) {
+	s___ref_func *b = p;
+	b->value = sngl_fn_void__void__keep(b->value);
+	(void)b;
+}
+
+static s___lambda2_caps s___lambda2_caps__keep(s___lambda2_caps v) {
+	v.__prop___on0 = ((s___ref_func *)sngl_counted_retain(v.__prop___on0));
+	return v;
+}
+
+static void s___lambda2_caps__drop(s___lambda2_caps v) {
+	sngl_counted_release(v.__prop___on0);
+}
+
 static void *s___lambda2_caps__env__keep(const void *p) {
 	s___lambda2_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda2_caps__env));
+	e->caps = s___lambda2_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda2_caps__env__drop(void *p) {
 	s___lambda2_caps__env *e = p;
+	s___lambda2_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -567,26 +680,31 @@ static void s___lambda2__fn(void *env) {
 	s___lambda2(((s___lambda2_caps__env *)env)->caps);
 }
 
+static s___lambda3_caps s___lambda3_caps__keep(s___lambda3_caps v) {
+	v.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_counted_retain(v.__prop___p0));
+	v.__prop___p1 = ((s___ref_int *)sngl_counted_retain(v.__prop___p1));
+	return v;
+}
+
+static void s___lambda3_caps__drop(s___lambda3_caps v) {
+	sngl_counted_release(v.__prop___p0);
+	sngl_counted_release(v.__prop___p1);
+}
+
 static void *s___lambda3_caps__env__keep(const void *p) {
 	s___lambda3_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda3_caps__env));
+	e->caps = s___lambda3_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda3_caps__env__drop(void *p) {
 	s___lambda3_caps__env *e = p;
+	s___lambda3_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
 static void s___lambda3__fn(void *env, cairo_t * a0) {
 	s___lambda3(((s___lambda3_caps__env *)env)->caps, a0);
-}
-
-static void s___anon_id_elem_4ccb28__drop(s___anon_id_elem_4ccb28 v) {
-	sngl_drop((v.id).ptr);
-}
-
-static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
-	sngl_env_drop(v.env);
 }
 
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v) {
@@ -764,6 +882,16 @@ static void sngl_map_string____canvas0__inst__drop(sngl_map_string____canvas0__i
 	sngl_drop(v.vals);
 }
 
+static void s___ref_bool__release(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static void s___ref_bool__rekeep(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
 static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
@@ -780,13 +908,38 @@ static sngl_list_float sngl_list_float__keep(sngl_list_float v) {
 	return v;
 }
 
+static void s___ref_map_string_instance___canvas0__release(void *p) {
+	s___ref_map_string_instance___canvas0 *b = p;
+	sngl_map_string____canvas0__inst__drop(b->value);
+	(void)b;
+}
+
+static void s___ref_map_string_instance___canvas0__rekeep(void *p) {
+	s___ref_map_string_instance___canvas0 *b = p;
+	b->value = sngl_map_string____canvas0__inst__keep(b->value);
+	(void)b;
+}
+
+static s___lambda4_caps s___lambda4_caps__keep(s___lambda4_caps v) {
+	v.hits = ((s___ref_int *)sngl_counted_retain(v.hits));
+	v.__inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_counted_retain(v.__inst3_live));
+	return v;
+}
+
+static void s___lambda4_caps__drop(s___lambda4_caps v) {
+	sngl_counted_release(v.hits);
+	sngl_counted_release(v.__inst3_live);
+}
+
 static void *s___lambda4_caps__env__keep(const void *p) {
 	s___lambda4_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda4_caps__env));
+	e->caps = s___lambda4_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda4_caps__env__drop(void *p) {
 	s___lambda4_caps__env *e = p;
+	s___lambda4_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -794,13 +947,24 @@ static void s___lambda4__fn(void *env) {
 	s___lambda4(((s___lambda4_caps__env *)env)->caps);
 }
 
+static s___lambda5_caps s___lambda5_caps__keep(s___lambda5_caps v) {
+	v.hits = ((s___ref_int *)sngl_counted_retain(v.hits));
+	return v;
+}
+
+static void s___lambda5_caps__drop(s___lambda5_caps v) {
+	sngl_counted_release(v.hits);
+}
+
 static void *s___lambda5_caps__env__keep(const void *p) {
 	s___lambda5_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda5_caps__env));
+	e->caps = s___lambda5_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda5_caps__env__drop(void *p) {
 	s___lambda5_caps__env *e = p;
+	s___lambda5_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -808,13 +972,24 @@ static void s___lambda5__fn(void *env, cairo_t * a0) {
 	s___lambda5(((s___lambda5_caps__env *)env)->caps, a0);
 }
 
+static s___lambda6_caps s___lambda6_caps__keep(s___lambda6_caps v) {
+	v.on = ((s___ref_bool *)sngl_counted_retain(v.on));
+	return v;
+}
+
+static void s___lambda6_caps__drop(s___lambda6_caps v) {
+	sngl_counted_release(v.on);
+}
+
 static void *s___lambda6_caps__env__keep(const void *p) {
 	s___lambda6_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda6_caps__env));
+	e->caps = s___lambda6_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda6_caps__env__drop(void *p) {
 	s___lambda6_caps__env *e = p;
+	s___lambda6_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -970,7 +1145,7 @@ static void s_platform_gtk4____drawing1_paint_handler(cairo_t * ctx) {
 }
 
 static s_dot__inst * s_dot__new(double r) {
-	s_dot__inst * __self = ((s_dot__inst *)sngl_keep_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_keep_copy(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float))), .n = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)))}}, sizeof(s_dot__inst)));
+	s_dot__inst * __self = ((s_dot__inst *)sngl_keep_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_counted_retain(((s___ref_float *)sngl_counted_new(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float), s___ref_float__release, s___ref_float__rekeep)))), .n = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep))))}}, sizeof(s_dot__inst)));
 	__self->__n3 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(__self->__n3)), (GtkOrientation)((int)(1)));
 	char * __rel2 = sngl_cstring(SNGL_STR(""));
@@ -1018,13 +1193,13 @@ static void s_dot__set_r(s_dot__inst * __self, double __v) {
 }
 
 static void s_dot__destroy(s_dot__inst * __self) {
-	sngl_drop(__self->__prop_r);
-	sngl_drop(__self->n);
+	sngl_counted_release(__self->__prop_r);
+	sngl_counted_release(__self->n);
 	sngl_drop(__self);
 }
 
 static s___canvas0__inst * s___canvas0__new(s___anon_id_elem_4ccb28 __p0, int64_t __p1, sngl_fn_void__void __on0) {
-	s___canvas0__inst * __self = ((s___canvas0__inst *)sngl_keep_copy(&(s___canvas0__inst[]){(s___canvas0__inst){.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_keep_copy(&(s___ref___anon_id_elem_4ccb28[]){(s___ref___anon_id_elem_4ccb28){.value = s___anon_id_elem_4ccb28__keep(__p0)}}, sizeof(s___ref___anon_id_elem_4ccb28))), .__prop___p1 = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = __p1}}, sizeof(s___ref_int))), .__prop___on0 = ((s___ref_func *)sngl_keep_copy(&(s___ref_func[]){(s___ref_func){.value = sngl_fn_void__void__keep(__on0)}}, sizeof(s___ref_func)))}}, sizeof(s___canvas0__inst)));
+	s___canvas0__inst * __self = ((s___canvas0__inst *)sngl_keep_copy(&(s___canvas0__inst[]){(s___canvas0__inst){.__prop___p0 = ((s___ref___anon_id_elem_4ccb28 *)sngl_counted_retain(((s___ref___anon_id_elem_4ccb28 *)sngl_counted_new(&(s___ref___anon_id_elem_4ccb28[]){(s___ref___anon_id_elem_4ccb28){.value = s___anon_id_elem_4ccb28__keep(__p0)}}, sizeof(s___ref___anon_id_elem_4ccb28), s___ref___anon_id_elem_4ccb28__release, s___ref___anon_id_elem_4ccb28__rekeep)))), .__prop___p1 = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = __p1}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep)))), .__prop___on0 = ((s___ref_func *)sngl_counted_retain(((s___ref_func *)sngl_counted_new(&(s___ref_func[]){(s___ref_func){.value = sngl_fn_void__void__keep(__on0)}}, sizeof(s___ref_func), s___ref_func__release, s___ref_func__rekeep))))}}, sizeof(s___canvas0__inst)));
 	__self->__drawing2 = sngl_canvas_new();
 	sngl_canvas_set_width(__self->__drawing2, (int)(20));
 	sngl_canvas_set_height(__self->__drawing2, (int)(20));
@@ -1080,11 +1255,9 @@ static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__voi
 }
 
 static void s___canvas0__destroy(s___canvas0__inst * __self) {
-	s___anon_id_elem_4ccb28__drop(__self->__prop___p0->value);
-	sngl_drop(__self->__prop___p0);
-	sngl_drop(__self->__prop___p1);
-	sngl_fn_void__void__drop(__self->__prop___on0->value);
-	sngl_drop(__self->__prop___on0);
+	sngl_counted_release(__self->__prop___p0);
+	sngl_counted_release(__self->__prop___p1);
+	sngl_counted_release(__self->__prop___on0);
 	sngl_drop(__self);
 }
 
@@ -1340,15 +1513,15 @@ static void sngl_init(void) {
 	s___rel4 = sngl_cstring(SNGL_STR("grow"));
 	s___rel7 = sngl_cstring(SNGL_STR("clicked"));
 	s___rel10 = sngl_cstring(SNGL_STR("flip"));
-	s_hits = ((s___ref_int *)sngl_keep_copy(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int)));
-	s_on = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_hits = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep))));
+	s_on = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep))));
 	s_rs = sngl_list_float__keep(sngl_list_float_of(2, (double[]){4.0, 8.0}));
 	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___rendering0 = false;
 	s___renderAgain0 = false;
 	s___slot1 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___inst2_live = sngl_map_string__dot__inst__keep(((sngl_map_string__dot__inst){0}));
-	s___inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_keep_copy(&(s___ref_map_string_instance___canvas0[]){(s___ref_map_string_instance___canvas0){.value = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}))}}, sizeof(s___ref_map_string_instance___canvas0)));
+	s___inst3_live = ((s___ref_map_string_instance___canvas0 *)sngl_counted_retain(((s___ref_map_string_instance___canvas0 *)sngl_counted_new(&(s___ref_map_string_instance___canvas0[]){(s___ref_map_string_instance___canvas0){.value = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}))}}, sizeof(s___ref_map_string_instance___canvas0), s___ref_map_string_instance___canvas0__release, s___ref_map_string_instance___canvas0__rekeep))));
 	s___rendering1 = false;
 	s___renderAgain1 = false;
 }
@@ -1450,4 +1623,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:3bc443e61f7c91e02e455fdcdce479b6
+pass sha256:115128abb30261cd8110edf957e51171

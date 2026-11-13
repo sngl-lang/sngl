@@ -1004,11 +1004,12 @@ reaches it the same way.
    anchor, which the instance's teardown now gives back (`destroyHeld`, the
    script's `anchor.sngl`). A closure's environment is made in the turn's
    arena and kept by the holder storing it, which gives it back with what it
-   captured; a record gives back the box it made for a prop
-   (`ir.StructField.OwnsBox`; the script's `closure.sngl`), and C's sanitized
-   `TestRun` checks leaks. **Not yet:** a local NoRef boxes for the closures
-   writing it is a kept block nothing gives back, since every closure
-   sharing it holds it.
+   captured (the script's `closure.sngl`). A var a closure writes is a box
+   its holders count, the last of which gives it back
+   (`ir.StructDef.Counted`, `codegen/lang/c/testdata/run/closures.txtar`), and
+   C's sanitized `TestRun` checks leaks. **Not yet:** a cycle through
+   counted boxes -- a closure stored in the var it writes -- is never given
+   back.
 3. **`cgo` becomes `direct`, `wrapper` or `purego`.** `direct` and `wrapper`
    come with step 1. `purego` is attempted then, against the open questions
    below.

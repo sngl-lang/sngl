@@ -196,6 +196,8 @@ static void s___lambda2_caps__env__drop(void *p);
 static void s___renderSlot0(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
+static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v);
+static void s___lambda1_caps__drop(s___lambda1_caps v);
 static void *s___lambda1_caps__env__keep(const void *p);
 static void s___lambda1_caps__env__drop(void *p);
 static s_ui__menuItem__record s_ui__menuItem__record__keep(s_ui__menuItem__record v);
@@ -215,16 +217,24 @@ static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static void s___lambda3(s___lambda3_caps state, bool __visible);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
+static void s___ref_string__release(void *p);
+static void s___ref_string__rekeep(void *p);
+static void s___ref_bool__release(void *p);
+static void s___ref_bool__rekeep(void *p);
+static s___lambda3_caps s___lambda3_caps__keep(s___lambda3_caps v);
+static void s___lambda3_caps__drop(s___lambda3_caps v);
 static void *s___lambda3_caps__env__keep(const void *p);
 static void s___lambda3_caps__env__drop(void *p);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
 
 static s___lambda2_caps s___lambda2_caps__keep(s___lambda2_caps v) {
+	v.language = ((s___ref_string *)sngl_counted_retain(v.language));
 	v.l = sngl_string_keep(v.l);
 	return v;
 }
 
 static void s___lambda2_caps__drop(s___lambda2_caps v) {
+	sngl_counted_release(v.language);
 	sngl_drop((v.l).ptr);
 }
 
@@ -266,13 +276,24 @@ static sngl_list_menuItem__record sngl_list_string_map_menuItem__record(sngl_lis
 	return out;
 }
 
+static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v) {
+	v.language = ((s___ref_string *)sngl_counted_retain(v.language));
+	return v;
+}
+
+static void s___lambda1_caps__drop(s___lambda1_caps v) {
+	sngl_counted_release(v.language);
+}
+
 static void *s___lambda1_caps__env__keep(const void *p) {
 	s___lambda1_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda1_caps__env));
+	e->caps = s___lambda1_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda1_caps__env__drop(void *p) {
 	s___lambda1_caps__env *e = p;
+	s___lambda1_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -449,13 +470,46 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
 	return v;
 }
 
+static void s___ref_string__release(void *p) {
+	s___ref_string *b = p;
+	sngl_drop((b->value).ptr);
+	(void)b;
+}
+
+static void s___ref_string__rekeep(void *p) {
+	s___ref_string *b = p;
+	b->value = sngl_string_keep(b->value);
+	(void)b;
+}
+
+static void s___ref_bool__release(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static void s___ref_bool__rekeep(void *p) {
+	s___ref_bool *b = p;
+	(void)b;
+}
+
+static s___lambda3_caps s___lambda3_caps__keep(s___lambda3_caps v) {
+	v.visible__inst0 = ((s___ref_bool *)sngl_counted_retain(v.visible__inst0));
+	return v;
+}
+
+static void s___lambda3_caps__drop(s___lambda3_caps v) {
+	sngl_counted_release(v.visible__inst0);
+}
+
 static void *s___lambda3_caps__env__keep(const void *p) {
 	s___lambda3_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda3_caps__env));
+	e->caps = s___lambda3_caps__keep(e->caps);
 	return e;
 }
 
 static void s___lambda3_caps__env__drop(void *p) {
 	s___lambda3_caps__env *e = p;
+	s___lambda3_caps__drop(e->caps);
 	sngl_drop(e);
 }
 
@@ -595,8 +649,8 @@ static void s___lambda3(s___lambda3_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_languages = sngl_list_string__keep(sngl_list_string_of(3, (sngl_string[]){SNGL_STR("en"), SNGL_STR("fr"), SNGL_STR("de")}));
-	s_language__inst0 = ((s___ref_string *)sngl_keep_copy(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("en"))}}, sizeof(s___ref_string)));
-	s_visible__inst0 = ((s___ref_bool *)sngl_keep_copy(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool)));
+	s_language__inst0 = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("en"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep))));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep))));
 	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___rendering0 = false;
 	s___renderAgain0 = false;
@@ -2036,7 +2090,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:848487ea37f7583e468cf3a1aef35ffb
+pass sha256:d6c7687ebea3bbf2d1a36f1ed705e984
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

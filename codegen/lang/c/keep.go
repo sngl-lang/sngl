@@ -18,8 +18,8 @@ import (
 // never kept -- a literal, the zero a var starts at -- is dropped as nothing.
 
 // owns reports whether a value of t holds memory a holder keeps: a string's
-// bytes, a list's or a map's elements, a closure's environment, or a value
-// holding one of those.
+// bytes, a list's or a map's elements, a closure's environment, a counted
+// box, or a value holding one of those.
 func owns(t *ir.Type) bool { return ownsSeen(t, map[ir.Symbol]bool{}) }
 
 func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
@@ -37,6 +37,9 @@ func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
 		return len(t.Elems) == 1 && ownsSeen(t.Elems[0], seen)
 	case ir.TypeStruct:
 		sd, ok := t.Decl.(*ir.StructDef)
+		if ok && sd.Counted {
+			return true
+		}
 		if !ok || sd.RefBox || !isProgramStruct(t) {
 			return false
 		}
@@ -68,6 +71,9 @@ func ownsSeen(t *ir.Type, seen map[ir.Symbol]bool) bool {
 func (c *Context) Keep(t *ir.Type, v string) string { return c.keep(t, v) }
 
 func (c *Context) keep(t *ir.Type, v string) string {
+	if isCounted(t) {
+		return "((" + c.typeName(t) + ")sngl_counted_retain(" + v + "))"
+	}
 	if !owns(t) || c.isPointer(t) {
 		return v
 	}
@@ -80,6 +86,9 @@ func (c *Context) keep(t *ir.Type, v string) string {
 // drop is the statement giving back what v, a value of t a holder held,
 // kept: nothing where it keeps nothing.
 func (c *Context) drop(t *ir.Type, v string) string {
+	if isCounted(t) {
+		return "sngl_counted_release(" + v + ");"
+	}
 	if !owns(t) || c.isPointer(t) {
 		return ""
 	}
@@ -228,8 +237,8 @@ func (c *Context) store(t *ir.Type, target, value string) string {
 }
 
 // frees is the statements giving back self, a record's box its destroy is
-// handed (ir.Func.Frees): what each field kept, a box the record made for
-// a field (ir.StructField.OwnsBox) with what it holds, then the record. Each is
+// handed (ir.Func.Frees): what each field kept, a counted box let go of,
+// then the record. Each is
 // dropped, so freed as the turn ends, which a handler still running reads
 // it until.
 func (c *Context) frees(self *ir.Param) []string {
@@ -240,20 +249,20 @@ func (c *Context) frees(self *ir.Param) []string {
 	ref := &ir.Ident{Name: self.Name, Sym: self, Type: self.Type, Synthesized: true}
 	var out []string
 	for _, f := range sd.Fields {
-		field := &ir.Select{Operand: ref, Field: f.Name, Type: f.Type}
-		if f.OwnsBox {
-			// The box and what it holds are the record's.
-			box := f.Type.Decl.(*ir.StructDef)
-			vt := box.Fields[0].Type
-			if d := c.drop(vt, c.EvalExpr(&ir.Select{Operand: field, Field: box.Fields[0].Name, Type: vt})); d != "" {
-				out = append(out, d)
-			}
-			out = append(out, "sngl_drop("+c.EvalExpr(field)+");")
-			continue
-		}
-		if d := c.drop(f.Type, c.EvalExpr(field)); d != "" {
+		if d := c.drop(f.Type, c.EvalExpr(&ir.Select{Operand: ref, Field: f.Name, Type: f.Type})); d != "" {
 			out = append(out, d)
 		}
 	}
 	return append(out, "sngl_drop("+c.EvalExpr(ref)+");")
+}
+
+// isCounted reports whether t is a box every holder of it shares, counting
+// its holders (ir.StructDef.Counted): a holder retains it as it keeps it and
+// releases it as it drops it, and the last to let go gives it back.
+func isCounted(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Counted
 }

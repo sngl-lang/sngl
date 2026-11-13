@@ -507,8 +507,15 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 				kept[i] = c.keep(sd.Fields[j].Type, c.nullAs(sd.Fields[j].Type, f.Value, kept[i]))
 			}
 		}
+		lit := "&(" + name + "[]){" + c.structLit(n, kept) + "}, sizeof(" + name + ")"
+		if sd.Counted {
+			// Shared by its holders, the last of which gives it back with
+			// what it holds.
+			release, rekeep := c.boxOps(sd)
+			return "((" + name + " *)sngl_counted_new(" + lit + ", " + release + ", " + rekeep + "))"
+		}
 		// The box is kept itself, so the record it is can give it back.
-		return "((" + name + " *)sngl_keep_copy(&(" + name + "[]){" + c.structLit(n, kept) + "}, sizeof(" + name + ")))"
+		return "((" + name + " *)sngl_keep_copy(" + lit + "))"
 	}
 	return c.structLit(n, fields)
 }
@@ -538,6 +545,34 @@ func (c *Context) structLit(n *ir.StructLit, fields []string) string {
 // Box defines sd, a box lower.NoRef made, as the struct it is.
 func (c *Context) Box(sd *ir.StructDef) {
 	c.defineStruct(sd)
+}
+
+// boxOps are the functions giving back what a counted box of sd holds,
+// which its last holder letting go runs, and keeping it again, which a
+// holder taking it again the same turn runs.
+func (c *Context) boxOps(sd *ir.StructDef) (release, rekeep string) {
+	name := Decl(&sd.DeclInfo)
+	release, rekeep = name+"__release", name+"__rekeep"
+	if c.file.helperNames[release] {
+		return release, rekeep
+	}
+	c.file.helper(release, "")
+	c.file.helper(rekeep, "")
+	c.file.protos = append(c.file.protos, "static void "+release+"(void *p);", "static void "+rekeep+"(void *p);")
+	var rel, keep strings.Builder
+	fmt.Fprintf(&rel, "static void %s(void *p) {\n\t%s *b = p;\n", release, name)
+	fmt.Fprintf(&keep, "static void %s(void *p) {\n\t%s *b = p;\n", rekeep, name)
+	for _, f := range sd.Fields {
+		if d := c.drop(f.Type, "b->"+Local(f.Name)); d != "" {
+			rel.WriteString("\t" + d + "\n")
+			fmt.Fprintf(&keep, "\tb->%s = %s;\n", Local(f.Name), c.keep(f.Type, "b->"+Local(f.Name)))
+		}
+	}
+	rel.WriteString("\t(void)b;\n}\n")
+	keep.WriteString("\t(void)b;\n}\n")
+	c.file.setHelper(release, rel.String())
+	c.file.setHelper(rekeep, keep.String())
+	return release, rekeep
 }
 
 // Spread is the list a spread reads, which the list literal it is in joins
