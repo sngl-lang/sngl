@@ -617,6 +617,6 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/c/win32 --
-pass sha256:714b982b7b63f7db5d28df4e65c02753
+pass sha256:956ee47504cc81f7e222fb792b2b502e
 -- run/go/bubbletea --
 pass sha256:12a7dab925f58b6228eb5ed6e7d24217

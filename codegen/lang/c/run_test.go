@@ -240,7 +240,7 @@ func run(t *testing.T, cc clang.Compiler, exe string) string {
 		}
 		name, args = wine, []string{exe}
 	}
-	var out, stderr bytes.Buffer
+	var out bytes.Buffer
 	cmd := exec.Command(name, args...)
 	if cc.Windows {
 		env, err := win32.WineEnv(t.Context())
@@ -249,9 +249,14 @@ func run(t *testing.T, cc clang.Compiler, exe string) string {
 		}
 		cmd.Env = env
 	}
-	cmd.Stdout, cmd.Stderr = &out, &stderr
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("%s: %v\n%s", exe, err, stderr.String())
+	cmd.Stdout = &out
+	stderr, err := win32.StderrToFile(cmd)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%s: %v\n%s", exe, err, stderr())
+	}
+	stderr()
 	return strings.ReplaceAll(out.String(), "\r\n", "\n")
 }

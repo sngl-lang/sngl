@@ -59,7 +59,14 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		}
 		cmd.Env = wineEnv(prefix)
 	}
-	if log, err := cmd.CombinedOutput(); err != nil {
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	stderr, err := StderrToFile(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("win32: %w", err)
+	}
+	err = cmd.Run()
+	if log := stdout.String() + stderr(); err != nil {
 		return nil, fmt.Errorf("win32: running the snapshot: %w\n%s", err, log)
 	}
 	raw, err := os.ReadFile(out)

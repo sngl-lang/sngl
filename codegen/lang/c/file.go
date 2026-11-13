@@ -21,6 +21,10 @@ type file struct {
 	helpers     []string
 	helperOrder []string
 	helperNames map[string]bool
+	// building are the keep, drop and visit helpers whose bodies are being
+	// written, and reentered those of them a body called: a recursive
+	// type's, which nest as deep as its value does (ownHelper).
+	building, reentered map[string]bool
 	// protos are every function's prototype, which C wants ahead of a call,
 	// and lifted the definitions of the functions the renderer lifts out of
 	// an expression: a lambda's body.

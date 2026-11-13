@@ -1,0 +1,57 @@
+A long chain of counted boxes: each link is a closure whose environment
+holds a box holding the link before it. Letting go of a
+copy of the head while another still holds it has the turn's end try the
+head, and the collector walks the whole chain; letting go of the last
+gives the chain back, each link letting go of the next. Both walk the chain
+from the heap, so neither overflows the C stack, which a walk recursing a
+frame or more for each link does long before the chain ends.
+
+-- app.sngl --
+func zero(n int) int {
+    return 0
+}
+
+func link(prev func(int) int) func(int) int {
+    var held = prev
+    return func(n int) int {
+        if n < 0 {
+            held = zero
+        }
+        return 1 + held(n)
+    }
+}
+
+func start() func(int) int {
+    return zero
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+int main(void) {
+	sngl_turn_enter();
+	sngl_fn_int__int f = s_start();
+	for (int i = 0; i < 100000; i++) {
+		f = s_link(f);
+	}
+	sngl_fn_int__int a = f, b = f;
+	a.env = sngl_env_keep(a.env);
+	b.env = sngl_env_keep(b.env);
+	sngl_turn_leave();
+	printf("%s\n", sngl_kept_blocks() > 100000 ? "held" : "lost");
+
+	sngl_turn_enter();
+	sngl_env_drop(a.env);
+	sngl_turn_leave();
+	printf("%s\n", sngl_kept_blocks() > 100000 ? "held" : "lost");
+
+	sngl_turn_enter();
+	sngl_env_drop(b.env);
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+	return 0;
+}
+-- want --
+held
+held
+0 kept

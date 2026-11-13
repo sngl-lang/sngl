@@ -1040,6 +1040,26 @@ through each environment, which one holder owns, and stops at each box.
 of one half of a pair C still holds the other half of, which the try keeps
 and the next call runs through, under AddressSanitizer and LeakSanitizer.
 
+**No walk of the runtime's grows the C stack with what it walks.** A chain
+of boxes is as long as the program built it, and overflowing the stack is
+a crash -- or, on a thread without a guard page, memory written past it --
+rather than a panic. So the collector's walks keep what they have yet to
+visit in heap lists, a visit only counting and queuing each box it hands
+on, and a box given back joins a list its contents are let go of from
+(`sngl_let_go`), rather than letting go of the next from inside its own
+release. `codegen/lang/c/testdata/run/chains.txtar` tries and then gives
+back a chain of a hundred thousand boxes, which the recursive walks
+overflowed the stack on. Keeping, dropping and visiting a value still
+recurse, a frame or more for each value nested in another, which is
+unbounded only through a closure captured by the closure it captured or a
+recursive type's value; each of those levels enters `sngl_deeper`, which
+panics past `SNGL_MAX_DEPTH` (2000), deep enough for any value a program
+means to build and shallow enough for Windows' 1 MB stack.
+`nests.txtar` keeps a closure and a tree a thousand deep and panics on a
+closure three thousand deep, and `trees.txtar` on a tree as deep. A
+closure capturing a closure copies all it reaches each time it is kept,
+which is quadratic in a chain of them as well as deep.
+
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder
 is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only

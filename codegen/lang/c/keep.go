@@ -133,8 +133,16 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 	tn := c.typeName(t)
 	name := tn + "__" + op
 	if c.file.helperNames[name] {
+		if c.file.building[name] {
+			c.file.reentered[name] = true
+		}
 		return name
 	}
+	if c.file.building == nil {
+		c.file.building, c.file.reentered = map[string]bool{}, map[string]bool{}
+	}
+	c.file.building[name] = true
+	defer delete(c.file.building, name)
 	sig := fmt.Sprintf("static %s %s(%s v)", tn, name, tn)
 	switch op {
 	case "drop":
@@ -220,12 +228,17 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 			each(f.Type, "v."+Local(f.Name))
 		}
 	}
-	if op == "keep" {
-		b.WriteString("\treturn v;\n")
+	body := b.String()
+	if c.file.reentered[name] {
+		// A recursive type's value nests as deep as it was built, which
+		// the runtime bounds rather than the C stack (sngl_deeper).
+		body = strings.Replace(body, " {\n", " {\n\tsngl_deeper();\n", 1) + "\tsngl_shallower();\n"
 	}
-	b.WriteString("}\n")
+	if op == "keep" {
+		body += "\treturn v;\n"
+	}
 	c.file.include("string.h", true)
-	c.file.setHelper(name, b.String())
+	c.file.setHelper(name, body+"}\n")
 	return name
 }
 

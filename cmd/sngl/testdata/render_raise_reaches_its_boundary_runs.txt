@@ -342,7 +342,7 @@ sha256:ae173ffea8ee8702135be7d34e4589d8
   ]
 }
 -- testrun/gtk4/c/app.sngl/fallback/1 --
-sha256:89ae2122129902dd1de754dfd90aed6c
+sha256:a0591046aa097640d3e796402099aac9
 {
   "results": [
     {
@@ -352,7 +352,7 @@ sha256:89ae2122129902dd1de754dfd90aed6c
   ]
 }
 -- testrun/gtk4/c/app.sngl/first/1 --
-sha256:354f071d62a1f8eac7dd63e6fae55d3e
+sha256:d34d3a128e236ed57965213cc919126a
 {
   "results": [
     {
@@ -362,7 +362,7 @@ sha256:354f071d62a1f8eac7dd63e6fae55d3e
   ]
 }
 -- testrun/gtk4/c/app.sngl/split/1 --
-sha256:21d2720f7c5f2406792d2d75a396e549
+sha256:212540dc83675cd2a3d11c017686ad2e
 {
   "results": [
     {
@@ -476,7 +476,7 @@ sha256:f706448c479dbdedd631cabe69f42eaa
   ]
 }
 -- testrun/win32/c/app.sngl/fallback/1 --
-sha256:c145d14d9ffdf96a5daaedfbe1868ff0
+sha256:365644b39ef7e403e66c3d1029f2bc14
 {
   "results": [
     {
@@ -486,7 +486,7 @@ sha256:c145d14d9ffdf96a5daaedfbe1868ff0
   ]
 }
 -- testrun/win32/c/app.sngl/first/1 --
-sha256:4b3bd8d7d62f6cbe6a1ef023853b3bb4
+sha256:6dda973d6a7f3717fcd476ebdbc2458c
 {
   "results": [
     {
@@ -496,7 +496,7 @@ sha256:4b3bd8d7d62f6cbe6a1ef023853b3bb4
   ]
 }
 -- testrun/win32/c/app.sngl/split/1 --
-sha256:a8d69e662b19d5d3bf34c617d868cecc
+sha256:4c9f1bbf122e9638237fd2158396eed6
 {
   "results": [
     {
@@ -514,7 +514,7 @@ sha256:a8d69e662b19d5d3bf34c617d868cecc
   ]
 }
 -- testrun/win32/c/card.sngl/cards/1 --
-sha256:3e9894ead7748f3696dd5297f6da0761
+sha256:216c875829c242cce596759be510cdfd
 {
   "results": [
     {

@@ -107,6 +107,17 @@ typedef struct sngl_env {
 void *sngl_env_keep(const void *env);
 void sngl_env_drop(void *env);
 void sngl_env_visit(const void *env, sngl_visit fn);
+
+/* Keeping, giving back or visiting a value walks what it holds, a frame or
+ * more of the C stack for each value nested in another: a closure captured
+ * by one it captured, a recursive type's value. sngl_deeper enters one,
+ * which panics past SNGL_MAX_DEPTH rather than overflow the stack, and
+ * sngl_shallower leaves it. */
+#define SNGL_MAX_DEPTH 2000
+#define SNGL_QUOTE_(x) #x
+#define SNGL_QUOTE(x) SNGL_QUOTE_(x)
+void sngl_deeper(void);
+void sngl_shallower(void);
 void sngl_closure_release(void *ctx);
 
 /* sngl_cstring is s as a C string the callee may keep and the program frees,

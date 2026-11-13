@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -66,16 +67,24 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 	cmd := exec.CommandContext(ctx, argv[0], append(argv[1:], strconv.Itoa(port))...)
 	cmd.Dir = dir
 	cmd.Env = env
-	var log bytes.Buffer
-	cmd.Stdout = &log
-	cmd.Stderr = &log
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	stderr, err := StderrToFile(cmd)
+	if err != nil {
+		listener.Close()
+		return nil, nil, err
+	}
 	if err := cmd.Start(); err != nil {
 		listener.Close()
+		stderr()
 		return nil, nil, fmt.Errorf("start %s: %w", argv[0], err)
 	}
+	// What the agent wrote, read once it has exited.
+	var log strings.Builder
 	exited := make(chan struct{})
 	go func() {
 		_ = cmd.Wait()
+		log.WriteString(stdout.String() + stderr())
 		close(exited)
 	}()
 	type accept struct {
@@ -161,13 +170,18 @@ func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.P
 		cmd.Dir = dir
 		cmd.Env = env
 		cmd.Stdin = bytes.NewReader(r.Stdin)
-		var stdout, stderr bytes.Buffer
-		cmd.Stdout, cmd.Stderr = &stdout, &stderr
-		err := cmd.Run()
+		var stdout bytes.Buffer
+		cmd.Stdout = &stdout
+		stderr, err := StderrToFile(cmd)
+		if err != nil {
+			cancel()
+			return "", nil, err
+		}
+		err = cmd.Run()
 		cancel()
 		// Windows' C library writes a text stream's newline as CRLF.
 		lf := strings.NewReplacer("\r\n", "\n")
-		ran = append(ran, codegen.ProgramRan{Stdout: lf.Replace(stdout.String()), Stderr: lf.Replace(stderr.String()), Err: err})
+		ran = append(ran, codegen.ProgramRan{Stdout: lf.Replace(stdout.String()), Stderr: lf.Replace(stderr()), Err: err})
 	}
 	return "", ran, nil
 }
@@ -253,4 +267,32 @@ func winePrefix(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return prefix, nil
+}
+
+// StderrToFile points cmd's stderr, a program Wine runs, at a file, and is
+// what was written to it, which also closes it. The first program of a
+// Wine session starts the session's own -- services.exe, explorer.exe
+// /desktop and the rest -- and they inherit its stderr, holding it open
+// until the server ends, seconds after the program has. A pipe there keeps
+// exec's Wait waiting on them, so a run that cold-started a session under
+// load failed with exec.ErrWaitDelay, its output complete; a file is done
+// with as the program exits.
+func StderrToFile(cmd *exec.Cmd) (read func() string, err error) {
+	f, err := os.CreateTemp("", "sngl-stderr-*")
+	if err != nil {
+		return nil, err
+	}
+	cmd.Stderr = f
+	return func() string {
+		defer os.Remove(f.Name())
+		defer f.Close()
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
+			return err.Error()
+		}
+		b, err := io.ReadAll(f)
+		if err != nil {
+			return err.Error()
+		}
+		return string(b)
+	}, nil
 }

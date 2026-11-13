@@ -263,11 +263,35 @@ static void sngl_undrop(void *p) {
 	}
 }
 
+/* How deep the value being kept, given back or visited is (sngl_deeper). */
+static int sngl_depth_in_value;
+
+/* The blocks given back whose contents are yet to be let go of, and
+ * whether a loop letting go of them is running. */
+static sngl_blocks sngl_releasing;
+static bool sngl_letting_go;
+
+/* sngl_let_go lets go of what each block given back holds, and drops it.
+ * Letting go of one may give back another, which joins the list rather
+ * than the C stack, so a chain of blocks of any length is given back. */
+static void sngl_let_go(void) {
+	if (sngl_letting_go) {
+		return;
+	}
+	sngl_letting_go = true;
+	while (sngl_releasing.len > 0) {
+		sngl_counted *c = sngl_releasing.at[--sngl_releasing.len];
+		c->h.release(c + 1);
+		sngl_drop(c);
+	}
+	sngl_letting_go = false;
+}
+
 /* sngl_give_back gives back c and what it holds, freed as the turn ends. */
 static void sngl_give_back(sngl_counted *c) {
 	c->h.gone = true;
-	c->h.release(c + 1);
-	sngl_drop(c);
+	sngl_push(&sngl_releasing, c);
+	sngl_let_go();
 }
 
 void *sngl_counted_new(const void *p, size_t n, void (*release)(void *), void (*rekeep)(void *), void (*visit)(void *, sngl_visit)) {
@@ -320,8 +344,10 @@ void sngl_counted_release(void *p) {
  * each of them counted. From each block tried, every hold one block reached
  * has on another is taken off its count (gray); a block with a count left
  * is held from outside them, so it and all it reaches have their holds put
- * back (black), and those left at none (white) are garbage. Each walk
- * recurses as deep as the chain of blocks it follows. */
+ * back (black), and those left at none (white) are garbage. Each walk keeps
+ * the blocks it has yet to visit on the heap, never the C stack, so a chain
+ * of blocks of any length is walked: a visit hands each block it reaches to
+ * a callback that only counts and queues it. */
 static sngl_counted *sngl_head(void *p) {
 	return (sngl_counted *)p - 1;
 }
@@ -334,70 +360,97 @@ static void sngl_visit_in(sngl_counted *c, sngl_visit fn) {
 	}
 }
 
-static void sngl_mark_gray(sngl_counted *c);
+/* The blocks a walk has reached and is yet to visit: the gray and the
+ * scanning walks share one, and the black walk, which a scan starts, has
+ * its own. */
+static sngl_blocks sngl_work, sngl_black_work;
+
+static sngl_counted *sngl_pop(sngl_blocks *l) {
+	return l->len == 0 ? NULL : l->at[--l->len];
+}
 
 static void sngl_gray_child(void *p) {
 	sngl_counted *c = sngl_head(p);
 	c->h.count--;
-	sngl_mark_gray(c);
-}
-
-static void sngl_mark_gray(sngl_counted *c) {
 	if (c->h.color != SNGL_GRAY) {
 		c->h.color = SNGL_GRAY;
-		sngl_visit_in(c, sngl_gray_child);
+		sngl_push(&sngl_work, c);
 	}
 }
 
-static void sngl_scan_black(sngl_counted *c);
+static void sngl_mark_gray(sngl_counted *root) {
+	if (root->h.color == SNGL_GRAY) {
+		return;
+	}
+	root->h.color = SNGL_GRAY;
+	sngl_push(&sngl_work, root);
+	for (sngl_counted *c; (c = sngl_pop(&sngl_work)) != NULL;) {
+		sngl_visit_in(c, sngl_gray_child);
+	}
+}
 
 static void sngl_black_child(void *p) {
 	sngl_counted *c = sngl_head(p);
 	c->h.count++;
 	if (c->h.color != SNGL_BLACK) {
-		sngl_scan_black(c);
+		c->h.color = SNGL_BLACK;
+		sngl_push(&sngl_black_work, c);
 	}
 }
 
-static void sngl_scan_black(sngl_counted *c) {
-	c->h.color = SNGL_BLACK;
-	sngl_visit_in(c, sngl_black_child);
+static void sngl_scan_black(sngl_counted *root) {
+	root->h.color = SNGL_BLACK;
+	sngl_push(&sngl_black_work, root);
+	for (sngl_counted *c; (c = sngl_pop(&sngl_black_work)) != NULL;) {
+		sngl_visit_in(c, sngl_black_child);
+	}
 }
-
-static void sngl_scan(sngl_counted *c);
 
 static void sngl_scan_child(void *p) {
-	sngl_scan(sngl_head(p));
+	sngl_push(&sngl_work, sngl_head(p));
 }
 
-static void sngl_scan(sngl_counted *c) {
-	if (c->h.color != SNGL_GRAY) {
-		return;
+/* sngl_scan settles each gray block root reaches: black where a block
+ * reached is held from outside, which makes black all it reaches in turn,
+ * whatever this walk colored it before, and white otherwise. */
+static void sngl_scan(sngl_counted *root) {
+	sngl_push(&sngl_work, root);
+	for (sngl_counted *c; (c = sngl_pop(&sngl_work)) != NULL;) {
+		if (c->h.color != SNGL_GRAY) {
+			continue;
+		}
+		if (c->h.count > 0) {
+			sngl_scan_black(c);
+			continue;
+		}
+		c->h.color = SNGL_WHITE;
+		sngl_visit_in(c, sngl_scan_child);
 	}
-	if (c->h.count > 0) {
-		sngl_scan_black(c);
-		return;
-	}
-	c->h.color = SNGL_WHITE;
-	sngl_visit_in(c, sngl_scan_child);
 }
 
-static void sngl_gather(sngl_counted *c);
-
-static void sngl_gather_child(void *p) {
-	sngl_gather(sngl_head(p));
-}
-
-/* sngl_gather finds the garbage c reaches, marked gone, so letting go of
- * one of them gives nothing back. */
-static void sngl_gather(sngl_counted *c) {
+/* sngl_gather_one adds c to the garbage if it is white, marked gone, so
+ * letting go of one of them gives nothing back. */
+static void sngl_gather_one(sngl_counted *c) {
 	if (c->h.color != SNGL_WHITE) {
 		return;
 	}
 	c->h.color = SNGL_BLACK;
 	c->h.gone = true;
 	sngl_push(&sngl_garbage, c);
-	sngl_visit_in(c, sngl_gather_child);
+}
+
+static void sngl_gather_child(void *p) {
+	sngl_gather_one(sngl_head(p));
+}
+
+/* sngl_gather finds the garbage root reaches, the garbage list being the
+ * walk's own: each block added is visited in its turn. */
+static void sngl_gather(sngl_counted *root) {
+	size_t i = sngl_garbage.len;
+	sngl_gather_one(root);
+	for (; i < sngl_garbage.len; i++) {
+		sngl_visit_in(sngl_garbage.at[i], sngl_gather_child);
+	}
 }
 
 static void sngl_restore_child(void *p) {
@@ -433,15 +486,15 @@ static void sngl_collect_cycles(void) {
 		sngl_visit_in(c, sngl_restore_child);
 	}
 	for (size_t i = 0; i < sngl_garbage.len; i++) {
-		sngl_counted *c = sngl_garbage.at[i];
-		c->h.release(c + 1);
-		sngl_drop(c);
+		sngl_push(&sngl_releasing, sngl_garbage.at[i]);
 	}
 	sngl_garbage.len = 0;
+	sngl_let_go();
 }
 
 void sngl_turn_end(void) {
 	sngl_depth = 0;
+	sngl_depth_in_value = 0;
 	/* What the turn made and no holder took is the turn's. Giving one back
 	 * gives back what it holds, which may be another's last hold. */
 	while (sngl_pending.len > 0) {
@@ -499,21 +552,42 @@ static bool sngl_tracked(uintptr_t p) {
 	return false;
 }
 
+void sngl_deeper(void) {
+	if (++sngl_depth_in_value > SNGL_MAX_DEPTH) {
+		sngl_depth_in_value = 0;
+		sngl_panic("a value nests more than " SNGL_QUOTE(SNGL_MAX_DEPTH) " deep");
+	}
+}
+
+void sngl_shallower(void) {
+	sngl_depth_in_value--;
+}
+
 void *sngl_env_keep(const void *env) {
-	return env == NULL ? NULL : ((const sngl_env *)env)->keep(env);
+	if (env == NULL) {
+		return NULL;
+	}
+	sngl_deeper();
+	void *kept = ((const sngl_env *)env)->keep(env);
+	sngl_shallower();
+	return kept;
 }
 
 void sngl_env_drop(void *env) {
 	/* One the turn made kept nothing: what it captured is the turn's, or
 	 * held by whatever it was read from. */
 	if (env != NULL && sngl_tracked((uintptr_t)env)) {
+		sngl_deeper();
 		((sngl_env *)env)->drop(env);
+		sngl_shallower();
 	}
 }
 
 void sngl_env_visit(const void *env, sngl_visit fn) {
 	if (env != NULL && sngl_tracked((uintptr_t)env)) {
+		sngl_deeper();
 		((const sngl_env *)env)->visit(env, fn);
+		sngl_shallower();
 	}
 }
 

@@ -365,9 +365,11 @@ static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
 }
 
 static s_ui__menuItem__record s_ui__menuItem__record__keep(s_ui__menuItem__record v) {
+	sngl_deeper();
 	v.label = sngl_string_keep(v.label);
 	v.children = sngl_list_menuItem__record__keep(v.children);
 	v.select = sngl_fn_void__void__keep(v.select);
+	sngl_shallower();
 	return v;
 }
 
@@ -383,9 +385,11 @@ static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
 }
 
 static void s_ui__menuItem__record__drop(s_ui__menuItem__record v) {
+	sngl_deeper();
 	sngl_drop((v.label).ptr);
 	sngl_list_menuItem__record__drop(v.children);
 	sngl_fn_void__void__drop(v.select);
+	sngl_shallower();
 }
 
 static void sngl_list_menuItem__record__visit(sngl_list_menuItem__record v, sngl_visit fn) {
@@ -395,8 +399,10 @@ static void sngl_list_menuItem__record__visit(sngl_list_menuItem__record v, sngl
 }
 
 static void s_ui__menuItem__record__visit(s_ui__menuItem__record v, sngl_visit fn) {
+	sngl_deeper();
 	sngl_list_menuItem__record__visit(v.children, fn);
 	sngl_env_visit((v.select).env, fn);
+	sngl_shallower();
 }
 
 static void *sngl_lambda4_env__keep(const void *p) {
@@ -2158,7 +2164,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:5bdf2f6048b964eb5c7814883933fe8d
+pass sha256:ae3c280145e6a6e284ddc94a003fff9e
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

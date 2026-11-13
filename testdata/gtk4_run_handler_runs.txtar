@@ -874,6 +874,6 @@ func main() {
 	}
 }
 -- run/c/gtk4 --
-pass sha256:042db87fb1f9261bcbc5233d9455b4a4
+pass sha256:973052b6019f5cbefb1c140d3d46dd18
 -- run/go/gtk4 --
 pass sha256:4377578c90ec9cd84c1a601acfbd6d94
