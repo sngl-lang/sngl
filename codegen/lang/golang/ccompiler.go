@@ -78,15 +78,19 @@ func CPreambleLines(links []*ir.CLink) string {
 // those of a package a Go wrapper package calls the C of (`sngl tool
 // cgogen`), which links it in its own build: its sources compiled into the
 // program as well would define each symbol twice. A program calling C
-// directly imports no wrapper package, and links every one.
+// directly imports no wrapper package, and links every one; one calling it
+// through purego links none, opening each library as it starts.
 func CLinks(pkg *ir.Package) []*ir.CLink {
-	return ir.CalledCLinksExcept(pkg, func(p *ir.Package) bool { return wrapped(p, pkg.CallsCDirectly) })
+	if pkg.CCalls == ir.CCallsPurego {
+		return nil
+	}
+	return ir.CalledCLinksExcept(pkg, func(p *ir.Package) bool { return wrapped(p, pkg.CCalls) })
 }
 
 // wrapped reports whether a wrapper package calls p's C: whether any of its
-// functions has a wrapper a build calling C directly or not calls.
-func wrapped(p *ir.Package, direct bool) bool {
-	return slices.ContainsFunc(p.Funcs, func(fn *ir.Func) bool { return wrapper(&fn.Foreign, direct) != nil })
+// functions has a wrapper a build calling C as calls says calls.
+func wrapped(p *ir.Package, calls ir.CCalls) bool {
+	return slices.ContainsFunc(p.Funcs, func(fn *ir.Func) bool { return wrapper(&fn.Foreign, calls) != nil })
 }
 
 // unwrappedCalls refuses a call of a C function a wrapper package declares
@@ -100,7 +104,7 @@ func unwrappedCalls(pkg *ir.Package) error {
 			return nil
 		}
 		fn := c.Func
-		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || wrapper(&fn.Foreign, pkg.CallsCDirectly) != nil || fn.Pkg == nil || !wrapped(fn.Pkg, pkg.CallsCDirectly) {
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || wrapper(&fn.Foreign, pkg.CCalls) != nil || fn.Pkg == nil || !wrapped(fn.Pkg, pkg.CCalls) {
 			return nil
 		}
 		err = fmt.Errorf("%s.%s has no Go wrapper (sngl tool cgogen lists why), and Go calls %s's C through its wrappers alone", fn.Pkg.Path, fn.Name, fn.Pkg.Path)
@@ -114,6 +118,9 @@ func unwrappedCalls(pkg *ir.Package) error {
 // so each source sits beside the generated Go under its own. The dispatchers
 // a C function's callback crosses through join them (ccallback.go).
 func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map[string][]byte, error) {
+	if pkg.CCalls == ir.CCallsPurego {
+		return puregoSources(pkg, generated)
+	}
 	if err := unwrappedCalls(pkg); err != nil {
 		return nil, err
 	}
@@ -133,7 +140,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 			out[src.Name] = []byte(src.Text)
 		}
 	}
-	if sigs := ir.ReachedCCallbacks(pkg, func(fn *ir.Func) bool { return wrapper(&fn.Foreign, pkg.CallsCDirectly) != nil }); len(sigs) > 0 {
+	if sigs := ir.ReachedCCallbacks(pkg, func(fn *ir.Func) bool { return wrapper(&fn.Foreign, pkg.CCalls) != nil }); len(sigs) > 0 {
 		name, err := generatedPackage(generated)
 		if err != nil {
 			return nil, err
@@ -144,7 +151,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		if out == nil {
 			out = map[string][]byte{}
 		}
-		out[callbacksFile] = CallbacksSource(name, links, sigs, pkg.CallsCDirectly)
+		out[callbacksFile] = CallbacksSource(name, links, sigs, pkg.CCalls == ir.CCallsDirect)
 	}
 	return out, nil
 }

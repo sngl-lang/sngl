@@ -159,7 +159,7 @@ each symbol twice.
 **Or the program calls C itself.** The Go language's `cgo` option says how
 Go calls C: `"wrapper"`, the default, as above; `"direct"`, every C
 declaration from the program; and `"purego"`. The build records `"direct"`
-on its copy of the program (`ir.Package.CallsCDirectly`, `build.ApplyCgo`,
+on its copy of the program (`ir.Package.CCalls`, `build.ApplyCgo`,
 which `PrepareTarget` and a test's launch run), and every reader of a
 wrapper reads it there: lowering has no wrapper language, so `CMarshal`
 converts every call; the Go writer's `wrapper` answers nil, so a call is
@@ -173,6 +173,30 @@ declaration here either: a protocol function a splice reaches is the frozen
 library's. A function no wrapper is written for -- one taking a `ref` -- is
 callable this way (`c_win32_test_runs.txt`'s `refrun.sngl`), and a gtk4
 program runs whole (`testdata/gtk4_go_direct_runs.txtar`).
+
+**Or through purego, with no cgo.** Under `"purego"` lowering marshals for a
+language that takes Go's own values (`cPurego`): no call is converted and a
+cast is its operand. Each C function the program calls is a func variable
+of its own (`snglC_<name>`), which `sngl_purego.go`'s init binds through
+`pkg/go/cload` to the function of that name in the library its package's
+c.link names (`library=`): `lib<name>.so`, or the first version of it that
+opens, on Linux, `.dylib` on macOS and `<name>.dll` on Windows. A call
+converts each argument to the Go type of its C type's size -- an int is
+`int32`, a float `float64`, a bool an `int32`, an alias the size of the C
+type it spells (`Param.CAlias`, `Func.ReturnCAlias`) -- and the result
+back; a string crosses as purego copies it, and a handle C holds opaquely as
+an `unsafe.Pointer`. What purego cannot do is refused, naming it: a package
+whose c.link ships C to compile (gtk4's and win32's runtimes), a c.link
+naming no library, a `ref` C fills, a C struct by value, and a callback,
+since purego's are never given back
+(`testdata/c_go_purego_call.txtar`, `go_cgo_purego_refused.txt`).
+
+**What each costs a build.** Rebuilt after a change to the program, its
+dependencies built already (November 2026, one Linux machine): a gtk4
+program takes 0.4 s calling the wrappers and 4.3 to 5.5 s called directly,
+since cgo runs over the program and the runtime it compiles every time; a
+bubbletea program calling libm takes 0.2 s called directly and 0.1 s
+through purego. `wrapper` stays the default for that.
 
 **A platform's entry calls the runtime through functions of the program's
 own.** The entry, the test agent, `async.do`'s post, a test's wait and the

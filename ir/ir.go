@@ -68,12 +68,11 @@ type Package struct {
 	// every ordinary build, where a window is the root and a component is
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
-	// CallsCDirectly says a Go build calls every C declaration from the
-	// program, its Go wrapper's spelling (`#[go.native]` beside `#[c.native]`)
-	// ignored: the Go language's `cgo` option set to "direct". The build sets
-	// it on its copy, and lowering and the Go emitter read it there.
-	CallsCDirectly bool `json:",omitempty"`
-	Contexts       []*Context
+	// CCalls is how a Go build calls a C declaration: the Go language's `cgo`
+	// option. The build sets it on its copy, and lowering and the Go emitter
+	// read it there.
+	CCalls   CCalls `json:",omitempty"`
+	Contexts []*Context
 	// Symbols is the scope chain the package's names resolve through, an
 	// index over declarations a dump writes where they stand.
 	Symbols *SymbolTable `json:"-"`
@@ -876,7 +875,11 @@ type Func struct {
 	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length()
 	Params         []*Param
 	Return         *Type
-	Block          []Stmt // type-checked statements (expression bodies become a single Return)
+	// ReturnCAlias is the `#[c.native]` alias the return type was written as
+	// (Param.CAlias's rule): what a C function hands back crosses as the C
+	// type the alias spells.
+	ReturnCAlias *Alias `json:",omitempty"`
+	Block        []Stmt // type-checked statements (expression bodies become a single Return)
 	// PlatformOverrides holds the body each target implements this function
 	// with, keyed by platform. The checker collects every registered target's;
 	// ir.SpecializeForTarget swaps the chosen one into Block. Empty for a
@@ -1670,6 +1673,22 @@ type Output struct {
 	// wrapped. The build makes it the package's Run function.
 	Run *EventHandler `json:"-"`
 }
+
+// CCalls is how a Go build calls a C declaration (Package.CCalls).
+type CCalls int
+
+const (
+	// CCallsWrapper calls the Go wrapper `sngl tool cgogen` marks beside a
+	// declaration (`#[go.native]` beside `#[c.native]`), and the declaration
+	// itself through cgo where it has none.
+	CCallsWrapper CCalls = iota
+	// CCallsDirect calls every C declaration from the program through cgo,
+	// whatever wrapper it has.
+	CCallsDirect
+	// CCallsPurego calls every C declaration through purego, opening the
+	// library its c.link names: no cgo at all.
+	CCallsPurego
+)
 
 // ReceiverParam is the surface name of the implicit method receiver (SNGL's
 // `this`). The checker binds the desugared receiver under this name so that

@@ -1010,18 +1010,19 @@ reaches it the same way.
    C's sanitized `TestRun` checks leaks. A cycle through counted boxes --
    a closure stored in the var it calls -- is collected at the turn's end
    (`sngl_collect_cycles`, `codegen/lang/c/testdata/run/cycles.txtar`).
-3. **`cgo` becomes `direct`, `wrapper` or `purego`.** The Go language's
-   `cgo` option (`go(cgo="direct")`, `--opt cgo=direct`), a string as
-   win32's `arch` is. `wrapper` and `direct` are done: called directly, the
-   program compiles each c.link's sources itself and calls every C
-   declaration as it calls a `c:` import's, a function no wrapper is written
-   for among them (`design/win32.md`, *Or the program calls C itself*;
-   `testdata/gtk4_go_direct_runs.txtar`, `--opt cgo=direct` runs in
-   `gtk4_test_runs.txt` and `c_win32_test_runs.txt`). A platform's entry and
-   hooks call the runtime through functions of the program's own
-   (`sngl_rt.go`). `purego` is next, for a package whose C is declarations
-   alone: one whose c.link ships sources -- gtk4's and win32's runtimes, until
-   step 6 -- is refused, naming them.
+3. **`cgo` becomes `direct`, `wrapper` or `purego`.** Done: the Go
+   language's `cgo` option (`go(cgo="direct")`, `--opt cgo=direct`), a
+   string as win32's `arch` is (`design/win32.md`, *Or the program calls C
+   itself* and *Or through purego*). Called directly, the program compiles
+   each c.link's sources itself and calls every C declaration as it calls a
+   `c:` import's, a function no wrapper is written for among them
+   (`testdata/gtk4_go_direct_runs.txtar`, `--opt cgo=direct` runs in
+   `gtk4_test_runs.txt` and `c_win32_test_runs.txt`). Through purego, a
+   package whose C is declarations against a library is called with no cgo
+   (`testdata/c_go_purego_call.txtar`); one shipping C -- gtk4's and win32's
+   runtimes, until step 6 -- a ref, a C struct by value and a callback are
+   refused (`go_cgo_purego_refused.txt`). A platform's entry and hooks call
+   the runtime through functions of the program's own (`sngl_rt.go`).
 4. **`pkg/go/gtk4rt` is deleted.** Done with the swap. Its tests went with
    it, and what they held is written as programs in both languages: a box
    laid out as CSS's flex is and a scroll's pictures drawn at their height
@@ -1048,8 +1049,8 @@ reaches it the same way.
 
 ### Open questions
 
-- Which parts of the runtime must stay C, and how `purego` reaches them:
-  through `purego.NewCallback`, through a shared library built from `rt/`, or
-  not at all. A GObject subclass through purego is the hardest case.
-- What a program's build costs in each mode, measured as Part 3's table
-  measured wrapped against cgo.
+- How `purego` reaches what stays C once the runtimes are SNGL (step 6):
+  the span's GObject subclass, and the callbacks the layout managers and
+  window procedures are, which `purego.NewCallback` makes and never gives
+  back. What each mode costs a build is measured (`design/win32.md`, *What
+  each costs a build*).

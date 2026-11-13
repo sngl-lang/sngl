@@ -571,7 +571,7 @@ func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
 	}
 	// A C call's result converted to Go's type (cCall) is an expression no
 	// statement may discard.
-	if fn := n.Call.Func; fn != nil && fn.Foreign.Path == ir.CPath && !fn.IsCCast() && wrapper(&fn.Foreign, gc.direct()) == nil && fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+	if fn := n.Call.Func; fn != nil && fn.Foreign.Path == ir.CPath && !fn.IsCCast() && wrapper(&fn.Foreign, gc.calls()) == nil && fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
 		return []string{"_ = " + gc.EvalExpr(n.Call)}
 	}
 	return []string{gc.EvalExpr(n.Call)}
@@ -1232,7 +1232,7 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	f := &n.Func.Foreign
 	if gc.Wrapping == "" {
-		f = spelling(f, gc.direct())
+		f = spelling(f, gc.calls())
 	}
 	if f.Path == "" || f.Marked {
 		return "", false
@@ -1964,7 +1964,7 @@ func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
 	if sd == nil || sd.Foreign.Name == "" || sd.Foreign.Marked {
 		return
 	}
-	if p := spelling(&sd.Foreign, gc.direct()).Path; p != "" && p != "C" {
+	if p := spelling(&sd.Foreign, gc.calls()).Path; p != "" && p != "C" {
 		gc.RequireImport(p)
 	}
 }
@@ -1972,10 +1972,10 @@ func (gc *GoIRContext) requireForeignStructImport(n *ir.StructLit) {
 // TypeImports is every package IRTypeToGo's spelling of t names: a struct
 // declaration's field types are spelled with no expression beside them to
 // have required one.
-func TypeImports(t *ir.Type) []string { return typeImports(t, false) }
+func TypeImports(t *ir.Type) []string { return typeImports(t, ir.CCallsWrapper) }
 
-// typeImports is TypeImports for a build that calls C directly or not.
-func typeImports(t *ir.Type, direct bool) []string {
+// typeImports is TypeImports for a build calling C as calls says.
+func typeImports(t *ir.Type, calls ir.CCalls) []string {
 	var out []string
 	add := func(p string) {
 		if !slices.Contains(out, p) {
@@ -1991,8 +1991,10 @@ func typeImports(t *ir.Type, direct bool) []string {
 		case ClassifyUnit(unitDeclOf(e)) == UnitDuration:
 			add("time")
 		default:
-			if sd, ok := e.Decl.(*ir.StructDef); ok && wrapper(&sd.Foreign, direct) != nil {
-				add(wrapper(&sd.Foreign, direct).Path)
+			if sd, ok := e.Decl.(*ir.StructDef); ok && wrapper(&sd.Foreign, calls) != nil {
+				add(wrapper(&sd.Foreign, calls).Path)
+			} else if calls == ir.CCallsPurego && ok && sd.Foreign.C != nil && !sd.IsCStruct() {
+				add("unsafe")
 			} else if ct := ir.CTypeOf(e); ct != nil && strings.Contains(CTypeToGo(ct), "unsafe.") {
 				add("unsafe")
 			} else if sd, ok := e.Decl.(*ir.StructDef); ok && sd.Foreign.Name != "" && !sd.Foreign.Marked && sd.Foreign.Path != "" && sd.Foreign.Path != ir.CPath {
@@ -2193,7 +2195,7 @@ func (gc *GoIRContext) goType(t *ir.Type) string {
 // requireTypeImports requires of the file gc writes each package
 // IRTypeToGo's spelling of t names, where the output spells it.
 func (gc *GoIRContext) requireTypeImports(t *ir.Type) {
-	for _, p := range typeImports(t, gc.direct()) {
+	for _, p := range typeImports(t, gc.calls()) {
 		if p != gc.Wrapping {
 			gc.RequireImport(p)
 		}
@@ -2205,22 +2207,23 @@ func IRTypeToGo(t *ir.Type) string { return typeToGo(t, site{}) }
 
 // site is where a type is spelled: a file in the Go package own, which names
 // its own types unqualified -- a wrapper package (sngl tool cgogen) naming the
-// C struct it declares -- of a build that calls C directly or not
-// (ir.Package.CallsCDirectly).
+// C struct it declares -- of a build calling C as calls says.
 type site struct {
-	own    string
-	direct bool
+	own   string
+	calls ir.CCalls
 }
 
 // site is where gc's file spells a type.
 func (gc *GoIRContext) site() site {
-	return site{own: gc.Wrapping, direct: gc.direct()}
+	return site{own: gc.Wrapping, calls: gc.calls()}
 }
 
-// direct says gc's build calls C directly, so no declaration's Go wrapper is
-// its spelling.
-func (gc *GoIRContext) direct() bool {
-	return gc.Ctx != nil && gc.Ctx.Pkg != nil && gc.Ctx.Pkg.CallsCDirectly
+// calls is how gc's build calls C (ir.Package.CCalls).
+func (gc *GoIRContext) calls() ir.CCalls {
+	if gc.Ctx == nil || gc.Ctx.Pkg == nil {
+		return ir.CCallsWrapper
+	}
+	return gc.Ctx.Pkg.CCalls
 }
 
 // typeToGo is IRTypeToGo for a file at, which names a type as at says.
@@ -2290,15 +2293,19 @@ func typeToGo(t *ir.Type, at site) string {
 		}
 		if sd, ok := t.Decl.(*ir.StructDef); ok {
 			// A C type with a Go wrapper is the wrapper package's.
-			if g := wrapper(&sd.Foreign, at.direct); g != nil {
+			if g := wrapper(&sd.Foreign, at.calls); g != nil {
 				if g.Path == at.own {
 					return g.Name[strings.LastIndexByte(g.Name, '.')+1:]
 				}
 				return g.Name
 			}
 			// A C struct with fields is the program's own, declared below
-			// and converted at the call (CInterop).
+			// and converted at the call (CInterop). One C holds opaquely is
+			// cgo's type, or the pointer purego hands back.
 			if sd.Foreign.C != nil && !sd.IsCStruct() {
+				if at.calls == ir.CCallsPurego {
+					return "unsafe.Pointer"
+				}
 				return CTypeToGo(sd.Foreign.C)
 			}
 			// A mark names a type this file also declares, so using the mark's

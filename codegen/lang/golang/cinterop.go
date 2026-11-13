@@ -89,7 +89,7 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 // where the struct declaring it has one (`cgo.PGtkLabel`), since a program
 // calling C through wrappers has no `C` of its own, and cgo's otherwise.
 func (gc *GoIRContext) castType(x *ir.CConvert) string {
-	if sd, ok := x.Type.Decl.(*ir.StructDef); ok && x.Type.Kind == ir.TypeStruct && gc.Wrapping == "" && wrapper(&sd.Foreign, gc.direct()) != nil {
+	if sd, ok := x.Type.Decl.(*ir.StructDef); ok && x.Type.Kind == ir.TypeStruct && gc.Wrapping == "" && wrapper(&sd.Foreign, gc.calls()) != nil {
 		return gc.goType(x.Type)
 	}
 	return gc.CType(x.To)
@@ -110,6 +110,9 @@ func (gc *GoIRContext) castType(x *ir.CConvert) string {
 // the result and each one.
 func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 	fn := c.Func
+	if gc.calls() == ir.CCallsPurego {
+		return gc.puregoCall(fn, args)
+	}
 	off := len(args) - len(fn.Params)
 	if off < 0 {
 		return gc.cCall(fn, args)
@@ -264,11 +267,11 @@ func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string) string {
 
 // wrapper is the Go wrapper of a C declaration f describes, which `sngl tool
 // cgogen` marks beside its C spelling (design/win32.md), or nil where it has
-// none, or in a build that calls C directly (ir.Package.CallsCDirectly). Go
-// calls the wrapper and spells the type as the wrapper package's, and
-// lower.CMarshal converts nothing for it.
-func wrapper(f *ir.Foreign, direct bool) *ir.Foreign {
-	if f.Scheme != "c" || direct {
+// none, or in a build calling C otherwise than through wrappers
+// (ir.Package.CCalls). Go calls the wrapper and spells the type as the
+// wrapper package's, and lower.CMarshal converts nothing for it.
+func wrapper(f *ir.Foreign, calls ir.CCalls) *ir.Foreign {
+	if f.Scheme != "c" || calls != ir.CCallsWrapper {
 		return nil
 	}
 	return f.In("go")
@@ -276,8 +279,8 @@ func wrapper(f *ir.Foreign, direct bool) *ir.Foreign {
 
 // spelling is how Go names the declaration f describes: its wrapper where it
 // has one, and f otherwise.
-func spelling(f *ir.Foreign, direct bool) *ir.Foreign {
-	if g := wrapper(f, direct); g != nil {
+func spelling(f *ir.Foreign, calls ir.CCalls) *ir.Foreign {
+	if g := wrapper(f, calls); g != nil {
 		return g
 	}
 	return f

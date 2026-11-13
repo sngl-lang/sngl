@@ -1,0 +1,69 @@
+# Called through purego (the Go language's `cgo` option set to "purego"), a
+# C function is opened from the library its c.link names, and crosses Go's
+# own values: what purego cannot do is refused, naming what it is.
+
+# A package whose c.link ships C to compile: purego has no compiler. gtk4's
+# runtime is C until the runtimes become SNGL.
+! sngl generate --platform=gtk4 --lang=go --opt cgo=purego -o out window.sngl
+stderr 'purego compiles no C, and the package declaring it ships sngl_gtk.c'
+
+# A c.link naming no library: nothing says what to open.
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out nolib.sngl
+stderr 'cos: purego opens the library a c.link names \(library=…\), and the package declaring it names none'
+
+# A ref C fills: purego hands C no Go address.
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out ref.sngl
+stderr 'div_into takes q: purego hands C no address to fill'
+
+# A callback: purego's are never given back.
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out callback.sngl
+stderr 'sum takes f: purego''s callbacks are never given back'
+
+-- window.sngl --
+import ui "sngl:ui"
+
+ui.window(title="t") {
+    ui.text("x")
+}
+-- nolib.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="math.h", system=true)
+
+#[c.native("cos")]
+func cos(x float) float
+
+ui.window(title="t") {
+    ui.text("{cos(0.0)}")
+}
+-- ref.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="stdlib.h", system=true, library="c")
+
+#[c.native("div_into")]
+func divide(a int, q ref[int])
+
+func f() int {
+    var q = 0
+    divide(7, &q)
+    return q
+}
+
+ui.window(title="t") {
+    ui.text("{f()}")
+}
+-- callback.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="sum.h", system=true, library="sum")
+
+#[c.native("sum")]
+func sum(n int, f func(int) int, #[c.context] data c.pointer) int
+
+ui.window(title="t") {
+    ui.text("{sum(3, func(i int) => i * 2)}")
+}

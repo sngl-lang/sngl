@@ -151,6 +151,9 @@ func (m *cMarshal) rewriteCasts(n ir.Node) (ir.Node, error) {
 		// A node is its platform's handle in the wrapper's Go, as the struct
 		// is: nothing to convert. Anything else -- a pointer cast to another
 		// class, a number to an enum -- is converted to the wrapper's type.
+		if m.language == cPurego {
+			return c.Args[0].Value, nil
+		}
 		if sd, ok := c.Func.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
 			if t := c.Args[0].Value.ExprType(); t == nil || t.Kind == ir.TypeComponent || t.Decl == sd {
 				return c.Args[0].Value, nil
@@ -166,8 +169,16 @@ func (m *cMarshal) rewriteCasts(n ir.Node) (ir.Node, error) {
 // cgogen` marks beside the C one (design/win32.md). The wrapper takes and
 // returns the language's own values, so nothing is converted for it.
 func (m *cMarshal) wrapped(f *ir.Foreign) bool {
+	if m.language == cPurego {
+		return f.Scheme == "c"
+	}
 	return m.language != "" && m.language != f.Scheme && f.Scheme == "c" && f.In(m.language) != nil
 }
+
+// cPurego is the language a Go build calling C through purego marshals for
+// (ir.CCallsPurego): purego takes and returns Go's own values, as a wrapper
+// does, so no call is converted and a cast is its operand.
+const cPurego = "purego"
 
 // marshalSpliced converts the C calls of an expression a pass splices after
 // passCMarshal ran, and is e with its casts made conversions.

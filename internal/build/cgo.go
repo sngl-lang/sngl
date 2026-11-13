@@ -20,11 +20,12 @@ const (
 )
 
 // ApplyCgo makes pkg, a build's copy, call C as the target's `cgo` option
-// says. Under "direct" the copy says so (ir.Package.CallsCDirectly), and each
-// later phase calls a C declaration as it calls one of a program's own `c:`
+// says, which the copy records (ir.Package.CCalls). Under "direct" each later
+// phase calls a C declaration as it calls one of a program's own `c:`
 // imports, whatever wrapper it has: lowering converts its arguments, the
 // program writes `import "C"` and the C its package ships is compiled beside
-// it.
+// it. Under "purego" nothing is converted to C: the program hands purego Go's
+// own values.
 func ApplyCgo(pkg *ir.Package, target Target) error {
 	if target.Lang != "go" {
 		return nil
@@ -34,10 +35,11 @@ func ApplyCgo(pkg *ir.Package, target Target) error {
 	case "", CgoWrapper:
 		return nil
 	case CgoDirect:
-		pkg.CallsCDirectly = true
+		pkg.CCalls = ir.CCallsDirect
 		return nil
 	case CgoPurego:
-		return fmt.Errorf("cgo=%s is not written yet", mode)
+		pkg.CCalls = ir.CCallsPurego
+		return nil
 	}
 	return fmt.Errorf("cgo=%q: Go calls C %q, %q or %q", mode, CgoWrapper, CgoDirect, CgoPurego)
 }

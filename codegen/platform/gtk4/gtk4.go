@@ -309,7 +309,7 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 	if err := fe.Close(); err != nil {
 		return err
 	}
-	if err := writeFile(sink, shimFile, []byte(shim(pkg.CallsCDirectly))); err != nil {
+	if err := writeFile(sink, shimFile, []byte(shim(pkg.CCalls == ir.CCallsDirect))); err != nil {
 		return err
 	}
 	if golang.PackageUsesI18n(pkg) {

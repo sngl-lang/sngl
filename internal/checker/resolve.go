@@ -937,6 +937,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		IsTest:         f.IsTest(),
 		Const:          f.Const,
 	}
+	if f.ReturnType != nil {
+		fn.ReturnCAlias = c.cAliasOf(f.ReturnType, ret)
+	}
 	for i, p := range f.RecvTypeParams {
 		fn.RecvTypeParams[i].Constraint = c.typeParamSym(p.Name, p.Pos).Constraint
 	}

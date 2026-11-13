@@ -225,7 +225,8 @@ type Features struct {
 	// its native marks spell a declaration in: a C declaration with a
 	// spelling there beside its C one is called through it, and CMarshal
 	// leaves the call alone (cWrapped). Empty for a Go build calling C
-	// directly (ir.Package.CallsCDirectly).
+	// directly, and cPurego for one calling it through purego
+	// (ir.Package.CCalls).
 	language string
 
 	// connect is the platform node's #[gen.protocol(connect)], which
