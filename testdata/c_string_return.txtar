@@ -10,7 +10,6 @@ C function's answer.
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:x/c"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import test "sngl:test"
 
@@ -22,10 +21,10 @@ output {
 
 c.link(include="names.h", sources=["names.c", "names.h"])
 
-#[macro.cnative("sngl_name")]
+#[c.native("sngl_name")]
 func name(i int) string
 
-#[macro.cnative("sngl_even")]
+#[c.native("sngl_even")]
 func even(i int) bool
 
 component main ui.node {

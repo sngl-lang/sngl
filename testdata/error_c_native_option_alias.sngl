@@ -3,24 +3,23 @@
 // alias of one is refused, and a C function answers no alias of string,
 // since a string it answers is read as a `char *`.
 import c "sngl:x/c"
-import macro "sngl:macro"
 
 c.link(include="h.h")
 
-#[macro.cnative("UINT")]
+#[c.native("UINT")]
 struct UINT = int
 
-#[macro.cnative("BOOL")]
+#[c.native("BOOL")]
 struct BOOL = bool
 
-#[macro.cnative("takeU")]
+#[c.native("takeU")]
 func takeU(x option[UINT]) int // ERROR(check) "C has no NULL UINT"
 
-#[macro.cnative("takeB")]
+#[c.native("takeB")]
 func takeB(x option[BOOL]) int // ERROR(check) "C has no NULL BOOL"
 
-#[macro.cnative("takeW")]
+#[c.native("takeW")]
 func takeW(s option[c.utf16]) int
 
-#[macro.cnative("giveW")] // ERROR(check) "answers a utf16"
+#[c.native("giveW")] // ERROR(check) "answers a utf16"
 func giveW() c.utf16

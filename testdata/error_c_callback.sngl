@@ -9,54 +9,54 @@ import go "sngl:language/go"
 
 c.link(include="calls.h")
 
-#[macro.cnative("no_context")]
+#[c.native("no_context")]
 func noContext(f func()) // ERROR(check) "a func, which C can call only through a function handed the closure back: mark the `void *` it hands its callback #[c.context]"
 
-#[macro.cnative("bad_context")]
-func badContext(f func(), #[c.context] data int) // ERROR(check) "parameter \"data\" is a callback's context, a C pointer: declare it c.pointer, or a #[cnative] struct naming the C function's own spelling of one, not int"
+#[c.native("bad_context")]
+func badContext(f func(), #[c.context] data int) // ERROR(check) "parameter \"data\" is a callback's context, a C pointer: declare it c.pointer, or a #[c.native] struct naming the C function's own spelling of one, not int"
 
-#[macro.cnative("lone_context")]
+#[c.native("lone_context")]
 func loneContext(#[c.context] data c.pointer) // ERROR(check) "and loneContext takes no func for it to be handed to"
 
-#[macro.cnative("two_callbacks")]
+#[c.native("two_callbacks")]
 func twoCallbacks(f func(), g func(), #[c.context] data c.pointer) // ERROR(check) "takes a second func, \"g\", and C hands its one context to one callback"
 
-#[macro.cnative("takes_string")]
-func takesString(f func(s string), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a string: a callback crosses an int, float, bool or #[cnative] handle"
+#[c.native("takes_string")]
+func takesString(f func(s string), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a string: a callback crosses an int, float, bool or #[c.native] handle"
 
-#[macro.cnative("answers_list")]
+#[c.native("answers_list")]
 func answersList(f func() list[int], #[c.context] data c.pointer) // ERROR(check) "callback \"f\" answers a list[int]"
 
 #[go.native("strings", "Repeat")]
 func goNative(f func(), #[c.context] data c.pointer) // ERROR(check) "and goNative is not a C function"
 
-#[macro.cnative("good")]
+#[c.native("good")]
 func good(f func(int) bool, p c.pointer, #[c.context] data c.pointer)
 
-#[macro.cnative("two_contexts")]
+#[c.native("two_contexts")]
 func twoContexts(f func(), #[c.context] a c.pointer, #[c.context] b c.pointer) // ERROR(check) "marks a second context, \"b\""
 
-#[macro.cnative("lone_release")]
+#[c.native("lone_release")]
 func loneRelease(f func(), #[c.release] r c.pointer) // ERROR(check) "parameter \"r\" releases a callback's context, and loneRelease marks no #[c.context]"
 
-#[macro.cnative("bad_release")]
+#[c.native("bad_release")]
 func badRelease(f func(), #[c.context] data c.pointer, #[c.release] r int) // ERROR(check) "parameter \"r\" takes a C function: declare it c.pointer"
 
-#[macro.cnative("two_releases")]
+#[c.native("two_releases")]
 func twoReleases(f func(), #[c.context] data c.pointer, #[c.release] r c.pointer, #[c.release] s c.pointer) // ERROR(check) "marks a second release, \"s\""
 
-#[macro.cnative("retained_released")]
+#[c.native("retained_released")]
 func retainedReleased(#[macro.retains] f func(), #[c.context] data c.pointer, #[c.release] r c.pointer) // ERROR(check) "callback \"f\" is held until C calls \"r\", which #[c.release] says, so it is not #[retains] as well"
 
 #[go.native("strings", "Repeat")]
 func goRelease(f func(), #[c.release] r c.pointer) // ERROR(check) "and goRelease is not a C function"
 
-#[macro.cnative("FLOAT")]
+#[c.native("FLOAT")]
 struct FLOAT = float
 
 // A callback's float crosses as C's double, which a 4-byte alias is not.
-#[macro.cnative("takes_float")]
+#[c.native("takes_float")]
 func takesFloat(f func(x FLOAT), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" crosses a FLOAT, C's FLOAT"
 
-#[macro.cnative("answers_float")]
+#[c.native("answers_float")]
 func answersFloat(f func() FLOAT, #[c.context] data c.pointer) // ERROR(check) "callback \"f\" crosses a FLOAT"

@@ -5,9 +5,9 @@ and `null` as NULL. `setlocale` takes either: a locale to set, or NULL to
 ask for the current one.
 -- app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import "c:locale.h"
+import c "sngl:x/c"
 
 output {
     go {
@@ -15,7 +15,7 @@ output {
     }
 }
 
-#[macro.cnative("setlocale")]
+#[c.native("setlocale")]
 func setLocale(category int, locale option[string])
 
 var n = 0

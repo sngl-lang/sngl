@@ -11,14 +11,13 @@ exec out/c/win32 -- hidden.txt
 exec out/c/win32 --window x -- shown.txt
 -- app.sngl --
 import c "sngl:x/c"
-import macro "sngl:macro"
 import time "sngl:time"
 import ui "sngl:ui"
 import win32 "sngl:platform/win32"
 
 c.link(include="stdio.h", system=true)
 
-#[macro.cnative("puts")]
+#[c.native("puts")]
 func say(s string)
 
 var (
@@ -590,7 +589,7 @@ static bool sngl_win32_started;
 static void sngl_win32_start(void *env) {
 	(void)env;
 	if (sngl_win32_started) {
-		sngl_win32_refuse_run_again("app.sngl:19:16");
+		sngl_win32_refuse_run_again("app.sngl:18:16");
 	}
 	sngl_win32_started = true;
 	sngl_win32_present();
@@ -655,4 +654,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:6c1d28d7e705ff0b3eda11a1f473387c
+pass sha256:62638921df173b7498f995e4383f1a52

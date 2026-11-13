@@ -11,7 +11,6 @@ deny out/go/bubbletea/model.go `C\.CString` -- a utf16 argument is encoded, neve
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:x/c"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import test "sngl:test"
 
@@ -23,10 +22,10 @@ output {
 
 c.link(include="units.h", sources=["units.c", "units.h"])
 
-#[macro.cnative("sngl_units")]
+#[c.native("sngl_units")]
 func units(s c.utf16) int
 
-#[macro.cnative("sngl_units")]
+#[c.native("sngl_units")]
 func unitsOrNull(s option[c.utf16]) int
 
 component main ui.node {

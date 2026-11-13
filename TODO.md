@@ -9,7 +9,7 @@ language to call C: Go through cgo, C directly, Python through cffi or
 ctypes. Today that is not so. `sngl:x/c` and the declarations gtk4 writes
 spell cgo (`C.CString`, `*C.cairo_t`, `unsafe.Pointer`), and gtk4's protocol
 leans on a Go runtime package. `lib/platform/gtk4/gtk4.sngl` has 54
-`#[go.native]` declarations next to 34 `#[cnative]` ones. So gtk4 builds only
+`#[go.native]` declarations next to 34 `#[c.native]` ones. So gtk4 builds only
 in Go, and win32 written the same way would too.
 
 So the work comes in three parts, in order:
@@ -65,7 +65,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### Where Go leaks today
 
-- **`#[cnative]` names are cgo spellings.** The mark's own doc says the name is
+- **`#[c.native]` names are cgo spellings.** The mark's own doc says the name is
   "spelled as the emitting language reaches it" (`lib/macro/foreign.sngl`).
   Of the 43 names in `lib/`, `codegen/` and `internal/`:
   - 26 are bare C functions, which are neutral already.
@@ -85,7 +85,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
   return is wrapped `int(…)` or `float64(…)` there too.
 - **Callbacks exist only as Go.** gtk4 connects a signal through gtk4rt's
   `Connect`. That is a `#[go.native]`, whose C trampoline calls an `//export`ed
-  Go dispatcher over `pkg/go/cbind`'s registry. No `#[cnative]` function can
+  Go dispatcher over `pkg/go/cbind`'s registry. No `#[c.native]` function can
   take a `func`.
 - **Structs and out-parameters cannot cross at all.** `CMarshal` converts
   `string`, `int`, `float`, `bool` and `option[string]`, and hands anything
@@ -97,10 +97,10 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 
 ### The design
 
-1. **`#[cnative]` names C as C spells it.**
+1. **`#[c.native]` names C as C spells it.**
    - A function is its C name (`cairo_arc`), as today.
-   - A type is a C type: `#[cnative("cairo_t *")] struct CairoContext {}`,
-     `#[cnative("cairo_line_cap_t")]`, `#[cnative("const char *")]`.
+   - A type is a C type: `#[c.native("cairo_t *")] struct CairoContext {}`,
+     `#[c.native("cairo_line_cap_t")]`, `#[c.native("const char *")]`.
    - The checker parses the name once into an `ir.CType` (a name, a pointer
      depth, `const`) on the declaration's `Foreign`, and refuses anything
      beyond that small declarator grammar: no arrays and no function-pointer
@@ -115,7 +115,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      - a bool to `int`
      - a pointer to another pointer type (gtk4's `_as_` casts and its `void *` widget handle)
    - The `sngl:x/c` conversions keep their `#[builtin]` marks, which say which
-     operation they stand for. They lose their `#[cnative]` spellings.
+     operation they stand for. They lose their `#[c.native]` spellings.
    - The translator renders the operation:
 
      | Operation          | Go                                   | C                                          | Python (cffi)           |
@@ -127,12 +127,12 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    - gtk4's hand-written casts (`toLineCap`) and declgen's `_to_` and `_as_`
      functions become this operation.
 3. **Typed scalars and wide strings are part of the IR's C.**
-   - **Typed scalars:** `#[cnative("UINT")] struct UINT = int` names a C
+   - **Typed scalars:** `#[c.native("UINT")] struct UINT = int` names a C
      typedef SNGL spells as an `int`. A caller passes an `int`, since an
      alias is what it names (spec, *Aliases*). A C function's parameter
      written with the alias crosses through a cast to it, not as a C `int`.
    - **Wide strings:** `sngl:x/c` declares
-     `#[cnative("const unsigned short *")] struct utf16 = string` as the
+     `#[c.native("const unsigned short *")] struct utf16 = string` as the
      spelling of a parameter that crosses as UTF-16, and `option[c.utf16]`
      as one that may be NULL. `unsigned short` rather than `wchar_t`, which
      is 32 bits off Windows and needs a header: cgo makes a typedef an alias,
@@ -161,14 +161,14 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      `c.link` gains the library's name (`library="user32"`, `"gtk-4"`), which
      pkg-config's `--libs` gives for the `c:pkg:` scheme. A Python translator
      would also need the declarations as cffi `cdef` text, which the IR's
-     `#[cnative]` declarations are enough to write.
+     `#[c.native]` declarations are enough to write.
    - `c.link` also gains `sources`: C files the platform ships, compiled into
      the program (item 7).
 5. **A callback is a C function type the language implements.**
-   - A `#[cnative]` function may take a SNGL `func(…)` where C takes a
+   - A `#[c.native]` function may take a SNGL `func(…)` where C takes a
      function pointer and a `void *` context, the shape GLib's signals,
      `qsort_r` and most C APIs offer. The declaration names which parameter
-     is the context (a mark on the parameter, or a flag on `cnative`).
+     is the context (a mark on the parameter, or a flag on `c.native`).
    - The translator writes the trampoline. Go writes a static C function in the
      preamble calling an `//export`ed dispatcher over `cbind`'s registry, which
      is gtk4rt's `Connect` made generic. C writes a function taking the
@@ -182,7 +182,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
      `design/ownership.md`'s node lifetime.
 6. **A C struct is a SNGL struct with a C layout, and an out-parameter is a
    `ref`.**
-   - `#[cnative("RECT")] struct RECT { left int; top int; right int; bottom int }`, whose fields are typed with item 3's aliases where C's are typedefs.
+   - `#[c.native("RECT")] struct RECT { left int; top int; right int; bottom int }`, whose fields are typed with item 3's aliases where C's are typedefs.
    - The translator converts it field by field at the call: Go through `C.RECT`,
      C as the struct itself, Python through `ffi.new("RECT *")`.
    - A `ref[RECT]` parameter (spec, *References*) is a pointer the callee
@@ -216,25 +216,25 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
 ### The steps
 
 1. **Neutral spellings, Go rendering, no golden changes.** Done: no golden
-   changed. A cast is `#[cnative("cairo_line_cap_t", cast)]`, returning the
+   changed. A cast is `#[c.native("cairo_line_cap_t", cast)]`, returning the
    struct that declares the type it names. `CConvert.Via` keeps the cast a
    conversion was written through, for the dump. The deny test is the
    checker's own refusal of a language's spelling
-   (`testdata/error_cnative_spelling.sngl`), which covers every
-   `#[cnative]` name rather than `lib/`'s.
+   (`testdata/error_c_native_spelling.sngl`), which covers every
+   `#[c.native]` name rather than `lib/`'s.
    - Add `ir.CType` and the declarator parse in `markCNative`.
    - Add `ir.CConvert`, and have `CMarshal` write it.
    - Add golang's `CInterop`.
-   - Rewrite `sngl:x/c`, gtk4's hand-written `#[cnative]` declarations and
+   - Rewrite `sngl:x/c`, gtk4's hand-written `#[c.native]` declarations and
      `declgen`'s output in C spellings.
    - The goldens that hold C calls must not change: `testdata/c_link.txtar`,
      `c_bool_argument.txtar`, `gir_transfer_full.txtar` and gtk4's
      `cgo=true` goldens. They are the refactor's proof. Deny `C.` and
-     `unsafe.` in `lib/` source with a test over every `#[cnative]` name.
+     `unsafe.` in `lib/` source with a test over every `#[c.native]` name.
 2. **Typed scalars and UTF-16** (design item 3). Done:
    `testdata/c_alias_argument.txtar` (`towupper`'s `wint_t`),
-   `testdata/c_utf16_argument.txtar`, `testdata/error_cnative_alias.sngl`.
-   An alias takes `#[cnative]` and no other mark. The alias's kind is
+   `testdata/c_utf16_argument.txtar`, `testdata/error_c_native_alias.sngl`.
+   An alias takes `#[c.native]` and no other mark. The alias's kind is
    checked once it resolves (`checkCAlias`), since a mark calling into
    resolution makes an initialization cycle through `markImpls`.
 3. **`c.link` gains `library` and `sources`** (design items 4 and 7). Done:
@@ -243,7 +243,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    its C function. A library's sources are read from `lib.FS`, whose
    `go:embed` holds only `.sngl` until the first platform ships one: add the
    pattern with it.
-4. **Callbacks** (design item 5). Done for any `#[cnative]` function:
+4. **Callbacks** (design item 5). Done for any `#[c.native]` function:
    `testdata/c_callback_argument.txtar` runs a held and a retained callback
    through shipped C, and `error_c_callback.sngl`,
    `error_c_context_mark.sngl` and `error_c_context_argument.sngl` hold the
@@ -262,8 +262,8 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    rules are `error_c_struct.sngl` and `error_c_struct_mark.sngl`. A struct
    is converted at each call rather than held in C's layout, since cgo's
    field types would reach every SNGL expression reading a field.
-6. **Docs.** Done: `cnative`'s doc in `lib/macro/foreign.sngl`,
-   `lib/x/c/doc.sngl`, the `#[cnative]` bullet in `design/nodes.md`, the
+6. **Docs.** Done: `c.native`'s doc in `lib/macro/foreign.sngl`,
+   `lib/x/c/doc.sngl`, the `#[c.native]` bullet in `design/nodes.md`, the
    `CInterop` note in `design/architecture.md`, and `design/ownership.md`'s
    C target, where `CMarshal` still runs for what no caller passes.
 
@@ -303,7 +303,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
   host has them, and a test missing one skips rather than fails. `int` is
   `int64_t`, so the spec's 64 bits hold on C as on Go and Kotlin.
 - **gtk4 is the first platform**, ahead of win32 (Part 3). gtk4 already calls
-  GTK through `#[cnative]` declarations under `cgo=true`, so on C its widget
+  GTK through `#[c.native]` declarations under `cgo=true`, so on C its widget
   declarations are those, whatever the option says. What a C program calls in
   gtk4rt moves to C shipped with the platform (`lib/platform/gtk4/rt/`, named
   by its `c.link`'s `sources`), and the Go build under `cgo=true` calls the
@@ -337,7 +337,7 @@ None of this is in the repository yet; each was run by hand on 2026-11-03.
    - What a cgo build still calls in gtk4rt -- a window, a box's append, a
      look -- is rt's C under the name `c_emit.go`'s `native` gives it, and
      anything else there is refused by name. Those calls should become
-     `#[cnative]` declarations of rt's C, which the Go cgo build calls too.
+     `#[c.native]` declarations of rt's C, which the Go cgo build calls too.
    - `rt/look.c` is the one copy of the look's C: gtk4rt includes it.
    - A function pointer a C function takes is cast to the type
      `#[c.type("GCallback")]` names, which C needs and cgo does not.
@@ -436,7 +436,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      those declarations reach. It does not write all of user32, which is
      thousands of declarations, most of them never called.
    - What it writes, all in Part 1's C spellings:
-     - **Handle types** as opaque structs (`#[cnative("HWND")] struct HWND {}`, and `HMENU`, `HINSTANCE`, `HFONT`, `HBRUSH`, `HDC`, `HICON`,
+     - **Handle types** as opaque structs (`#[c.native("HWND")] struct HWND {}`, and `HMENU`, `HINSTANCE`, `HFONT`, `HBRUSH`, `HDC`, `HICON`,
        `HCURSOR`).
      - **Scalar typedefs** as aliases (`UINT`, `DWORD`, `WPARAM`, `LPARAM`,
        `LRESULT`, `BOOL`, `COLORREF`, `ATOM`).
@@ -540,7 +540,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      which a platform asks for with `#[gen.wants(placement)]`:
      - `var x Button = CreateNode(tag, made)` becomes `var x H = made`, where
        `H` is the platform's handle type: the return type of its
-       `#[gen.protocol(handle)]` function, a `#[cnative(…, cast)]` the
+       `#[gen.protocol(handle)]` function, a `#[c.native(…, cast)]` the
        protocol bodies call to reach the handle (`HWND` on win32). Every type
        the program writes as one of the platform's intrinsic components or
        as `ui.node` becomes `H`.
@@ -669,7 +669,7 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      drop its flow for it.
    - Interpreter simulation: `--simulate win32` runs the platform's
      overrides and protocol over the interpreter's stubs for every
-     `#[cnative]`, as gtk4's does (`cmd/sngl/testdata/simulate_win32.txt`).
+     `#[c.native]`, as gtk4's does (`cmd/sngl/testdata/simulate_win32.txt`).
      A string win32 is handed is a `c.utf16` the turn's arena holds, so the
      leak tracker has none of its strings to follow. What `--simulate` does
      not do on either target is a test's trigger an override relays from an
@@ -692,9 +692,9 @@ what someone wrapped, and win32's Go path would need the same again.
 ### The design
 
 - **A dev-time tool generates the wrappers.** It reads every C declaration
-  in a platform package (each `#[macro.cnative]` function, and the types
+  in a platform package (each `#[c.native]` function, and the types
   they cross) and writes a Go package with one wrapper per declaration, the
-  cgo in it and none in the program. Beside each `cnative` mark it adds a
+  cgo in it and none in the program. Beside each `c.native` mark it adds a
   `go.native` mark pointing at its wrapper.
 - **The Go codegen sees both marks and writes one**, by a build option.
   **Decided:** gtk4's `cgo=true` becomes an enum, `direct`, `wrapper` or
@@ -717,7 +717,7 @@ what someone wrapped, and win32's Go path would need the same again.
 - **One tool for every C platform:** gtk4 (replacing gtk4rt's hand-written
   wrappers and the generic `SetString`/`ChildCall` calls where a declaration
   exists), win32, and any C platform added later.
-- **Ship it as `sngl tool cgogen`**, so a user's own package of `cnative`
+- **Ship it as `sngl tool cgogen`**, so a user's own package of `c.native`
   declarations gets wrappers the same way.
 - **Decided: win32's Go path is the tool's first user.** win32 does not
   call C directly from Go first and move over later; its Go path is built on
@@ -731,9 +731,9 @@ what someone wrapped, and win32's Go path would need the same again.
    whichever mark comes first, since every C pass reads it there.
 2. **The tool: `internal/cgogen`, run as `sngl tool cgogen`.** Done
    (`design/win32.md`), for a library package; a user's package of
-   `cnative` declarations is still to come, and so is a wrapper for a `ref`
+   `c.native` declarations is still to come, and so is a wrapper for a `ref`
    parameter.
-   - It loads a package, and wraps each `#[cnative]` function that is no
+   - It loads a package, and wraps each `#[c.native]` function that is no
      cast, once per C name, in a Go function named for it
      (`sngl_win32_append` → `SnglWin32Append`). Each handle type and C
      struct the functions cross becomes an exported Go type in the same
@@ -752,7 +752,7 @@ what someone wrapped, and win32's Go path would need the same again.
      and a `.c` file per source that includes it from where it is, since
      cgo compiles only the `.c` files in the package's own directory.
      Both are behind the platform's `GOOS` where it has one (`windows`).
-   - It writes `#[go.native(path, name)]` beside each `cnative` mark in the
+   - It writes `#[go.native(path, name)]` beside each `c.native` mark in the
      package's `.sngl` files, and is kept current by `go generate`. A test
      regenerates both and compares them with what is committed, and builds
      the package with MinGW for both architectures.
@@ -774,7 +774,7 @@ what someone wrapped, and win32's Go path would need the same again.
    `Connect`), which already reach every GIR class with no cgo in the
    program. Most of gtk4rt is a runtime with nothing to generate: the look
    and flex layout, scroll, tabs, menus, images, toplevels and the loop.
-   gtk4 gets the wrappers once that runtime is SNGL over `cnative`
+   gtk4 gets the wrappers once that runtime is SNGL over `c.native`
    declarations, as win32's is.
 
 ### Open questions
@@ -790,14 +790,14 @@ what someone wrapped, and win32's Go path would need the same again.
 gtk4 has two runtimes that do one job. `pkg/go/gtk4rt` is Go (and C) for a
 Go program, and `lib/platform/gtk4/rt` is C for a C program, which
 `c_emit.go`'s `native` table maps each gtk4rt call onto. win32 has one: its
-protocol is SNGL calling `cnative` declarations (`sngl:platform/win32/api`
+protocol is SNGL calling `c.native` declarations (`sngl:platform/win32/api`
 and the runtime's C), and each language calls those as it calls C. gtk4
 moves to that model, and then every language and every way of calling C
 reaches it the same way.
 
 ### The goal
 
-- **The runtime is SNGL over `cnative` GTK.** What gtk4rt and `rt/` do -- the
+- **The runtime is SNGL over `c.native` GTK.** What gtk4rt and `rt/` do -- the
   look and the flex layout, scroll, tabs, menus and the way back, images,
   toplevels and the application, keys, posting -- becomes `gtk4.sngl`'s
   protocol functions calling GTK's own functions. What GTK can reach only as
@@ -853,7 +853,7 @@ reaches it the same way.
      (`gtk4.GtkButton`), as an HTML element keeps its tag's. A program's
      `gir:Gtk-4.0` import is unchanged.
    - **The runtime** is `rt/`'s C, already there for gtk4's C programs,
-     which the protocol calls through `cnative` as win32's calls
+     which the protocol calls through `c.native` as win32's calls
      `sngl_win32_*`. What gtk4rt does in Go and `rt/` does not, moves to
      `rt/` or to SNGL. What stays C is the layout manager's `measure` and
      `allocate`, the trampolines a callback cannot take, and any GObject
@@ -1022,17 +1022,11 @@ reaches it the same way.
    (`scroll_test.go`), `@reachEnd` along x in a sideways scroll
    (`reach_across_test.go`), and a fetch landing in the picture whose
    source still asks for it (`image_test.go`).
-5. **`#[macro.cnative]` becomes `#[c.native]`, in `sngl:x/c`.** C's other
-   marks are there -- `#[c.context]`, `#[c.release]`, `#[c.type]` -- and
-   `cnative` alone sits in `sngl:macro` beside `#[foreign]`
-   (`lib/macro/foreign.sngl`), whose doc argues it is language-neutral; so is
-   the rest of `sngl:x/c`. The checker finds the mark by package and name
-   (`{"macro", "cnative"}` in `internal/checker/marks_impl.go` and
-   `aliases.go`), and `CNativeFlag` moves with it. `sngl:x/c` marks its own
-   declarations with it (`str`, `cstring`, `cfree`), so the package must be
-   able to apply a mark it declares itself. About 40 files write it: the
-   gtk4, win32 and fyne packages, `win32gen`'s output, `cgogen`, the `c:`
-   scheme, fixtures, scripts and the design notes.
+5. **`#[macro.cnative]` becomes `#[c.native]`, in `sngl:x/c`.** Done.
+   `sngl:x/c` declares `native` and `NativeFlag` beside `context`, `release`
+   and `type`, and marks its own declarations with it unqualified. A mark
+   whose package is not imported now names the library package it most
+   likely meant (`testdata/error_mark_import_hint.sngl`).
 
 ### Open questions
 

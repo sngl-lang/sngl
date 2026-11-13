@@ -1,0 +1,9 @@
+// A mark whose package is not imported is refused with the import it most
+// likely wanted: the library package declaring marks whose last element is
+// the alias, which for `c` is sngl:x/c and for `go` sngl:language/go.
+
+#[c.native("puts")] // ERROR(check) "unknown macro package \"c\": import it with import \"sngl:x/c\""
+func puts(s string)
+
+#[go.native("fmt", "Println")] // ERROR(check) "import it with import \"sngl:language/go\""
+func println(s string)

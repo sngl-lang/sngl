@@ -8,19 +8,28 @@ import (
 	"strings"
 )
 
-// goImport is the package the marks are declared in.
-const goImport = "sngl:language/go"
+// goImport is the package the marks are declared in, and cImport the one
+// declaring `c.native`.
+const (
+	goImport = "sngl:language/go"
+	cImport  = "sngl:x/c"
+)
 
 // Rewrite is src, a .sngl file, with each of marks (all of them in this
-// file) written beside the `cnative` mark of the declaration it is for: a
+// file) written beside the `c.native` mark of the declaration it is for: a
 // `go.native` already there replaced, so running it again changes nothing,
 // and one nothing marks any longer taken out. The file imports
 // sngl:language/go where it did not.
 func Rewrite(src []byte, marks []Mark) ([]byte, error) {
 	lines := strings.Split(string(src), "\n")
-	alias := importAlias(lines)
+	alias := importAlias(lines, goImport)
 	if alias == "" {
 		alias = "go"
+	}
+	// sngl:x/c marks its own declarations with the mark unqualified.
+	cMark := "#[native("
+	if c := importAlias(lines, cImport); c != "" {
+		cMark = "#[" + c + ".native("
 	}
 	byLine := map[int]Mark{}
 	for _, m := range marks {
@@ -42,59 +51,60 @@ func Rewrite(src []byte, marks []Mark) ([]byte, error) {
 			continue
 		}
 		if len(attrs) > 0 {
-			attrs = rewriteAttrs(attrs, alias, byLine[first])
+			attrs = rewriteAttrs(attrs, alias, cMark, byLine[first])
 			out = append(out, attrs...)
 			attrs = nil
 		}
 		out = append(out, l)
 	}
 	out = append(out, attrs...)
-	if importAlias(lines) == "" && len(marks) > 0 {
+	if importAlias(lines, goImport) == "" && len(marks) > 0 {
 		out = addImport(out, alias)
 	}
 	return []byte(strings.Join(out, "\n")), nil
 }
 
 // rewriteAttrs is a declaration's marks with the `go.native` m says, beside
-// its `cnative` one, and without the one it had where m is zero.
-func rewriteAttrs(attrs []string, alias string, m Mark) []string {
+// its `c.native` one (the line holding cMark), and without the one it had
+// where m is zero.
+func rewriteAttrs(attrs []string, alias, cMark string, m Mark) []string {
 	var out []string
-	cnative := -1
+	cAt := -1
 	// What the mark says beside the wrapper's name -- `schedules` on a timer
 	// whose callback the loop runs -- is the declaration's, kept.
 	flags := ""
 	for _, a := range attrs {
-		if strings.Contains(a, alias+".native(") && hasCNative(attrs) {
+		if strings.Contains(a, "#["+alias+".native(") && hasCNative(attrs, cMark) {
 			if f := nativeFlags.FindStringSubmatch(a); f != nil {
 				flags = f[1]
 			}
 			continue
 		}
-		if strings.Contains(a, "cnative(") {
-			cnative = len(out)
+		if strings.Contains(a, cMark) {
+			cAt = len(out)
 		}
 		out = append(out, a)
 	}
-	if m.Name == "" || cnative < 0 {
+	if m.Name == "" || cAt < 0 {
 		return out
 	}
-	indent := out[cnative][:len(out[cnative])-len(strings.TrimLeft(out[cnative], " \t"))]
+	indent := out[cAt][:len(out[cAt])-len(strings.TrimLeft(out[cAt], " \t"))]
 	mark := fmt.Sprintf("%s#[%s.native(%q, %q%s)]", indent, alias, m.Path, m.Name, flags)
-	return slices.Insert(out, cnative+1, mark)
+	return slices.Insert(out, cAt+1, mark)
 }
 
 // nativeFlags reads what a `#[go.native(path, name, …)]` says after the name.
 var nativeFlags = regexp.MustCompile(`\.native\("[^"]*",\s*"[^"]*"((?:,\s*\w+)*)\)\]`)
 
-func hasCNative(attrs []string) bool {
-	return slices.ContainsFunc(attrs, func(a string) bool { return strings.Contains(a, "cnative(") })
+func hasCNative(attrs []string, cMark string) bool {
+	return slices.ContainsFunc(attrs, func(a string) bool { return strings.Contains(a, cMark) })
 }
 
-// importAlias is the name lines import sngl:language/go as, or "".
-func importAlias(lines []string) string {
+// importAlias is the name lines import path as, or "".
+func importAlias(lines []string, path string) string {
 	for _, l := range lines {
 		f := strings.Fields(l)
-		if len(f) == 3 && f[0] == "import" && f[2] == fmt.Sprintf("%q", goImport) {
+		if len(f) == 3 && f[0] == "import" && f[2] == fmt.Sprintf("%q", path) {
 			return f[1]
 		}
 	}

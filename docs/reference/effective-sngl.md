@@ -1429,7 +1429,7 @@ ui.window {
 
 `open` makes a `File` that `size` only reads, so it is released once the statement is done, whether it completed, returned or raised. Nothing in the program says so, and nothing has to.
 
-**Declare `#[owned]` on the type, once.** An owned value is tracked wherever a copy of it goes, and a copy is the same value: releasing either releases both. The mark is for a value something outside the program holds a reference to and will not reclaim on its own, and not for a value that is merely expensive -- a large list is garbage like any other. A `string` handed to a `#[cnative]` function is already covered: it crosses as a `c.str` from `sngl:x/c`, which is owned, and is freed after the call.
+**Declare `#[owned]` on the type, once.** An owned value is tracked wherever a copy of it goes, and a copy is the same value: releasing either releases both. The mark is for a value something outside the program holds a reference to and will not reclaim on its own, and not for a value that is merely expensive -- a large list is garbage like any other. A `string` handed to a `#[c.native]` function is already covered: it crosses as a `c.str` from `sngl:x/c`, which is owned, and is freed after the call.
 
 **Name a retain only where the host counts.** A GObject, a texture, gtk4's `Picture` -- anything with a `ref` beside its `unref` -- names it, `#[macro.owned(unref, retain=ref)]`, and a value of the type stored into a second var, a field or a list from a var that holds it is stored as a reference: the compiler writes the `ref`, and each holder's release is one `unref`. A file descriptor, a C string, a handle with one `close` has no retain, and should not be given one that pretends: a value of such a type belongs to the one var that made it, and a program that wants it in two places makes it twice. The interpreter counts the holders either way and reports a value some holder never released.
 
@@ -1572,7 +1572,7 @@ When `run` returns, the tree has unmounted, so every `@unmount` has run and ever
 sngl test --simulate gtk4 app.sngl
 ```
 
-Every `#[cnative]` and `#[go.native]` call is stubbed: an owned result is a fresh value the tracker follows, a `#[moves]` argument is the native's from then on, and a `#[retains]` one may not be released while the lifetime that made the call lasts. The host paints a frame after every settle, so a draw routine that leaks per frame reports as one line with a count:
+Every `#[c.native]` and `#[go.native]` call is stubbed: an owned result is a fresh value the tracker follows, a `#[moves]` argument is the native's from then on, and a `#[retains]` one may not be released while the lifetime that made the call lasts. The host paints a frame after every settle, so a draw routine that leaks per frame reports as one line with a count:
 
 ```
 --- FAIL: Keeps/testKeeps (0.00s)

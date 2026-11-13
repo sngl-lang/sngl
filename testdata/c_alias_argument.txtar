@@ -1,4 +1,4 @@
-An argument for a C parameter written with a `#[cnative]` alias crosses cast
+An argument for a C parameter written with a `#[c.native]` alias crosses cast
 to the typedef the alias spells, not as a C `int`: cgo gives each typedef its
 own Go type, and an unsigned one, as `wint_t` and Win32's `UINT` are, refuses
 a `C.int`. `wupper` is still called with an `int`, since the alias is what it
@@ -7,9 +7,9 @@ names.
 deny out/go/bubbletea/model.go `C\.towupper\(C\.int` -- a wint_t parameter is passed a C.wint_t
 -- app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import "c:wctype.h"
+import c "sngl:x/c"
 
 output {
     go {
@@ -17,10 +17,10 @@ output {
     }
 }
 
-#[macro.cnative("wint_t")]
+#[c.native("wint_t")]
 struct wint = int
 
-#[macro.cnative("towupper")]
+#[c.native("towupper")]
 func wupper(c wint) int
 
 var v = 0

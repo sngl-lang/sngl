@@ -29,7 +29,7 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 		return fmt.Errorf("golang.WriteProgram: %T is not a Go file", fe)
 	}
 	gc := f.gc
-	// A `#[cnative]` the program calls directly -- its own `c:` import, a
+	// A `#[c.native]` the program calls directly -- its own `c:` import, a
 	// class no wrapper covers -- is reached through the headers its c.link
 	// directives name; the platform's own C is its wrappers'.
 	if f.opts.CgoPreamble == "" {

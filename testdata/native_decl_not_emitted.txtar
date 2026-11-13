@@ -8,7 +8,7 @@ implementation and is the reason nobody noticed. JavaScript got the rule first;
 Kotlin had it until a `deny` caught `fun hyp(a: Double, b: Double): Double = 0.0`
 beside a working call; this is Go, the third.
 
-Two marks, one rule. `#[go.native]` names a Go identifier and `#[cnative]` names
+Two marks, one rule. `#[go.native]` names a Go identifier and `#[c.native]` names
 a C one -- C is an ABI rather than a target, so the mark names no language and
 any backend that can call C reads it. They differ in nothing this fixture is
 about: both land on `ir.Foreign` with `Marked` unset, which is the single test
@@ -18,7 +18,7 @@ about: both land on `ir.Foreign` with `Marked` unset, which is the single test
 `abs` is C's, so the program says which header declares it with a `c.link`,
 from which bubbletea writes the cgo preamble as fyne does.
 
-A `#[cnative]` on bubbletea rather than on gtk4 is the point: the *mark* decides
+A `#[c.native]` on bubbletea rather than on gtk4 is the point: the *mark* decides
 this, not the platform that usually carries it.
 
 `sleep` returns nothing, so the checker synthesized an empty block for it and
@@ -27,10 +27,9 @@ native with a *return type* ever grew a stub, which is why a fixture holding one
 of each is what states the rule.
 
 deny out/go/bubbletea/model.go `func .*[Hh]ostname\(\) string \{` -- #[go.native] is os.Hostname at every call site; a declaration here would be a second one returning the zero value. Either case: bubbletea emits a free func under an exported name and a component's under its own
-deny out/go/bubbletea/model.go `func .*Cabs\(n int\) int \{` -- #[cnative] is C.abs at every call site, and the same rule reaches it
+deny out/go/bubbletea/model.go `func .*Cabs\(n int\) int \{` -- #[c.native] is C.abs at every call site, and the same rule reaches it
 -- app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import c "sngl:x/c"
 
@@ -48,7 +47,7 @@ func sleep(ns int)
 
 c.link(include="stdlib.h", system=true)
 
-#[macro.cnative("abs")]
+#[c.native("abs")]
 func cabs(n int) int
 
 component main ui.node {

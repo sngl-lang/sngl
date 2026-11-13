@@ -11,7 +11,7 @@
 import ui "sngl:ui"
 import go "sngl:language/go"
 import js "sngl:language/js"
-import macro "sngl:macro"
+import c "sngl:x/c"
 
 #[go.native("math", "math.Pi")]
 #[js.native("Math.PI")] // ERROR(check) "a second host identity"
@@ -22,10 +22,10 @@ const e float
 // ERROR(check:21) "const \"e\" has no value"
 
 #[go.native("example.com/cairo", "CairoSave")]
-#[macro.cnative("cairo_save")]
+#[c.native("cairo_save")]
 func save(n int)
 
-#[macro.cnative("cairo_restore")]
+#[c.native("cairo_restore")]
 #[js.native("restore")] // ERROR(check) "a second host identity"
 func restore(n int)
 

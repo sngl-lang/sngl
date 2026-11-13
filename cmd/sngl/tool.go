@@ -21,7 +21,7 @@ var toolCmd = &cobra.Command{
 var cgogenCmd = &cobra.Command{
 	Use:   "cgogen sngl:<package>",
 	Short: "Write the Go package wrapping a package's C declarations",
-	Long: `cgogen writes a Go package with one function for each #[cnative]
+	Long: `cgogen writes a Go package with one function for each #[c.native]
 function of the package and of the packages under it that it imports, each
 calling it through cgo, and marks each declaration #[go.native] with its
 wrapper, so a Go program calls C with no cgo of its own.

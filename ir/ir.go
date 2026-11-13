@@ -37,7 +37,7 @@ type Package struct {
 	Path string `json:",omitempty"`
 	// Library says the library wrote the package: a sngl: package, or what a
 	// library plugin generated (gtk4's `gir:` widgets, a `c:` link). Its
-	// declarations are the library's to vouch for -- a `#[cnative]` one names
+	// declarations are the library's to vouch for -- a `#[c.native]` one names
 	// a header the target's own preamble includes -- where a program's must
 	// say so itself.
 	Library bool `json:",omitempty"`
@@ -95,7 +95,7 @@ type Package struct {
 	// them, and everything its imports reach, through Imports.
 	Schemes []*Scheme `json:"-"`
 	// CLinks are the C headers and flags the package's `c.link` directives
-	// name: what a cgo preamble includes and links for the `#[cnative]`
+	// name: what a cgo preamble includes and links for the `#[c.native]`
 	// declarations beside them.
 	CLinks []*CLink `json:",omitempty"`
 
@@ -788,7 +788,7 @@ type Foreign struct {
 	// the checker rejects any reference to it. Only a foreign declaration can
 	// be one: SNGL's own syntax cannot express a type SNGL has no name for.
 	Unusable string
-	// C is the C type a `#[cnative]` struct is, or a `#[cnative(…, cast)]`
+	// C is the C type a `#[c.native]` struct is, or a `#[c.native(…, cast)]`
 	// function converts to, parsed from Name. Nil for a C function, whose
 	// Name is the identifier to call.
 	C *CType
@@ -1217,7 +1217,7 @@ type Var struct {
 	// IsElementRef is a fact about a *reference* (ir.Ident) and a read of a
 	// program-written `#id` does not carry it -- only the `__nN` handles a
 	// lowering pass synthesizes do. Reading the reference is what left a
-	// `#[cnative]` method call emitting `C.gtk_progress_bar_pulse(bar)` against
+	// `#[c.native]` method call emitting `C.gtk_progress_bar_pulse(bar)` against
 	// a field the same file declares as `m.bar`.
 	//
 	// It answers *where the handle lives* and nothing about what may be read
@@ -1670,14 +1670,14 @@ type Param struct {
 	// Transfer is what a native function does with the argument past the
 	// call, written `#[retains]` or `#[moves]`.
 	Transfer Transfer `json:",omitempty"`
-	// CAlias is the `#[cnative]` alias the parameter's type was written as,
+	// CAlias is the `#[c.native]` alias the parameter's type was written as,
 	// itself or as an option's element: `c.utf16`, `UINT`. Its type is
 	// expanded where it is written, so this is what remembers that the
 	// argument crosses as the C type the alias spells. The alias is shared
 	// by every clone (ClonePackage): its mark may run after the parameter is
 	// built, so the C type is read from it, not copied.
 	CAlias *Alias `json:",omitempty"`
-	// CContext marks the `void *` a `#[cnative]` function hands back to the
+	// CContext marks the `void *` a `#[c.native]` function hands back to the
 	// callback it takes, written `#[c.context]`. No caller passes it: the
 	// translator does, from the closure the call converts.
 	CContext bool `json:",omitempty"`
@@ -1817,7 +1817,7 @@ type StructField struct {
 	// its SNGL name in the IR and on every host.
 	JSON string `json:",omitempty"`
 	HTTP string `json:",omitempty"`
-	// CAlias is the `#[cnative]` alias the field's type was written as, which
+	// CAlias is the `#[c.native]` alias the field's type was written as, which
 	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
 	// rule, for the same reason.
 	CAlias *Alias `json:",omitempty"`

@@ -10,9 +10,9 @@ import (
 // not yet write.
 //
 // A SNGL struct is the C struct the program declares for it, a C struct
-// (`#[cnative]` with fields) included: it is converted field by field at
+// (`#[c.native]` with fields) included: it is converted field by field at
 // each call, as on Go, since its fields are SNGL's numbers and C's are its
-// own. A `#[cnative]` type with no fields is the C type its name spells.
+// own. A `#[c.native]` type with no fields is the C type its name spells.
 func cTypeName(t *ir.Type) (string, error) {
 	if t == nil {
 		return "void", nil

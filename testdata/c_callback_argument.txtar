@@ -27,22 +27,22 @@ output {
 
 c.link(include="calls.h", sources=["calls.c", "calls.h"])
 
-#[macro.cnative("sngl_sum")]
+#[c.native("sngl_sum")]
 func sum(n int, f func(int) int, #[c.context] data c.pointer) int
 
-#[macro.cnative("sngl_keep")]
+#[c.native("sngl_keep")]
 func keep(#[macro.retains] f func(), #[c.context] data c.pointer)
 
-#[macro.cnative("sngl_fire")]
+#[c.native("sngl_fire")]
 func fire()
 
-#[macro.cnative("sngl_hold")]
+#[c.native("sngl_hold")]
 func hold(f func(), #[c.context] data c.pointer, #[c.release] release c.pointer)
 
-#[macro.cnative("sngl_poke")]
+#[c.native("sngl_poke")]
 func poke()
 
-#[macro.cnative("sngl_drop")]
+#[c.native("sngl_drop")]
 func drop()
 
 component main ui.node {

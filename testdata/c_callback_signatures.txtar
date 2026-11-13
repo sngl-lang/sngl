@@ -7,7 +7,6 @@ call leaves to its default is passed it, as C takes every parameter. The
 test runs each.
 -- app.sngl --
 import c "sngl:x/c"
-import macro "sngl:macro"
 import test "sngl:test"
 import ui "sngl:ui"
 
@@ -19,19 +18,19 @@ output {
 
 c.link(include="calls.h", sources=["calls.c", "calls.h"])
 
-#[macro.cnative("const char *")]
+#[c.native("const char *")]
 struct cstr {}
 
-#[macro.cnative("sngl_int")]
+#[c.native("sngl_int")]
 func withInt(f func(i int), #[c.context] data c.pointer)
 
-#[macro.cnative("sngl_bool")]
+#[c.native("sngl_bool")]
 func withBool(f func(b bool), #[c.context] data c.pointer)
 
-#[macro.cnative("sngl_def")]
+#[c.native("sngl_def")]
 func withDefault(f func(i int), #[c.context] data c.pointer, n int = 9)
 
-#[macro.cnative("sngl_each")]
+#[c.native("sngl_each")]
 func each(f func(s cstr) int, #[c.context] data c.pointer) int
 
 component main ui.node {

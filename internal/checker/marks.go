@@ -1,6 +1,7 @@
 package checker
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"slices"
@@ -517,11 +518,21 @@ func MacroIsImplemented(pkg, name string) bool {
 }
 
 // macroImportHint is the import a mark's alias most likely wanted, for the
-// error that says the alias names nothing. A guess at the URI from the alias:
-// the marks a program writes are all `sngl:<alias>` but for the compiler's own
-// tier, which no program imports.
+// error that says the alias names nothing: the one package declaring marks
+// the compiler implements whose last element is the alias (`c` is
+// sngl:x/c, `go` sngl:language/go), and otherwise `sngl:<alias>`.
 func macroImportHint(alias string) string {
-	return "sngl:" + alias
+	found := ""
+	for k := range markImpls {
+		if k.pkg != alias && !strings.HasSuffix(k.pkg, "/"+alias) || k.pkg == found {
+			continue
+		}
+		if found != "" {
+			return "sngl:" + alias
+		}
+		found = k.pkg
+	}
+	return "sngl:" + cmp.Or(found, alias)
 }
 
 // pkgURIOf names a package the way an import writes it, for a diagnostic about

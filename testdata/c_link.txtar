@@ -1,7 +1,7 @@
 A `c:` import resolves through the library's own plugin, `sngl:x/scheme/c`,
 written in SNGL: what it writes is one `c.link`, and a Go target's cgo preamble
 includes the header it names. The program declares what it calls with
-`#[cnative]`, since nothing reads the header for declarations any more.
+`#[c.native]`, since nothing reads the header for declarations any more.
 
 Every Go target writes the preamble from the links the program reaches. fyne
 and bubbletea put one of their own on model.go; gtk4 has one already in inline
@@ -20,9 +20,9 @@ other way through `C.int`.
 deny out/go/fyne/model.go `#cgo` -- a header named directly carries no flags
 -- app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import "c:ctype.h"
+import c "sngl:x/c"
 
 output {
     go {
@@ -32,7 +32,7 @@ output {
     }
 }
 
-#[macro.cnative("toupper")]
+#[c.native("toupper")]
 func upper(c int) int
 
 var v = 0

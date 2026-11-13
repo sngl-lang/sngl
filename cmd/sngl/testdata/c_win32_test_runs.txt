@@ -278,7 +278,7 @@ import ui "sngl:ui"
 
 c.link(include="calls.h", sources=["calls.c", "calls.h"])
 
-#[macro.cnative("sngl_int")]
+#[c.native("sngl_int")]
 func withInt(#[c.type("int_cb")] #[macro.retains] f func(i int), #[c.context] data c.pointer)
 
 ui.window {
@@ -300,10 +300,10 @@ import ui "sngl:ui"
 
 c.link(include="calls.h", sources=["calls.c", "calls.h"])
 
-#[macro.cnative("sngl_keep_int")]
+#[c.native("sngl_keep_int")]
 func keepInt(#[c.type("int_cb")] #[macro.retains] f func(i int), #[c.context] data c.pointer)
 
-#[macro.cnative("sngl_fire")]
+#[c.native("sngl_fire")]
 func fire()
 
 var out = ""

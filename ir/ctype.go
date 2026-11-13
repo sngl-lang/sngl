@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// CType is a C type as a `#[cnative]` mark spells it: a type name, whether it
+// CType is a C type as a `#[c.native]` mark spells it: a type name, whether it
 // is const, and how many pointers deep. `const char *` is {Name: "char",
 // Const: true, Ptr: 1}. The spelling is C's, never a language's: `C.` and
 // `unsafe.Pointer` are the Go translator's to write (codegen.CInterop).
@@ -18,7 +18,7 @@ type CType struct {
 	Ptr   int
 }
 
-// ParseCType reads the declarator grammar a `#[cnative]` type name is held
+// ParseCType reads the declarator grammar a `#[c.native]` type name is held
 // to: an optional `const`, a name of one or more words, and any number of
 // `*`. An array, a function pointer and a const pointer are refused: a
 // callback is a SNGL func a translator writes the trampoline for, and an
@@ -34,7 +34,7 @@ func ParseCType(s string) (*CType, error) {
 			}
 			t.Ptr++
 		case t.Ptr > 0:
-			return nil, fmt.Errorf("C type %q has %q after its pointer; a const pointer or a declarator past a `*` is not one a #[cnative] type spells", s, tok)
+			return nil, fmt.Errorf("C type %q has %q after its pointer; a const pointer or a declarator past a `*` is not one a #[c.native] type spells", s, tok)
 		case tok == "const":
 			if t.Const || len(words) > 0 {
 				return nil, fmt.Errorf("C type %q writes const anywhere but first", s)
@@ -43,7 +43,7 @@ func ParseCType(s string) (*CType, error) {
 		case IsCIdent(tok):
 			words = append(words, tok)
 		default:
-			return nil, fmt.Errorf("C type %q holds %q, and a #[cnative] type is a name, const and pointers; an array or a function pointer stays in C", s, tok)
+			return nil, fmt.Errorf("C type %q holds %q, and a #[c.native] type is a name, const and pointers; an array or a function pointer stays in C", s, tok)
 		}
 	}
 	if len(words) == 0 {
@@ -137,7 +137,7 @@ func cTokens(s string) []string {
 	return out
 }
 
-// IsCIdent reports whether s is a C identifier, which is what a `#[cnative]`
+// IsCIdent reports whether s is a C identifier, which is what a `#[c.native]`
 // function's name is.
 func IsCIdent(s string) bool {
 	if s == "" || s[0] >= '0' && s[0] <= '9' {
@@ -195,7 +195,7 @@ func (t *CType) IsUTF16Pointer() bool {
 
 var utf16Units = map[string]bool{"unsigned short": true, "char16_t": true, "uint16_t": true, "WCHAR": true}
 
-// CTypeOf is the C type a SNGL type is declared as: a `#[cnative]` struct's,
+// CTypeOf is the C type a SNGL type is declared as: a `#[c.native]` struct's,
 // nil for anything else.
 func CTypeOf(t *Type) *CType {
 	if t == nil || t.Kind != TypeStruct {
@@ -207,11 +207,11 @@ func CTypeOf(t *Type) *CType {
 	return nil
 }
 
-// CPath is the Foreign.Path every `#[cnative]` declaration carries.
+// CPath is the Foreign.Path every `#[c.native]` declaration carries.
 const CPath = "C"
 
 // IsCStruct reports whether sd is a C struct the program holds: a
-// `#[cnative]` struct declaring fields, which is a SNGL struct with a C
+// `#[c.native]` struct declaring fields, which is a SNGL struct with a C
 // layout, converted field by field where a C call takes or fills one. One
 // declaring none is a C type SNGL holds opaquely, as the C type itself.
 func (sd *StructDef) IsCStruct() bool {
@@ -230,7 +230,7 @@ func CStructOf(t *Type) *StructDef {
 	return nil
 }
 
-// IsCCast reports whether fn is a `#[cnative(…, cast)]` function: a
+// IsCCast reports whether fn is a `#[c.native(…, cast)]` function: a
 // conversion to the C type its name spells rather than a C function to call.
 func (fn *Func) IsCCast() bool {
 	return fn != nil && fn.Foreign.Path == CPath && fn.Foreign.C != nil
@@ -275,13 +275,13 @@ const (
 // CConvert is a value converted to a C type, the conversion a call of a C
 // function makes of its argument. lower.CMarshal writes one for each
 // argument whose parameter's type names a sngl:x/c conversion or a
-// `#[cnative]` alias, and for each call of a `#[cnative(…, cast)]` function. A translator renders it as its
+// `#[c.native]` alias, and for each call of a `#[c.native(…, cast)]` function. A translator renders it as its
 // language converts to C (codegen.CInterop).
 type CConvert struct {
 	Kind    CConvertKind
 	To      *CType
 	Operand Expr
-	// Type is the SNGL type the value has once converted: the `#[cnative]`
+	// Type is the SNGL type the value has once converted: the `#[c.native]`
 	// struct To declares, or the type an alias names, which is what the
 	// argument is in SNGL.
 	Type *Type

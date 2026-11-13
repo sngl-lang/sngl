@@ -1,16 +1,16 @@
-// A `#[cnative]` function is a C identifier, and a cgo preamble declares one
+// A `#[c.native]` function is a C identifier, and a cgo preamble declares one
 // only through a header a `c.link` names. With none reached the call compiled
 // through to the Go toolchain, which answered `undefined: C` or "could not
 // determine what C.abs refers to" with no position in the program. The call
 // is refused where it is written; declaring the function is not, since a
 // declaration nothing calls reaches no preamble.
 import ui "sngl:ui"
-import macro "sngl:macro"
+import c "sngl:x/c"
 
-#[macro.cnative("abs")]
+#[c.native("abs")]
 func cabs(n int) int
 
-#[macro.cnative("labs")]
+#[c.native("labs")]
 func clabs(n int) int
 
 var v = 0

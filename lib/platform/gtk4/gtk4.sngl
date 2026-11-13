@@ -53,22 +53,22 @@ component platform(
 
 // Every node is a widget, held as its pointer. A protocol function handing a
 // node to GTK reaches the pointer through this.
-#[macro.cnative("GtkWidget *")]
+#[c.native("GtkWidget *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Widget")]
 struct Widget {}
 
-#[macro.cnative("GtkWidget *", cast)]
+#[c.native("GtkWidget *", cast)]
 #[gen.protocol(handle)]
 func _handle(n ui.node) Widget
 
 // A node the program holds at its root, a window, is put on screen when the
 // program attaches it and destroyed, with everything in it, when it detaches
 // it.
-#[macro.cnative("sngl_app_attach")]
+#[c.native("sngl_app_attach")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAppAttach")]
 func _rtAttach(n ui.node)
 
-#[macro.cnative("sngl_app_detach")]
+#[c.native("sngl_app_detach")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAppDetach")]
 func _rtDetach(n ui.node)
 
@@ -89,11 +89,11 @@ func _detach(n ui.node) {
 #[marks.intrinsic("gtk4:Contents")]
 component Contents(content ...component ui.node) ui.node
 
-#[macro.cnative("sngl_contents_new")]
+#[c.native("sngl_contents_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglContentsNew")]
 func _rtContents() Contents
 
-#[macro.cnative("sngl_box_remove")]
+#[c.native("sngl_box_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxRemove")]
 func _rtBoxRemove(box ui.node, child ui.node)
 
@@ -102,7 +102,7 @@ func _contents() Contents {
     return _rtContents()
 }
 
-#[macro.cnative("sngl_slot_anchor")]
+#[c.native("sngl_slot_anchor")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSlotAnchor")]
 func _rtSlotAnchor(box ui.node, anchor ui.node) ui.node
 
@@ -160,7 +160,7 @@ struct Look {
     columns   int
 }
 
-#[macro.cnative("sngl_set_look")]
+#[c.native("sngl_set_look")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSetLook")]
 func _rtSetLook(
     w       ui.node,
@@ -195,7 +195,7 @@ func setLook(w ui.node, l Look) {
 // Runs the application: the program built once GTK is ready, and the loop
 // until the last window closes. A Go program's entry; C's calls
 // sngl_app_run with its own build.
-#[macro.cnative("sngl_gtk_main")]
+#[c.native("sngl_gtk_main")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkMain")]
 func _rtMain(
     #[c.type("SnglFn")] build func(),
@@ -207,50 +207,50 @@ func _rtMain(
 // the wrappers these give it: the windows the build attaches held hidden
 // until the handler's `run` presents them, and the loop run over the tree
 // already built.
-#[macro.cnative("sngl_gtk_hold")]
+#[c.native("sngl_gtk_hold")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkHold")]
 func _rtHold()
 
-#[macro.cnative("sngl_gtk_present")]
+#[c.native("sngl_gtk_present")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkPresent")]
 func _rtPresent()
 
-#[macro.cnative("sngl_gtk_run")]
+#[c.native("sngl_gtk_run")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkRun")]
 func _rtRun() int
 
 // GTK made ready without an application, and the loop run once: how a Go
 // test agent starts, and lets the loop run while a test waits.
-#[macro.cnative("sngl_gtk_init")]
+#[c.native("sngl_gtk_init")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkInit")]
 func _rtInit()
 
-#[macro.cnative("sngl_gtk_step")]
+#[c.native("sngl_gtk_step")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkStep")]
 func _rtStep()
 
 // Every window taken down, as a test agent starts each test after the
 // first: the last test's build put them up.
-#[macro.cnative("sngl_gtk_reset")]
+#[c.native("sngl_gtk_reset")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkReset")]
 func _rtReset()
 
 // The first window shown, drawn at width by height into the file at path as
 // its size and pixels (rt's sngl_gtk_capture_file): a Go test's snapshot.
-#[macro.cnative("sngl_gtk_capture_file")]
+#[c.native("sngl_gtk_capture_file")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkCaptureFile")]
 func _rtCaptureFile(path string, width int, height int) int
 
 // A file a Go program embeds, handed to the runtime before it runs, which
 // its images read as C's read the table its entry hands it.
-#[macro.cnative("sngl_gtk_carry_file")]
+#[c.native("sngl_gtk_carry_file")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkCarryFile")]
 func _rtCarryFile(name string, data string, len int)
 
 // Ends the loop, and with it the application, which tears down before the
 // entry returns: how a program whose windows are all hidden, or one an
 // `@run` handler started without calling run, stops.
-#[macro.cnative("sngl_gtk_quit")]
+#[c.native("sngl_gtk_quit")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkQuit")]
 func quit()
 
@@ -259,11 +259,11 @@ func quit()
 // A GLib timeout, armed as the effect mounts and removed as it unmounts. Its
 // callback runs on the loop's thread, as a signal's handler does, which
 // `schedules` says: a blocking call in a tick is handed to a goroutine.
-#[macro.cnative("SnglSchedule *")]
+#[c.native("SnglSchedule *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Schedule")]
 struct Schedule {}
 
-#[macro.cnative("sngl_every")]
+#[c.native("sngl_every")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEvery", schedules)]
 func _rtEvery(
     ms int,
@@ -272,7 +272,7 @@ func _rtEvery(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 ) Schedule
 
-#[macro.cnative("sngl_schedule_cancel")]
+#[c.native("sngl_schedule_cancel")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScheduleCancel")]
 func _rtCancel(s Schedule)
 
@@ -308,19 +308,19 @@ const component time.timer[platform](interval, enabled, @tick) {
 #[marks.intrinsic("gtk4:Toplevel")]
 component Toplevel(title string, :visible bool = true, @closed(), @key(), content ...component ui.node) root
 
-#[macro.cnative("sngl_toplevel_new")]
+#[c.native("sngl_toplevel_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelNew")]
 func _rtToplevelNew() Toplevel
 
-#[macro.cnative("sngl_toplevel_set_title")]
+#[c.native("sngl_toplevel_set_title")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetTitle")]
 func _rtToplevelSetTitle(w Toplevel, title string)
 
-#[macro.cnative("sngl_toplevel_set_visible")]
+#[c.native("sngl_toplevel_set_visible")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetVisible")]
 func _rtToplevelSetVisible(w Toplevel, visible bool)
 
-#[macro.cnative("sngl_toplevel_on_closed")]
+#[c.native("sngl_toplevel_on_closed")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnClosed")]
 func _rtToplevelOnClosed(
     w Toplevel,
@@ -329,7 +329,7 @@ func _rtToplevelOnClosed(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_toplevel_on_visible")]
+#[c.native("sngl_toplevel_on_visible")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnVisible")]
 func _rtToplevelOnVisible(
     w Toplevel,
@@ -338,7 +338,7 @@ func _rtToplevelOnVisible(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_toplevel_on_key")]
+#[c.native("sngl_toplevel_on_key")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnKey")]
 func _rtToplevelOnKey(
     w Toplevel,
@@ -351,25 +351,25 @@ func _rtToplevelOnKey(
 // modifier was held -- 0 Control, 1 Alt, 2 Shift, 3 Super or Meta -- or, at
 // 4, whether the focused field's text was being edited. Read while the
 // handler runs, and nothing after.
-#[macro.cnative("sngl_key_heard")]
+#[c.native("sngl_key_heard")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyHeard")]
 func _rtKeyHeard() string
 
-#[macro.cnative("sngl_key_held")]
+#[c.native("sngl_key_held")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyHeld")]
 func _rtKeyHeld(which int) bool
 
 // Stops the key the handler is hearing: the window takes it, so a focused
 // entry types none of it, a focused button is not activated and Tab moves
 // no focus.
-#[macro.cnative("sngl_key_stop")]
+#[c.native("sngl_key_stop")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyStop")]
 func _rtKeyStop()
 
 // A test's key, pressed as the test describes it: the handler hears it, a
 // stop it calls calls the test's, and a key it leaves goes on where it would
 // have gone.
-#[macro.cnative("sngl_toplevel_key")]
+#[c.native("sngl_toplevel_key")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelKey")]
 func _rtToplevelKey(
     w       Toplevel,
@@ -391,15 +391,15 @@ func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
 
 // A toplevel's content is a box's, whose append hands the window an entry of
 // its menu or its way back (rt's sngl_box_append).
-#[macro.cnative("sngl_toplevel_append")]
+#[c.native("sngl_toplevel_append")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelAppend")]
 func _rtToplevelAppend(w Toplevel, child ui.node)
 
-#[macro.cnative("sngl_toplevel_insert_before")]
+#[c.native("sngl_toplevel_insert_before")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelInsertBefore")]
 func _rtToplevelInsert(w Toplevel, before ui.node, child ui.node)
 
-#[macro.cnative("sngl_box_remove")]
+#[c.native("sngl_box_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxRemove")]
 func _rtToplevelRemove(w Toplevel, child ui.node)
 
@@ -454,11 +454,11 @@ func _on_Toplevel_key(w Toplevel, key func()) {
 #[marks.intrinsic("gtk4:Back")]
 component Back(@press()) ui.node
 
-#[macro.cnative("sngl_back_new")]
+#[c.native("sngl_back_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackNew")]
 func _rtBackNew() Back
 
-#[macro.cnative("sngl_back_on_press")]
+#[c.native("sngl_back_on_press")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackOnPress")]
 func _rtBackOnPress(
     b Back,
@@ -467,7 +467,7 @@ func _rtBackOnPress(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_back_press")]
+#[c.native("sngl_back_press")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackPress")]
 func _rtBackPress(b Back)
 
@@ -499,23 +499,23 @@ component MenuEntry(
     entries  ...component ui.node,
 ) ui.node
 
-#[macro.cnative("sngl_menu_entry_new")]
+#[c.native("sngl_menu_entry_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryNew")]
 func _rtMenuEntryNew() MenuEntry
 
-#[macro.cnative("sngl_menu_entry_set_label")]
+#[c.native("sngl_menu_entry_set_label")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetLabel")]
 func _rtMenuEntrySetLabel(e MenuEntry, label string)
 
-#[macro.cnative("sngl_menu_entry_set_disabled")]
+#[c.native("sngl_menu_entry_set_disabled")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetDisabled")]
 func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
 
-#[macro.cnative("sngl_menu_entry_set_checked")]
+#[c.native("sngl_menu_entry_set_checked")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetChecked")]
 func _rtMenuEntrySetChecked(e MenuEntry, v bool)
 
-#[macro.cnative("sngl_menu_entry_on_select")]
+#[c.native("sngl_menu_entry_on_select")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryOnSelect")]
 func _rtMenuEntryOnSelect(
     e MenuEntry,
@@ -608,25 +608,25 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // What a control holds, read off its widget. A GTK signal hands its handler
 // the widget it fired on and nothing else, so an override reporting a change
 // asks that widget: `@toggled(b) { checked = checkActive(b) }`.
-#[macro.cnative("sngl_check_active")]
+#[c.native("sngl_check_active")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCheckActive")]
 func checkActive(b ui.node) bool
 
-#[macro.cnative("sngl_switch_active")]
+#[c.native("sngl_switch_active")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSwitchActive")]
 func switchActive(s ui.node) bool
 
-#[macro.cnative("sngl_entry_text")]
+#[c.native("sngl_entry_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEntryText")]
 func entryText(e ui.node) string
 
 // Writes an entry's text with its "changed" blocked, which an override does
 // itself rather than binding `text`: see ui.input.
-#[macro.cnative("sngl_editable_set_text_quiet")]
+#[c.native("sngl_editable_set_text_quiet")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEditableSetTextQuiet")]
 func setEntryText(e ui.node, text string)
 
-#[macro.cnative("sngl_calendar_day")]
+#[c.native("sngl_calendar_day")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarDay")]
 func _rtCalendarDay(c ui.node) string
 
@@ -638,7 +638,7 @@ func calendarDate(c ui.node) option[time.date] {
 
 // Selects y-m-d on a calendar as a click on the day does, without reporting
 // it.
-#[macro.cnative("sngl_calendar_select")]
+#[c.native("sngl_calendar_select")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarSelect")]
 func selectDay(cal ui.node, y int, m int, d int)
 
@@ -647,33 +647,33 @@ func selectDay(cal ui.node, y int, m int, d int)
 // takes its choices as a GListModel, which no SNGL expression produces, so
 // the runtime builds one. Neither is a choice anyone made, so the drop-down
 // reports neither.
-#[macro.cnative("sngl_drop_down_offer")]
+#[c.native("sngl_drop_down_offer")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownOffer")]
 func offerChoices(d ui.node, labels string, chosen string)
 
 // Selects the choice labeled `label`, as a pick does: unlike an offer, the
 // drop-down notifies, so its @notifySelected handler runs. A label among none
 // of its choices selects nothing.
-#[macro.cnative("sngl_drop_down_select")]
+#[c.native("sngl_drop_down_select")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownSelect")]
 func selectLabel(d ui.node, label string)
 
 // The label a drop-down has selected, or "" where it has none.
-#[macro.cnative("sngl_drop_down_label")]
+#[c.native("sngl_drop_down_label")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownLabel")]
 func dropDownLabel(d ui.node) string
 
 // A test's fire of an event whose handler reads a value off the widget puts
 // the value there first, as the user's flip, typing or click on a day does.
-#[macro.cnative("sngl_fire_flip")]
+#[c.native("sngl_fire_flip")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireFlip")]
 func _rtFireFlip(w ui.node, v int)
 
-#[macro.cnative("sngl_fire_text")]
+#[c.native("sngl_fire_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireText")]
 func _rtFireText(e ui.node, text string, signal string)
 
-#[macro.cnative("sngl_fire_day")]
+#[c.native("sngl_fire_day")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireDay")]
 func _rtFireDay(c ui.node, day string)
 
@@ -708,11 +708,11 @@ func _fire_GtkCalendar_daySelected(c GtkCalendar, day option[time.date]) {
 #[marks.intrinsic("gtk4:Text")]
 component Text(value string, look Look, @click()) ui.node
 
-#[macro.cnative("sngl_text_new")]
+#[c.native("sngl_text_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextNew")]
 func _rtTextNew() Text
 
-#[macro.cnative("sngl_text_set_value")]
+#[c.native("sngl_text_set_value")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextSetValue")]
 func _rtTextSetValue(w Text, value string)
 
@@ -850,19 +850,19 @@ component Scroll(
     content   ...component option[ui.node],
 ) ui.node
 
-#[macro.cnative("sngl_scroll_new")]
+#[c.native("sngl_scroll_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollNew")]
 func _rtScrollNew() Scroll
 
-#[macro.cnative("sngl_scroll_set_child")]
+#[c.native("sngl_scroll_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetChild")]
 func _rtScrollSetChild(sw Scroll, child ui.node)
 
-#[macro.cnative("sngl_scroll_set_direction")]
+#[c.native("sngl_scroll_set_direction")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetDirection")]
 func _rtScrollSetDirection(sw Scroll, direction string)
 
-#[macro.cnative("sngl_scroll_on_reach_end")]
+#[c.native("sngl_scroll_on_reach_end")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollOnReachEnd")]
 func _rtScrollOnReachEnd(
     sw Scroll,
@@ -871,7 +871,7 @@ func _rtScrollOnReachEnd(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_scroll_reach_end")]
+#[c.native("sngl_scroll_reach_end")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollReachEnd")]
 func _rtScrollReachEnd(sw Scroll)
 
@@ -933,27 +933,27 @@ component TabPage(
     content  ...component ui.node,
 ) ui.node
 
-#[macro.cnative("sngl_tabs_new")]
+#[c.native("sngl_tabs_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsNew")]
 func _rtTabsNew() Tabs
 
-#[macro.cnative("sngl_tabs_set_selected")]
+#[c.native("sngl_tabs_set_selected")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsSetSelected")]
 func _rtTabsSetSelected(t Tabs, k int)
 
-#[macro.cnative("sngl_tab_page_new")]
+#[c.native("sngl_tab_page_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageNew")]
 func _rtTabPageNew() TabPage
 
-#[macro.cnative("sngl_tab_page_set_title")]
+#[c.native("sngl_tab_page_set_title")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetTitle")]
 func _rtTabPageSetTitle(p TabPage, title string)
 
-#[macro.cnative("sngl_tab_page_set_disabled")]
+#[c.native("sngl_tab_page_set_disabled")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetDisabled")]
 func _rtTabPageSetDisabled(p TabPage, disabled bool)
 
-#[macro.cnative("sngl_tab_page_on_shown")]
+#[c.native("sngl_tab_page_on_shown")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageOnShown")]
 func _rtTabPageOnShown(
     p TabPage,
@@ -962,7 +962,7 @@ func _rtTabPageOnShown(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_tab_page_show")]
+#[c.native("sngl_tab_page_show")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageShow")]
 func _rtTabPageShow(p TabPage)
 
@@ -1383,49 +1383,49 @@ component Span(
     content   ...component markup.span,
 ) markup.span
 
-#[macro.cnative("sngl_flow_new")]
+#[c.native("sngl_flow_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFlowNew")]
 func _rtFlowNew() Flow
 
-#[macro.cnative("sngl_span_new")]
+#[c.native("sngl_span_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanNew")]
 func _rtSpanNew() Span
 
-#[macro.cnative("sngl_span_append")]
+#[c.native("sngl_span_append")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanAppend")]
 func _rtSpanAppend(parent ui.node, child markup.span)
 
-#[macro.cnative("sngl_span_insert")]
+#[c.native("sngl_span_insert")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanInsert")]
 func _rtSpanInsert(parent ui.node, child markup.span, before markup.span)
 
-#[macro.cnative("sngl_span_remove")]
+#[c.native("sngl_span_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanRemove")]
 func _rtSpanRemove(parent ui.node, child markup.span)
 
-#[macro.cnative("sngl_span_append")]
+#[c.native("sngl_span_append")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanAppend")]
 func _rtSpanAppendIn(parent markup.span, child markup.span)
 
-#[macro.cnative("sngl_span_insert")]
+#[c.native("sngl_span_insert")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanInsert")]
 func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span)
 
-#[macro.cnative("sngl_span_remove")]
+#[c.native("sngl_span_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanRemove")]
 func _rtSpanRemoveIn(parent markup.span, child markup.span)
 
-#[macro.cnative("sngl_span_set_words")]
+#[c.native("sngl_span_set_words")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetWords")]
 func _rtSpanWords(w Span, words string)
 
-#[macro.cnative("sngl_span_set_href")]
+#[c.native("sngl_span_set_href")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetHref")]
 func _rtSpanHref(w Span, href string)
 
 // A run's style: its color's channels, its size in px (0 unset), its weight
 // and slant as markup's enums, `inherit` first, its lines and its family.
-#[macro.cnative("sngl_span_set_style")]
+#[c.native("sngl_span_set_style")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetStyle")]
 func _rtSpanStyle(
     w         Span,
@@ -1560,20 +1560,20 @@ component Image(
     content ...component option[ui.imageSource],
 ) ui.node
 
-#[macro.cnative("sngl_image_new")]
+#[c.native("sngl_image_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
 func _rtImageNew() Image
 
-#[macro.cnative("sngl_image_set_fit")]
+#[c.native("sngl_image_set_fit")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSetFit")]
 func _rtImageSetFit(w Image, fit string)
 
 // Why an image's picture failed, or "".
-#[macro.cnative("sngl_image_failure")]
+#[c.native("sngl_image_failure")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageFailure")]
 func imageFailure(w Image) string
 
-#[macro.cnative("sngl_image_on_click")]
+#[c.native("sngl_image_on_click")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnClick")]
 func _rtImageOnClick(
     w Image,
@@ -1582,7 +1582,7 @@ func _rtImageOnClick(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_image_on_load")]
+#[c.native("sngl_image_on_load")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnLoad")]
 func _rtImageOnLoad(
     w Image,
@@ -1591,7 +1591,7 @@ func _rtImageOnLoad(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_image_on_failed")]
+#[c.native("sngl_image_on_failed")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnFailed")]
 func _rtImageOnFailed(
     w Image,
@@ -1600,7 +1600,7 @@ func _rtImageOnFailed(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_image_click")]
+#[c.native("sngl_image_click")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageClick")]
 func _rtImageClick(w Image)
 
@@ -1659,20 +1659,20 @@ func _fire_Image_click(w Image) {
 // once per URL and given back when the URL changes or the source unmounts.
 // The runtime counts its holders, so a program keeping one in a second var
 // holds a reference, not a second decode.
-#[macro.cnative("SnglPicture *")]
+#[c.native("SnglPicture *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Picture")]
 #[macro.owned(unrefPicture, retain=refPicture)]
 struct Picture {}
 
-#[macro.cnative("sngl_picture_load")]
+#[c.native("sngl_picture_load")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureLoad")]
 func loadPicture(url string) Picture
 
-#[macro.cnative("sngl_picture_ref")]
+#[c.native("sngl_picture_ref")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureRef")]
 func refPicture(p Picture) Picture
 
-#[macro.cnative("sngl_picture_unref")]
+#[c.native("sngl_picture_unref")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureUnref")]
 func unrefPicture(p Picture)
 
@@ -1682,11 +1682,11 @@ func unrefPicture(p Picture)
 #[marks.intrinsic("gtk4:ImageUrl")]
 component ImageUrl(url string, picture Picture) ui.imageSource
 
-#[macro.cnative("sngl_image_source_new")]
+#[c.native("sngl_image_source_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceNew")]
 func _rtImageUrlNew() ImageUrl
 
-#[macro.cnative("sngl_image_source_set_picture")]
+#[c.native("sngl_image_source_set_picture")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceSetPicture")]
 func _rtImageUrlSetPicture(w ImageUrl, picture Picture)
 
@@ -1695,7 +1695,7 @@ func _create_ImageUrl() ImageUrl {
     return _rtImageUrlNew()
 }
 
-#[macro.cnative("sngl_image_source_set_url")]
+#[c.native("sngl_image_source_set_url")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceSetUrl")]
 func _rtImageUrlSetUrl(w ImageUrl, url string)
 
@@ -1720,19 +1720,19 @@ component ImageDrawing(
     shapes ...component draw.shape,
 ) ui.imageSource
 
-#[macro.cnative("sngl_image_source_new")]
+#[c.native("sngl_image_source_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceNew")]
 func _rtImageDrawingNew() ImageDrawing
 
-#[macro.cnative("sngl_drawing_set_width")]
+#[c.native("sngl_drawing_set_width")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingSetWidth")]
 func _rtDrawingSetWidth(w ImageDrawing, width float)
 
-#[macro.cnative("sngl_drawing_set_height")]
+#[c.native("sngl_drawing_set_height")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingSetHeight")]
 func _rtDrawingSetHeight(w ImageDrawing, height float)
 
-#[macro.cnative("sngl_drawing_on_paint")]
+#[c.native("sngl_drawing_on_paint")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingOnPaint")]
 func _rtDrawingOnPaint(
     w ImageDrawing,
@@ -1741,7 +1741,7 @@ func _rtDrawingOnPaint(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_drawing_redraw")]
+#[c.native("sngl_drawing_redraw")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingRedraw")]
 func _rtDrawingRedraw(w ImageDrawing)
 
@@ -1808,95 +1808,95 @@ const component draw.image[platform](width, height, shapes) {
 // what the drawing reads asks for a paint through its redraw. cairo's own
 // functions are the drawing's vocabulary, but for what it takes as an enum,
 // which the runtime casts (rt's sngl_cairo_*).
-#[macro.cnative("cairo_t *")]
+#[c.native("cairo_t *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoContext")]
 struct CairoContext {}
 
-#[macro.cnative("cairo_save")]
+#[c.native("cairo_save")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSave")]
 func CairoContext.save()
 
-#[macro.cnative("cairo_restore")]
+#[c.native("cairo_restore")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoRestore")]
 func CairoContext.restore()
 
-#[macro.cnative("cairo_set_source_rgba")]
+#[c.native("cairo_set_source_rgba")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSetSourceRgba")]
 func CairoContext.setSourceRgba(r float, g float, b float, a float)
 
-#[macro.cnative("cairo_set_line_width")]
+#[c.native("cairo_set_line_width")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSetLineWidth")]
 func CairoContext.setLineWidth(w float)
 
-#[macro.cnative("sngl_cairo_line_cap")]
+#[c.native("sngl_cairo_line_cap")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCairoLineCap")]
 func CairoContext.setLineCap(cap int)
 
-#[macro.cnative("sngl_cairo_line_join")]
+#[c.native("sngl_cairo_line_join")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCairoLineJoin")]
 func CairoContext.setLineJoin(join int)
 
-#[macro.cnative("cairo_rectangle")]
+#[c.native("cairo_rectangle")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoRectangle")]
 func CairoContext.rectangle(x float, y float, w float, h float)
 
-#[macro.cnative("cairo_new_sub_path")]
+#[c.native("cairo_new_sub_path")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoNewSubPath")]
 func CairoContext.newSubPath()
 
-#[macro.cnative("cairo_arc")]
+#[c.native("cairo_arc")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoArc")]
 func CairoContext.arc(cx float, cy float, r float, start float, end float)
 
-#[macro.cnative("cairo_arc_negative")]
+#[c.native("cairo_arc_negative")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoArcNegative")]
 func CairoContext.arcNegative(cx float, cy float, r float, start float, end float)
 
-#[macro.cnative("cairo_move_to")]
+#[c.native("cairo_move_to")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoMoveTo")]
 func CairoContext.moveTo(x float, y float)
 
-#[macro.cnative("cairo_line_to")]
+#[c.native("cairo_line_to")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoLineTo")]
 func CairoContext.lineTo(x float, y float)
 
-#[macro.cnative("cairo_curve_to")]
+#[c.native("cairo_curve_to")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoCurveTo")]
 func CairoContext.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
 
-#[macro.cnative("cairo_close_path")]
+#[c.native("cairo_close_path")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoClosePath")]
 func CairoContext.closePath()
 
-#[macro.cnative("cairo_fill")]
+#[c.native("cairo_fill")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoFill")]
 func CairoContext.fill()
 
-#[macro.cnative("cairo_fill_preserve")]
+#[c.native("cairo_fill_preserve")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoFillPreserve")]
 func CairoContext.fillPreserve()
 
-#[macro.cnative("cairo_stroke")]
+#[c.native("cairo_stroke")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoStroke")]
 func CairoContext.stroke()
 
-#[macro.cnative("sngl_cairo_font")]
+#[c.native("sngl_cairo_font")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCairoFont")]
 func CairoContext.font(family string, size float)
 
-#[macro.cnative("cairo_show_text")]
+#[c.native("cairo_show_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoShowText")]
 func CairoContext.showText(text string)
 
-#[macro.cnative("cairo_translate")]
+#[c.native("cairo_translate")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoTranslate")]
 func CairoContext.translate(x float, y float)
 
-#[macro.cnative("cairo_scale")]
+#[c.native("cairo_scale")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoScale")]
 func CairoContext.scale(x float, y float)
 
-#[macro.cnative("cairo_clip")]
+#[c.native("cairo_clip")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoClip")]
 func CairoContext.clip()
 
@@ -1926,25 +1926,25 @@ component Canvas(
     shapes      ...component draw.shape,
 ) ui.node
 
-#[macro.cnative("sngl_canvas_new")]
+#[c.native("sngl_canvas_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasNew")]
 func _rtCanvasNew() Canvas
 
-#[macro.cnative("sngl_canvas_set_width")]
+#[c.native("sngl_canvas_set_width")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetWidth")]
 func _rtCanvasSetWidth(w Canvas, width int)
 
-#[macro.cnative("sngl_canvas_set_height")]
+#[c.native("sngl_canvas_set_height")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetHeight")]
 func _rtCanvasSetHeight(w Canvas, height int)
 
-#[macro.cnative("sngl_canvas_set_scaling")]
+#[c.native("sngl_canvas_set_scaling")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetScaling")]
 func _rtCanvasSetScaling(w Canvas, mode int)
 
 // Runs `fn` from the main loop when it is next idle: how `async.do` hands
 // work a goroutine finished back in Go. C posts through sngl_post itself.
-#[macro.cnative("sngl_post")]
+#[c.native("sngl_post")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPost")]
 func _rtPost(
     #[c.type("SnglFn")] fn func(),
@@ -1952,7 +1952,7 @@ func _rtPost(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_on_click")]
+#[c.native("sngl_on_click")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglOnClick")]
 func _rtOnClick(
     w ui.node,
@@ -1961,11 +1961,11 @@ func _rtOnClick(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_click")]
+#[c.native("sngl_click")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglClick")]
 func _rtClick(w ui.node)
 
-#[macro.cnative("sngl_canvas_on_paint")]
+#[c.native("sngl_canvas_on_paint")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasOnPaint")]
 func _rtCanvasOnPaint(
     w Canvas,
@@ -1974,7 +1974,7 @@ func _rtCanvasOnPaint(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_canvas_redraw")]
+#[c.native("sngl_canvas_redraw")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasRedraw")]
 func _rtCanvasRedraw(w Canvas)
 
@@ -2064,7 +2064,7 @@ func arcTo(ctx CairoContext, from draw.Point, corner draw.Point, to draw.Point, 
 // Paints a picture into a box, scaled once per box size rather than per
 // frame; one still on its way paints nothing, and is there the next time the
 // drawing paints after it arrives.
-#[macro.cnative("sngl_picture_paint")]
+#[c.native("sngl_picture_paint")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPicturePaint")]
 func paintPicture(cr CairoContext, p Picture, x float, y float, w float, h float)
 

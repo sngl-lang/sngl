@@ -24,7 +24,7 @@ component GtkBox(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_box_new")]
+#[c.native("gtk_box_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
 func _gtk_box_new(orientation _c_GtkOrientation, spacing int) GtkBox
 
@@ -38,10 +38,10 @@ func _fire_GtkBox_destroy(w GtkBox) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkBox(w GtkBox) c.pointer
 
-#[macro.cnative("sngl_box_append")]
+#[c.native("sngl_box_append")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxAppend")]
 func _sngl_box_append(parent _p_GtkWidget, child _p_GtkWidget)
 
@@ -50,7 +50,7 @@ func _append_GtkBox(parent GtkBox, child ui.node) {
     _sngl_box_append(_as_GtkWidget(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("sngl_box_insert_before")]
+#[c.native("sngl_box_insert_before")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxInsertBefore")]
 func _sngl_box_insert_before(parent _p_GtkWidget, anchor _p_GtkWidget, child _p_GtkWidget)
 
@@ -59,7 +59,7 @@ func _insert_GtkBox(parent GtkBox, child ui.node, before ui.node) {
     _sngl_box_insert_before(_as_GtkWidget(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("gtk_box_remove")]
+#[c.native("gtk_box_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxRemove")]
 func _gtk_box_remove(parent _p_GtkBox, child _p_GtkWidget)
 
@@ -68,7 +68,7 @@ func _remove_GtkBox(parent GtkBox, child ui.node) {
     _gtk_box_remove(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("gtk_box_set_spacing")]
+#[c.native("gtk_box_set_spacing")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxSetSpacing")]
 func _gtk_box_set_spacing(w _p_GtkBox, v int)
 
@@ -77,7 +77,7 @@ func _set_GtkBox_spacing(self GtkBox, spacing int) {
     _gtk_box_set_spacing(_as_GtkBox(_ptr_GtkBox(self)), spacing)
 }
 
-#[macro.cnative("gtk_box_set_homogeneous")]
+#[c.native("gtk_box_set_homogeneous")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxSetHomogeneous")]
 func _gtk_box_set_homogeneous(w _p_GtkBox, v _c_gboolean)
 
@@ -86,7 +86,7 @@ func _set_GtkBox_homogeneous(self GtkBox, homogeneous bool) {
     _gtk_box_set_homogeneous(_as_GtkBox(_ptr_GtkBox(self)), _to_gboolean(homogeneous ? 1 : 0))
 }
 
-#[macro.cnative("gtk_orientable_set_orientation")]
+#[c.native("gtk_orientable_set_orientation")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkOrientableSetOrientation")]
 func _gtk_orientable_set_orientation(w _p_GtkOrientable, v _c_GtkOrientation)
 
@@ -99,7 +99,7 @@ func _set_GtkBox_orientation(self GtkBox, orientation string) {
     }))
 }
 
-#[macro.cnative("gtk_widget_set_visible")]
+#[c.native("gtk_widget_set_visible")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetVisible")]
 func _gtk_widget_set_visible(w _p_GtkWidget, v _c_gboolean)
 
@@ -108,7 +108,7 @@ func _set_GtkBox_visible(self GtkBox, visible bool) {
     _gtk_widget_set_visible(_as_GtkWidget(_ptr_GtkBox(self)), _to_gboolean(visible ? 1 : 0))
 }
 
-#[macro.cnative("gtk_widget_set_sensitive")]
+#[c.native("gtk_widget_set_sensitive")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetSensitive")]
 func _gtk_widget_set_sensitive(w _p_GtkWidget, v _c_gboolean)
 
@@ -117,7 +117,7 @@ func _set_GtkBox_sensitive(self GtkBox, sensitive bool) {
     _gtk_widget_set_sensitive(_as_GtkWidget(_ptr_GtkBox(self)), _to_gboolean(sensitive ? 1 : 0))
 }
 
-#[macro.cnative("gtk_widget_set_hexpand")]
+#[c.native("gtk_widget_set_hexpand")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetHexpand")]
 func _gtk_widget_set_hexpand(w _p_GtkWidget, v _c_gboolean)
 
@@ -126,7 +126,7 @@ func _set_GtkBox_hexpand(self GtkBox, hexpand bool) {
     _gtk_widget_set_hexpand(_as_GtkWidget(_ptr_GtkBox(self)), _to_gboolean(hexpand ? 1 : 0))
 }
 
-#[macro.cnative("gtk_widget_set_vexpand")]
+#[c.native("gtk_widget_set_vexpand")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetVexpand")]
 func _gtk_widget_set_vexpand(w _p_GtkWidget, v _c_gboolean)
 
@@ -135,7 +135,7 @@ func _set_GtkBox_vexpand(self GtkBox, vexpand bool) {
     _gtk_widget_set_vexpand(_as_GtkWidget(_ptr_GtkBox(self)), _to_gboolean(vexpand ? 1 : 0))
 }
 
-#[macro.cnative("gtk_widget_set_can_focus")]
+#[c.native("gtk_widget_set_can_focus")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetCanFocus")]
 func _gtk_widget_set_can_focus(w _p_GtkWidget, v _c_gboolean)
 
@@ -144,7 +144,7 @@ func _set_GtkBox_canFocus(self GtkBox, canFocus bool) {
     _gtk_widget_set_can_focus(_as_GtkWidget(_ptr_GtkBox(self)), _to_gboolean(canFocus ? 1 : 0))
 }
 
-#[macro.cnative("gtk_widget_set_tooltip_text")]
+#[c.native("gtk_widget_set_tooltip_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetTooltipText")]
 func _gtk_widget_set_tooltip_text(w _p_GtkWidget, v string)
 
@@ -175,7 +175,7 @@ component GtkButton(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_button_new")]
+#[c.native("gtk_button_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkButtonNew")]
 func _gtk_button_new() GtkButton
 
@@ -194,7 +194,7 @@ func _fire_GtkButton_destroy(w GtkButton) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_button_set_child")]
+#[c.native("gtk_button_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkButtonSetChild")]
 func _gtk_button_set_child(parent _p_GtkButton, child _p_GtkWidget)
 
@@ -203,10 +203,10 @@ func _append_GtkButton(parent GtkButton, child ui.node) {
     _gtk_button_set_child(_as_GtkButton(_ptr_GtkButton(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkButton(w GtkButton) c.pointer
 
-#[macro.cnative("gtk_button_set_label")]
+#[c.native("gtk_button_set_label")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkButtonSetLabel")]
 func _gtk_button_set_label(w _p_GtkButton, v string)
 
@@ -215,7 +215,7 @@ func _set_GtkButton_label(self GtkButton, label string) {
     _gtk_button_set_label(_as_GtkButton(_ptr_GtkButton(self)), label)
 }
 
-#[macro.cnative("gtk_button_set_has_frame")]
+#[c.native("gtk_button_set_has_frame")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkButtonSetHasFrame")]
 func _gtk_button_set_has_frame(w _p_GtkButton, v _c_gboolean)
 
@@ -275,7 +275,7 @@ component GtkCalendar(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_calendar_new")]
+#[c.native("gtk_calendar_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCalendarNew")]
 func _gtk_calendar_new() GtkCalendar
 
@@ -289,7 +289,7 @@ func _fire_GtkCalendar_destroy(w GtkCalendar) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkCalendar(w GtkCalendar) c.pointer
 
 #[gen.protocol(set)]
@@ -344,7 +344,7 @@ component GtkCheckButton(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_check_button_new")]
+#[c.native("gtk_check_button_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCheckButtonNew")]
 func _gtk_check_button_new() GtkCheckButton
 
@@ -358,7 +358,7 @@ func _fire_GtkCheckButton_destroy(w GtkCheckButton) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_check_button_set_child")]
+#[c.native("gtk_check_button_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCheckButtonSetChild")]
 func _gtk_check_button_set_child(parent _p_GtkCheckButton, child _p_GtkWidget)
 
@@ -367,10 +367,10 @@ func _append_GtkCheckButton(parent GtkCheckButton, child ui.node) {
     _gtk_check_button_set_child(_as_GtkCheckButton(_ptr_GtkCheckButton(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkCheckButton(w GtkCheckButton) c.pointer
 
-#[macro.cnative("gtk_check_button_set_active")]
+#[c.native("gtk_check_button_set_active")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCheckButtonSetActive")]
 func _gtk_check_button_set_active(w _p_GtkCheckButton, v _c_gboolean)
 
@@ -379,7 +379,7 @@ func _set_GtkCheckButton_active(self GtkCheckButton, active bool) {
     _gtk_check_button_set_active(_as_GtkCheckButton(_ptr_GtkCheckButton(self)), _to_gboolean(active ? 1 : 0))
 }
 
-#[macro.cnative("gtk_check_button_set_label")]
+#[c.native("gtk_check_button_set_label")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCheckButtonSetLabel")]
 func _gtk_check_button_set_label(w _p_GtkCheckButton, v option[string])
 
@@ -439,7 +439,7 @@ component GtkDropDown(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_drop_down_new")]
+#[c.native("gtk_drop_down_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownNew")]
 func _gtk_drop_down_new(model option[_p_GListModel], expression option[_p_GtkExpression]) GtkDropDown
 
@@ -458,7 +458,7 @@ func _on_GtkDropDown_notifySelected(w GtkDropDown, notifySelected func()) {
     _rtNotifyConnect(w, "notify::selected", notifySelected)
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkDropDown(w GtkDropDown) c.pointer
 
 #[gen.protocol(set)]
@@ -513,7 +513,7 @@ component GtkEntry(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_entry_new")]
+#[c.native("gtk_entry_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEntryNew")]
 func _gtk_entry_new() GtkEntry
 
@@ -527,10 +527,10 @@ func _fire_GtkEntry_destroy(w GtkEntry) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkEntry(w GtkEntry) c.pointer
 
-#[macro.cnative("gtk_editable_set_text")]
+#[c.native("gtk_editable_set_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEditableSetText")]
 func _gtk_editable_set_text(w _p_GtkEditable, v string)
 
@@ -588,7 +588,7 @@ component GtkFrame(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_frame_new")]
+#[c.native("gtk_frame_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkFrameNew")]
 func _gtk_frame_new(label option[string]) GtkFrame
 
@@ -602,7 +602,7 @@ func _fire_GtkFrame_destroy(w GtkFrame) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_frame_set_child")]
+#[c.native("gtk_frame_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkFrameSetChild")]
 func _gtk_frame_set_child(parent _p_GtkFrame, child _p_GtkWidget)
 
@@ -611,7 +611,7 @@ func _append_GtkFrame(parent GtkFrame, child ui.node) {
     _gtk_frame_set_child(_as_GtkFrame(_ptr_GtkFrame(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkFrame(w GtkFrame) c.pointer
 
 #[gen.protocol(set)]
@@ -664,7 +664,7 @@ component GtkImage(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_image_new")]
+#[c.native("gtk_image_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkImageNew")]
 func _gtk_image_new() GtkImage
 
@@ -678,10 +678,10 @@ func _fire_GtkImage_destroy(w GtkImage) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkImage(w GtkImage) c.pointer
 
-#[macro.cnative("gtk_image_set_from_file")]
+#[c.native("gtk_image_set_from_file")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkImageSetFromFile")]
 func _gtk_image_set_from_file(w _p_GtkImage, v option[string])
 
@@ -741,7 +741,7 @@ component GtkLabel(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_label_new")]
+#[c.native("gtk_label_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelNew")]
 func _gtk_label_new(str option[string]) GtkLabel
 
@@ -755,10 +755,10 @@ func _fire_GtkLabel_destroy(w GtkLabel) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkLabel(w GtkLabel) c.pointer
 
-#[macro.cnative("gtk_label_set_label")]
+#[c.native("gtk_label_set_label")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelSetLabel")]
 func _gtk_label_set_label(w _p_GtkLabel, v string)
 
@@ -767,7 +767,7 @@ func _set_GtkLabel_label(self GtkLabel, label string) {
     _gtk_label_set_label(_as_GtkLabel(_ptr_GtkLabel(self)), label)
 }
 
-#[macro.cnative("gtk_label_set_xalign")]
+#[c.native("gtk_label_set_xalign")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelSetXalign")]
 func _gtk_label_set_xalign(w _p_GtkLabel, v _c_float)
 
@@ -829,7 +829,7 @@ component GtkLinkButton(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_link_button_new")]
+#[c.native("gtk_link_button_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLinkButtonNew")]
 func _gtk_link_button_new(uri string) GtkLinkButton
 
@@ -853,10 +853,10 @@ func _append_GtkLinkButton(parent GtkLinkButton, child ui.node) {
     _gtk_button_set_child(_as_GtkButton(_ptr_GtkLinkButton(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkLinkButton(w GtkLinkButton) c.pointer
 
-#[macro.cnative("gtk_link_button_set_uri")]
+#[c.native("gtk_link_button_set_uri")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLinkButtonSetUri")]
 func _gtk_link_button_set_uri(w _p_GtkLinkButton, v string)
 
@@ -926,7 +926,7 @@ component GtkPopover(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_popover_new")]
+#[c.native("gtk_popover_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPopoverNew")]
 func _gtk_popover_new() GtkPopover
 
@@ -945,7 +945,7 @@ func _fire_GtkPopover_destroy(w GtkPopover) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_popover_set_child")]
+#[c.native("gtk_popover_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPopoverSetChild")]
 func _gtk_popover_set_child(parent _p_GtkPopover, child _p_GtkWidget)
 
@@ -954,10 +954,10 @@ func _append_GtkPopover(parent GtkPopover, child ui.node) {
     _gtk_popover_set_child(_as_GtkPopover(_ptr_GtkPopover(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkPopover(w GtkPopover) c.pointer
 
-#[macro.cnative("gtk_popover_set_autohide")]
+#[c.native("gtk_popover_set_autohide")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPopoverSetAutohide")]
 func _gtk_popover_set_autohide(w _p_GtkPopover, v _c_gboolean)
 
@@ -1018,7 +1018,7 @@ component GtkProgressBar(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_progress_bar_new")]
+#[c.native("gtk_progress_bar_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkProgressBarNew")]
 func _gtk_progress_bar_new() GtkProgressBar
 
@@ -1032,10 +1032,10 @@ func _fire_GtkProgressBar_destroy(w GtkProgressBar) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkProgressBar(w GtkProgressBar) c.pointer
 
-#[macro.cnative("gtk_progress_bar_set_fraction")]
+#[c.native("gtk_progress_bar_set_fraction")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkProgressBarSetFraction")]
 func _gtk_progress_bar_set_fraction(w _p_GtkProgressBar, v float)
 
@@ -1044,7 +1044,7 @@ func _set_GtkProgressBar_fraction(self GtkProgressBar, fraction float) {
     _gtk_progress_bar_set_fraction(_as_GtkProgressBar(_ptr_GtkProgressBar(self)), fraction)
 }
 
-#[macro.cnative("gtk_progress_bar_set_text")]
+#[c.native("gtk_progress_bar_set_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkProgressBarSetText")]
 func _gtk_progress_bar_set_text(w _p_GtkProgressBar, v string)
 
@@ -1053,7 +1053,7 @@ func _set_GtkProgressBar_text(self GtkProgressBar, text string) {
     _gtk_progress_bar_set_text(_as_GtkProgressBar(_ptr_GtkProgressBar(self)), text)
 }
 
-#[macro.cnative("gtk_progress_bar_set_show_text")]
+#[c.native("gtk_progress_bar_set_show_text")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkProgressBarSetShowText")]
 func _gtk_progress_bar_set_show_text(w _p_GtkProgressBar, v _c_gboolean)
 
@@ -1097,7 +1097,7 @@ func _set_GtkProgressBar_look(self GtkProgressBar, look Look) {
     _setLook(self, look)
 }
 
-#[macro.cnative("gtk_progress_bar_pulse")]
+#[c.native("gtk_progress_bar_pulse")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkProgressBarPulse")]
 func _gtk_progress_bar_pulse(w _p_GtkProgressBar)
 
@@ -1119,7 +1119,7 @@ component GtkScrolledWindow(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_scrolled_window_new")]
+#[c.native("gtk_scrolled_window_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowNew")]
 func _gtk_scrolled_window_new() GtkScrolledWindow
 
@@ -1133,7 +1133,7 @@ func _fire_GtkScrolledWindow_destroy(w GtkScrolledWindow) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_scrolled_window_set_child")]
+#[c.native("gtk_scrolled_window_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowSetChild")]
 func _gtk_scrolled_window_set_child(parent _p_GtkScrolledWindow, child _p_GtkWidget)
 
@@ -1142,7 +1142,7 @@ func _append_GtkScrolledWindow(parent GtkScrolledWindow, child ui.node) {
     _gtk_scrolled_window_set_child(_as_GtkScrolledWindow(_ptr_GtkScrolledWindow(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkScrolledWindow(w GtkScrolledWindow) c.pointer
 
 #[gen.protocol(set)]
@@ -1195,7 +1195,7 @@ component GtkSeparator(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_separator_new")]
+#[c.native("gtk_separator_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSeparatorNew")]
 func _gtk_separator_new(orientation _c_GtkOrientation) GtkSeparator
 
@@ -1209,7 +1209,7 @@ func _fire_GtkSeparator_destroy(w GtkSeparator) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkSeparator(w GtkSeparator) c.pointer
 
 #[gen.protocol(set)]
@@ -1271,7 +1271,7 @@ component GtkSpinner(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_spinner_new")]
+#[c.native("gtk_spinner_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSpinnerNew")]
 func _gtk_spinner_new() GtkSpinner
 
@@ -1285,10 +1285,10 @@ func _fire_GtkSpinner_destroy(w GtkSpinner) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkSpinner(w GtkSpinner) c.pointer
 
-#[macro.cnative("gtk_spinner_set_spinning")]
+#[c.native("gtk_spinner_set_spinning")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSpinnerSetSpinning")]
 func _gtk_spinner_set_spinning(w _p_GtkSpinner, v _c_gboolean)
 
@@ -1346,7 +1346,7 @@ component GtkStack(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_stack_new")]
+#[c.native("gtk_stack_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStackNew")]
 func _gtk_stack_new() GtkStack
 
@@ -1360,7 +1360,7 @@ func _fire_GtkStack_destroy(w GtkStack) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_stack_add_child")]
+#[c.native("gtk_stack_add_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStackAddChild")]
 func _gtk_stack_add_child(parent _p_GtkStack, child _p_GtkWidget)
 
@@ -1369,7 +1369,7 @@ func _append_GtkStack(parent GtkStack, child ui.node) {
     _gtk_stack_add_child(_as_GtkStack(_ptr_GtkStack(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkStack(w GtkStack) c.pointer
 
 #[gen.protocol(set)]
@@ -1424,7 +1424,7 @@ component GtkSwitch(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_switch_new")]
+#[c.native("gtk_switch_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSwitchNew")]
 func _gtk_switch_new() GtkSwitch
 
@@ -1443,10 +1443,10 @@ func _on_GtkSwitch_notifyActive(w GtkSwitch, notifyActive func()) {
     _rtNotifyConnect(w, "notify::active", notifyActive)
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkSwitch(w GtkSwitch) c.pointer
 
-#[macro.cnative("gtk_switch_set_active")]
+#[c.native("gtk_switch_set_active")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSwitchSetActive")]
 func _gtk_switch_set_active(w _p_GtkSwitch, v _c_gboolean)
 
@@ -1509,7 +1509,7 @@ func _fire_GtkWidget_destroy(w GtkWidget) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkWidget(w GtkWidget) c.pointer
 
 #[gen.protocol(set)]
@@ -1561,7 +1561,7 @@ component GtkWindow(
     children    ...component ui.node,
 ) ui.node
 
-#[macro.cnative("gtk_window_new")]
+#[c.native("gtk_window_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowNew")]
 func _gtk_window_new() GtkWindow
 
@@ -1575,7 +1575,7 @@ func _fire_GtkWindow_destroy(w GtkWindow) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[macro.cnative("gtk_window_set_child")]
+#[c.native("gtk_window_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetChild")]
 func _gtk_window_set_child(parent _p_GtkWindow, child _p_GtkWidget)
 
@@ -1584,7 +1584,7 @@ func _append_GtkWindow(parent GtkWindow, child ui.node) {
     _gtk_window_set_child(_as_GtkWindow(_ptr_GtkWindow(parent)), _as_GtkWidget(_widget(child)))
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _ptr_GtkWindow(w GtkWindow) c.pointer
 
 #[gen.protocol(set)]
@@ -1622,141 +1622,141 @@ func _set_GtkWindow_look(self GtkWindow, look Look) {
     _setLook(self, look)
 }
 
-#[macro.cnative("void *", cast)]
+#[c.native("void *", cast)]
 const func _widget(w ui.node) c.pointer
 
-#[macro.cnative("GListModel *")]
+#[c.native("GListModel *")]
 struct _p_GListModel {}
 
-#[macro.cnative("GListModel *", cast)]
+#[c.native("GListModel *", cast)]
 const func _as_GListModel(p c.pointer) _p_GListModel
 
-#[macro.cnative("GtkBox *")]
+#[c.native("GtkBox *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkBox")]
 struct _p_GtkBox {}
 
-#[macro.cnative("GtkBox *", cast)]
+#[c.native("GtkBox *", cast)]
 const func _as_GtkBox(p c.pointer) _p_GtkBox
 
-#[macro.cnative("GtkButton *")]
+#[c.native("GtkButton *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkButton")]
 struct _p_GtkButton {}
 
-#[macro.cnative("GtkButton *", cast)]
+#[c.native("GtkButton *", cast)]
 const func _as_GtkButton(p c.pointer) _p_GtkButton
 
-#[macro.cnative("GtkCheckButton *")]
+#[c.native("GtkCheckButton *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkCheckButton")]
 struct _p_GtkCheckButton {}
 
-#[macro.cnative("GtkCheckButton *", cast)]
+#[c.native("GtkCheckButton *", cast)]
 const func _as_GtkCheckButton(p c.pointer) _p_GtkCheckButton
 
-#[macro.cnative("GtkEditable *")]
+#[c.native("GtkEditable *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkEditable")]
 struct _p_GtkEditable {}
 
-#[macro.cnative("GtkEditable *", cast)]
+#[c.native("GtkEditable *", cast)]
 const func _as_GtkEditable(p c.pointer) _p_GtkEditable
 
-#[macro.cnative("GtkExpression *")]
+#[c.native("GtkExpression *")]
 struct _p_GtkExpression {}
 
-#[macro.cnative("GtkExpression *", cast)]
+#[c.native("GtkExpression *", cast)]
 const func _as_GtkExpression(p c.pointer) _p_GtkExpression
 
-#[macro.cnative("GtkFrame *")]
+#[c.native("GtkFrame *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkFrame")]
 struct _p_GtkFrame {}
 
-#[macro.cnative("GtkFrame *", cast)]
+#[c.native("GtkFrame *", cast)]
 const func _as_GtkFrame(p c.pointer) _p_GtkFrame
 
-#[macro.cnative("GtkImage *")]
+#[c.native("GtkImage *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkImage")]
 struct _p_GtkImage {}
 
-#[macro.cnative("GtkImage *", cast)]
+#[c.native("GtkImage *", cast)]
 const func _as_GtkImage(p c.pointer) _p_GtkImage
 
-#[macro.cnative("GtkLabel *")]
+#[c.native("GtkLabel *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkLabel")]
 struct _p_GtkLabel {}
 
-#[macro.cnative("GtkLabel *", cast)]
+#[c.native("GtkLabel *", cast)]
 const func _as_GtkLabel(p c.pointer) _p_GtkLabel
 
-#[macro.cnative("GtkLinkButton *")]
+#[c.native("GtkLinkButton *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkLinkButton")]
 struct _p_GtkLinkButton {}
 
-#[macro.cnative("GtkLinkButton *", cast)]
+#[c.native("GtkLinkButton *", cast)]
 const func _as_GtkLinkButton(p c.pointer) _p_GtkLinkButton
 
-#[macro.cnative("GtkOrientable *")]
+#[c.native("GtkOrientable *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkOrientable")]
 struct _p_GtkOrientable {}
 
-#[macro.cnative("GtkOrientable *", cast)]
+#[c.native("GtkOrientable *", cast)]
 const func _as_GtkOrientable(p c.pointer) _p_GtkOrientable
 
-#[macro.cnative("GtkPopover *")]
+#[c.native("GtkPopover *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkPopover")]
 struct _p_GtkPopover {}
 
-#[macro.cnative("GtkPopover *", cast)]
+#[c.native("GtkPopover *", cast)]
 const func _as_GtkPopover(p c.pointer) _p_GtkPopover
 
-#[macro.cnative("GtkProgressBar *")]
+#[c.native("GtkProgressBar *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkProgressBar")]
 struct _p_GtkProgressBar {}
 
-#[macro.cnative("GtkProgressBar *", cast)]
+#[c.native("GtkProgressBar *", cast)]
 const func _as_GtkProgressBar(p c.pointer) _p_GtkProgressBar
 
-#[macro.cnative("GtkScrolledWindow *")]
+#[c.native("GtkScrolledWindow *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkScrolledWindow")]
 struct _p_GtkScrolledWindow {}
 
-#[macro.cnative("GtkScrolledWindow *", cast)]
+#[c.native("GtkScrolledWindow *", cast)]
 const func _as_GtkScrolledWindow(p c.pointer) _p_GtkScrolledWindow
 
-#[macro.cnative("GtkSpinner *")]
+#[c.native("GtkSpinner *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkSpinner")]
 struct _p_GtkSpinner {}
 
-#[macro.cnative("GtkSpinner *", cast)]
+#[c.native("GtkSpinner *", cast)]
 const func _as_GtkSpinner(p c.pointer) _p_GtkSpinner
 
-#[macro.cnative("GtkStack *")]
+#[c.native("GtkStack *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkStack")]
 struct _p_GtkStack {}
 
-#[macro.cnative("GtkStack *", cast)]
+#[c.native("GtkStack *", cast)]
 const func _as_GtkStack(p c.pointer) _p_GtkStack
 
-#[macro.cnative("GtkSwitch *")]
+#[c.native("GtkSwitch *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkSwitch")]
 struct _p_GtkSwitch {}
 
-#[macro.cnative("GtkSwitch *", cast)]
+#[c.native("GtkSwitch *", cast)]
 const func _as_GtkSwitch(p c.pointer) _p_GtkSwitch
 
-#[macro.cnative("GtkWidget *")]
+#[c.native("GtkWidget *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkWidget")]
 struct _p_GtkWidget {}
 
-#[macro.cnative("GtkWidget *", cast)]
+#[c.native("GtkWidget *", cast)]
 const func _as_GtkWidget(p c.pointer) _p_GtkWidget
 
-#[macro.cnative("GtkWindow *")]
+#[c.native("GtkWindow *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkWindow")]
 struct _p_GtkWindow {}
 
-#[macro.cnative("GtkWindow *", cast)]
+#[c.native("GtkWindow *", cast)]
 const func _as_GtkWindow(p c.pointer) _p_GtkWindow
 
-#[macro.cnative("sngl_signal_connect")]
+#[c.native("sngl_signal_connect")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSignalConnect")]
 func _rtSignalConnect(
     w      ui.node,
@@ -1766,7 +1766,7 @@ func _rtSignalConnect(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_notify_connect")]
+#[c.native("sngl_notify_connect")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglNotifyConnect")]
 func _rtNotifyConnect(
     w      ui.node,
@@ -1777,7 +1777,7 @@ func _rtNotifyConnect(
 )
 
 // Emits w's signal as GTK would, which a test fires an event with.
-#[macro.cnative("sngl_signal_emit")]
+#[c.native("sngl_signal_emit")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSignalEmit")]
 func _rtSignalEmit(w ui.node, signal string)
 
@@ -1787,23 +1787,23 @@ func signalConnect(w ui.node, signal string, handler func()) {
     _rtSignalConnect(w, signal, handler)
 }
 
-#[macro.cnative("GtkOrientation")]
+#[c.native("GtkOrientation")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CGtkOrientation")]
 struct _c_GtkOrientation {}
 
-#[macro.cnative("GtkOrientation", cast)]
+#[c.native("GtkOrientation", cast)]
 const func _to_GtkOrientation(v int) _c_GtkOrientation
 
-#[macro.cnative("float")]
+#[c.native("float")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CFloat")]
 struct _c_float {}
 
-#[macro.cnative("float", cast)]
+#[c.native("float", cast)]
 const func _to_float(v float) _c_float
 
-#[macro.cnative("gboolean")]
+#[c.native("gboolean")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CGboolean")]
 struct _c_gboolean {}
 
-#[macro.cnative("gboolean", cast)]
+#[c.native("gboolean", cast)]
 const func _to_gboolean(v int) _c_gboolean

@@ -42,14 +42,13 @@ stdout 'ok +2 tests, 0 failures'
 
 -- app.sngl --
 import c "sngl:x/c"
-import macro "sngl:macro"
 import test "sngl:test"
 import ui "sngl:ui"
 
 c.link(include="sngl.h")
 
 // How many blocks the runtime keeps: what every holder holds.
-#[macro.cnative("sngl_kept_blocks")]
+#[c.native("sngl_kept_blocks")]
 func keptBlocks() int
 
 component row(label string) ui.node {
@@ -87,14 +86,13 @@ ui.window(title="t") {
 }
 -- anchor.sngl --
 import c "sngl:x/c"
-import macro "sngl:macro"
 import test "sngl:test"
 import ui "sngl:ui"
 
 c.link(include="count.h", sources=["count.c", "count.h"])
 
 // How many labels GTK has made and not yet finalized (count.c).
-#[macro.cnative("labels_alive")]
+#[c.native("labels_alive")]
 func labelsAlive() int
 
 component row(label string) ui.node {
@@ -176,14 +174,13 @@ int64_t labels_alive(void) {
 }
 -- closure.sngl --
 import c "sngl:x/c"
-import macro "sngl:macro"
 import test "sngl:test"
 import ui "sngl:ui"
 
 c.link(include="sngl.h")
 
 // How many blocks the runtime keeps: what every holder holds.
-#[macro.cnative("sngl_kept_blocks")]
+#[c.native("sngl_kept_blocks")]
 func keptBlocks() int
 
 var said = ""

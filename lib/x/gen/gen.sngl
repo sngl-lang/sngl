@@ -186,7 +186,7 @@ enum Protocol {
     // for `placement`: a function of a node returning it, declared once
     // beside the platform's build-target node. Its return type is the
     // answer, and its body is how a protocol function reaches the handle
-    // from a node, which `#[cnative(…, cast)]` writes as the identity.
+    // from a node, which `#[c.native(…, cast)]` writes as the identity.
     handle
     // Shows a node the program holds at its root, which is a window, and
     // takes one away: functions of the node, declared once beside the
@@ -227,7 +227,7 @@ enum Protocol {
 // A platform author writes one unexported function per operation, over the
 // host's own calls, as gtk4 writes its image:
 //
-//     #[macro.cnative("sngl_image_new")]
+//     #[c.native("sngl_image_new")]
 //     #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
 //     func _rtImageNew() Image
 //
@@ -243,7 +243,7 @@ enum Protocol {
 //
 // The body is one `return` or one call, since the build splices it into the
 // operation with the parameters bound to the operation's operands. A
-// `#[cnative]` taking a `string` is handed a `c.str` the build makes and
+// `#[c.native]` taking a `string` is handed a `c.str` the build makes and
 // frees around the call, so the function passes the SNGL value and releases
 // nothing itself.
 func protocol(op Protocol) ir.Macro

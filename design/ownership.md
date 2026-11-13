@@ -18,7 +18,7 @@ found by kind among what the program and the C function's own package import
 after `LibFuncs`, so a promoted library helper's calls are reached, and before
 `NoTernary`, which lowers `cbool`'s. `cstring` answers a `c.str`, which is
 `#[owned(free)]`, so a C string is an owned value like any other and
-`ReleaseTemps` will see it. Each conversion is a `#[cnative(…, cast)]`, and
+`ReleaseTemps` will see it. Each conversion is a `#[c.native(…, cast)]`, and
 the pass writes it, and every call of a cast, as an `ir.CConvert` the
 language renders (`design/architecture.md`, *C is described as C spells
 it*); a `CConvert` of a string is an allocation, as the call it replaced was.
@@ -219,7 +219,7 @@ brackets them. Four things become node lifetime:
   only reports writes brackets nothing, and an `@unmount` would make it a
   bracket ended by every change of its key, releasing what the native still
   holds, so its cells are released by the component's unmount effect instead
-  (`cmd/sngl/testdata/simulate_cnative_owned.txt`); so are the cells of every
+  (`cmd/sngl/testdata/simulate_c_native_owned.txt`); so are the cells of every
   other call the component encloses -- an event handler's, a timer's
   `@tick`'s, a component function's, which `retain` reaches by rewriting
   every block of the component after the effects
@@ -460,7 +460,7 @@ those targets make is freed.
 **gtk4's widget protocol is declared, so its strings are the passes'.** The
 calls that make a widget, add a child, write a prop and connect a handler are
 `#[gen.protocol(op)]` functions -- declgen writes a GIR class's, `gtk4.sngl`
-the runtime's -- calling `#[cnative]`s, which placement splices into the op
+the runtime's -- calling `#[c.native]`s, which placement splices into the op
 and `CMarshal` marshals there (`design/nodes.md`), so a string one hands GTK
 is a temp `ReleaseTemps` frees after the call, or for a literal an
 application-lifetime value freed at teardown. `--simulate gtk4` runs the same
@@ -619,7 +619,7 @@ for a message the interpreter no longer gave.
 **Simulated natives are the debugging mode.** `sngl test --simulate <target>`
 runs a program on the interpreter specialized for a target rather than `none`
 (`interp.PrepareFor`, platform axis only: the interpreter is the language), so
-that target's overrides run. A `#[cnative]` call is stubbed always
+that target's overrides run. A `#[c.native]` call is stubbed always
 (`callCNative`), since the interpreter has nothing else to run: its `Block` is
 the checker's `return <zero>`, so the stub keys on `Foreign.Path == "C"`, not
 on an empty body. A `#[go.native]` is stubbed the same way, which is how
@@ -665,7 +665,7 @@ again when the value changes, its connect once per handler, the stubbed
 natives handed what the target hands them: on gtk4 each `c.str` a widget
 is handed, which the tracker follows
 (`cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`,
-`cmd/sngl/testdata/simulate_cnative_owned.txt`).
+`cmd/sngl/testdata/simulate_c_native_owned.txt`).
 
 ## What ASan saw on gtk4
 

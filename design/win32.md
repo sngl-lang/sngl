@@ -47,14 +47,14 @@ lists are Go slices in the tool:
   entry has no trailing `_`.
 
 Everything a wanted function reaches is written too. Each declaration is
-written in a form C interop crosses (`design/nodes.md`, `#[cnative]`):
+written in a form C interop crosses (`design/nodes.md`, `#[c.native]`):
 
 - A handle (a pointer to a `struct HWND__` or a `NativeTypedef` over
-  `void *`) is an opaque `#[macro.cnative("HWND")] struct HWND {}`.
+  `void *`) is an opaque `#[c.native("HWND")] struct HWND {}`.
 - A scalar typedef is `struct UINT = int` under its C name.
 - A struct is written field for field, if every field crosses.
 - A constant is a `const`, if its value fits an `int`.
-- A function is `#[macro.cnative("SetWindowTextW")] func SetWindowText(…)`.
+- A function is `#[c.native("SetWindowTextW")] func SetWindowText(…)`.
   It is always the `W` entry point, named without the `W` where the metadata
   also has an `A`.
 
@@ -124,7 +124,7 @@ change to them is a change to the package, which `go generate ./lib` writes.
 
 **Each declaration names its wrapper.** The tool writes
 `#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]`
-beside each wrapped `cnative` mark, and `ir.Foreign.Also` keeps it beside the
+beside each wrapped `c.native` mark, and `ir.Foreign.Also` keeps it beside the
 C spelling, which stays the primary (`claimForeign`). A declaration's position
 is its first mark's line, which is how the tool finds where to write it.
 Rerunning `win32gen` drops the marks from `api.sngl`; `go generate ./lib`
@@ -141,7 +141,7 @@ frozen and a protocol function placement splices is the library's own.
 language node's `#[gen.name]`, which is also the scheme its native marks
 spell in) and converts nothing for a call of a declaration with a spelling
 there; the splices placement and the declarative passes make after it are
-told the same (`protocolSplice`). A `#[cnative(…, cast)]` to a type with a
+told the same (`protocolSplice`). A `#[c.native(…, cast)]` to a type with a
 Go spelling is its argument, since both sides are the one handle there
 (`testdata/c_go_wrapper_call.txtar`, where `time` stands in for a wrapper
 package). A C build keeps every call C's, and the interpreter, simulating C,

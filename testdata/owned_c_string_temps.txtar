@@ -10,9 +10,9 @@ calls.
 
 -- app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import "c:string.h"
+import c "sngl:x/c"
 
 output {
     go {
@@ -22,7 +22,7 @@ output {
     }
 }
 
-#[macro.cnative("strlen")]
+#[c.native("strlen")]
 func cLength(s string) int
 
 func total(words list[string]) int {

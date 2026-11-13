@@ -2,7 +2,7 @@
 # written in SNGL: it runs pkg-config with gen.exec -- trusted, since it ships
 # in the sngl: tree -- and writes the `c.link` a Go target's cgo preamble is
 # made from. The Go importer that parsed headers is gone; the program declares
-# what it calls with `#[cnative]`.
+# what it calls with `#[c.native]`.
 env SNGL_GENCACHE_DIR=$WORK/store
 
 # A library pkg-config does not know fails the import, saying so.
@@ -50,11 +50,11 @@ import "c:pkg:--with-path=/tmp/x.h"
 const v = 1
 -- gtk/app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import "c:pkg:gtk4/gtk/gtk.h"
+import c "sngl:x/c"
 
 // GTK's major version, from the library the program links.
-#[macro.cnative("gtk_get_major_version")]
+#[c.native("gtk_get_major_version")]
 func gtkMajor() int
 
 var v = 0

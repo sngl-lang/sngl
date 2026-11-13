@@ -1,4 +1,4 @@
-A `#[cnative]` struct declaring fields is a SNGL struct with a C layout: the
+A `#[c.native]` struct declaring fields is a SNGL struct with a C layout: the
 program holds its own struct, and a call converts it field by field to the C
 struct its name spells. A `ref` a C function takes is a pointer it fills:
 lower.RefParams makes the call hand back what C wrote, as a function with a
@@ -15,7 +15,6 @@ deny out/go/bubbletea/model.go `r__inst0 +C\.SnglRect` -- the program holds its 
 -- app.sngl --
 import ui "sngl:ui"
 import c "sngl:x/c"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import test "sngl:test"
 
@@ -27,10 +26,10 @@ output {
 
 c.link(include="rect.h", sources=["rect.c", "rect.h"])
 
-#[macro.cnative("unsigned short")]
+#[c.native("unsigned short")]
 struct Tag = int
 
-#[macro.cnative("SnglRect")]
+#[c.native("SnglRect")]
 struct Rect {
     left   int
     top    int
@@ -39,13 +38,13 @@ struct Rect {
     tag    Tag
 }
 
-#[macro.cnative("sngl_area")]
+#[c.native("sngl_area")]
 func area(r Rect) int
 
-#[macro.cnative("sngl_grow")]
+#[c.native("sngl_grow")]
 func grow(r ref[Rect], by int)
 
-#[macro.cnative("sngl_divide")]
+#[c.native("sngl_divide")]
 func divide(a int, b int, q ref[int], rem ref[int])
 
 component main ui.node {

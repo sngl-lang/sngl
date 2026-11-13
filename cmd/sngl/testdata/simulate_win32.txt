@@ -2,7 +2,7 @@
 # runs the target's overrides -- a canvas's text among them, which no other
 # target's override draws through win32's context -- and makes, fills and
 # connects each node through the #[gen.protocol] functions win32.sngl
-# declares, every runtime call a stubbed #[cnative]. A string the runtime is
+# declares, every runtime call a stubbed #[c.native]. A string the runtime is
 # handed is a `c.utf16` the turn's arena holds, so the tracker has none to
 # follow, and the run ends with nothing held.
 

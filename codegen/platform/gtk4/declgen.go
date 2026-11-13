@@ -235,7 +235,7 @@ func widgetDecls(reg *gir.TypeRegistry, platform string) string {
 			}
 			// The setter of a prop may be the same C function, declared
 			// already (cSet), as GtkImage's file is gtk_image_set_from_file.
-			children.native(&b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w %s%s%s)\n", a.CIdent, native, ptrType(info.CType), sep, params))
+			children.native(&b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w %s%s%s)\n", a.CIdent, native, ptrType(info.CType), sep, params))
 			fmt.Fprintf(&b, "\nfunc %s.%s(w %s%s%s) {\n    %s(%s)\n}\n", info.CType, n, info.CType, sep, plain, native, strings.Join(args, ", "))
 		}
 	}
@@ -247,8 +247,8 @@ func widgetDecls(reg *gir.TypeRegistry, platform string) string {
 	}
 	slices.Sort(castTypes)
 	for _, cType := range castTypes {
-		fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nstruct %s {}\n", cType, castType(cType))
-		fmt.Fprintf(&b, "\n#[macro.cnative(%q, cast)]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
+		fmt.Fprintf(&b, "\n#[c.native(%q)]\nstruct %s {}\n", cType, castType(cType))
+		fmt.Fprintf(&b, "\n#[c.native(%q, cast)]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
 	}
 	return b.String()
 }
@@ -298,7 +298,7 @@ func typedNull(p gir.ConstructorParam) string {
 // trampolines, which hand the handler only its context whatever GLib hands
 // them, so every handler crosses as one callback shape.
 const connectPlaced = `
-#[macro.cnative("sngl_signal_connect")]
+#[c.native("sngl_signal_connect")]
 func _rtSignalConnect(
     w ui.node,
     signal string,
@@ -307,7 +307,7 @@ func _rtSignalConnect(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[macro.cnative("sngl_notify_connect")]
+#[c.native("sngl_notify_connect")]
 func _rtNotifyConnect(
     w ui.node,
     signal string,
@@ -317,7 +317,7 @@ func _rtNotifyConnect(
 )
 
 // Emits w's signal as GTK would, which a test fires an event with.
-#[macro.cnative("sngl_signal_emit")]
+#[c.native("sngl_signal_emit")]
 func _rtSignalEmit(w ui.node, signal string)
 
 // Connects handler to w's signal, as the connect protocol does. A property
@@ -373,7 +373,7 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 	}
 	maps.Copy(casts, used)
 	native := "_" + ctor.Name
-	fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
+	fmt.Fprintf(b, "\n#[c.native(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
 	fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return %s(%s)\n}\n", info.CType, info.CType, native, strings.Join(zeros, ", "))
 }
 
@@ -382,7 +382,7 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 // splices where the program puts a node into the class or takes one out,
 // calling the C call GIR names as a native taking the C pointers it declares. There the receiver is cast to the class
 // that declares the call, so a subclass reaches its parent's adder, and the
-// child to GtkWidget; each cast is a `#[cnative(…, cast)]` of its own, which
+// child to GtkWidget; each cast is a `#[c.native(…, cast)]` of its own, which
 // Go writes `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer
 // to another.
 type childOps struct {
@@ -413,7 +413,7 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 		return
 	}
 	o.classPtrs[cType] = true
-	fmt.Fprintf(b, "\n#[macro.cnative(\"void *\", cast)]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
+	fmt.Fprintf(b, "\n#[c.native(\"void *\", cast)]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
@@ -422,13 +422,13 @@ func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call g
 	if call.Func == "gtk_box_append" {
 		o.ptrs["GtkWidget"] = true
 		o.classPtr(b, info.CType)
-		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[macro.cnative(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
+		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[c.native(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
 		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    _sngl_box_append(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
 			op, op, info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"))
 		// A child a render slot renders goes before the slot's anchor, which
 		// the runtime puts in place as it puts any child of a box.
 		if op == "append" {
-			o.native(b, "_sngl_box_insert_before", fmt.Sprintf("\n#[macro.cnative(\"sngl_box_insert_before\")]\nfunc _sngl_box_insert_before(parent %s, anchor %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget"), ptrType("GtkWidget")))
+			o.native(b, "_sngl_box_insert_before", fmt.Sprintf("\n#[c.native(\"sngl_box_insert_before\")]\nfunc _sngl_box_insert_before(parent %s, anchor %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget"), ptrType("GtkWidget")))
 			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    _sngl_box_insert_before(%s(_ptr_%s(parent)), %s(_widget(before)), %s(_widget(child)))\n}\n",
 				info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"), ptrFunc("GtkWidget"))
 		}
@@ -440,7 +440,7 @@ func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call g
 	native := "_" + call.Func
 	if !o.natives[call.Func] {
 		o.natives[call.Func] = true
-		fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(parent %s, child %s)\n", call.Func, native, ptrType(owner), ptrType("GtkWidget"))
+		fmt.Fprintf(b, "\n#[c.native(%q)]\nfunc %s(parent %s, child %s)\n", call.Func, native, ptrType(owner), ptrType("GtkWidget"))
 	}
 	fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %s(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
 		op, op, info.CType, info.CType, native, ptrFunc(owner), info.CType, ptrFunc("GtkWidget"))
@@ -452,10 +452,10 @@ func (o *childOps) writeCasts(b *strings.Builder) {
 	if len(o.ptrs) == 0 {
 		return
 	}
-	b.WriteString("\n#[macro.cnative(\"void *\", cast)]\nconst func _widget(w ui.node) c.pointer\n")
+	b.WriteString("\n#[c.native(\"void *\", cast)]\nconst func _widget(w ui.node) c.pointer\n")
 	for _, cType := range slices.Sorted(maps.Keys(o.ptrs)) {
-		fmt.Fprintf(b, "\n#[macro.cnative(\"%s *\")]\nstruct %s {}\n", cType, ptrType(cType))
-		fmt.Fprintf(b, "\n#[macro.cnative(\"%s *\", cast)]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
+		fmt.Fprintf(b, "\n#[c.native(\"%s *\")]\nstruct %s {}\n", cType, ptrType(cType))
+		fmt.Fprintf(b, "\n#[c.native(\"%s *\", cast)]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
 	}
 }
 
@@ -544,7 +544,7 @@ func (o *childOps) cSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.Cla
 		value = enumMatch(e, n, func(v int) string { return fmt.Sprintf("%s(%d)", castFunc(e.CType), v) })
 	}
 	native := "_" + p.Setter
-	o.native(b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w %s, v %s)\n", p.Setter, native, ptrType(recv), typ))
+	o.native(b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w %s, v %s)\n", p.Setter, native, ptrType(recv), typ))
 	return fmt.Sprintf("%s(%s(_ptr_%s(self)), %s)", native, ptrFunc(recv), info.CType, value)
 }
 
@@ -561,7 +561,7 @@ func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.
 	}
 	o.classPtr(b, info.CType)
 	native := "_" + fn
-	o.native(b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
+	o.native(b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
 	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s)", native, info.CType, p.Name, value)
 }
 

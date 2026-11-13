@@ -1,12 +1,11 @@
 // No caller passes a callback's context: the compiler does, from the closure
 // the call hands the callback. A positional argument goes to the parameter
 // after it.
-import macro "sngl:macro"
 import c "sngl:x/c"
 
 c.link(include="calls.h")
 
-#[macro.cnative("each")]
+#[c.native("each")]
 func each(f func(int), #[c.context] data c.pointer, n int)
 
 func call() {

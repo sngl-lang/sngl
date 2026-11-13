@@ -1,4 +1,4 @@
-// SKIP(codegen) "a #[cnative] declaration links against C, which no per-platform harness provides; the lifetime of a retained value is pinned on the interpreter"
+// SKIP(codegen) "a #[c.native] declaration links against C, which no per-platform harness provides; the lifetime of a retained value is pinned on the interpreter"
 // A value handed to a #[retains] parameter lives as long as the node around
 // the call, whatever made it: an event handler, a timer's @tick and a
 // component function are the node's as an effect's handler is. The native is
@@ -28,7 +28,7 @@ func open(fd int) file {
     return file{fd=fd}
 }
 
-#[macro.cnative("view_show")]
+#[c.native("view_show")]
 func show(#[macro.retains] f file)
 
 component clicks ui.node {

@@ -1,8 +1,8 @@
-// A `#[cnative]` struct declaring fields is a C struct held by value; a
+// A `#[c.native]` struct declaring fields is a C struct held by value; a
 // pointer to one is a `ref` parameter, not a type of its own.
-import macro "sngl:macro"
+import c "sngl:x/c"
 
-#[macro.cnative("POINT *")] // ERROR(check) "declares fields, so it names a C struct, held by value: a pointer to one is a ref[PointPtr] parameter"
+#[c.native("POINT *")] // ERROR(check) "declares fields, so it names a C struct, held by value: a pointer to one is a ref[PointPtr] parameter"
 struct PointPtr {
     x int
 }

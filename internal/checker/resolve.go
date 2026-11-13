@@ -875,7 +875,7 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 	return params
 }
 
-// cAliasOf is the `#[cnative]` alias te was written as, itself or as the
+// cAliasOf is the `#[c.native]` alias te was written as, itself or as the
 // element of an option, which typ is te resolved: the alias is expanded
 // there, and a C function's argument crosses as the C type it spells. Nil
 // for any other type. The mark may not have run yet, so an alias written

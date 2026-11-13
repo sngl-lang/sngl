@@ -275,19 +275,19 @@ declaration itself. Two things about the name that are easy to get wrong:
   it. The path is what `RequireImport` adds.
 - **Every language has one.** `go.native` and `js.native` were joined by
   `kotlin.native`, which android needs to describe Compose, and by
-  **`#[cnative]` in `sngl:macro`** — C is an ABI rather than a target, so a
+  **`#[c.native]` in `sngl:macro`** — C is an ABI rather than a target, so a
   platform built on a C library (gtk4 on cairo) names C identifiers and no
   language at all. The name is C's spelling -- a function's identifier, a
   type such as `cairo_t *` -- and the checker refuses a language's (`C.`,
   `unsafe.Pointer`), so a declaration reachable only from Go cannot be written
-  (`testdata/error_cnative_spelling.sngl`); each language renders it through
+  (`testdata/error_c_native_spelling.sngl`); each language renders it through
   `codegen.CInterop` (`design/architecture.md`). Each argument is converted
   before any backend sees the call, by `lower.CMarshal`, through the
   `sngl:x/c` conversion its parameter's type names (`cstring`, `cint`,
   `cdouble`, `cbool`), so a C string is an owned `c.str` in the IR rather than
   a `C.CString` only the printed Go held (`testdata/c_bool_argument.txtar`).
-  A parameter written with a `#[cnative]` alias -- a C typedef of a scalar,
-  `#[cnative("UINT")] struct UINT = int` -- crosses cast to the typedef, which
+  A parameter written with a `#[c.native]` alias -- a C typedef of a scalar,
+  `#[c.native("UINT")] struct UINT = int` -- crosses cast to the typedef, which
   cgo needs, since it refuses a `C.int` for an unsigned one
   (`testdata/c_alias_argument.txtar`); a string alias crosses as UTF-16
   (`c.utf16`, `testdata/c_utf16_argument.txtar`). A C function returning a `string`
@@ -304,9 +304,9 @@ declaration itself. Two things about the name that are easy to get wrong:
   reaches (`ir.ReachedCLinks`) into its cgo preamble: fyne and bubbletea as a
   preamble of their own, gtk4 inside the one inline mode already has, which a
   `C.` call puts the build in (`golang.CPreambleLines`,
-  `testdata/c_link.txtar`). A call of a program's `#[cnative]` function from a package
+  `testdata/c_link.txtar`). A call of a program's `#[c.native]` function from a package
   no c.link reaches is a checker error at the call
-  (`reportUnlinkedCNativeCalls`, `testdata/error_cnative_unlinked.sngl`):
+  (`reportUnlinkedCNativeCalls`, `testdata/error_c_native_unlinked.sngl`):
   it used to reach the Go toolchain as `undefined: C`. A library's is exempt
   (`ir.Package.Library`, set for a `sngl:` package and what a library plugin
   writes), since gtk4's preamble includes the headers its cairo and `gir:`
@@ -315,7 +315,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   compiles into the program: Go writes them beside the generated package,
   where cgo compiles every `.c` (`codegen.CCompiler.CSources`). That is how a
   platform's runtime is C rather than one language's.
-  A `#[cnative]` struct declaring fields is a C struct
+  A `#[c.native]` struct declaring fields is a C struct
   (`ir.StructDef.IsCStruct`): the program's own struct, `Foreign.Marked`
   so a backend declares it, converted field by field where a call takes one
   (`CConvertStruct`) or returns one, each field as its alias
@@ -402,7 +402,7 @@ declaration itself. Two things about the name that are easy to get wrong:
   reached past `alpha` positionally.
 - **A native mark names a *type* as readily as a function**, which is what
   makes a host handle spellable: `#[go.native("time", "*time.Ticker")] struct Schedule { C go.chan[time.datetime] }` with `#[go.native("time", "time.Ticker.Stop", method)] func Schedule.stop()` beside it -- and a *field* of one is how a host API hands a channel back. gtk4 has done the same for C all along —
-  `#[cnative("cairo_t *")] struct CairoContext {}` — so the form predates the
+  `#[c.native("cairo_t *")] struct CairoContext {}` — so the form predates the
   need for it by a platform.
 
   **Reach for it before working around a signature.** fyne's and gtk4's timer
@@ -990,7 +990,7 @@ as a gtk4 bug. `testdata/node_handle_native_method.txtar` is the fixture:
 `gtk_progress_bar_pulse` sets nothing, so GIR describes no property for it; it
 is one of the *actions* `declgen` generates from GIR -- a method returning
 nothing, no property's setter, whose values each cross as a SNGL scalar
-(`gir.methodParam.crosses`) -- as a `#[cnative]` method reached through the
+(`gir.methodParam.crosses`) -- as a `#[c.native]` method reached through the
 handle. A value crosses only where cgo takes the conversion CMarshal writes:
 a `C.int` passes as a `gint`, a typedef of `int`, and not as a `guint`.
 
@@ -1046,7 +1046,7 @@ on the Go mutation platforms: `GoIRContext.Select` ends at
 SNGL prop, so `box.value` is `m.box.Value` against a `widget.Entry` that spells
 it `Text` — and against a gtk4 handle that is an `unsafe.Pointer` with no
 fields at all. On html it reaches the emitter and renders an empty element
-nothing fills. The one read that does work is a `#[cnative]` method's receiver,
+nothing fills. The one read that does work is a `#[c.native]` method's receiver,
 above. Closing the rest needs a language↔platform read hook that does not
 exist, and on gtk4 a getter is a call (`gtk_editable_get_text`) whose name GIR
 would have to supply per property, not a field. Until then a read is answered

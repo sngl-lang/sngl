@@ -6,6 +6,7 @@
 // a parameter of a function with no body, where nothing else could say so.
 import ui "sngl:ui"
 import macro "sngl:macro"
+import c "sngl:x/c"
 
 #[macro.owned(close)]
 struct file {
@@ -64,13 +65,13 @@ enum shade { light, dark }
 #[macro.owned(close)] // ERROR(check) "only a struct is a type a value of which is owned"
 func open() => file{fd=1}
 
-#[macro.cnative("keep")]
+#[c.native("keep")]
 func keep(#[macro.retains] f file)
 
-#[macro.cnative("take")]
+#[c.native("take")]
 func take(#[macro.moves] f file)
 
-#[macro.cnative("both")]
+#[c.native("both")]
 func both(#[macro.retains] #[macro.moves] f file) // ERROR(check) "both retains and moves"
 
 func bodied(#[macro.retains] f file) { // ERROR(check) "only a parameter of a function with no body"

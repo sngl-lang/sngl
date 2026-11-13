@@ -5,14 +5,13 @@ bool one returns is its `int`, nonzero for true.
 
 -- app.sngl --
 import c "sngl:x/c"
-import macro "sngl:macro"
 
 c.link(include="stdio.h", system=true)
 
-#[macro.cnative("test_name")]
+#[c.native("test_name")]
 func name(i int) string
 
-#[macro.cnative("test_even")]
+#[c.native("test_even")]
 func even(i int) bool
 
 func names() string {

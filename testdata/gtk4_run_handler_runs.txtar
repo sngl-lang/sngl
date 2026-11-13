@@ -18,13 +18,12 @@ exec out/go/gtk4 --window x -- shown.txt
 import c "sngl:x/c"
 import go "sngl:language/go"
 import gtk4 "sngl:platform/gtk4"
-import macro "sngl:macro"
 import time "sngl:time"
 import ui "sngl:ui"
 
 c.link(include="stdio.h", system=true)
 
-#[macro.cnative("puts")]
+#[c.native("puts")]
 #[go.native("fmt", "fmt.Println")]
 func say(s string)
 
@@ -592,7 +591,7 @@ static bool sngl_gtk_started;
 static void sngl_gtk_start(void *env) {
 	(void)env;
 	if (sngl_gtk_started) {
-		fprintf(stderr, "%s: run called again; an application runs once per process\n", "app.sngl:22:15");
+		fprintf(stderr, "%s: run called again; an application runs once per process\n", "app.sngl:21:15");
 		exit(2);
 	}
 	sngl_gtk_started = true;
@@ -860,7 +859,7 @@ var snglStarted bool
 
 func snglStart() {
 	if snglStarted {
-		fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", "app.sngl:27:15")
+		fmt.Fprintf(os.Stderr, "%s: run called again; an application runs once per process\n", "app.sngl:26:15")
 		os.Exit(2)
 	}
 	snglStarted = true
@@ -882,6 +881,6 @@ func main() {
 	}
 }
 -- run/c/gtk4 --
-pass sha256:842a48bee0d761d39870aebf8553b059
+pass sha256:5ac578e0c4b6f4d6485f7f8e87154bed
 -- run/go/gtk4 --
-pass sha256:4377578c90ec9cd84c1a601acfbd6d94
+pass sha256:86cf3896ce284c24671a2fb90b1a4d54

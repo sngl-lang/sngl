@@ -1,5 +1,5 @@
 A declaration with a C spelling and a Go wrapper's (`#[go.native]` beside
-`#[cnative]`, as `sngl tool cgogen` marks sngl:platform/win32) is called
+`#[c.native]`, as `sngl tool cgogen` marks sngl:platform/win32) is called
 through the wrapper in Go: the Go spelling is the primary one, so CMarshal
 leaves the call alone and Go writes it as any `go.native` call, and the
 handle type is the wrapper's. A cast to that handle type is the value.
@@ -9,9 +9,9 @@ deny out/go/bubbletea/model.go `C\.` -- every declaration here has a Go spelling
 
 -- app.sngl --
 import ui "sngl:ui"
-import macro "sngl:macro"
 import go "sngl:language/go"
 import "c:time.h"
+import c "sngl:x/c"
 
 output {
     go {
@@ -19,18 +19,18 @@ output {
     }
 }
 
-#[macro.cnative("time_t")]
+#[c.native("time_t")]
 #[go.native("time", "time.Duration")]
 struct span {}
 
-#[macro.cnative("time_t", cast)]
+#[c.native("time_t", cast)]
 func asSpan(d span) span
 
-#[macro.cnative("difftime")]
+#[c.native("difftime")]
 #[go.native("time", "time.Duration.Seconds")]
 func seconds(d span) float
 
-#[macro.cnative("clock")]
+#[c.native("clock")]
 #[go.native("time", "time.Duration")]
 func ticks(n int) span
 

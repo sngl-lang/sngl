@@ -156,7 +156,7 @@ const (
 	BuiltinGenRun   BuiltinKind = "genRun"
 	BuiltinGenBuild BuiltinKind = "genBuild"
 	// CLink is `sngl:x/c`'s `link`: a header and the flags a C preamble
-	// includes for the package's `#[cnative]` declarations. Read into
+	// includes for the package's `#[c.native]` declarations. Read into
 	// Package.CLinks rather than rendered.
 	BuiltinCLink BuiltinKind = "cLink"
 	// CString, CInt, CDouble and CBool are `sngl:x/c`'s conversions of a

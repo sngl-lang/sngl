@@ -57,8 +57,8 @@ like a directory package's, `sngl:` and a native scheme's package excepted.
 **`c:` declares nothing a program calls.** `c:pkg:<library>/<header>` asks
 pkg-config for flags and includes `<header>`; anything else is a header
 included as written. What it writes is one `c.link`, and the program declares
-each function with `#[cnative]` -- GTK's headers take a C parser minutes, which
-is why the Go importer that parsed them went rather than moved. A `#[cnative]`
+each function with `#[c.native]` -- GTK's headers take a C parser minutes, which
+is why the Go importer that parsed them went rather than moved. A `#[c.native]`
 call returning an int or a float is converted back to SNGL's at the call, as
 its arguments are to C's (`codegen.CInterop`'s `CCall`). The link names the
 library the header belongs to, the first `-l` pkg-config gives, for a

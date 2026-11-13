@@ -31,26 +31,26 @@ import ui "sngl:ui"
 import "sngl:test"
 import c "sngl:x/c"
 
-#[macro.cnative("buf_t *")]
+#[c.native("buf_t *")]
 #[macro.owned(bufFree)]
 struct buf {}
 
-#[macro.cnative("buf_new")]
+#[c.native("buf_new")]
 func bufNew(size int) buf
 
-#[macro.cnative("buf_free")]
+#[c.native("buf_free")]
 func bufFree(b buf)
 
-#[macro.cnative("buf_len")]
+#[c.native("buf_len")]
 func bufLen(b buf) int
 
-#[macro.cnative("buf_write")]
+#[c.native("buf_write")]
 func bufWrite(b buf, text string)
 
-#[macro.cnative("sink_take")]
+#[c.native("sink_take")]
 func sinkTake(#[macro.moves] b buf)
 
-#[macro.cnative("view_show")]
+#[c.native("view_show")]
 func viewShow(#[macro.retains] b buf)
 
 func testFreed(t test.Test) {

@@ -18,14 +18,14 @@ import (
 // the connect, set and on fixtures.
 func TestGenProtocolPlacement(t *testing.T) {
 	const otherSrc = "import sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\n\n#[marks.intrinsic(\"other:Other\")]\ncomponent Other(@tap) sngl.node\n"
-	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport other \"sngl:x/protocolother\"\nimport draw \"sngl:ui/draw\"\n\n" +
+	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport c \"sngl:x/c\"\nimport other \"sngl:x/protocolother\"\nimport draw \"sngl:ui/draw\"\n\n" +
 		"#[marks.intrinsic(\"extstub:Thing\")]\ncomponent Thing(x int, :shown bool, @tap) sngl.node\n\n" +
 		"#[marks.intrinsic(\"extstub:Pad\")]\ncomponent Pad(shapes ...component draw.shape) sngl.node\n\n" +
 		"component Plain() sngl.node {}\n\n" +
-		"#[macro.cnative(\"thing_new\")]\nfunc thingNew() Thing\n\n" +
-		"#[macro.cnative(\"plain_new\")]\nfunc plainNew() Plain\n\n" +
-		"#[macro.cnative(\"other_new\")]\nfunc otherNew() other.Other\n\n" +
-		"#[macro.cnative(\"thing_add\")]\nfunc thingAdd(parent Thing, child sngl.node)\n\n"
+		"#[c.native(\"thing_new\")]\nfunc thingNew() Thing\n\n" +
+		"#[c.native(\"plain_new\")]\nfunc plainNew() Plain\n\n" +
+		"#[c.native(\"other_new\")]\nfunc otherNew() other.Other\n\n" +
+		"#[c.native(\"thing_add\")]\nfunc thingAdd(parent Thing, child sngl.node)\n\n"
 	for _, tc := range []struct {
 		name, decls, want string
 	}{

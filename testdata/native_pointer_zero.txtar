@@ -1,7 +1,7 @@
 A native type whose host spelling is a pointer has no composite literal.
 
 `#[go.native(pkg, "*time.Ticker")] struct Ticker {}` names a Go type this
-language never declares -- the same thing `#[cnative("*C.cairo_t")]` does for
+language never declares -- the same thing `#[c.native("*C.cairo_t")]` does for
 cairo, one scheme over. That form is what lets fyne's and gtk4's `time.timer`
 hold the schedule `Every` handed back instead of an integer index into a
 registry the runtime kept, which was the whole reason those registries existed.

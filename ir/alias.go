@@ -7,7 +7,7 @@ import "duckfam.us/sngl/ast"
 // rather than a new one. It names a type or a constraint, and the checker
 // replaces it with what it names wherever it is written. The one place one
 // survives the check is a C function's parameter (Param.CAlias), since an
-// alias `#[cnative]` marks is a C typedef the argument crosses as.
+// alias `#[c.native]` marks is a C typedef the argument crosses as.
 type Alias struct {
 	Name string
 	Pos  ast.Pos
@@ -32,9 +32,9 @@ type Alias struct {
 	Type       *Type         `json:"-"`
 	Constraint *Type         `json:"-"`
 	Self       *TypeParamSym `json:"-"`
-	// C is the C typedef a `#[cnative]` mark says the alias spells, which a
+	// C is the C typedef a `#[c.native]` mark says the alias spells, which a
 	// C function's argument written with it is converted to: `UINT` for
-	// `#[cnative("UINT")] struct UINT = int`.
+	// `#[c.native("UINT")] struct UINT = int`.
 	C *CType `json:",omitempty"`
 }
 

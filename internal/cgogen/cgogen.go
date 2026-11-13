@@ -3,7 +3,7 @@
 // and cgo runs once, over an unchanging package, rather than on every build
 // of the program.
 //
-// Each `#[cnative]` function that is no cast becomes one exported Go
+// Each `#[c.native]` function that is no cast becomes one exported Go
 // function per C name (`sngl_win32_append` → `SnglWin32Append`), taking what
 // the SNGL declaration takes as Go spells it. Its body is the call a Go
 // program in direct mode would make: the tool runs lower.CMarshal over a call
@@ -14,7 +14,7 @@
 // here, which a program's own literal of one names too.
 //
 // Where a wrapper is, the declaration says so with `#[go.native(path,
-// name)]` beside its `cnative` mark (Marks), which the Go language reads in
+// name)]` beside its `c.native` mark (Marks), which the Go language reads in
 // `wrapper` mode.
 package cgogen
 

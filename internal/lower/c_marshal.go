@@ -140,7 +140,7 @@ func (m *cMarshal) walk(root any) error {
 	return ir.Rewrite(root, m.rewriteCasts)
 }
 
-// rewriteCasts makes each call of a `#[cnative(…, cast)]` function the
+// rewriteCasts makes each call of a `#[c.native(…, cast)]` function the
 // ir.CConvert it declares. Its argument was converted as any C call's is, so
 // a number reaches a typedef'd enum as a C `int` first, which cgo needs.
 //
@@ -316,7 +316,7 @@ func callbackArg(p *ir.Param, v ir.Expr) ir.Expr {
 	return &ir.CConvert{Kind: ir.CConvertCallback, Operand: v, Type: p.Type}
 }
 
-// aliasArg converts arg for p, a parameter written with a `#[cnative]`
+// aliasArg converts arg for p, a parameter written with a `#[c.native]`
 // alias, to the C typedef the alias spells: a number cast to it, a bool made
 // 0 or 1 first, and a string encoded as UTF-16. A `null` for an option of
 // one is the NULL it already is.

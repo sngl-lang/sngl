@@ -61,7 +61,7 @@ type LangTranslator interface {
 }
 
 // CInterop is how a language calls C. The IR describes C as C spells it --
-// `#[cnative]` names, ir.CType, ir.CConvert -- and each language renders that
+// `#[c.native]` names, ir.CType, ir.CConvert -- and each language renders that
 // as it reaches C: Go through cgo, C directly. A language that calls no C
 // does not implement it.
 type CInterop interface {

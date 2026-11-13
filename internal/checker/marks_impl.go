@@ -24,10 +24,10 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "wildcard"}:              markWildcard,
 	{"macro", "construct"}:             markConstruct,
 	{"macro", "foreign"}:               markForeign,
-	{"macro", "cnative"}:               markCNative,
 	{"macro", "owned"}:                 markOwned,
 	{"macro", "retains"}:               markRetains,
 	{"macro", "moves"}:                 markMoves,
+	{"x/c", "native"}:                  markCNative,
 	{"x/c", "context"}:                 markCContext,
 	{"x/c", "type"}:                    markCType,
 	{"x/c", "release"}:                 markCRelease,
@@ -290,7 +290,7 @@ func markKotlinNative(m *mark) error {
 	return nil
 }
 
-// markCNative implements #[cnative("name")] and #[cnative("name", cast)]: the
+// markCNative implements #[c.native("name")] and #[c.native("name", cast)]: the
 // declaration is that C identifier, that C type, or a conversion to that C
 // type.
 //
@@ -302,9 +302,9 @@ func markKotlinNative(m *mark) error {
 func markCNative(m *mark) error {
 	name := m.args.String("name")
 	if name == "" {
-		return fmt.Errorf("#[cnative]: a C identifier is required")
+		return fmt.Errorf("#[c.native]: a C identifier is required")
 	}
-	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[cnative(%q)]", name))
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[c.native(%q)]", name))
 	if err != nil {
 		return err
 	}
@@ -314,29 +314,29 @@ func markCNative(m *mark) error {
 	case *ir.Func:
 		if cast {
 			if d.IsMethod() || len(d.Params) != 1 || d.Return == nil || d.Return.Kind == ir.TypeVoid {
-				return fmt.Errorf("#[cnative(%q, cast)] converts one value to a C type, so it takes one parameter and returns that type", name)
+				return fmt.Errorf("#[c.native(%q, cast)] converts one value to a C type, so it takes one parameter and returns that type", name)
 			}
 			if fm.C, err = ir.ParseCType(name); err != nil {
-				return fmt.Errorf("#[cnative(%q, cast)]: %w", name, err)
+				return fmt.Errorf("#[c.native(%q, cast)]: %w", name, err)
 			}
 		} else if !ir.IsCIdent(name) {
-			return fmt.Errorf("#[cnative(%q)] names no C function: a function is its C identifier, and a conversion to a C type is #[cnative(%q, cast)]", name, name)
+			return fmt.Errorf("#[c.native(%q)] names no C function: a function is its C identifier, and a conversion to a C type is #[c.native(%q, cast)]", name, name)
 		}
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}
 	case *ir.StructDef:
 		if cast {
-			return fmt.Errorf("#[cnative(%q)] carries cast, which describes a conversion; a struct is a C type", name)
+			return fmt.Errorf("#[c.native(%q)] carries cast, which describes a conversion; a struct is a C type", name)
 		}
 		if fm.C, err = ir.ParseCType(name); err != nil {
-			return fmt.Errorf("#[cnative(%q)]: %w", name, err)
+			return fmt.Errorf("#[c.native(%q)]: %w", name, err)
 		}
 		// One with fields is the program's own struct with a C layout,
 		// which a backend declares as it does any other (Foreign.Marked).
 		if len(d.Fields) > 0 {
 			if fm.C.Ptr > 0 {
-				return fmt.Errorf("#[cnative(%q)] declares fields, so it names a C struct, held by value: a pointer to one is a ref[%s] parameter", name, d.Name)
+				return fmt.Errorf("#[c.native(%q)] declares fields, so it names a C struct, held by value: a pointer to one is a ref[%s] parameter", name, d.Name)
 			}
 			fm.Marked = true
 		}
@@ -346,36 +346,36 @@ func markCNative(m *mark) error {
 	case *ir.Alias:
 		return markCAlias(d, name, cast)
 	default:
-		return fmt.Errorf("#[cnative] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[c.native] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
 
-// markCAlias implements #[cnative] on an alias: a C typedef of a scalar SNGL
-// spells as the type the alias names. `#[cnative("UINT")] struct UINT = int`
+// markCAlias implements #[c.native] on an alias: a C typedef of a scalar SNGL
+// spells as the type the alias names. `#[c.native("UINT")] struct UINT = int`
 // is an `int` wherever it is written, and a C function's argument for a
 // parameter written with it crosses as a `UINT` rather than a C `int`. What
 // the alias may name is checkCAlias's, once it is resolved.
 func markCAlias(a *ir.Alias, name string, cast bool) error {
 	if cast {
-		return fmt.Errorf("#[cnative(%q)] carries cast, which describes a conversion; an alias is a C type", name)
+		return fmt.Errorf("#[c.native(%q)] carries cast, which describes a conversion; an alias is a C type", name)
 	}
 	if len(a.WrittenParams) > 0 {
-		return fmt.Errorf("#[cnative(%q)] names one C type, so the alias takes no type parameters", name)
+		return fmt.Errorf("#[c.native(%q)] names one C type, so the alias takes no type parameters", name)
 	}
 	t, err := ir.ParseCType(name)
 	if err != nil {
-		return fmt.Errorf("#[cnative(%q)]: %w", name, err)
+		return fmt.Errorf("#[c.native(%q)]: %w", name, err)
 	}
 	if a.C != nil {
-		return fmt.Errorf("#[cnative(%q)]: the alias already spells %s", name, a.C)
+		return fmt.Errorf("#[c.native(%q)]: the alias already spells %s", name, a.C)
 	}
 	a.C = t
 	return nil
 }
 
-// flagCast says a #[cnative] function is a conversion to the C type its name
-// spells, declared as macro.CNativeFlag.
+// flagCast says a #[c.native] function is a conversion to the C type its name
+// spells, declared as sngl:x/c's NativeFlag.
 const flagCast = "cast"
 
 // markJSNative implements #[js.native("name")] and #[js.native("name",

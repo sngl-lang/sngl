@@ -280,7 +280,7 @@ func markCRelease(m *mark) error {
 }
 
 // markCType implements sngl:x/c's #[type]: the C function-pointer type a
-// callback or a release parameter of a #[cnative] function is.
+// callback or a release parameter of a #[c.native] function is.
 func markCType(m *mark) error {
 	fp, ok := m.sym.(funcParam)
 	if !ok || fp.bodied {
@@ -288,7 +288,7 @@ func markCType(m *mark) error {
 		if !ok {
 			what = ast.DeclFormName(m.decl)
 		}
-		return fmt.Errorf("#[c.type] cannot mark %s; only a parameter of a #[cnative] function", what)
+		return fmt.Errorf("#[c.type] cannot mark %s; only a parameter of a #[c.native] function", what)
 	}
 	name := m.args.String("name")
 	t, err := ir.ParseCType(name)
@@ -312,7 +312,7 @@ func markCompilerPassed(m *mark, name string, set func(*ir.Param)) error {
 		if !ok {
 			what = ast.DeclFormName(m.decl)
 		}
-		return fmt.Errorf("#[c.%s] cannot mark %s; only a parameter of a #[cnative] function", name, what)
+		return fmt.Errorf("#[c.%s] cannot mark %s; only a parameter of a #[c.native] function", name, what)
 	}
 	if fp.param.CompilerPassed() {
 		return fmt.Errorf("parameter %q is marked both #[c.context] and #[c.release]", fp.param.Name)

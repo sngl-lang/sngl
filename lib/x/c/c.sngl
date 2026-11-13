@@ -22,17 +22,65 @@ import macro "sngl:macro"
 #[marks.builtin("cLink")]
 component link(const include string, const system bool = false, const cflags list[string] = [], const ldflags list[string] = [], const pkgConfig list[string] = [], const library string = "", const sources list[string] = []) root {}
 
+// Names the C identifier a declaration *is*: a function to call, or a type to
+// spell. The declaration itself is emitted by nobody.
+//
+// Language-neutral on purpose. C is the one ABI several targets can reach, and
+// a platform built on a C library has no business naming a SNGL language --
+// `sngl:platform/gtk4` describes cairo with this and nothing Go-specific, so
+// any backend that can call C can serve it: C calls it, and Go through cgo. A `string`, `int`, `float` or `bool` argument crosses
+// through the conversion this package declares for its parameter's type, written
+// in before any backend sees the call.
+//
+// The name is spelled as C spells it, and each language adds what it needs to
+// reach it: a function is its identifier (`cairo_arc`), and a type is a C type
+// (`cairo_t *`, `cairo_line_cap_t`, `const char *`) -- a name, `const` written
+// first, and pointers. An array or a function pointer is not a type this
+// spells.
+//
+// `cast` declares a conversion rather than a function: a bodyless function of
+// one parameter whose name is the C type it converts to, which is the C type
+// its return type declares. `#[native("cairo_line_cap_t", cast)] const func toLineCap(v int) LineCap` makes a number one, and a pointer type makes a
+// pointer, or a node, one.
+//
+// An alias carries it too, naming a C typedef of a type SNGL has:
+// `#[native("UINT")] struct UINT = int` is an `int` wherever it is written,
+// and an argument for a C function's parameter written with it crosses cast
+// to `UINT` rather than as a C `int`. An alias of `string` names a pointer to
+// 16-bit units, which the string crosses as UTF-16: `utf16`.
+//
+// A struct declaring fields is a C struct the program holds as its own, with
+// that layout: `#[native("RECT")] struct RECT { left int ... }`, each field
+// named as C names it and typed as a scalar, an alias of a C typedef or
+// another C struct. A call converts it field by field, and a function's
+// `ref[RECT]` parameter is a pointer C fills, which the call writes back to
+// the variable `&r` names.
+//
+// A function's `func` parameter is a callback, which C calls through a
+// function pointer and the `void *` it hands back: the parameter
+// `#[context]` marks, which no caller passes.
+//
+// Struct, function and alias are the forms that carry it.
+func native(name string, flags list[NativeFlag] = []) ir.Macro
+
+// What a `#[native]` function is beyond its name.
+enum NativeFlag {
+    // The function is a conversion to the C type its name spells, which its
+    // return type declares, rather than a C function to call.
+    cast
+}
+
 // A C string: a NUL-terminated copy of a `string` the program allocated, which
 // `free` gives back.
-#[macro.cnative("char *")]
+#[native("char *")]
 #[macro.owned(free)]
 struct str {}
 
 // A C `int` and a C `double`, the types a SNGL `int` and `float` cross as.
-#[macro.cnative("int")]
+#[native("int")]
 struct integer {}
 
-#[macro.cnative("double")]
+#[native("double")]
 struct double {}
 
 // A string a C function reads as NUL-terminated UTF-16, the way Win32 takes
@@ -41,7 +89,7 @@ struct double {}
 // NULL. It is a `string` wherever it is written; only the call reads the
 // alias, and a C function answers no `utf16`, since a string it answers is
 // read as a `char *`.
-#[macro.cnative("const unsigned short *")]
+#[native("const unsigned short *")]
 struct utf16 = string
 
 // The conversions a call of a C function makes of each argument, chosen by
@@ -49,15 +97,15 @@ struct utf16 = string
 // its mark and writes the conversion, so a `string` handed to C is a `str` the
 // program holds and must give back.
 #[marks.builtin("cString")]
-#[macro.cnative("char *", cast)]
+#[native("char *", cast)]
 func cstring(s string) str
 
 #[marks.builtin("cInt")]
-#[macro.cnative("int", cast)]
+#[native("int", cast)]
 const func cint(i int) integer
 
 #[marks.builtin("cDouble")]
-#[macro.cnative("double", cast)]
+#[native("double", cast)]
 const func cdouble(f float) double
 
 // C spells a boolean as an `int`, 1 or 0, which is what GLib's `gboolean` is.
@@ -66,10 +114,10 @@ const func cdouble(f float) double
 const func cbool(b bool) => cint(b ? 1 : 0)
 
 // C's `void *`, which `free` takes.
-#[macro.cnative("void *")]
+#[native("void *")]
 struct pointer {}
 
-// Marks the `void *` a `#[cnative]` function hands back to the callback it
+// Marks the `void *` a `#[native]` function hands back to the callback it
 // takes, the shape GLib's signals, `qsort_r` and `EnumWindows` share: C cannot
 // call a closure, so it calls a function the compiler writes, which finds the
 // closure through this. The parameter is a `pointer`, written where C writes
@@ -78,20 +126,20 @@ struct pointer {}
 // The callback is the function's one `func` parameter, and C hands the
 // context to it as its last argument, after the ones its type declares: a
 // `func(int) int` is C's `int (*)(int, void *)`. Each parameter and the result
-// is an `int`, `float`, `bool` or `#[cnative]` handle, a struct declaring no
+// is an `int`, `float`, `bool` or `#[native]` handle, a struct declaring no
 // fields; a C struct with fields does not cross a callback. Unmarked, the callback
 // is held for the call; `#[macro.retains]`, for the rest of the program; and
 // where the function takes `#[release]`, until C calls it.
 func context() ir.Macro
 
-// Marks the parameter a `#[cnative]` function taking a callback is handed the
+// Marks the parameter a `#[native]` function taking a callback is handed the
 // function C calls, with the context, once it is done with the callback:
 // GLib's `GClosureNotify` and `GDestroyNotify`. The compiler passes one that
 // lets the closure go, so the callback is held until then, and no caller
 // passes it.
 func release() ir.Macro
 
-// Names the C type a `#[cnative]` function's callback or `#[release]`
+// Names the C type a `#[native]` function's callback or `#[release]`
 // parameter is: the function-pointer typedef its header declares, as GLib's
 // `GCallback` and `GClosureNotify` are. A language passing a function of its
 // own writes it at that type, which the parameter's SNGL type does not say;
@@ -99,10 +147,10 @@ func release() ir.Macro
 // function there.
 func type(name string) ir.Macro
 
-#[macro.cnative("void *", cast)]
+#[native("void *", cast)]
 const func pointerTo(s str) pointer
 
-#[macro.cnative("free")]
+#[native("free")]
 func cfree(p pointer)
 
 // Gives back a C string. Its header is `<stdlib.h>`, which a package calling
