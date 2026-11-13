@@ -488,6 +488,9 @@ type Env struct {
 	entries []entryFrame
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
+	// frame says this scope is a Frame of its parent, whose bindings it
+	// reads and writes through.
+	frame bool
 	// ended says this is the snapshot a lambda call ran in, and the call has
 	// returned (LambdaValue.Call).
 	ended bool
@@ -659,7 +662,7 @@ func (env *Env) Snapshot() *Env {
 // to a binding env holds lands in env.
 func (env *Env) Frame() *Env {
 	cp := env.scopeCopy(0)
-	cp.parent, cp.origin = env, nil
+	cp.parent, cp.origin, cp.frame = env, nil, true
 	return cp
 }
 
@@ -2847,9 +2850,15 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 		params = append([]*ir.Param{fn.RecvParam}, params...)
 	}
 	for {
+		// Each call has a scope of its own for its parameters and locals,
+		// which a closure it makes keeps after it returns, so a function
+		// value that captured a local reads and writes it for as long as
+		// it lives (testdata/closure_captures_variable.sngl). One returning
+		// nothing writes its caller's bindings in place; one returning a
+		// value writes a snapshot, carried back as it returns.
 		var execEnv *Env
 		if !isPure {
-			execEnv = env
+			execEnv = env.Frame()
 		} else {
 			execEnv = env.Snapshot()
 		}
@@ -2862,13 +2871,7 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 		if len(params) > 0 && params[0].Receiver && len(args) == len(params)-1 {
 			argOffset = 1
 		}
-		// A recursive call reuses the same Param symbols in the same env, so
-		// the previous frame's bindings still need saving and restoring.
-		savedVars := make(map[ir.Symbol]any, len(params))
 		for i, p := range params {
-			if v, ok := execEnv.vals[p]; ok {
-				savedVars[p] = v
-			}
 			argIdx := i - argOffset
 			if argIdx >= 0 && argIdx < len(args) {
 				execEnv.Set(p, bindArg(args[argIdx], p))
@@ -2886,14 +2889,6 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 					delete(execEnv.assigned, sym)
 				}
 				env.RebindFrom(execEnv)
-			} else {
-				for _, p := range params {
-					if orig, ok := savedVars[p]; ok {
-						execEnv.vals[p] = orig
-					} else {
-						delete(execEnv.vals, p)
-					}
-				}
 			}
 		}
 
@@ -2939,26 +2934,17 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 
 		if nested {
 			restoreVoid()
-			for _, sym := range localVars {
-				delete(execEnv.vals, sym)
-			}
 			return nestedResult, nil
 		}
 
 		if tailExpr == nil {
 			restoreVoid()
-			for _, sym := range localVars {
-				delete(execEnv.vals, sym)
-			}
 			return nil, nil
 		}
 
 		if isPure {
 			result, newArgs, isTail, err := execEnv.evalTailAware(tailExpr, fn)
 			restoreVoid()
-			for _, sym := range localVars {
-				delete(execEnv.vals, sym)
-			}
 			if err != nil {
 				return nil, err
 			}
@@ -2971,9 +2957,6 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 
 		result, err := execEnv.Eval(tailExpr)
 		restoreVoid()
-		for _, sym := range localVars {
-			delete(execEnv.vals, sym)
-		}
 		return result, err
 	}
 }

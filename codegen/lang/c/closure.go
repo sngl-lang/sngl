@@ -22,9 +22,9 @@ import (
 // (Lambda), capturing what it reads of the scope it is written in.
 //
 // An environment is made in the turn's arena, as a string is, behind a
-// header saying how it is kept and given back (sngl_env): a holder storing a
-// closure keeps a copy of its environment and what that captured, and gives
-// both back as it drops it. A callback handed to C is kept as it crosses,
+// header saying how it is kept (sngl_env): the first holder storing a
+// closure keeps a counted copy of its environment and what that captured,
+// which every later holder shares, and the last to let go gives both back. A callback handed to C is kept as it crosses,
 // and given back when C releases it (cCallback).
 
 // fnType is the C struct a value of the function type t is, defined in the
@@ -113,40 +113,50 @@ func (c *Context) Closure(n *ir.Closure) string {
 	c.file.define(envT, "typedef struct "+envT+" {\n\tsngl_env hdr;\n\t"+stateT+" caps;\n} "+envT+";\n", stateT)
 	c.envOps(envT, map[string]*ir.Type{"caps": state.Type}, []string{"caps"})
 	c.file.helper(thunk, fmt.Sprintf("static %s %s(%s) {\n\t%s;\n}\n", ret, thunk, strings.Join(params, ", "), body))
-	env := c.arenaCopy(envT, "{{"+envT+"__keep, "+envT+"__drop, "+envT+"__visit}, "+c.EvalExpr(n.State)+"}")
+	env := c.arenaCopy(envT, "{{"+envT+"__keep, false}, "+c.EvalExpr(n.State)+"}")
 	return "((" + fnT + "){" + thunk + ", " + env + "})"
 }
 
-// envOps defines the keep, drop and visit of envT, an environment whose
-// fields named in order, of the types in fields, are what it captured: keep
-// copies it out of the arena and keeps each, drop gives each back and then
-// it, and visit hands the collector of cycles each counted box they hold.
+// envOps defines the keep of envT, an environment whose fields named in
+// order, of the types in fields, are what it captured: keeping one the turn
+// made copies it out of the arena into a counted block, as a box is
+// (sngl_counted_new), keeping each capture, so a kept environment is shared
+// by every holder of the closure and keeping it again only counts one more.
+// Its release gives each capture back, its rekeep keeps each again, and its
+// visit hands the collector of cycles each counted block they hold; one
+// holding none has no visit.
 func (c *Context) envOps(envT string, fields map[string]*ir.Type, order []string) {
 	if c.file.helperNames[envT+"__keep"] {
 		return
 	}
-	var keep, drop, visit strings.Builder
-	fmt.Fprintf(&keep, "static void *%s__keep(const void *p) {\n\t%s *e = sngl_keep_copy(p, sizeof(%s));\n", envT, envT, envT)
-	fmt.Fprintf(&drop, "static void %s__drop(void *p) {\n\t%s *e = p;\n", envT, envT)
-	fmt.Fprintf(&visit, "static void %s__visit(const void *p, sngl_visit fn) {\n\tconst %s *e = p;\n", envT, envT)
+	release, rekeep, visit := envT+"__release", envT+"__rekeep", "NULL"
+	var rel, keep, vis strings.Builder
+	fmt.Fprintf(&rel, "static void %s(void *p) {\n\t%s *e = p;\n", release, envT)
+	fmt.Fprintf(&keep, "static void %s(void *p) {\n\t%s *e = p;\n", rekeep, envT)
+	fmt.Fprintf(&vis, "static void %s__visit(void *p, sngl_visit fn) {\n\t%s *e = p;\n", envT, envT)
 	for _, f := range order {
 		t := fields[f]
 		if t == nil || !owns(t) {
 			continue
 		}
 		fmt.Fprintf(&keep, "\te->%s = %s;\n", f, c.keep(t, "e->"+f))
-		fmt.Fprintf(&drop, "\t%s\n", c.drop(t, "e->"+f))
+		fmt.Fprintf(&rel, "\t%s\n", c.drop(t, "e->"+f))
 		if v := c.visit(t, "e->"+f, "fn"); v != "" {
-			fmt.Fprintf(&visit, "\t%s\n", v)
+			fmt.Fprintf(&vis, "\t%s\n", v)
+			visit = envT + "__visit"
 		}
 	}
-	keep.WriteString("\treturn e;\n}\n")
-	drop.WriteString("\tsngl_drop(e);\n}\n")
-	visit.WriteString("\t(void)e;\n}\n")
-	c.file.protos = append(c.file.protos, "static void *"+envT+"__keep(const void *p);", "static void "+envT+"__drop(void *p);", "static void "+envT+"__visit(const void *p, sngl_visit fn);")
-	c.file.helper(envT+"__keep", keep.String())
-	c.file.helper(envT+"__drop", drop.String())
-	c.file.helper(envT+"__visit", visit.String())
+	for _, b := range []*strings.Builder{&rel, &keep, &vis} {
+		b.WriteString("\t(void)e;\n}\n")
+	}
+	c.file.protos = append(c.file.protos, "static void *"+envT+"__keep(const void *p);", "static void "+release+"(void *p);", "static void "+rekeep+"(void *p);")
+	c.file.helper(release, rel.String())
+	c.file.helper(rekeep, keep.String())
+	if visit != "NULL" {
+		c.file.protos = append(c.file.protos, "static void "+visit+"(void *p, sngl_visit fn);")
+		c.file.helper(visit, vis.String())
+	}
+	c.file.helper(envT+"__keep", fmt.Sprintf("static void *%s__keep(const void *p) {\n\t%s *e = sngl_counted_new(p, sizeof(%s), %s, %s, %s);\n\te->hdr.counted = true;\n\t%s(e);\n\treturn e;\n}\n", envT, envT, envT, release, rekeep, visit, rekeep))
 }
 
 // heapCopy is v, of the C type t, copied to the heap.
@@ -226,7 +236,7 @@ func (c *Context) Lambda(n *ir.Lambda) string {
 		}
 		return nil
 	})
-	fields, inits := []string{"\tsngl_env hdr;"}, []string{".hdr = {" + envT + "__keep, " + envT + "__drop, " + envT + "__visit}"}
+	fields, inits := []string{"\tsngl_env hdr;"}, []string{".hdr = {" + envT + "__keep, false}"}
 	kept := map[string]*ir.Type{}
 	var order []string
 	inner := &Context{Ctx: c.Ctx, State: c.State, Native: c.Native, Types: c.Types, Closures: c.Closures, file: c.file, locals: map[string]bool{}, refs: map[string]bool{}, ret: n.Type.Sig.Return}

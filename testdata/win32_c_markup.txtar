@@ -263,15 +263,17 @@ static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
 static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void s___lambda0_caps__visit(s___lambda0_caps v, sngl_visit fn);
 static void *s___lambda0_caps__env__keep(const void *p);
-static void s___lambda0_caps__env__drop(void *p);
-static void s___lambda0_caps__env__visit(const void *p, sngl_visit fn);
+static void s___lambda0_caps__env__release(void *p);
+static void s___lambda0_caps__env__rekeep(void *p);
+static void s___lambda0_caps__env__visit(void *p, sngl_visit fn);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v);
 static void s___lambda1_caps__drop(s___lambda1_caps v);
 static void s___lambda1_caps__visit(s___lambda1_caps v, sngl_visit fn);
 static void *s___lambda1_caps__env__keep(const void *p);
-static void s___lambda1_caps__env__drop(void *p);
-static void s___lambda1_caps__env__visit(const void *p, sngl_visit fn);
+static void s___lambda1_caps__env__release(void *p);
+static void s___lambda1_caps__env__rekeep(void *p);
+static void s___lambda1_caps__env__visit(void *p, sngl_visit fn);
 
 static double sngl_list_float_max(double m, sngl_list_float l) {
 	for (int64_t i = 0; i < l.len; i++) {
@@ -397,22 +399,29 @@ static void s___lambda0_caps__visit(s___lambda0_caps v, sngl_visit fn) {
 	}
 }
 
-static void *s___lambda0_caps__env__keep(const void *p) {
-	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
-	e->caps = s___lambda0_caps__keep(e->caps);
-	return e;
-}
-
-static void s___lambda0_caps__env__drop(void *p) {
+static void s___lambda0_caps__env__release(void *p) {
 	s___lambda0_caps__env *e = p;
 	s___lambda0_caps__drop(e->caps);
-	sngl_drop(e);
+	(void)e;
 }
 
-static void s___lambda0_caps__env__visit(const void *p, sngl_visit fn) {
-	const s___lambda0_caps__env *e = p;
+static void s___lambda0_caps__env__rekeep(void *p) {
+	s___lambda0_caps__env *e = p;
+	e->caps = s___lambda0_caps__keep(e->caps);
+	(void)e;
+}
+
+static void s___lambda0_caps__env__visit(void *p, sngl_visit fn) {
+	s___lambda0_caps__env *e = p;
 	s___lambda0_caps__visit(e->caps, fn);
 	(void)e;
+}
+
+static void *s___lambda0_caps__env__keep(const void *p) {
+	s___lambda0_caps__env *e = sngl_counted_new(p, sizeof(s___lambda0_caps__env), s___lambda0_caps__env__release, s___lambda0_caps__env__rekeep, s___lambda0_caps__env__visit);
+	e->hdr.counted = true;
+	s___lambda0_caps__env__rekeep(e);
+	return e;
 }
 
 static void s___lambda0__fn(void *env) {
@@ -450,22 +459,29 @@ static void s___lambda1_caps__visit(s___lambda1_caps v, sngl_visit fn) {
 	}
 }
 
-static void *s___lambda1_caps__env__keep(const void *p) {
-	s___lambda1_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda1_caps__env));
-	e->caps = s___lambda1_caps__keep(e->caps);
-	return e;
-}
-
-static void s___lambda1_caps__env__drop(void *p) {
+static void s___lambda1_caps__env__release(void *p) {
 	s___lambda1_caps__env *e = p;
 	s___lambda1_caps__drop(e->caps);
-	sngl_drop(e);
+	(void)e;
 }
 
-static void s___lambda1_caps__env__visit(const void *p, sngl_visit fn) {
-	const s___lambda1_caps__env *e = p;
+static void s___lambda1_caps__env__rekeep(void *p) {
+	s___lambda1_caps__env *e = p;
+	e->caps = s___lambda1_caps__keep(e->caps);
+	(void)e;
+}
+
+static void s___lambda1_caps__env__visit(void *p, sngl_visit fn) {
+	s___lambda1_caps__env *e = p;
 	s___lambda1_caps__visit(e->caps, fn);
 	(void)e;
+}
+
+static void *s___lambda1_caps__env__keep(const void *p) {
+	s___lambda1_caps__env *e = sngl_counted_new(p, sizeof(s___lambda1_caps__env), s___lambda1_caps__env__release, s___lambda1_caps__env__rekeep, s___lambda1_caps__env__visit);
+	e->hdr.counted = true;
+	s___lambda1_caps__env__rekeep(e);
+	return e;
 }
 
 static void s___lambda1__fn(void *env) {
@@ -627,12 +643,12 @@ static void sngl_build(void) {
 	s_more = sngl_win32_button();
 	sngl_win32_set_text(s_more, (const unsigned short *)sngl_utf16(SNGL_STR("more")));
 	sngl_win32_set_look(s_more, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
-	sngl_win32_on_click(s_more, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, s___lambda0_caps__env__drop, s___lambda0_caps__env__visit}, (s___lambda0_caps){.n = s_n}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	sngl_win32_on_click(s_more, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.n = s_n}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(s___n7, s_more);
 	s_flip = sngl_win32_button();
 	sngl_win32_set_text(s_flip, (const unsigned short *)sngl_utf16(SNGL_STR("flip")));
 	sngl_win32_set_look(s_flip, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
-	sngl_win32_on_click(s_flip, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, s___lambda1_caps__env__drop, s___lambda1_caps__env__visit}, (s___lambda1_caps){.shown = s_shown}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	sngl_win32_on_click(s_flip, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.shown = s_shown}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(s___n7, s_flip);
 	sngl_win32_attach(s___n7);
 }
@@ -668,4 +684,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:3818cb9818b993b757c64c6a92d1d83f
+pass sha256:d533758afaf5f39f0cc98c0734436ba7

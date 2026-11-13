@@ -15,10 +15,11 @@
 # calls resolve to.
 
 # A closure gives back what it captured. Its environment is made in the
-# turn's arena behind a header saying how it is kept and dropped (sngl_env),
-# a holder storing it keeps a copy, and the copy is dropped with the holder's
-# value: a package var's replaced, a record's prop box (ir.StructDef.Counted)
-# as the record is destroyed, a callback's context as C releases it. Each
+# turn's arena behind a header saying how it is kept (sngl_env), a holder
+# storing it keeps a counted copy the holders after it share, and the last
+# to let go gives it back with the holder's value: a package var's
+# replaced, a record's prop box (ir.StructDef.Counted) as the record is
+# destroyed, a callback's context as C releases it. Each
 # closure.sngl test fails where the environment was a heap copy nothing gave
 # back, which kept what it captured.
 
@@ -234,7 +235,7 @@ ui.window(title="t") {
     rows
 }
 -- testrun/gtk4/c/anchor.sngl/rows/1 --
-sha256:ba152d90d936655b505e790336f35f46
+sha256:1e27b2ee281518398f4abccead0edd13
 {
   "results": [
     {
@@ -244,7 +245,7 @@ sha256:ba152d90d936655b505e790336f35f46
   ]
 }
 -- testrun/gtk4/c/app.sngl/rows/1 --
-sha256:b729054876a20e74eae98004fbdf318b
+sha256:68c2fdefe4a6aeb60a56fda99120e085
 {
   "results": [
     {
@@ -254,7 +255,7 @@ sha256:b729054876a20e74eae98004fbdf318b
   ]
 }
 -- testrun/gtk4/c/closure.sngl/rows/1 --
-sha256:a8f7cb84379513e35008ddd43461fad8
+sha256:49ff4a7bb0a34edaf0b4901397b3ff70
 {
   "results": [
     {
@@ -268,7 +269,7 @@ sha256:a8f7cb84379513e35008ddd43461fad8
   ]
 }
 -- testrun/win32/c/app.sngl/rows/1 --
-sha256:b3cc86763bee6ef2fdcc75d912b8aa01
+sha256:b11f4bf0c5df2984cf5e5ae3ec19d7b7
 {
   "results": [
     {
@@ -278,7 +279,7 @@ sha256:b3cc86763bee6ef2fdcc75d912b8aa01
   ]
 }
 -- testrun/win32/c/closure.sngl/rows/1 --
-sha256:df5cb180c70a186e166685e076fc20fe
+sha256:9dbec9a2ba55f42a2eaf73580aa3bc53
 {
   "results": [
     {

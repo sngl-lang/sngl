@@ -567,27 +567,27 @@ void *sngl_env_keep(const void *env) {
 	if (env == NULL) {
 		return NULL;
 	}
+	const sngl_env *e = env;
+	if (e->counted) {
+		return sngl_counted_retain((void *)env);
+	}
 	sngl_deeper();
-	void *kept = ((const sngl_env *)env)->keep(env);
+	void *kept = e->keep(env);
 	sngl_shallower();
-	return kept;
+	return sngl_counted_retain(kept);
 }
 
 void sngl_env_drop(void *env) {
 	/* One the turn made kept nothing: what it captured is the turn's, or
 	 * held by whatever it was read from. */
-	if (env != NULL && sngl_tracked((uintptr_t)env)) {
-		sngl_deeper();
-		((sngl_env *)env)->drop(env);
-		sngl_shallower();
+	if (env != NULL && ((sngl_env *)env)->counted) {
+		sngl_counted_release(env);
 	}
 }
 
 void sngl_env_visit(const void *env, sngl_visit fn) {
-	if (env != NULL && sngl_tracked((uintptr_t)env)) {
-		sngl_deeper();
-		((const sngl_env *)env)->visit(env, fn);
-		sngl_shallower();
+	if (env != NULL && ((const sngl_env *)env)->counted) {
+		fn((void *)env);
 	}
 }
 

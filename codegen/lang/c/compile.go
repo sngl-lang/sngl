@@ -22,11 +22,14 @@ var Standards = []string{"c11", "c17"}
 // standard, strictly, and signed arithmetic that wraps as it does on Go and
 // Kotlin. What generated code is entitled to leave unused -- a parameter a
 // body does not read, a library function nothing calls -- is not an error.
+// A frame larger than a page touches each page as it grows, so recursion
+// without end stops at the guard page below the stack rather than step over
+// it and write what lies beyond (testdata/run/clash.txtar).
 func Flags(std string) []string {
 	return []string{
 		"-std=" + std, "-pedantic", "-Wall", "-Wextra", "-Werror",
 		"-Wno-unused-parameter", "-Wno-unused-function", "-Wno-unused-variable", "-Wno-unused-but-set-variable",
-		"-fwrapv",
+		"-fwrapv", "-fstack-clash-protection",
 	}
 }
 

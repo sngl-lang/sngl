@@ -5,6 +5,11 @@ back, as a tree nested as deep is, and a closure three thousand deep stops
 the program with a panic rather than overflow the stack; trees.txtar does
 the same with a tree.
 
+A kept environment is shared rather than copied, so a chain of closures
+three thousand long, each link kept the turn it is made, keeps one block a
+link: keeping a link counts a holder of the one before it, where copying
+it copied the chain again, deeper than the bound and quadratic in all.
+
 -- app.sngl --
 struct Tree {
     kids list[Tree]
@@ -80,6 +85,24 @@ int main(void) {
 	sngl_turn_leave();
 	printf("%lld kept\n", (long long)sngl_kept_blocks());
 
+	static sngl_fn_int__int links[3000];
+	sngl_fn_int__int g = s_start();
+	for (int i = 0; i < 3000; i++) {
+		sngl_turn_enter();
+		g = s_wrap(g);
+		g.env = sngl_env_keep(g.env);
+		links[i] = g;
+		sngl_turn_leave();
+	}
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+	sngl_turn_enter();
+	printf("%lld\n", (long long)g.fn(g.env, 0));
+	for (int i = 0; i < 3000; i++) {
+		sngl_env_drop(links[i].env);
+	}
+	sngl_turn_leave();
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+
 	sngl_turn_enter();
 	f = chain(3000);
 	sngl_env_keep(f.env);
@@ -89,5 +112,8 @@ int main(void) {
 -- want --
 1000
 0 kept
+0 kept
+3000 kept
+3000
 0 kept
 panic: a value nests more than 2000 deep

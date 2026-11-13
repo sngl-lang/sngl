@@ -91,8 +91,9 @@ static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
 static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void s___lambda0_caps__visit(s___lambda0_caps v, sngl_visit fn);
 static void *s___lambda0_caps__env__keep(const void *p);
-static void s___lambda0_caps__env__drop(void *p);
-static void s___lambda0_caps__env__visit(const void *p, sngl_visit fn);
+static void s___lambda0_caps__env__release(void *p);
+static void s___lambda0_caps__env__rekeep(void *p);
+static void s___lambda0_caps__env__visit(void *p, sngl_visit fn);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
 
 static void s___ref_bool__release(void *p) {
@@ -120,22 +121,29 @@ static void s___lambda0_caps__visit(s___lambda0_caps v, sngl_visit fn) {
 	}
 }
 
-static void *s___lambda0_caps__env__keep(const void *p) {
-	s___lambda0_caps__env *e = sngl_keep_copy(p, sizeof(s___lambda0_caps__env));
-	e->caps = s___lambda0_caps__keep(e->caps);
-	return e;
-}
-
-static void s___lambda0_caps__env__drop(void *p) {
+static void s___lambda0_caps__env__release(void *p) {
 	s___lambda0_caps__env *e = p;
 	s___lambda0_caps__drop(e->caps);
-	sngl_drop(e);
+	(void)e;
 }
 
-static void s___lambda0_caps__env__visit(const void *p, sngl_visit fn) {
-	const s___lambda0_caps__env *e = p;
+static void s___lambda0_caps__env__rekeep(void *p) {
+	s___lambda0_caps__env *e = p;
+	e->caps = s___lambda0_caps__keep(e->caps);
+	(void)e;
+}
+
+static void s___lambda0_caps__env__visit(void *p, sngl_visit fn) {
+	s___lambda0_caps__env *e = p;
 	s___lambda0_caps__visit(e->caps, fn);
 	(void)e;
+}
+
+static void *s___lambda0_caps__env__keep(const void *p) {
+	s___lambda0_caps__env *e = sngl_counted_new(p, sizeof(s___lambda0_caps__env), s___lambda0_caps__env__release, s___lambda0_caps__env__rekeep, s___lambda0_caps__env__visit);
+	e->hdr.counted = true;
+	s___lambda0_caps__env__rekeep(e);
+	return e;
 }
 
 static void s___lambda0__fn(void *env, bool a0) {
@@ -181,7 +189,7 @@ static void sngl_build(void) {
 	s___n0 = sngl_win32_toplevel();
 	(int64_t)SetWindowTextW((HWND)(s___n0), (const unsigned short *)sngl_utf16(SNGL_STR("")));
 	sngl_win32_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
-	sngl_win32_on_visible(s___n0, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, s___lambda0_caps__env__drop, s___lambda0_caps__env__visit}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	sngl_win32_on_visible(s___n0, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	s___n1 = sngl_win32_text();
 	sngl_win32_set_text(s___n1, (const unsigned short *)sngl_utf16(sngl_int_format((int64_t)((int64_t)(s_cap)))));
 	sngl_win32_set_look(s___n1, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
@@ -617,6 +625,6 @@ func mountTestComponent(m Model, preset map[string]bool) Model {
 	return m
 }
 -- run/c/win32 --
-pass sha256:956ee47504cc81f7e222fb792b2b502e
+pass sha256:45a39d96c06f76fc23dcf6a6c2cece57
 -- run/go/bubbletea --
 pass sha256:12a7dab925f58b6228eb5ed6e7d24217

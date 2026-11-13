@@ -1,0 +1,141 @@
+A function whose frame is larger than a page, recursing without end, stops
+at the guard page below its stack, never in what lies beyond it: every
+build passes -fstack-clash-protection (Flags), which touches each page of a
+frame as it grows it. Without it a frame steps over the guard and writes
+whatever memory is below. The recursion runs on a thread whose stack, guard
+page and what lies below them main.c lays out itself; on Windows, where
+MinGW probes a large frame (__chkstk) whatever the flags, it runs on the
+main thread and Windows reports the overflow.
+
+-- app.sngl --
+func zero() int {
+    return 0
+}
+-- main.c --
+#if !defined(_WIN32)
+#define _GNU_SOURCE
+#endif
+#include "program.c"
+#include <stdio.h>
+#include <string.h>
+
+static volatile int stop = -1;
+static volatile int sink;
+
+/* A frame of 40 KB, ten pages: entering it moves the stack pointer past a
+ * one-page guard at once. */
+static int deep(int n) {
+	volatile char big[40000];
+	big[0] = (char)n;
+	sink = n;
+	if (n == stop) {
+		return 0;
+	}
+	return deep(n + 1) + big[0];
+}
+
+#if defined(_WIN32)
+#include <windows.h>
+
+static void say(const char *s) {
+	DWORD n;
+	WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), s, (DWORD)strlen(s), &n, NULL);
+}
+
+static LONG WINAPI caught(EXCEPTION_POINTERS *e) {
+	if (e->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW) {
+		say("stopped at the guard page\nbelow it untouched\n");
+	} else {
+		say("skipped the guard page\n");
+	}
+	ExitProcess(0);
+	return EXCEPTION_CONTINUE_SEARCH;
+}
+
+int main(void) {
+	(void)s_zero;
+	AddVectoredExceptionHandler(1, caught);
+	return deep(0);
+}
+#else
+#include <pthread.h>
+#include <signal.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+/* From the bottom up: a floor no frame steps over, a region standing for
+ * whatever memory lies below a stack, the guard page, and the stack. */
+enum {
+	PAGE = 4096,
+	FLOOR = 1 << 20,
+	BELOW = 64 * PAGE,
+	GUARD = PAGE,
+	STACK = 64 * PAGE,
+};
+
+static unsigned char *region;
+static unsigned char altstack[64 * 1024];
+
+static void say(const char *s) {
+	ssize_t n = write(1, s, strlen(s));
+	(void)n;
+}
+
+static void caught(int sig, siginfo_t *info, void *uc) {
+	(void)sig;
+	(void)uc;
+	unsigned char *at = info->si_addr;
+	unsigned char *guard = region + FLOOR + BELOW;
+	if (at >= guard && at < guard + GUARD) {
+		say("stopped at the guard page\n");
+	} else {
+		say("skipped the guard page\n");
+	}
+	for (size_t i = 0; i < BELOW; i++) {
+		if (region[FLOOR + i] != 0xAA) {
+			say("below it written\n");
+			_exit(0);
+		}
+	}
+	say("below it untouched\n");
+	_exit(0);
+}
+
+static void *run(void *arg) {
+	(void)arg;
+	stack_t ss = {.ss_sp = altstack, .ss_size = sizeof altstack};
+	sigaltstack(&ss, NULL);
+	sink = deep(0);
+	return NULL;
+}
+
+int main(void) {
+	(void)s_zero;
+	size_t size = FLOOR + BELOW + GUARD + STACK;
+	region = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (region == MAP_FAILED) {
+		return 1;
+	}
+	memset(region + FLOOR, 0xAA, BELOW);
+	mprotect(region, FLOOR, PROT_NONE);
+	mprotect(region + FLOOR + BELOW, GUARD, PROT_NONE);
+
+	struct sigaction sa;
+	memset(&sa, 0, sizeof sa);
+	sa.sa_sigaction = caught;
+	sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+	sigaction(SIGSEGV, &sa, NULL);
+
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setstack(&attr, region + FLOOR + BELOW + GUARD, STACK);
+	pthread_t t;
+	pthread_create(&t, &attr, run, NULL);
+	pthread_join(t, NULL);
+	say("returned\n");
+	return 0;
+}
+#endif
+-- want --
+stopped at the guard page
+below it untouched

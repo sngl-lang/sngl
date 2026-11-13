@@ -1280,7 +1280,17 @@ by bare name. A `func` written in a component body is a method of the
 component.
 
 A **function literal** (`FuncLit`) is an anonymous function written `func(params) => expr` or `func(params) [Type] { … }`; it is an ordinary expression of
-function type and may capture variables from the enclosing scope.
+function type and may capture variables from the enclosing scope. It
+captures the variable, not the value it held: a write the enclosing code
+makes after the literal is evaluated is what the literal reads, a write the
+literal makes is what the enclosing code reads, and every function value
+made from literals capturing one variable shares it, a copy of one
+included. A captured variable lives as long as a function value that
+captured it, past the end of the call that declared it.
+
+How deep calls may nest, and how deep a value may nest inside another, is
+limited by the target. A program past either limit stops; it never runs on
+with memory the overflow wrote.
 
 ### Purity
 

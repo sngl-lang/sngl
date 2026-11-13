@@ -262,12 +262,18 @@ func (h *handles) letGoInstance(inst *Env) {
 // instance is the component instance env runs in: the scope its snapshots
 // were taken from, when that is a component's. A handler, a timer's tick
 // and a component function run in the instance's scope or a snapshot of it,
-// and a function they call in a snapshot of that. Nil outside every
-// component, which is the application's lifetime.
+// and a function they call in a snapshot of that or a Frame of it. Nil
+// outside every component, which is the application's lifetime.
 func (env *Env) instance() *Env {
 	e := env
-	for e.origin != nil {
-		e = e.origin
+	for {
+		for e.origin != nil {
+			e = e.origin
+		}
+		if !e.frame {
+			break
+		}
+		e = e.parent
 	}
 	if e.Comp == nil {
 		return nil

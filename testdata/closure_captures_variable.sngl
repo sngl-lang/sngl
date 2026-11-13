@@ -1,0 +1,81 @@
+// A function literal captures each variable it reads, not the value the
+// variable held: a write by the enclosing code after the literal is made is
+// what the literal reads, a write by the literal is what the enclosing code
+// reads, and every function value made from literals capturing one
+// variable shares it, a copy of one included. The variable lives as long as
+// a function value that captured it, past the call that declared it.
+
+import . "sngl:test"
+
+func counter() func() int {
+    var n = 0
+    return func() int {
+        n += 1
+        return n
+    }
+}
+
+func pair() list[func() int] {
+    var n = 0
+    return [
+        func() int {
+            n += 1
+            return n
+        },
+        func() => n,
+    ]
+}
+
+func testALaterWriteIsRead(t Test) {
+    var n = 1
+    var read = func() => n
+    n = 2
+    t.assert(read() == 2)
+}
+
+func testTheLiteralsWriteIsRead(t Test) {
+    var n = 1
+    var bump = func() {
+        n += 1
+    }
+    bump()
+    t.assert(n == 2)
+}
+
+func testItOutlivesTheCall(t Test) {
+    var next = counter()
+    t.assert(next() == 1)
+    t.assert(next() == 2)
+    var other = counter()
+    t.assert(other() == 1)
+}
+
+func testTwoLiteralsShareIt(t Test) {
+    var fs = pair()
+    t.assert(fs[0]() == 1)
+    t.assert(fs[0]() == 2)
+    t.assert(fs[1]() == 2)
+}
+
+func testACopySharesIt(t Test) {
+    var a = counter()
+    var b = a
+    t.assert(a() == 1)
+    t.assert(b() == 2)
+}
+
+// A function returning nothing hands the literal out through a reference.
+func install(slot ref[func() int]) {
+    var n = 10
+    *slot = func() int {
+        n += 1
+        return n
+    }
+}
+
+func testItOutlivesACallReturningNothing(t Test) {
+    var f = func() => 0
+    install(&f)
+    t.assert(f() == 11)
+    t.assert(f() == 12)
+}

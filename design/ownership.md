@@ -986,11 +986,18 @@ its lifetime ended by the teardown and touches nothing.
 
 **A closure's environment is a value of the turn's, kept like any other.**
 C has no closure, so a function value is its function and an environment,
-which begins with how it is kept and given back (`sngl_env`) and is made in
-the turn's arena, as a string is. A holder storing a closure keeps a copy of
-the environment, keeping what it captured with it, and dropping the value
-drops each capture and then the copy; one the turn made is left alone, since
-what it captured is the turn's or held by what it was read from. A callback
+which begins with how it is kept (`sngl_env`) and is made in
+the turn's arena, as a string is. A holder storing a closure the turn made
+copies the environment into a counted block, as a box is, keeping what it
+captured with it; a holder storing one already kept shares it, counting one
+more holder, and the last to let go gives back each capture and then the
+block. Dropping one the turn made does nothing, since
+what it captured is the turn's or held by what it was read from. Sharing
+is safe because nothing writes an environment once it is made: a var a
+closure or anything else writes is captured as its box, which the copies
+would share anyway (`lower`'s lambda lifting). Copying instead made keeping
+a closure that captured a closure copy all it reached, so a chain of them
+kept a link a turn was quadratic. A callback
 crossing to C is kept as it crosses and given back when C releases it
 (`sngl_closure_release`). Before, an environment was a heap copy nothing
 freed, holding a kept copy of each capture, so a `filter`'s predicate leaked
@@ -1032,10 +1039,11 @@ the rest are garbage, given back with what they hold. The turn's end is
 what makes this exact: no local is left, so every hold on a box is a
 holder's, and each is counted -- no stack is scanned. Each box carries a
 visit handing the collector the boxes it holds, generated with its release
-(`boxOps`), and an environment's header carries one too (`sngl_env`), which
-reaches through what it captured, a function value's environment, a list's
-elements and so on (`visits`, the `visit` of `ownHelper`); the walk passes
-through each environment, which one holder owns, and stops at each box.
+(`boxOps`), and a kept environment, itself a counted block, carries one
+too (`envOps`), which reaches through what it captured, a list's elements
+and so on (`visits`, the `visit` of `ownHelper`); the walk stops at each
+box and each kept environment, handing it to the collector as a block of
+its own.
 `codegen/lang/c/testdata/run/cycles.txtar` lets go of each such cycle, and
 of one half of a pair C still holds the other half of, which the try keeps
 and the next call runs through, under AddressSanitizer and LeakSanitizer.
@@ -1051,14 +1059,26 @@ release. `codegen/lang/c/testdata/run/chains.txtar` tries and then gives
 back a chain of a hundred thousand boxes, which the recursive walks
 overflowed the stack on. Keeping, dropping and visiting a value still
 recurse, a frame or more for each value nested in another, which is
-unbounded only through a closure captured by the closure it captured or a
-recursive type's value; each of those levels enters `sngl_deeper`, which
+unbounded only through a closure the turn made captured by one it made, or
+a recursive type's value; each of those levels enters `sngl_deeper`, which
 panics past `SNGL_MAX_DEPTH` (2000), deep enough for any value a program
-means to build and shallow enough for Windows' 1 MB stack.
-`nests.txtar` keeps a closure and a tree a thousand deep and panics on a
-closure three thousand deep, and `trees.txtar` on a tree as deep. A
-closure capturing a closure copies all it reaches each time it is kept,
-which is quadratic in a chain of them as well as deep.
+means to build and shallow enough for Windows' 1 MB stack. A limit of the
+target's is fine where it stops the program cleanly; what is not is
+writing memory the stack does not own. `nests.txtar` keeps a closure and a
+tree a thousand deep and panics on a closure three thousand deep, and
+`trees.txtar` on a tree as deep; it also keeps a chain three thousand long
+a link a turn, where each keep shares the link before it rather than walk
+it.
+
+**A frame never steps over the guard page.** A program's own recursion is
+the C stack's, with no counter, and running out of it stops at the guard
+page below the stack -- unless a frame larger than the page moves the stack
+pointer past the guard at once and writes what lies beyond. Every build
+passes `-fstack-clash-protection` (`c.Flags`), which touches each page of a
+frame as it grows it; MinGW probes a large frame (`__chkstk`) whatever the
+flags. `codegen/lang/c/testdata/run/clash.txtar` recurses with a 40 KB
+frame on a thread whose stack, guard and the memory below it it lays out
+itself, and without the flag gcc's and clang's builds write that memory.
 
 **A drop waits for the turn's end, and is a no-op for what was never kept.**
 A local of the turn may still be reading what a holder held when the holder

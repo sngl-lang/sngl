@@ -91,26 +91,28 @@ void *sngl_heap_copy(const void *p, size_t n);
 /* sngl_alloc_copy is a copy of the n bytes at p in the turn's arena. */
 void *sngl_alloc_copy(const void *p, size_t n);
 
-/* A closure's environment begins with how it is kept and given back: it is
- * made in the turn's arena, as a string is, and a holder keeps a copy,
- * keeping what the closure captured with it. sngl_env_keep is env kept,
- * NULL for none; sngl_env_drop gives back a kept env and what it kept, and
- * leaves alone one the turn made; sngl_env_visit hands fn each counted
- * block a kept env holds. sngl_closure_release is the release of a
- * callback's context, a function value on the heap whose environment was
- * kept as it crossed to C. */
+/* A closure's environment begins with how it is kept: it is made in the
+ * turn's arena, as a string is, and keeping it makes a counted copy (keep),
+ * keeping what the closure captured with it, which counted says it is.
+ * sngl_env_keep is env taken by a holder, NULL for none: one the turn made
+ * is copied, and a counted one is shared, counting one more holder, so
+ * keeping a closure costs the same whatever it captured. sngl_env_drop is a
+ * holder letting go of a counted env, the last giving back what it kept,
+ * and leaves alone one the turn made; sngl_env_visit hands fn a counted
+ * env, which the collector of cycles walks into. sngl_closure_release is
+ * the release of a callback's context, a function value on the heap whose
+ * environment was kept as it crossed to C. */
 typedef struct sngl_env {
 	void *(*keep)(const void *env);
-	void (*drop)(void *env);
-	void (*visit)(const void *env, sngl_visit fn);
+	bool counted;
 } sngl_env;
 void *sngl_env_keep(const void *env);
 void sngl_env_drop(void *env);
 void sngl_env_visit(const void *env, sngl_visit fn);
 
 /* Keeping, giving back or visiting a value walks what it holds, a frame or
- * more of the C stack for each value nested in another: a closure captured
- * by one it captured, a recursive type's value. sngl_deeper enters one,
+ * more of the C stack for each value nested in another: a closure the turn
+ * made captured by one it made, a recursive type's value. sngl_deeper enters one,
  * which panics past SNGL_MAX_DEPTH rather than overflow the stack, and
  * sngl_shallower leaves it. */
 #define SNGL_MAX_DEPTH 2000
