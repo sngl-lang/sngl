@@ -569,7 +569,14 @@ read: a method keeps a const override from splicing, and an id costs a
 field, so an app build rendered every select differently for having a test
 half. In a test build the override is a runtime splice (`expandCall`), which
 carries the call site's `#id` onto a library component's root wherever a
-handle is read (`handleRead`), as `passInlinePure` does for every one; a
+handle is read (`handleRead`), as `passInlinePure` does for every one, and
+in a placed build onto the root of a program's component with methods of its
+own that renders one node and whose handle the program reads nowhere, which
+placement holds by that node alone: a test's `c.always != null` read a var no
+node made (`indexed_ref_null_test_spliced_runs.txt`). One rendering branches,
+or whose handle the program calls a method through, keeps its id off its
+root, since the root is no instance a method can be called on (pokedex's
+`#detail`); a
 component method generic in its component's parameters alone is bound by
 each splice rather than copied per call (`boundByItsComponent`); and a
 method's parameter of a prop's name is the method's, never the prop

@@ -276,7 +276,7 @@ func testAMethodReadsItsCopy(t test.Test, c main) {
     t.assert(c.r[1].shown == "<")
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:c6160804e9f92115dc8acae0b62a847f
+sha256:c3c6bb8851b38175f7a5dd71826f734c
 {
   "results": [
     {
@@ -293,7 +293,7 @@ sha256:c6160804e9f92115dc8acae0b62a847f
   }
 }
 -- testrun/win32/c/methods.sngl/main/1 --
-sha256:da76cac73be6bece07950a76692935b7
+sha256:f4ff316418b7579c7a83492d42052f3d
 {
   "results": [
     {
@@ -303,7 +303,7 @@ sha256:da76cac73be6bece07950a76692935b7
   ]
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:db3d1413052bd28ee7d82e940dcb122a
+sha256:4a0eb1db25c278a423eab73ace5525fb
 {
   "results": [
     {
@@ -321,7 +321,7 @@ sha256:db3d1413052bd28ee7d82e940dcb122a
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:a65c98aa48451b21d618f855c4d21056
+sha256:d2afb1075cf2683261dade7afdca9de1
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:a65c98aa48451b21d618f855c4d21056
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:8a60ab353928b7441cd798cd5f2a11ee
+sha256:5b9b44408eaac606015e008d2f263db1
 {
   "results": [
     {
@@ -345,7 +345,7 @@ sha256:8a60ab353928b7441cd798cd5f2a11ee
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:4b442e392368723fd3246519d0ae3739
+sha256:57b32f5c927476ec75f86d9e587ff6e6
 {
   "results": [
     {
@@ -355,7 +355,7 @@ sha256:4b442e392368723fd3246519d0ae3739
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:b4ab3c20dc90ca574d55582d521c52e1
+sha256:25b79af7ca166439e56f437dee23a10e
 {
   "results": [
     {
@@ -369,7 +369,7 @@ sha256:b4ab3c20dc90ca574d55582d521c52e1
   ]
 }
 -- testrun/win32/go/methods.sngl/main/1 --
-sha256:37ace771a192888bd39b9fed0b3b474a
+sha256:c9f83e420368b1efa4c6f0be165f13df
 {
   "results": [
     {
@@ -379,7 +379,7 @@ sha256:37ace771a192888bd39b9fed0b3b474a
   ]
 }
 -- testrun/win32/go/nested.sngl/main/1 --
-sha256:71d653882666d5a58f623d2048e9e303
+sha256:878431da3ef5fb3afee22f3b9c6bf445
 {
   "results": [
     {
@@ -397,7 +397,7 @@ sha256:71d653882666d5a58f623d2048e9e303
   ]
 }
 -- testrun/win32/go/rows.sngl/main/1 --
-sha256:a6f515c511aa897e384601649c4823f9
+sha256:6af684c65285cae2ba43b28cdd42b015
 {
   "results": [
     {
@@ -421,7 +421,7 @@ sha256:73372b2063ee9b11beb6c1a45dd0ded5
   ]
 }
 -- testrun/win32/go/top.sngl/main/1 --
-sha256:95748baf46fb5e1147d5bb865a6c1de2
+sha256:7bcffe53a4d11fa11a24e35880d143ca
 {
   "results": [
     {

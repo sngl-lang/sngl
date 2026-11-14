@@ -41,7 +41,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, placed: feats.Placement, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.readAbroad = handlesReadAbroad(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
@@ -374,6 +374,9 @@ type inlineCompState struct {
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
 	platform    string
+	// placed is Features.Placement: every node is a protocol's, and a test
+	// reads an instance it reaches through the node that carries its id.
+	placed bool
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
@@ -1575,6 +1578,13 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// of one is made on (an openapi adapter's `query.refresh()`).
 	override := comp.PkgPath() != "" && comp.SpecializedFor != ""
 	carry := override || (comp.PkgPath() != "" && len(comp.Funcs) == 0 && st.handleRead(n.Handle))
+	// A placed program's instance with methods of its own is spliced with
+	// its methods hoisted and no node of its own, so a test reading it by
+	// its `#id` -- `c.always != null` -- reads the node it renders, which
+	// carries the id: placement holds a node by its id alone. Only one
+	// rendering a single node, which the id can name, and not one the
+	// program reads, whose handle is the instance its methods are called on.
+	carry = carry || st.placed && comp.PkgPath() == "" && ownMethods(comp) > 0 && singleNode(body) && !st.handleRead(n.Handle)
 	if carry && n.ID != "" {
 		var methods []any
 		for _, fn := range (*hoist.funcs)[funcStart:] {
@@ -2148,6 +2158,21 @@ func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
 		return !found
 	})
 	return found
+}
+
+// singleNode reports whether body renders one node and nothing else.
+func singleNode(body []ir.Stmt) bool {
+	n := 0
+	for _, s := range body {
+		switch s.(type) {
+		case *ir.NodeInst:
+			n++
+		case *ir.LocalVar, *ir.CallStmt:
+		default:
+			return false
+		}
+	}
+	return n == 1
 }
 
 // handleRead reports whether an identifier in the package reads h.

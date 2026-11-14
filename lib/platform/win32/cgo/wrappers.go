@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: dfe23043d7a159e390dc5b5a
+// The C sources, as a change to them builds this package again: 231c4847eea763c3e364db6e
 
 package cgo
 
@@ -908,6 +908,11 @@ func SnglWin32SetVisible(w HWND, visible bool) {
 // SnglWin32SetWords calls sngl_win32_set_words.
 func SnglWin32SetWords(w HWND, words string) {
 	C.sngl_win32_set_words(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(words))))
+}
+
+// SnglWin32SlotAnchor calls sngl_win32_slot_anchor.
+func SnglWin32SlotAnchor(parent HWND, anchor HWND) HWND {
+	return C.sngl_win32_slot_anchor(parent, anchor)
 }
 
 // SnglWin32Snapshot calls sngl_win32_snapshot.

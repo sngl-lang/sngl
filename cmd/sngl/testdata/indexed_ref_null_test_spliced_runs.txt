@@ -14,10 +14,19 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   1 tests, 0 failures'
 
-# gtk4 refuses the test: #always, a spliced instance with a function of its
-# own, leaves its root carrying neither its id nor its root prop (TODO.md).
-! sngl test --platform=gtk4 --language=go app.sngl
-stderr 'a test reading always, which the placed program holds in no var'
+# #always is a spliced instance with a function of its own, which a placed
+# target holds by the node it renders, carrying its id (expandCall).
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -188,8 +197,48 @@ sha256:2e46bb18de0ae4e66d1d6de38ce27958
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:7c7668ea0eb299acdb601bd3741ad647
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:9486e9ef85a82a8122b41097915ca457
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/main/1 --
 sha256:78406a41b36c8c1062f885beac4e7035
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:8c25f0fdbba3770e64dae079ebf3ca8d
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:6a1c36b98b7eeb221097b9ad6134c2dd
 {
   "results": [
     {

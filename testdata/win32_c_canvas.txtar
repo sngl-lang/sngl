@@ -1325,9 +1325,11 @@ static s___ref_int * s_hits;
 static s___ref_bool * s_on;
 static sngl_list_float s_rs;
 static sngl_list_HWND s___slot0;
+static HWND s___anchor0;
 static bool s___rendering0;
 static bool s___renderAgain0;
 static sngl_list_HWND s___slot1;
+static HWND s___anchor1;
 static sngl_map_string__dot__inst s___inst2_live;
 static s___ref_map_string_instance___canvas0 * s___inst3_live;
 static bool s___rendering1;
@@ -1561,6 +1563,7 @@ static void s___renderSlot0(HWND parent) {
 			if (setjmp(__finally9.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
+					s___anchor0 = sngl_win32_slot_anchor(parent, s___anchor0);
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
@@ -1578,7 +1581,7 @@ static void s___renderSlot0(HWND parent) {
 						sngl_win32_set_scaling(pic__r0, (int)(0));
 						sngl_win32_on_click(pic__r0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda6, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 						sngl_win32_on_paint(pic__r0, (sngl_win32_paint_fn)(void (*)(void))sngl_dispatch_sngl_win32_gfx_p__void, (void *)sngl_heap_copy(&(sngl_fn_sngl_win32_gfx_p__void[]){sngl_fn_sngl_win32_gfx_p__void__keep(((sngl_fn_sngl_win32_gfx_p__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_sngl_win32_gfx_p__void)), (sngl_win32_release)(void (*)(void))sngl_release);
-						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){0});
+						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
 						if (__place0_i < (__place0_prev).len) {
 							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
 						}
@@ -1623,6 +1626,7 @@ static void s___renderSlot1(HWND parent) {
 			if (setjmp(__finally21.at) == 0) {
 				while (s___renderAgain1) {
 					s___renderAgain1 = false;
+					s___anchor1 = sngl_win32_slot_anchor(parent, s___anchor1);
 					sngl_list_HWND __place1_prev = s___slot1;
 					int64_t __place1_i = 0;
 					{
@@ -1655,7 +1659,7 @@ static void s___renderSlot1(HWND parent) {
 						}
 						(*sngl_map_string__dot__inst_slot(&(__inst2_next), __key3)) = __n0;
 						HWND __n0__el = __n0->__root;
-						sngl_opt_HWND __place1_i_ref0 = ((sngl_opt_HWND){0});
+						sngl_opt_HWND __place1_i_ref0 = ((sngl_opt_HWND){true, s___anchor1});
 						if (__place1_i < (__place1_prev).len) {
 							__place1_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place1_prev, __place1_i))});
 						}
@@ -1690,7 +1694,7 @@ static void s___renderSlot1(HWND parent) {
 						}
 						(*sngl_map_string____canvas0__inst_slot(&(__inst3_next), __key4)) = __n1;
 						HWND __n1__el = __n1->__root;
-						sngl_opt_HWND __place1_i_ref1 = ((sngl_opt_HWND){0});
+						sngl_opt_HWND __place1_i_ref1 = ((sngl_opt_HWND){true, s___anchor1});
 						if (__place1_i < (__place1_prev).len) {
 							__place1_i_ref1 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place1_prev, __place1_i))});
 						}
@@ -1929,4 +1933,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:6f986705494b7d4ededf507191b4103d
+pass sha256:bd1bc47037ac23027fc43032009e9b96

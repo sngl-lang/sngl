@@ -3676,6 +3676,30 @@ void sngl_win32_insert(HWND parent, HWND child, HWND before) {
 	adopt(parent, child, at < 0 ? c->nkids : at);
 }
 
+/* A render slot's anchor is a spacer kept hidden among a box's or a
+ * window's children, where it takes no room: its entries go before it, so
+ * a slot emptied and filled again comes back where it was written. The
+ * last one stands while its container holds it; a container of any other
+ * kind -- tabs, whose every child is a page -- keeps none. */
+HWND sngl_win32_slot_anchor(HWND parent, HWND anchor) {
+	parent = host(parent);
+	ctl *c = ctl_of(parent);
+	if (!c || (c->kind != K_BOX && c->kind != K_TOP)) {
+		return NULL;
+	}
+	if (anchor != NULL && kids_index(c, anchor) >= 0) {
+		return anchor;
+	}
+	HWND a = sngl_win32_spacer();
+	ctl *k = ctl_of(a);
+	if (k) {
+		k->off_prop = 1;
+		ShowWindow(a, SW_HIDE);
+	}
+	adopt(parent, a, c->nkids);
+	return a;
+}
+
 void sngl_win32_remove(HWND parent, HWND child) {
 	parent = host(parent);
 	ctl *c = ctl_of(parent);

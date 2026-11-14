@@ -968,17 +968,11 @@ reaches it the same way.
      as on bubbletea (`typed_select_reach_runs.txt`,
      `typed_select_in_built_block_runs.txt`,
      `select_rebuilt_by_its_choice_runs.txt`,
-     `slot_render_reentered_runs.txt`). A test null-testing a spliced
-     instance with functions of its own by its `#id` is refused: its root
-     carries neither the id nor the instance's root prop
-     (`indexed_ref_null_test_spliced_runs.txt`, `#always`). An `effect` or a
+     `slot_render_reentered_runs.txt`). An `effect` or a
      `timer` written in a drawing, or a shape's own owned state, is no shape,
      and a canvas painted through its protocol refuses it rather than placing
      it beside the canvas (`testdata/component_treeless_in_canvas.txtar` and
-     `canvas_for_shape_state.txtar` leave gtk4 out). win32 declares no
-     `#[gen.protocol(anchor)]`, so a render slot emptied and filled again
-     there goes after the nodes written below it, as gtk4's did
-     (`render_slot_keeps_its_place_runs.txt` is gtk4's). A `gir:` package for a
+     `canvas_for_shape_state.txtar` leave gtk4 out). A `gir:` package for a
      GIR the platform has no wrappers for is C's alone: Go calls GTK through
      the wrappers, and a direct call of a class outside them is refused
      (step 3's `direct`).

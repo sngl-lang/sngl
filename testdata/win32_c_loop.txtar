@@ -755,6 +755,7 @@ static sngl_list_string s_names;
 static sngl_string s_picked;
 static s___ref_bool * s_visible__inst0;
 static sngl_list_HWND s___slot0;
+static HWND s___anchor0;
 static sngl_map_string____child0__inst s___inst1_live;
 static bool s___rendering0;
 static bool s___renderAgain0;
@@ -813,6 +814,7 @@ static void s___renderSlot0(HWND parent) {
 			if (setjmp(__finally11.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
+					s___anchor0 = sngl_win32_slot_anchor(parent, s___anchor0);
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
@@ -844,7 +846,7 @@ static void s___renderSlot0(HWND parent) {
 						}
 						(*sngl_map_string____child0__inst_slot(&(__inst1_next), __key2)) = __n3;
 						HWND __n3__el = __n3->__root;
-						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){0});
+						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
 						if (__place0_i < (__place0_prev).len) {
 							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
 						}
@@ -1027,4 +1029,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:55b11d692b80ff313a9a005333646a92
+pass sha256:d600eb75ce950d3318974c386787de74

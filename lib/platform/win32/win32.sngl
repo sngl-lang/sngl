@@ -177,6 +177,18 @@ func _rtAppend(parent ui.node, child ui.node)
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Insert")]
 func _rtInsert(parent ui.node, child ui.node, before ui.node)
 
+#[c.native("sngl_win32_slot_anchor")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SlotAnchor")]
+func _rtSlotAnchor(parent ui.node, anchor ui.node) ui.node
+
+// A render slot's entries go before an anchor the runtime keeps among its
+// container's children, so a slot emptied and filled again comes back in
+// its place.
+#[gen.protocol(anchor)]
+func _anchor(parent ui.node, anchor ui.node) ui.node {
+    return _rtSlotAnchor(parent, anchor)
+}
+
 #[c.native("sngl_win32_remove")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Remove")]
 func _rtRemove(parent ui.node, child ui.node)

@@ -246,6 +246,12 @@ int sngl_win32_choose(HWND w, const unsigned short *label);
 void sngl_win32_append(HWND parent, HWND child);
 void sngl_win32_insert(HWND parent, HWND child, HWND before);
 
+/* sngl_win32_slot_anchor is the hidden child of parent a render slot's
+ * entries go before: anchor, the one it answered last, while parent still
+ * holds it, and a new one otherwise; NULL for a container that keeps none.
+ * gtk4's sngl_slot_anchor is the same. */
+HWND sngl_win32_slot_anchor(HWND parent, HWND anchor);
+
 /* sngl_win32_remove destroys child, which is one of parent's children. */
 void sngl_win32_remove(HWND parent, HWND child);
 

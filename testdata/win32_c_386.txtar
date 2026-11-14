@@ -787,6 +787,7 @@ static bool s___effects0_pending;
 static bool s___effects0_torn;
 static int64_t s___effects0_steps;
 static sngl_list_HWND s___slot0;
+static HWND s___anchor0;
 static bool s___rendering0;
 static bool s___renderAgain0;
 static HWND s___n0;
@@ -900,6 +901,7 @@ static void s___renderSlot0(HWND parent) {
 			if (setjmp(__finally9.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
+					s___anchor0 = sngl_win32_slot_anchor(parent, s___anchor0);
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
@@ -913,7 +915,7 @@ static void s___renderSlot0(HWND parent) {
 						sngl_win32_set_text(__n2, (const unsigned short *)sngl_utf16(SNGL_STR("Big")));
 						sngl_win32_set_look(__n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 						sngl_win32_on_click(__n2, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
-						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){0});
+						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
 						if (__place0_i < (__place0_prev).len) {
 							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
 						}
@@ -1089,4 +1091,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:c2cc958a5bc4eda3506d313f2c0c1557
+pass sha256:1595c7d09609ef3a3b0fd60b3501cc43

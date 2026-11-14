@@ -330,13 +330,16 @@ over, so an `@load` reading its loop variable wrote under the last key
 (`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`).
 
 **A slot re-renders where it was written.** html renders each into a
-`display:contents` wrapper of its own; fyne and gtk4 render into the container
+`display:contents` wrapper of its own; fyne, gtk4 and win32 render into the container
 the slot sits in, so each slot keeps a hidden anchor there
 (`codegen.SlotAnchorField`), added by its first render -- which runs while the
 container is built, at the slot's position -- and inserts its entries before
 it. Appending instead moved a re-rendered slot after every sibling below it
 (`testdata/render_slot_in_place.txtar`); gtk4's runtime keeps the anchor
-(`sngl_slot_anchor`) and inserts before it (`sngl_box_insert_before`). The
+(`sngl_slot_anchor`) and inserts before it (`sngl_box_insert_before`), and
+win32's keeps a hidden spacer, which takes no room, among a box's or a
+window's children (`sngl_win32_slot_anchor`), where it once appended past
+the nodes below the slot (`cmd/sngl/testdata/render_slot_keeps_its_place_runs.txt`). The
 slot's var holds a reference on the anchor, which an instance's teardown gives
 back by asking for it with no box (`destroyHeld`): each row a rebuilt list
 destroyed kept its hidden label alive

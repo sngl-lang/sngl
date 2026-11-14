@@ -1646,7 +1646,7 @@ sha256:7913c9540a5838c56ca3de6ec23aa41c
   ]
 }
 -- testrun/gtk4/go/deepfire.sngl/main/1 --
-sha256:c69eb8a3013eddd29c5d3aa07bfea144
+sha256:3a9a59c5d3a1b6b1e804f438c2ca690f
 {
   "results": [
     {
@@ -1976,7 +1976,7 @@ sha256:69fa338ac3a47580f1a195411947cf2d
   ]
 }
 -- testrun/win32/c/sitecall.sngl/main/1 --
-sha256:356a2f5783eab77f153e8ea144f846cd
+sha256:b884839fc957826015eddbc51f73dfed
 {
   "results": [
     {
