@@ -882,12 +882,23 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 // with any mark is the one recorded; an alias takes no other.
 func (c *checker) cAliasOf(te ast.TypeExpr, typ *ir.Type) *ir.Alias {
 	nt, ok := te.(*ast.NamedType)
-	if ok && typ != nil && (typ.Kind == ir.TypeOption || typ.Kind == ir.TypeRef) && len(nt.TypeArgs) == 1 {
-		nt, ok = nt.TypeArgs[0].(*ast.NamedType)
-	}
-	if !ok || len(nt.TypeArgs) > 0 {
+	if !ok {
 		return nil
 	}
+	if typ != nil && (typ.Kind == ir.TypeOption || typ.Kind == ir.TypeRef) && len(nt.TypeArgs) == 1 {
+		if elem, ok := nt.TypeArgs[0].(*ast.NamedType); ok {
+			if a := c.namedCAlias(elem); a != nil {
+				return a
+			}
+		}
+	}
+	return c.namedCAlias(nt)
+}
+
+// namedCAlias is the alias nt names where a mark says it crosses to C
+// otherwise than as what it names, or nil. One taking type arguments is
+// sngl:x/c's `held`, the one alias a mark leaves generic (Alias.IsCHeld).
+func (c *checker) namedCAlias(nt *ast.NamedType) *ir.Alias {
 	var a *ir.Alias
 	if nt.Package != "" {
 		a = c.qualifiedAlias(nt)
@@ -897,7 +908,10 @@ func (c *checker) cAliasOf(te ast.TypeExpr, typ *ir.Type) *ir.Alias {
 	if a == nil {
 		return nil
 	}
-	if marked, ok := a.Decl.(ast.Attributed); a.C == nil && (!ok || len(marked.MacroAttrs()) == 0) {
+	if marked, ok := a.Decl.(ast.Attributed); a.C == nil && a.Builtin == ir.BuiltinNone && (!ok || len(marked.MacroAttrs()) == 0) {
+		return nil
+	}
+	if len(nt.TypeArgs) > 0 && len(a.WrittenParams) == 0 {
 		return nil
 	}
 	return a

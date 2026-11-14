@@ -1270,7 +1270,13 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func.NativeMethod && len(args) > 0 {
 		return args[0] + "." + methodTail(name) + "(" + strings.Join(args[1:], ", ") + ")", true
 	}
-	return name + "(" + strings.Join(args, ", ") + ")", true
+	call := name + "(" + strings.Join(args, ", ") + ")"
+	// A C function's wrapper answers what a held parameter registered as
+	// it is, and the program asserts it back (CCall).
+	if n.Func.Foreign.Path == ir.CPath && n.Func.ReturnCAlias.IsCHeld() && n.Func.Return != nil && n.Func.Return.Kind == ir.TypeOption {
+		call = gc.heldOut(n.Func.Return, call)
+	}
+	return call, true
 }
 
 // methodTail is the last segment of a qualified native name, which is the

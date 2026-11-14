@@ -907,7 +907,7 @@ sha256:d5110dcb8dcf06b3ada341bfdf1f00dc
   ]
 }
 -- testrun/gtk4/go/widgets.sngl/calendar/2 --
-sha256:82eef16fdb2c5ff13a877a3488bfafc2
+sha256:2915a976cc0f68c1215587672190830e
 {
   "results": [
     {
@@ -955,7 +955,7 @@ sha256:658ec882dba6305ce2240931ced98940
   ]
 }
 -- testrun/gtk4/go/widgets.sngl/form/2 --
-sha256:a70252d5368708d9732e541494c54bd4
+sha256:a4b662387f8b94bbad47f52e8751a2ca
 {
   "results": [
     {

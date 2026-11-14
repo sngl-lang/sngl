@@ -96,17 +96,19 @@ func callbackCType(t *ir.Type) *ir.CType {
 
 // CallbacksSource is the Go file exporting a dispatcher for each of sigs, in
 // package pkgName, its preamble including what links does so a pointer
-// type's C name resolves. Nil where there is no callback. cSpelled says the
+// type's C name resolves, and the registry a closure or a value C holds
+// (sngl:x/c's held) is found through. Nil where there is no callback and,
+// held false, no held value. cSpelled says the
 // closure a C type crosses into takes it as C spells it: in a wrapper package
 // (sngl tool cgogen), whose own type for it is an alias of that and which
 // cannot name itself, and in a program calling C directly, which spells every
 // C type as cgo does.
-func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, cSpelled bool) []byte {
+func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, held, cSpelled bool) []byte {
 	byName := map[string]*ir.FuncSig{}
 	for _, s := range sigs {
 		byName[callbackName(s)] = s
 	}
-	if len(byName) == 0 {
+	if len(byName) == 0 && !held {
 		return nil
 	}
 	names := make([]string, 0, len(byName))
@@ -159,6 +161,7 @@ func snglClosure(ctx unsafe.Pointer) any {
 // snglRelease is what C calls with a context once it is done with the
 // callback, where the function takes a #[c.release]: GLib's
 // GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
+// A value C holds is registered as a closure is, and let go the same way.
 //
 //export snglRelease
 func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglContextBase) }

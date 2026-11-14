@@ -263,13 +263,19 @@ const (
 	// callback's, and Operand is the placeholder the parameter defaults to.
 	CConvertContext
 	// CConvertRelease is the function a `#[c.release]` parameter is handed,
-	// which C calls with the context to let the closure go. Operand is the
+	// which C calls with the context to let the closure go, or with the
+	// pointer a held value crosses as to let the value go. Operand is the
 	// parameter's placeholder.
 	CConvertRelease
 	// CConvertStruct is a C struct (StructDef.IsCStruct) written field by
 	// field as the C struct To names, each field as its alias or the scalar
 	// it is.
 	CConvertStruct
+	// CConvertHeld is a SNGL value handed to C as the `void *` a parameter
+	// written `c.held[T]` takes: a copy of Operand the program keeps until C
+	// calls the function the call's `#[c.release]` parameter is handed.
+	// Type is the value's type, T.
+	CConvertHeld
 )
 
 // CConvert is a value converted to a C type, the conversion a call of a C

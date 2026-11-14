@@ -280,7 +280,8 @@ func markCRelease(m *mark) error {
 }
 
 // markCType implements sngl:x/c's #[type]: the C function-pointer type a
-// callback or a release parameter of a #[c.native] function is.
+// callback or a release parameter of a #[c.native] function is, or the
+// pointer typedef a held parameter is.
 func markCType(m *mark) error {
 	fp, ok := m.sym.(funcParam)
 	if !ok || fp.bodied {

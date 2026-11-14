@@ -639,6 +639,7 @@ func snglClosure(ctx unsafe.Pointer) any {
 // snglRelease is what C calls with a context once it is done with the
 // callback, where the function takes a #[c.release]: GLib's
 // GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
+// A value C holds is registered as a closure is, and let go the same way.
 //
 //export snglRelease
 func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglContextBase) }
@@ -681,4 +682,4 @@ func snglCallback_int__void(a0 C.int, ctx unsafe.Pointer) {
 // snglCallback_int__voidPtr is snglCallback_int__void as the function pointer C calls.
 func snglCallback_int__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_int__void) }
 -- run/go/bubbletea --
-pass sha256:ac1d5d830dd437b33e46582a26a224a8
+pass sha256:a4a2b3a47a11f97172e903a54871f4dc

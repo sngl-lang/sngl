@@ -136,15 +136,37 @@ func context() ir.Macro
 // function C calls, with the context, once it is done with the callback:
 // GLib's `GClosureNotify` and `GDestroyNotify`. The compiler passes one that
 // lets the closure go, so the callback is held until then, and no caller
-// passes it.
+// passes it. A function taking a `held` value is handed the one letting that
+// go instead.
 func release() ir.Macro
+
+// A SNGL value C holds: what GLib's `g_object_set_data_full` keeps on an
+// object, or Win32's `SetWindowLongPtr` on a window. It is a `T` wherever it
+// is written; only a call of a `#[native]` function reads it.
+//
+// A parameter written `held[T]` is handed a `T`, which crosses as a `void *`
+// to a copy of it the program keeps: the function takes a `#[release]`
+// parameter, and the copy is kept until C calls the function the compiler
+// hands it there. A result written `option[held[T]]` is the value a held
+// parameter handed C, read back from the `void *` C answers, and `null`
+// where C answers NULL. C cannot say what it points to, so a pointer to
+// anything else is a program's bug no compiler sees, as a cast in C is.
+//
+// A copy is a value: writing to what a call answers changes nothing C holds,
+// so a program changes what it holds by handing C another, which a function
+// such as GLib's lets the old one go for. An owned `T` is refused, since what
+// C holds no lifetime of the program's releases.
+#[marks.builtin("cHeld")]
+struct held[T any] = T
 
 // Names the C type a `#[native]` function's callback or `#[release]`
 // parameter is: the function-pointer typedef its header declares, as GLib's
 // `GCallback` and `GClosureNotify` are. A language passing a function of its
 // own writes it at that type, which the parameter's SNGL type does not say;
 // C refuses a function of another type. Go needs none, since cgo takes any
-// function there.
+// function there. On a `held` parameter it names the pointer typedef the C
+// function takes, as GLib's `gpointer` is, which cgo holds apart from
+// `void *`.
 func type(name string) ir.Macro
 
 #[native("void *", cast)]

@@ -475,6 +475,12 @@ func markBuiltin(m *mark) error {
 		}
 		d.Builtin = kind
 		return nil
+	case *ir.Alias:
+		if kind != ir.BuiltinCHeld {
+			return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
+		}
+		d.Builtin = kind
+		return nil
 	case *ir.Context:
 		if kind != ir.BuiltinHTTPAnswer {
 			return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))

@@ -36,7 +36,15 @@ type Alias struct {
 	// C function's argument written with it is converted to: `UINT` for
 	// `#[c.native("UINT")] struct UINT = int`.
 	C *CType `json:",omitempty"`
+	// Builtin is the role a `#[builtin]` mark gives the alias:
+	// BuiltinCHeld, sngl:x/c's `held`, the one an alias takes.
+	Builtin BuiltinKind `json:",omitempty"`
 }
+
+// IsCHeld reports whether a is sngl:x/c's `held`: a SNGL value a C function
+// holds as a `void *`, which a parameter or result written with it crosses
+// as.
+func (a *Alias) IsCHeld() bool { return a != nil && a.Builtin == BuiltinCHeld }
 
 func (a *Alias) SymName() string  { return a.Name }
 func (a *Alias) SymType() *Type   { return nil }

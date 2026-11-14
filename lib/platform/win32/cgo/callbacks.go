@@ -47,6 +47,7 @@ func snglClosure(ctx unsafe.Pointer) any {
 // snglRelease is what C calls with a context once it is done with the
 // callback, where the function takes a #[c.release]: GLib's
 // GClosureNotify, which hands the GClosure after it, and GDestroyNotify.
+// A value C holds is registered as a closure is, and let go the same way.
 //
 //export snglRelease
 func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglContextBase) }

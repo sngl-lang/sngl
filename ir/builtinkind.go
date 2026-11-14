@@ -167,6 +167,11 @@ const (
 	BuiltinCInt    BuiltinKind = "cInt"
 	BuiltinCDouble BuiltinKind = "cDouble"
 	BuiltinCBool   BuiltinKind = "cBool"
+	// CHeld is `sngl:x/c`'s `held`: an alias of its one type parameter, a
+	// SNGL value a C function holds as a `void *` and hands back. It marks
+	// the alias, which a C function's parameter or result written with it
+	// records (Param.CAlias, Func.ReturnCAlias).
+	BuiltinCHeld BuiltinKind = "cHeld"
 	// Text is sngl:builtin's `_text`, a value's text as the target writes it,
 	// which the checker makes an ir.Conversion: the primitive each builtin
 	// type's format is written over, since `string(x)` is `x.format()`.
@@ -335,7 +340,7 @@ func AllBuiltinKinds() []BuiltinKind {
 		BuiltinErrorBoundary, BuiltinContext, BuiltinEffect,
 		BuiltinNavStack, BuiltinNavPage, BuiltinNavLink, BuiltinApplication,
 		BuiltinOutput, BuiltinGenInputs, BuiltinGenScheme, BuiltinCLink, BuiltinGenEmit, BuiltinGenNode, BuiltinGenRun, BuiltinGenBuild,
-		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinText,
+		BuiltinCString, BuiltinCInt, BuiltinCDouble, BuiltinCBool, BuiltinCHeld, BuiltinText,
 		BuiltinFormatArgs, BuiltinFormatWith, BuiltinAppendFormatWith,
 		BuiltinHTTPAnswer, BuiltinHTTPClosed,
 		BuiltinNull, BuiltinTargetPlatform, BuiltinTargetLanguage,
@@ -346,6 +351,6 @@ func AllBuiltinKinds() []BuiltinKind {
 // not an unrecognized string).
 func (b BuiltinKind) Valid() bool {
 	return b == BuiltinAny || b.IsConstraint() || b == BuiltinApplication || b.IsPrimitive() || b.IsStringRepr() || b.IsUnit() || b.IsGeneric() ||
-		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText ||
+		b.IsSlotBound() || b.IsFamilyRole() || b.IsNode() || b.IsDirective() || b.IsEmitter() || b.IsCommand() || b.IsCMarshal() || b.IsConst() || b == BuiltinText || b == BuiltinCHeld ||
 		b == BuiltinFormatArgs || b == BuiltinFormatWith || b == BuiltinAppendFormatWith || b == BuiltinHTTPAnswer || b == BuiltinHTTPClosed
 }

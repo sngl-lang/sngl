@@ -1,0 +1,116 @@
+A value C holds (sngl:x/c's held): a call hands C a pointer to a copy kept
+off the turn's arena, deep, a closure's environment included, which C gives
+back through the release the call hands it. A call answering
+`option[c.held[T]]` reads it back, null where C holds nothing. main.c holds
+one value per key and lets the old one go as a new one replaces it, as
+GLib's g_object_set_data_full does; once it has let go of every one, no
+block is kept, and the sanitized build reads none it freed.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+struct State {
+    title string
+    tags  list[string]
+    shown func() int
+}
+
+#[c.native("test_hold")]
+func hold(key int, s c.held[State], #[c.type("test_release")] #[c.release] rel c.pointer)
+
+#[c.native("test_held")]
+func held(key int) option[c.held[State]]
+
+func put(key int, title string) {
+    var n = key * 10
+    hold(key, State{title=title, tags=["a", "{title}!"], shown=func() => n + 1})
+}
+
+func describe(key int) string {
+    var s = held(key)
+    if s != null {
+        return "{s.title} {s.tags[1]} {s.shown()}"
+    }
+    return "none"
+}
+
+func retitle(key int, title string) {
+    var s = held(key)
+    if s != null {
+        var t = s
+        t.title = title
+        hold(key, t)
+    }
+}
+-- main.c --
+#include <stdio.h>
+
+typedef void (*test_release)(void *);
+
+static struct {
+	void *data;
+	test_release release;
+} slots[4];
+
+static void test_hold(int key, void *data, test_release release) {
+	void *old = slots[key].data;
+	test_release let = slots[key].release;
+	slots[key].data = data;
+	slots[key].release = release;
+	if (old != NULL) {
+		let(old);
+	}
+}
+
+static void *test_held(int key) {
+	return slots[key].data;
+}
+
+static void test_drop(int key) {
+	if (slots[key].data != NULL) {
+		slots[key].release(slots[key].data);
+		slots[key].data = NULL;
+	}
+}
+
+#include "program.c"
+
+static void show(int key) {
+	sngl_turn_enter();
+	sngl_string s = s_describe(key);
+	printf("%.*s\n", (int)s.len, s.ptr);
+	sngl_turn_leave();
+}
+
+int main(void) {
+	sngl_turn_enter();
+	s_put(1, SNGL_STR("one"));
+	s_put(2, SNGL_STR("two"));
+	sngl_turn_leave();
+	show(1);
+	show(2);
+	show(3);
+	sngl_turn_enter();
+	s_retitle(1, SNGL_STR("uno"));
+	s_put(2, SNGL_STR("dos"));
+	sngl_turn_leave();
+	show(1);
+	show(2);
+	sngl_turn_enter();
+	test_drop(1);
+	test_drop(2);
+	sngl_turn_leave();
+	show(1);
+	printf("%lld kept\n", (long long)sngl_kept_blocks());
+	return 0;
+}
+-- want --
+one one! 11
+two two! 21
+none
+uno one! 11
+dos dos! 21
+none
+0 kept

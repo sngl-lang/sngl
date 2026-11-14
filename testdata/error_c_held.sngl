@@ -1,0 +1,53 @@
+// A C function holds a SNGL value through sngl:x/c's `held`: a parameter
+// written `c.held[T]` hands C a copy the program keeps until C calls the
+// function its #[c.release] parameter is handed, and a result written
+// `option[c.held[T]]` reads one back, null where C answers NULL.
+import c "sngl:x/c"
+import macro "sngl:macro"
+
+c.link(include="held.h")
+
+struct State {
+    title string
+    shown func()
+}
+
+#[macro.owned(close)]
+struct file {
+    fd int
+}
+
+func close(f file) {
+}
+
+#[c.native("good_set")]
+func goodSet(key string, s c.held[State], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("good_get")]
+func goodGet(key string) option[c.held[State]]
+
+#[c.native("no_release")]
+func noRelease(s c.held[State]) // ERROR(check) "parameter \"s\" is a copy C holds until it calls the function a #[c.release] parameter is handed, and noRelease marks none"
+
+#[c.native("optional")]
+func optional(s option[c.held[State]], #[c.release] rel c.pointer) // ERROR(check) "parameter \"s\" is an option of a c.held value"
+
+#[c.native("two_held")]
+func twoHeld(s c.held[State], t c.held[State], #[c.release] rel c.pointer) // ERROR(check) "C function \"two_held\" takes a second c.held value, \"t\""
+
+#[c.native("with_callback")]
+func withCallback(s c.held[State], f func(), #[c.context] data c.pointer, #[c.release] rel c.pointer) // ERROR(check) "C function \"with_callback\" takes a c.held value, \"s\", and a callback, \"f\""
+
+#[c.native("owned_set")]
+func ownedSet(f c.held[file], #[c.release] rel c.pointer) // ERROR(check) "parameter \"f\" holds a file, which is owned"
+
+#[c.native("bare_get")]
+func bareGet() c.held[State] // ERROR(check) "C function \"bare_get\" answers a c.held value, and answers NULL where it holds none: declare it option[c.held[State]]"
+
+#[c.native("owned_get")]
+func ownedGet() option[c.held[file]] // ERROR(check) "C function \"owned_get\" answers a held file, which is owned"
+
+// Anywhere but a C function's parameter or result, it is what it names.
+func titleOf(s c.held[State]) => s.title
+
+var shown c.held[int] = 3

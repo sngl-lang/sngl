@@ -656,6 +656,35 @@ func TargetPackages(pkg *Package) []*Package {
 // wrapper calls, whose package holds its dispatchers.
 func ReachedCCallbacks(pkg *Package, skip func(*Func) bool) []*FuncSig {
 	var out []*FuncSig
+	reachedCFuncs(pkg, skip, func(fn *Func) {
+		if !slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CContext }) {
+			return
+		}
+		for _, p := range fn.Params {
+			if t := p.Type; !p.CContext && t != nil && t.Kind == TypeFunc && t.Sig != nil &&
+				!slices.ContainsFunc(out, func(s *FuncSig) bool { return FuncOf(s.Params, s.Return).Equal(t) }) {
+				out = append(out, t.Sig)
+			}
+		}
+	})
+	return out
+}
+
+// ReachesCHeld reports whether a C function ReachedCCallbacks would look at
+// takes or answers a value C holds (sngl:x/c's held), which a translator
+// registers as it registers a callback's closure.
+func ReachesCHeld(pkg *Package, skip func(*Func) bool) bool {
+	held := false
+	reachedCFuncs(pkg, skip, func(fn *Func) {
+		held = held || fn.ReturnCAlias.IsCHeld() || slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CAlias.IsCHeld() })
+	})
+	return held
+}
+
+// reachedCFuncs calls each with every C function, conversions aside, that
+// pkg, a package it imports or a target package of it declares, and skip
+// does not report.
+func reachedCFuncs(pkg *Package, skip func(*Func) bool, each func(*Func)) {
 	seen := map[*Package]bool{}
 	var walk func(p *Package)
 	walk = func(p *Package) {
@@ -664,15 +693,10 @@ func ReachedCCallbacks(pkg *Package, skip func(*Func) bool) []*FuncSig {
 		}
 		seen[p] = true
 		for _, fn := range p.Funcs {
-			if fn.Foreign.Path != CPath || fn.IsCCast() || skip != nil && skip(fn) || !slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CContext }) {
+			if fn.Foreign.Path != CPath || fn.IsCCast() || skip != nil && skip(fn) {
 				continue
 			}
-			for _, p := range fn.Params {
-				if t := p.Type; !p.CContext && t != nil && t.Kind == TypeFunc && t.Sig != nil &&
-					!slices.ContainsFunc(out, func(s *FuncSig) bool { return FuncOf(s.Params, s.Return).Equal(t) }) {
-					out = append(out, t.Sig)
-				}
-			}
+			each(fn)
 		}
 		for _, imp := range p.Imports {
 			walk(imp.Pkg)
@@ -682,7 +706,6 @@ func ReachedCCallbacks(pkg *Package, skip func(*Func) bool) []*FuncSig {
 	for _, p := range TargetPackages(pkg) {
 		walk(p)
 	}
-	return out
 }
 
 func (i *Import) SymName() string { return i.Alias }
@@ -877,7 +900,8 @@ type Func struct {
 	Return         *Type
 	// ReturnCAlias is the `#[c.native]` alias the return type was written as
 	// (Param.CAlias's rule): what a C function hands back crosses as the C
-	// type the alias spells.
+	// type the alias spells, or, for sngl:x/c's `held` written as an
+	// option's element, as the value a held parameter handed C.
 	ReturnCAlias *Alias `json:",omitempty"`
 	Block        []Stmt // type-checked statements (expression bodies become a single Return)
 	// PlatformOverrides holds the body each target implements this function

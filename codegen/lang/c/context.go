@@ -1165,6 +1165,11 @@ func (c *Context) CConvert(x *ir.CConvert) string {
 		return "(" + x.To.String() + ")sngl_utf16(" + operand + ")"
 	case ir.CConvertStruct:
 		return c.cStruct(x.Type) + "(" + operand + ")"
+	case ir.CConvertHeld:
+		// Kept as it crosses, deep, as a holder keeps what it stores: C
+		// holds it past the turn, until it calls the release CCall hands
+		// it (heldRelease).
+		return c.heapCopy(c.typeName(x.Type), c.keep(x.Type, operand))
 	}
 	return c.fail("crossing to %s", x.To)
 }
@@ -1245,9 +1250,19 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 			free = heap
 		}
 	}
+	if held := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CAlias.IsCHeld() }); held >= 0 && rel >= 0 && off >= 0 {
+		if fn.Params[rel].CFuncType == nil {
+			return c.fail("calling %s, whose release names no C type (#[c.type])", fn.Foreign.Name)
+		}
+		args = slices.Clone(args)
+		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(fn.Params[held].Type))
+	}
 	call := fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
 	if free != "" {
 		return c.fail("a callback %s holds for the call alone", fn.Foreign.Name)
+	}
+	if fn.ReturnCAlias.IsCHeld() && fn.Return != nil && fn.Return.Kind == ir.TypeOption {
+		return c.heldRead(fn.Return) + "(" + call + ")"
 	}
 	if fn.Return != nil {
 		switch fn.Return.Kind {
@@ -1265,6 +1280,35 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		}
 	}
 	return call
+}
+
+// heldRelease is the function C calls with the pointer a held value of t
+// crossed as (ir.CConvertHeld), once it lets the value go: it drops what the
+// copy kept, which the turn gives back once it ends, and frees the copy.
+func (c *Context) heldRelease(t *ir.Type) string {
+	name := "sngl_held_release_" + typeToken(t)
+	tn := c.typeName(t)
+	body := "\tfree(p);\n"
+	if drop := c.drop(t, "(*("+tn+" *)p)"); drop != "" {
+		body = "\t" + drop + "\n" + body
+	}
+	c.file.helper(name, "static void "+name+"(void *p) {\n"+body+"}\n")
+	return name
+}
+
+// heldRead is the function reading back what a C function answering opt,
+// an `option[c.held[T]]`, answers: the T the pointer is to, which C holds
+// and the turn reads, or null for NULL.
+func (c *Context) heldRead(opt *ir.Type) string {
+	t := opt.Elems[0]
+	name := "sngl_held_" + typeToken(t)
+	tn, on := c.typeName(t), c.typeName(opt)
+	body := "\t" + on + " o = {0};\n\tif (p != NULL) {\n\t\to.ok = true;\n\t\to.value = *(" + tn + " *)p;\n\t}\n\treturn o;\n"
+	if c.ptrOption(opt) {
+		body = "\treturn p != NULL ? *(" + tn + " *)p : NULL;\n"
+	}
+	c.file.helper(name, "static "+on+" "+name+"(void *p) {\n"+body+"}\n")
+	return name
 }
 
 // fnPointer is f, a function the file defines, cast to the C type parameter

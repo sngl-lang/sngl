@@ -37,6 +37,12 @@ func (c *checker) registerAlias(decl ast.Stmt, keyword, name string, pos ast.Pos
 				c.resolveAlias(a)
 				c.checkCAlias(a, attrs[0].Pos)
 			}
+			if a.IsCHeld() {
+				c.resolveAlias(a)
+				if len(a.TypeParams) != 1 || a.Type == nil || a.Type.Kind != ir.TypeTypeParam || a.Type.ParamName != a.TypeParams[0].Name {
+					c.error(attrs[0].Pos, "#[builtin(%q)] marks an alias of its one type parameter, `struct %s[T any] = T`", string(ir.BuiltinCHeld), a.Name)
+				}
+			}
 		})
 	}
 	return a
@@ -66,7 +72,8 @@ func (c *checker) checkCAlias(a *ir.Alias, pos ast.Pos) {
 // saying something of its own is refused, but a C function's parameter
 // written with one crosses as the C typedef `#[c.native]` names (Param.CAlias).
 var aliasMarks = map[markKey]bool{
-	{"x/c", "native"}: true,
+	{"x/c", "native"}:             true,
+	{"internal/marks", "builtin"}: true,
 }
 
 // registerAliasDecl registers stmt where it is an alias, reporting whether it

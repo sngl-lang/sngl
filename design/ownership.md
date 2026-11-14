@@ -1005,6 +1005,22 @@ each call and each row a rebuilt list made kept its handlers' captures;
 `c_record_gives_back_runs.txt`'s `closure.sngl` counts the kept blocks, and
 `codegen/lang/c`'s sanitized `TestRun` checks leaks.
 
+**A value C holds is kept as it crosses, and dropped when C lets it go.** A
+`#[c.native]` function's parameter written `c.held[T]` (`sngl:x/c`) hands C
+a pointer to a heap copy of the argument, kept deep as a holder keeps a
+store (`ir.CConvertHeld`); the function's `#[c.release]` parameter is handed
+`sngl_held_release_T`, which drops what the copy kept, at the turn's end as
+any drop is, and frees the copy. One answering `option[c.held[T]]` reads the
+copy back (`sngl_held_T`), a shallow read the turn holds as it holds what it
+reads from any holder: a later store keeps its own, and a drop C makes
+during the turn waits for the turn's end. An owned `T` is refused at the
+check, since no lifetime of the compiler's reaches what C holds; that is
+the one boundary the lifetimes above stop at. Go registers the value in
+`cbind`'s registry as it registers a callback's closure, and purego through
+`cload.Hold`. `codegen/lang/c`'s `held` run counts the kept blocks after C
+lets every value go, sanitized (`testdata/c_held_value.txtar`,
+`testdata/c_held_purego.txtar`).
+
 **A var a closure writes is a counted box its holders share.** NoRef boxes
 such a var -- a function's local, a record's prop a handler of its body
 writes -- and marks the box `ir.StructDef.Counted`. C makes it a counted

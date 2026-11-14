@@ -51,7 +51,14 @@ var puregoScalars = map[string]string{
 
 // puregoType is the Go type a value of t crosses purego as, alias naming the
 // C type a declaration writes for it, or why it cannot cross.
+//
+// A value C holds (sngl:x/c's held) crosses as the uintptr cload.Hold
+// answers, which is no address, and a release as the C function
+// cload.Release answers: puregoParamType.
 func puregoType(t *ir.Type, alias *ir.Alias) (string, error) {
+	if alias.IsCHeld() {
+		return "uintptr", nil
+	}
 	if alias != nil && alias.C != nil {
 		if alias.C.Ptr == 0 {
 			if g, ok := puregoScalars[alias.C.Name]; ok {
@@ -85,6 +92,15 @@ func puregoType(t *ir.Type, alias *ir.Alias) (string, error) {
 	return "", fmt.Errorf("purego crosses no %s", t)
 }
 
+// puregoParamType is puregoType for p, a C function's parameter: a release
+// is the uintptr purego's callbacks are.
+func puregoParamType(p *ir.Param) (string, error) {
+	if p.CRelease {
+		return "uintptr", nil
+	}
+	return puregoType(p.Type, p.CAlias)
+}
+
 // puregoVar is the func variable a purego build calls fn through.
 func puregoVar(fn *ir.Func) string { return "snglC_" + fn.Foreign.Name }
 
@@ -97,9 +113,14 @@ func (gc *GoIRContext) puregoCall(fn *ir.Func, args []string) string {
 		if off+i < 0 {
 			continue
 		}
-		g, _ := puregoType(p.Type, p.CAlias)
+		g, _ := puregoParamType(p)
 		a := args[off+i]
 		switch {
+		case p.CAlias.IsCHeld():
+			gc.RequireImport(cloadPath)
+			a = "cload.Hold(" + a + ")"
+		case p.CRelease:
+			a = "cload.Release()"
 		case p.Type.Kind == ir.TypeBool:
 			a = "func() int32 { if " + a + " { return 1 }; return 0 }()"
 		case g != "string" && g != "unsafe.Pointer":
@@ -118,6 +139,11 @@ func (gc *GoIRContext) puregoCall(fn *ir.Func, args []string) string {
 		return "float64(" + call + ")"
 	case ir.TypeBool:
 		return "(" + call + " != 0)"
+	case ir.TypeOption:
+		if fn.ReturnCAlias.IsCHeld() {
+			gc.RequireImport(cloadPath)
+			return gc.heldOut(fn.Return, "cload.Held("+call+")")
+		}
 	}
 	return call
 }
@@ -147,7 +173,7 @@ func puregoSources(pkg *ir.Package, generated map[string][]byte) (map[string][]b
 		}
 		var params []string
 		for _, p := range fn.Params {
-			g, err := puregoType(p.Type, p.CAlias)
+			g, err := puregoParamType(p)
 			if err != nil {
 				return nil, fmt.Errorf("%s takes %s: %w", fn.Foreign.Name, p.Name, err)
 			}

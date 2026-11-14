@@ -581,8 +581,11 @@ func (c *checker) checkCCallbacks() {
 			}
 			return fn.AST.Pos
 		}
-		var callbacks, contexts, releases []int
+		var callbacks, contexts, releases, helds []int
 		for i, p := range fn.Params {
+			if p.CAlias.IsCHeld() {
+				helds = append(helds, i)
+			}
 			switch {
 			case p.CContext:
 				contexts = append(contexts, i)
@@ -601,13 +604,14 @@ func (c *checker) checkCCallbacks() {
 			}
 			continue
 		}
+		c.checkCHeld(fn, pos, helds, releases, callbacks)
 		for _, i := range releases {
 			p := fn.Params[i]
 			switch {
 			case ir.CTypeOf(p.Type) == nil || ir.CStructOf(p.Type) != nil:
 				c.error(pos(i), "parameter %q takes a C function: declare it c.pointer, or a #[c.native] struct naming the C function's own spelling of one, not %s", p.Name, p.Type)
-			case len(contexts) == 0:
-				c.error(pos(i), "parameter %q releases a callback's context, and %s marks no #[c.context]", p.Name, fn.Name)
+			case len(contexts) == 0 && len(helds) == 0:
+				c.error(pos(i), "parameter %q releases a callback's context, and %s marks no #[c.context] (nor takes a c.held value)", p.Name, fn.Name)
 			case i != releases[0]:
 				c.error(pos(i), "C function %q marks a second release, %q, and C releases its one context once", fn.Foreign.Name, p.Name)
 			}
@@ -629,7 +633,7 @@ func (c *checker) checkCCallbacks() {
 		for i, p := range fn.Params {
 			// NULL is a pointer's: an option crosses as one where its alias
 			// is a string, and a number or bool has none to be.
-			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
+			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && !p.CAlias.IsCHeld() && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
 				c.error(pos(i), "parameter %q is an option of %s, and C has no NULL %s: an option crosses to C as a pointer, a string's", p.Name, p.CAlias.Name, p.CAlias.Name)
 			}
 			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) {
@@ -659,6 +663,44 @@ func (c *checker) checkCCallbacks() {
 			if j := i - skip; j >= 0 && j < len(fn.AST.Params.Params) {
 				c.checkCallbackAliases(p.Name, fn.AST.Params.Params[j].Type, pos(i))
 			}
+		}
+	}
+}
+
+// checkCHeld judges what fn, a C function, says of sngl:x/c's `held`: a
+// parameter written `c.held[T]` hands C a copy of a T the program keeps
+// until C calls the function its `#[c.release]` parameter is handed, so the
+// function marks one, takes no callback that release would be ambiguous
+// with, and holds one value; and a result written with it is
+// `option[c.held[T]]`, since C answers NULL where it holds nothing. A T that
+// is owned is refused either way: what C holds, no lifetime of the
+// compiler's releases.
+func (c *checker) checkCHeld(fn *ir.Func, pos func(int) ast.Pos, helds, releases, callbacks []int) {
+	for k, i := range helds {
+		p := fn.Params[i]
+		switch {
+		case p.Type != nil && p.Type.Kind == ir.TypeOption:
+			c.error(pos(i), "parameter %q is an option of a c.held value, which crosses as the pointer to a copy C holds: declare a C function taking an option[c.pointer] for NULL", p.Name)
+		case ir.Owned(p.Type):
+			c.error(pos(i), "parameter %q holds a %s, which is owned, and what C holds no lifetime of the program's releases", p.Name, p.Type)
+		case k > 0:
+			c.error(pos(i), "C function %q takes a second c.held value, %q, and releases one", fn.Foreign.Name, p.Name)
+		case len(callbacks) > 0:
+			c.error(pos(i), "C function %q takes a c.held value, %q, and a callback, %q, and its one release would let go of one of them", fn.Foreign.Name, p.Name, fn.Params[callbacks[0]].Name)
+		case len(releases) == 0:
+			c.error(pos(i), "parameter %q is a copy C holds until it calls the function a #[c.release] parameter is handed, and %s marks none", p.Name, fn.Name)
+		}
+	}
+	if fn.ReturnCAlias.IsCHeld() {
+		at := fn.AST.Pos
+		if nt, ok := fn.AST.ReturnType.(*ast.NamedType); ok {
+			at = nt.Pos
+		}
+		switch {
+		case fn.Return == nil || fn.Return.Kind != ir.TypeOption:
+			c.error(at, "C function %q answers a c.held value, and answers NULL where it holds none: declare it option[c.held[%s]]", fn.Foreign.Name, fn.Return)
+		case ir.Owned(fn.Return.Elems[0]):
+			c.error(at, "C function %q answers a held %s, which is owned, and what C holds no lifetime of the program's releases", fn.Foreign.Name, fn.Return.Elems[0])
 		}
 	}
 }

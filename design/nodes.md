@@ -356,7 +356,27 @@ declaration itself. Two things about the name that are easy to get wrong:
   (`testdata/c_callback_argument.txtar`, `error_c_callback.sngl`,
   `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4
   connects every handler through its runtime's `sngl_signal_connect` this
-  way. The C files a
+  way.
+  A value C holds -- what `g_object_set_data_full` keeps on a widget -- is
+  `sngl:x/c`'s `held`, a generic alias of its one parameter marked
+  `#[builtin("cHeld")]` (`ir.Alias.IsCHeld`). `cAliasOf` records it as
+  `Param.CAlias` or `Func.ReturnCAlias` as it records `c.utf16`, so the
+  parameter's type is the `T` itself; it is the one marked alias taking type
+  arguments. `CMarshal` makes the argument a `CConvertHeld`, and the
+  function's `#[c.release]` parameter, which a held value needs in place of
+  a callback's context (`checkCHeld`), is handed what lets the value go:
+  the C target's per-type release, Go's `snglRelease`, which the registry's
+  index the value is held at shares with a callback's closure. A held
+  parameter names its pointer typedef with `#[c.type]` where cgo needs it
+  spelled (`gpointer`). A result is `option[c.held[T]]`, since C answers
+  NULL where it holds nothing, read back as the `T` the pointer finds, and
+  `null` in Go where the registry holds nothing there. A Go wrapper (`sngl tool cgogen`) cannot name the program's `T`, so it takes and answers
+  `any` and the program's call asserts it back (`heldOut`). purego takes
+  the value's index as a `uintptr` (`cload.Hold`) and the one release
+  callback cload makes. `CMarshal` writes a compiler-passed argument under
+  purego too, which it had skipped with every other conversion
+  (`testdata/error_c_held.sngl`, `c_held_value.txtar`,
+  `c_held_purego.txtar`, `codegen/lang/c`'s `held` run). The C files a
   language adds -- a link's sources, the dispatchers -- are written by
   `codegen.Generate`, which a build, a test's launch and a dump all call:
   `sngl test` called the platform alone and built without them.

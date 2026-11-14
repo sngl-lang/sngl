@@ -206,6 +206,13 @@ func marshalSpliced(e ir.Expr, language string) (ir.Expr, error) {
 // called with the receiver as argument zero, which no parameter declares.
 func (m *cMarshal) call(c *ir.Call) error {
 	fn := c.Func
+	// purego takes Go's own values, but a parameter the compiler passes is
+	// still the call's to write: a held value's release.
+	if m.language == cPurego && fn.Foreign.Path == "C" && !fn.IsCCast() && !m.done[c] {
+		m.done[c] = true
+		insertCContext(c)
+		return nil
+	}
 	if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() || m.wrapped(&fn.Foreign) || m.done[c] {
 		return nil
 	}
@@ -223,6 +230,14 @@ func (m *cMarshal) call(c *ir.Call) error {
 		return nil
 	}
 	for i, p := range fn.Params {
+		// A held value crosses as the pointer to the copy the translator
+		// keeps, whatever T is (sngl:x/c's held).
+		if arg := &c.Args[off+i]; p.CAlias.IsCHeld() {
+			if !isCConvert(arg.Value) {
+				arg.Value = &ir.CConvert{Kind: ir.CConvertHeld, To: &ir.CType{Name: "void", Ptr: 1}, Operand: arg.Value, Type: p.Type}
+			}
+			continue
+		}
 		if arg := &c.Args[off+i]; p.CompilerPassed() || p.Type != nil && p.Type.Kind == ir.TypeFunc {
 			if _, done := arg.Value.(*ir.CConvert); !done {
 				arg.Value = callbackArg(p, arg.Value)
@@ -316,7 +331,8 @@ func insertCContext(c *ir.Call) {
 
 // callbackArg is v, the argument for p, as it crosses to C: a closure as the
 // callback a C function pointer calls, a context as the `void *` the
-// translator writes from it, and a release as its function letting it go.
+// translator writes from it, and a release as its function letting it go,
+// or letting go the held value the call hands over.
 func callbackArg(p *ir.Param, v ir.Expr) ir.Expr {
 	switch {
 	case p.CContext:

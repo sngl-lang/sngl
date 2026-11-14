@@ -61,6 +61,9 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 		return gc.EvalExpr(x.Operand)
 	case ir.CConvertContext, ir.CConvertRelease:
 		return "nil"
+	case ir.CConvertHeld:
+		// The value: CCall registers it, and hands C the context finding it.
+		return gc.EvalExpr(x.Operand)
 	case ir.CConvertStruct:
 		return gc.cValueIn(x.Type, nil, gc.EvalExpr(x.Operand))
 	}
@@ -156,6 +159,17 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			body = append([]string{"__snglCtx := snglContext(" + closure + ")", "defer snglRelease(__snglCtx)"}, body...)
 		}
 	}
+	// A held value is registered as a closure is, until C calls the
+	// release, and crosses as the context finding it: a pointer typedef
+	// #[c.type] names, GLib's gpointer, is a type of cgo's own.
+	if held := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CAlias.IsCHeld() }); held >= 0 && rel >= 0 {
+		v := "snglContext(" + args[off+held] + ")"
+		if t := fn.Params[held].CFuncType; t != nil {
+			v = gc.CType(t) + "(" + v + ")"
+		}
+		args[off+held] = v
+		args[off+rel] = "snglReleasePtr()"
+	}
 	call := gc.cCall(fn, args)
 	if len(body) == 0 {
 		return call
@@ -212,9 +226,28 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 			if ir.CStructOf(fn.Return) != nil {
 				call = gc.cValueOut(fn.Return, nil, call)
 			}
+		case ir.TypeOption:
+			// What a held parameter registered, found by the pointer C
+			// answers: as it is in a wrapper, which cannot name the
+			// program's type, and asserted back to it in the program.
+			if fn.ReturnCAlias.IsCHeld() {
+				gc.RequireImport("unsafe")
+				call = "snglClosure(unsafe.Pointer(" + call + "))"
+				if gc.Wrapping == "" {
+					call = gc.heldOut(fn.Return, call)
+				}
+			}
 		}
 	}
 	return call
+}
+
+// heldOut is v, the value a C function answering opt, an
+// `option[c.held[T]]`, registered, as the option it is: nil where C answered
+// NULL or a pointer finding nothing of T's.
+func (gc *GoIRContext) heldOut(opt *ir.Type, v string) string {
+	t := gc.goType(opt.Elems[0])
+	return "func(h any) *" + t + " { if v, ok := h.(" + t + "); ok { return &v }; return nil }(" + v + ")"
 }
 
 // cScalar is the C type a SNGL scalar t crosses as, written with alias where

@@ -140,7 +140,8 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 			out[src.Name] = []byte(src.Text)
 		}
 	}
-	if sigs := ir.ReachedCCallbacks(pkg, func(fn *ir.Func) bool { return wrapper(&fn.Foreign, pkg.CCalls) != nil }); len(sigs) > 0 {
+	wrapped := func(fn *ir.Func) bool { return wrapper(&fn.Foreign, pkg.CCalls) != nil }
+	if sigs, held := ir.ReachedCCallbacks(pkg, wrapped), ir.ReachesCHeld(pkg, wrapped); len(sigs) > 0 || held {
 		name, err := generatedPackage(generated)
 		if err != nil {
 			return nil, err
@@ -151,7 +152,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		if out == nil {
 			out = map[string][]byte{}
 		}
-		out[callbacksFile] = CallbacksSource(name, links, sigs, pkg.CCalls == ir.CCallsDirect)
+		out[callbacksFile] = CallbacksSource(name, links, sigs, held, pkg.CCalls == ir.CCallsDirect)
 	}
 	return out, nil
 }
