@@ -1612,7 +1612,7 @@ sha256:ef334e891590ddeac3e035e2a15942da
   ]
 }
 -- testrun/gtk4/c/sitecall.sngl/main/1 --
-sha256:bd4c523d06bcf6e2a19588b8a6a70905
+sha256:0d73d135e7a867c8686a5527acfa8f31
 {
   "results": [
     {
@@ -1622,7 +1622,7 @@ sha256:bd4c523d06bcf6e2a19588b8a6a70905
   ]
 }
 -- testrun/gtk4/go/context.sngl/main/1 --
-sha256:00da527ac8b93741dd2d5f4c0059a235
+sha256:6c59c49f3eee73dcfcc085ca29476bc4
 {
   "results": [
     {
@@ -1632,7 +1632,7 @@ sha256:00da527ac8b93741dd2d5f4c0059a235
   ]
 }
 -- testrun/gtk4/go/copies.sngl/main/1 --
-sha256:7a887a365fd10109b95bea4df9c68a1f
+sha256:7913c9540a5838c56ca3de6ec23aa41c
 {
   "results": [
     {
@@ -1666,7 +1666,7 @@ sha256:390cf1d9b2c63058c707c6ed5573df35
   ]
 }
 -- testrun/gtk4/go/folded.sngl/main/1 --
-sha256:5a9d067624917c5eeefa445fda695e55
+sha256:36846762316cbe3ef9b17447a28a1589
 {
   "results": [
     {
@@ -1676,7 +1676,7 @@ sha256:5a9d067624917c5eeefa445fda695e55
   ]
 }
 -- testrun/gtk4/go/foldedread.sngl/main/1 --
-sha256:a9dbecdc5962ddff581603add7bc42f6
+sha256:0c9fb986cbb1591458c4a3c5deef97b8
 {
   "results": [
     {
@@ -1706,7 +1706,7 @@ sha256:4bc1d45790f86c99da6e42c47c291d18
   ]
 }
 -- testrun/gtk4/go/heldread.sngl/main/1 --
-sha256:ca61d3ff384f2460475adb70894e08ed
+sha256:4f5c4b4f6dacdd35df72a39455667728
 {
   "results": [
     {
@@ -1726,7 +1726,7 @@ sha256:3ba616019e14bea2b56a068672a0f91b
   ]
 }
 -- testrun/gtk4/go/page.sngl/main/1 --
-sha256:418614e97083c08a58791987faa3e836
+sha256:24c011e9c421797e1f2d4cce1eae1503
 {
   "results": [
     {
@@ -1736,7 +1736,7 @@ sha256:418614e97083c08a58791987faa3e836
   ]
 }
 -- testrun/gtk4/go/present.sngl/main/1 --
-sha256:8e601575af3316e608023e15bdecf122
+sha256:b9c3f4f667dc0cfa21a0d3289cdd2070
 {
   "results": [
     {
@@ -1794,7 +1794,7 @@ sha256:6b174503e060a5186b02c6d6874f8625
   ]
 }
 -- testrun/gtk4/go/unnamedcond.sngl/main/1 --
-sha256:46a9b8d7152f983c87b51e8cecd7de3d
+sha256:a0efa27825bf9300eeb7dd05e34865cf
 {
   "results": [
     {

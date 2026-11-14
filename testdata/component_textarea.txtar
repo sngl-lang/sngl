@@ -675,31 +675,9 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func SetEntryText(e cgo.Widget, text string) {
-	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
-		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
-	})
-}
-
-func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
-	obj := cgo.CGpointer(o)
-	var id int = cgo.GSignalLookup(signal, on)
-	var __lt5 int
-	if detail == "" {
-		__lt5 = 1
-	} else {
-		__lt5 = 3
-	}
-	var mask int = __lt5
-	var q int = cgo.GQuarkFromString(detail)
-	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
-	set()
-	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
-}
-
 func __effect0_mount() {
-	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
-		SetEntryText(m.entry, m.__effect0_key)
+	if cgo.SnglEntryText(m.entry) != m.__effect0_key {
+		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
 	}
 }
 
@@ -746,14 +724,14 @@ func __effects0_settle() {
 }
 
 func Entry_changed_handler(e cgo.Widget) {
-	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.text {
-		m.text = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+	if cgo.SnglEntryText(e) != m.text {
+		m.text = cgo.SnglEntryText(e)
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	m.text = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+	m.text = cgo.SnglEntryText(e)
 	__effects0_settle()
 }
 
@@ -949,7 +927,7 @@ pass sha256:7a6a147de577c2fd62464256a92fedff
 -- run/go/fyne --
 pass sha256:99858d36f3aa8ccc36962e3491674516
 -- run/go/gtk4 --
-pass sha256:a316f5a57915308d4ddab189610ba45a
+pass sha256:30b562b0e17b67eac5a2f0331563cefa
 -- run/kotlin/android --
 pass sha256:983e90438a8bf2381fa4d91ef1b985d0
 -- run/none/html --

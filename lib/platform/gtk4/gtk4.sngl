@@ -10,12 +10,11 @@ import draw "sngl:ui/draw"
 import family "sngl:family"
 import math "sngl:math"
 import markup "sngl:ui/markup"
-import seq "sngl:seq"
 
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/menu.c", "rt/image.c", "rt/markup.c"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //
@@ -467,16 +466,48 @@ func _on_Toplevel_key(w Toplevel, key func()) {
     _rtToplevelOnKey(w, key)
 }
 
-// A window's way back, while it can go back: a widget kept hidden among the
-// window's content, which has the window show a back button that presses
-// it.
+// A window's way back, while it can go back: a widget the runtime keeps
+// hidden among the window's content, which has the window show a back button
+// that presses it (rt's menu.c).
 #[marks.intrinsic("gtk4:Back")]
 component Back(@press()) ui.node
 
-// One entry of a window's menu, and its submenu's entries: a box kept hidden
-// among the window's content, from which the window builds the GMenu behind
-// its header bar's menu button. Picking one is no GTK signal on it but the
-// action made for it.
+#[c.native("sngl_back_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackNew")]
+func _rtBackNew() Back
+
+#[c.native("sngl_back_on_press")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackOnPress")]
+func _rtBackOnPress(
+    b Back,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_back_press")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackPress")]
+func _rtBackPress(b Back)
+
+#[gen.protocol(create)]
+func _create_Back() Back {
+    return _rtBackNew()
+}
+
+#[gen.protocol(on)]
+func _on_Back(b Back, press func()) {
+    _rtBackOnPress(b, press)
+}
+
+#[gen.fires("press")]
+func _fire_Back_press(b Back) {
+    _rtBackPress(b)
+}
+
+// One entry of a window's menu, and its submenu's entries: a box the runtime
+// keeps hidden among the window's content, from which the window builds the
+// GMenu behind its header bar's menu button (rt's menu.c). Picking one is no
+// GTK signal on it but the action the runtime makes for it.
 #[marks.intrinsic("gtk4:MenuEntry")]
 component MenuEntry(
     label    string,
@@ -486,406 +517,34 @@ component MenuEntry(
     entries  ...component ui.node,
 ) ui.node
 
-#[c.native("gtk_label_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelNew")]
-func _backLabel(text option[string]) Back
+#[c.native("sngl_menu_entry_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryNew")]
+func _rtMenuEntryNew() MenuEntry
 
-#[c.native("gtk_box_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
-func _menuEntryBox(orientation _c_GtkOrientation, spacing int) MenuEntry
+#[c.native("sngl_menu_entry_set_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetLabel")]
+func _rtMenuEntrySetLabel(e MenuEntry, label string)
 
-// What a menu entry holds on its box.
-struct _MenuEntryState {
-    label    string
-    disabled bool
-    checked  bool
-    select   option[func()]
-}
+#[c.native("sngl_menu_entry_set_disabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetDisabled")]
+func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
 
-// What a way back holds on its widget: what pressing it runs.
-struct _BackState {
-    press option[func()]
-}
+#[c.native("sngl_menu_entry_set_checked")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetChecked")]
+func _rtMenuEntrySetChecked(e MenuEntry, v bool)
 
-// A window's bar: the header bar holding the back button and the menu
-// button, decided once as the window is made, since GTK sets a title bar only
-// on a window not yet shown.
-struct _BarState {
-    decided    bool
-    bar        option[_p_GtkWidget]
-    backButton option[_p_GtkWidget]
-    menuButton option[_p_GtkWidget]
-}
-
-const _menuEntryKey = "sngl-menu-entry"
-
-const _backKey = "sngl-back"
-
-const _barKey = "sngl-bar"
-
-func _gobject(w _p_GtkWidget) _p_GObject {
-    return _as_GObject(_widgetPtr(w))
-}
-
-func _entryOf(w _p_GtkWidget) option[_MenuEntryState] {
-    return _heldMenuEntry(_gobject(w), _menuEntryKey)
-}
-
-func _backOf(w _p_GtkWidget) option[_BackState] {
-    return _heldBack(_gobject(w), _backKey)
-}
-
-func _barOf(box _p_GtkWidget) _BarState {
-    var b = _heldBar(_gobject(box), _barKey)
-    if b != null {
-        return b
-    }
-    return _BarState{}
-}
-
-func _setBar(box _p_GtkWidget, b _BarState) {
-    _holdBar(_gobject(box), _barKey, b)
-}
-
-// Installs what the runtime's window and box ask of menus and ways back
-// (rt's menu.c): each window, entry and way back made installs it anew.
-func _installWindowHook() {
-    _rtWindowHook(func(op int, box _p_GtkWidget, child _p_GtkWidget) bool {
-        return _windowHook(op, box, child)
-    })
-}
-
-func _windowHook(op int, box _p_GtkWidget, child _p_GtkWidget) bool {
-    if op == 0 {
-        return _windowBack(box)
-    }
-    if op == 1 {
-        _menuApply(box)
-    } else if op == 2 {
-        _barForget(box)
-    } else if op == 3 {
-        _menuMoved(box, child)
-    } else if op == 4 {
-        return _imagePlaced(box, child)
-    } else if op == 5 {
-        return _imageReport(box, child)
-    }
-    return false
-}
-
-// The window whose menu w is in, through the entries holding it.
-func _menuHost(w _p_GtkWidget) option[_p_GtkWidget] {
-    var p = _gtk_widget_get_parent(w)
-    for p != null {
-        var at = p
-        if at != null {
-            if _rtToplevelWindow(at) != null {
-                return at
-            }
-            if _entryOf(at) == null {
-                return null
-            }
-            p = _gtk_widget_get_parent(at)
-        }
-    }
-    return null
-}
-
-func _entryChanged(w _p_GtkWidget) {
-    var host = _menuHost(w)
-    if host != null {
-        _menuApply(host)
-    }
-}
-
-// The first way back among a window's content.
-func _backIn(box _p_GtkWidget) option[_p_GtkWidget] {
-    var c = _firstChild(box)
-    for c != null {
-        var at = c
-        if at != null {
-            if _backOf(at) != null {
-                return at
-            }
-            c = _nextSibling(at)
-        }
-    }
-    return null
-}
-
-// The entries among w's children.
-func _entriesIn(w _p_GtkWidget) list[_p_GtkWidget] {
-    var out list[_p_GtkWidget] = []
-    var c = _firstChild(w)
-    for c != null {
-        var at = c
-        if at != null {
-            if _entryOf(at) != null {
-                out.push(at)
-            }
-            c = _nextSibling(at)
-        }
-    }
-    return out
-}
-
-func _backPress(w _p_GtkWidget) {
-    var b = _backOf(w)
-    if b != null {
-        var press = b.press
-        if press != null {
-            press()
-        }
-    }
-}
-
-// Presses the first way back among the window's content, and is whether
-// there was one.
-func _windowBack(box _p_GtkWidget) bool {
-    var b = _backIn(box)
-    if b != null {
-        _backPress(b)
-        return true
-    }
-    return false
-}
-
-// A window destroyed takes its bar with it, and a back button in it: the
-// next window decides its own. One over the content stays there.
-func _barForget(box _p_GtkWidget) {
-    var b = _heldBar(_gobject(box), _barKey)
-    if b != null {
-        var back = b.backButton
-        if b.bar != null {
-            back = null
-        }
-        _setBar(box, _BarState{backButton=back})
-    }
-}
-
-// The back button goes in the bar, or over the content of a window made
-// without one, and shows while a way back is among the content.
-func _barApply(box _p_GtkWidget) {
-    var win = _rtToplevelWindow(box)
-    if win != null {
-        var b = _barOf(box)
-        var entries = _entriesIn(box).length() > 0
-        var canBack = _backIn(box) != null
-        var bar = b.bar
-        var menuButton = b.menuButton
-        var backButton = b.backButton
-        if !b.decided && (entries || canBack) {
-            var made = _gtk_header_bar_new()
-            _gtk_window_set_titlebar(win, made)
-            var button = _gtk_menu_button_new()
-            _gtk_menu_button_set_icon_name(_as_GtkMenuButton(_widgetPtr(button)), "open-menu-symbolic")
-            _gtk_header_bar_pack_end(_as_GtkHeaderBar(_widgetPtr(made)), button)
-            bar = made
-            menuButton = button
-        }
-        if backButton == null && canBack {
-            var button = _gtk_button_new_from_icon_name("go-previous-symbolic")
-            _g_signal_connect_plain(
-                _as_gpointer(_widgetPtr(button)),
-                "clicked",
-                func(o _p_GObject) {
-                    _windowBack(box)
-                },
-                0,
-            )
-            if bar != null {
-                _gtk_header_bar_pack_start(_as_GtkHeaderBar(_widgetPtr(bar)), button)
-            } else {
-                _gtk_widget_set_halign(button, 1)
-                _gtk_box_prepend(_as_GtkBox(_widgetPtr(box)), button)
-            }
-            backButton = button
-        }
-        if backButton != null {
-            _setVisible(backButton, canBack)
-        }
-        if menuButton != null {
-            _setVisible(menuButton, entries)
-        }
-        _setBar(box, _BarState{decided=true, bar=bar, backButton=backButton, menuButton=menuButton})
-    }
-}
-
-func _menuEntrySelect(w _p_GtkWidget) {
-    var e = _entryOf(w)
-    if e != null && !e.disabled {
-        var select = e.select
-        if select != null {
-            select()
-        }
-    }
-}
-
-// Adds w's entry to menu as the action named for its place, a check where
-// checkable.
-func _menuAdd(menu _p_GMenu, group _p_GSimpleActionGroup, n int, w _p_GtkWidget, checkable bool) {
-    var e = _entryOf(w)
-    if e != null {
-        var name = "e{n}"
-        var a = _g_simple_action_new(name, null)
-        if checkable {
-            a = _g_simple_action_new_stateful(name, null, _g_variant_new_boolean(e.checked))
-        }
-        _g_simple_action_set_enabled(a, !e.disabled)
-        _g_signal_connect_two(
-            _as_gpointer(_ptr_GSimpleAction(a)),
-            "activate",
-            func(o _p_GObject, arg _c_gpointer) {
-                _menuEntrySelect(w)
-            },
-            0,
-        )
-        _g_action_map_add_action(_as_GActionMap(_ptr_GSimpleActionGroup(group)), _as_GAction(_ptr_GSimpleAction(a)))
-        _g_object_unref(_as_gpointer(_ptr_GSimpleAction(a)))
-        _g_menu_append(menu, e.label, "sngl.{name}")
-    }
-}
-
-// A submenu per top-level entry holding entries, or the entry itself where
-// it holds none. A submenu where one entry is checked draws them all as
-// checks.
-func _menuApply(box _p_GtkWidget) {
-    _barApply(box)
-    var win = _rtToplevelWindow(box)
-    var b = _barOf(box)
-    var button = b.menuButton
-    if win != null && button != null {
-        var menu = _g_menu_new()
-        var group = _g_simple_action_group_new()
-        var n = 0
-        for var c = _entriesIn(box) {
-            var e = _entryOf(c)
-            var kids = _entriesIn(c)
-            if e != null {
-                if kids.length() == 0 {
-                    _menuAdd(menu, group, n, c, e.checked)
-                    n += 1
-                } else {
-                    var checkable = false
-                    for var k = kids {
-                        var ke = _entryOf(k)
-                        if ke != null && ke.checked {
-                            checkable = true
-                        }
-                    }
-                    var sub = _g_menu_new()
-                    for var k = kids {
-                        _menuAdd(sub, group, n, k, checkable)
-                        n += 1
-                    }
-                    _g_menu_append_submenu(menu, e.label, _as_GMenuModel(_ptr_GMenu(sub)))
-                    _g_object_unref(_as_gpointer(_ptr_GMenu(sub)))
-                }
-            }
-        }
-        _gtk_widget_insert_action_group(_as_GtkWidget(_ptr_PGtkWindow(win)), "sngl", _as_GActionGroup(_ptr_GSimpleActionGroup(group)))
-        _gtk_menu_button_set_menu_model(_as_GtkMenuButton(_widgetPtr(button)), _as_GMenuModel(_ptr_GMenu(menu)))
-        _g_object_unref(_as_gpointer(_ptr_GSimpleActionGroup(group)))
-        _g_object_unref(_as_gpointer(_ptr_GMenu(menu)))
-    }
-}
-
-// An entry or a way back came to box or went from it.
-func _menuMoved(box _p_GtkWidget, child _p_GtkWidget) {
-    var toplevel = _rtToplevelWindow(box) != null
-    if _backOf(child) != null {
-        if toplevel {
-            _barApply(box)
-        }
-    } else if _entryOf(child) != null {
-        if toplevel {
-            _menuApply(box)
-        } else if _entryOf(box) != null {
-            _entryChanged(box)
-        }
-    }
-}
-
-func _newBack() Back {
-    _installWindowHook()
-    var b = _backLabel(null)
-    var w = _pageWidget(b)
-    _setVisible(w, false)
-    _holdBack(_gobject(w), _backKey, _BackState{})
-    return b
-}
-
-func _handleBack(b Back, press func()) {
-    _holdBack(_gobject(_pageWidget(b)), _backKey, _BackState{press=press})
-}
-
-#[gen.protocol(create)]
-func _create_Back() Back {
-    return _newBack()
-}
-
-#[gen.protocol(on)]
-func _on_Back(b Back, press func()) {
-    _handleBack(b, press)
-}
-
-#[gen.fires("press")]
-func _fire_Back_press(b Back) {
-    _backPress(_pageWidget(b))
-}
-
-func _newMenuEntry() MenuEntry {
-    _installWindowHook()
-    var e = _menuEntryBox(_to_GtkOrientation(1), 0)
-    var w = _pageWidget(e)
-    _setVisible(w, false)
-    _holdMenuEntry(_gobject(w), _menuEntryKey, _MenuEntryState{})
-    return e
-}
-
-// Writes what entry e holds, and has its window build its menu afresh where
-// that changed it.
-func _writeMenuEntry(e MenuEntry, label string, disabled bool, checked bool) {
-    var w = _pageWidget(e)
-    var s = _entryOf(w)
-    if s != null && (s.label != label || s.disabled != disabled || s.checked != checked) {
-        _holdMenuEntry(_gobject(w), _menuEntryKey, _MenuEntryState{label=label, disabled=disabled, checked=checked, select=s.select})
-        _entryChanged(w)
-    }
-}
-
-func _writeMenuEntryLabel(e MenuEntry, label string) {
-    var s = _entryOf(_pageWidget(e))
-    if s != null {
-        _writeMenuEntry(e, label, s.disabled, s.checked)
-    }
-}
-
-func _writeMenuEntryDisabled(e MenuEntry, disabled bool) {
-    var s = _entryOf(_pageWidget(e))
-    if s != null {
-        _writeMenuEntry(e, s.label, disabled, s.checked)
-    }
-}
-
-func _writeMenuEntryChecked(e MenuEntry, checked bool) {
-    var s = _entryOf(_pageWidget(e))
-    if s != null {
-        _writeMenuEntry(e, s.label, s.disabled, checked)
-    }
-}
-
-func _handleMenuEntry(e MenuEntry, select func()) {
-    var w = _pageWidget(e)
-    var s = _entryOf(w)
-    if s != null {
-        _holdMenuEntry(_gobject(w), _menuEntryKey, _MenuEntryState{label=s.label, disabled=s.disabled, checked=s.checked, select=select})
-    }
-}
+#[c.native("sngl_menu_entry_on_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryOnSelect")]
+func _rtMenuEntryOnSelect(
+    e MenuEntry,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
 #[gen.protocol(create)]
 func _create_MenuEntry() MenuEntry {
-    return _newMenuEntry()
+    return _rtMenuEntryNew()
 }
 
 #[gen.protocol(append)]
@@ -905,22 +564,22 @@ func _remove_MenuEntry(parent MenuEntry, child ui.node) {
 
 #[gen.protocol(set)]
 func _set_MenuEntry_label(e MenuEntry, label string) {
-    _writeMenuEntryLabel(e, label)
+    _rtMenuEntrySetLabel(e, label)
 }
 
 #[gen.protocol(set)]
 func _set_MenuEntry_disabled(e MenuEntry, disabled bool) {
-    _writeMenuEntryDisabled(e, disabled)
+    _rtMenuEntrySetDisabled(e, disabled)
 }
 
 #[gen.protocol(set)]
 func _set_MenuEntry_checked(e MenuEntry, checked bool) {
-    _writeMenuEntryChecked(e, checked)
+    _rtMenuEntrySetChecked(e, checked)
 }
 
 #[gen.protocol(on)]
 func _on_MenuEntry(e MenuEntry, select func()) {
-    _handleMenuEntry(e, select)
+    _rtMenuEntryOnSelect(e, select)
 }
 
 // Its `@key` is each key pressed in the window, heard before the focused
@@ -967,42 +626,32 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // What a control holds, read off its widget. A GTK signal hands its handler
 // the widget it fired on and nothing else, so an override reporting a change
 // asks that widget: `@toggled(b) { checked = checkActive(b) }`.
-func checkActive(b ui.node) bool {
-    return _gtk_check_button_get_active(_as_GtkCheckButton(_widget(b)))
-}
+#[c.native("sngl_check_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCheckActive")]
+func checkActive(b ui.node) bool
 
-func switchActive(s ui.node) bool {
-    return _gtk_switch_get_active(_as_GtkSwitch(_widget(s)))
-}
+#[c.native("sngl_switch_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSwitchActive")]
+func switchActive(s ui.node) bool
 
-func entryText(e ui.node) string {
-    return _gtk_editable_get_text(_as_GtkEditable(_widget(e)))
-}
+#[c.native("sngl_entry_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEntryText")]
+func entryText(e ui.node) string
 
 // Writes an entry's text with its "changed" blocked, which an override does
 // itself rather than binding `text`: see ui.input.
-func setEntryText(e ui.node, text string) {
-    _quietly(_widget(e), "changed", _gtk_editable_get_type(), "", func() {
-        _gtk_editable_set_text(_as_GtkEditable(_widget(e)), text)
-    })
-}
+#[c.native("sngl_editable_set_text_quiet")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEditableSetTextQuiet")]
+func setEntryText(e ui.node, text string)
+
+#[c.native("sngl_calendar_day")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarDay")]
+func _rtCalendarDay(c ui.node) string
 
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
 func calendarDate(c ui.node) option[time.date] {
-    var t = _gtk_calendar_get_date(_as_GtkCalendar(_widget(c)))
-    var day = "{_padded(_g_date_time_get_year(t), 4)}-{_padded(_g_date_time_get_month(t), 2)}-{_padded(_g_date_time_get_day_of_month(t), 2)}"
-    _g_date_time_unref(t)
-    return time.parseDate(day)
-}
-
-// n written in at least `width` digits, zeros first.
-const func _padded(n int, width int) string {
-    var s = "{n}"
-    for s.length() < width {
-        s = "0" + s
-    }
-    return s
+    return time.parseDate(_rtCalendarDay(c))
 }
 
 // Selects y-m-d on a calendar as a click on the day does, without reporting
@@ -1016,130 +665,69 @@ func selectDay(cal ui.node, y int, m int, d int)
 // takes its choices as a GListModel, which no SNGL expression produces, so
 // the runtime builds one. Neither is a choice anyone made, so the drop-down
 // reports neither.
-func offerChoices(d ui.node, labels string, chosen string) {
-    _quietly(_widget(d), "notify", _gtk_drop_down_get_type(), "selected", func() {
-        _offer(_as_GtkDropDown(_widget(d)), labels.split("\n"), chosen)
-    })
-}
-
-// A drop-down's model is replaced only for labels that differ, which would
-// otherwise drop the popup a user has open.
-func _offer(d _p_GtkDropDown, labels list[string], chosen string) {
-    var cur = _gtk_drop_down_get_model(d)
-    var same = _g_type_check_instance_is_a(_as_GTypeInstance(_ptr_GListModel(cur)), _gtk_string_list_get_type()) && _g_list_model_get_n_items(cur) == labels.length()
-    if same {
-        for var i, l = labels {
-            if _gtk_string_list_get_string(_as_GtkStringList(_ptr_GListModel(cur)), i) != l {
-                same = false
-            }
-        }
-    }
-    if !same {
-        var fresh = _gtk_string_list_new(null)
-        for var l = labels {
-            _gtk_string_list_append(fresh, l)
-        }
-        _gtk_drop_down_set_model(d, _as_GListModel(_ptr_GtkStringList(fresh)))
-        _g_object_unref(_as_gpointer(_ptr_GtkStringList(fresh)))
-    }
-    var at = _invalidListPosition
-    for var i, l = labels {
-        if l == chosen && at == _invalidListPosition {
-            at = i
-        }
-    }
-    _gtk_drop_down_set_selected(d, at)
-}
+#[c.native("sngl_drop_down_offer")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownOffer")]
+func offerChoices(d ui.node, labels string, chosen string)
 
 // Selects the choice labeled `label`, as a pick does: unlike an offer, the
 // drop-down notifies, so its @notifySelected handler runs. A label among none
-// of its choices selects nothing. The selection's handler may render the page
-// the drop-down is on afresh, which drops the drop-down while GTK is still
-// setting it, so it is held until the selection is done.
-func selectLabel(d ui.node, label string) {
-    var dd = _as_GtkDropDown(_widget(d))
-    var m = _gtk_drop_down_get_model(dd)
-    if !_g_type_check_instance_is_a(_as_GTypeInstance(_ptr_GListModel(m)), _gtk_string_list_get_type()) {
-        return
-    }
-    var l = _as_GtkStringList(_ptr_GListModel(m))
-    for var i = seq.count(_g_list_model_get_n_items(m)) {
-        if _gtk_string_list_get_string(l, i) == label {
-            _g_object_ref(_as_gpointer(_widget(d)))
-            _gtk_drop_down_set_selected(dd, i)
-            _g_object_unref(_as_gpointer(_widget(d)))
-            return
-        }
-    }
-}
+// of its choices selects nothing.
+#[c.native("sngl_drop_down_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownSelect")]
+func selectLabel(d ui.node, label string)
 
 // The label a drop-down has selected, or "" where it has none.
-func dropDownLabel(d ui.node) string {
-    var dd = _as_GtkDropDown(_widget(d))
-    var at = _gtk_drop_down_get_selected(dd)
-    if at == _invalidListPosition {
-        return ""
-    }
-    return _gtk_string_list_get_string(_as_GtkStringList(_ptr_GListModel(_gtk_drop_down_get_model(dd))), at)
-}
+#[c.native("sngl_drop_down_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownLabel")]
+func dropDownLabel(d ui.node) string
 
 // A test's fire of an event whose handler reads a value off the widget puts
-// the value there first, as the user's flip, typing or click on a day does. A
-// flip to the state the widget is in already reports it all the same.
+// the value there first, as the user's flip, typing or click on a day does.
+#[c.native("sngl_fire_flip")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireFlip")]
+func _rtFireFlip(w ui.node, v int)
+
+#[c.native("sngl_fire_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireText")]
+func _rtFireText(e ui.node, text string, signal string)
+
+#[c.native("sngl_fire_day")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireDay")]
+func _rtFireDay(c ui.node, day string)
+
 #[gen.fires("toggled")]
 func _fire_GtkCheckButton_toggled(b GtkCheckButton, checked bool) {
-    _fireCheck(b, checked)
+    _rtFireFlip(b, checked ? 1 : 0)
 }
 
 #[gen.fires("notifyActive")]
 func _fire_GtkSwitch_notifyActive(s GtkSwitch, checked bool) {
-    _fireSwitch(s, checked)
+    _rtFireFlip(s, checked ? 1 : 0)
 }
 
 #[gen.fires("changed")]
 func _fire_GtkEntry_changed(e GtkEntry, text string) {
-    _fireText(e, text, "changed")
+    _rtFireText(e, text, "changed")
 }
 
 #[gen.fires("activate")]
 func _fire_GtkEntry_activate(e GtkEntry, text string) {
-    _fireText(e, text, "activate")
+    _rtFireText(e, text, "activate")
 }
 
 #[gen.fires("daySelected")]
 func _fire_GtkCalendar_daySelected(c GtkCalendar, day option[time.date]) {
-    _fireDay(c, day)
+    _rtFireDay(c, day == null ? "" : day.format())
 }
 
-func _fireCheck(b GtkCheckButton, checked bool) {
-    var w = _as_GtkCheckButton(_ptr_GtkCheckButton(b))
-    if _gtk_check_button_get_active(w) != checked {
-        _gtk_check_button_set_active(w, _to_gboolean(checked ? 1 : 0))
-    } else {
-        _rtSignalEmit(b, "toggled")
-    }
-}
+// What GTK says a widget is in: GTK_STATE_FLAG_ACTIVE and
+// GTK_STATE_FLAG_PRELIGHT among them.
+#[c.native("GtkStateFlags")]
+struct _c_GtkStateFlags = int
 
-func _fireSwitch(s GtkSwitch, checked bool) {
-    var w = _as_GtkSwitch(_ptr_GtkSwitch(s))
-    if _gtk_switch_get_active(w) != checked {
-        _gtk_switch_set_active(w, _to_gboolean(checked ? 1 : 0))
-    } else {
-        _g_object_notify(_as_GObject(_ptr_GtkSwitch(s)), "active")
-    }
-}
-
-func _fireText(e GtkEntry, text string, signal string) {
-    setEntryText(e, text)
-    _rtSignalEmit(e, signal)
-}
-
-func _fireDay(c GtkCalendar, day option[time.date]) {
-    if day != null {
-        selectDay(c, day.year(), day.month(), day.day())
-    }
-    _rtSignalEmit(c, "day-selected")
-}
+#[c.native("gtk_widget_set_state_flags")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetStateFlags")]
+func _gtk_widget_set_state_flags(w _p_GtkWidget, flags _c_GtkStateFlags, clear bool)
 
 // Puts w in the state a pointer resting on it puts it in, which its look
 // draws: what a test snapshots to see a button shaded as it is hovered. GTK
@@ -1159,18 +747,22 @@ func press(w ui.node) {
 #[marks.intrinsic("gtk4:Text")]
 component Text(value string, look Look, @click()) ui.node
 
-#[c.native("gtk_label_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.TextLabel")]
-func _textLabel(text string) Text
+#[c.native("sngl_text_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextNew")]
+func _rtTextNew() Text
+
+#[c.native("sngl_text_set_value")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextSetValue")]
+func _rtTextSetValue(w Text, value string)
 
 #[gen.protocol(create)]
 func _create_Text() Text {
-    return _newText()
+    return _rtTextNew()
 }
 
 #[gen.protocol(set)]
 func _set_Text_value(w Text, value string) {
-    _gtk_label_set_label(_as_GtkLabel(_widget(w)), value)
+    _rtTextSetValue(w, value)
 }
 
 #[gen.protocol(set)]
@@ -1180,18 +772,12 @@ func _set_Text_look(w Text, look Look) {
 
 #[gen.protocol(on)]
 func _on_Text_click(w Text, click func()) {
-    _onClick(w, click)
+    _rtOnClick(w, click)
 }
 
 #[gen.fires("click")]
 func _fire_Text_click(w Text) {
-    _click(w)
-}
-
-func _newText() Text {
-    var t = _textLabel("")
-    _gtk_label_set_xalign(_as_GtkLabel(_widget(t)), _to_float(0.0))
-    return t
+    _rtClick(w)
 }
 
 const component ui.text[platform](value, style, @click) {
@@ -1290,12 +876,11 @@ const component ui.grid[platform](columns, style, children) {
     }
 }
 
-// A scroll is a GtkScrolledWindow, which moves along `direction` and reports
-// the end of its content coming within half a viewport of showing -- as it
-// arrives, and when the content changes size while it is there. GTK has no
-// signal saying so: the changes of the adjustment along the axis the end is
-// read on are what answer it, and the runtime's probe (rt's scroll.c), a box
-// laid out around the content, says when the content's length changes.
+// A scroll is the runtime's GtkScrolledWindow, which moves along `direction`
+// and reports the end of its content coming within half a viewport of
+// showing -- as it arrives, and when the content changes size while it is
+// there (rt's scroll.c). GTK has no signal saying so; the changes of the
+// adjustment along the axis the end is read on are what answer it.
 #[marks.intrinsic("gtk4:Scroll")]
 component Scroll(
     direction string,
@@ -1304,262 +889,34 @@ component Scroll(
     content   ...component option[ui.node],
 ) ui.node
 
-#[c.native("gtk_scrolled_window_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowNew")]
-func _scrollWindow() Scroll
-
-#[c.native("sngl_scroll_probe")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollProbe")]
-func _rtScrollProbe(sw Scroll) _p_GtkWidget
+#[c.native("sngl_scroll_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollNew")]
+func _rtScrollNew() Scroll
 
 #[c.native("sngl_scroll_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetChild")]
 func _rtScrollSetChild(sw Scroll, child ui.node)
 
-#[c.native("sngl_probe_content")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeContent")]
-func _rtProbeContent(probe _p_GtkWidget) int
+#[c.native("sngl_scroll_set_direction")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetDirection")]
+func _rtScrollSetDirection(sw Scroll, direction string)
 
-#[c.native("sngl_probe_reset")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeReset")]
-func _rtProbeReset(probe _p_GtkWidget, across bool)
-
-#[c.native("sngl_probe_hold")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeHold")]
-func _rtProbeHold(sw Scroll, probe _p_GtkWidget, content _p_GtkWidget)
-
-#[c.native("sngl_probe_on_change")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeOnChange")]
-func _rtProbeOnChange(
-    probe _p_GtkWidget,
+#[c.native("sngl_scroll_on_reach_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollOnReachEnd")]
+func _rtScrollOnReachEnd(
+    sw Scroll,
     #[c.type("SnglFn")] fn func(),
     #[c.context] ctx c.pointer,
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-// What a scroll holds on its window: the axis the end is read on (0 down, 1
-// across, 2 both, which reads it down), whether the end showed when last
-// measured and the content's length then (-1 before it was), the idle
-// report posted and not run (0 for none), the handler, and the handlers
-// watching the adjustments, beside the adjustment each watches, which the
-// state holds a reference to: the window's destroy disconnects them, and by
-// then its scrollbars no longer answer them.
-struct _ScrollState {
-    axis     int
-    near     bool
-    content  int
-    asked    int
-    reachEnd option[func()]
-    watches  list[int]
-    watched  list[_p_GtkAdjustment]
-}
-
-const _scrollKey = "sngl-scroll"
-
-func _scrollOf(sw Scroll) option[_ScrollState] {
-    return _heldScroll(_as_GObject(_widget(sw)), _scrollKey)
-}
-
-func _setScroll(sw Scroll, s _ScrollState) {
-    _holdScroll(_as_GObject(_widget(sw)), _scrollKey, s)
-}
-
-func _windowOf(sw Scroll) _p_GtkScrolledWindow {
-    return _as_GtkScrolledWindow(_widget(sw))
-}
-
-func _axisOf(direction string) int {
-    if direction == "horizontal" {
-        return 1
-    }
-    if direction == "both" {
-        return 2
-    }
-    return 0
-}
-
-// The adjustment the end is read on.
-func _readAdjustment(sw Scroll, axis int) _p_GtkAdjustment {
-    if axis == 1 {
-        return _gtk_scrolled_window_get_hadjustment(_windowOf(sw))
-    }
-    return _gtk_scrolled_window_get_vadjustment(_windowOf(sw))
-}
-
-// A scroll down lets the content take the window's width, and one across
-// its height; the scrollable content -- a viewport, or the content itself --
-// is asked for its natural length along the axis it moves on.
-func _scrollPolicies(sw Scroll, axis int) {
-    var w = _windowOf(sw)
-    _gtk_scrolled_window_set_policy(w, axis == 0 ? _policyExternal : _policyAutomatic, axis == 1 ? _policyNever : _policyAutomatic)
-    _gtk_scrolled_window_set_propagate_natural_width(w, axis == 0)
-    var c = _gtk_scrolled_window_get_child(w)
-    if c != null && !_isA(c, _gtk_scrollable_get_type()) {
-        c = _gtk_widget_get_parent(c)
-    }
-    if c != null && _isA(c, _gtk_scrollable_get_type()) {
-        var scrollable = _as_GtkScrollable(_widgetPtr(c))
-        _gtk_scrollable_set_vscroll_policy(scrollable, axis != 1 ? 1 : 0)
-        _gtk_scrollable_set_hscroll_policy(scrollable, axis != 0 ? 1 : 0)
-    }
-}
-
-// The child the window was given, where it is not the probe, is the
-// content, and goes in the probe, which becomes the child.
-func _scrollChild(sw Scroll) {
-    var s = _scrollOf(sw)
-    var axis = 0
-    if s != null {
-        axis = s.axis
-    }
-    _scrollPolicies(sw, axis)
-    var probe = _rtScrollProbe(sw)
-    var shown = _gtk_scrolled_window_get_child(_windowOf(sw))
-    if shown != null && shown != probe {
-        var content option[_p_GtkWidget] = shown
-        if _isA(shown, _gtk_viewport_get_type()) {
-            content = _gtk_viewport_get_child(_as_GtkViewport(_widgetPtr(shown)))
-        }
-        if content != null && content != probe {
-            _rtProbeHold(sw, probe, content)
-        }
-    }
-}
-
-// Measures the end against the viewport. The handler runs on the next idle
-// turn rather than here: the adjustment changes while GTK allocates, and a
-// handler adding rows then would change the tree mid-allocation.
-func _scrollChanged(sw Scroll) {
-    var s = _scrollOf(sw)
-    if s != null {
-        var a = _readAdjustment(sw, s.axis)
-        var page = _gtk_adjustment_get_page_size(a)
-        if page > 0.0 {
-            var near = _gtk_adjustment_get_upper(a) - (_gtk_adjustment_get_value(a) + page) <= page / 2.0
-            var content = _rtProbeContent(_rtScrollProbe(sw))
-            var fire = near && (!s.near || content > s.content)
-            var asked = s.asked
-            if fire && asked == 0 {
-                asked = _g_idle_add_full(200, func() bool {
-                    _scrollReport(sw)
-                    return false
-                })
-            }
-            _setScroll(sw, _ScrollState{axis=s.axis, near=near, content=content, asked=asked, reachEnd=s.reachEnd, watches=s.watches, watched=s.watched})
-        }
-    }
-}
-
-func _scrollReport(sw Scroll) {
-    var s = _scrollOf(sw)
-    if s != null {
-        _setScroll(sw, _ScrollState{axis=s.axis, near=s.near, content=s.content, reachEnd=s.reachEnd, watches=s.watches, watched=s.watched})
-        var reachEnd = s.reachEnd
-        if reachEnd != null {
-            reachEnd()
-        }
-    }
-}
-
-// The window going: its report not yet run is dropped, and the handlers on
-// its adjustments, which a viewport may hold past it, are disconnected.
-func _scrollGone(sw Scroll) {
-    var s = _scrollOf(sw)
-    if s != null {
-        if s.asked != 0 {
-            _g_source_remove(s.asked)
-        }
-        for var k, id = s.watches {
-            var a = _as_gpointer(_ptr_GtkAdjustment(s.watched[k]))
-            _g_signal_handler_disconnect(a, id)
-            _g_object_unref(a)
-        }
-        _setScroll(sw, _ScrollState{axis=s.axis})
-    }
-    _rtProbeOnChange(_rtScrollProbe(sw), func() {})
-}
-
-func _watchAdjustment(sw Scroll, a _p_GtkAdjustment, signal string) int {
-    return _g_signal_connect_plain(
-        _as_gpointer(_ptr_GtkAdjustment(a)),
-        signal,
-        func(o _p_GObject) {
-            _scrollChanged(sw)
-        },
-        0,
-    )
-}
-
-func _newScroll() Scroll {
-    var sw = _scrollWindow()
-    var w = _windowOf(sw)
-    var down = _gtk_scrolled_window_get_vadjustment(w)
-    var across = _gtk_scrolled_window_get_hadjustment(w)
-    var watched = [down, down, across, across]
-    var watches = [
-        _watchAdjustment(sw, down, "changed"),
-        _watchAdjustment(sw, down, "value-changed"),
-        _watchAdjustment(sw, across, "changed"),
-        _watchAdjustment(sw, across, "value-changed"),
-    ]
-    for var a = watched {
-        _g_object_ref(_as_gpointer(_ptr_GtkAdjustment(a)))
-    }
-    _setScroll(sw, _ScrollState{content=-1, watches=watches, watched=watched})
-    _rtProbeOnChange(_rtScrollProbe(sw), func() {
-        _scrollChanged(sw)
-    })
-    _g_signal_connect_notify(
-        _as_gpointer(_widget(sw)),
-        "notify::child",
-        func(o _p_GObject, spec _p_GParamSpec) {
-            _scrollChild(sw)
-        },
-        0,
-    )
-    _g_signal_connect_plain(
-        _as_gpointer(_widget(sw)),
-        "destroy",
-        func(o _p_GObject) {
-            _scrollGone(sw)
-        },
-        0,
-    )
-    _scrollPolicies(sw, 0)
-    return sw
-}
-
-func _setScrollDirection(sw Scroll, direction string) {
-    var axis = _axisOf(direction)
-    var s = _scrollOf(sw)
-    if s != null {
-        _setScroll(sw, _ScrollState{axis=axis, content=-1, asked=s.asked, reachEnd=s.reachEnd, watches=s.watches, watched=s.watched})
-    }
-    _scrollPolicies(sw, axis)
-    _rtProbeReset(_rtScrollProbe(sw), axis == 1)
-}
-
-func _handleScroll(sw Scroll, reachEnd func()) {
-    var s = _scrollOf(sw)
-    if s != null {
-        _setScroll(sw, _ScrollState{axis=s.axis, near=s.near, content=s.content, asked=s.asked, reachEnd=reachEnd, watches=s.watches, watched=s.watched})
-    }
-}
-
-// Runs the handler, as the end showing would.
-func _scrollReachEnd(sw Scroll) {
-    var s = _scrollOf(sw)
-    if s != null {
-        var reachEnd = s.reachEnd
-        if reachEnd != null {
-            reachEnd()
-        }
-    }
-}
+#[c.native("sngl_scroll_reach_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollReachEnd")]
+func _rtScrollReachEnd(sw Scroll)
 
 #[gen.protocol(create)]
 func _create_Scroll() Scroll {
-    return _newScroll()
+    return _rtScrollNew()
 }
 
 #[gen.protocol(append)]
@@ -1569,7 +926,7 @@ func _append_Scroll(parent Scroll, child ui.node) {
 
 #[gen.protocol(set)]
 func _set_Scroll_direction(w Scroll, direction string) {
-    _setScrollDirection(w, direction)
+    _rtScrollSetDirection(w, direction)
 }
 
 #[gen.protocol(set)]
@@ -1579,12 +936,12 @@ func _set_Scroll_look(w Scroll, look Look) {
 
 #[gen.protocol(on)]
 func _on_Scroll(sw Scroll, reachEnd func()) {
-    _handleScroll(sw, reachEnd)
+    _rtScrollOnReachEnd(sw, reachEnd)
 }
 
 #[gen.fires("reachEnd")]
 func _fire_Scroll_reachEnd(sw Scroll) {
-    _scrollReachEnd(sw)
+    _rtScrollReachEnd(sw)
 }
 
 const component ui.scroll[platform](style, direction, @reachEnd, content) {
@@ -1593,8 +950,8 @@ const component ui.scroll[platform](style, direction, @reachEnd, content) {
     }
 }
 
-// A `ui.tabs`: a box holding a GtkNotebook. Each TabPage it holds is a page
-// of the notebook, and `selected` the one shown.
+// A `ui.tabs`: the runtime's box of a GtkNotebook (rt's tabs.c). Each
+// TabPage it holds is a page of the notebook, and `selected` the one shown.
 #[marks.intrinsic("gtk4:Tabs")]
 component Tabs(
     selected int,
@@ -1604,8 +961,9 @@ component Tabs(
 
 // One tab: its panel, a page the notebook shows a tab titled `title` for.
 // The user choosing it is no GTK signal on it but the notebook's page
-// changing, which is reported as `@change`, and only the user's. Named for
-// the tabs' event it raises, which is what a test's press of it calls.
+// changing, which the runtime reports as `@change`, and only the user's.
+// Named for the tabs' event it raises, which is what a test's press of it
+// calls.
 #[marks.intrinsic("gtk4:TabPage")]
 component TabPage(
     title    string,
@@ -1614,201 +972,62 @@ component TabPage(
     content  ...component ui.node,
 ) ui.node
 
-#[c.native("gtk_box_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
-func _tabsBox(orientation _c_GtkOrientation, spacing int) Tabs
+#[c.native("sngl_tabs_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsNew")]
+func _rtTabsNew() Tabs
 
-#[c.native("gtk_box_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
-func _tabPageBox(orientation _c_GtkOrientation, spacing int) TabPage
+#[c.native("sngl_tabs_set_selected")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsSetSelected")]
+func _rtTabsSetSelected(t Tabs, k int)
 
-// What a TabPage holds on its box: the tab's title and whether it is
-// disabled, which the notebook hosting it shows, the handler the user
-// choosing it runs, and that notebook while it hosts it.
-struct _TabPageState {
-    title    string
-    disabled bool
-    shown    option[func()]
-    host     option[_p_GtkNotebook]
-}
+#[c.native("sngl_tab_page_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageNew")]
+func _rtTabPageNew() TabPage
 
-// What Tabs holds on its box: the page the program chose, which the
-// notebook shows.
-struct _TabsState {
-    selected int
-}
+#[c.native("sngl_tab_page_set_title")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetTitle")]
+func _rtTabPageSetTitle(p TabPage, title string)
 
-const _tabPageKey = "sngl-tab-page"
+#[c.native("sngl_tab_page_set_disabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetDisabled")]
+func _rtTabPageSetDisabled(p TabPage, disabled bool)
 
-const _tabsKey = "sngl-tabs"
+#[c.native("sngl_tab_page_on_shown")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageOnShown")]
+func _rtTabPageOnShown(
+    p TabPage,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
-func _tabPage(p _p_GtkWidget) option[_TabPageState] {
-    return _heldTabPage(_as_GObject(_widgetPtr(p)), _tabPageKey)
-}
-
-func _setTabPage(p _p_GtkWidget, s _TabPageState) {
-    _holdTabPage(_as_GObject(_widgetPtr(p)), _tabPageKey, s)
-}
-
-func _pageWidget(p ui.node) _p_GtkWidget {
-    return _as_GtkWidget(_widget(p))
-}
-
-// The notebook a Tabs' box holds, its one child.
-func _notebookOf(t Tabs) _p_GtkNotebook {
-    return _as_GtkNotebook(_widgetPtr(_gtk_widget_get_first_child(_pageWidget(t))))
-}
-
-func _selectedOf(t Tabs) int {
-    var s = _heldTabs(_as_GObject(_widget(t)), _tabsKey)
-    if s != null {
-        return s.selected
-    }
-    return 0
-}
-
-// Runs change with the notebook's own reports of the page it shows
-// blocked: what the program changes is no choice of the user's.
-func _notebookQuietly(nb _p_GtkNotebook, change func()) {
-    _quietly(_ptr_GtkNotebook(nb), "notify", _gtk_notebook_get_type(), "page", change)
-}
-
-// Shows the program's page.
-func _tabsShow(t Tabs) {
-    var nb = _notebookOf(t)
-    var k = _selectedOf(t)
-    if k >= 0 && k < _gtk_notebook_get_n_pages(nb) {
-        _notebookQuietly(nb, func() {
-            _gtk_notebook_set_current_page(nb, k)
-        })
-    }
-}
-
-// A page's tab shows its title, and is insensitive where the page is
-// disabled. GTK still lets the user click it, and _tabsShown puts the
-// program's page back.
-func _tabShows(nb _p_GtkNotebook, page _p_GtkWidget, s _TabPageState) {
-    _gtk_notebook_set_tab_label_text(nb, page, s.title)
-    _gtk_widget_set_sensitive(_gtk_notebook_get_tab_label(nb, page), _to_gboolean(s.disabled ? 0 : 1))
-}
-
-// The notebook hosting a page: the one its state names, while the page is
-// still in it.
-func _hostOf(page _p_GtkWidget, s _TabPageState) option[_p_GtkNotebook] {
-    var host = s.host
-    if host != null && _gtk_widget_is_ancestor(page, _as_GtkWidget(_ptr_GtkNotebook(host))) {
-        return host
-    }
-    return null
-}
-
-// The notebook showing another page: the user's choice, unless it is a
-// disabled page's, which the program's own page replaces. A notebook its
-// box let go of is being torn down, and the pages it drops as it goes are
-// no one's choice.
-func _tabsShown(t Tabs) {
-    var nb = _notebookOf(t)
-    if !_gtk_widget_is_ancestor(_as_GtkWidget(_ptr_GtkNotebook(nb)), _pageWidget(t)) {
-        return
-    }
-    var k = _gtk_notebook_get_current_page(nb)
-    if k < 0 || k == _selectedOf(t) {
-        return
-    }
-    var s = _tabPage(_gtk_notebook_get_nth_page(nb, k))
-    if s != null && !s.disabled {
-        _holdTabs(_as_GObject(_widget(t)), _tabsKey, _TabsState{selected=k})
-        var shown = s.shown
-        if shown != null {
-            shown()
-        }
-    } else {
-        _tabsShow(t)
-    }
-}
-
-// The notebook reports the page it shows through its `page` property, after
-// the change, where `switch-page` fires before it.
-func _newTabs() Tabs {
-    var t = _tabsBox(_to_GtkOrientation(1), 0)
-    var nb = _gtk_notebook_new()
-    _gtk_notebook_set_scrollable(_as_GtkNotebook(_widgetPtr(nb)), true)
-    _gtk_box_append(_as_GtkBox(_widget(t)), nb)
-    _holdTabs(_as_GObject(_widget(t)), _tabsKey, _TabsState{selected=0})
-    _g_signal_connect_notify(
-        _as_gpointer(_widgetPtr(nb)),
-        "notify::page",
-        func(o _p_GObject, spec _p_GParamSpec) {
-            _tabsShown(t)
-        },
-        0,
-    )
-    return t
-}
+#[c.native("sngl_tab_page_show")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageShow")]
+func _rtTabPageShow(p TabPage)
 
 #[gen.protocol(create)]
 func _create_Tabs() Tabs {
-    return _newTabs()
-}
-
-// A page appended or inserted is a page of the notebook, at its end.
-func _tabsAdd(t Tabs, page ui.node) {
-    var nb = _notebookOf(t)
-    var w = _pageWidget(page)
-    var s = _tabPage(w)
-    if s != null && _gtk_notebook_page_num(nb, w) < 0 {
-        _notebookQuietly(nb, func() {
-            _gtk_notebook_append_page(nb, w, null)
-        })
-        var hosted = _TabPageState{title=s.title, disabled=s.disabled, shown=s.shown, host=nb}
-        _setTabPage(w, hosted)
-        _tabShows(nb, w, hosted)
-        _tabsShow(t)
-    }
+    return _rtTabsNew()
 }
 
 #[gen.protocol(append)]
 func _append_Tabs(parent Tabs, page ui.node) {
-    _tabsAdd(parent, page)
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(page)))
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_Tabs(parent Tabs, page ui.node, before ui.node) {
-    _tabsAdd(parent, page)
-}
-
-func _dropTabs(parent Tabs, page ui.node) {
-    var nb = _notebookOf(parent)
-    var w = _pageWidget(page)
-    var k = _gtk_notebook_page_num(nb, w)
-    if k < 0 {
-        return
-    }
-    _g_object_ref(_as_gpointer(_widgetPtr(w)))
-    _notebookQuietly(nb, func() {
-        _gtk_notebook_remove_page(nb, k)
-    })
-    var s = _tabPage(w)
-    if s != null {
-        _setTabPage(w, _TabPageState{title=s.title, disabled=s.disabled, shown=s.shown})
-    }
-    _g_object_unref(_as_gpointer(_widgetPtr(w)))
-    _tabsShow(parent)
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(page)))
 }
 
 #[gen.protocol(remove)]
 func _remove_Tabs(parent Tabs, page ui.node) {
-    _dropTabs(parent, page)
-}
-
-func _writeTabs_selected(t Tabs, selected int) {
-    _holdTabs(_as_GObject(_widget(t)), _tabsKey, _TabsState{selected=selected})
-    _tabsShow(t)
+    _rtBoxRemove(parent, page)
 }
 
 #[gen.protocol(set)]
 func _set_Tabs_selected(t Tabs, selected int) {
-    _writeTabs_selected(t, selected)
+    _rtTabsSetSelected(t, selected)
 }
 
 #[gen.protocol(set)]
@@ -1816,15 +1035,9 @@ func _set_Tabs_look(t Tabs, look Look) {
     _setLook(t, look)
 }
 
-func _newTabPage() TabPage {
-    var p = _tabPageBox(_to_GtkOrientation(1), 0)
-    _setTabPage(_pageWidget(p), _TabPageState{})
-    return p
-}
-
 #[gen.protocol(create)]
 func _create_TabPage() TabPage {
-    return _newTabPage()
+    return _rtTabPageNew()
 }
 
 #[gen.protocol(append)]
@@ -1842,70 +1055,24 @@ func _remove_TabPage(parent TabPage, child ui.node) {
     _rtBoxRemove(parent, child)
 }
 
-func _writeTabPage_title(p TabPage, title string) {
-    var w = _pageWidget(p)
-    var s = _tabPage(w)
-    if s != null {
-        var next = _TabPageState{title=title, disabled=s.disabled, shown=s.shown, host=s.host}
-        _setTabPage(w, next)
-        var host = _hostOf(w, next)
-        if host != null {
-            _tabShows(host, w, next)
-        }
-    }
-}
-
 #[gen.protocol(set)]
 func _set_TabPage_title(p TabPage, title string) {
-    _writeTabPage_title(p, title)
-}
-
-func _writeTabPage_disabled(p TabPage, disabled bool) {
-    var w = _pageWidget(p)
-    var s = _tabPage(w)
-    if s != null {
-        var next = _TabPageState{title=s.title, disabled=disabled, shown=s.shown, host=s.host}
-        _setTabPage(w, next)
-        var host = _hostOf(w, next)
-        if host != null {
-            _tabShows(host, w, next)
-        }
-    }
+    _rtTabPageSetTitle(p, title)
 }
 
 #[gen.protocol(set)]
 func _set_TabPage_disabled(p TabPage, disabled bool) {
-    _writeTabPage_disabled(p, disabled)
-}
-
-func _handleTabPage(p TabPage, change func()) {
-    var w = _pageWidget(p)
-    var s = _tabPage(w)
-    if s != null {
-        _setTabPage(w, _TabPageState{title=s.title, disabled=s.disabled, shown=change, host=s.host})
-    }
+    _rtTabPageSetDisabled(p, disabled)
 }
 
 #[gen.protocol(on)]
 func _on_TabPage(p TabPage, change func()) {
-    _handleTabPage(p, change)
+    _rtTabPageOnShown(p, change)
 }
 
 #[gen.fires("change")]
 func _fire_TabPage_change(p TabPage) {
-    _tabPageShow(p)
-}
-
-// Runs the page's handler as the user choosing it would, unless it is
-// disabled.
-func _tabPageShow(p TabPage) {
-    var s = _tabPage(_pageWidget(p))
-    if s != null && !s.disabled {
-        var shown = s.shown
-        if shown != null {
-            shown()
-        }
-    }
+    _rtTabPageShow(p)
 }
 
 // A tab is a page of a GtkNotebook, which shows a tab for it. `variant` is
@@ -2416,7 +1583,7 @@ const component markup.image[platform](alt) {
 // --- Images ---
 
 // An image is the runtime's box holding the source it shows, fitted as `fit`
-// says, or the placeholder where it holds none. A source, rt's image.c's, is a
+// says, or the placeholder where it holds none (rt's image.c). A source is a
 // GtkPicture showing the texture its picture or its drawing make, and
 // reporting to the image holding it whether the picture arrived: `@load` is
 // its picture shown, and `@failed` its picture failing, why being
@@ -2432,136 +1599,53 @@ component Image(
     content ...component option[ui.imageSource],
 ) ui.node
 
-#[c.native("gtk_box_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
-func _imageBox(orientation _c_GtkOrientation, spacing int) Image
+#[c.native("sngl_image_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
+func _rtImageNew() Image
 
-// What an image holds on its box: how it fits the source it shows
-// (GtkContentFit), the handlers its picture arriving runs, and why the last
-// one it was told of failed.
-struct _ImageState {
-    fit     int
-    load    option[func()]
-    failed  option[func()]
-    failure string
-}
-
-const _imageKey = "sngl-image"
-
-func _imageOf(box _p_GtkWidget) option[_ImageState] {
-    return _heldImage(_gobject(box), _imageKey)
-}
-
-func _setImage(box _p_GtkWidget, s _ImageState) {
-    _holdImage(_gobject(box), _imageKey, s)
-}
-
-// `none` is `scaleDown`: GTK has no picture that keeps its own size
-// whatever room it is given.
-func _contentFit(fit string) int {
-    if fit == "cover" {
-        return 2
-    }
-    if fit == "fill" {
-        return 0
-    }
-    if fit == "none" || fit == "scaleDown" {
-        return 3
-    }
-    return 1
-}
-
-// Horizontal: a GtkPicture measures its height for the width it is given,
-// and a vertical box gives each child its own whole width, so the picture
-// asked for as much height as that width implies. A horizontal box measures
-// it at its own width.
-func _newImage() Image {
-    _installWindowHook()
-    var img = _imageBox(_to_GtkOrientation(0), 0)
-    _setImage(_pageWidget(img), _ImageState{fit=1})
-    return img
-}
-
-func _setImageFit(img Image, fit string) {
-    var box = _pageWidget(img)
-    var s = _imageOf(box)
-    if s != null {
-        var f = _contentFit(fit)
-        _setImage(box, _ImageState{fit=f, load=s.load, failed=s.failed, failure=s.failure})
-        var c = _firstChild(box)
-        for c != null {
-            var at = c
-            if at != null {
-                if _rtIsSource(at) {
-                    _gtk_picture_set_content_fit(_as_GtkPicture(_widgetPtr(at)), f)
-                }
-                c = _nextSibling(at)
-            }
-        }
-    }
-}
-
-// A source put in box: it fits itself to the image box is, which is
-// whether box is one.
-func _imagePlaced(box _p_GtkWidget, source _p_GtkWidget) bool {
-    var s = _imageOf(box)
-    if s != null {
-        _gtk_picture_set_content_fit(_as_GtkPicture(_widgetPtr(source)), s.fit)
-        return true
-    }
-    return false
-}
-
-// A source in box telling it, once per picture, whether the picture arrived;
-// whether box is an image.
-func _imageReport(box _p_GtkWidget, source _p_GtkWidget) bool {
-    var s = _imageOf(box)
-    if s != null {
-        if _rtSourceFailed(source) {
-            _setImage(box, _ImageState{fit=s.fit, load=s.load, failed=s.failed, failure=_rtSourceError(source)})
-            var failed = s.failed
-            if failed != null {
-                failed()
-            }
-        } else {
-            var load = s.load
-            if load != null {
-                load()
-            }
-        }
-        return true
-    }
-    return false
-}
+#[c.native("sngl_image_set_fit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSetFit")]
+func _rtImageSetFit(w Image, fit string)
 
 // Why an image's picture failed, or "".
-func imageFailure(w Image) string {
-    var s = _imageOf(_pageWidget(w))
-    if s != null {
-        return s.failure
-    }
-    return ""
-}
+#[c.native("sngl_image_failure")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageFailure")]
+func imageFailure(w Image) string
 
-func _handleImageLoad(w Image, load func()) {
-    var box = _pageWidget(w)
-    var s = _imageOf(box)
-    if s != null {
-        _setImage(box, _ImageState{fit=s.fit, load=load, failed=s.failed, failure=s.failure})
-    }
-}
+#[c.native("sngl_image_on_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnClick")]
+func _rtImageOnClick(
+    w Image,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
-func _handleImageFailed(w Image, failed func()) {
-    var box = _pageWidget(w)
-    var s = _imageOf(box)
-    if s != null {
-        _setImage(box, _ImageState{fit=s.fit, load=s.load, failed=failed, failure=s.failure})
-    }
-}
+#[c.native("sngl_image_on_load")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnLoad")]
+func _rtImageOnLoad(
+    w Image,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_image_on_failed")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnFailed")]
+func _rtImageOnFailed(
+    w Image,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_image_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageClick")]
+func _rtImageClick(w Image)
 
 #[gen.protocol(create)]
 func _create_Image() Image {
-    return _newImage()
+    return _rtImageNew()
 }
 
 #[gen.protocol(append)]
@@ -2581,7 +1665,7 @@ func _remove_Image(parent Image, child ui.node) {
 
 #[gen.protocol(set)]
 func _set_Image_fit(w Image, fit string) {
-    _setImageFit(w, fit)
+    _rtImageSetFit(w, fit)
 }
 
 #[gen.protocol(set)]
@@ -2591,22 +1675,22 @@ func _set_Image_look(w Image, look Look) {
 
 #[gen.protocol(on)]
 func _on_Image_click(w Image, click func()) {
-    _onClick(w, click)
+    _rtImageOnClick(w, click)
 }
 
 #[gen.protocol(on)]
 func _on_Image_load(w Image, load func()) {
-    _handleImageLoad(w, load)
+    _rtImageOnLoad(w, load)
 }
 
 #[gen.protocol(on)]
 func _on_Image_failed(w Image, failed func()) {
-    _handleImageFailed(w, failed)
+    _rtImageOnFailed(w, failed)
 }
 
 #[gen.fires("click")]
 func _fire_Image_click(w Image) {
-    _click(w)
+    _rtImageClick(w)
 }
 
 // The picture a URL names, decoded once: a file the program carries at once,
@@ -2881,9 +1965,21 @@ component Canvas(
     shapes      ...component draw.shape,
 ) ui.node
 
-#[c.native("gtk_drawing_area_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDrawingAreaNew")]
-func _drawingArea() Canvas
+#[c.native("sngl_canvas_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasNew")]
+func _rtCanvasNew() Canvas
+
+#[c.native("sngl_canvas_set_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetWidth")]
+func _rtCanvasSetWidth(w Canvas, width int)
+
+#[c.native("sngl_canvas_set_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetHeight")]
+func _rtCanvasSetHeight(w Canvas, height int)
+
+#[c.native("sngl_canvas_set_scaling")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetScaling")]
+func _rtCanvasSetScaling(w Canvas, mode int)
 
 // Runs `fn` from the main loop when it is next idle: how `async.do` hands
 // work a goroutine finished back in Go. C posts through sngl_post itself.
@@ -2895,171 +1991,70 @@ func _rtPost(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-// What a node a click gesture presses holds: the handler.
-struct _ClickState {
-    click option[func()]
-}
+#[c.native("sngl_on_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglOnClick")]
+func _rtOnClick(
+    w ui.node,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
-const _clickKey = "sngl-click"
+#[c.native("sngl_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglClick")]
+func _rtClick(w ui.node)
 
-// Has a press of w run click, through a click gesture made the first time.
-func _onClick(w ui.node, click func()) {
-    var o = _as_GObject(_widget(w))
-    if _heldClick(o, _clickKey) == null {
-        var g = _gtk_gesture_click_new()
-        _g_signal_connect_press(
-            _as_gpointer(_ptr_GtkGesture(g)),
-            "pressed",
-            func(o _p_GObject, n int, x float, y float) {
-                _click(w)
-            },
-            0,
-        )
-        _gtk_widget_add_controller(_as_GtkWidget(_widget(w)), _as_GtkEventController(_ptr_GtkGesture(g)))
-    }
-    _holdClick(o, _clickKey, _ClickState{click=click})
-}
+#[c.native("sngl_canvas_on_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasOnPaint")]
+func _rtCanvasOnPaint(
+    w Canvas,
+    #[c.type("SnglDrawFn")] fn func(ctx CairoContext),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
-func _click(w ui.node) {
-    var s = _heldClick(_as_GObject(_widget(w)), _clickKey)
-    if s != null {
-        var click = s.click
-        if click != null {
-            click()
-        }
-    }
-}
-
-// What a canvas holds on its area: the space its shapes are placed in, how
-// that is shown in the room it is given (draw.ScalingMode's order), and what
-// paints it.
-struct _CanvasState {
-    width  int
-    height int
-    mode   int
-    paint  option[func(ctx CairoContext)]
-}
-
-const _canvasKey = "sngl-canvas"
-
-func _canvasOf(w Canvas) option[_CanvasState] {
-    return _heldCanvas(_as_GObject(_widget(w)), _canvasKey)
-}
-
-func _setCanvas(w Canvas, s _CanvasState) {
-    _holdCanvas(_as_GObject(_widget(w)), _canvasKey, s)
-    _gtk_widget_queue_draw(_as_GtkWidget(_widget(w)))
-}
-
-// The drawing's own space mapped onto the size GTK draws at, so the shapes
-// are rasterized where they land rather than drawn at one size and
-// stretched from it. `center` and `fit` scale it evenly until the whole of it
-// is inside -- a centered canvas is given its own size, so that is no scale
-// -- `fill` until none of the room is left over, and `stretch` each axis to
-// the edges.
-func _canvasDraw(w Canvas, cr CairoContext, width int, height int) {
-    var s = _canvasOf(w)
-    if s != null {
-        var paint = s.paint
-        if paint != null {
-            if s.width > 0 && s.height > 0 {
-                var sx = float(width) / float(s.width)
-                var sy = float(height) / float(s.height)
-                if s.mode == 2 {
-                    sx = sy > sx ? sy : sx
-                    sy = sx
-                } else if s.mode != 3 {
-                    sx = sy < sx ? sy : sx
-                    sy = sx
-                }
-                cr.scale(sx, sy)
-            }
-            paint(cr)
-        }
-    }
-}
-
-func _newCanvas() Canvas {
-    var w = _drawingArea()
-    _holdCanvas(_as_GObject(_widget(w)), _canvasKey, _CanvasState{})
-    _gtk_drawing_area_set_draw_func(_as_GtkDrawingArea(_widget(w)), func(area _p_GtkDrawingArea, cr CairoContext, width int, height int) {
-        _canvasDraw(w, cr, width, height)
-    })
-    return w
-}
-
-func _setCanvasWidth(w Canvas, width int) {
-    var s = _canvasOf(w)
-    if s != null {
-        _setCanvas(w, _CanvasState{width=width, height=s.height, mode=s.mode, paint=s.paint})
-        _gtk_drawing_area_set_content_width(_as_GtkDrawingArea(_widget(w)), width)
-    }
-}
-
-func _setCanvasHeight(w Canvas, height int) {
-    var s = _canvasOf(w)
-    if s != null {
-        _setCanvas(w, _CanvasState{width=s.width, height=height, mode=s.mode, paint=s.paint})
-        _gtk_drawing_area_set_content_height(_as_GtkDrawingArea(_widget(w)), height)
-    }
-}
-
-// A canvas that scales other than `center` expands to take the room.
-func _setCanvasScaling(w Canvas, mode int) {
-    var s = _canvasOf(w)
-    if s != null {
-        _setCanvas(w, _CanvasState{width=s.width, height=s.height, mode=mode, paint=s.paint})
-        var widget = _as_GtkWidget(_widget(w))
-        _gtk_widget_set_hexpand(widget, _to_gboolean(mode != 0 ? 1 : 0))
-        _gtk_widget_set_vexpand(widget, _to_gboolean(mode != 0 ? 1 : 0))
-    }
-}
-
-func _handleCanvasPaint(w Canvas, paint func(ctx CairoContext)) {
-    var s = _canvasOf(w)
-    if s != null {
-        _setCanvas(w, _CanvasState{width=s.width, height=s.height, mode=s.mode, paint=paint})
-    }
-}
+#[c.native("sngl_canvas_redraw")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasRedraw")]
+func _rtCanvasRedraw(w Canvas)
 
 #[gen.protocol(create)]
 func _create_Canvas() Canvas {
-    return _newCanvas()
+    return _rtCanvasNew()
 }
 
 #[gen.protocol(set)]
 func _set_Canvas_width(w Canvas, width ui.measurement) {
-    _setCanvasWidth(w, int(px(width)))
+    _rtCanvasSetWidth(w, int(px(width)))
 }
 
 #[gen.protocol(set)]
 func _set_Canvas_height(w Canvas, height ui.measurement) {
-    _setCanvasHeight(w, int(px(height)))
+    _rtCanvasSetHeight(w, int(px(height)))
 }
 
 #[gen.protocol(set)]
 func _set_Canvas_scalingMode(w Canvas, scalingMode draw.ScalingMode) {
-    _setCanvasScaling(w, int(scalingMode))
+    _rtCanvasSetScaling(w, int(scalingMode))
 }
 
 #[gen.protocol(on)]
 func _on_Canvas_click(w Canvas, click func()) {
-    _onClick(w, click)
+    _rtOnClick(w, click)
 }
 
 #[gen.fires("click")]
 func _fire_Canvas_click(w Canvas) {
-    _click(w)
+    _rtClick(w)
 }
 
 #[gen.protocol(on)]
 func _on_Canvas_paint(w Canvas, paint func(ctx CairoContext)) {
-    _handleCanvasPaint(w, paint)
+    _rtCanvasOnPaint(w, paint)
 }
 
 #[gen.protocol(redraw)]
 func _redraw_Canvas(w Canvas) {
-    _gtk_widget_queue_draw(_as_GtkWidget(_widget(w)))
+    _rtCanvasRedraw(w)
 }
 
 // cairo wants each channel as 0..1 where SNGL carries 0..255.

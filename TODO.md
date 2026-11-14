@@ -781,11 +781,8 @@ what someone wrapped, and win32's Go path would need the same again.
 
 - What a wrapper costs per call against direct cgo, which is one cgo call
   either way.
-- What `purego` cannot reach: a struct passed by value, a callback's
-  context, and a macro (`GetWindowLongPtrW` on 386) each need checking
-  against its limits.
 
-## Part 5: gtk4's runtime in SNGL, and three ways to call C
+## Part 5: gtk4 on placement, and three ways to call C
 
 gtk4 has two runtimes that do one job. `pkg/go/gtk4rt` is Go (and C) for a
 Go program, and `lib/platform/gtk4/rt` is C for a C program, which
@@ -797,14 +794,6 @@ reaches it the same way.
 
 ### The goal
 
-- **The runtime is SNGL over `c.native` GTK.** What gtk4rt and `rt/` do -- the
-  look and the flex layout, scroll, tabs, menus and the way back, images,
-  toplevels and the application, keys, posting -- becomes `gtk4.sngl`'s
-  protocol functions calling GTK's own functions. What GTK can reach only as
-  C stays C in `rt/`, as small as it can be: the layout manager's `measure`
-  and `allocate` vfuncs (a `GtkLayoutManager` subclass), a signal trampoline
-  of a shape a callback cannot take, and whatever else needs a GObject
-  subclass.
 - **The stdlib's GTK declarations are committed.** They are generated once
   from the bundled GIR into a tracked file beside `gtk4.sngl`, in the same
   package, so a program writes `gtk4.GtkButton` as it writes `html.button`,
@@ -818,8 +807,10 @@ reaches it the same way.
 - **`cgo` becomes an enum: `direct`, `wrapper` or `purego`, defaulting to
   `wrapper`.** `direct` calls C from the program. `wrapper` calls the
   package `sngl tool cgogen` writes (Part 4), and falls back to `direct` for
-  a declaration with no wrapper. `purego` calls `libgtk-4.so` through
-  [purego](https://github.com/ebitengine/purego) with no cgo at all.
+  a declaration with no wrapper. `purego` calls a C library through
+  [purego](https://github.com/ebitengine/purego) with no cgo at all, which
+  reaches no platform shipping C of its own: gtk4's and win32's runtimes
+  stay C.
 - **`pkg/go/gtk4rt` is deleted**, and its tests become tests of the runtime
   through a program (`cmd/sngl/testdata`, the gtk4 records), in both
   languages.
@@ -1020,7 +1011,7 @@ reaches it the same way.
    `gtk4_test_runs.txt` and `c_win32_test_runs.txt`). Through purego, a
    package whose C is declarations against a library is called with no cgo
    (`testdata/c_go_purego_call.txtar`); one shipping C -- gtk4's and win32's
-   runtimes, until step 6 -- a ref, a C struct by value and a callback are
+   runtimes -- a ref, a C struct by value and a callback are
    refused (`go_cgo_purego_refused.txt`). A platform's entry and hooks call
    the runtime through functions of the program's own (`sngl_rt.go`).
 4. **`pkg/go/gtk4rt` is deleted.** Done with the swap. Its tests went with
@@ -1039,28 +1030,3 @@ reaches it the same way.
    and `type`, and marks its own declarations with it unqualified. A mark
    whose package is not imported names the one library package declaring
    that mark, where exactly one does (`testdata/error_mark_import_hint.sngl`).
-6. **The runtimes become SNGL.** `rt/`'s C (about 4,000 lines for gtk4 and
-   4,400 for win32) is ordinary GTK and Win32 calls SNGL could make through
-   `c.native` declarations, piece by piece in both languages. What must stay
-   C is small: the rich-text span's GObject subclass (`markup.c`). The
-   layout managers take function pointers (`gtk_custom_layout_new`) and
-   win32's window procedures are callbacks, both of which SNGL hands C. Once
-   it lands, `purego` reaches gtk4 and win32.
-   - Started: what a control holds, a test's fire of it and the sets made
-     unreported are SNGL calling GTK (`glib.sngl`); a handler is blocked
-     through `g_signal_handlers_block_matched`, its `NULL`s an `option`'s
-     null. `choose.c` keeps only the calendar's select, whose call depends on
-     GTK's version.
-   - Tabs are SNGL: what a widget holds is a `c.held` value kept with
-     `g_object_set_data_full` (`sngl:x/c`), and `tabs.c` is gone. So is a
-     scroll, but for its probe's layout manager, a window's menu and way
-     back, which the window reaches through a hook, a canvas, a text, a
-     click and an image, but for its sources, pictures and fetch.
-
-### Open questions
-
-- How `purego` reaches what stays C once the runtimes are SNGL (step 6):
-  the span's GObject subclass, and the callbacks the layout managers and
-  window procedures are, which `purego.NewCallback` makes and never gives
-  back. What each mode costs a build is measured (`design/win32.md`, *What
-  each costs a build*).

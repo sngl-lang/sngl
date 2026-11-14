@@ -794,7 +794,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -849,12 +848,6 @@ func Outer(a int) int {
 	return Outer__sum(a)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -879,19 +872,19 @@ func _setLook(w cgo.Widget, l Look) {
 
 func Step__mark(k int) int {
 	m.log = (m.log + "!")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (m.log + fmt.Sprint(m.total)))
+	cgo.SnglTextSetValue(m.__n0, (m.log + fmt.Sprint(m.total)))
 	return (k * 2)
 }
 
 func Reset__mark(k int) int {
 	m.log = (m.log + "?")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (m.log + fmt.Sprint(m.total)))
+	cgo.SnglTextSetValue(m.__n0, (m.log + fmt.Sprint(m.total)))
 	return (k - 1)
 }
 
 func Outer__sum__note(j int) int {
 	m.log = (m.log + ".")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (m.log + fmt.Sprint(m.total)))
+	cgo.SnglTextSetValue(m.__n0, (m.log + fmt.Sprint(m.total)))
 	return j
 }
 
@@ -904,7 +897,7 @@ func Outer__sum(k int) int {
 
 func __effect0_mount() {
 	m.total = ((Step(3) + Reset(10)) + Outer(3))
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (m.log + fmt.Sprint(m.total)))
+	cgo.SnglTextSetValue(m.__n0, (m.log + fmt.Sprint(m.total)))
 }
 
 func __effect0_down() {
@@ -960,8 +953,8 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (m.log + fmt.Sprint(m.total)))
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, (m.log + fmt.Sprint(m.total)))
 	_setLook(m.__n0, Look{})
 	__effects0_settle()
 	cgo.SnglAppAttach(m.__n0)
@@ -1239,7 +1232,7 @@ pass sha256:5d879bc4b807e13f8370a163c34f6183
 -- run/go/fyne --
 pass sha256:24d88d295148fd8f908044f152cc4f1c
 -- run/go/gtk4 --
-pass sha256:2f86aa6fada81176673c1fe00d071fcd
+pass sha256:b18d98e73be5b714be3d4655cb66d2db
 -- run/kotlin/android --
 pass sha256:9bbe3d70fb663223799228f4fc5b799a
 -- run/none/html --

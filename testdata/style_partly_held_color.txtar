@@ -466,12 +466,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func BoxLookOf(s Style, otherwise int) Look {
 	look := LookHidden(s, (s.Display == "none"), true, SpacingOf(s, otherwise))
 	return look
@@ -718,25 +712,25 @@ func snglBuild() {
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(1))
 	_setLook(m.__n4, Look{Css: "background: #336699; ", Spaced: true, Spacing: 6})
-	m.__n5 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), "a")
+	m.__n5 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n5, "a")
 	_setLook(m.__n5, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
 	_setLook(m.__n1, BoxLookOf(Style{Padding: snglSome(m.pad), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
-	m.__n6 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n6)), "b")
+	m.__n6 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n6, "b")
 	_setLook(m.__n6, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
-	m.__n2 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "c")
+	m.__n2 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n2, "c")
 	_setLook(m.__n2, LookOf(Style{Padding: snglSome(m.pad), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
-	m.__n3 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "d")
+	m.__n3 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n3, "d")
 	_setLook(m.__n3, LookOf(Style{Padding: snglSome(m.pad), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 51, G: 102, B: 153, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
 	cgo.SnglAppAttach(m.__n0)
@@ -818,6 +812,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:0eb5e573bc2878dc5116560008939790
 -- run/go/gtk4 --
-pass sha256:735bed9079f3c852af6d6d83e05bb9d8
+pass sha256:4acde05eab01bc753366785fcf276db1
 -- run/none/html --
 pass sha256:9b54f70edec4a3b3508d43ba7554bdba

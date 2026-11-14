@@ -394,7 +394,6 @@ import (
 	"os"
 	"runtime"
 	"time"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -436,12 +435,6 @@ type snglState struct {
 }
 
 var m = &snglState{}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -485,7 +478,7 @@ func __effect0_mount() {
 				__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 				snglPost(func() {
 					m.name__inst0 = __async_off0
-					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.name__inst0)
+					cgo.SnglTextSetValue(m.__n0, m.name__inst0)
 				})
 			}()
 		}()
@@ -586,8 +579,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.main__r0, "poll")
 	cgo.SnglToplevelSetVisible(m.main__r0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.main__r0, Main__r0_visible_handler)
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.name__inst0)
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, m.name__inst0)
 	_setLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.__n0)
 	cgo.SnglAppAttach(m.main__r0)
@@ -627,4 +620,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:123cb637cc9927759f753223625f8b06
 -- run/go/gtk4 --
-pass sha256:c51b0a69c56b3d211c348aa31f1a3dfd
+pass sha256:2993db156927c66cb4bcad414992f59e

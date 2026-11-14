@@ -665,7 +665,6 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
-	"fmt"
 	"os"
 	"runtime"
 	"strconv"
@@ -749,27 +748,6 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
-func CalendarDate(c cgo.Widget) *time.Time {
-	t := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
-	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
-	cgo.GDateTimeUnref(t)
-	return ParseDate(day)
-}
-
-func _padded(n int, width int) string {
-	s := fmt.Sprint(n)
-	for utf8.RuneCountInString(s) < width {
-		s = ("0" + s)
-	}
-	return s
 }
 
 func ParseDate(s string) *time.Time {
@@ -872,14 +850,14 @@ func __n0_visible_handler(__visible bool) {
 }
 
 func D_daySelected_handler(c cgo.Widget) {
-	m.picked__inst0 = CalendarDate(c)
+	m.picked__inst0 = ParseDate(cgo.SnglCalendarDay(c))
 	var __lt21 string
 	if m.picked__inst0 != nil {
 		__lt21 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
 		__lt21 = "none"
 	}
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt21)
+	cgo.SnglTextSetValue(m.__n1, __lt21)
 	m.changes__inst0 += 1
 	__effects0_settle()
 }
@@ -919,8 +897,8 @@ func snglBuild() {
 	} else {
 		__lt22 = "none"
 	}
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt22)
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, __lt22)
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
@@ -1262,7 +1240,7 @@ pass sha256:12eb12b75d7d682e49eeb4edcde90ecb
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:13ffacb0809e7aa815885094b2e748bb
+pass sha256:20a370cab217b14fc6d988107c4e270b
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --

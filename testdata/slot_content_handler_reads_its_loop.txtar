@@ -2189,12 +2189,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func Card__slot0__new(__p0 []string, __copy string, __on0 func(int, __anon_id_elem_c6a818), __on1 func(__anon_id_elem_c6a818)) *Card__slot0__inst {
 	__self := &Card__slot0__inst{__prop___p0: __p0, __prop___copy: __copy, __prop___on0: __on0, __prop___on1: __on1, __slot0: []cgo.Widget{}, __inst1_live: map[string]*__child0__inst{}, __inst2_live: map[string]*__child1__inst{}}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -2580,7 +2574,7 @@ func __renderSlot1(parent cgo.Widget) {
 						__n5 = m.__inst4_live[__inst4_i]
 						Card__slot0__set___on0(__n5, func(__on0_i int, __on0_it __anon_id_elem_c6a818) {
 							m.log = (fmt.Sprint(__on0_i) + __on0_it.Elem)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+							cgo.SnglTextSetValue(m.__n1, m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -2592,7 +2586,7 @@ func __renderSlot1(parent cgo.Widget) {
 								__list0 = append(__list0, (__item0 + ""))
 							}
 							m.log = ((__on1_it.Elem + s) + fmt.Sprint(len(__list0)))
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+							cgo.SnglTextSetValue(m.__n1, m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -2605,7 +2599,7 @@ func __renderSlot1(parent cgo.Widget) {
 						}
 						__n5__made := Card__slot0__new(row, fmt.Sprint(__copy0), func(__on0_i int, __on0_it __anon_id_elem_c6a818) {
 							m.log = (fmt.Sprint(__on0_i) + __on0_it.Elem)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+							cgo.SnglTextSetValue(m.__n1, m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -2616,7 +2610,7 @@ func __renderSlot1(parent cgo.Widget) {
 								__list0 = append(__list0, (__item0 + ""))
 							}
 							m.log = ((__on1_it.Elem + s) + fmt.Sprint(len(__list0)))
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+							cgo.SnglTextSetValue(m.__n1, m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -2683,7 +2677,7 @@ func __renderSlot2(parent cgo.Widget) {
 						__child2__set___on0(__n6, func() {
 							s := "q"
 							m.log = (m.log + s)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+							cgo.SnglTextSetValue(m.__n1, m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -2696,7 +2690,7 @@ func __renderSlot2(parent cgo.Widget) {
 						__n6__made := __child2__new(m.log, func() {
 							s := "q"
 							m.log = (m.log + s)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+							cgo.SnglTextSetValue(m.__n1, m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -2785,8 +2779,8 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.swap)))
 	__renderSlot1(m.__n7)
 	__renderSlot2(m.__n7)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, m.log)
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglAppAttach(m.__n7)
@@ -3795,7 +3789,7 @@ pass sha256:dbea6c1ed1b1bff6bebbc2915671d3e6
 -- run/go/fyne --
 pass sha256:2e10dd0c1abfed6ab38f18c28322b3f0
 -- run/go/gtk4 --
-pass sha256:54d496f1b1c99250f9e7cdd4b00ffcc8
+pass sha256:30e86fb2af9c103a363545d6a4ee5af4
 -- run/kotlin/android --
 pass sha256:e80981dd088c9496f4b801f6ee3d7973
 -- run/none/html --

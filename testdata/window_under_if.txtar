@@ -498,10 +498,6 @@ type Look struct {
 	Columns   int
 }
 
-type _ClickState struct {
-	Click *func()
-}
-
 type snglState struct {
 	details        bool
 	n              int
@@ -519,12 +515,6 @@ type snglState struct {
 }
 
 var m = &snglState{}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -546,38 +536,6 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
-}
-
-func _onClick(w cgo.Widget, click func()) {
-	o := (cgo.PGObject)(unsafe.Pointer(w))
-	if func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
-		g := cgo.GtkGestureClickNew()
-		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
-			_click(w)
-		}, 0)
-		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
-	}
-	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
-}
-
-func _click(w cgo.Widget) {
-	s := func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
-	if s != nil {
-		click := (*(s)).Click
-		if click != nil {
-			(*(click))()
-		}
-	}
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -608,7 +566,7 @@ func __renderSlot0(parent cgo.Widget) {
 						})
 						__window_state1__slot0__set___on0(__n3, func() {
 							m.shown += 1
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), (("shown " + fmt.Sprint(m.shown)) + " times"))
+							cgo.SnglTextSetValue(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
 						})
 						__window_state1__slot0__set_title(__n3, "Load")
 						__window_state1__slot0__set___p0(__n3, m.n)
@@ -621,7 +579,7 @@ func __renderSlot0(parent cgo.Widget) {
 							__renderSlot0(nil)
 						}, func() {
 							m.shown += 1
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), (("shown " + fmt.Sprint(m.shown)) + " times"))
+							cgo.SnglTextSetValue(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
 						})
 						__n3 = __n3__made
 					}
@@ -700,10 +658,10 @@ func __window_state1__slot0__new(__start_visible bool, title string, __p0 int, c
 		__self.Visible = __visible
 		cgo.SnglToplevelSetVisible(__self.__n0, __self.Visible)
 	})
-	__self.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), fmt.Sprint(__self.__prop___p0))
+	__self.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n1, fmt.Sprint(__self.__prop___p0))
 	_setLook(__self.__n1, Look{})
-	_onClick(__self.__n1, func() {
+	cgo.SnglOnClick(__self.__n1, func() {
 	})
 	cgo.SnglToplevelAppend(__self.__n0, __self.__n1)
 	__window_state1__slot0__effects0_settle(__self)
@@ -762,7 +720,7 @@ func __window_state1__slot0__set_title(__self *__window_state1__slot0__inst, __v
 
 func __window_state1__slot0__set___p0(__self *__window_state1__slot0__inst, __v int) {
 	__self.__prop___p0 = __v
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), fmt.Sprint(__self.__prop___p0))
+	cgo.SnglTextSetValue(__self.__n1, fmt.Sprint(__self.__prop___p0))
 }
 
 func __window_state1__slot0__set_closed(__self *__window_state1__slot0__inst, __v func()) {
@@ -807,8 +765,8 @@ func snglBuild() {
 	_setLook(m.__n5, Look{})
 	cgo.SnglSignalConnect(m.__n5, "clicked", __n5_clicked_handler)
 	cgo.SnglToplevelAppend(m.main__r0, m.__n5)
-	m.__n2 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), (("shown " + fmt.Sprint(m.shown)) + " times"))
+	m.__n2 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n2, (("shown " + fmt.Sprint(m.shown)) + " times"))
 	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.__n2)
 	cgo.SnglAppAttach(m.main__r0)
@@ -1117,6 +1075,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:5209f4f1e195c1e1f6dddfb9570bd2fc
 -- run/go/gtk4 --
-pass sha256:fe04b370b0f50266b96ead7e61f81b1d
+pass sha256:c41e979d2b0cb49b922f1180e91eeff2
 -- run/none/html --
 pass sha256:f8e75a9cb755b5c6bffb9b7ff03f0232

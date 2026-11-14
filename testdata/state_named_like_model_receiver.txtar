@@ -1235,10 +1235,6 @@ type Look struct {
 	Columns   int
 }
 
-type _ClickState struct {
-	Click *func()
-}
-
 type snglState struct {
 	m__r0          int
 	xs             []int
@@ -1296,54 +1292,16 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
-func _onClick(w cgo.Widget, click func()) {
-	o := (cgo.PGObject)(unsafe.Pointer(w))
-	if func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
-		g := cgo.GtkGestureClickNew()
-		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
-			_click(w)
-		}, 0)
-		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
-	}
-	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
-}
-
-func _click(w cgo.Widget) {
-	s := func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
-	if s != nil {
-		click := (*(s)).Click
-		if click != nil {
-			(*(click))()
-		}
-	}
-}
-
 func Counter__new(start int) *Counter__inst {
 	__self := &Counter__inst{__prop_start: start}
 	__self.M = __self.__prop_start
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(0))
 	_setLook(__self.__n4, Look{Spaced: true, Spacing: 6})
-	__self.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("m " + fmt.Sprint(__self.M)) + " c ") + fmt.Sprint(__self.C)))
+	__self.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n0, ((("m " + fmt.Sprint(__self.M)) + " c ") + fmt.Sprint(__self.C)))
 	_setLook(__self.__n0, Look{})
-	_onClick(__self.__n0, func() {
+	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	__self.Inc = cgo.GtkButtonNew()
@@ -1352,9 +1310,9 @@ func Counter__new(start int) *Counter__inst {
 	_setLook(__self.Inc, Look{})
 	cgo.SnglSignalConnect(__self.Inc, "clicked", func() {
 		__self.M += 1
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("m " + fmt.Sprint(__self.M)) + " c ") + fmt.Sprint(__self.C)))
+		cgo.SnglTextSetValue(__self.__n0, ((("m " + fmt.Sprint(__self.M)) + " c ") + fmt.Sprint(__self.C)))
 		__self.C += 1
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("m " + fmt.Sprint(__self.M)) + " c ") + fmt.Sprint(__self.C)))
+		cgo.SnglTextSetValue(__self.__n0, ((("m " + fmt.Sprint(__self.M)) + " c ") + fmt.Sprint(__self.C)))
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Inc)))
 	__self.__root = __self.__n4
@@ -1462,7 +1420,7 @@ func __snglTeardown() {
 
 func Bump_clicked_handler() {
 	m.m__r0 += 1
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("page " + fmt.Sprint(m.m__r0)))
+	cgo.SnglTextSetValue(m.__n1, ("page " + fmt.Sprint(m.m__r0)))
 }
 
 func snglInit() {
@@ -1479,8 +1437,8 @@ func snglBuild() {
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("page " + fmt.Sprint(m.m__r0)))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, ("page " + fmt.Sprint(m.m__r0)))
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.bump = cgo.GtkButtonNew()
@@ -1528,4 +1486,4 @@ pass sha256:0ab01b4d5e903431d33225d442513bbf
 -- run/go/fyne --
 pass sha256:68b09a17e814e01ede5495879281bf6a
 -- run/go/gtk4 --
-pass sha256:2c8cca470ea37b037b6bd0d83440cac5
+pass sha256:9e1801ee6c162c5ddd2876ecdebcd773

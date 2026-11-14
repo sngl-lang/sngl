@@ -930,7 +930,6 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -983,18 +982,12 @@ var m = &snglState{}
 
 func Release(t Token) {
 	m.log = append(m.log, ("release " + fmt.Sprint(t.Id)))
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log, ","))
+	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
 }
 
 func Report(t Token) {
 	m.log = append(m.log, ("tick " + fmt.Sprint(t.Id)))
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log, ","))
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
+	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -1023,7 +1016,7 @@ func __effect0_mount() {
 	m.handle__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
 		Report(m.__rel0)
 		m.log = append(m.log, ("held " + fmt.Sprint(m.held.Id)))
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log, ","))
+		cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
 	})
 }
 
@@ -1073,7 +1066,7 @@ func __effect0_teardown() {
 
 func __effect1_unmount() {
 	m.log = append(m.log, "unmount")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log, ","))
+	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
 }
 
 func __effect1_down() {
@@ -1161,8 +1154,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log, ","))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -1453,7 +1446,7 @@ pass sha256:5132eb7056ae47c0da7ca1bca3c8d7a0
 -- run/go/fyne --
 pass sha256:2cc2c7372b0e0e79e1d92e48c0567252
 -- run/go/gtk4 --
-pass sha256:f5c3fca7460a06b1169d19013c2b0f6e
+pass sha256:b6e0922eaf58b9990473cb55e9e6f7ce
 -- run/kotlin/android --
 pass sha256:cc856f992a205d3f879134ba05e91d80
 -- run/none/html --

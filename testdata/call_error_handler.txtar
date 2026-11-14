@@ -1107,12 +1107,12 @@ func ViaFunc() {
 			}
 			_ = e
 			m.caught = (((m.caught + "func:") + e.Message) + ";")
-			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 		}()
 		Check(5)
 	}()
 	m.after = (m.after + "f")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 }
 
 func Check(n int) {
@@ -1148,12 +1148,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func InHandler_clicked_handler() {
 	func() {
 		defer func() {
@@ -1167,12 +1161,12 @@ func InHandler_clicked_handler() {
 			}
 			_ = e
 			m.caught = ((((m.caught + e.Message) + "/") + e.Kind) + ";")
-			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 		}()
 		Check(5)
 	}()
 	m.after = (m.after + "h")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 }
 
 func InFunc_clicked_handler() {
@@ -1192,12 +1186,12 @@ func Deep_clicked_handler() {
 			}
 			_ = e
 			m.caught = (((m.caught + "deep:") + e.Message) + ";")
-			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 		}()
 		Scaled(7)
 	}()
 	m.after = (m.after + "d")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 }
 
 func Fine_clicked_handler() {
@@ -1213,12 +1207,12 @@ func Fine_clicked_handler() {
 			}
 			_ = e
 			m.caught = (m.caught + "never;")
-			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 		}()
 		Check(1)
 	}()
 	m.after = (m.after + "ok")
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 }
 
 func snglInit() {
@@ -1249,8 +1243,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.fine)), cgo.CGboolean(1))
 	_setLook(m.fine, Look{})
 	cgo.SnglSignalConnect(m.fine, "clicked", Fine_clicked_handler)
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.inHandler)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.inFunc)))
@@ -1651,7 +1645,7 @@ pass sha256:99b3dcd8671d39e7e03f644521100d14
 -- run/go/fyne --
 pass sha256:e20307feead2362fec0efd1f1883448d
 -- run/go/gtk4 --
-pass sha256:a4a554bbfb9c6d13eef551c7709e5440
+pass sha256:b9461c371f0e1702fc223c911557c6c1
 -- run/go/html --
 pass sha256:f2377d5d68c73a7bf1329c1084725253
 -- run/kotlin/android --

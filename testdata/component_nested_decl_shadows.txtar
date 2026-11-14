@@ -532,12 +532,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -556,12 +550,12 @@ func snglBuild() {
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
 	_setLook(m.__n1, Look{Spaced: true, Spacing: 6})
-	m.__n2 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "inner x")
+	m.__n2 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n2, "inner x")
 	_setLook(m.__n2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "top y")
+	m.__n3 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n3, "top y")
 	_setLook(m.__n3, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
@@ -792,7 +786,7 @@ pass sha256:be2ab61150f5f2865454cbb588ade2a8
 -- run/go/fyne --
 pass sha256:7096a72218772eba67519a6e005c4083
 -- run/go/gtk4 --
-pass sha256:6278c19fb19533c898a56586829834fb
+pass sha256:62513234b2bbf681c87e25ef7ce0f296
 -- run/kotlin/android --
 pass sha256:a5437d26253b316a909ab9fc7bea7bb4
 -- run/none/html --

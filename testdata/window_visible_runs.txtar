@@ -418,7 +418,6 @@ import (
 	"os"
 	"runtime"
 	"time"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -464,12 +463,6 @@ type snglState struct {
 
 var m = &snglState{}
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -495,7 +488,7 @@ func _setLook(w cgo.Widget, l Look) {
 func __effect0_mount() {
 	m.handle__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.ticks))
+		cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.ticks))
 		fmt.Println(((("shown=" + fmt.Sprint(m.shown)) + " other=") + fmt.Sprint(m.visible__inst0)))
 		if m.ticks == 1 {
 			m.shown = false
@@ -615,8 +608,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.details, "Details")
 	cgo.SnglToplevelSetVisible(m.details, m.shown)
 	cgo.SnglToplevelOnVisible(m.details, Details_visible_handler)
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.ticks))
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.ticks))
 	_setLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.details, m.__n0)
 	cgo.SnglAppAttach(m.details)
@@ -624,8 +617,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.other, "Other")
 	cgo.SnglToplevelSetVisible(m.other, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.other, Other_visible_handler)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "other")
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, "other")
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.other, m.__n1)
 	cgo.SnglAppAttach(m.other)
@@ -665,4 +658,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:b48078756dc61687f30610d97e773c73
 -- run/go/gtk4 --
-pass sha256:cf1797521a7ccc03993232f4554bf805
+pass sha256:825345c7c0c69bc53c22e554a26b05e7

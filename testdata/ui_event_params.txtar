@@ -1384,100 +1384,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _fireCheck(b cgo.Widget, checked bool) {
-	w := (cgo.PGtkCheckButton)(unsafe.Pointer(b))
-	if cgo.GtkCheckButtonGetActive(w) != checked {
-		var __lt3 int
-		if checked {
-			__lt3 = 1
-		} else {
-			__lt3 = 0
-		}
-		cgo.GtkCheckButtonSetActive(w, cgo.CGboolean(__lt3))
-	} else {
-		cgo.SnglSignalEmit(b, "toggled")
-	}
-}
-
-func _fireSwitch(s cgo.Widget, checked bool) {
-	w := (cgo.PGtkSwitch)(unsafe.Pointer(s))
-	if cgo.GtkSwitchGetActive(w) != checked {
-		var __lt4 int
-		if checked {
-			__lt4 = 1
-		} else {
-			__lt4 = 0
-		}
-		cgo.GtkSwitchSetActive(w, cgo.CGboolean(__lt4))
-	} else {
-		cgo.GObjectNotify((cgo.PGObject)(unsafe.Pointer(s)), "active")
-	}
-}
-
-func _fireText(e cgo.Widget, text string, signal string) {
-	SetEntryText(e, text)
-	cgo.SnglSignalEmit(e, signal)
-}
-
-func _fireDay(c cgo.Widget, day *time.Time) {
-	if day != nil {
-		cgo.SnglCalendarSelect(c, func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(day)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(day)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(day)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}())
-	}
-	cgo.SnglSignalEmit(c, "day-selected")
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
-func SetEntryText(e cgo.Widget, text string) {
-	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
-		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
-	})
-}
-
-func CalendarDate(c cgo.Widget) *time.Time {
-	t := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
-	day__r0 := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
-	cgo.GDateTimeUnref(t)
-	return ParseDate(day__r0)
-}
-
-func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
-	obj := cgo.CGpointer(o)
-	var id int = cgo.GSignalLookup(signal, on)
-	var __lt8 int
-	if detail == "" {
-		__lt8 = 1
-	} else {
-		__lt8 = 3
-	}
-	var mask int = __lt8
-	var q int = cgo.GQuarkFromString(detail)
-	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
-	set()
-	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
-}
-
-func _padded(n int, width int) string {
-	s := fmt.Sprint(n)
-	for utf8.RuneCountInString(s) < width {
-		s = ("0" + s)
-	}
-	return s
-}
-
 func ParseDate(s string) *time.Time {
 	var unset *time.Time
 	if ((utf8.RuneCountInString(s) != 10) || (string([]rune(s)[4:5]) != "-")) || (string([]rune(s)[7:8]) != "-") {
@@ -1516,8 +1422,8 @@ func _daysIn(y int, m__r1 int) int {
 }
 
 func __effect0_mount() {
-	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.field))) != m.__effect0_key {
-		SetEntryText(m.field, m.__effect0_key)
+	if cgo.SnglEntryText(m.field) != m.__effect0_key {
+		cgo.SnglEditableSetTextQuiet(m.field, m.__effect0_key)
 	}
 }
 
@@ -1601,8 +1507,8 @@ func __effects0_settle() {
 }
 
 func Box_toggled_handler(b cgo.Widget) {
-	if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != m.on {
-		__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
+	if cgo.SnglCheckActive(b) != m.on {
+		__checkbox_checked_wrote0 := cgo.SnglCheckActive(b)
 		m.on = __checkbox_checked_wrote0
 		cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(m.box)), cgo.CGboolean(func() int {
 			if m.on {
@@ -1612,13 +1518,13 @@ func Box_toggled_handler(b cgo.Widget) {
 			}
 		}()))
 		m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
+		cgo.SnglTextSetValue(m.__n0, m.seen)
 	}
 }
 
 func Sw_notifyActive_handler(s cgo.Widget) {
-	if cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s))) != m.checked__inst0 {
-		__toggle_checked_wrote0 := cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s)))
+	if cgo.SnglSwitchActive(s) != m.checked__inst0 {
+		__toggle_checked_wrote0 := cgo.SnglSwitchActive(s)
 		m.checked__inst0 = __toggle_checked_wrote0
 		cgo.GtkSwitchSetActive((cgo.PGtkSwitch)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int {
 			if m.checked__inst0 {
@@ -1629,36 +1535,36 @@ func Sw_notifyActive_handler(s cgo.Widget) {
 		}()))
 		m.lit = __toggle_checked_wrote0
 		m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
+		cgo.SnglTextSetValue(m.__n0, m.seen)
 	}
 }
 
 func Field_changed_handler(e cgo.Widget) {
-	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.name {
-		__input_value_wrote0 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+	if cgo.SnglEntryText(e) != m.name {
+		__input_value_wrote0 := cgo.SnglEntryText(e)
 		m.name = __input_value_wrote0
 		m.seen = ((("input " + __input_value_wrote0) + " ") + m.name)
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
+		cgo.SnglTextSetValue(m.__n0, m.seen)
 	}
 	__effects0_settle()
 }
 
 func Field_activate_handler(e cgo.Widget) {
-	m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+	m.name = cgo.SnglEntryText(e)
 	__effects0_settle()
 }
 
 func Day_daySelected_handler(c cgo.Widget) {
-	__datepicker_value_wrote0 := CalendarDate(c)
+	__datepicker_value_wrote0 := ParseDate(cgo.SnglCalendarDay(c))
 	m.picked = __datepicker_value_wrote0
-	var __lt24 string
+	var __lt21 string
 	if __datepicker_value_wrote0 == nil {
-		__lt24 = "no day"
+		__lt21 = "no day"
 	} else {
-		__lt24 = "day"
+		__lt21 = "day"
 	}
-	m.seen = __lt24
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
+	m.seen = __lt21
+	cgo.SnglTextSetValue(m.__n0, m.seen)
 	__effects0_settle()
 }
 
@@ -1744,8 +1650,8 @@ func snglBuild() {
 	_setLook(m.press, Look{})
 	cgo.SnglSignalConnect(m.press, "clicked", Press_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.press)))
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, m.seen)
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	__effects0_settle()
@@ -2316,7 +2222,7 @@ pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
 pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:48d6926f656fb5ea5a0fff68584f11f4
+pass sha256:2a91ec0866abee5895402bba43acbb21
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

@@ -969,7 +969,6 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
-	"fmt"
 	"os"
 	"runtime"
 	"slices"
@@ -1019,35 +1018,6 @@ type Look struct {
 	Columns   int
 }
 
-type _BarState struct {
-	Decided    bool
-	Bar        *cgo.PGtkWidget
-	BackButton *cgo.PGtkWidget
-	MenuButton *cgo.PGtkWidget
-}
-
-type _ImageState struct {
-	Fit     int
-	Load    *func()
-	Failed  *func()
-	Failure string
-}
-
-type _BackState struct {
-	Press *func()
-}
-
-type _ClickState struct {
-	Click *func()
-}
-
-type _MenuEntryState struct {
-	Label    string
-	Disabled bool
-	Checked  bool
-	Select   *func()
-}
-
 type snglState struct {
 	backs            int
 	pages__current   _page__value
@@ -1067,36 +1037,6 @@ type snglState struct {
 }
 
 var m = &snglState{}
-
-func _newBack() cgo.Widget {
-	_installWindowHook()
-	b := cgo.GtkLabelNew(nil)
-	w := (cgo.PGtkWidget)(unsafe.Pointer(b))
-	cgo.SetVisible(w, false)
-	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(w)), "sngl-back", _BackState{})
-	return b
-}
-
-func _backPress(w cgo.PGtkWidget) {
-	b := func(h any) *_BackState {
-		if v, ok := h.(_BackState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-back"))
-	if b != nil {
-		press := (*(b)).Press
-		if press != nil {
-			(*(press))()
-		}
-	}
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -1120,385 +1060,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _onClick(w cgo.Widget, click func()) {
-	o := (cgo.PGObject)(unsafe.Pointer(w))
-	if func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
-		g := cgo.GtkGestureClickNew()
-		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
-			_click(w)
-		}, 0)
-		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
-	}
-	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
-}
-
-func _click(w cgo.Widget) {
-	s := func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
-	if s != nil {
-		click := (*(s)).Click
-		if click != nil {
-			(*(click))()
-		}
-	}
-}
-
-func _installWindowHook() {
-	cgo.SnglWindowHook(func(op int, box cgo.PGtkWidget, child cgo.PGtkWidget) bool { return _windowHook(op, box, child) })
-}
-
-func _windowHook(op int, box cgo.PGtkWidget, child cgo.PGtkWidget) bool {
-	if op == 0 {
-		return _windowBack(box)
-	}
-	if op == 1 {
-		_menuApply(box)
-	} else {
-		if op == 2 {
-			_barForget(box)
-		} else {
-			if op == 3 {
-				_menuMoved(box, child)
-			} else {
-				if op == 4 {
-					return _imagePlaced(box, child)
-				} else {
-					if op == 5 {
-						return _imageReport(box, child)
-					}
-				}
-			}
-		}
-	}
-	return false
-}
-
-func _windowBack(box cgo.PGtkWidget) bool {
-	b := _backIn(box)
-	if b != nil {
-		_backPress((*(b)))
-		return true
-	}
-	return false
-}
-
-func _menuApply(box cgo.PGtkWidget) {
-	_barApply(box)
-	win := cgo.SnglToplevelWindow(box)
-	b := _barOf(box)
-	button := b.MenuButton
-	if (win != nil) && (button != nil) {
-		menu := cgo.GMenuNew()
-		group := cgo.GSimpleActionGroupNew()
-		var n int = 0
-		for _, c := range _entriesIn(box) {
-			e := func(h any) *_MenuEntryState {
-				if v, ok := h.(_MenuEntryState); ok {
-					return &v
-				}
-				return nil
-			}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(c)), "sngl-menu-entry"))
-			kids := _entriesIn(c)
-			if e != nil {
-				if len(kids) == 0 {
-					_menuAdd(menu, group, n, c, (*(e)).Checked)
-					n += 1
-				} else {
-					checkable := false
-					for _, k := range kids {
-						ke := func(h any) *_MenuEntryState {
-							if v, ok := h.(_MenuEntryState); ok {
-								return &v
-							}
-							return nil
-						}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(k)), "sngl-menu-entry"))
-						if (ke != nil) && (*(ke)).Checked {
-							checkable = true
-						}
-					}
-					sub := cgo.GMenuNew()
-					for _, k := range kids {
-						_menuAdd(sub, group, n, k, checkable)
-						n += 1
-					}
-					cgo.GMenuAppendSubmenu(menu, (*(e)).Label, (cgo.PGMenuModel)(unsafe.Pointer(sub)))
-					cgo.GObjectUnref(cgo.CGpointer(unsafe.Pointer(sub)))
-				}
-			}
-		}
-		cgo.GtkWidgetInsertActionGroup((cgo.PGtkWidget)(unsafe.Pointer((*(win)))), "sngl", (cgo.PGActionGroup)(unsafe.Pointer(group)))
-		cgo.GtkMenuButtonSetMenuModel((cgo.PGtkMenuButton)(unsafe.Pointer((*(button)))), (cgo.PGMenuModel)(unsafe.Pointer(menu)))
-		cgo.GObjectUnref(cgo.CGpointer(unsafe.Pointer(group)))
-		cgo.GObjectUnref(cgo.CGpointer(unsafe.Pointer(menu)))
-	}
-}
-
-func _barForget(box cgo.PGtkWidget) {
-	b := func(h any) *_BarState {
-		if v, ok := h.(_BarState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-bar"))
-	if b != nil {
-		back := (*(b)).BackButton
-		if (*(b)).Bar != nil {
-			back = nil
-		}
-		_setBar(box, _BarState{BackButton: back})
-	}
-}
-
-func _menuMoved(box cgo.PGtkWidget, child cgo.PGtkWidget) {
-	toplevel := (cgo.SnglToplevelWindow(box) != nil)
-	if func(h any) *_BackState {
-		if v, ok := h.(_BackState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(child)), "sngl-back")) != nil {
-		if toplevel {
-			_barApply(box)
-		}
-	} else {
-		if func(h any) *_MenuEntryState {
-			if v, ok := h.(_MenuEntryState); ok {
-				return &v
-			}
-			return nil
-		}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(child)), "sngl-menu-entry")) != nil {
-			if toplevel {
-				_menuApply(box)
-			} else {
-				if func(h any) *_MenuEntryState {
-					if v, ok := h.(_MenuEntryState); ok {
-						return &v
-					}
-					return nil
-				}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-menu-entry")) != nil {
-					_entryChanged(box)
-				}
-			}
-		}
-	}
-}
-
-func _imagePlaced(box cgo.PGtkWidget, source cgo.PGtkWidget) bool {
-	s := func(h any) *_ImageState {
-		if v, ok := h.(_ImageState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-image"))
-	if s != nil {
-		cgo.GtkPictureSetContentFit((cgo.PGtkPicture)(unsafe.Pointer(source)), (*(s)).Fit)
-		return true
-	}
-	return false
-}
-
-func _imageReport(box cgo.PGtkWidget, source cgo.PGtkWidget) bool {
-	s := func(h any) *_ImageState {
-		if v, ok := h.(_ImageState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-image"))
-	if s != nil {
-		if cgo.SnglImageSourceFailed(source) {
-			_setImage(box, _ImageState{Fit: (*(s)).Fit, Load: (*(s)).Load, Failed: (*(s)).Failed, Failure: cgo.SnglImageSourceError(source)})
-			failed := (*(s)).Failed
-			if failed != nil {
-				(*(failed))()
-			}
-		} else {
-			load := (*(s)).Load
-			if load != nil {
-				(*(load))()
-			}
-		}
-		return true
-	}
-	return false
-}
-
-func _backIn(box cgo.PGtkWidget) *cgo.PGtkWidget {
-	c := cgo.FirstChild(box)
-	for c != nil {
-		at := c
-		if at != nil {
-			if func(h any) *_BackState {
-				if v, ok := h.(_BackState); ok {
-					return &v
-				}
-				return nil
-			}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer((*(at)))), "sngl-back")) != nil {
-				return at
-			}
-			c = cgo.GtkWidgetGetNextSibling((*(at)))
-		}
-	}
-	return nil
-}
-
-func _barApply(box cgo.PGtkWidget) {
-	win := cgo.SnglToplevelWindow(box)
-	if win != nil {
-		b := _barOf(box)
-		entries := (len(_entriesIn(box)) > 0)
-		canBack := (_backIn(box) != nil)
-		bar := b.Bar
-		menuButton := b.MenuButton
-		backButton := b.BackButton
-		if !b.Decided && (entries || canBack) {
-			made := cgo.GtkHeaderBarNew()
-			cgo.GtkWindowSetTitlebar((*(win)), made)
-			button := cgo.GtkMenuButtonNew()
-			cgo.GtkMenuButtonSetIconName((cgo.PGtkMenuButton)(unsafe.Pointer(button)), "open-menu-symbolic")
-			cgo.GtkHeaderBarPackEnd((cgo.PGtkHeaderBar)(unsafe.Pointer(made)), button)
-			bar = snglSome(made)
-			menuButton = snglSome(button)
-		}
-		if (backButton == nil) && canBack {
-			button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
-			cgo.GSignalConnectPlain(cgo.CGpointer(unsafe.Pointer(button)), "clicked", func(o cgo.PGObject) {
-				_windowBack(box)
-			}, 0)
-			if bar != nil {
-				cgo.GtkHeaderBarPackStart((cgo.PGtkHeaderBar)(unsafe.Pointer((*(bar)))), button)
-			} else {
-				cgo.GtkWidgetSetHalign(button, 1)
-				cgo.GtkBoxPrepend((cgo.PGtkBox)(unsafe.Pointer(box)), button)
-			}
-			backButton = snglSome(button)
-		}
-		if backButton != nil {
-			cgo.SetVisible((*(backButton)), canBack)
-		}
-		if menuButton != nil {
-			cgo.SetVisible((*(menuButton)), entries)
-		}
-		_setBar(box, _BarState{Decided: true, Bar: bar, BackButton: backButton, MenuButton: menuButton})
-	}
-}
-
-func _barOf(box cgo.PGtkWidget) _BarState {
-	b := func(h any) *_BarState {
-		if v, ok := h.(_BarState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-bar"))
-	if b != nil {
-		return (*(b))
-	}
-	return _BarState{}
-}
-
-func _entriesIn(w cgo.PGtkWidget) []cgo.PGtkWidget {
-	out := []cgo.PGtkWidget{}
-	c := cgo.FirstChild(w)
-	for c != nil {
-		at := c
-		if at != nil {
-			if func(h any) *_MenuEntryState {
-				if v, ok := h.(_MenuEntryState); ok {
-					return &v
-				}
-				return nil
-			}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer((*(at)))), "sngl-menu-entry")) != nil {
-				out = append(out, (*(at)))
-			}
-			c = cgo.GtkWidgetGetNextSibling((*(at)))
-		}
-	}
-	return out
-}
-
-func _menuAdd(menu cgo.PGMenu, group cgo.PGSimpleActionGroup, n int, w cgo.PGtkWidget, checkable bool) {
-	e := func(h any) *_MenuEntryState {
-		if v, ok := h.(_MenuEntryState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-menu-entry"))
-	if e != nil {
-		name := ("e" + fmt.Sprint(n))
-		a := cgo.GSimpleActionNew(name, nil)
-		if checkable {
-			a = cgo.GSimpleActionNewStateful(name, nil, cgo.GVariantNewBoolean((*(e)).Checked))
-		}
-		cgo.GSimpleActionSetEnabled(a, !(*(e)).Disabled)
-		cgo.GSignalConnectTwo(cgo.CGpointer(unsafe.Pointer(a)), "activate", func(o cgo.PGObject, arg cgo.CGpointer) {
-			_menuEntrySelect(w)
-		}, 0)
-		cgo.GActionMapAddAction((cgo.PGActionMap)(unsafe.Pointer(group)), (cgo.PGAction)(unsafe.Pointer(a)))
-		cgo.GObjectUnref(cgo.CGpointer(unsafe.Pointer(a)))
-		cgo.GMenuAppend(menu, (*(e)).Label, ("sngl." + name))
-	}
-}
-
-func _setBar(box cgo.PGtkWidget, b _BarState) {
-	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(box)), "sngl-bar", b)
-}
-
-func _entryChanged(w cgo.PGtkWidget) {
-	host := _menuHost(w)
-	if host != nil {
-		_menuApply((*(host)))
-	}
-}
-
-func _setImage(box cgo.PGtkWidget, s _ImageState) {
-	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(box)), "sngl-image", s)
-}
-
-func _menuEntrySelect(w cgo.PGtkWidget) {
-	e := func(h any) *_MenuEntryState {
-		if v, ok := h.(_MenuEntryState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-menu-entry"))
-	if (e != nil) && !(*(e)).Disabled {
-		select__r0 := (*(e)).Select
-		if select__r0 != nil {
-			(*(select__r0))()
-		}
-	}
-}
-
-func _menuHost(w cgo.PGtkWidget) *cgo.PGtkWidget {
-	p := cgo.GtkWidgetGetParent(w)
-	for p != nil {
-		at := p
-		if at != nil {
-			if cgo.SnglToplevelWindow((*(at))) != nil {
-				return at
-			}
-			if func(h any) *_MenuEntryState {
-				if v, ok := h.(_MenuEntryState); ok {
-					return &v
-				}
-				return nil
-			}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer((*(at)))), "sngl-menu-entry")) == nil {
-				return nil
-			}
-			p = cgo.GtkWidgetGetParent((*(at)))
-		}
-	}
-	return nil
-}
-
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1516,10 +1077,10 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.pages__current.Id == 0 {
-					__n0 := _newText()
-					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n0)), "home")
+					__n0 := cgo.SnglTextNew()
+					cgo.SnglTextSetValue(__n0, "home")
 					_setLook(__n0, Look{})
-					_onClick(__n0, func() {
+					cgo.SnglOnClick(__n0, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -1537,10 +1098,10 @@ func __renderSlot0(parent cgo.Widget) {
 					m.__slot0 = append(m.__slot0, __n0)
 				} else {
 					if m.pages__current.Id == 1 {
-						__n1 := _newText()
-						cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n1)), "about")
+						__n1 := cgo.SnglTextNew()
+						cgo.SnglTextSetValue(__n1, "about")
 						_setLook(__n1, Look{})
-						_onClick(__n1, func() {
+						cgo.SnglOnClick(__n1, func() {
 						})
 						__place0_i_ref1 := snglSome(m.__anchor0)
 						if __place0_i < len(__place0_prev) {
@@ -1586,9 +1147,9 @@ func __renderSlot1(parent cgo.Widget) {
 				var __place1_i int = 0
 				m.__slot1 = []cgo.Widget{}
 				if len(m.pages__history) > 0 {
-					main__back := _newBack()
+					main__back := cgo.SnglBackNew()
 					m.main__back__held = snglSome(main__back)
-					cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer((cgo.PGtkWidget)(unsafe.Pointer(main__back)))), "sngl-back", _BackState{Press: snglSome(func() {
+					cgo.SnglBackOnPress(main__back, func() {
 						m.backs += 1
 						if len(m.pages__history) > 0 {
 							m.pages__current = m.pages__history[(len(m.pages__history) - 1)].Page
@@ -1599,7 +1160,7 @@ func __renderSlot1(parent cgo.Widget) {
 							}
 							__renderSlot1(m.main__r0)
 						}
-					})})
+					})
 					__place1_i_ref0 := snglSome(m.__anchor1)
 					if __place1_i < len(__place1_prev) {
 						__place1_i_ref0 = snglSome(__place1_prev[__place1_i])
@@ -2001,6 +1562,6 @@ pass sha256:f4ff9777436983e33bd69fd01659d3bf
 -- run/go/fyne --
 pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --
-pass sha256:8676f534f26a38dea0bc5f04635e0d71
+pass sha256:db0ff3905d2ef41298de82cff85b105f
 -- run/kotlin/android --
 pass sha256:fa20068808c94c01b89e4fa11b4d6eeb

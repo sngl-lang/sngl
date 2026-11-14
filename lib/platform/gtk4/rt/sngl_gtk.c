@@ -312,6 +312,99 @@ int sngl_gtk_main(SnglFn build, void *ctx, GDestroyNotify release) {
     return status;
 }
 
+/* A canvas's drawing is the handler its paint is: the program's shapes, as
+ * the calls that paint them, handed the context. */
+typedef struct {
+    int w, h;
+    int mode;
+    SnglDrawFn draw;
+    void *data;
+    GDestroyNotify release;
+} SnglCanvas;
+
+static SnglCanvas *sngl_canvas_of(GtkWidget *w) {
+    return w ? g_object_get_data(G_OBJECT(w), "sngl-canvas") : NULL;
+}
+
+static void sngl_canvas_free(gpointer p) {
+    SnglCanvas *c = p;
+    if (c->release) c->release(c->data);
+    g_free(c);
+}
+
+/* The drawing's own coordinate space mapped onto the size GTK is drawing
+ * at, so the shapes are rasterized where they land rather than drawn at one
+ * size and stretched from it. `center` and `fit` scale it evenly until the
+ * whole of it is inside -- a centered canvas is given its own size, so that
+ * is no scale -- `fill` until none of the room is left over, and `stretch`
+ * each axis to the edges. */
+static void sngl_canvas_draw(GtkDrawingArea *area, cairo_t *cr, int pw, int ph, gpointer p) {
+    SnglCanvas *c = p;
+    if (!c->draw) return;
+    if (c->w > 0 && c->h > 0) {
+        double sx = (double)pw / c->w, sy = (double)ph / c->h;
+        if (c->mode == 3) {
+        } else if (c->mode == 2) {
+            if (sy > sx) sx = sy;
+            sy = sx;
+        } else {
+            if (sy < sx) sx = sy;
+            sy = sx;
+        }
+        cairo_scale(cr, sx, sy);
+    }
+    c->draw(cr, c->data);
+}
+
+GtkWidget *sngl_canvas_new(void) {
+    GtkWidget *a = gtk_drawing_area_new();
+    SnglCanvas *c = g_new0(SnglCanvas, 1);
+    g_object_set_data_full(G_OBJECT(a), "sngl-canvas", c, sngl_canvas_free);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(a), sngl_canvas_draw, c, NULL);
+    return a;
+}
+
+void sngl_canvas_set_width(GtkWidget *w, int width) {
+    SnglCanvas *c = sngl_canvas_of(w);
+    if (!c) return;
+    c->w = width;
+    gtk_drawing_area_set_content_width(GTK_DRAWING_AREA(w), width);
+}
+
+void sngl_canvas_set_height(GtkWidget *w, int height) {
+    SnglCanvas *c = sngl_canvas_of(w);
+    if (!c) return;
+    c->h = height;
+    gtk_drawing_area_set_content_height(GTK_DRAWING_AREA(w), height);
+}
+
+/* A canvas that scales other than `center` expands to take the room. */
+void sngl_canvas_set_scaling(GtkWidget *w, int mode) {
+    SnglCanvas *c = sngl_canvas_of(w);
+    if (!c) return;
+    c->mode = mode;
+    gtk_widget_set_hexpand(w, mode != 0);
+    gtk_widget_set_vexpand(w, mode != 0);
+    gtk_widget_queue_draw(w);
+}
+
+void sngl_canvas_on_paint(GtkWidget *w, SnglDrawFn draw, void *data, GDestroyNotify release) {
+    SnglCanvas *c = sngl_canvas_of(w);
+    if (!c) {
+        if (release) release(data);
+        return;
+    }
+    if (c->release) c->release(c->data);
+    c->draw = draw;
+    c->data = data;
+    c->release = release;
+    gtk_widget_queue_draw(w);
+}
+
+void sngl_canvas_redraw(GtkWidget *w) {
+    gtk_widget_queue_draw(w);
+}
+
 /* What the stdlib's shapes set that cairo takes as an enum, or as a face
  * and a size: a line's cap and join in `LineCap` and `LineJoin`'s order,
  * which is cairo's, and a font of the normal slant and weight. */
@@ -372,6 +465,47 @@ void sngl_signal_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx,
 
 void sngl_notify_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx, GDestroyNotify release) {
     sngl_connect_with(w, signal, G_CALLBACK(sngl_notify_tramp), fn, ctx, release);
+}
+
+static void sngl_click_pressed(GtkGestureClick *g, int n, double x, double y, gpointer data) {
+    SnglHandler *h = data;
+    h->fn(h->ctx);
+}
+
+void sngl_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release) {
+    SnglHandler *h = g_object_get_data(G_OBJECT(w), "sngl-click");
+    if (h) {
+        if (h->release) h->release(h->ctx);
+        h->fn = fn;
+        h->ctx = ctx;
+        h->release = release;
+        return;
+    }
+    GtkGesture *g = gtk_gesture_click_new();
+    h = g_new0(SnglHandler, 1);
+    h->fn = fn;
+    h->ctx = ctx;
+    h->release = release;
+    g_signal_connect_data(g, "pressed", G_CALLBACK(sngl_click_pressed), h, sngl_handler_free, 0);
+    gtk_widget_add_controller(w, GTK_EVENT_CONTROLLER(g));
+    g_object_set_data(G_OBJECT(w), "sngl-click", h);
+}
+
+void sngl_click(GtkWidget *w) {
+    SnglHandler *h = g_object_get_data(G_OBJECT(w), "sngl-click");
+    if (h) h->fn(h->ctx);
+}
+
+/* A text is a GtkLabel starting at the left of its box, as html's does: a
+ * label centers its words in whatever room it is given. */
+GtkWidget *sngl_text_new(void) {
+    GtkWidget *l = gtk_label_new("");
+    gtk_label_set_xalign(GTK_LABEL(l), 0.0);
+    return l;
+}
+
+void sngl_text_set_value(GtkWidget *w, const char *value) {
+    gtk_label_set_label(GTK_LABEL(w), value);
 }
 
 static gboolean sngl_idle_run(gpointer data) {
@@ -701,7 +835,7 @@ static void sngl_box_append_to(GtkWidget *box, GtkWidget *child) {
         sngl_app_attach(child);
         return;
     }
-    if (sngl_window_add(box, child) || sngl_image_adopt(box, child)) return;
+    if (sngl_window_add(box, child) || sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
     box = sngl_slot_host(box);
     if (sngl_stack_put(box, child, NULL)) return;
     if (gtk_widget_get_parent(child) == box) {
@@ -720,7 +854,7 @@ static void sngl_box_insert_before_in(GtkWidget *box, GtkWidget *anchor, GtkWidg
         sngl_box_append_to(box, child);
         return;
     }
-    if (sngl_image_adopt(box, child) || sngl_stack_put(box, child, anchor)) return;
+    if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child) || sngl_stack_put(box, child, anchor)) return;
     /* A child the box already holds moves, as the DOM's insertBefore moves
      * one: a keyed loop putting a row it kept in its new place. */
     if (gtk_widget_get_parent(child) == box) {
@@ -737,10 +871,10 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
         sngl_app_detach(child);
         return;
     }
-    /* What the box let go of may be gone once it has, and the bar asks
-     * what it was. */
+    /* What the box let go of may be gone once it has, and the bar and the
+     * tabs ask what it was. */
     g_object_ref(child);
-    if (!sngl_window_remove(box, child) && !sngl_image_unadopt(box, child)) {
+    if (!sngl_window_remove(box, child) && !sngl_tabs_remove(box, child) && !sngl_image_unadopt(box, child)) {
         box = sngl_slot_host(box);
         if (GTK_IS_STACK(box)) {
             gtk_stack_remove(GTK_STACK(box), child);
@@ -793,6 +927,13 @@ GtkWidget *sngl_flow_new(void) {
     gtk_label_set_wrap(GTK_LABEL(l), TRUE);
     gtk_label_set_xalign(GTK_LABEL(l), 0);
     return l;
+}
+
+void sngl_editable_set_text_quiet(GtkWidget *e, const char *t) {
+    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
+    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
+    gtk_editable_set_text(GTK_EDITABLE(e), t);
+    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
 }
 
 /* The key a window's `@key` handler is hearing, while it runs: its name,
@@ -864,6 +1005,21 @@ void sngl_toplevel_key(GtkWidget *box, const char *key, int ctrl, int alt, int s
     }
     if (!t->win) return;
     sngl_keys_go_on(t->win, key, shift);
+}
+
+void sngl_flip(GtkWidget *w, bool v, const char *signal, const char *prop) {
+    bool on = GTK_IS_SWITCH(w) ? gtk_switch_get_active(GTK_SWITCH(w)) : gtk_check_button_get_active(GTK_CHECK_BUTTON(w));
+    if (on != v) {
+        if (GTK_IS_SWITCH(w)) {
+            gtk_switch_set_active(GTK_SWITCH(w), v);
+        } else {
+            gtk_check_button_set_active(GTK_CHECK_BUTTON(w), v);
+        }
+    } else if (prop != NULL) {
+        g_object_notify(G_OBJECT(w), prop);
+    } else {
+        g_signal_emit_by_name(w, signal);
+    }
 }
 
 // A GTK property with no setter function of its own is set by name through

@@ -44,7 +44,7 @@ ui.window {
     main
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:1bcfd3d9ca544cb8c4a35f6c558edbb5
+sha256:28e43716dd65c8170a57b2c83fc497be
 {
   "results": [
     {
@@ -62,7 +62,7 @@ sha256:1bcfd3d9ca544cb8c4a35f6c558edbb5
   }
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:88662714803b357620bc853039e85937
+sha256:291c2f158295579933f7cef677cbc1d4
 {
   "results": [
     {

@@ -82,7 +82,7 @@ sha256:ef60820630da091157bf58de0b91a5ab
   ]
 }
 -- testrun/gtk4/go/app.sngl/many/1 --
-sha256:95a9d897760beb8f1a0cf6705f0d2794
+sha256:a28c18e0773a229c457d61b91531de60
 {
   "results": [
     {

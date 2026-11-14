@@ -678,16 +678,6 @@ type Look struct {
 	Columns   int
 }
 
-type _ScrollState struct {
-	Axis     int
-	Near     bool
-	Content  int
-	Asked    int
-	ReachEnd *func()
-	Watches  []int
-	Watched  []cgo.PGtkAdjustment
-}
-
 type snglState struct {
 	visible__inst0 bool
 	__n0           cgo.Widget
@@ -724,208 +714,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newScroll() cgo.Widget {
-	sw := cgo.GtkScrolledWindowNew()
-	w := (cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))
-	down__r0 := cgo.GtkScrolledWindowGetVadjustment(w)
-	across__r0 := cgo.GtkScrolledWindowGetHadjustment(w)
-	watched := []cgo.PGtkAdjustment{down__r0, down__r0, across__r0, across__r0}
-	watches := []int{cgo.GSignalConnectPlain(cgo.CGpointer(unsafe.Pointer(down__r0)), "changed", func(o cgo.PGObject) {
-		_scrollChanged(sw)
-	}, 0), cgo.GSignalConnectPlain(cgo.CGpointer(unsafe.Pointer(down__r0)), "value-changed", func(o cgo.PGObject) {
-		_scrollChanged(sw)
-	}, 0), cgo.GSignalConnectPlain(cgo.CGpointer(unsafe.Pointer(across__r0)), "changed", func(o cgo.PGObject) {
-		_scrollChanged(sw)
-	}, 0), cgo.GSignalConnectPlain(cgo.CGpointer(unsafe.Pointer(across__r0)), "value-changed", func(o cgo.PGObject) {
-		_scrollChanged(sw)
-	}, 0)}
-	for _, a := range watched {
-		cgo.GObjectRef(cgo.CGpointer(unsafe.Pointer(a)))
-	}
-	_setScroll(sw, _ScrollState{Content: -1, Watches: watches, Watched: watched})
-	cgo.SnglProbeOnChange(cgo.SnglScrollProbe(sw), func() {
-		_scrollChanged(sw)
-	})
-	cgo.GSignalConnectData(cgo.CGpointer(unsafe.Pointer(sw)), "notify::child", func(o cgo.PGObject, spec cgo.PGParamSpec) {
-		_scrollChild(sw)
-	}, 0)
-	cgo.GSignalConnectPlain(cgo.CGpointer(unsafe.Pointer(sw)), "destroy", func(o cgo.PGObject) {
-		_scrollGone(sw)
-	}, 0)
-	_scrollPolicies(sw, 0)
-	return sw
-}
-
-func _setScrollDirection(sw cgo.Widget, direction string) {
-	var axis int = _axisOf(direction)
-	s := func(h any) *_ScrollState {
-		if v, ok := h.(_ScrollState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll"))
-	if s != nil {
-		_setScroll(sw, _ScrollState{Axis: axis, Content: -1, Asked: (*(s)).Asked, ReachEnd: (*(s)).ReachEnd, Watches: (*(s)).Watches, Watched: (*(s)).Watched})
-	}
-	_scrollPolicies(sw, axis)
-	cgo.SnglProbeReset(cgo.SnglScrollProbe(sw), (axis == 1))
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
-func _setScroll(sw cgo.Widget, s _ScrollState) {
-	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll", s)
-}
-
-func _scrollChanged(sw cgo.Widget) {
-	s := func(h any) *_ScrollState {
-		if v, ok := h.(_ScrollState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll"))
-	if s != nil {
-		a := _readAdjustment(sw, (*(s)).Axis)
-		var page float64 = cgo.GtkAdjustmentGetPageSize(a)
-		if page > 0.0 {
-			near := ((cgo.GtkAdjustmentGetUpper(a) - (cgo.GtkAdjustmentGetValue(a) + page)) <= (page / 2.0))
-			var content int = cgo.SnglProbeContent(cgo.SnglScrollProbe(sw))
-			fire := (near && (!(*(s)).Near || (content > (*(s)).Content)))
-			var asked int = (*(s)).Asked
-			if fire && (asked == 0) {
-				asked = cgo.GIdleAddFull(200, func() bool {
-					_scrollReport(sw)
-					return false
-				})
-			}
-			_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: near, Content: content, Asked: asked, ReachEnd: (*(s)).ReachEnd, Watches: (*(s)).Watches, Watched: (*(s)).Watched})
-		}
-	}
-}
-
-func _scrollChild(sw cgo.Widget) {
-	s := func(h any) *_ScrollState {
-		if v, ok := h.(_ScrollState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll"))
-	var axis int = 0
-	if s != nil {
-		axis = (*(s)).Axis
-	}
-	_scrollPolicies(sw, axis)
-	probe := cgo.SnglScrollProbe(sw)
-	shown := cgo.GtkScrolledWindowGetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
-	if (shown != nil) && ((*(shown)) != probe) {
-		content := shown
-		if cgo.GTypeCheckInstanceIsA((cgo.PGTypeInstance)(unsafe.Pointer((*(shown)))), cgo.GtkViewportGetType()) {
-			content = cgo.GtkViewportGetChild((cgo.PGtkViewport)(unsafe.Pointer((*(shown)))))
-		}
-		if (content != nil) && ((*(content)) != probe) {
-			cgo.SnglProbeHold(sw, probe, (*(content)))
-		}
-	}
-}
-
-func _scrollGone(sw cgo.Widget) {
-	s := func(h any) *_ScrollState {
-		if v, ok := h.(_ScrollState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll"))
-	if s != nil {
-		if (*(s)).Asked != 0 {
-			cgo.GSourceRemove((*(s)).Asked)
-		}
-		for k, id := range (*(s)).Watches {
-			a := cgo.CGpointer(unsafe.Pointer((*(s)).Watched[k]))
-			cgo.GSignalHandlerDisconnect(a, id)
-			cgo.GObjectUnref(a)
-		}
-		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Watches: []int{}, Watched: []cgo.PGtkAdjustment{}})
-	}
-	cgo.SnglProbeOnChange(cgo.SnglScrollProbe(sw), func() {
-	})
-}
-
-func _scrollPolicies(sw cgo.Widget, axis int) {
-	w := (cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))
-	var __lt3 int
-	if axis == 0 {
-		__lt3 = 3
-	} else {
-		__lt3 = 1
-	}
-	var __lt4 int
-	if axis == 1 {
-		__lt4 = 2
-	} else {
-		__lt4 = 1
-	}
-	cgo.GtkScrolledWindowSetPolicy(w, __lt3, __lt4)
-	cgo.GtkScrolledWindowSetPropagateNaturalWidth(w, (axis == 0))
-	c := cgo.GtkScrolledWindowGetChild(w)
-	if (c != nil) && !cgo.GTypeCheckInstanceIsA((cgo.PGTypeInstance)(unsafe.Pointer((*(c)))), cgo.GtkScrollableGetType()) {
-		c = cgo.GtkWidgetGetParent((*(c)))
-	}
-	if (c != nil) && cgo.GTypeCheckInstanceIsA((cgo.PGTypeInstance)(unsafe.Pointer((*(c)))), cgo.GtkScrollableGetType()) {
-		scrollable := (cgo.PGtkScrollable)(unsafe.Pointer((*(c))))
-		var __lt5 int
-		if axis != 1 {
-			__lt5 = 1
-		} else {
-			__lt5 = 0
-		}
-		cgo.GtkScrollableSetVscrollPolicy(scrollable, __lt5)
-		var __lt6 int
-		if axis != 0 {
-			__lt6 = 1
-		} else {
-			__lt6 = 0
-		}
-		cgo.GtkScrollableSetHscrollPolicy(scrollable, __lt6)
-	}
-}
-
-func _axisOf(direction string) int {
-	if direction == "horizontal" {
-		return 1
-	}
-	if direction == "both" {
-		return 2
-	}
-	return 0
-}
-
-func _readAdjustment(sw cgo.Widget, axis int) cgo.PGtkAdjustment {
-	if axis == 1 {
-		return cgo.GtkScrolledWindowGetHadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
-	}
-	return cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
-}
-
-func _scrollReport(sw cgo.Widget) {
-	s := func(h any) *_ScrollState {
-		if v, ok := h.(_ScrollState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll"))
-	if s != nil {
-		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: (*(s)).Near, Content: (*(s)).Content, ReachEnd: (*(s)).ReachEnd, Watches: (*(s)).Watches, Watched: (*(s)).Watched})
-		reachEnd := (*(s)).ReachEnd
-		if reachEnd != nil {
-			(*(reachEnd))()
-		}
-	}
-}
-
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -944,43 +732,43 @@ func snglBuild() {
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
 	_setLook(m.__n1, Look{Spaced: true, Spacing: 8})
-	m.down = _newScroll()
-	_setScrollDirection(m.down, "vertical")
+	m.down = cgo.SnglScrollNew()
+	cgo.SnglScrollSetDirection(m.down, "vertical")
 	_setLook(m.down, Look{Height: 120.0})
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
 	_setLook(m.__n2, Look{Spaced: true, Spacing: 6})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
-		__n3 := _newText()
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n3)), ("row " + fmt.Sprint(i)))
+		__n3 := cgo.SnglTextNew()
+		cgo.SnglTextSetValue(__n3, ("row " + fmt.Sprint(i)))
 		_setLook(__n3, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(__n3)))
 	}
 	cgo.SnglScrollSetChild(m.down, m.__n2)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.down)))
-	m.across = _newScroll()
-	_setScrollDirection(m.across, "horizontal")
+	m.across = cgo.SnglScrollNew()
+	cgo.SnglScrollSetDirection(m.across, "horizontal")
 	_setLook(m.across, Look{})
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(0))
 	_setLook(m.__n4, Look{Spaced: true, Spacing: 8})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
-		__n5 := _newText()
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n5)), ("column " + fmt.Sprint(i)))
+		__n5 := cgo.SnglTextNew()
+		cgo.SnglTextSetValue(__n5, ("column " + fmt.Sprint(i)))
 		_setLook(__n5, Look{Width: 120.0})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__n5)))
 	}
 	cgo.SnglScrollSetChild(m.across, m.__n4)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.across)))
-	m.either = _newScroll()
-	_setScrollDirection(m.either, "both")
+	m.either = cgo.SnglScrollNew()
+	cgo.SnglScrollSetDirection(m.either, "both")
 	_setLook(m.either, Look{Height: 120.0})
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(1))
 	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	for i := range slices.Values([]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}) {
-		__n7 := _newText()
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n7)), (("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen"))
+		__n7 := cgo.SnglTextNew()
+		cgo.SnglTextSetValue(__n7, (("a long line " + fmt.Sprint(i)) + " that runs on past the right edge of a phone's screen"))
 		_setLook(__n7, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(__n7)))
 	}
@@ -1709,7 +1497,7 @@ pass sha256:b46bfed2ffd53b2aed2c15f32389ff49
 -- run/go/fyne --
 pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
-pass sha256:407cc2ac5dfc963e313c2e733f944a72
+pass sha256:eb107628231f03b957ad0dbbe3bafa30
 -- run/kotlin/android --
 pass sha256:97e558d298093de726189480c09eadfa
 -- run/none/html --

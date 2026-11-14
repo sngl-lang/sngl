@@ -1240,12 +1240,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1287,7 +1281,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						Timer__set_tick(__n2, func() {
 							m.n = (m.n + 1)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 						})
 					} else {
 						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
@@ -1300,7 +1294,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n2__made := Timer__new(p.Elem, true, func() {
 							m.n = (m.n + 1)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 						})
 						__n2 = __n2__made
 					}
@@ -1381,7 +1375,7 @@ func __renderSlot1(parent cgo.Widget) {
 							}()
 							Timer__set_tick(__n3, func() {
 								m.n = (m.n + 1)
-								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+								cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 							})
 						} else {
 							if func() bool { _, __ok := m.__inst3_live[__key4]; return __ok }() {
@@ -1394,7 +1388,7 @@ func __renderSlot1(parent cgo.Widget) {
 							}
 							__n3__made := Timer__new(p.Elem, true, func() {
 								m.n = (m.n + 1)
-								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+								cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 							})
 							__n3 = __n3__made
 						}
@@ -1581,8 +1575,8 @@ func snglBuild() {
 	_setLook(m.__n4, Look{})
 	cgo.SnglSignalConnect(m.__n4, "clicked", __n4_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -1941,6 +1935,6 @@ pass sha256:223e61dca8e13fe89f85085dde24536f
 -- run/go/fyne --
 pass sha256:a24c24ca13033fe0afe6604378ee0b53
 -- run/go/gtk4 --
-pass sha256:d72827c078e4b1e2737e54d586eeb4b5
+pass sha256:a5a57cc07671ed0398bfc490550a9e72
 -- run/none/html --
 pass sha256:9e84907c286cad317e626e4ac9864b0d

@@ -238,7 +238,7 @@ sha256:f83c273cfe22a09d3053f6b1c8cb0d45
   ]
 }
 -- testrun/gtk4/go/held.sngl/page/1 --
-sha256:08461ee967d9684e1591a3cccc15352b
+sha256:98fe3844857b4b7062614fa884c6f65a
 {
   "results": [
     {

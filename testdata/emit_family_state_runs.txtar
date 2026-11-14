@@ -415,7 +415,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -509,7 +508,7 @@ func __bar_members() []Entry {
 		__members = append(__members, Entry{Full: w, Color: __lt1, Click: func(__e0 int) {
 			func(button int) {
 				m.n = (i + button)
-				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+				cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 				__effects0_settle()
 			}(__e0)
 		}})
@@ -519,12 +518,6 @@ func __bar_members() []Entry {
 		}})
 	}
 	return __members
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -648,8 +641,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -688,4 +681,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:82a7f09cdd59497752ac385a91e41d6d
 -- run/go/gtk4 --
-pass sha256:36274e1d5e336db66b01642e50bd98ac
+pass sha256:e2f21c3cca999e33c50b53b70f7c33a6

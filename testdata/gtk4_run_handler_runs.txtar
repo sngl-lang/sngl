@@ -150,7 +150,6 @@ typedef struct s___lambda0_caps__env {
 
 static void s_start(sngl_list_string args, sngl_fn_void__void run);
 static void s___run(sngl_list_string args, sngl_fn_void__void run);
-static GtkWidget * s_platform_gtk4___newText(void);
 static void s___effect0_mount(void);
 static void sngl_lambda1(void *env_);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
@@ -377,10 +376,8 @@ static bool s___effects0_settling;
 static bool s___effects0_pending;
 static bool s___effects0_torn;
 static int64_t s___effects0_steps;
-static char * s___rel3;
 static char * s___rel6;
-static char * s___rel7;
-static char * s___rel9;
+static char * s___rel10;
 static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 
@@ -390,7 +387,7 @@ static void s_start(sngl_list_string args, sngl_fn_void__void run) {
 	s_x_c__free(__rel0);
 	s_n = (args).len;
 	char * __rel1 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
-	gtk_label_set_label((GtkLabel *)((void *)(s___n1)), __rel1);
+	sngl_text_set_value(s___n1, __rel1);
 	s_x_c__free(__rel1);
 	if (sngl_list_string_index_of(args, SNGL_STR("--window")) >= 0) {
 		(run).fn((run).env);
@@ -402,12 +399,6 @@ static void s_start(sngl_list_string args, sngl_fn_void__void run) {
 
 static void s___run(sngl_list_string args, sngl_fn_void__void run) {
 	s_start(args, run);
-}
-
-static GtkWidget * s_platform_gtk4___newText(void) {
-	GtkWidget * t = gtk_label_new(s___rel3);
-	gtk_label_set_xalign((GtkLabel *)((void *)(t)), (float)((double)(0.0)));
-	return t;
 }
 
 static void s___effect0_mount(void) {
@@ -474,7 +465,7 @@ static void s___effect0_teardown(void) {
 }
 
 static void s___effect1_unmount(void) {
-	puts(s___rel9);
+	puts(s___rel6);
 }
 
 static void s___effect1_down(void) {
@@ -546,10 +537,8 @@ static void s___snglTeardown(void) {
 	s___effects0_torn = true;
 	s___effect1_teardown();
 	s___effect0_teardown();
-	s_x_c__free(s___rel3);
 	s_x_c__free(s___rel6);
-	s_x_c__free(s___rel7);
-	s_x_c__free(s___rel9);
+	s_x_c__free(s___rel10);
 }
 
 static void s_x_c__free(char * s) {
@@ -574,26 +563,24 @@ static void sngl_init(void) {
 	s___effects0_pending = false;
 	s___effects0_torn = false;
 	s___effects0_steps = 0;
-	s___rel3 = sngl_cstring(SNGL_STR(""));
-	s___rel6 = sngl_cstring(SNGL_STR("pressed"));
-	s___rel7 = sngl_cstring(SNGL_STR("sngl-click"));
-	s___rel9 = sngl_cstring(SNGL_STR("unmount"));
+	s___rel6 = sngl_cstring(SNGL_STR("unmount"));
+	s___rel10 = sngl_cstring(SNGL_STR(""));
 }
 
 static void sngl_build(void) {
 	s___n0 = sngl_toplevel_new();
-	sngl_toplevel_set_title(s___n0, s___rel3);
+	sngl_toplevel_set_title(s___n0, s___rel10);
 	sngl_toplevel_set_visible(s___n0, (int)((s_shown->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.shown = s_shown}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
-	s___n1 = s_platform_gtk4___newText();
-	char * __rel10 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
-	gtk_label_set_label((GtkLabel *)((void *)(s___n1)), __rel10);
-	s_x_c__free(__rel10);
-	char * __rel11 = sngl_cstring(SNGL_STR(""));
-	char * __rel12 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n1, __rel11, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel12, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel12);
-	s_x_c__free(__rel11);
+	s___n1 = sngl_text_new();
+	char * __rel7 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
+	sngl_text_set_value(s___n1, __rel7);
+	s_x_c__free(__rel7);
+	char * __rel8 = sngl_cstring(SNGL_STR(""));
+	char * __rel9 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s___n1, __rel8, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel9, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel9);
+	s_x_c__free(__rel8);
 	sngl_toplevel_append(s___n0, s___n1);
 	sngl_app_attach(s___n0);
 	s___effects0_settle();
@@ -642,9 +629,9 @@ int main(int argc, char **argv) {
 static void sngl_lambda1(void *env_) {
 	if (!s_stopped) {
 		s_stopped = true;
-		char * __rel8 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("tick "), sngl_int_format((int64_t)(s_n))), SNGL_STR(" shown ")), sngl_bool_format(s_shown->value)));
-		puts(__rel8);
-		s_x_c__free(__rel8);
+		char * __rel5 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("tick "), sngl_int_format((int64_t)(s_n))), SNGL_STR(" shown ")), sngl_bool_format(s_shown->value)));
+		puts(__rel5);
+		s_x_c__free(__rel5);
 		sngl_gtk_quit();
 	}
 }
@@ -671,7 +658,6 @@ import (
 	"runtime"
 	"slices"
 	"time"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -702,7 +688,7 @@ var m = &snglState{}
 func Start(args []string, run func()) {
 	fmt.Println(("before " + fmt.Sprint(len(args))))
 	m.n = len(args)
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 	if slices.Index(args, "--window") >= 0 {
 		run()
 	}
@@ -711,12 +697,6 @@ func Start(args []string, run func()) {
 
 func __run(args []string, run func()) {
 	Start(args, run)
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
 }
 
 func __effect0_mount() {
@@ -859,8 +839,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.shown)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -918,6 +898,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:c8f672ace8d876ff2cfec1f6ba9b17aa
+pass sha256:5b0fdabd5f60bdaef9259212b7fab71e
 -- run/go/gtk4 --
-pass sha256:dc917e66b2f26ccdbb24dd4fc073314a
+pass sha256:8e069c6c2a38a59142bfb47076cb86f8

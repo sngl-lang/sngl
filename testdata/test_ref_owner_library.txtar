@@ -44,7 +44,6 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
-	"fmt"
 	"os"
 	"runtime"
 	"slices"
@@ -97,10 +96,6 @@ type Look struct {
 	Columns   int
 }
 
-type _ClickState struct {
-	Click *func()
-}
-
 type snglState struct {
 	shown               bool
 	value__inst0        *time.Time
@@ -143,59 +138,6 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
-}
-
-func _newText() cgo.Widget {
-	t__r0 := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t__r0)), cgo.CFloat(0.0))
-	return t__r0
-}
-
-func _onClick(w cgo.Widget, click func()) {
-	o := (cgo.PGObject)(unsafe.Pointer(w))
-	if func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
-		g := cgo.GtkGestureClickNew()
-		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
-			_click(w)
-		}, 0)
-		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
-	}
-	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
-}
-
-func _click(w cgo.Widget) {
-	s := func(h any) *_ClickState {
-		if v, ok := h.(_ClickState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
-	if s != nil {
-		click := (*(s)).Click
-		if click != nil {
-			(*(click))()
-		}
-	}
-}
-
-func CalendarDate(c cgo.Widget) *time.Time {
-	t__r1 := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
-	day := ((((_padded(cgo.GDateTimeGetYear(t__r1), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t__r1), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t__r1), 2))
-	cgo.GDateTimeUnref(t__r1)
-	return ParseDate(day)
-}
-
-func _padded(n int, width int) string {
-	s := fmt.Sprint(n)
-	for utf8.RuneCountInString(s) < width {
-		s = ("0" + s)
-	}
-	return s
 }
 
 func ParseDate(s string) *time.Time {
@@ -310,11 +252,11 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.shown {
-					cal := _newText()
+					cal := cgo.SnglTextNew()
 					m.cal__held = snglSome(cal)
-					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(cal)), "c")
+					cgo.SnglTextSetValue(cal, "c")
 					_setLook(cal, Look{})
-					_onClick(cal, func() {
+					cgo.SnglOnClick(cal, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -342,7 +284,7 @@ func __renderSlot0(parent cgo.Widget) {
 }
 
 func Cal__own0_daySelected_handler(c cgo.Widget) {
-	m.value__inst0 = CalendarDate(c)
+	m.value__inst0 = ParseDate(cgo.SnglCalendarDay(c))
 	__effects0_settle()
 }
 
@@ -419,4 +361,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:5f5a2d00b708a1cc90c63aaa2f111ad4
+pass sha256:6821ddd68a554203b77d07920dbd4e33

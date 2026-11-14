@@ -711,12 +711,6 @@ type snglState struct {
 
 var m = &snglState{}
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -741,8 +735,8 @@ func snglBuild() {
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
 	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
-	m.__n3 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "base g")
+	m.__n3 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n3, "base g")
 	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n1 = cgo.GtkButtonNew()
@@ -1012,7 +1006,7 @@ pass sha256:44a3845624ceff44f882354f081a994a
 -- run/go/fyne --
 pass sha256:9a5c29566d2af0396433e90ed2bd2e15
 -- run/go/gtk4 --
-pass sha256:6d878dc8b2a8a7bc59235d568dfec376
+pass sha256:b68ee626c35ba2b23493b7b3519790e7
 -- run/kotlin/android --
 pass sha256:17e25c6f4ac5149191187defddf42f4f
 -- run/none/html --

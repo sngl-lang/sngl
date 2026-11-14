@@ -1646,13 +1646,6 @@ struct _p_GtkButton {}
 #[c.native("GtkButton *", cast)]
 const func _as_GtkButton(p c.pointer) _p_GtkButton
 
-#[c.native("GtkCalendar *")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkCalendar")]
-struct _p_GtkCalendar {}
-
-#[c.native("GtkCalendar *", cast)]
-const func _as_GtkCalendar(p c.pointer) _p_GtkCalendar
-
 #[c.native("GtkCheckButton *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkCheckButton")]
 struct _p_GtkCheckButton {}
@@ -1660,25 +1653,12 @@ struct _p_GtkCheckButton {}
 #[c.native("GtkCheckButton *", cast)]
 const func _as_GtkCheckButton(p c.pointer) _p_GtkCheckButton
 
-#[c.native("GtkDropDown *")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkDropDown")]
-struct _p_GtkDropDown {}
-
-#[c.native("GtkDropDown *", cast)]
-const func _as_GtkDropDown(p c.pointer) _p_GtkDropDown
-
 #[c.native("GtkEditable *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkEditable")]
 struct _p_GtkEditable {}
 
 #[c.native("GtkEditable *", cast)]
 const func _as_GtkEditable(p c.pointer) _p_GtkEditable
-
-#[c.native("GtkEntry *")]
-struct _p_GtkEntry {}
-
-#[c.native("GtkEntry *", cast)]
-const func _as_GtkEntry(p c.pointer) _p_GtkEntry
 
 #[c.native("GtkExpression *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkExpression")]
@@ -1742,12 +1722,6 @@ struct _p_GtkScrolledWindow {}
 
 #[c.native("GtkScrolledWindow *", cast)]
 const func _as_GtkScrolledWindow(p c.pointer) _p_GtkScrolledWindow
-
-#[c.native("GtkSeparator *")]
-struct _p_GtkSeparator {}
-
-#[c.native("GtkSeparator *", cast)]
-const func _as_GtkSeparator(p c.pointer) _p_GtkSeparator
 
 #[c.native("GtkSpinner *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkSpinner")]

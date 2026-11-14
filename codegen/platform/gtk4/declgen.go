@@ -109,9 +109,6 @@ func widgetDecls(reg *gir.TypeRegistry, platform string) string {
 			continue
 		}
 		declared[info.CType] = true
-		// Every class has its pointer and its cast, which the platform's
-		// own SNGL calls GTK's functions on the class with.
-		children.ptrs[info.CType] = true
 		// A GTK widget is a GObject the program can hold: a `#id` on one names
 		// something still there while it runs, so a prop read off that handle
 		// asks the widget rather than being answered at build time with what

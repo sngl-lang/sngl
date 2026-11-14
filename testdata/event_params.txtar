@@ -682,12 +682,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -695,14 +689,14 @@ func __n0_visible_handler(__visible bool) {
 
 func __n2_clicked_handler() {
 	m.at__inst0 = 1
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	cgo.SnglTextSetValue(m.__n1, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 	m.picked__inst0 = "first"
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	cgo.SnglTextSetValue(m.__n1, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 }
 
 func __n3_clicked_handler() {
 	m.at__inst0 = 2
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	cgo.SnglTextSetValue(m.__n1, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 }
 
 func snglInit() {
@@ -729,8 +723,8 @@ func snglBuild() {
 	_setLook(m.__n3, Look{})
 	cgo.SnglSignalConnect(m.__n3, "clicked", __n3_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -819,6 +813,6 @@ pass sha256:8a060854ac8c75df4d79d47dc02139d8
 -- run/go/fyne --
 pass sha256:46eaeed9cb105a3ba2de812b3c3c9996
 -- run/go/gtk4 --
-pass sha256:4f0984c1010fbc1064923d5531fcdc6f
+pass sha256:5d7f9ee3a99be65a221fb4538649ee83
 -- run/none/html --
 pass sha256:a25cfe56d95e52ad016b3ba4d1c83313

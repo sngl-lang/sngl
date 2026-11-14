@@ -753,12 +753,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -766,7 +760,7 @@ func __n0_visible_handler(__visible bool) {
 
 func __n5_clicked_handler() {
 	m.pick = ((m.pick + 1) % 2)
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), entries[m.pick].Title)
+	cgo.SnglTextSetValue(m.__n1, entries[m.pick].Title)
 	var __lt21 string
 	if m.pick == 0 {
 		__lt21 = "home"
@@ -774,7 +768,7 @@ func __n5_clicked_handler() {
 		__lt21 = "about"
 	}
 	m.key = __lt21
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), func() string {
+	cgo.SnglTextSetValue(m.__n2, func() string {
 		if __v, __ok := labels[m.key]; __ok {
 			return __v
 		}
@@ -798,17 +792,17 @@ func snglBuild() {
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	for _, e := range entries {
-		__n4 := _newText()
-		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n4)), e.Title)
+		__n4 := cgo.SnglTextNew()
+		cgo.SnglTextSetValue(__n4, e.Title)
 		_setLook(__n4, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(__n4)))
 	}
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), entries[m.pick].Title)
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, entries[m.pick].Title)
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
-	m.__n2 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), func() string {
+	m.__n2 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n2, func() string {
 		if __v, __ok := labels[m.key]; __ok {
 			return __v
 		}
@@ -908,6 +902,6 @@ pass sha256:f349a6f9495680894a6c75b6449f4cc8
 -- run/go/fyne --
 pass sha256:5789e9263f9a3b6167f98e484e4f1900
 -- run/go/gtk4 --
-pass sha256:89a82467eee26e490e6fd08f19257397
+pass sha256:5053fc1f52f6ab0db2e453a94a42e65a
 -- run/none/html --
 pass sha256:2608b26bd2bc03c32f990746024e9d6e

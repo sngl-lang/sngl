@@ -373,12 +373,7 @@ import (
 	"os"
 	"runtime"
 	"slices"
-	"unsafe"
 )
-
-func snglSome[T any](v T) *T {
-	return &v
-}
 
 type _step__record struct {
 	Op  string
@@ -406,13 +401,6 @@ type Style struct {
 	FontFamily  string
 }
 
-type _CanvasState struct {
-	Width  int
-	Height int
-	Mode   int
-	Paint  *func(cgo.CairoContext)
-}
-
 type Arc struct {
 	Degenerate bool
 	Tangent1   Point
@@ -429,80 +417,6 @@ type snglState struct {
 }
 
 var m = &snglState{}
-
-func _newCanvas() cgo.Widget {
-	w := cgo.GtkDrawingAreaNew()
-	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas", _CanvasState{})
-	cgo.GtkDrawingAreaSetDrawFunc((cgo.PGtkDrawingArea)(unsafe.Pointer(w)), func(area cgo.PGtkDrawingArea, cr cgo.CairoContext, width int, height int) {
-		_canvasDraw(w, cr, width, height)
-	})
-	return w
-}
-
-func _setCanvasHeight(w cgo.Widget, height int) {
-	s := func(h any) *_CanvasState {
-		if v, ok := h.(_CanvasState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas"))
-	if s != nil {
-		_setCanvas(w, _CanvasState{Width: (*(s)).Width, Height: height, Mode: (*(s)).Mode, Paint: (*(s)).Paint})
-		cgo.GtkDrawingAreaSetContentHeight((cgo.PGtkDrawingArea)(unsafe.Pointer(w)), height)
-	}
-}
-
-func _setCanvasScaling(w cgo.Widget, mode int) {
-	s := func(h any) *_CanvasState {
-		if v, ok := h.(_CanvasState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas"))
-	if s != nil {
-		_setCanvas(w, _CanvasState{Width: (*(s)).Width, Height: (*(s)).Height, Mode: mode, Paint: (*(s)).Paint})
-		widget := (cgo.PGtkWidget)(unsafe.Pointer(w))
-		var __lt0 int
-		if mode != 0 {
-			__lt0 = 1
-		} else {
-			__lt0 = 0
-		}
-		cgo.GtkWidgetSetHexpand(widget, cgo.CGboolean(__lt0))
-		var __lt1 int
-		if mode != 0 {
-			__lt1 = 1
-		} else {
-			__lt1 = 0
-		}
-		cgo.GtkWidgetSetVexpand(widget, cgo.CGboolean(__lt1))
-	}
-}
-
-func _setCanvasWidth(w cgo.Widget, width int) {
-	s := func(h any) *_CanvasState {
-		if v, ok := h.(_CanvasState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas"))
-	if s != nil {
-		_setCanvas(w, _CanvasState{Width: width, Height: (*(s)).Height, Mode: (*(s)).Mode, Paint: (*(s)).Paint})
-		cgo.GtkDrawingAreaSetContentWidth((cgo.PGtkDrawingArea)(unsafe.Pointer(w)), width)
-	}
-}
-
-func _handleCanvasPaint(w cgo.Widget, paint func(cgo.CairoContext)) {
-	s := func(h any) *_CanvasState {
-		if v, ok := h.(_CanvasState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas"))
-	if s != nil {
-		_setCanvas(w, _CanvasState{Width: (*(s)).Width, Height: (*(s)).Height, Mode: (*(s)).Mode, Paint: snglSome(paint)})
-	}
-}
 
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
@@ -539,52 +453,6 @@ func Paint(ctx cgo.CairoContext, style Style) {
 		Source(ctx, style.Stroke)
 		cgo.CairoStroke(ctx)
 	}
-}
-
-func _canvasDraw(w cgo.Widget, cr cgo.CairoContext, width int, height int) {
-	s := func(h any) *_CanvasState {
-		if v, ok := h.(_CanvasState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas"))
-	if s != nil {
-		paint__r0 := (*(s)).Paint
-		if paint__r0 != nil {
-			if ((*(s)).Width > 0) && ((*(s)).Height > 0) {
-				var sx float64 = (float64(width) / float64((*(s)).Width))
-				var sy float64 = (float64(height) / float64((*(s)).Height))
-				if (*(s)).Mode == 2 {
-					var __lt2 float64
-					if sy > sx {
-						__lt2 = sy
-					} else {
-						__lt2 = sx
-					}
-					sx = __lt2
-					sy = sx
-				} else {
-					if (*(s)).Mode != 3 {
-						var __lt3 float64
-						if sy < sx {
-							__lt3 = sy
-						} else {
-							__lt3 = sx
-						}
-						sx = __lt3
-						sy = sx
-					}
-				}
-				cgo.CairoScale(cr, sx, sy)
-			}
-			(*(paint__r0))(cr)
-		}
-	}
-}
-
-func _setCanvas(w cgo.Widget, s _CanvasState) {
-	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(w)), "sngl-canvas", s)
-	cgo.GtkWidgetQueueDraw((cgo.PGtkWidget)(unsafe.Pointer(w)))
 }
 
 func TangentArc(from Point, corner Point, to Point, r float64) Arc {
@@ -667,11 +535,11 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__drawing0 = _newCanvas()
-	_setCanvasWidth(m.__drawing0, 60)
-	_setCanvasHeight(m.__drawing0, 40)
-	_setCanvasScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
-	_handleCanvasPaint(m.__drawing0, __drawing0_paint_handler)
+	m.__drawing0 = cgo.SnglCanvasNew()
+	cgo.SnglCanvasSetWidth(m.__drawing0, 60)
+	cgo.SnglCanvasSetHeight(m.__drawing0, 40)
+	cgo.SnglCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	cgo.SnglCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__drawing0)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -1193,7 +1061,7 @@ pass sha256:b0d4105cb0fd961cfb7d8918d6f09f33
 -- run/go/fyne --
 pass sha256:b68b6114bf84643957dbfc33b02c6f19
 -- run/go/gtk4 --
-pass sha256:0b8014fd73d58dd3e493d2d7705e56fc
+pass sha256:cc7d6fcb304b4ad66d74165cedff7e1c
 -- run/kotlin/android --
 pass sha256:b5484176887e5d7fbeccad03d59bfe29
 -- run/none/html --

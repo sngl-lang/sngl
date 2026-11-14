@@ -112,29 +112,46 @@ GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
 void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 void sngl_box_remove(GtkWidget *box, GtkWidget *child);
 /* sngl_box_append is a child put at the end of a box, which a box of rt's
- * own takes as it takes children: a window a source as its
+ * own takes as it takes children: a tabs as a page, a window a source as its
  * icon and an entry or a way back into its bar. */
 void sngl_box_append(GtkWidget *box, GtkWidget *child);
 
-/* A window's menu entries and its way back, and an image, are gtk4.sngl's,
- * which installs the hook the window, the box and an image's source ask
- * through (menu.c): op is one of SNGL_HOOK_*, child the box where the op
- * names none. sngl_window_back presses the first way back among a window's
- * content, and is whether there was one; sngl_menu_apply builds a window's
- * menu and bar afresh, and sngl_bar_forget drops the bar of a window
- * destroyed; sngl_menu_moved tells box an entry or a way back came or went.
- * sngl_image_placed fits a source put in box to the image box is, and
- * sngl_image_report tells it whether the source's picture arrived; each is
- * whether box is an image. */
-enum { SNGL_HOOK_BACK, SNGL_HOOK_APPLY, SNGL_HOOK_FORGET, SNGL_HOOK_MOVED, SNGL_HOOK_IMAGE_PLACED, SNGL_HOOK_IMAGE_REPORT };
-typedef bool (*SnglWindowHook)(int op, GtkWidget *box, GtkWidget *child, void *ctx);
-void sngl_window_hook(SnglWindowHook fn, void *ctx, GDestroyNotify release);
+/* A tabs is a box holding a GtkNotebook, whose pages are the tab pages
+ * appended to the box (tabs.c). sngl_tabs_add and sngl_tabs_remove are a
+ * box's append and remove where it is a tabs, and are whether it is. A tab
+ * page's on_shown runs as the user chooses it, and sngl_tab_page_show runs
+ * it as a test does. */
+GtkWidget *sngl_tabs_new(void);
+void sngl_tabs_set_selected(GtkWidget *box, int k);
+bool sngl_tabs_add(GtkWidget *box, GtkWidget *page);
+bool sngl_tabs_remove(GtkWidget *box, GtkWidget *page);
+GtkWidget *sngl_tab_page_new(void);
+void sngl_tab_page_set_title(GtkWidget *page, const char *title);
+void sngl_tab_page_set_disabled(GtkWidget *page, int disabled);
+void sngl_tab_page_on_shown(GtkWidget *page, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_tab_page_show(GtkWidget *page);
+
+/* A window's menu entries and its way back (menu.c): hidden widgets among
+ * its content, from which the window builds its header bar's menu and back
+ * button. sngl_menu_entry_select and sngl_back_press pick one as a test
+ * does. sngl_menu_moved tells box an entry or a way back came or went;
+ * sngl_menu_apply builds a window's menu afresh, and sngl_bar_forget drops
+ * the bar of a window destroyed. sngl_window_back presses the first way back
+ * among a window's content, and is whether there was one. */
+GtkWidget *sngl_menu_entry_new(void);
+void sngl_menu_entry_set_label(GtkWidget *w, const char *label);
+void sngl_menu_entry_set_disabled(GtkWidget *w, int v);
+void sngl_menu_entry_set_checked(GtkWidget *w, int v);
+void sngl_menu_entry_on_select(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_menu_entry_select(GtkWidget *w);
+GtkWidget *sngl_back_new(void);
+void sngl_back_on_press(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_back_press(GtkWidget *w);
 bool sngl_window_back(GtkWidget *box);
 void sngl_menu_moved(GtkWidget *box, GtkWidget *child);
 void sngl_menu_apply(GtkWidget *box);
+void sngl_bar_apply(GtkWidget *box);
 void sngl_bar_forget(GtkWidget *box);
-bool sngl_image_placed(GtkWidget *box, GtkWidget *source);
-bool sngl_image_report(GtkWidget *box, GtkWidget *source);
 
 /* An image is a box holding the source it shows (image.c), a GtkPicture
  * showing a picture or what a drawing paints, which reports to the image
@@ -154,11 +171,13 @@ typedef struct {
 extern const SnglAsset sngl_assets[];
 void sngl_gtk_carry(const SnglAsset *assets);
 void sngl_gtk_carry_file(const char *name, const char *data, int len);
-/* What gtk4.sngl's image asks of a source: whether a widget is one, and
- * whether its picture failed and why. */
-gboolean sngl_image_source_is(GtkWidget *w);
-gboolean sngl_image_source_failed(GtkWidget *w);
-const char *sngl_image_source_error(GtkWidget *w);
+GtkWidget *sngl_image_new(void);
+void sngl_image_set_fit(GtkWidget *box, const char *fit);
+void sngl_image_on_click(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_image_on_load(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_image_on_failed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
+const char *sngl_image_failure(GtkWidget *box);
+void sngl_image_click(GtkWidget *box);
 GtkWidget *sngl_image_source_new(void);
 void sngl_image_source_set_url(GtkWidget *w, const char *url);
 void sngl_image_source_set_picture(GtkWidget *w, SnglPicture *pic);
@@ -174,11 +193,27 @@ bool sngl_image_adopt(GtkWidget *box, GtkWidget *child);
 bool sngl_image_unadopt(GtkWidget *box, GtkWidget *child);
 void sngl_toplevel_icon_refresh(GtkWidget *toplevel);
 
-/* What the stdlib's shapes set that cairo takes as an enum or as a face and
- * a size. */
+/* A canvas is a GtkDrawingArea whose drawing is the handler of its paint,
+ * handed the context, in a space of width by height that the scaling mode
+ * -- `draw.ScalingMode`'s ordinal -- maps onto the room it is given. A
+ * redraw asks it to paint again. */
+GtkWidget *sngl_canvas_new(void);
+void sngl_canvas_set_width(GtkWidget *w, int width);
+void sngl_canvas_set_height(GtkWidget *w, int height);
+void sngl_canvas_set_scaling(GtkWidget *w, int mode);
+void sngl_canvas_on_paint(GtkWidget *w, SnglDrawFn draw, void *data, GDestroyNotify release);
+void sngl_canvas_redraw(GtkWidget *w);
 void sngl_cairo_line_cap(cairo_t *cr, int cap);
 void sngl_cairo_line_join(cairo_t *cr, int join);
 void sngl_cairo_font(cairo_t *cr, const char *family, double size);
+/* sngl_on_click runs fn with ctx on a press of w, which a drawing area or
+ * a label has no signal of its own for: a GtkGestureClick's, which releases
+ * ctx with the gesture, and a second call replaces the first's handler. */
+void sngl_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
+/* sngl_click is a press of w, as a test makes one. */
+void sngl_click(GtkWidget *w);
+GtkWidget *sngl_text_new(void);
+void sngl_text_set_value(GtkWidget *w, const char *value);
 
 
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main
@@ -189,17 +224,17 @@ typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
-/* A scroll's probe (scroll.c): a box laid out around a scroll's content,
- * held on the scroll's window, which says through its handler when the
- * content's length along the scroll changes. sngl_scroll_probe makes it the
- * first time it is asked. A scroll's content is set through
- * sngl_scroll_set_child, which leaves content the probe holds where it is. */
-GtkWidget *sngl_scroll_probe(GtkWidget *sw);
-int sngl_probe_content(GtkWidget *probe);
-void sngl_probe_reset(GtkWidget *probe, int across);
-void sngl_probe_on_change(GtkWidget *probe, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_probe_hold(GtkWidget *sw, GtkWidget *probe, GtkWidget *content);
+/* A scroll is a GtkScrolledWindow moving along a direction, "horizontal",
+ * "both" or else vertical, that runs its reach-end handler as the end of
+ * its content comes within half a viewport of showing (scroll.c). Its
+ * content is set through sngl_scroll_set_child, which leaves content it
+ * already holds where it is. sngl_scroll_reach_end runs the handler, as a
+ * test does. */
+GtkWidget *sngl_scroll_new(void);
 void sngl_scroll_set_child(GtkWidget *sw, GtkWidget *child);
+void sngl_scroll_set_direction(GtkWidget *sw, const char *dir);
+void sngl_scroll_on_reach_end(GtkWidget *sw, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_scroll_reach_end(GtkWidget *sw);
 
 /* A window's keys (keys.c). sngl_key_name is what a window's `@key` calls
  * the key keyval is with state held -- a name, or the character it types,
@@ -222,9 +257,43 @@ const char *sngl_key_name(guint keyval, GdkModifierType state, char buf[8]);
 void sngl_keys_watch(GtkWidget *win, SnglKeyHear hear, SnglKeyBack back, void *data);
 void sngl_keys_go_on(GtkWindow *win, const char *key, bool shift);
 
-/* sngl_calendar_select selects y-m-d on c, a calendar, as a click on the day
- * does, unreported (choose.c). */
+/* sngl_flip is a test flipping w, a check button or a switch, to v, as a
+ * user's flip does: the state written, which fires what reports it. State w
+ * already holds fires nothing, so then it fires signal itself, or notifies
+ * prop where that is what reports it. */
+void sngl_flip(GtkWidget *w, bool v, const char *signal, const char *prop);
+
+/* A test's fire of an event whose handler reads a value off the widget, the
+ * value put there first: sngl_fire_flip flips w, a check button or a switch,
+ * to v, as sngl_flip does; sngl_fire_text writes text into e, an entry,
+ * unreported, and emits signal; sngl_fire_day selects day, a date's text, on
+ * c, a calendar, unreported where it is not "", and emits "day-selected". */
+void sngl_fire_flip(GtkWidget *w, int v);
+void sngl_fire_text(GtkWidget *e, const char *text, const char *signal);
+void sngl_fire_day(GtkWidget *c, const char *day);
+
+/* What a user chooses among (choose.c), each taking the widget a node is.
+ * sngl_calendar_select selects y-m-d on c, a calendar, as a click on the day
+ * does, without reporting it, and sngl_calendar_day is the day c has
+ * selected as a date's text, YYYY-MM-DD. sngl_drop_down_offer offers d, a
+ * drop-down, the labels joined with newlines, and selects chosen among them,
+ * or nothing, reporting neither. sngl_drop_down_label is the label d has
+ * selected, or "" where it has none, and sngl_drop_down_select selects the
+ * choice labeled label, as a click on it does. */
 void sngl_calendar_select(GtkWidget *c, int y, int m, int d);
+const char *sngl_calendar_day(GtkWidget *c);
+/* sngl_calendar_select_day selects the day a date's text, YYYY-MM-DD, names,
+ * as sngl_calendar_select does. */
+void sngl_calendar_select_day(GtkWidget *c, const char *day);
+void sngl_drop_down_offer(GtkWidget *d, const char *labels, const char *chosen);
+const char *sngl_drop_down_label(GtkWidget *d);
+void sngl_drop_down_select(GtkWidget *d, const char *label);
+
+/* sngl_check_active and sngl_switch_active are whether b, a check button, and
+ * s, a switch, are on; sngl_entry_text is e's text, an entry's. */
+int sngl_check_active(GtkWidget *b);
+int sngl_switch_active(GtkWidget *s);
+const char *sngl_entry_text(GtkWidget *e);
 
 /* sngl_hold makes *slot w, which it reads NULL once w is gone: what a test
  * asks of a widget a branch took away. */
@@ -260,6 +329,10 @@ void sngl_span_set_href(GtkWidget *w, const char *href);
 void sngl_span_set_style(GtkWidget *w, int r, int g, int b, int a, double size, int weight, int slant,
                          int underline, int strike, const char *family);
 
+/* sngl_editable_set_text_quiet writes an entry's text with its "changed"
+ * blocked, which an override does when the program's value moves, so the
+ * write does not report itself back as an edit. */
+void sngl_editable_set_text_quiet(GtkWidget *e, const char *t);
 
 /* sngl_app_run runs the application: build makes the program's tree, its
  * toplevels attached, once GTK is up, and the windows of the visible ones

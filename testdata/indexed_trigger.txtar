@@ -2149,54 +2149,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
-func _fireCheck(b cgo.Widget, checked bool) {
-	w := (cgo.PGtkCheckButton)(unsafe.Pointer(b))
-	if cgo.GtkCheckButtonGetActive(w) != checked {
-		var __lt3 int
-		if checked {
-			__lt3 = 1
-		} else {
-			__lt3 = 0
-		}
-		cgo.GtkCheckButtonSetActive(w, cgo.CGboolean(__lt3))
-	} else {
-		cgo.SnglSignalEmit(b, "toggled")
-	}
-}
-
-func _fireText(e cgo.Widget, text string, signal string) {
-	SetEntryText(e, text)
-	cgo.SnglSignalEmit(e, signal)
-}
-
-func SetEntryText(e cgo.Widget, text string) {
-	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
-		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
-	})
-}
-
-func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
-	obj := cgo.CGpointer(o)
-	var id int = cgo.GSignalLookup(signal, on)
-	var __lt7 int
-	if detail == "" {
-		__lt7 = 1
-	} else {
-		__lt7 = 3
-	}
-	var mask int = __lt7
-	var q int = cgo.GQuarkFromString(detail)
-	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
-	set()
-	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
-}
-
 func __checkbox_state0__new(__start_checked bool, label string, __copy string, change func(bool)) *__checkbox_state0__inst {
 	__self := &__checkbox_state0__inst{__prop___start_checked: __start_checked, __prop_label: label, __prop___copy: __copy, __prop_change: change}
 	__self.Checked = __self.__prop___start_checked
@@ -2215,8 +2167,8 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 	m.box__copies[__self.__prop___copy] = __self.Box
 	cgo.SnglSignalConnect(__self.Box, "toggled", func() {
 		func(b cgo.Widget) {
-			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
-				__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
+			if cgo.SnglCheckActive(b) != __self.Checked {
+				__checkbox_checked_wrote0 := cgo.SnglCheckActive(b)
 				__self.Checked = __checkbox_checked_wrote0
 				cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.Box)), cgo.CGboolean(func() int {
 					if __self.Checked {
@@ -2279,15 +2231,15 @@ func __input_state1__new(__start_value string, __copy string, change func(string
 	m.field__copies[__self.__prop___copy] = __self.Field
 	cgo.SnglSignalConnect(__self.Field, "changed", func() {
 		func(e cgo.Widget) {
-			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Value {
-				__self.Value = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+			if cgo.SnglEntryText(e) != __self.Value {
+				__self.Value = cgo.SnglEntryText(e)
 			}
 			__input_state1__effects0_settle(__self)
 		}(__self.Field)
 	})
 	cgo.SnglSignalConnect(__self.Field, "activate", func() {
 		func(e cgo.Widget) {
-			__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+			__input_value_wrote1 := cgo.SnglEntryText(e)
 			__self.Value = __input_value_wrote1
 			__self.__prop_change(__input_value_wrote1)
 			__input_state1__effects0_settle(__self)
@@ -2299,8 +2251,8 @@ func __input_state1__new(__start_value string, __copy string, change func(string
 }
 
 func __input_state1__effect0_mount(__self *__input_state1__inst) {
-	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Field))) != __self.__effect0_key {
-		SetEntryText(__self.Field, __self.__effect0_key)
+	if cgo.SnglEntryText(__self.Field) != __self.__effect0_key {
+		cgo.SnglEditableSetTextQuiet(__self.Field, __self.__effect0_key)
 	}
 }
 
@@ -2479,7 +2431,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						__child0__set___on0(__n1, func() {
 							m.log = it.Elem
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+							cgo.SnglTextSetValue(m.__n0, m.log)
 						})
 						__child0__set___p0(__n1, it)
 						__child0__set___p1(__n1, __copy0)
@@ -2494,7 +2446,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n1__made := __child0__new(it, __copy0, func() {
 							m.log = it.Elem
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+							cgo.SnglTextSetValue(m.__n0, m.log)
 						})
 						__n1 = __n1__made
 					}
@@ -2535,7 +2487,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						__checkbox_state0__set_change(__n2, func(on bool) {
 							m.log = ((it.Elem + " ") + fmt.Sprint(on))
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+							cgo.SnglTextSetValue(m.__n0, m.log)
 						})
 						__checkbox_state0__set_label(__n2, it.Elem)
 						__checkbox_state0__set___copy(__n2, fmt.Sprint(__copy0))
@@ -2550,7 +2502,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n2__made := __checkbox_state0__new(false, it.Elem, fmt.Sprint(__copy0), func(on bool) {
 							m.log = ((it.Elem + " ") + fmt.Sprint(on))
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+							cgo.SnglTextSetValue(m.__n0, m.log)
 						})
 						__n2 = __n2__made
 					}
@@ -2591,7 +2543,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						__input_state1__set_change(__n3, func(v string) {
 							m.log = ((it.Elem + "=") + v)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+							cgo.SnglTextSetValue(m.__n0, m.log)
 						})
 						__input_state1__set___start_value(__n3, it.Elem)
 						__input_state1__set___copy(__n3, fmt.Sprint(__copy0))
@@ -2606,7 +2558,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n3__made := __input_state1__new(it.Elem, fmt.Sprint(__copy0), func(v string) {
 							m.log = ((it.Elem + "=") + v)
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+							cgo.SnglTextSetValue(m.__n0, m.log)
 						})
 						__n3 = __n3__made
 					}
@@ -2701,8 +2653,8 @@ func snglBuild() {
 	cgo.SnglSignalConnect(m.swap, "clicked", Swap_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.swap)))
 	__renderSlot0(m.__n4)
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, m.log)
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglAppAttach(m.__n4)
@@ -3528,7 +3480,7 @@ pass sha256:e1a72c829c02188219eb833790b39cb7
 -- run/go/fyne --
 pass sha256:dd8d94adce29809b1e190b12dd9e5816
 -- run/go/gtk4 --
-pass sha256:dad9d220cadb193e40534da1e3f295e2
+pass sha256:b13fd5afe58e1b0c2ec99de612e7f1c5
 -- run/kotlin/android --
 pass sha256:ea3887296929cf6f2aa99a0d3947bb7a
 -- run/none/html --

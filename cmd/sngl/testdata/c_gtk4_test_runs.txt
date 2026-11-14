@@ -91,7 +91,7 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c menus.sngl
 stdout 'ok +2 tests, 0 failures'
 
-# A tabs is a box of a GtkNotebook, whose page a test chooses as
+# A tabs is rt's box of a GtkNotebook (tabs.c), whose page a test chooses as
 # a click does. A test's day is written into the calendar unreported, and
 # its choice selected on the drop-down, which reports it; a date is its text.
 
@@ -1106,7 +1106,7 @@ ui.window {
     main()
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:cbcb61ff09eb15d7d6f774034927fbb0
+sha256:49636efca37c20f23f0b60f54b0829b4
 {
   "results": [
     {
@@ -1116,7 +1116,7 @@ sha256:cbcb61ff09eb15d7d6f774034927fbb0
   ]
 }
 -- testrun/gtk4/c/async.sngl/main/1 --
-sha256:29d22733080f0e7cf0206355352952a1
+sha256:9655728630ee81380b9f9864d40fe35a
 {
   "results": [
     {
@@ -1126,7 +1126,7 @@ sha256:29d22733080f0e7cf0206355352952a1
   ]
 }
 -- testrun/gtk4/c/bare.sngl/main/1 --
-sha256:ead880d36c320896901194ac25a9a8fc
+sha256:d294d80d8cb315456de4f28615ada19c
 {
   "results": [
     {
@@ -1136,7 +1136,7 @@ sha256:ead880d36c320896901194ac25a9a8fc
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:e8f5fdb25ab1bc0ce0d9af7132d53a02
+sha256:06e5bd057d1c1b066cbbfb19f91fa95d
 {
   "results": [
     {
@@ -1146,7 +1146,7 @@ sha256:e8f5fdb25ab1bc0ce0d9af7132d53a02
   ]
 }
 -- testrun/gtk4/c/choose.sngl/strip/1 --
-sha256:6c681dd154a9f0999499467e87ced775
+sha256:4d7f8dd55829d003779a616ce6fdbd63
 {
   "results": [
     {
@@ -1164,7 +1164,7 @@ sha256:6c681dd154a9f0999499467e87ced775
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:f2ae30f8a298df8267b8570da6767b63
+sha256:36d31f037ac92e42500c008a79b3301e
 {
   "results": [
     {
@@ -1174,7 +1174,7 @@ sha256:f2ae30f8a298df8267b8570da6767b63
   ]
 }
 -- testrun/gtk4/c/flow.sngl/main/1 --
-sha256:32b30a89690905c30a06f2072376358d
+sha256:92b739bb372f90fd3daf52ece2418ef4
 {
   "results": [
     {
@@ -1188,7 +1188,7 @@ sha256:32b30a89690905c30a06f2072376358d
   ]
 }
 -- testrun/gtk4/c/holders.sngl/dial/1 --
-sha256:0f680b1dbfaa42d70534b3c1aa5044e4
+sha256:aa823078cbbb8d776dc4b06d260b7474
 {
   "results": [
     {
@@ -1198,7 +1198,7 @@ sha256:0f680b1dbfaa42d70534b3c1aa5044e4
   ]
 }
 -- testrun/gtk4/c/holders.sngl/framed/1 --
-sha256:8b5bd7026ba0ae11651e85d0a4b59efd
+sha256:ef72f8ee321042d189ecf49ed34098d7
 {
   "results": [
     {
@@ -1208,7 +1208,7 @@ sha256:8b5bd7026ba0ae11651e85d0a4b59efd
   ]
 }
 -- testrun/gtk4/c/holders.sngl/picks/1 --
-sha256:b0378bda085456532f8f9f1973a0ca3f
+sha256:de6225f6ffa0a1bd727f82af3ad5bafd
 {
   "results": [
     {
@@ -1218,7 +1218,7 @@ sha256:b0378bda085456532f8f9f1973a0ca3f
   ]
 }
 -- testrun/gtk4/c/holders.sngl/strip/1 --
-sha256:674b9009ef509a2a6e5abce5b3fb6378
+sha256:ee8a050d424625710af102aebbae7b72
 {
   "results": [
     {
@@ -1228,7 +1228,7 @@ sha256:674b9009ef509a2a6e5abce5b3fb6378
   ]
 }
 -- testrun/gtk4/c/keep.sngl/ticker/1 --
-sha256:ddf2f66e4887b13dbdba197a84a7d6ef
+sha256:0c8b82217141db83d8622c3fb5551172
 {
   "results": [
     {
@@ -1238,7 +1238,7 @@ sha256:ddf2f66e4887b13dbdba197a84a7d6ef
   ]
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:a394b395170a105859b2a7c85ca689de
+sha256:02eb9505cb3e859950cb4985199e0615
 {
   "results": [
     {
@@ -1248,7 +1248,7 @@ sha256:a394b395170a105859b2a7c85ca689de
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:ed4fca9b2dc1351cd108e86a9fadfced
+sha256:ff8148ee93086b7222403391f2761809
 {
   "results": [
     {
@@ -1262,7 +1262,7 @@ sha256:ed4fca9b2dc1351cd108e86a9fadfced
   ]
 }
 -- testrun/gtk4/c/records.sngl/page/1 --
-sha256:8fe930ee2bc03c35fd5c3f7b6a72e830
+sha256:a0a3af6f97c7968758f2061deda0d00f
 {
   "results": [
     {
@@ -1272,7 +1272,7 @@ sha256:8fe930ee2bc03c35fd5c3f7b6a72e830
   ]
 }
 -- testrun/gtk4/c/records.sngl/population/1 --
-sha256:6df3e0e2e9027d4976f32d95bdce827c
+sha256:82cdd93a2fda7c36a29ec7654704ef26
 {
   "results": [
     {
@@ -1282,7 +1282,7 @@ sha256:6df3e0e2e9027d4976f32d95bdce827c
   ]
 }
 -- testrun/gtk4/c/records.sngl/rows/1 --
-sha256:07f090990da9f5426b920d46a83f9593
+sha256:f30b987c517c35a62ed1fe598676564e
 {
   "results": [
     {
@@ -1292,7 +1292,7 @@ sha256:07f090990da9f5426b920d46a83f9593
   ]
 }
 -- testrun/gtk4/c/rows.sngl/main/1 --
-sha256:32b6ef99867ddc0888f3d1fa5062fd02
+sha256:b7b61619c5ce0cf70f45a18a9af89c53
 {
   "results": [
     {
@@ -1302,7 +1302,7 @@ sha256:32b6ef99867ddc0888f3d1fa5062fd02
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:f0abb1b8ecc806cd2b45e5dada643eee
+sha256:6832b239054914be01834c79dce8c225
 {
   "results": [
     {
@@ -1316,7 +1316,7 @@ sha256:f0abb1b8ecc806cd2b45e5dada643eee
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:f9d738c1dcd2232248b3cdbaeadb6a8a
+sha256:6d3e33f97ce37dcd37fb46638352e254
 {
   "results": [
     {
@@ -1326,7 +1326,7 @@ sha256:f9d738c1dcd2232248b3cdbaeadb6a8a
   ]
 }
 -- testrun/gtk4/c/snap.sngl/_/1 --
-sha256:e99493d9c6205fc048bdac63f6688d9a
+sha256:1fa6d41c7bce0e1cb117ed7ed7e7a820
 {
   "results": [
     {
@@ -1339,7 +1339,7 @@ sha256:e99493d9c6205fc048bdac63f6688d9a
   }
 }
 -- testrun/gtk4/c/snap.sngl/main/1 --
-sha256:a8e6557d097d3ee0f07505eda14bc68c
+sha256:76b89e67e6f4242ed7252ff99d5080c9
 {
   "results": [
     {
@@ -1353,7 +1353,7 @@ sha256:a8e6557d097d3ee0f07505eda14bc68c
   }
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:b03acef28a8b240e179ccf696e6dc2b4
+sha256:2049ea77221fa3089976f4dfd448eb24
 {
   "results": [
     {
@@ -1367,7 +1367,7 @@ sha256:b03acef28a8b240e179ccf696e6dc2b4
   ]
 }
 -- testrun/gtk4/c/units.sngl/app/1 --
-sha256:e866a6e09a3f259080f49c01eba48b3d
+sha256:2f0ae44b19f9099d6e587e5f23dd0b40
 {
   "results": [
     {
@@ -1377,7 +1377,7 @@ sha256:e866a6e09a3f259080f49c01eba48b3d
   ]
 }
 -- testrun/gtk4/go/snap.sngl/_/1 --
-sha256:ca9730f0bc67002d388f8f1d8ac046a0
+sha256:f6417567bd35813a95d4fe0b42bed226
 {
   "results": [
     {
@@ -1387,7 +1387,7 @@ sha256:ca9730f0bc67002d388f8f1d8ac046a0
   ]
 }
 -- testrun/gtk4/go/snap.sngl/main/1 --
-sha256:00b3b82a8f08be49422dc3e3f147093a
+sha256:c92453b1cdefb30b5d19c54274171298
 {
   "results": [
     {

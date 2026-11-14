@@ -436,12 +436,6 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -482,7 +476,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						Counter__set___on_n(__n3, func(__n int) {
 							m.total = __n
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ("total " + fmt.Sprint(m.total)))
+							cgo.SnglTextSetValue(m.__n2, ("total " + fmt.Sprint(m.total)))
 							for _, __inst1_live_uv := range m.__inst1_live {
 								Counter__set_n(__inst1_live_uv, m.total)
 							}
@@ -500,7 +494,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n3__made := Counter__new(m.total, it.Elem, func(__n int) {
 							m.total = __n
-							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ("total " + fmt.Sprint(m.total)))
+							cgo.SnglTextSetValue(m.__n2, ("total " + fmt.Sprint(m.total)))
 							for _, __inst1_live_uv := range m.__inst1_live {
 								Counter__set_n(__inst1_live_uv, m.total)
 							}
@@ -609,8 +603,8 @@ func snglBuild() {
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(1))
 	_setLook(m.__n4, Look{Spaced: true, Spacing: 6})
 	__renderSlot0(m.__n4)
-	m.__n2 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ("total " + fmt.Sprint(m.total)))
+	m.__n2 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n2, ("total " + fmt.Sprint(m.total)))
 	_setLook(m.__n2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n5 = cgo.GtkButtonNew()
@@ -855,6 +849,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:30519949439d71f6194f8799faac8632
 -- run/go/gtk4 --
-pass sha256:ecf259f339bd59e3114602e33758e05f
+pass sha256:6fffe8089a58acc6d9bf99b4962a2dd8
 -- run/none/html --
 pass sha256:471540bdf0500d5df01b055287759250

@@ -657,7 +657,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -699,12 +698,6 @@ type snglState struct {
 
 var m = &snglState{}
 
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
-}
-
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -733,7 +726,7 @@ func __effect0_mount() {
 		__list0 = append(__list0, (__item0 / 2))
 	}
 	m.mapped = __list0[0]
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.mapped))
+	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.mapped))
 }
 
 func __effect0_down() {
@@ -788,8 +781,8 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.mapped))
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.mapped))
 	_setLook(m.__n0, Look{})
 	__effects0_settle()
 	cgo.SnglAppAttach(m.__n0)
@@ -829,4 +822,4 @@ pass sha256:90a58766b7125b503654eb037c076940
 -- run/go/fyne --
 pass sha256:885e1e237d2edd276c381bb95b5f799d
 -- run/go/gtk4 --
-pass sha256:0eb6c3e7da2535ab566c14db74262cc5
+pass sha256:914d4807cabd8bd897061d70dff2372f

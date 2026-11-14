@@ -121,7 +121,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"unsafe"
 )
 
 type Look struct {
@@ -154,12 +153,6 @@ func __run(args []string, run func()) {
 	if len(args) > 0 {
 		run()
 	}
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -199,8 +192,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "hi")
+	m.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n1, "hi")
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -258,4 +251,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:3a8f2b55ac9005c524401aedb5c48657
 -- run/go/gtk4 --
-pass sha256:598e497a048ba8ee78e2bece578f58cc
+pass sha256:9623d13386d11244103be3b96ab41fdf

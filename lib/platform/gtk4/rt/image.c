@@ -1,6 +1,5 @@
-/* What a `ui.image` on GTK needs of C: its sources and their pictures. The
- * image itself, a box holding the source it shows fitted as the image says,
- * is gtk4.sngl's, which a source asks through its hook. A source is a GtkPicture
+/* A `ui.image` on GTK, for a program in either language. An image is a box holding the source it shows, fitted as the image
+ * says, or the placeholder where it holds none. A source is a GtkPicture
  * showing the texture its picture or its drawing make, and reporting to the
  * image holding it whether the picture arrived. Appended to a window, a
  * source is the window's icon. */
@@ -9,6 +8,21 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
+
+typedef struct {
+    GtkContentFit fit;
+    SnglFn on_click;
+    void *click_ctx;
+    GDestroyNotify click_release;
+    SnglFn on_load;
+    void *load_ctx;
+    GDestroyNotify load_release;
+    SnglFn on_failed;
+    void *failed_ctx;
+    GDestroyNotify failed_release;
+    /* failure is why the last picture the image was told of failed. */
+    char *failure;
+} SnglImage;
 
 typedef struct {
     GtkWidget *pic;
@@ -52,18 +66,121 @@ struct SnglPicture {
     bool released, pending;
 };
 
+static SnglImage *sngl_image_of(GtkWidget *w) {
+    return w ? g_object_get_data(G_OBJECT(w), "sngl-image") : NULL;
+}
+
 static SnglSource *sngl_source_of(GtkWidget *w) {
     return w ? g_object_get_data(G_OBJECT(w), "sngl-source") : NULL;
 }
 
+static void sngl_image_free(gpointer data) {
+    SnglImage *img = data;
+    if (img->click_release) img->click_release(img->click_ctx);
+    if (img->load_release) img->load_release(img->load_ctx);
+    if (img->failed_release) img->failed_release(img->failed_ctx);
+    g_free(img->failure);
+    g_free(img);
+}
+
+static void sngl_image_pressed(GtkGestureClick *g, int n, double x, double y, gpointer box) {
+    sngl_image_click(box);
+}
+
+/* Horizontal: a GtkPicture measures its height for the width it is given,
+ * and a vertical box gives each child its own whole width, so the picture
+ * asked for as much height as that width implies. A horizontal box measures
+ * it at its own width. */
+GtkWidget *sngl_image_new(void) {
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    SnglImage *img = g_new0(SnglImage, 1);
+    img->fit = GTK_CONTENT_FIT_CONTAIN;
+    g_object_set_data_full(G_OBJECT(box), "sngl-image", img, sngl_image_free);
+    GtkGesture *g = gtk_gesture_click_new();
+    g_signal_connect(g, "pressed", G_CALLBACK(sngl_image_pressed), box);
+    gtk_widget_add_controller(box, GTK_EVENT_CONTROLLER(g));
+    return box;
+}
+
+/* `none` is `scaleDown`: GTK has no picture that keeps its own size whatever
+ * room it is given. */
+void sngl_image_set_fit(GtkWidget *box, const char *fit) {
+    SnglImage *img = sngl_image_of(box);
+    if (!img) return;
+    if (strcmp(fit, "cover") == 0) {
+        img->fit = GTK_CONTENT_FIT_COVER;
+    } else if (strcmp(fit, "fill") == 0) {
+        img->fit = GTK_CONTENT_FIT_FILL;
+    } else if (strcmp(fit, "none") == 0 || strcmp(fit, "scaleDown") == 0) {
+        img->fit = GTK_CONTENT_FIT_SCALE_DOWN;
+    } else {
+        img->fit = GTK_CONTENT_FIT_CONTAIN;
+    }
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c; c = gtk_widget_get_next_sibling(c)) {
+        if (sngl_source_of(c)) gtk_picture_set_content_fit(GTK_PICTURE(c), img->fit);
+    }
+}
+
+void sngl_image_on_click(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release) {
+    SnglImage *img = sngl_image_of(box);
+    if (!img) {
+        if (release) release(ctx);
+        return;
+    }
+    if (img->click_release) img->click_release(img->click_ctx);
+    img->on_click = fn;
+    img->click_ctx = ctx;
+    img->click_release = release;
+}
+
+void sngl_image_on_load(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release) {
+    SnglImage *img = sngl_image_of(box);
+    if (!img) {
+        if (release) release(ctx);
+        return;
+    }
+    if (img->load_release) img->load_release(img->load_ctx);
+    img->on_load = fn;
+    img->load_ctx = ctx;
+    img->load_release = release;
+}
+
+void sngl_image_on_failed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release) {
+    SnglImage *img = sngl_image_of(box);
+    if (!img) {
+        if (release) release(ctx);
+        return;
+    }
+    if (img->failed_release) img->failed_release(img->failed_ctx);
+    img->on_failed = fn;
+    img->failed_ctx = ctx;
+    img->failed_release = release;
+}
+
+const char *sngl_image_failure(GtkWidget *box) {
+    SnglImage *img = sngl_image_of(box);
+    return img && img->failure ? img->failure : "";
+}
+
+void sngl_image_click(GtkWidget *box) {
+    SnglImage *img = sngl_image_of(box);
+    if (img && img->on_click) img->on_click(img->click_ctx);
+}
+
 /* report tells the image holding the source, once per picture, whether it
- * arrived: gtk4.sngl's image, through its hook, which is whether the parent
- * is one. */
+ * arrived. */
 static void sngl_source_report(SnglSource *s) {
     GtkWidget *parent = gtk_widget_get_parent(s->pic);
-    if (parent == NULL || !s->ready || s->told) return;
+    SnglImage *img = sngl_image_of(parent);
+    if (!img || !s->ready || s->told) return;
     s->told = true;
-    if (!sngl_image_report(parent, s->pic)) s->told = false;
+    if (s->err) {
+        g_free(img->failure);
+        img->failure = g_strdup(s->err);
+        if (img->on_failed) img->on_failed(img->failed_ctx);
+    } else if (!s->err && img->on_load) {
+        img->on_load(img->load_ctx);
+    }
 }
 
 static void sngl_icon_apply(GtkWidget *toplevel, GdkTexture *tex);
@@ -103,34 +220,22 @@ static void sngl_source_free(gpointer data) {
     g_free(s);
 }
 
-/* The source having been put somewhere: the image it is in fits it, and it
- * reports to it. */
+/* The source having been put somewhere: it fits itself to the image it is
+ * in, and reports to it. */
 static void sngl_source_parented(GObject *o, GParamSpec *ps, gpointer data) {
     SnglSource *s = data;
     GtkWidget *parent = gtk_widget_get_parent(s->pic);
-    if (parent == NULL || !sngl_image_placed(parent, s->pic)) {
+    SnglImage *img = sngl_image_of(parent);
+    if (!img) {
         s->frame = NULL;
         return;
     }
+    gtk_picture_set_content_fit(GTK_PICTURE(s->pic), img->fit);
     if (s->frame != parent) {
         s->frame = parent;
         s->told = false;
     }
     sngl_source_report(s);
-}
-
-gboolean sngl_image_source_is(GtkWidget *w) {
-    return sngl_source_of(w) != NULL;
-}
-
-gboolean sngl_image_source_failed(GtkWidget *w) {
-    SnglSource *s = sngl_source_of(w);
-    return s != NULL && s->err != NULL;
-}
-
-const char *sngl_image_source_error(GtkWidget *w) {
-    SnglSource *s = sngl_source_of(w);
-    return s != NULL && s->err != NULL ? s->err : "";
 }
 
 GtkWidget *sngl_image_source_new(void) {

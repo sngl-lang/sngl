@@ -517,7 +517,6 @@ import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
 	"os"
 	"runtime"
-	"unsafe"
 )
 
 type Test struct {
@@ -550,12 +549,6 @@ var m = &snglState{}
 
 func Count() int {
 	return m.n
-}
-
-func _newText() cgo.Widget {
-	t := cgo.TextLabel("")
-	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
-	return t
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -592,8 +585,8 @@ func snglBuild() {
 	} else {
 		__lt20 = "none"
 	}
-	m.__n0 = _newText()
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), __lt20)
+	m.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n0, __lt20)
 	_setLook(m.__n0, Look{})
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -761,7 +754,7 @@ pass sha256:89cdc25197ecc3ecda6e68c605070a05
 -- run/go/fyne --
 pass sha256:fe7b14bdbdbad9663ab83a08684a863e
 -- run/go/gtk4 --
-pass sha256:16a0eadc679ea8536692f2f5d48e7455
+pass sha256:97457f01e9cf5beefee73b5bd16a73ac
 -- run/kotlin/android --
 pass sha256:f5d265b11c5322afb194450bd44d4239
 -- run/none/html --
