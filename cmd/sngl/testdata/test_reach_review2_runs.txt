@@ -1444,7 +1444,7 @@ sha256:935525cd1704cec21402d20e01bcc2b9
   ]
 }
 -- testrun/android/kotlin/twoway.sngl/main/1 --
-sha256:afd2cf8b2a513bfd6141806cd4c436ce
+sha256:fc5e90426a7fc22cfb0f173aacb0982b
 {
   "results": [
     {

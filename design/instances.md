@@ -539,7 +539,11 @@ the cell, and the override's handler writes it as it would write a bound one.
 The interpreter also answers a `#id` read in a view now (`bindHandle`), which it
 never did for any prop. `testdata/unbound_prop_state.txtar`,
 `cmd/sngl/testdata/unbound_prop_state_runs.txt` and
-`testdata/error_unbound_prop_const.sngl` are the three halves.
+`testdata/error_unbound_prop_const.sngl` are the three halves. The
+optimizer's splice (`inlineComponentCall`) leaves a call with an unbound
+two-way prop alone, as it does a component with vars: spliced there, gtk4's
+`ui.tabs` folded its `selected` to the default and its tab handler wrote a
+name nothing declared (`testdata/select_under_tabs.txtar`).
 
 **A test reaches a `#id` inside a component built at run time**, which the
 typed-text half of `slot_body_updates_in_place_runs.txt` needs: on html an

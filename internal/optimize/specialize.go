@@ -86,6 +86,13 @@ func inlineComponentCall(n *ir.NodeInst, ctx *evalCtx) []ir.Stmt {
 	if len(comp.Vars) > 0 || len(comp.Funcs) > 0 {
 		return nil
 	}
+	// So is a two-way prop the call site leaves unbound (ir.UnboundProps),
+	// a cell passImplicitState gives the instance. Spliced here, gtk4's
+	// `ui.tabs` read its `selected` as the default it folded to and wrote it
+	// in a tab's handler, naming nothing.
+	if len(ir.UnboundProps(comp, n.Bindings)) > 0 {
+		return nil
+	}
 	// A body calling a method of one of its own nodes keeps its boundary.
 	// Spliced, the node and the call land in whatever block holds the call
 	// site, and a target that builds that block at run time -- a tab on gtk4,

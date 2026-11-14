@@ -240,6 +240,56 @@ func (p *placement) buildRecords(pkg *ir.Package) {
 	}
 }
 
+// shareRecordNodes holds a node one of comp's functions or its body makes,
+// that another reads, as a field of the record, as hoistShared does a
+// package's: an effect's mount reads the select a render slot made under
+// `ui.tabs`' `for`, which bodyLocals leaves a local
+// (examples/pokedex, `#methodPick`). The field holds the node made last, and
+// the read of it through the record is the field's, as fieldOf finds it.
+func shareRecordNodes(comp *ir.Component, fields map[string]*ir.StructField, add func(string, *ir.Type)) {
+	// Each statement list making nodes, and the closures each makes, which
+	// read its nodes as their own.
+	homes := []*[]ir.Stmt{&comp.Stmts}
+	for _, fn := range comp.Funcs {
+		homes = append(homes, &fn.Block)
+	}
+	type local struct {
+		lv   *ir.LocalVar
+		home int
+	}
+	made := map[string]local{}
+	walkHome := func(i int, f func(ir.Node)) {
+		visit := func(n ir.Node) error { f(n); return nil }
+		_ = ir.Walk(*homes[i], visit)
+		for _, cl := range closureFuncs(*homes[i]) {
+			_ = ir.Walk(cl.Block, visit)
+		}
+	}
+	for i, home := range homes {
+		_ = ir.Walk(*home, func(n ir.Node) error {
+			if lv, ok := n.(*ir.LocalVar); ok && isPlacedNode(lv.Type) && fields[lv.Name] == nil && made[lv.Name].lv == nil {
+				made[lv.Name] = local{lv, i}
+			}
+			return nil
+		})
+	}
+	shared := map[string]bool{}
+	for i := range homes {
+		walkHome(i, func(n ir.Node) {
+			if id, ok := n.(*ir.Ident); ok {
+				if l := made[id.Name]; l.lv != nil && l.home != i && refersNode(id, l.lv) {
+					shared[id.Name] = true
+				}
+			}
+		})
+	}
+	for _, name := range slices.Sorted(maps.Keys(shared)) {
+		l := made[name]
+		add(name, l.lv.Type)
+		holdAfter(homes[l.home], l.lv, &ir.Ident{Name: name, Type: l.lv.Type, IsElementRef: true, Synthesized: true})
+	}
+}
+
 func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 	comp := r.comp
 	// The fields: the component's vars, then the nodes its body makes.
@@ -261,6 +311,7 @@ func (p *placement) buildRecord(pkg *ir.Package, r *record) {
 			add(lv.Name, lv.Type)
 		}
 	})
+	shareRecordNodes(comp, fields, add)
 	add(recordRoot, r.nodeType)
 	pkg.Structs = append(pkg.Structs, r.sd)
 

@@ -346,10 +346,12 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 			funcs = append(funcs, fn)
 		}
 	}
-	// The local each name is, and the function making it.
+	// The local each name is, the function making it, nil for the package
+	// body, and the statements it is made in.
 	type local struct {
-		lv *ir.LocalVar
-		fn *ir.Func
+		lv    *ir.LocalVar
+		fn    *ir.Func
+		stmts *[]ir.Stmt
 	}
 	made := map[string]local{}
 	for _, fn := range funcs {
@@ -361,30 +363,30 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 		}
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			if lv, ok := n.(*ir.LocalVar); ok && isPlacedNode(lv.Type) && made[lv.Name].lv == nil && packageVar(pkg, lv.Name) == nil {
-				made[lv.Name] = local{lv, fn}
+				made[lv.Name] = local{lv, fn, &fn.Block}
 			}
 			return nil
 		})
 	}
-	// refers reports whether id is a ref of the local l: its symbol, none,
-	// as a ref passDeclarative made names a node, or the `#id` the program
-	// wrote, whose binding is a NodeHandle var.
-	refers := func(id *ir.Ident, l local) bool {
-		if l.lv == nil || id.Name != l.lv.Name {
-			return false
+	// The package body's nodes hoistNodes left are a loop's: a `for` the
+	// body runs once, over a list nothing changes -- `ui.tabs`' over its
+	// tabs -- whose copy's spliced select its effects and its handler read.
+	_ = ir.Walk(pkg.Body, func(n ir.Node) error {
+		if lv, ok := n.(*ir.LocalVar); ok && isPlacedNode(lv.Type) && made[lv.Name].lv == nil && packageVar(pkg, lv.Name) == nil {
+			made[lv.Name] = local{lv, nil, &pkg.Body}
 		}
-		switch sym := id.Sym.(type) {
-		case nil:
-			return true
-		case *ir.Var:
-			return sym == l.lv.Sym || sym.NodeHandle
-		}
-		return false
+		return nil
+	})
+	// apart reports whether id, which fn reads, is a ref of a local made
+	// elsewhere.
+	apart := func(fn *ir.Func, id *ir.Ident) bool {
+		l := made[id.Name]
+		return l.lv != nil && l.fn != fn && refersNode(id, l.lv)
 	}
 	shared := map[string]*ir.Var{}
 	for _, fn := range funcs {
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
-			if id, ok := n.(*ir.Ident); ok && made[id.Name].fn != fn && refers(id, made[id.Name]) {
+			if id, ok := n.(*ir.Ident); ok && apart(fn, id) {
 				shared[id.Name] = nil
 			}
 			return nil
@@ -399,40 +401,14 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 		}
 		p.shared[name] = true
 		pkg.Vars = append(pkg.Vars, v)
-		// The local stays, which the function and what it closes over
-		// read: a loop's copy its own. It is given a symbol, so a language
-		// reading the name tells it from the var: Go wrote the var's
-		// `m.extras = m.extras` and the local nothing read.
-		if l.lv.Sym == nil {
-			l.lv.Sym = &ir.Var{Name: name, Type: l.lv.Type, Synthesized: true}
-			// And each read of it in its function, which a language naming
-			// the local apart from the var -- C's `pic__r0` -- names alike.
-			sym := l.lv.Sym
-			_ = ir.Rewrite(l.fn.Block, func(n ir.Node) (ir.Node, error) {
-				if id, ok := n.(*ir.Ident); ok && id.Name == name && id.Sym == nil {
-					id.Sym = sym
-				}
-				return n, nil
-			})
-		}
-		l.fn.Block = ir.RewriteBlocks(l.fn.Block, func(stmts []ir.Stmt) []ir.Stmt {
-			out := stmts[:0:0]
-			for _, s := range stmts {
-				out = append(out, s)
-				if s == ir.Stmt(l.lv) {
-					local := &ir.Ident{Name: name, Type: l.lv.Type, Sym: l.lv.Sym, IsElementRef: true, Synthesized: true}
-					out = append(out, &ir.Assign{Target: &ir.Ident{Name: name, Type: l.lv.Type, Sym: v, IsElementRef: true, Synthesized: true}, Op: ast.AssignSet, Value: local})
-				}
-			}
-			return out
-		})
+		holdAfter(l.stmts, l.lv, &ir.Ident{Name: name, Type: l.lv.Type, Sym: v, IsElementRef: true, Synthesized: true})
 	}
 	if len(shared) == 0 {
 		return
 	}
 	for _, fn := range funcs {
 		_ = ir.Rewrite(fn.Block, func(n ir.Node) (ir.Node, error) {
-			if id, ok := n.(*ir.Ident); ok && shared[id.Name] != nil && made[id.Name].fn != fn && refers(id, made[id.Name]) {
+			if id, ok := n.(*ir.Ident); ok && shared[id.Name] != nil && apart(fn, id) {
 				cp := *id
 				cp.Sym = shared[id.Name]
 				return &cp, nil
@@ -440,6 +416,53 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 			return n, nil
 		})
 	}
+}
+
+// refersNode reports whether id is a ref of the node local lv: its symbol,
+// none, as a ref passDeclarative made names a node, or the `#id` the program
+// wrote, whose binding is a NodeHandle var.
+func refersNode(id *ir.Ident, lv *ir.LocalVar) bool {
+	if id.Name != lv.Name {
+		return false
+	}
+	switch sym := id.Sym.(type) {
+	case nil:
+		return true
+	case *ir.Var:
+		return sym == lv.Sym || sym.NodeHandle
+	}
+	return false
+}
+
+// holdAfter sets target to the node local lv as stmts make it, where a
+// function apart from stmts reads it: the node made last. The local stays,
+// which stmts and what they close over read: a loop's copy its own. It is
+// given a symbol, so a language reading the name tells it from target: Go
+// wrote the var's `m.extras = m.extras` and the local nothing read.
+func holdAfter(stmts *[]ir.Stmt, lv *ir.LocalVar, target ir.Expr) {
+	if lv.Sym == nil {
+		lv.Sym = &ir.Var{Name: lv.Name, Type: lv.Type, Synthesized: true}
+	}
+	// And each read of it in stmts, which a language naming the local apart
+	// from the var -- C's `pic__r0` -- names alike: the `#id`'s too, which a
+	// closure's state captures (win32's C named `topPick`).
+	_ = ir.Rewrite(*stmts, func(n ir.Node) (ir.Node, error) {
+		if id, ok := n.(*ir.Ident); ok && refersNode(id, lv) {
+			id.Sym = lv.Sym
+		}
+		return n, nil
+	})
+	*stmts = ir.RewriteBlocks(*stmts, func(list []ir.Stmt) []ir.Stmt {
+		out := list[:0:0]
+		for _, s := range list {
+			out = append(out, s)
+			if s == ir.Stmt(lv) {
+				local := &ir.Ident{Name: lv.Name, Type: lv.Type, Sym: lv.Sym, IsElementRef: true, Synthesized: true}
+				out = append(out, &ir.Assign{Target: target, Op: ast.AssignSet, Value: local})
+			}
+		}
+		return out
+	})
 }
 
 // closureFuncs is the function of each closure reachable from root, and of
