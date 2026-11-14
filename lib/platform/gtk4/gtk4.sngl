@@ -801,6 +801,18 @@ func _fireDay(c GtkCalendar, day option[time.date]) {
     _rtSignalEmit(c, "day-selected")
 }
 
+// Puts w in the state a pointer resting on it puts it in, which its look
+// draws: what a test snapshots to see a button shaded as it is hovered. GTK
+// takes the state back once a pointer moves, and a test has none.
+func hover(w ui.node) {
+    _gtk_widget_set_state_flags(_as_GtkWidget(_widget(w)), 2, false)
+}
+
+// Puts w in the state a press holding it down puts it in, as hover does.
+func press(w ui.node) {
+    _gtk_widget_set_state_flags(_as_GtkWidget(_widget(w)), 1, false)
+}
+
 // A text is the runtime's GtkLabel, starting at the left of its box as
 // html's does, and pressed through a click gesture, which a label has no
 // signal for.

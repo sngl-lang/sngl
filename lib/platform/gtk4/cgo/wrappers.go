@@ -705,6 +705,17 @@ func GtkWidgetSetSensitive(w PGtkWidget, v CGboolean) {
 	C.gtk_widget_set_sensitive(w, v)
 }
 
+// GtkWidgetSetStateFlags calls gtk_widget_set_state_flags.
+func GtkWidgetSetStateFlags(w PGtkWidget, flags int, clear bool) {
+	var __lt0 int
+	if clear {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	C.gtk_widget_set_state_flags(w, C.GtkStateFlags(flags), C.int(__lt0))
+}
+
 // GtkWidgetSetTooltipText calls gtk_widget_set_tooltip_text.
 func GtkWidgetSetTooltipText(w PGtkWidget, v string) {
 	__rel20 := C.CString(v)
@@ -1002,24 +1013,24 @@ func SnglMenuEntryOnSelect(e Widget, fn func()) {
 
 // SnglMenuEntrySetChecked calls sngl_menu_entry_set_checked.
 func SnglMenuEntrySetChecked(e Widget, v bool) {
-	var __lt0 int
-	if v {
-		__lt0 = 1
-	} else {
-		__lt0 = 0
-	}
-	C.sngl_menu_entry_set_checked(e, C.int(__lt0))
-}
-
-// SnglMenuEntrySetDisabled calls sngl_menu_entry_set_disabled.
-func SnglMenuEntrySetDisabled(e Widget, v bool) {
 	var __lt1 int
 	if v {
 		__lt1 = 1
 	} else {
 		__lt1 = 0
 	}
-	C.sngl_menu_entry_set_disabled(e, C.int(__lt1))
+	C.sngl_menu_entry_set_checked(e, C.int(__lt1))
+}
+
+// SnglMenuEntrySetDisabled calls sngl_menu_entry_set_disabled.
+func SnglMenuEntrySetDisabled(e Widget, v bool) {
+	var __lt2 int
+	if v {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	C.sngl_menu_entry_set_disabled(e, C.int(__lt2))
 }
 
 // SnglMenuEntrySetLabel calls sngl_menu_entry_set_label.
@@ -1159,19 +1170,19 @@ func SnglSpanSetHref(w Widget, href string) {
 // SnglSpanSetStyle calls sngl_span_set_style.
 func SnglSpanSetStyle(w Widget, r int, g int, b int, a int, size float64, weight int, slant int, underline bool, strike bool, family string) {
 	__rel38 := C.CString(family)
-	var __lt2 int
-	if underline {
-		__lt2 = 1
-	} else {
-		__lt2 = 0
-	}
 	var __lt3 int
-	if strike {
+	if underline {
 		__lt3 = 1
 	} else {
 		__lt3 = 0
 	}
-	C.sngl_span_set_style(w, C.int(r), C.int(g), C.int(b), C.int(a), C.double(size), C.int(weight), C.int(slant), C.int(__lt2), C.int(__lt3), __rel38)
+	var __lt4 int
+	if strike {
+		__lt4 = 1
+	} else {
+		__lt4 = 0
+	}
+	C.sngl_span_set_style(w, C.int(r), C.int(g), C.int(b), C.int(a), C.double(size), C.int(weight), C.int(slant), C.int(__lt3), C.int(__lt4), __rel38)
 	free(__rel38)
 }
 
@@ -1194,13 +1205,13 @@ func SnglTabPageOnShown(p Widget, fn func()) {
 
 // SnglTabPageSetDisabled calls sngl_tab_page_set_disabled.
 func SnglTabPageSetDisabled(p Widget, disabled bool) {
-	var __lt4 int
+	var __lt5 int
 	if disabled {
-		__lt4 = 1
+		__lt5 = 1
 	} else {
-		__lt4 = 0
+		__lt5 = 0
 	}
-	C.sngl_tab_page_set_disabled(p, C.int(__lt4))
+	C.sngl_tab_page_set_disabled(p, C.int(__lt5))
 }
 
 // SnglTabPageSetTitle calls sngl_tab_page_set_title.
@@ -1250,37 +1261,37 @@ func SnglToplevelInsertBefore(w Widget, before Widget, child Widget) {
 // SnglToplevelKey calls sngl_toplevel_key.
 func SnglToplevelKey(w Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
 	__rel42 := C.CString(key)
-	var __lt5 int
-	if ctrl {
-		__lt5 = 1
-	} else {
-		__lt5 = 0
-	}
 	var __lt6 int
-	if alt {
+	if ctrl {
 		__lt6 = 1
 	} else {
 		__lt6 = 0
 	}
 	var __lt7 int
-	if shift {
+	if alt {
 		__lt7 = 1
 	} else {
 		__lt7 = 0
 	}
 	var __lt8 int
-	if meta {
+	if shift {
 		__lt8 = 1
 	} else {
 		__lt8 = 0
 	}
 	var __lt9 int
-	if editing {
+	if meta {
 		__lt9 = 1
 	} else {
 		__lt9 = 0
 	}
-	C.sngl_toplevel_key(w, __rel42, C.int(__lt5), C.int(__lt6), C.int(__lt7), C.int(__lt8), C.int(__lt9), snglCallback_void__voidPtr(), snglContext(stop), snglReleasePtr())
+	var __lt10 int
+	if editing {
+		__lt10 = 1
+	} else {
+		__lt10 = 0
+	}
+	C.sngl_toplevel_key(w, __rel42, C.int(__lt6), C.int(__lt7), C.int(__lt8), C.int(__lt9), C.int(__lt10), snglCallback_void__voidPtr(), snglContext(stop), snglReleasePtr())
 	free(__rel42)
 }
 
@@ -1313,13 +1324,13 @@ func SnglToplevelSetTitle(w Widget, title string) {
 
 // SnglToplevelSetVisible calls sngl_toplevel_set_visible.
 func SnglToplevelSetVisible(w Widget, visible bool) {
-	var __lt10 int
+	var __lt11 int
 	if visible {
-		__lt10 = 1
+		__lt11 = 1
 	} else {
-		__lt10 = 0
+		__lt11 = 0
 	}
-	C.sngl_toplevel_set_visible(w, C.int(__lt10))
+	C.sngl_toplevel_set_visible(w, C.int(__lt11))
 }
 
 func free(s *C.char) {

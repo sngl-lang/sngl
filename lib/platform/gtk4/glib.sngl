@@ -214,3 +214,12 @@ func _quietly(o c.pointer, signal string, on _c_GType, detail string, set func()
     set()
     _g_signal_handlers_unblock_matched(obj, mask, id, q, null, null, null)
 }
+
+// What GTK says a widget is in: GTK_STATE_FLAG_ACTIVE and
+// GTK_STATE_FLAG_PRELIGHT among them.
+#[c.native("GtkStateFlags")]
+struct _c_GtkStateFlags = int
+
+#[c.native("gtk_widget_set_state_flags")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetStateFlags")]
+func _gtk_widget_set_state_flags(w _p_GtkWidget, flags _c_GtkStateFlags, clear bool)

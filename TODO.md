@@ -1030,10 +1030,10 @@ reaches it the same way.
    sideways scroll (`testdata/gtk4_scroll_reach_across_runs.txtar`, a
    running program, since a test's component is laid out only as a snapshot
    draws it), and a fetch outliving the picture that asked for it
-   (`late.sngl` in `image_remote_runs.txt`). Not yet: a button given a
-   `background` shading it hovered and pressed (`paint_test.go`), which no
-   test can reach -- `sngl:test` has no hover or press, and the agent sets no
-   widget's state.
+   (`late.sngl` in `image_remote_runs.txt`), and a button given a
+   `background` shading it hovered and pressed, which a test puts it in
+   with `gtk4.hover` and `gtk4.press` and draws (`hover.sngl` in
+   `gtk4_test_runs.txt`).
 5. **`#[macro.cnative]` becomes `#[c.native]`, in `sngl:x/c`.** Done.
    `sngl:x/c` declares `native` and `NativeFlag` beside `context`, `release`
    and `type`, and marks its own declarations with it unqualified. A mark
