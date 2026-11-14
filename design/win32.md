@@ -110,10 +110,14 @@ the callbacks' dispatchers are written into the wrapper package
 NULL only where a call writes null. A declaration with a `ref` parameter has
 no wrapper yet: a call of one hands back a record of its results that the
 program's package declares, which the wrapper package cannot name. The file
-lists each, with why, and a Go program calling one is refused at generate
-(`unwrappedCalls`, `codegen/lang/golang/ccompiler.go`): the program links
-none of the package's C, which is the wrapper package's, so it has no cgo of
-its own to call it through.
+lists each, with why, and a Go program calls one directly: it includes the
+package's headers, and the headers its link ships, and none of its C, which
+is the wrapper package's (`golang.CLinks`); a handle it holds as the wrapper
+package's type crosses through `unsafe.Pointer` to its own cgo's, since
+`C.HWND` in two packages is two types, and one C answers crosses back the
+same way. A `gir:` class gtk4's wrappers do not cover is called so too
+(`cmd/sngl/testdata/gir_scheme.txt`, `c_win32_test_runs.txt`'s
+`refrun.sngl`). Before, it was refused at generate.
 
 **A change to the runtime's C builds the wrappers again.** The package
 compiles `rt/sngl_win32.c` through a stub including it, and Go's build cache

@@ -970,10 +970,7 @@ reaches it the same way.
      `select_rebuilt_by_its_choice_runs.txt`,
      `slot_render_reentered_runs.txt`). A shape's own owned state is
      no shape, and a canvas painted through its protocol refuses it
-     (`canvas_for_shape_state.txtar` leaves gtk4 and win32 out). A `gir:` package for a
-     GIR the platform has no wrappers for is C's alone: Go calls GTK through
-     the wrappers, and a direct call of a class outside them is refused
-     (step 3's `direct`).
+     (`canvas_for_shape_state.txtar` leaves gtk4 and win32 out).
 2. **A C record gives back what it kept**, in placement, for gtk4 and win32
    alike. Done: a record's destroy drops each field it kept and the box,
    which is a kept block now (`ir.Func.Frees`,

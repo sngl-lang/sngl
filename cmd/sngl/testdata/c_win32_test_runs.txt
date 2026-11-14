@@ -66,11 +66,16 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=win32 --language=go rect.sngl
 stdout 'ok +1 tests, 0 failures'
 
-# A function cgogen writes no wrapper for -- one taking a ref -- is refused
-# in Go, which links none of api's C to call it through.
+# A function cgogen writes no wrapper for -- one taking a ref -- is called
+# directly from a Go program otherwise calling api's C through its wrappers:
+# the program includes api's headers and none of its C, which the wrapper
+# package compiles, and hands C the handles it holds as the wrapper's
+# (golang.CLinks). It was refused.
 
-! sngl generate --platform=win32 --lang=go -o out ref.sngl
-stderr 'sngl:platform/win32/api.GetClientRect has no Go wrapper'
+sngl generate --platform=win32 --lang=go -o out ref.sngl
+grep 'C\.GetClientRect' out/main.go
+sngl test --platform=win32 --language=go refrun.sngl
+stdout 'ok +1 tests, 0 failures'
 
 # Calling C itself (the Go language's `cgo` option set to "direct"), Go
 # compiles api's C beside the program and calls the function as C does. The
@@ -607,6 +612,16 @@ sha256:40813ffc0dc142c7c6eb4582ce7aa113
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/1 --
+sha256:8b130ea88c2263d0d01faad637249591
+{
+  "results": [
+    {
+      "Desc": "ARefCallFillsItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/refrun.sngl/shown/2 --
 sha256:1c032f2f5874284919e28153fdd9ecb2
 {
   "results": [

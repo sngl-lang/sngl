@@ -121,6 +121,19 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 		return gc.cCall(fn, args)
 	}
 	args = slices.Clone(args)
+	// A handle the program holds as a wrapper package's type -- calling a
+	// function no wrapper covers directly -- is that package's cgo pointer,
+	// which the program's own cgo takes through unsafe.Pointer.
+	if gc.Wrapping == "" && gc.calls() == ir.CCallsWrapper {
+		for i, p := range fn.Params {
+			sd, ok := p.Type.Decl.(*ir.StructDef)
+			if !ok || p.Type.Kind != ir.TypeStruct || sd.IsCStruct() || sd.Foreign.C == nil || wrapper(&sd.Foreign, gc.calls()) == nil {
+				continue
+			}
+			gc.RequireImport("unsafe")
+			args[off+i] = "(" + gc.CType(sd.Foreign.C) + ")(unsafe.Pointer(" + args[off+i] + "))"
+		}
+	}
 	var body []string
 	var outs []string
 	for i, p := range fn.Params {
@@ -225,6 +238,14 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		case ir.TypeStruct:
 			if ir.CStructOf(fn.Return) != nil {
 				call = gc.cValueOut(fn.Return, nil, call)
+			}
+			// A handle a wrapper package spells is its pointer, not the
+			// program's own cgo's: a class no wrapper covers, called
+			// directly, makes a node the program holds as the wrapper's
+			// Widget.
+			if sd, ok := fn.Return.Decl.(*ir.StructDef); ok && gc.Wrapping == "" && !sd.IsCStruct() && wrapper(&sd.Foreign, gc.calls()) != nil {
+				gc.RequireImport("unsafe")
+				call = "(" + gc.goType(fn.Return) + ")(unsafe.Pointer(" + call + "))"
 			}
 		case ir.TypeOption:
 			// A pointer C answers NULL for: Go's option of it is a pointer

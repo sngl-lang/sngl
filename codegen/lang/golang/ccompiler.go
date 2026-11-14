@@ -80,37 +80,49 @@ func CPreambleLines(links []*ir.CLink) string {
 // program as well would define each symbol twice. A program calling C
 // directly imports no wrapper package, and links every one; one calling it
 // through purego links none, opening each library as it starts.
+//
+// A C function of a wrapped package that has no wrapper -- a `gir:` class
+// the platform's wrappers do not cover -- is called directly, as `direct`
+// calls every one: the program includes that package's links' headers, and
+// the headers they ship, but none of their C, which the wrapper package
+// compiles.
 func CLinks(pkg *ir.Package) []*ir.CLink {
 	if pkg.CCalls == ir.CCallsPurego {
 		return nil
 	}
-	return ir.CalledCLinksExcept(pkg, func(p *ir.Package) bool { return wrapped(p, pkg.CCalls) })
+	skip := func(p *ir.Package) bool { return wrapped(p, pkg.CCalls) }
+	out := ir.CalledCLinksExcept(pkg, skip)
+	headers := map[*ir.CLink]bool{}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || !unwrappedCall(pkg, c) {
+			return nil
+		}
+		for _, l := range ir.ReachedCLinksExcept(c.Func.Pkg, nil) {
+			if headers[l] || slices.Contains(out, l) {
+				continue
+			}
+			headers[l] = true
+			h := *l
+			h.Sources = slices.DeleteFunc(slices.Clone(l.Sources), func(src ir.CSource) bool { return !strings.HasSuffix(src.Name, ".h") })
+			out = append(out, &h)
+		}
+		return nil
+	})
+	return out
+}
+
+// unwrappedCall reports whether c calls a C function of a package whose C a
+// wrapper package calls, and which that package has no wrapper of.
+func unwrappedCall(pkg *ir.Package, c *ir.Call) bool {
+	fn := c.Func
+	return fn != nil && fn.Foreign.Path == ir.CPath && !fn.IsCCast() && fn.Foreign.C == nil && wrapper(&fn.Foreign, pkg.CCalls) == nil && fn.Pkg != nil && wrapped(fn.Pkg, pkg.CCalls)
 }
 
 // wrapped reports whether a wrapper package calls p's C: whether any of its
 // functions has a wrapper a build calling C as calls says calls.
 func wrapped(p *ir.Package, calls ir.CCalls) bool {
 	return slices.ContainsFunc(p.Funcs, func(fn *ir.Func) bool { return wrapper(&fn.Foreign, calls) != nil })
-}
-
-// unwrappedCalls refuses a call of a C function a wrapper package declares
-// no wrapper for, where the package's C is that wrapper package's: the
-// program links none of it, so it has no C of its own to call it through.
-func unwrappedCalls(pkg *ir.Package) error {
-	var err error
-	_ = ir.Walk(pkg, func(n ir.Node) error {
-		c, ok := n.(*ir.Call)
-		if !ok || c.Func == nil || err != nil {
-			return nil
-		}
-		fn := c.Func
-		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || wrapper(&fn.Foreign, pkg.CCalls) != nil || fn.Pkg == nil || !wrapped(fn.Pkg, pkg.CCalls) {
-			return nil
-		}
-		err = fmt.Errorf("%s.%s has no Go wrapper (sngl tool cgogen lists why), and Go calls %s's C through its wrappers alone", fn.Pkg.Path, fn.Name, fn.Pkg.Path)
-		return ir.SkipAll
-	})
-	return err
 }
 
 // CSources implements codegen.CCompiler: cgo compiles every .c file in the
@@ -120,9 +132,6 @@ func unwrappedCalls(pkg *ir.Package) error {
 func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map[string][]byte, error) {
 	if pkg.CCalls == ir.CCallsPurego {
 		return puregoSources(pkg, generated)
-	}
-	if err := unwrappedCalls(pkg); err != nil {
-		return nil, err
 	}
 	links := CLinks(pkg)
 	var out map[string][]byte
