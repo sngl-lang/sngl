@@ -1415,7 +1415,7 @@ func _fireSwitch(s cgo.Widget, checked bool) {
 }
 
 func _fireText(e cgo.Widget, text string, signal string) {
-	cgo.SnglEditableSetTextQuiet(e, text)
+	SetEntryText(e, text)
 	cgo.SnglSignalEmit(e, signal)
 }
 
@@ -1435,11 +1435,33 @@ func _fireDay(c cgo.Widget, day *time.Time) {
 	cgo.SnglSignalEmit(c, "day-selected")
 }
 
+func SetEntryText(e cgo.Widget, text string) {
+	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
+		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
+	})
+}
+
 func CalendarDate(c cgo.Widget) *time.Time {
 	t := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
 	day__r0 := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
 	cgo.GDateTimeUnref(t)
 	return ParseDate(day__r0)
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt8 int
+	if detail == "" {
+		__lt8 = 1
+	} else {
+		__lt8 = 3
+	}
+	var mask int = __lt8
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
 }
 
 func _padded(n int, width int) string {
@@ -1489,7 +1511,7 @@ func _daysIn(y int, m__r1 int) int {
 
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.field))) != m.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(m.field, m.__effect0_key)
+		SetEntryText(m.field, m.__effect0_key)
 	}
 }
 
@@ -1623,13 +1645,13 @@ func Field_activate_handler(e cgo.Widget) {
 func Day_daySelected_handler(c cgo.Widget) {
 	__datepicker_value_wrote0 := CalendarDate(c)
 	m.picked = __datepicker_value_wrote0
-	var __lt23 string
+	var __lt24 string
 	if __datepicker_value_wrote0 == nil {
-		__lt23 = "no day"
+		__lt24 = "no day"
 	} else {
-		__lt23 = "day"
+		__lt24 = "day"
 	}
-	m.seen = __lt23
+	m.seen = __lt24
 	cgo.SnglTextSetValue(m.__n0, m.seen)
 	__effects0_settle()
 }
@@ -2288,7 +2310,7 @@ pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
 pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:e0b7d578964d69b900f4509d5178eb87
+pass sha256:9f1ca17bc8b5f2cfdd33fb01cecc0527
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

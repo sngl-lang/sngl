@@ -257,15 +257,9 @@ const char *sngl_key_name(guint keyval, GdkModifierType state, char buf[8]);
 void sngl_keys_watch(GtkWidget *win, SnglKeyHear hear, SnglKeyBack back, void *data);
 void sngl_keys_go_on(GtkWindow *win, const char *key, bool shift);
 
-/* What a user chooses among (choose.c), each taking the widget a node is,
- * set as the user sets it but unreported. sngl_calendar_select selects y-m-d
- * on c, a calendar. sngl_drop_down_offer offers d, a drop-down, the labels
- * joined with newlines, and selects chosen among them, or nothing.
- * sngl_drop_down_select selects the choice labeled label, as a click on it
- * does, which is reported. */
+/* sngl_calendar_select selects y-m-d on c, a calendar, as a click on the day
+ * does, unreported (choose.c). */
 void sngl_calendar_select(GtkWidget *c, int y, int m, int d);
-void sngl_drop_down_offer(GtkWidget *d, const char *labels, const char *chosen);
-void sngl_drop_down_select(GtkWidget *d, const char *label);
 
 /* sngl_hold makes *slot w, which it reads NULL once w is gone: what a test
  * asks of a widget a branch took away. */
@@ -301,10 +295,6 @@ void sngl_span_set_href(GtkWidget *w, const char *href);
 void sngl_span_set_style(GtkWidget *w, int r, int g, int b, int a, double size, int weight, int slant,
                          int underline, int strike, const char *family);
 
-/* sngl_editable_set_text_quiet writes an entry's text with its "changed"
- * blocked, which an override does when the program's value moves, so the
- * write does not report itself back as an edit. */
-void sngl_editable_set_text_quiet(GtkWidget *e, const char *t);
 
 /* sngl_app_run runs the application: build makes the program's tree, its
  * toplevels attached, once GTK is up, and the windows of the visible ones

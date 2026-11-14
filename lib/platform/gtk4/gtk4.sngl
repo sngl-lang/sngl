@@ -10,6 +10,7 @@ import draw "sngl:ui/draw"
 import family "sngl:family"
 import math "sngl:math"
 import markup "sngl:ui/markup"
+import seq "sngl:seq"
 
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
@@ -640,9 +641,11 @@ func entryText(e ui.node) string {
 
 // Writes an entry's text with its "changed" blocked, which an override does
 // itself rather than binding `text`: see ui.input.
-#[c.native("sngl_editable_set_text_quiet")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEditableSetTextQuiet")]
-func setEntryText(e ui.node, text string)
+func setEntryText(e ui.node, text string) {
+    _quietly(_widget(e), "changed", _gtk_editable_get_type(), "", func() {
+        _gtk_editable_set_text(_as_GtkEditable(_widget(e)), text)
+    })
+}
 
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
@@ -673,16 +676,62 @@ func selectDay(cal ui.node, y int, m int, d int)
 // takes its choices as a GListModel, which no SNGL expression produces, so
 // the runtime builds one. Neither is a choice anyone made, so the drop-down
 // reports neither.
-#[c.native("sngl_drop_down_offer")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownOffer")]
-func offerChoices(d ui.node, labels string, chosen string)
+func offerChoices(d ui.node, labels string, chosen string) {
+    _quietly(_widget(d), "notify", _gtk_drop_down_get_type(), "selected", func() {
+        _offer(_as_GtkDropDown(_widget(d)), labels.split("\n"), chosen)
+    })
+}
+
+// A drop-down's model is replaced only for labels that differ, which would
+// otherwise drop the popup a user has open.
+func _offer(d _p_GtkDropDown, labels list[string], chosen string) {
+    var cur = _gtk_drop_down_get_model(d)
+    var same = _g_type_check_instance_is_a(_as_GTypeInstance(_ptr_GListModel(cur)), _gtk_string_list_get_type()) && _g_list_model_get_n_items(cur) == labels.length()
+    if same {
+        for var i, l = labels {
+            if _gtk_string_list_get_string(_as_GtkStringList(_ptr_GListModel(cur)), i) != l {
+                same = false
+            }
+        }
+    }
+    if !same {
+        var fresh = _gtk_string_list_new(null)
+        for var l = labels {
+            _gtk_string_list_append(fresh, l)
+        }
+        _gtk_drop_down_set_model(d, _as_GListModel(_ptr_GtkStringList(fresh)))
+        _g_object_unref(_as_gpointer(_ptr_GtkStringList(fresh)))
+    }
+    var at = _invalidListPosition
+    for var i, l = labels {
+        if l == chosen && at == _invalidListPosition {
+            at = i
+        }
+    }
+    _gtk_drop_down_set_selected(d, at)
+}
 
 // Selects the choice labeled `label`, as a pick does: unlike an offer, the
 // drop-down notifies, so its @notifySelected handler runs. A label among none
-// of its choices selects nothing.
-#[c.native("sngl_drop_down_select")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownSelect")]
-func selectLabel(d ui.node, label string)
+// of its choices selects nothing. The selection's handler may render the page
+// the drop-down is on afresh, which drops the drop-down while GTK is still
+// setting it, so it is held until the selection is done.
+func selectLabel(d ui.node, label string) {
+    var dd = _as_GtkDropDown(_widget(d))
+    var m = _gtk_drop_down_get_model(dd)
+    if !_g_type_check_instance_is_a(_as_GTypeInstance(_ptr_GListModel(m)), _gtk_string_list_get_type()) {
+        return
+    }
+    var l = _as_GtkStringList(_ptr_GListModel(m))
+    for var i = seq.count(_g_list_model_get_n_items(m)) {
+        if _gtk_string_list_get_string(l, i) == label {
+            _g_object_ref(_as_gpointer(_widget(d)))
+            _gtk_drop_down_set_selected(dd, i)
+            _g_object_unref(_as_gpointer(_widget(d)))
+            return
+        }
+    }
+}
 
 // The label a drop-down has selected, or "" where it has none.
 func dropDownLabel(d ui.node) string {

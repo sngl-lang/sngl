@@ -929,13 +929,6 @@ GtkWidget *sngl_flow_new(void) {
     return l;
 }
 
-void sngl_editable_set_text_quiet(GtkWidget *e, const char *t) {
-    guint id = g_signal_lookup("changed", GTK_TYPE_EDITABLE);
-    g_signal_handlers_block_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
-    gtk_editable_set_text(GTK_EDITABLE(e), t);
-    g_signal_handlers_unblock_matched(e, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
-}
-
 /* The key a window's `@key` handler is hearing, while it runs: its name,
  * what was held, and whether the handler has stopped it. A test's press
  * also hands the test's own stop, which a stop calls. */

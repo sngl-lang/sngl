@@ -1120,8 +1120,57 @@ func DropDownLabel(d cgo.Widget) string {
 	return cgo.GtkStringListGetString((cgo.PGtkStringList)(unsafe.Pointer(cgo.GtkDropDownGetModel(dd))), at)
 }
 
+func OfferChoices(d cgo.Widget, labels string, chosen string) {
+	_quietly(unsafe.Pointer(d), "notify", cgo.GtkDropDownGetType(), "selected", func() {
+		_offer((cgo.PGtkDropDown)(unsafe.Pointer(d)), strings.Split(labels, "\n"), chosen)
+	})
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt6 int
+	if detail == "" {
+		__lt6 = 1
+	} else {
+		__lt6 = 3
+	}
+	var mask int = __lt6
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
+}
+
+func _offer(d cgo.PGtkDropDown, labels []string, chosen string) {
+	cur := cgo.GtkDropDownGetModel(d)
+	same := (cgo.GTypeCheckInstanceIsA((cgo.PGTypeInstance)(unsafe.Pointer(cur)), cgo.GtkStringListGetType()) && (cgo.GListModelGetNItems(cur) == len(labels)))
+	if same {
+		for i, l := range labels {
+			if cgo.GtkStringListGetString((cgo.PGtkStringList)(unsafe.Pointer(cur)), i) != l {
+				same = false
+			}
+		}
+	}
+	if !same {
+		fresh := cgo.GtkStringListNew(nil)
+		for _, l := range labels {
+			cgo.GtkStringListAppend(fresh, l)
+		}
+		cgo.GtkDropDownSetModel(d, (cgo.PGListModel)(unsafe.Pointer(fresh)))
+		cgo.GObjectUnref(cgo.CGpointer(unsafe.Pointer(fresh)))
+	}
+	var at int = 4294967295
+	for i, l := range labels {
+		if (l == chosen) && (at == 4294967295) {
+			at = i
+		}
+	}
+	cgo.GtkDropDownSetSelected(d, at)
+}
+
 func __effect0_mount() {
-	cgo.SnglDropDownOffer(m.drop, m.__effect0_key.Labels, ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+	OfferChoices(m.drop, m.__effect0_key.Labels, ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
 		__out := make([]Choice__record__string, len(m.fruits))
 		for __i, __item := range m.fruits {
 			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
@@ -1169,7 +1218,7 @@ func __effect0_up() {
 }
 
 func __effect1_mount() {
-	cgo.SnglDropDownOffer(m.drop, strings.Join(func() []string {
+	OfferChoices(m.drop, strings.Join(func() []string {
 		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
 			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
@@ -1787,7 +1836,7 @@ pass sha256:dfd900aba61699167365a265b4ef6b8c
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
-pass sha256:8104bc2a6f1842f55b6ea3cb7c88aef8
+pass sha256:eac493ae83cf74993aeff74b387aca69
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --

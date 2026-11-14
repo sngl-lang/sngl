@@ -82,3 +82,135 @@ const func _ptr_GListModel(m _p_GListModel) c.pointer
 #[c.native("g_object_notify")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectNotify")]
 func _g_object_notify(o _p_GObject, prop string)
+
+// GLib's type of a class, which a signal is looked up on.
+#[c.native("GType")]
+struct _c_GType = int
+
+// GLib's interned string, which names a signal's detail.
+#[c.native("GQuark")]
+struct _c_GQuark = int
+
+// GLib's untyped pointer, which cgo holds apart from C's `void *`.
+#[c.native("gpointer")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CGpointer")]
+struct _c_gpointer {}
+
+#[c.native("gpointer", cast)]
+const func _as_gpointer(p c.pointer) _c_gpointer
+
+// What a block matches a handler by: G_SIGNAL_MATCH_ID and
+// G_SIGNAL_MATCH_DETAIL.
+#[c.native("GSignalMatchType")]
+struct _c_GSignalMatchType = int
+
+#[c.native("GTypeInstance *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGTypeInstance")]
+struct _p_GTypeInstance {}
+
+#[c.native("GTypeInstance *", cast)]
+const func _as_GTypeInstance(p c.pointer) _p_GTypeInstance
+
+// A C string list, which no call here hands one but `null`.
+#[c.native("char **")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PStrv")]
+struct _p_strv {}
+
+#[c.native("GClosure *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGClosure")]
+struct _p_GClosure {}
+
+#[c.native("gtk_editable_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEditableGetType")]
+func _gtk_editable_get_type() _c_GType
+
+#[c.native("gtk_drop_down_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownGetType")]
+func _gtk_drop_down_get_type() _c_GType
+
+#[c.native("gtk_string_list_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListGetType")]
+func _gtk_string_list_get_type() _c_GType
+
+#[c.native("g_type_check_instance_is_a")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GTypeCheckInstanceIsA")]
+func _g_type_check_instance_is_a(o _p_GTypeInstance, t _c_GType) bool
+
+#[c.native("g_signal_lookup")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalLookup")]
+func _g_signal_lookup(name string, t _c_GType) _c_guint
+
+#[c.native("g_quark_from_string")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GQuarkFromString")]
+func _g_quark_from_string(s string) _c_GQuark
+
+const _matchID = 1
+
+const _matchDetail = 2
+
+#[c.native("g_signal_handlers_block_matched")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalHandlersBlockMatched")]
+func _g_signal_handlers_block_matched(
+    o       _c_gpointer,
+    mask    _c_GSignalMatchType,
+    id      _c_guint,
+    detail  _c_GQuark,
+    closure option[_p_GClosure],
+    fn      option[_c_gpointer],
+    data    option[_c_gpointer],
+) _c_guint
+
+#[c.native("g_signal_handlers_unblock_matched")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalHandlersUnblockMatched")]
+func _g_signal_handlers_unblock_matched(
+    o       _c_gpointer,
+    mask    _c_GSignalMatchType,
+    id      _c_guint,
+    detail  _c_GQuark,
+    closure option[_p_GClosure],
+    fn      option[_c_gpointer],
+    data    option[_c_gpointer],
+) _c_guint
+
+#[c.native("g_object_ref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectRef")]
+func _g_object_ref(o _c_gpointer) _c_gpointer
+
+#[c.native("g_object_unref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectUnref")]
+func _g_object_unref(o _c_gpointer)
+
+#[c.native("gtk_drop_down_set_selected")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownSetSelected")]
+func _gtk_drop_down_set_selected(d _p_GtkDropDown, at _c_guint)
+
+#[c.native("gtk_drop_down_set_model")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownSetModel")]
+func _gtk_drop_down_set_model(d _p_GtkDropDown, m _p_GListModel)
+
+#[c.native("g_list_model_get_n_items")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListModelGetNItems")]
+func _g_list_model_get_n_items(m _p_GListModel) int
+
+#[c.native("gtk_string_list_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListNew")]
+func _gtk_string_list_new(strings option[_p_strv]) _p_GtkStringList
+
+#[c.native("gtk_string_list_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListAppend")]
+func _gtk_string_list_append(l _p_GtkStringList, s string)
+
+#[c.native("void *", cast)]
+const func _ptr_GtkStringList(l _p_GtkStringList) c.pointer
+
+// Runs set with each handler of signal o has, on detail where it is not "",
+// blocked: what the program sets is no input, and reports nothing.
+func _quietly(o c.pointer, signal string, on _c_GType, detail string, set func()) {
+    var obj = _as_gpointer(o)
+    var id = _g_signal_lookup(signal, on)
+    var mask = detail == "" ? _matchID : _matchID + _matchDetail
+    var q = _g_quark_from_string(detail)
+    _g_signal_handlers_block_matched(obj, mask, id, q, null, null, null)
+    set()
+    _g_signal_handlers_unblock_matched(obj, mask, id, q, null, null, null)
+}

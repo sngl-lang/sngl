@@ -2165,8 +2165,30 @@ func _fireCheck(b cgo.Widget, checked bool) {
 }
 
 func _fireText(e cgo.Widget, text string, signal string) {
-	cgo.SnglEditableSetTextQuiet(e, text)
+	SetEntryText(e, text)
 	cgo.SnglSignalEmit(e, signal)
+}
+
+func SetEntryText(e cgo.Widget, text string) {
+	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
+		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
+	})
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt7 int
+	if detail == "" {
+		__lt7 = 1
+	} else {
+		__lt7 = 3
+	}
+	var mask int = __lt7
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
 }
 
 func __checkbox_state0__new(__start_checked bool, label string, __copy string, change func(bool)) *__checkbox_state0__inst {
@@ -2272,7 +2294,7 @@ func __input_state1__new(__start_value string, __copy string, change func(string
 
 func __input_state1__effect0_mount(__self *__input_state1__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Field))) != __self.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(__self.Field, __self.__effect0_key)
+		SetEntryText(__self.Field, __self.__effect0_key)
 	}
 }
 
@@ -3500,7 +3522,7 @@ pass sha256:e1a72c829c02188219eb833790b39cb7
 -- run/go/fyne --
 pass sha256:dd8d94adce29809b1e190b12dd9e5816
 -- run/go/gtk4 --
-pass sha256:662f161fb56510ebc0eaa8bae2473a6a
+pass sha256:719657c2f810869530a2b412b333a9e2
 -- run/kotlin/android --
 pass sha256:ea3887296929cf6f2aa99a0d3947bb7a
 -- run/none/html --

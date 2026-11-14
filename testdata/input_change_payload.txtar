@@ -527,6 +527,28 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func SetEntryText(e cgo.Widget, text string) {
+	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
+		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
+	})
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt6 int
+	if detail == "" {
+		__lt6 = 1
+	} else {
+		__lt6 = 3
+	}
+	var mask int = __lt6
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
+}
+
 func Row__new(label string) *Row__inst {
 	__self := &Row__inst{__prop_label: label, __effect0_live: []string{}, __effect0_desired: []string{}, __effect1_live: []string{}, __effect1_desired: []string{}}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -587,7 +609,7 @@ func Row__new(label string) *Row__inst {
 
 func Row__effect0_mount(__self *Row__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry))) != __self.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(__self.Entry, __self.__effect0_key)
+		SetEntryText(__self.Entry, __self.__effect0_key)
 	}
 }
 
@@ -613,7 +635,7 @@ func Row__effect0_up(__self *Row__inst) {
 
 func Row__effect1_mount(__self *Row__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry__1))) != __self.__effect1_key {
-		cgo.SnglEditableSetTextQuiet(__self.Entry__1, __self.__effect1_key)
+		SetEntryText(__self.Entry__1, __self.__effect1_key)
 	}
 }
 
@@ -671,7 +693,7 @@ func Row__destroy(__self *Row__inst) {
 
 func __effect2_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect2_key {
-		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect2_key)
+		SetEntryText(m.entry, m.__effect2_key)
 	}
 }
 
@@ -897,4 +919,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:a941e547f8823b58fa8434525e6eea9e
 -- run/go/gtk4 --
-pass sha256:f1b950d01f59e917126805fab55401b6
+pass sha256:35fd9db74c60e6083e0e425164aa69d5

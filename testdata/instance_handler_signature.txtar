@@ -483,6 +483,28 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func SetEntryText(e cgo.Widget, text string) {
+	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
+		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
+	})
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt7 int
+	if detail == "" {
+		__lt7 = 1
+	} else {
+		__lt7 = 3
+	}
+	var mask int = __lt7
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
+}
+
 func Row__new(label string) *Row__inst {
 	__self := &Row__inst{__prop_label: label, Checked__inst1: true, __effect0_live: []string{}, __effect0_desired: []string{}}
 	__self.Checked__inst0 = __self.On
@@ -578,7 +600,7 @@ func Row__new(label string) *Row__inst {
 
 func Row__effect0_mount(__self *Row__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry))) != __self.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(__self.Entry, __self.__effect0_key)
+		SetEntryText(__self.Entry, __self.__effect0_key)
 	}
 }
 
@@ -774,4 +796,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:5967620f7749466696573ab916db7283
 -- run/go/gtk4 --
-pass sha256:c278d18a8a432aea04fcb336fb3d2488
+pass sha256:c8c3a9a3f21cb920f38ba345b6e28736

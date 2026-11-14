@@ -679,7 +679,7 @@ not guarded, since pressing Enter commits whatever the value. A host whose
 write fires its signal more than once is written quietly instead: gtk4's entry
 overrides do not bind `text` but push it from
 `effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
-`setEntryText` (the runtime's `sngl_editable_set_text_quiet`) blocking
+`setEntryText` (`_quietly` in `glib.sngl`, `g_signal_handlers_block_matched`) blocking
 "changed", because gtk_editable_set_text deletes and reinserts and a runtime
 instance's handler writing the text back re-entered itself until the stack
 overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
@@ -741,7 +741,7 @@ holds is the override's to convert: it shows `ui.choiceLabel(options, value)`
 and writes the value of the choice `ui.choiceLabeled(options, label)` finds.
 A test hands a value, and each target's override of the event says how its
 control takes it (`func ui.select[T].change[platform](value)`, see
-design/testing.md): gtk4 selects the label through the runtime's `sngl_drop_down_select`
+design/testing.md): gtk4 selects the label through `selectLabel`
 and fyne through `Select.SetSelected`, each of which reports the change as a
 pick does; html sets the `<select>`'s value to the label and dispatches
 `change`, and checks the radio button at the choice's index under the
@@ -766,8 +766,8 @@ holds the bound value even before a choice carries it, since choices may
 be state that arrives later, and neither offering choices nor writing the
 value is reported as a choice:
 
-- **gtk4** offers a GtkStringList through `offerChoices`, the runtime's
-  `sngl_drop_down_offer`, which blocks `notify::selected` meanwhile; the
+- **gtk4** offers a GtkStringList through `offerChoices`, which blocks
+  `notify::selected` meanwhile; the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
   own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's

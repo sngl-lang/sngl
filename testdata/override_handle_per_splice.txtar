@@ -149,8 +149,14 @@ func _setLook(w cgo.Widget, l Look) {
 }
 
 func _fireText(e cgo.Widget, text string, signal string) {
-	cgo.SnglEditableSetTextQuiet(e, text)
+	SetEntryText(e, text)
 	cgo.SnglSignalEmit(e, signal)
+}
+
+func SetEntryText(e cgo.Widget, text string) {
+	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
+		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
+	})
 }
 
 func CalendarDate(c cgo.Widget) *time.Time {
@@ -158,6 +164,22 @@ func CalendarDate(c cgo.Widget) *time.Time {
 	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
 	cgo.GDateTimeUnref(t)
 	return ParseDate(day)
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt6 int
+	if detail == "" {
+		__lt6 = 1
+	} else {
+		__lt6 = 3
+	}
+	var mask int = __lt6
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
 }
 
 func _padded(n int, width int) string {
@@ -207,7 +229,7 @@ func _daysIn(y int, m__r1 int) int {
 
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.first))) != m.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(m.first, m.__effect0_key)
+		SetEntryText(m.first, m.__effect0_key)
 	}
 }
 
@@ -233,7 +255,7 @@ func __effect0_up() {
 
 func __effect1_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.second))) != m.__effect1_key {
-		cgo.SnglEditableSetTextQuiet(m.second, m.__effect1_key)
+		SetEntryText(m.second, m.__effect1_key)
 	}
 }
 
@@ -485,4 +507,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:e66d3deadcd38e2797c4983b5d854b5c
+pass sha256:b6376922d2450ea960411513b3ebaf0b

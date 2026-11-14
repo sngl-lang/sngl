@@ -151,6 +151,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func SetEntryText(e cgo.Widget, text string) {
+	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
+		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
+	})
+}
+
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
@@ -167,6 +173,22 @@ func Paint(ctx cgo.CairoContext, style Style) {
 		Source(ctx, style.Stroke)
 		cgo.CairoStroke(ctx)
 	}
+}
+
+func _quietly(o unsafe.Pointer, signal string, on int, detail string, set func()) {
+	obj := cgo.CGpointer(o)
+	var id int = cgo.GSignalLookup(signal, on)
+	var __lt6 int
+	if detail == "" {
+		__lt6 = 1
+	} else {
+		__lt6 = 3
+	}
+	var mask int = __lt6
+	var q int = cgo.GQuarkFromString(detail)
+	cgo.GSignalHandlersBlockMatched(obj, mask, id, q, nil, nil, nil)
+	set()
+	cgo.GSignalHandlersUnblockMatched(obj, mask, id, q, nil, nil, nil)
 }
 
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
@@ -314,7 +336,7 @@ func Search__new() *Search__inst {
 
 func Search__effect0_mount(__self *Search__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Box))) != __self.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(__self.Box, __self.__effect0_key)
+		SetEntryText(__self.Box, __self.__effect0_key)
 	}
 }
 
@@ -423,4 +445,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:87a1885792c8cf65ec0dcc37484a5565
+pass sha256:e041eb755f9e3241d04bf1c12db84fcd
