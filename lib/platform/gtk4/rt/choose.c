@@ -1,9 +1,8 @@
-/* What a user chooses among on GTK: a calendar's day and a select's
- * drop-down. Compiled into every gtk4 program, which each language
+/* What a user chooses among on GTK, set without reporting it: a calendar's
+ * day and a select's drop-down. Compiled into every gtk4 program, which each language
  * compiles beside its own. */
 #include "sngl_gtk.h"
 
-#include <stdio.h>
 #include <string.h>
 
 /* select_day is the call every GTK 4 has; 4.20 deprecates it for set_date,
@@ -21,21 +20,6 @@ void sngl_calendar_select(GtkWidget *w, int y, int m, int d) {
     G_GNUC_END_IGNORE_DEPRECATIONS
     g_signal_handlers_unblock_matched(c, G_SIGNAL_MATCH_ID, id, 0, NULL, NULL, NULL);
     g_date_time_unref(dt);
-}
-
-void sngl_calendar_select_day(GtkWidget *c, const char *day) {
-    int y, m, d;
-    if (sscanf(day, "%d-%d-%d", &y, &m, &d) == 3) sngl_calendar_select(c, y, m, d);
-}
-
-/* The day is written into a buffer the next call overwrites, which each
- * language copies before it is read again. */
-const char *sngl_calendar_day(GtkWidget *c) {
-    static char day[11];
-    GDateTime *dt = gtk_calendar_get_date(GTK_CALENDAR(c));
-    g_snprintf(day, sizeof day, "%04d-%02d-%02d", g_date_time_get_year(dt), g_date_time_get_month(dt), g_date_time_get_day_of_month(dt));
-    g_date_time_unref(dt);
-    return day;
 }
 
 /* A select's choices are a GtkStringList, since no SNGL expression produces a
@@ -76,12 +60,6 @@ void sngl_drop_down_offer(GtkWidget *w, const char *labels, const char *chosen) 
     g_signal_handlers_unblock_matched(d, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DETAIL, notify, selected, NULL, NULL, NULL);
 }
 
-const char *sngl_drop_down_label(GtkWidget *d) {
-    gpointer item = gtk_drop_down_get_selected_item(GTK_DROP_DOWN(d));
-    if (item == NULL || !GTK_IS_STRING_OBJECT(item)) return "";
-    return gtk_string_object_get_string(GTK_STRING_OBJECT(item));
-}
-
 /* The selection's handler may render the page the drop-down is on afresh,
  * which drops the drop-down while GTK is still setting it, so it is held
  * until the selection is done. */
@@ -98,36 +76,4 @@ void sngl_drop_down_select(GtkWidget *w, const char *label) {
             return;
         }
     }
-}
-
-/* What a control holds, read off its widget: a check button's or a switch's
- * state, and an entry's text, which is GTK's until the entry changes. */
-int sngl_check_active(GtkWidget *b) {
-    return gtk_check_button_get_active(GTK_CHECK_BUTTON(b));
-}
-
-int sngl_switch_active(GtkWidget *s) {
-    return gtk_switch_get_active(GTK_SWITCH(s));
-}
-
-const char *sngl_entry_text(GtkWidget *e) {
-    return gtk_editable_get_text(GTK_EDITABLE(e));
-}
-
-void sngl_fire_flip(GtkWidget *w, int v) {
-    if (GTK_IS_SWITCH(w)) {
-        sngl_flip(w, v != 0, NULL, "active");
-    } else {
-        sngl_flip(w, v != 0, "toggled", NULL);
-    }
-}
-
-void sngl_fire_text(GtkWidget *e, const char *text, const char *signal) {
-    sngl_editable_set_text_quiet(e, text);
-    g_signal_emit_by_name(e, signal);
-}
-
-void sngl_fire_day(GtkWidget *c, const char *day) {
-    if (day[0] != '\0') sngl_calendar_select_day(c, day);
-    g_signal_emit_by_name(c, "day-selected");
 }

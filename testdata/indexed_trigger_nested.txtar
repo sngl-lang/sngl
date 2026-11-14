@@ -2697,6 +2697,24 @@ type __child1__inst struct {
 	Dot          cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 var grid [][]string = [][]string{[]string{"p", "q"}, []string{"r"}}
 
 type snglState struct {
@@ -2779,6 +2797,43 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _fireCheck(b cgo.Widget, checked bool) {
+	w := (cgo.PGtkCheckButton)(unsafe.Pointer(b))
+	if cgo.GtkCheckButtonGetActive(w) != checked {
+		var __lt3 int
+		if checked {
+			__lt3 = 1
+		} else {
+			__lt3 = 0
+		}
+		cgo.GtkCheckButtonSetActive(w, cgo.CGboolean(__lt3))
+	} else {
+		cgo.SnglSignalEmit(b, "toggled")
+	}
+}
+
 func __checkbox_state0__new(__start_checked bool, label string, __copy string, change func(bool)) *__checkbox_state0__inst {
 	__self := &__checkbox_state0__inst{__prop___start_checked: __start_checked, __prop_label: label, __prop___copy: __copy, __prop_change: change}
 	__self.Checked = __self.__prop___start_checked
@@ -2793,12 +2848,12 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 		}
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Mark)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Mark, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Mark, Look{})
 	m.mark__copies[__self.__prop___copy] = __self.Mark
 	cgo.SnglSignalConnect(__self.Mark, "toggled", func() {
 		func(b cgo.Widget) {
-			if cgo.SnglCheckActive(b) != __self.Checked {
-				__checkbox_checked_wrote0 := cgo.SnglCheckActive(b)
+			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
+				__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 				__self.Checked = __checkbox_checked_wrote0
 				cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.Mark)), cgo.CGboolean(func() int {
 					if __self.Checked {
@@ -2857,7 +2912,7 @@ func __child0__new(__p0 int, __p1 int, __on0 func()) *__child0__inst {
 	m.even__held = snglSome(__self.Even)
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Even)), fmt.Sprint(__self.__prop___p0))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Even)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Even, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Even, Look{})
 	m.even__copies[fmt.Sprint(__self.__prop___p1)] = __self.Even
 	cgo.SnglSignalConnect(__self.Even, "clicked", func() {
 		__self.__prop___on0()
@@ -2908,7 +2963,7 @@ func __child1__new(__p0 int, __on0 func()) *__child1__inst {
 	m.dot__held = snglSome(__self.Dot)
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Dot)), ".")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Dot)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Dot, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Dot, Look{})
 	m.dot__copies[fmt.Sprint(__self.__prop___p0)] = __self.Dot
 	cgo.SnglSignalConnect(__self.Dot, "clicked", func() {
 		__self.__prop___on0()
@@ -2972,13 +3027,13 @@ func __renderSlot0(parent cgo.Widget) {
 				for __copy0, row := range m.rows {
 					__n1 := cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 					cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__n1)), cgo.CGtkOrientation(0))
-					cgo.SnglSetLook(__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+					_setLook(__n1, Look{Spaced: true, Spacing: 6})
 					for __copy1, it := range __identified0(row) {
 						cell := cgo.GtkButtonNew()
 						m.cell__held = snglSome(cell)
 						cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(cell)), it.Elem)
 						cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(cell)), cgo.CGboolean(1))
-						cgo.SnglSetLook(cell, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+						_setLook(cell, Look{})
 						m.cell__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = cell
 						cgo.SnglSignalConnect(cell, "clicked", func() {
 							m.log = it.Elem
@@ -3280,24 +3335,24 @@ func snglBuild() {
 	m.tick__held = nil
 	m.__n5 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n5)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n5, Look{Spaced: true, Spacing: 6})
 	m.swap = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.swap)), "swap")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.swap)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.swap, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.swap, Look{})
 	cgo.SnglSignalConnect(m.swap, "clicked", Swap_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.swap)))
 	__renderSlot0(m.__n5)
 	for __copy0, row := range grid {
 		__n7 := cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 		cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__n7)), cgo.CGtkOrientation(0))
-		cgo.SnglSetLook(__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+		_setLook(__n7, Look{Spaced: true, Spacing: 6})
 		for __copy1, it := range __identified1(row) {
 			pin := cgo.GtkButtonNew()
 			m.pin__held = snglSome(pin)
 			cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(pin)), it.Elem)
 			cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(pin)), cgo.CGboolean(1))
-			cgo.SnglSetLook(pin, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+			_setLook(pin, Look{})
 			m.pin__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = pin
 			cgo.SnglSignalConnect(pin, "clicked", func() {
 				m.log = it.Elem
@@ -3310,13 +3365,13 @@ func snglBuild() {
 	for __copy0, r := range []int{0, 1} {
 		__n8 := cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 		cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__n8)), cgo.CGtkOrientation(0))
-		cgo.SnglSetLook(__n8, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+		_setLook(__n8, Look{Spaced: true, Spacing: 6})
 		for __copy1, k := range []int{0, 1} {
 			tick := cgo.GtkButtonNew()
 			m.tick__held = snglSome(tick)
 			cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(tick)), (fmt.Sprint(r) + fmt.Sprint(k)))
 			cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(tick)), cgo.CGboolean(1))
-			cgo.SnglSetLook(tick, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+			_setLook(tick, Look{})
 			m.tick__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = tick
 			cgo.SnglSignalConnect(tick, "clicked", func() {
 				m.log = (fmt.Sprint(r) + fmt.Sprint(k))
@@ -3328,13 +3383,13 @@ func snglBuild() {
 	}
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(0))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	__renderSlot1(m.__n6)
 	__renderSlot2(m.__n6)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
 	m.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n0, m.log)
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglAppAttach(m.__n5)
 }
@@ -4383,7 +4438,7 @@ pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
 pass sha256:429dd45c6197b2879661be1cb7f55e2c
 -- run/go/gtk4 --
-pass sha256:8628ee195f3611426edcc52ae12a0753
+pass sha256:b4cdc1c12fa5b4f476d8f74ab499f664
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --

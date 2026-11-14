@@ -637,6 +637,24 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	name__inst0         string
 	visible__inst0      bool
@@ -655,8 +673,30 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __effect0_mount() {
-	if cgo.SnglEntryText(m.entry) != m.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
 	}
 }
@@ -709,14 +749,14 @@ func __n0_visible_handler(__visible bool) {
 }
 
 func Entry_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.value__inst0 {
-		m.value__inst0 = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.value__inst0 {
+		m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	m.value__inst0 = cgo.SnglEntryText(e)
+	m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	__effects0_settle()
 }
 
@@ -741,11 +781,11 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, "user widget")
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.entry = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.entry)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.entry, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.entry, Look{})
 	cgo.SnglSignalConnect(m.entry, "changed", func() {
 		Entry_changed_handler(m.entry)
 	})
@@ -879,7 +919,7 @@ pass sha256:13ec5f5447c3bd70476022c6f038384b
 -- run/go/fyne --
 pass sha256:51de69565226a4106da04843359ade6c
 -- run/go/gtk4 --
-pass sha256:6d0f8c71ea48ed2e03d61e5a96a06a37
+pass sha256:891ff227e2b4541957592ea01650c85a
 -- run/kotlin/android --
 pass sha256:2552ab02c3a6e1c9a6fe867d11dec8e6
 -- run/none/html --

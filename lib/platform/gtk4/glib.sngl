@@ -1,0 +1,84 @@
+import c "sngl:x/c"
+import go "sngl:language/go"
+
+// GTK's and GLib's own functions the platform's SNGL calls, beyond the ones
+// widgets.sngl declares to make, fill and write a widget: what the runtime
+// asks of a widget, written once in SNGL rather than in rt/'s C. Each is
+// declared as the C function it is, and a class's pointer and cast are
+// widgets.sngl's.
+
+// GLib's unsigned int, which GTK counts a list's positions in.
+#[c.native("guint")]
+struct _c_guint = int
+
+// GTK's "no position" in a list: G_MAXUINT.
+const _invalidListPosition = 4294967295
+
+#[c.native("GDateTime *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGDateTime")]
+struct _p_GDateTime {}
+
+#[c.native("GtkStringList *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkStringList")]
+struct _p_GtkStringList {}
+
+#[c.native("GtkStringList *", cast)]
+const func _as_GtkStringList(p c.pointer) _p_GtkStringList
+
+#[c.native("gtk_check_button_get_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCheckButtonGetActive")]
+func _gtk_check_button_get_active(b _p_GtkCheckButton) bool
+
+#[c.native("gtk_switch_get_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSwitchGetActive")]
+func _gtk_switch_get_active(s _p_GtkSwitch) bool
+
+#[c.native("gtk_editable_get_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEditableGetText")]
+func _gtk_editable_get_text(e _p_GtkEditable) string
+
+#[c.native("gtk_calendar_get_date")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCalendarGetDate")]
+func _gtk_calendar_get_date(cal _p_GtkCalendar) _p_GDateTime
+
+#[c.native("g_date_time_get_year")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeGetYear")]
+func _g_date_time_get_year(t _p_GDateTime) int
+
+#[c.native("g_date_time_get_month")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeGetMonth")]
+func _g_date_time_get_month(t _p_GDateTime) int
+
+#[c.native("g_date_time_get_day_of_month")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeGetDayOfMonth")]
+func _g_date_time_get_day_of_month(t _p_GDateTime) int
+
+#[c.native("g_date_time_unref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeUnref")]
+func _g_date_time_unref(t _p_GDateTime)
+
+#[c.native("gtk_drop_down_get_selected")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownGetSelected")]
+func _gtk_drop_down_get_selected(d _p_GtkDropDown) _c_guint
+
+#[c.native("gtk_drop_down_get_model")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownGetModel")]
+func _gtk_drop_down_get_model(d _p_GtkDropDown) _p_GListModel
+
+#[c.native("gtk_string_list_get_string")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListGetString")]
+func _gtk_string_list_get_string(l _p_GtkStringList, at _c_guint) string
+
+#[c.native("GObject *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGObject")]
+struct _p_GObject {}
+
+#[c.native("GObject *", cast)]
+const func _as_GObject(p c.pointer) _p_GObject
+
+#[c.native("void *", cast)]
+const func _ptr_GListModel(m _p_GListModel) c.pointer
+
+#[c.native("g_object_notify")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectNotify")]
+func _g_object_notify(o _p_GObject, prop string)

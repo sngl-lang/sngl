@@ -1031,6 +1031,24 @@ type __anon_drop_labels_0c7afa struct {
 	Labels string
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	fruits              []string
 	pick                string
@@ -1069,6 +1087,37 @@ func ChoiceLabel__string(options []Choice__record__string, value string) string 
 		}
 	}
 	return ""
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func DropDownLabel(d cgo.Widget) string {
+	dd := (cgo.PGtkDropDown)(unsafe.Pointer(d))
+	var at int = cgo.GtkDropDownGetSelected(dd)
+	if at == 4294967295 {
+		return ""
+	}
+	return cgo.GtkStringListGetString((cgo.PGtkStringList)(unsafe.Pointer(cgo.GtkDropDownGetModel(dd))), at)
 }
 
 func __effect0_mount() {
@@ -1208,7 +1257,7 @@ func Drop_notifySelected_handler(d cgo.Widget) {
 			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 		}
 		return __out
-	}()), cgo.SnglDropDownLabel(d))
+	}()), DropDownLabel(d))
 	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
 		__out := make([]Choice__record__string, len(m.fruits))
 		for __i, __item := range m.fruits {
@@ -1256,11 +1305,11 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{Spaced: true, Spacing: 6})
 	m.drop = cgo.GtkDropDownNew(nil, nil)
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.drop)), cgo.CGboolean(func() int { return 1 }()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.drop)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.drop, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.drop, Look{})
 	cgo.SnglNotifyConnect(m.drop, "notify::selected", func() {
 		Drop_notifySelected_handler(m.drop)
 	})
@@ -1269,7 +1318,7 @@ func snglBuild() {
 	m.__n2 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n2)), "more")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglSignalConnect(m.__n2, "clicked", __n2_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
@@ -1738,7 +1787,7 @@ pass sha256:dfd900aba61699167365a265b4ef6b8c
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
-pass sha256:934b39c3bb1d309557f23119ce1e9cfa
+pass sha256:8104bc2a6f1842f55b6ea3cb7c88aef8
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --

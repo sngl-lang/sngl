@@ -99,6 +99,7 @@ func lowerPlacement(pkg *ir.Package, feats Features, opts Options) error {
 	if p.err != nil {
 		return p.err
 	}
+	repointPromoted(pkg, promotedFuncs(pkg))
 	// The application is the platform's attach, and no value: nothing holds
 	// it once each attach is a call.
 	app := ir.Published().ApplicationType()

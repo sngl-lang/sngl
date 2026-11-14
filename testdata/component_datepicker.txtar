@@ -641,6 +641,7 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"fmt"
 	"os"
 	"runtime"
 	"strconv"
@@ -670,6 +671,24 @@ type ErrorEvent struct {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	d                   time.Time
 	value__inst0        *time.Time
@@ -684,6 +703,43 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func CalendarDate(c cgo.Widget) *time.Time {
+	t := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
+	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
+	cgo.GDateTimeUnref(t)
+	return ParseDate(day)
+}
+
+func _padded(n int, width int) string {
+	s := fmt.Sprint(n)
+	for utf8.RuneCountInString(s) < width {
+		s = ("0" + s)
+	}
+	return s
+}
 
 func ParseDate(s string) *time.Time {
 	var unset *time.Time
@@ -780,7 +836,7 @@ func __effects0_settle() {
 }
 
 func Cal_daySelected_handler(c cgo.Widget) {
-	m.value__inst0 = ParseDate(cgo.SnglCalendarDay(c))
+	m.value__inst0 = CalendarDate(c)
 	__effects0_settle()
 }
 
@@ -800,7 +856,7 @@ func snglInit() {
 func snglBuild() {
 	m.cal = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal)), cgo.CGboolean(func() int { return 1 }()))
-	cgo.SnglSetLook(m.cal, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.cal, Look{})
 	cgo.SnglSignalConnect(m.cal, "day-selected", func() {
 		Cal_daySelected_handler(m.cal)
 	})
@@ -1062,7 +1118,7 @@ pass sha256:b5f00a6a56bda7b4db1549d5e8037370
 -- run/go/fyne --
 pass sha256:7e016edb83723b14def494ccfd9417d3
 -- run/go/gtk4 --
-pass sha256:d9b37bd876661ac3740df83ca960302a
+pass sha256:bd433025ac161994e2b537de01534da6
 -- run/kotlin/android --
 pass sha256:fd038e8df43a6057cfd3e504ac945be0
 -- run/none/html --

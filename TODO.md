@@ -1046,6 +1046,12 @@ reaches it the same way.
    layout managers take function pointers (`gtk_custom_layout_new`) and
    win32's window procedures are callbacks, both of which SNGL hands C. Once
    it lands, `purego` reaches gtk4 and win32.
+   - Started: what a control holds and a test's fire of it are SNGL calling
+     GTK's getters (`glib.sngl`), so `choose.c` keeps only the sets made
+     unreported (`sngl_calendar_select`, `sngl_drop_down_offer`,
+     `sngl_drop_down_select`). Those block a handler with
+     `g_signal_handlers_block_matched`, which takes `NULL`s, and SNGL has no
+     null for a `c.native` pointer yet.
 
 ### Open questions
 

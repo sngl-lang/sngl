@@ -251,10 +251,10 @@ static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
 
 static s___ref_int * s_n;
 static s___ref_bool * s_visible__inst0;
-static char * s___rel1;
-static char * s___rel2;
-static char * s___rel5;
-static char * s___rel6;
+static char * s___rel3;
+static char * s___rel4;
+static char * s___rel7;
+static char * s___rel8;
 static GtkWidget * s___n0;
 static GtkWidget * s_l;
 static GtkWidget * s___n1;
@@ -270,10 +270,10 @@ static void s_Widget_setText(GtkWidget * w, sngl_string str) {
 }
 
 static void s___snglTeardown(void) {
-	s_x_c__free(s___rel1);
-	s_x_c__free(s___rel2);
-	s_x_c__free(s___rel5);
-	s_x_c__free(s___rel6);
+	s_x_c__free(s___rel3);
+	s_x_c__free(s___rel4);
+	s_x_c__free(s___rel7);
+	s_x_c__free(s___rel8);
 }
 
 static void s_x_c__free(char * s) {
@@ -294,29 +294,29 @@ static void s___lambda1(s___lambda1_caps state) {
 static void sngl_init(void) {
 	s_n = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
 	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___rel1 = sngl_cstring(SNGL_STR(""));
-	s___rel2 = sngl_cstring(SNGL_STR("go"));
-	s___rel5 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel6 = sngl_cstring(SNGL_STR("t"));
+	s___rel3 = sngl_cstring(SNGL_STR(""));
+	s___rel4 = sngl_cstring(SNGL_STR("go"));
+	s___rel7 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel8 = sngl_cstring(SNGL_STR("t"));
 }
 
 static void sngl_build(void) {
 	s___n0 = sngl_toplevel_new();
-	sngl_toplevel_set_title(s___n0, s___rel6);
+	sngl_toplevel_set_title(s___n0, s___rel8);
 	sngl_toplevel_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s_l = gtk_label_new(NULL);
-	gtk_label_set_label((GtkLabel *)((void *)(s_l)), s___rel1);
+	gtk_label_set_label((GtkLabel *)((void *)(s_l)), s___rel3);
 	sngl_toplevel_append(s___n0, s_l);
 	s___n1 = gtk_button_new();
-	gtk_button_set_label((GtkButton *)((void *)(s___n1)), s___rel2);
+	gtk_button_set_label((GtkButton *)((void *)(s___n1)), s___rel4);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(s___n1)), (gboolean)((int)(1)));
-	char * __rel3 = sngl_cstring(SNGL_STR(""));
-	char * __rel4 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n1, __rel3, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel4, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel4);
-	s_x_c__free(__rel3);
-	sngl_signal_connect(s___n1, s___rel5, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.n = s_n}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+	char * __rel5 = sngl_cstring(SNGL_STR(""));
+	char * __rel6 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s___n1, __rel5, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel6, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel6);
+	s_x_c__free(__rel5);
+	sngl_signal_connect(s___n1, s___rel7, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.n = s_n}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_toplevel_append(s___n0, s___n1);
 	sngl_app_attach(s___n0);
 }
@@ -346,4 +346,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:c48b28880d0d41e4404f8878f7faa1f9
+pass sha256:3f175c33b41ef67f97677792aafedbb5

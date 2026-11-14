@@ -626,17 +626,17 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // What a control holds, read off its widget. A GTK signal hands its handler
 // the widget it fired on and nothing else, so an override reporting a change
 // asks that widget: `@toggled(b) { checked = checkActive(b) }`.
-#[c.native("sngl_check_active")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCheckActive")]
-func checkActive(b ui.node) bool
+func checkActive(b ui.node) bool {
+    return _gtk_check_button_get_active(_as_GtkCheckButton(_widget(b)))
+}
 
-#[c.native("sngl_switch_active")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSwitchActive")]
-func switchActive(s ui.node) bool
+func switchActive(s ui.node) bool {
+    return _gtk_switch_get_active(_as_GtkSwitch(_widget(s)))
+}
 
-#[c.native("sngl_entry_text")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEntryText")]
-func entryText(e ui.node) string
+func entryText(e ui.node) string {
+    return _gtk_editable_get_text(_as_GtkEditable(_widget(e)))
+}
 
 // Writes an entry's text with its "changed" blocked, which an override does
 // itself rather than binding `text`: see ui.input.
@@ -644,14 +644,22 @@ func entryText(e ui.node) string
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEditableSetTextQuiet")]
 func setEntryText(e ui.node, text string)
 
-#[c.native("sngl_calendar_day")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarDay")]
-func _rtCalendarDay(c ui.node) string
-
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
 func calendarDate(c ui.node) option[time.date] {
-    return time.parseDate(_rtCalendarDay(c))
+    var t = _gtk_calendar_get_date(_as_GtkCalendar(_widget(c)))
+    var day = "{_padded(_g_date_time_get_year(t), 4)}-{_padded(_g_date_time_get_month(t), 2)}-{_padded(_g_date_time_get_day_of_month(t), 2)}"
+    _g_date_time_unref(t)
+    return time.parseDate(day)
+}
+
+// n written in at least `width` digits, zeros first.
+const func _padded(n int, width int) string {
+    var s = "{n}"
+    for s.length() < width {
+        s = "0" + s
+    }
+    return s
 }
 
 // Selects y-m-d on a calendar as a click on the day does, without reporting
@@ -677,47 +685,71 @@ func offerChoices(d ui.node, labels string, chosen string)
 func selectLabel(d ui.node, label string)
 
 // The label a drop-down has selected, or "" where it has none.
-#[c.native("sngl_drop_down_label")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownLabel")]
-func dropDownLabel(d ui.node) string
+func dropDownLabel(d ui.node) string {
+    var dd = _as_GtkDropDown(_widget(d))
+    var at = _gtk_drop_down_get_selected(dd)
+    if at == _invalidListPosition {
+        return ""
+    }
+    return _gtk_string_list_get_string(_as_GtkStringList(_ptr_GListModel(_gtk_drop_down_get_model(dd))), at)
+}
 
 // A test's fire of an event whose handler reads a value off the widget puts
-// the value there first, as the user's flip, typing or click on a day does.
-#[c.native("sngl_fire_flip")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireFlip")]
-func _rtFireFlip(w ui.node, v int)
-
-#[c.native("sngl_fire_text")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireText")]
-func _rtFireText(e ui.node, text string, signal string)
-
-#[c.native("sngl_fire_day")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireDay")]
-func _rtFireDay(c ui.node, day string)
-
+// the value there first, as the user's flip, typing or click on a day does. A
+// flip to the state the widget is in already reports it all the same.
 #[gen.fires("toggled")]
 func _fire_GtkCheckButton_toggled(b GtkCheckButton, checked bool) {
-    _rtFireFlip(b, checked ? 1 : 0)
+    _fireCheck(b, checked)
 }
 
 #[gen.fires("notifyActive")]
 func _fire_GtkSwitch_notifyActive(s GtkSwitch, checked bool) {
-    _rtFireFlip(s, checked ? 1 : 0)
+    _fireSwitch(s, checked)
 }
 
 #[gen.fires("changed")]
 func _fire_GtkEntry_changed(e GtkEntry, text string) {
-    _rtFireText(e, text, "changed")
+    _fireText(e, text, "changed")
 }
 
 #[gen.fires("activate")]
 func _fire_GtkEntry_activate(e GtkEntry, text string) {
-    _rtFireText(e, text, "activate")
+    _fireText(e, text, "activate")
 }
 
 #[gen.fires("daySelected")]
 func _fire_GtkCalendar_daySelected(c GtkCalendar, day option[time.date]) {
-    _rtFireDay(c, day == null ? "" : day.format())
+    _fireDay(c, day)
+}
+
+func _fireCheck(b GtkCheckButton, checked bool) {
+    var w = _as_GtkCheckButton(_ptr_GtkCheckButton(b))
+    if _gtk_check_button_get_active(w) != checked {
+        _gtk_check_button_set_active(w, _to_gboolean(checked ? 1 : 0))
+    } else {
+        _rtSignalEmit(b, "toggled")
+    }
+}
+
+func _fireSwitch(s GtkSwitch, checked bool) {
+    var w = _as_GtkSwitch(_ptr_GtkSwitch(s))
+    if _gtk_switch_get_active(w) != checked {
+        _gtk_switch_set_active(w, _to_gboolean(checked ? 1 : 0))
+    } else {
+        _g_object_notify(_as_GObject(_ptr_GtkSwitch(s)), "active")
+    }
+}
+
+func _fireText(e GtkEntry, text string, signal string) {
+    setEntryText(e, text)
+    _rtSignalEmit(e, signal)
+}
+
+func _fireDay(c GtkCalendar, day option[time.date]) {
+    if day != null {
+        selectDay(c, day.year(), day.month(), day.day())
+    }
+    _rtSignalEmit(c, "day-selected")
 }
 
 // A text is the runtime's GtkLabel, starting at the left of its box as

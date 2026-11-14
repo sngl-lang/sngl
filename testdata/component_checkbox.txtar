@@ -586,12 +586,52 @@ func snglSome[T any](v T) *T {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	on   bool
 	__n0 cgo.Widget
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __wrote_on() {
 	cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(m.__n0)), cgo.CGboolean(func() int {
@@ -604,8 +644,8 @@ func __wrote_on() {
 }
 
 func __n0_toggled_handler(b cgo.Widget) {
-	if cgo.SnglCheckActive(b) != m.on {
-		m.on = cgo.SnglCheckActive(b)
+	if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != m.on {
+		m.on = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 		cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(m.__n0)), cgo.CGboolean(func() int {
 			if m.on {
 				return 1
@@ -632,7 +672,7 @@ func snglBuild() {
 		}
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	cgo.SnglSignalConnect(m.__n0, "toggled", func() {
 		__n0_toggled_handler(m.__n0)
 	})
@@ -822,7 +862,7 @@ pass sha256:6a5be4885017a591dba0c2b480b9b83d
 -- run/go/fyne --
 pass sha256:d01d23ce7ee6d633586812a839ca6a22
 -- run/go/gtk4 --
-pass sha256:05d4c0458999e03c1759f5de484dc0cd
+pass sha256:bf0cc8694188679279ad2b0f6cb59f1a
 -- run/kotlin/android --
 pass sha256:ac3d279199e71b4ea2a1d27cd5aff984
 -- run/none/html --

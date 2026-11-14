@@ -87,6 +87,24 @@ type Search__inst struct {
 	__n0                cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -110,6 +128,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
@@ -240,14 +280,14 @@ func Search__new() *Search__inst {
 	__self := &Search__inst{__effect0_live: []string{}, __effect0_desired: []string{}}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n4, Look{Spaced: true, Spacing: 6})
 	__self.Box = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Box)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Box, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Box, Look{})
 	cgo.SnglSignalConnect(__self.Box, "changed", func() {
 		func(e cgo.Widget) {
-			if cgo.SnglEntryText(e) != __self.Search {
-				__self.Search = cgo.SnglEntryText(e)
+			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Search {
+				__self.Search = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 				cgo.SnglTextSetValue(__self.__n0, __self.Search)
 			}
 			Search__effects0_settle(__self)
@@ -255,7 +295,7 @@ func Search__new() *Search__inst {
 	})
 	cgo.SnglSignalConnect(__self.Box, "activate", func() {
 		func(e cgo.Widget) {
-			__self.Search = cgo.SnglEntryText(e)
+			__self.Search = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			cgo.SnglTextSetValue(__self.__n0, __self.Search)
 			Search__effects0_settle(__self)
 		}(__self.Box)
@@ -263,7 +303,7 @@ func Search__new() *Search__inst {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Box)))
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, __self.Search)
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
@@ -273,7 +313,7 @@ func Search__new() *Search__inst {
 }
 
 func Search__effect0_mount(__self *Search__inst) {
-	if cgo.SnglEntryText(__self.Box) != __self.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Box))) != __self.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(__self.Box, __self.__effect0_key)
 	}
 }
@@ -340,7 +380,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	m.__drawing0 = cgo.SnglCanvasNew()
 	cgo.SnglCanvasSetWidth(m.__drawing0, 10)
 	cgo.SnglCanvasSetHeight(m.__drawing0, 10)
@@ -383,4 +423,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:f19892ff9a15e4b9663fb8a69a23ab22
+pass sha256:87a1885792c8cf65ec0dcc37484a5565

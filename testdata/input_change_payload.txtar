@@ -444,6 +444,24 @@ type Row__inst struct {
 	__n0                cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	last                string
 	items               []string
@@ -487,25 +505,47 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func Row__new(label string) *Row__inst {
 	__self := &Row__inst{__prop_label: label, __effect0_live: []string{}, __effect0_desired: []string{}, __effect1_live: []string{}, __effect1_desired: []string{}}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n4, Look{Spaced: true, Spacing: 6})
 	__self.Entry = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Entry)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Entry, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Entry, Look{})
 	cgo.SnglSignalConnect(__self.Entry, "changed", func() {
 		func(e cgo.Widget) {
-			if cgo.SnglEntryText(e) != __self.Value__inst1 {
-				__self.Value__inst1 = cgo.SnglEntryText(e)
+			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Value__inst1 {
+				__self.Value__inst1 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			}
 			Row__effects0_settle(__self)
 		}(__self.Entry)
 	})
 	cgo.SnglSignalConnect(__self.Entry, "activate", func() {
 		func(e cgo.Widget) {
-			__input_value_wrote1 := cgo.SnglEntryText(e)
+			__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			__self.Value__inst1 = __input_value_wrote1
 			__self.Committed = __input_value_wrote1
 			cgo.SnglTextSetValue(__self.__n0, __self.Committed)
@@ -515,18 +555,18 @@ func Row__new(label string) *Row__inst {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Entry)))
 	__self.Entry__1 = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Entry__1)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Entry__1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Entry__1, Look{})
 	cgo.SnglSignalConnect(__self.Entry__1, "changed", func() {
 		func(e cgo.Widget) {
-			if cgo.SnglEntryText(e) != __self.Value__inst2 {
-				__self.Value__inst2 = cgo.SnglEntryText(e)
+			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Value__inst2 {
+				__self.Value__inst2 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			}
 			Row__effects0_settle(__self)
 		}(__self.Entry__1)
 	})
 	cgo.SnglSignalConnect(__self.Entry__1, "activate", func() {
 		func(e cgo.Widget) {
-			__textarea_value_wrote1 := cgo.SnglEntryText(e)
+			__textarea_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			__self.Value__inst2 = __textarea_value_wrote1
 			__self.Committed = ((__self.__prop_label + ":") + __textarea_value_wrote1)
 			cgo.SnglTextSetValue(__self.__n0, __self.Committed)
@@ -536,7 +576,7 @@ func Row__new(label string) *Row__inst {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Entry__1)))
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, __self.Committed)
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
@@ -546,7 +586,7 @@ func Row__new(label string) *Row__inst {
 }
 
 func Row__effect0_mount(__self *Row__inst) {
-	if cgo.SnglEntryText(__self.Entry) != __self.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry))) != __self.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(__self.Entry, __self.__effect0_key)
 	}
 }
@@ -572,7 +612,7 @@ func Row__effect0_up(__self *Row__inst) {
 }
 
 func Row__effect1_mount(__self *Row__inst) {
-	if cgo.SnglEntryText(__self.Entry__1) != __self.__effect1_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry__1))) != __self.__effect1_key {
 		cgo.SnglEditableSetTextQuiet(__self.Entry__1, __self.__effect1_key)
 	}
 }
@@ -630,7 +670,7 @@ func Row__destroy(__self *Row__inst) {
 }
 
 func __effect2_mount() {
-	if cgo.SnglEntryText(m.entry) != m.__effect2_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect2_key {
 		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect2_key)
 	}
 }
@@ -769,14 +809,14 @@ func __snglTeardown() {
 }
 
 func Entry_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.value__inst0 {
-		m.value__inst0 = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.value__inst0 {
+		m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	}
 	__effects1_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	__input_value_wrote1 := cgo.SnglEntryText(e)
+	__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	m.value__inst0 = __input_value_wrote1
 	m.last = ("got " + __input_value_wrote1)
 	cgo.SnglTextSetValue(m.__n1, m.last)
@@ -804,10 +844,10 @@ func snglInit() {
 func snglBuild() {
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	m.entry = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.entry)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.entry, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.entry, Look{})
 	cgo.SnglSignalConnect(m.entry, "changed", func() {
 		Entry_changed_handler(m.entry)
 	})
@@ -817,7 +857,7 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.entry)))
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, m.last)
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	__renderSlot0(m.__n3)
 	__effects1_settle()
@@ -857,4 +897,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:a941e547f8823b58fa8434525e6eea9e
 -- run/go/gtk4 --
-pass sha256:8ea9b67460cb28b9e83e9d23d90075cd
+pass sha256:f1b950d01f59e917126805fab55401b6

@@ -1,6 +1,11 @@
 package lower
 
-import "duckfam.us/sngl/ir"
+import (
+	"maps"
+	"slices"
+
+	"duckfam.us/sngl/ir"
+)
 
 // passLibFuncs promotes a library package's func into this package's func list
 // when a body this build emits calls it.
@@ -21,7 +26,7 @@ var passLibFuncs = pass{
 	apply:   lowerLibFuncs,
 }
 
-func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
+func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -29,6 +34,11 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	for _, fn := range pkg.Funcs {
 		have[fn] = true
 	}
+	// A library function promoted already, by an earlier run, stands for
+	// every declaration of its name: the frozen original a body spliced or
+	// released since still calls, and a test build's copy of its package.
+	promoted := promotedFuncs(pkg)
+	repointPromoted(pkg, promoted)
 	// A func with no body is a native or an intrinsic and is emitted as the
 	// call itself; one with a receiver travels with whatever declares it. What
 	// is left is a plain helper another package declared, which a program's own
@@ -52,11 +62,22 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// promoted and reached the backend undeclared.
 	var roots []any
 	push := func(v any) { roots = append(roots, v) }
+	// A placed node's protocol functions are spliced by passPlacement, after
+	// this pass, and a helper one calls is promoted here; one no splice
+	// calls is shaken once the build has lowered. A copy is walked, since
+	// the walk repoints what it promotes and the library's own is frozen.
+	// Only a placed build splices them: cgogen's wrappers lower a platform's
+	// package with no features, and write no SNGL helper.
+	if feats.Placement {
+		for _, fn := range placedProtocols(pkg) {
+			push(ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func.Block)
+		}
+	}
 	var added []*ir.Func
 	foreign := importedVars(pkg)
 	for {
 		push(pkg)
-		promoteFuncs(&roots, push, wanted, have, &added)
+		promoteFuncs(&roots, push, wanted, have, promoted, &added)
 		pkg.Funcs = append(pkg.Funcs, added...)
 		added = nil
 		if !promoteVars(pkg, foreign) {
@@ -68,6 +89,83 @@ func lowerLibFuncs(pkg *ir.Package, _ Features, _ Options) error {
 	// instead: only there is it known which of them survive, and a struct
 	// belonging to one that does not is a declaration nothing writes.
 	return nil
+}
+
+// placedProtocols is each protocol function of an #[intrinsic] component pkg
+// names, in a stable order.
+func placedProtocols(pkg *ir.Package) []*ir.Func {
+	var comps []*ir.Component
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
+		t := e.ExprType()
+		if t == nil {
+			return nil
+		}
+		if c, ok := t.Decl.(*ir.Component); ok && c.Protocol != nil && !slices.Contains(comps, c) {
+			comps = append(comps, c)
+		}
+		return nil
+	})
+	var fns []*ir.Func
+	add := func(fn *ir.Func) {
+		if fn != nil && len(fn.Block) > 0 && !slices.Contains(fns, fn) {
+			fns = append(fns, fn)
+		}
+	}
+	for _, c := range comps {
+		p := c.Protocol
+		for _, fn := range []*ir.Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw} {
+			add(fn)
+		}
+		for _, m := range []map[string]*ir.Func{p.Set, p.On, p.Fire} {
+			for _, k := range slices.Sorted(maps.Keys(m)) {
+				add(m[k])
+			}
+		}
+	}
+	return fns
+}
+
+// libFuncKey names a library function whatever copy of its package
+// declares it: its package's path, its receiver's name and its own.
+func libFuncKey(fn *ir.Func) string {
+	return fn.PkgPath() + "\x00" + fn.RecvName() + "\x00" + fn.Name
+}
+
+// promotedFuncs is each library function pkg declares, by libFuncKey.
+func promotedFuncs(pkg *ir.Package) map[string]*ir.Func {
+	promoted := map[string]*ir.Func{}
+	for _, fn := range pkg.Funcs {
+		if fn.PkgPath() != "" && fn.Name != "" {
+			promoted[libFuncKey(fn)] = fn
+		}
+	}
+	return promoted
+}
+
+// repointPromoted makes each call in pkg of a library function that pkg has
+// promoted call the promoted one, where it names another declaration of it: a
+// body spliced after passLibFuncs, a placed node's protocol, names the frozen
+// original.
+func repointPromoted(pkg *ir.Package, promoted map[string]*ir.Func) {
+	if len(promoted) == 0 {
+		return
+	}
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
+		var fn *ir.Func
+		switch x := e.(type) {
+		case *ir.Call:
+			fn = x.Func
+		case *ir.Ident:
+			fn, _ = x.Sym.(*ir.Func)
+		}
+		if fn == nil || fn.PkgPath() == "" || fn.Name == "" {
+			return nil
+		}
+		if c := promoted[libFuncKey(fn)]; c != nil && c != fn {
+			repoint(e, c)
+		}
+		return nil
+	})
 }
 
 // libStructMethod reports whether fn is a method a library declares on a
@@ -84,8 +182,7 @@ func intrinsicMethod(fn *ir.Func) bool {
 	return ok && comp.Intrinsic != ""
 }
 
-func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, added *[]*ir.Func) {
-	copies := map[*ir.Func]*ir.Func{}
+func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, promoted map[string]*ir.Func, added *[]*ir.Func) {
 	for len(*roots) > 0 {
 		root := (*roots)[0]
 		*roots = (*roots)[1:]
@@ -99,11 +196,11 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 			case *ir.Ident:
 				fn, _ = x.Sym.(*ir.Func)
 			}
-			if c := copies[fn]; c != nil {
-				repoint(e, c)
+			if !wanted(fn) {
 				return nil
 			}
-			if !wanted(fn) {
+			if c := promoted[libFuncKey(fn)]; c != nil {
+				repoint(e, c)
 				return nil
 			}
 			have[fn] = true
@@ -111,12 +208,14 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 			// after the build's copy was made still calls: the program's is a
 			// copy, since the passes after this one rename and fold what the
 			// program declares.
+			key := libFuncKey(fn)
 			if fn.Frozen {
 				c := thaw(fn)
-				copies[fn], have[c] = c, true
+				have[c] = true
 				repoint(e, c)
 				fn = c
 			}
+			promoted[key] = fn
 			*added = append(*added, fn)
 			// A promoted helper may call a second one.
 			push(fn.Block)

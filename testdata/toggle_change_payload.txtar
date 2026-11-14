@@ -853,6 +853,24 @@ func snglSome[T any](v T) *T {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	on             bool
 	lit            bool
@@ -866,9 +884,61 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _fireCheck(b cgo.Widget, checked bool) {
+	w := (cgo.PGtkCheckButton)(unsafe.Pointer(b))
+	if cgo.GtkCheckButtonGetActive(w) != checked {
+		var __lt3 int
+		if checked {
+			__lt3 = 1
+		} else {
+			__lt3 = 0
+		}
+		cgo.GtkCheckButtonSetActive(w, cgo.CGboolean(__lt3))
+	} else {
+		cgo.SnglSignalEmit(b, "toggled")
+	}
+}
+
+func _fireSwitch(s cgo.Widget, checked bool) {
+	w := (cgo.PGtkSwitch)(unsafe.Pointer(s))
+	if cgo.GtkSwitchGetActive(w) != checked {
+		var __lt4 int
+		if checked {
+			__lt4 = 1
+		} else {
+			__lt4 = 0
+		}
+		cgo.GtkSwitchSetActive(w, cgo.CGboolean(__lt4))
+	} else {
+		cgo.GObjectNotify((cgo.PGObject)(unsafe.Pointer(s)), "active")
+	}
+}
+
 func Box_toggled_handler(b cgo.Widget) {
-	if cgo.SnglCheckActive(b) != m.on {
-		__checkbox_checked_wrote0 := cgo.SnglCheckActive(b)
+	if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != m.on {
+		__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 		m.on = __checkbox_checked_wrote0
 		cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(m.box)), cgo.CGboolean(func() int {
 			if m.on {
@@ -883,8 +953,8 @@ func Box_toggled_handler(b cgo.Widget) {
 }
 
 func Sw_notifyActive_handler(s cgo.Widget) {
-	if cgo.SnglSwitchActive(s) != m.checked__inst0 {
-		__toggle_checked_wrote0 := cgo.SnglSwitchActive(s)
+	if cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s))) != m.checked__inst0 {
+		__toggle_checked_wrote0 := cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s)))
 		m.checked__inst0 = __toggle_checked_wrote0
 		cgo.GtkSwitchSetActive((cgo.PGtkSwitch)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int {
 			if m.checked__inst0 {
@@ -910,7 +980,7 @@ func snglInit() {
 func snglBuild() {
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{Spaced: true, Spacing: 6})
 	m.box = cgo.GtkCheckButtonNew()
 	cgo.GtkCheckButtonSetLabel((cgo.PGtkCheckButton)(unsafe.Pointer(m.box)), snglSome("a"))
 	cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(m.box)), cgo.CGboolean(func() int {
@@ -921,7 +991,7 @@ func snglBuild() {
 		}
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.box)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.box, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.box, Look{})
 	cgo.SnglSignalConnect(m.box, "toggled", func() {
 		Box_toggled_handler(m.box)
 	})
@@ -936,14 +1006,14 @@ func snglBuild() {
 	}()))
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int { return 1 }()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.sw, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.sw, Look{})
 	cgo.SnglNotifyConnect(m.sw, "notify::active", func() {
 		Sw_notifyActive_handler(m.sw)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.sw)))
 	m.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n0, m.seen)
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglAppAttach(m.__n1)
 }
@@ -1367,7 +1437,7 @@ pass sha256:1e2635ade3355bdd6ee5a7e1fe7269c2
 -- run/go/fyne --
 pass sha256:05f334ab69a3387686b076c22ab40163
 -- run/go/gtk4 --
-pass sha256:526139f08b81c6adb728c026eb41b5cf
+pass sha256:687ddd85d44a06daeed2de212bb4d28f
 -- run/go/html --
 pass sha256:106c1d24cc879a6a15f423068ca44bfa
 -- run/kotlin/android --

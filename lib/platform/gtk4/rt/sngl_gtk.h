@@ -257,43 +257,15 @@ const char *sngl_key_name(guint keyval, GdkModifierType state, char buf[8]);
 void sngl_keys_watch(GtkWidget *win, SnglKeyHear hear, SnglKeyBack back, void *data);
 void sngl_keys_go_on(GtkWindow *win, const char *key, bool shift);
 
-/* sngl_flip is a test flipping w, a check button or a switch, to v, as a
- * user's flip does: the state written, which fires what reports it. State w
- * already holds fires nothing, so then it fires signal itself, or notifies
- * prop where that is what reports it. */
-void sngl_flip(GtkWidget *w, bool v, const char *signal, const char *prop);
-
-/* A test's fire of an event whose handler reads a value off the widget, the
- * value put there first: sngl_fire_flip flips w, a check button or a switch,
- * to v, as sngl_flip does; sngl_fire_text writes text into e, an entry,
- * unreported, and emits signal; sngl_fire_day selects day, a date's text, on
- * c, a calendar, unreported where it is not "", and emits "day-selected". */
-void sngl_fire_flip(GtkWidget *w, int v);
-void sngl_fire_text(GtkWidget *e, const char *text, const char *signal);
-void sngl_fire_day(GtkWidget *c, const char *day);
-
-/* What a user chooses among (choose.c), each taking the widget a node is.
- * sngl_calendar_select selects y-m-d on c, a calendar, as a click on the day
- * does, without reporting it, and sngl_calendar_day is the day c has
- * selected as a date's text, YYYY-MM-DD. sngl_drop_down_offer offers d, a
- * drop-down, the labels joined with newlines, and selects chosen among them,
- * or nothing, reporting neither. sngl_drop_down_label is the label d has
- * selected, or "" where it has none, and sngl_drop_down_select selects the
- * choice labeled label, as a click on it does. */
+/* What a user chooses among (choose.c), each taking the widget a node is,
+ * set as the user sets it but unreported. sngl_calendar_select selects y-m-d
+ * on c, a calendar. sngl_drop_down_offer offers d, a drop-down, the labels
+ * joined with newlines, and selects chosen among them, or nothing.
+ * sngl_drop_down_select selects the choice labeled label, as a click on it
+ * does, which is reported. */
 void sngl_calendar_select(GtkWidget *c, int y, int m, int d);
-const char *sngl_calendar_day(GtkWidget *c);
-/* sngl_calendar_select_day selects the day a date's text, YYYY-MM-DD, names,
- * as sngl_calendar_select does. */
-void sngl_calendar_select_day(GtkWidget *c, const char *day);
 void sngl_drop_down_offer(GtkWidget *d, const char *labels, const char *chosen);
-const char *sngl_drop_down_label(GtkWidget *d);
 void sngl_drop_down_select(GtkWidget *d, const char *label);
-
-/* sngl_check_active and sngl_switch_active are whether b, a check button, and
- * s, a switch, are on; sngl_entry_text is e's text, an entry's. */
-int sngl_check_active(GtkWidget *b);
-int sngl_switch_active(GtkWidget *s);
-const char *sngl_entry_text(GtkWidget *e);
 
 /* sngl_hold makes *slot w, which it reads NULL once w is gone: what a test
  * asks of a widget a branch took away. */

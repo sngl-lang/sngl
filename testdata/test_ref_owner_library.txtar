@@ -44,6 +44,7 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"fmt"
 	"os"
 	"runtime"
 	"slices"
@@ -78,6 +79,24 @@ type ErrorEvent struct {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	shown               bool
 	value__inst0        *time.Time
@@ -99,6 +118,43 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func CalendarDate(c cgo.Widget) *time.Time {
+	t__r0 := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
+	day := ((((_padded(cgo.GDateTimeGetYear(t__r0), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t__r0), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t__r0), 2))
+	cgo.GDateTimeUnref(t__r0)
+	return ParseDate(day)
+}
+
+func _padded(n int, width int) string {
+	s := fmt.Sprint(n)
+	for utf8.RuneCountInString(s) < width {
+		s = ("0" + s)
+	}
+	return s
+}
 
 func ParseDate(s string) *time.Time {
 	var unset *time.Time
@@ -215,7 +271,7 @@ func __renderSlot0(parent cgo.Widget) {
 					cal := cgo.SnglTextNew()
 					m.cal__held = snglSome(cal)
 					cgo.SnglTextSetValue(cal, "c")
-					cgo.SnglSetLook(cal, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(cal, Look{})
 					cgo.SnglOnClick(cal, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
@@ -244,7 +300,7 @@ func __renderSlot0(parent cgo.Widget) {
 }
 
 func Cal__own0_daySelected_handler(c cgo.Widget) {
-	m.value__inst0 = ParseDate(cgo.SnglCalendarDay(c))
+	m.value__inst0 = CalendarDate(c)
 	__effects0_settle()
 }
 
@@ -272,10 +328,10 @@ func snglInit() {
 func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
 	m.cal__own0 = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal__own0)), cgo.CGboolean(func() int { return 1 }()))
-	cgo.SnglSetLook(m.cal__own0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.cal__own0, Look{})
 	cgo.SnglSignalConnect(m.cal__own0, "day-selected", func() {
 		Cal__own0_daySelected_handler(m.cal__own0)
 	})
@@ -283,7 +339,7 @@ func snglBuild() {
 	m.t = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.t)), "t")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.t)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.t, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.t, Look{})
 	cgo.SnglSignalConnect(m.t, "clicked", T_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.t)))
 	__renderSlot0(m.__n0)
@@ -321,4 +377,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:6ca7ae5c259b5fd5a0d466fbf6c6fed7
+pass sha256:2ba91d2fbefcce22a946c45c27eb286e

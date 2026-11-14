@@ -657,9 +657,8 @@ matched. Each target reads its host its own way, in its own `.sngl`:
 - **gtk4**'s GIR signals hand their callback the instance they fired on, which
   is what every generated event now declares, `@toggled(self GtkCheckButton)`; a component may name itself in its own signature for this.
   The override reads that widget with a getter `gtk4.sngl` declares --
-  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- the
-  runtime's C, `sngl_check_active` and its kin, taking the widget a node is,
-  which each language calls as it calls C. The trampoline passes nothing, so
+  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- each SNGL
+  calling GTK's own getter (`glib.sngl`) on the widget a node is. The trampoline passes nothing, so
   a signal handler's `self` is the node it is connected on: placement wraps a
   handler taking the widget in one taking nothing that hands it the node
   (`handedTheNode`).
@@ -685,7 +684,8 @@ overrides do not bind `text` but push it from
 instance's handler writing the text back re-entered itself until the stack
 overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
 `sngl_calendar_select` blocks "day-selected" the same way; a test's fire
-puts the value in place first and emits the signal itself (`sngl_fire_day`).
+puts the value in place first and emits the signal itself
+(`_fire_GtkCalendar_daySelected`).
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;

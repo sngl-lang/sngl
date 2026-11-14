@@ -48,6 +48,7 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"fmt"
 	"os"
 	"runtime"
 	"strconv"
@@ -75,6 +76,24 @@ type ErrorEvent struct {
 }
 
 type Test struct {
+}
+
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
 }
 
 type snglState struct {
@@ -106,6 +125,48 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _fireText(e cgo.Widget, text string, signal string) {
+	cgo.SnglEditableSetTextQuiet(e, text)
+	cgo.SnglSignalEmit(e, signal)
+}
+
+func CalendarDate(c cgo.Widget) *time.Time {
+	t := cgo.GtkCalendarGetDate((cgo.PGtkCalendar)(unsafe.Pointer(c)))
+	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
+	cgo.GDateTimeUnref(t)
+	return ParseDate(day)
+}
+
+func _padded(n int, width int) string {
+	s := fmt.Sprint(n)
+	for utf8.RuneCountInString(s) < width {
+		s = ("0" + s)
+	}
+	return s
+}
 
 func ParseDate(s string) *time.Time {
 	var unset *time.Time
@@ -145,7 +206,7 @@ func _daysIn(y int, m__r1 int) int {
 }
 
 func __effect0_mount() {
-	if cgo.SnglEntryText(m.first) != m.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.first))) != m.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(m.first, m.__effect0_key)
 	}
 }
@@ -171,7 +232,7 @@ func __effect0_up() {
 }
 
 func __effect1_mount() {
-	if cgo.SnglEntryText(m.second) != m.__effect1_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.second))) != m.__effect1_key {
 		cgo.SnglEditableSetTextQuiet(m.second, m.__effect1_key)
 	}
 }
@@ -295,36 +356,36 @@ func __effects0_settle() {
 }
 
 func First_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.a {
-		m.a = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.a {
+		m.a = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	}
 	__effects0_settle()
 }
 
 func First_activate_handler(e cgo.Widget) {
-	m.a = cgo.SnglEntryText(e)
+	m.a = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	__effects0_settle()
 }
 
 func Second_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.b {
-		m.b = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.b {
+		m.b = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	}
 	__effects0_settle()
 }
 
 func Second_activate_handler(e cgo.Widget) {
-	m.b = cgo.SnglEntryText(e)
+	m.b = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	__effects0_settle()
 }
 
 func Cal_daySelected_handler(c cgo.Widget) {
-	m.d = ParseDate(cgo.SnglCalendarDay(c))
+	m.d = CalendarDate(c)
 	__effects0_settle()
 }
 
 func Cal__1_daySelected_handler(c cgo.Widget) {
-	m.value__inst0 = ParseDate(cgo.SnglCalendarDay(c))
+	m.value__inst0 = CalendarDate(c)
 	__effects0_settle()
 }
 
@@ -355,10 +416,10 @@ func snglInit() {
 func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
 	m.first = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.first)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.first, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.first, Look{})
 	cgo.SnglSignalConnect(m.first, "changed", func() {
 		First_changed_handler(m.first)
 	})
@@ -368,7 +429,7 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.first)))
 	m.second = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.second)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.second, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.second, Look{})
 	cgo.SnglSignalConnect(m.second, "changed", func() {
 		Second_changed_handler(m.second)
 	})
@@ -378,14 +439,14 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.second)))
 	m.cal = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal)), cgo.CGboolean(func() int { return 1 }()))
-	cgo.SnglSetLook(m.cal, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.cal, Look{})
 	cgo.SnglSignalConnect(m.cal, "day-selected", func() {
 		Cal_daySelected_handler(m.cal)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.cal)))
 	m.cal__1 = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal__1)), cgo.CGboolean(func() int { return 1 }()))
-	cgo.SnglSetLook(m.cal__1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.cal__1, Look{})
 	cgo.SnglSignalConnect(m.cal__1, "day-selected", func() {
 		Cal__1_daySelected_handler(m.cal__1)
 	})
@@ -424,4 +485,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:6d5f05eb7087566a80cc1b08831077c4
+pass sha256:e66d3deadcd38e2797c4983b5d854b5c

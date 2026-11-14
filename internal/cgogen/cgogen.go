@@ -316,6 +316,12 @@ func (g *gen) goType(t *ir.Type) string {
 		}
 		return name
 	}
+	// An option is spelled here too, its element with it: the Go language
+	// spells a C type by the mark this tool writes beside it, which names
+	// this package.
+	if t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		return "*" + g.goType(t.Elems[0])
+	}
 	if t.Kind == ir.TypeFunc && t.Sig != nil {
 		var ps []string
 		for _, p := range t.Sig.Params {
