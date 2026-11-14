@@ -1055,6 +1055,24 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	seconds__inst0       int
 	running__inst0       bool
@@ -1078,6 +1096,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __effect0_mount() {
 	m.handle__inst1__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
@@ -1243,11 +1283,11 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, ("beats " + fmt.Sprint(m.beats__inst0)))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.seconds__inst0))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
 	cgo.SnglAppAttach(m.__n0)
 	__effects0_settle()
@@ -1527,7 +1567,7 @@ pass sha256:0edde74d4c1943b6785a3dcaa27bb50d
 -- run/go/fyne --
 pass sha256:acec6a1453449c8f6357cbebdce3930d
 -- run/go/gtk4 --
-pass sha256:2a4cf5f916f1528382b65b0120a7f0d4
+pass sha256:da5d749253a3ef5aab92d5d862caecbb
 -- run/kotlin/android --
 pass sha256:3af616c557f868d1fcb2be0e0c457399
 -- run/none/html --

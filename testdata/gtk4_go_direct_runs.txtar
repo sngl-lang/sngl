@@ -98,7 +98,7 @@ type snglState struct {
 	__effects0_pending  bool
 	__effects0_torn     bool
 	__effects0_steps    int
-	__rel7              *C.char
+	__rel9              *C.char
 	__n0                *C.GtkWidget
 	__n1                *C.GtkWidget
 	__drawing0          *C.GtkWidget
@@ -133,9 +133,9 @@ func Source(ctx *C.cairo_t, c snglcolor.Color) {
 func __effect0_mount() {
 	m.handle__inst0 = C.sngl_every(C.int(int(m.__effect0_key/time.Millisecond)), snglCallback_void__voidPtr(), snglContext(func() {
 		m.ticks += 1
-		__rel0 := C.CString(fmt.Sprint(m.ticks))
-		C.sngl_text_set_value(m.__n1, __rel0)
-		Free(__rel0)
+		__rel2 := C.CString(fmt.Sprint(m.ticks))
+		C.sngl_text_set_value(m.__n1, __rel2)
+		Free(__rel2)
 		if m.ticks == 3 {
 			fmt.Println(("ticked " + fmt.Sprint(m.ticks)))
 			C.sngl_gtk_quit()
@@ -213,7 +213,7 @@ func __effects0_settle() {
 func __snglTeardown() {
 	m.__effects0_torn = true
 	__effect0_teardown()
-	Free(m.__rel7)
+	Free(m.__rel9)
 }
 
 func __n0_visible_handler(__visible bool) {
@@ -257,12 +257,12 @@ func snglInit() {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
-	m.__rel7 = C.CString("t")
+	m.__rel9 = C.CString("t")
 }
 
 func snglBuild() {
 	m.__n0 = C.sngl_toplevel_new()
-	C.sngl_toplevel_set_title(m.__n0, m.__rel7)
+	C.sngl_toplevel_set_title(m.__n0, m.__rel9)
 	C.sngl_toplevel_set_visible(m.__n0, C.int(func() int {
 		if m.visible__inst0 {
 			return 1
@@ -272,14 +272,14 @@ func snglBuild() {
 	}()))
 	C.sngl_toplevel_on_visible(m.__n0, snglCallback_bool__voidPtr(), snglContext(__n0_visible_handler), snglReleasePtr())
 	m.__n1 = C.sngl_text_new()
-	__rel1 := C.CString(fmt.Sprint(m.ticks))
-	C.sngl_text_set_value(m.__n1, __rel1)
-	Free(__rel1)
-	__rel2 := C.CString("")
-	__rel3 := C.CString("")
-	C.sngl_set_look(m.__n1, __rel2, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel3, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	__rel3 := C.CString(fmt.Sprint(m.ticks))
+	C.sngl_text_set_value(m.__n1, __rel3)
 	Free(__rel3)
-	Free(__rel2)
+	__rel4 := C.CString("")
+	__rel5 := C.CString("")
+	C.sngl_set_look(m.__n1, __rel4, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel5, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	Free(__rel5)
+	Free(__rel4)
 	C.sngl_toplevel_append(m.__n0, m.__n1)
 	m.__drawing0 = C.sngl_canvas_new()
 	C.sngl_canvas_set_width(m.__drawing0, C.int(40))
@@ -288,14 +288,14 @@ func snglBuild() {
 	C.sngl_canvas_on_paint(m.__drawing0, snglCallback_cairo_t_p__voidPtr(), snglContext(__drawing0_paint_handler), snglReleasePtr())
 	C.sngl_toplevel_append(m.__n0, m.__drawing0)
 	m.frame = C.sngl_image_new()
-	__rel4 := C.CString("contain")
-	C.sngl_image_set_fit(m.frame, __rel4)
-	Free(__rel4)
-	__rel5 := C.CString("")
-	__rel6 := C.CString("")
-	C.sngl_set_look(m.frame, __rel5, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel6, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	__rel6 := C.CString("contain")
+	C.sngl_image_set_fit(m.frame, __rel6)
 	Free(__rel6)
-	Free(__rel5)
+	__rel7 := C.CString("")
+	__rel8 := C.CString("")
+	C.sngl_set_look(m.frame, __rel7, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel8, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	Free(__rel8)
+	Free(__rel7)
 	m.__drawing1 = C.sngl_image_source_new()
 	C.sngl_drawing_set_width(m.__drawing1, C.double(20.0))
 	C.sngl_drawing_set_height(m.__drawing1, C.double(20.0))
@@ -330,6 +330,7 @@ package main
 #include "sngl_gtk.h"
 #include <stdint.h>
 
+extern void snglCallback_GObject_p_GParamSpec_p__void(GObject *, GParamSpec *, void *);
 extern void snglCallback_bool__void(int, void *);
 extern void snglCallback_cairo_t_p__void(cairo_t *, void *);
 extern void snglCallback_void__void(void *);
@@ -371,6 +372,17 @@ func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglCon
 
 // snglReleasePtr is snglRelease as the function pointer C calls.
 func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
+
+//export snglCallback_GObject_p_GParamSpec_p__void
+func snglCallback_GObject_p_GParamSpec_p__void(a0 *C.GObject, a1 *C.GParamSpec, ctx unsafe.Pointer) {
+	fn, ok := snglClosure(ctx).(func(*C.GObject, *C.GParamSpec))
+	if ok {
+		fn(a0, a1)
+	}
+}
+
+// snglCallback_GObject_p_GParamSpec_p__voidPtr is snglCallback_GObject_p_GParamSpec_p__void as the function pointer C calls.
+func snglCallback_GObject_p_GParamSpec_p__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_GObject_p_GParamSpec_p__void) }
 
 //export snglCallback_bool__void
 func snglCallback_bool__void(a0 C.int, ctx unsafe.Pointer) {
@@ -473,4 +485,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:065f38078ac7a14f8973389628f7ba3f
+pass sha256:88d9077f9a180c236fe4b906e8d56b3e

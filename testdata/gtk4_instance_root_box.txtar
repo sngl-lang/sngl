@@ -100,6 +100,24 @@ type __child0__inst struct {
 	__n1        cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	names          []string
 	panels         [][]string
@@ -159,6 +177,28 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __renderSlot1(parent cgo.Widget) {
@@ -330,13 +370,13 @@ func __n2_visible_handler(__visible bool) {
 func __n7_clicked_handler() {
 	m.panels = [][]string{[]string{"z"}}
 	__renderSlot2(m.__n6)
-	var __lt18 []string
+	var __lt21 []string
 	if len(m.names) == 2 {
-		__lt18 = []string{"c"}
+		__lt21 = []string{"c"}
 	} else {
-		__lt18 = []string{"a", "b"}
+		__lt21 = []string{"a", "b"}
 	}
-	m.names = slices.Clone(__lt18)
+	m.names = slices.Clone(__lt21)
 	__renderSlot1(m.__n6)
 }
 
@@ -345,7 +385,7 @@ func Badge__new(name string) *Badge__inst {
 	__self.Label = __self.__prop_name
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, __self.Label)
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -474,7 +514,7 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __p1 int) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1}
 	__self.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n1, ((__self.__prop___p0.Elem + " ") + fmt.Sprint(__self.__prop___p1)))
-	cgo.SnglSetLook(__self.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n1, Look{})
 	cgo.SnglOnClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
@@ -517,13 +557,13 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n2, __n2_visible_handler)
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	__renderSlot1(m.__n6)
 	__renderSlot2(m.__n6)
 	m.__n7 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n7)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n7, Look{})
 	cgo.SnglSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n7)))
 	cgo.SnglToplevelAppend(m.__n2, m.__n6)
@@ -561,4 +601,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:42789525799cc950b0ccb89c312f9908
+pass sha256:9ebddedf48efea6650094343bdb4d1c2

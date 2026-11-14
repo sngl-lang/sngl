@@ -169,6 +169,24 @@ import (
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	depth  int
 	__n0   cgo.Widget
@@ -176,6 +194,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func Deeper_clicked_handler() {
 	m.depth += 1
@@ -189,11 +229,11 @@ func snglInit() {
 func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
 	m.deeper = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.deeper)), "deeper")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.deeper)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.deeper, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.deeper, Look{})
 	cgo.SnglSignalConnect(m.deeper, "clicked", Deeper_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.deeper)))
 	cgo.SnglAppAttach(m.__n0)
@@ -283,6 +323,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:2b39fe7dbf37c0aa0b4d61f9938eac63
 -- run/go/gtk4 --
-pass sha256:50c09eeec20edc68effec4075c87bc1c
+pass sha256:0fe504dccce21db5d1fd35e2e32a05df
 -- run/none/html --
 pass sha256:edf8d27e8a34f0f2d079bb7e229534cc

@@ -51,6 +51,24 @@ import (
 	"unsafe"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	__n0           cgo.Widget
@@ -59,6 +77,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -79,13 +119,13 @@ func snglBuild() {
 	cgo.GtkProgressBarSetFraction((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n1)), 0.2)
 	cgo.GtkProgressBarSetText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n1)), "")
 	cgo.GtkProgressBarSetShowText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n1)), cgo.CGboolean(0))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n3 = cgo.GtkProgressBarNew()
 	cgo.GtkProgressBarSetFraction((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n3)), 0.5)
 	cgo.GtkProgressBarSetText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n3)), "")
 	cgo.GtkProgressBarSetShowText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n3)), cgo.CGboolean(0))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -194,7 +234,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:793187604c46514420d18963fb7007dc
+pass sha256:3e2bbeeaeaff14190bf5e0e0f896a88f
 -- run/kotlin/android --
 pass sha256:69e333e068f50b1bb6071b393e7689a4
 -- run/none/html --

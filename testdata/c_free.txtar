@@ -566,6 +566,24 @@ import (
 	"unsafe"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	n              int
 	visible__inst0 bool
@@ -574,6 +592,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func Free(s *C.char) {
 	C.free(unsafe.Pointer(s))
@@ -604,7 +644,7 @@ func snglBuild() {
 	m.__n1 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglSignalConnect(m.__n1, "clicked", __n1_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -644,4 +684,4 @@ pass sha256:b2dad26229faa516ff559cad1fbe2d78
 -- run/go/fyne --
 pass sha256:c5e8d2c5ba36c4af212dbdf909d7e3bd
 -- run/go/gtk4 --
-pass sha256:5c501b1128a5e963da69d82bd0903a75
+pass sha256:0e894826f15c70a3a0c1e0a861215af4

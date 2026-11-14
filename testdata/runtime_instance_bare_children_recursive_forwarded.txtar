@@ -676,6 +676,24 @@ type Frame__slot0__inst struct {
 	__n14          cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	depth          int
 	visible__inst0 bool
@@ -689,6 +707,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -705,10 +745,10 @@ func Frame__slot4__new(n int, __depth int) *Frame__slot4__inst {
 	__self := &Frame__slot4__inst{__prop_n: n, __prop___depth: __depth, Open: true, __slot0: []cgo.Widget{}, __inst1_live: []*Frame__slot4__inst{}}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n4, Look{Spaced: true, Spacing: 6})
 	__self.__n11 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n11, "BETA")
-	cgo.SnglSetLook(__self.__n11, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n11, Look{})
 	cgo.SnglOnClick(__self.__n11, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n11)))
@@ -815,10 +855,10 @@ func Frame__slot3__new(n int, __depth int) *Frame__slot3__inst {
 	__self := &Frame__slot3__inst{__prop_n: n, __prop___depth: __depth, Open: true, __slot1: []cgo.Widget{}, __inst3_live: []*Frame__slot3__inst{}}
 	__self.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n6)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n6, Look{Spaced: true, Spacing: 6})
 	__self.__n12 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n12, "ALPHA")
-	cgo.SnglSetLook(__self.__n12, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n12, Look{})
 	cgo.SnglOnClick(__self.__n12, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n12)))
@@ -925,10 +965,10 @@ func Frame__slot1__new(n int, __depth int) *Frame__slot1__inst {
 	__self := &Frame__slot1__inst{__prop_n: n, __prop___depth: __depth, Open: true, __slot2: []cgo.Widget{}, __inst5_live: []*Frame__slot4__inst{}}
 	__self.__n8 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n8)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n8, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n8, Look{Spaced: true, Spacing: 6})
 	__self.__n13 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n13, "BETA")
-	cgo.SnglSetLook(__self.__n13, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n13, Look{})
 	cgo.SnglOnClick(__self.__n13, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n13)))
@@ -1016,10 +1056,10 @@ func Frame__slot0__new(n int, __depth int) *Frame__slot0__inst {
 	__self := &Frame__slot0__inst{__prop_n: n, __prop___depth: __depth, Open: true, __slot3: []cgo.Widget{}, __inst7_live: []*Frame__slot3__inst{}}
 	__self.__n10 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n10)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n10, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n10, Look{Spaced: true, Spacing: 6})
 	__self.__n14 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n14, "ALPHA")
-	cgo.SnglSetLook(__self.__n14, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n14, Look{})
 	cgo.SnglOnClick(__self.__n14, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n14)))
@@ -1116,7 +1156,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	m.__n15 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n15)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n15, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n15, Look{Spaced: true, Spacing: 6})
 	m.__n1 = Frame__slot0__new(m.depth, 0)
 	m.__n1__el = m.__n1.__root
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n15)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1__el)))
@@ -1126,7 +1166,7 @@ func snglBuild() {
 	m.__n16 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n16)), "deeper")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n16)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n16, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n16, Look{})
 	cgo.SnglSignalConnect(m.__n16, "clicked", __n16_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n15)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n16)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n15)
@@ -1641,6 +1681,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:7ecb70d24df20ea9bf226265fd8ad2dc
 -- run/go/gtk4 --
-pass sha256:c1904fbab9ac24c19d0b94143daf47cd
+pass sha256:52a4449d573b83f15440e41206bff147
 -- run/none/html --
 pass sha256:310ab19948ef57b695e190a6bedf9843

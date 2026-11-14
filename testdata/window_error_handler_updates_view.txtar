@@ -695,6 +695,24 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	caught         string
 	visible__inst0 bool
@@ -711,6 +729,28 @@ func Risky(n int) int {
 		panic(ErrorEvent{Message: "too big", Kind: "range"})
 	}
 	return (n * 10)
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __n0_visible_handler(__visible bool) {
@@ -770,18 +810,18 @@ func snglBuild() {
 	m.call = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.call)), "Call")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.call)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.call, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.call, Look{})
 	cgo.SnglSignalConnect(m.call, "clicked", Call_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.call)
 	m.direct = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.direct)), "Raise")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.direct)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.direct, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.direct, Look{})
 	cgo.SnglSignalConnect(m.direct, "clicked", Direct_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.direct)
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, m.caught)
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -1009,7 +1049,7 @@ pass sha256:1cb2de618a143862da0bdd4e9419a229
 -- run/go/fyne --
 pass sha256:1898a8e01282344aa884703489028594
 -- run/go/gtk4 --
-pass sha256:6c1af35a73de35088efd87fc2b7bdcc1
+pass sha256:f5f1594488c1a3962688252fea0277cf
 -- run/go/html --
 pass sha256:c97dcdc7f518111192194d2ed80d3c7e
 -- run/kotlin/android --

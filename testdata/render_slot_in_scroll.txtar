@@ -237,6 +237,24 @@ func snglOptEq[T comparable](p *T, v T) bool {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	on             bool
 	__slot0        []cgo.Widget
@@ -249,6 +267,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
@@ -269,7 +309,7 @@ func __renderSlot0(parent cgo.Widget) {
 				if m.on {
 					__n0 := cgo.SnglTextNew()
 					cgo.SnglTextSetValue(__n0, "on")
-					cgo.SnglSetLook(__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n0, Look{})
 					cgo.SnglOnClick(__n0, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
@@ -313,16 +353,16 @@ func snglInit() {
 func snglBuild() {
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{Spaced: true, Spacing: 6})
 	m.__n1 = cgo.SnglScrollNew()
 	cgo.SnglScrollSetDirection(m.__n1, "vertical")
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	__renderSlot0(m.__n1)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.flip = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.flip)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.flip)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.flip, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.flip, Look{})
 	cgo.SnglSignalConnect(m.flip, "clicked", Flip_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.flip)))
 	cgo.SnglAppAttach(m.__n2)
@@ -360,4 +400,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:dd8b4a1c907c51d5eb2d4b7948d33d2a
 -- run/go/gtk4 --
-pass sha256:3ae5654be598752f4fb19ab4efb52f4b
+pass sha256:e39bd136ef39cc7935909fd8766e9054

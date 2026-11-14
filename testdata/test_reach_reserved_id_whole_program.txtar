@@ -756,6 +756,24 @@ import (
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	closed__inst0  int
 	n__inst0       int
@@ -766,6 +784,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -797,13 +837,13 @@ func snglBuild() {
 	m.close__r0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.close__r0)), ("x" + fmt.Sprint(m.closed__inst0)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.close__r0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.close__r0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.close__r0, Look{})
 	cgo.SnglSignalConnect(m.close__r0, "clicked", Close__r0_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.close__r0)
 	m.inc = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.inc)), fmt.Sprint(m.n__inst0))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.inc)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.inc, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.inc, Look{})
 	cgo.SnglSignalConnect(m.inc, "clicked", Inc_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.inc)
 	cgo.SnglAppAttach(m.__n0)
@@ -1026,7 +1066,7 @@ pass sha256:75bbe76a55baea580150d78b976c664c
 -- run/go/fyne --
 pass sha256:936a952bfd721b15c164fba5a56ca323
 -- run/go/gtk4 --
-pass sha256:f6d2485e5e5a68265a57a5e8d4efd4ce
+pass sha256:ee538fc6d19172e8afd39064ec367775
 -- run/kotlin/android --
 pass sha256:1a50e4e73decd35ef592049a5042c8dc
 -- run/none/html --

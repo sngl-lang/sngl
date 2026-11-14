@@ -697,6 +697,24 @@ type __window_state1__slot0__inst struct {
 	__n3__el               cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	details             bool
 	ticks               int
@@ -719,6 +737,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __effect0_mount() {
 	m.handle__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
@@ -891,7 +931,7 @@ func Counter__new() *Counter__inst {
 	__self := &Counter__inst{__effect1_live: []bool{}, __effect1_desired: []bool{}}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.Mounts))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	Counter__effects1_settle(__self)
@@ -993,7 +1033,7 @@ func __window_state1__slot0__new(__start_visible bool, title string, closed func
 	})
 	__self.__n5 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n5, "load")
-	cgo.SnglSetLook(__self.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n5, Look{})
 	cgo.SnglOnClick(__self.__n5, func() {
 	})
 	cgo.SnglToplevelAppend(__self.__n1, __self.__n5)
@@ -1047,7 +1087,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.main__r0, Main__r0_visible_handler)
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.ticks))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.__n2)
 	cgo.SnglAppAttach(m.main__r0)
 	__renderSlot0(nil)
@@ -1087,4 +1127,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:0f8cf121f287d9cee44dd1753d6e5f69
 -- run/go/gtk4 --
-pass sha256:9293af87496f259bda232b47ce9a33c3
+pass sha256:321247aa21dc4a73590673fe8f97fffe

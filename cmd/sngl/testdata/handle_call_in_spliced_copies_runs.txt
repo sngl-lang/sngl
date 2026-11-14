@@ -174,7 +174,7 @@ sha256:ffb4437807fec9d66597ce584eec09f0
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:472f720ade6e9c30373fddf8275d3ec3
+sha256:a33049c3d457c5063fd640c9483092da
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:472f720ade6e9c30373fddf8275d3ec3
   ]
 }
 -- testrun/gtk4/go/unbound.sngl/pair/1 --
-sha256:1f42c2c406ef2eef707ddd950f320916
+sha256:076429e424de0d239e9f8c3b85f0eb8a
 {
   "results": [
     {

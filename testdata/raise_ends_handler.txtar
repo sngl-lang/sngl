@@ -1072,6 +1072,24 @@ type ErrorEvent struct {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	caught     int
 	before     int
@@ -1100,6 +1118,28 @@ func Submit() {
 
 func Stop(why string) {
 	panic(ErrorEvent{Message: why, Kind: "stop"})
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func Direct_clicked_handler() {
@@ -1158,12 +1198,12 @@ func snglBuild() {
 	m.direct = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.direct)), "Direct")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.direct)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.direct, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.direct, Look{})
 	cgo.SnglSignalConnect(m.direct, "clicked", Direct_clicked_handler)
 	m.called = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.called)), "Called")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.called)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.called, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.called, Look{})
 	cgo.SnglSignalConnect(m.called, "clicked", Called_clicked_handler)
 }
 
@@ -1477,7 +1517,7 @@ pass sha256:3a4a907985b80768d09c8a3d0118e56e
 -- run/go/fyne --
 pass sha256:ed31cc69c32310cf82154d49a30087f2
 -- run/go/gtk4 --
-pass sha256:7c618dbc0a0582027e39c6e241b4e489
+pass sha256:07f7ad0bdf2b0aad0c13b7ad3d8122f3
 -- run/go/html --
 pass sha256:ced4986900ece563a178020a8a2b674e
 -- run/kotlin/android --

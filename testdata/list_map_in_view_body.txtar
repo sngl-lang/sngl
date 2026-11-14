@@ -520,6 +520,24 @@ import (
 	"runtime"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	xs__inst0      []int
 	visible__inst0 bool
@@ -531,6 +549,28 @@ var m = &snglState{}
 
 func Dbl(x int) int {
 	return (x * 2)
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __n0_visible_handler(__visible bool) {
@@ -565,7 +605,7 @@ func snglBuild() {
 		}
 		return __out
 	}()[0])))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -604,4 +644,4 @@ pass sha256:f7ca81ee3fe38b93da1da6eb536e5db3
 -- run/go/fyne --
 pass sha256:b3552dde39ae8b48fcad2d101d1f8797
 -- run/go/gtk4 --
-pass sha256:138a0a5c7e610ea7a53fb0f881f93aef
+pass sha256:1d1e1451c7b8a2616f71f6d64034bc4d

@@ -1000,6 +1000,24 @@ type Pages__entry struct {
 	Page _page__value
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	backs            int
 	pages__current   _page__value
@@ -1020,6 +1038,28 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1039,7 +1079,7 @@ func __renderSlot0(parent cgo.Widget) {
 				if m.pages__current.Id == 0 {
 					__n0 := cgo.SnglTextNew()
 					cgo.SnglTextSetValue(__n0, "home")
-					cgo.SnglSetLook(__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n0, Look{})
 					cgo.SnglOnClick(__n0, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
@@ -1060,7 +1100,7 @@ func __renderSlot0(parent cgo.Widget) {
 					if m.pages__current.Id == 1 {
 						__n1 := cgo.SnglTextNew()
 						cgo.SnglTextSetValue(__n1, "about")
-						cgo.SnglSetLook(__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+						_setLook(__n1, Look{})
 						cgo.SnglOnClick(__n1, func() {
 						})
 						__place0_i_ref1 := snglSome(m.__anchor0)
@@ -1182,7 +1222,7 @@ func snglBuild() {
 	m.toAbout = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.toAbout)), "About")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.toAbout)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.toAbout, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.toAbout, Look{})
 	cgo.SnglSignalConnect(m.toAbout, "clicked", ToAbout_clicked_handler)
 	cgo.SnglToplevelAppend(m.main__r0, m.toAbout)
 	__renderSlot1(m.main__r0)
@@ -1522,6 +1562,6 @@ pass sha256:f4ff9777436983e33bd69fd01659d3bf
 -- run/go/fyne --
 pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --
-pass sha256:072c900e097969af4e1c276d43658d63
+pass sha256:db0ff3905d2ef41298de82cff85b105f
 -- run/kotlin/android --
 pass sha256:fa20068808c94c01b89e4fa11b4d6eeb

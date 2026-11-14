@@ -903,6 +903,24 @@ type Ticker__inst struct {
 	__n0                cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	__slot0        []cgo.Widget
@@ -914,6 +932,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
@@ -1015,7 +1055,7 @@ func Ticker__new(period time.Duration) *Ticker__inst {
 	__self := &Ticker__inst{__prop_period: period, __effect0_key: (time.Duration(0) * time.Millisecond), __effect0_live: []time.Duration{}, __effect0_desired: []time.Duration{}}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	Ticker__effects0_settle(__self)
@@ -1370,6 +1410,6 @@ pass sha256:c4ff801327ad0079021152036a5543d5
 -- run/go/fyne --
 pass sha256:3de47e5a130681563de01ff992160e5c
 -- run/go/gtk4 --
-pass sha256:4eb31e8c193b62973fa1489e992e73d4
+pass sha256:347ce59b877918783aae2d93875ac21f
 -- run/none/html --
 pass sha256:794f6664817b0d702b02dc3eb273230e

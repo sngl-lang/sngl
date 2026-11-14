@@ -835,7 +835,7 @@ static void sngl_box_append_to(GtkWidget *box, GtkWidget *child) {
         sngl_app_attach(child);
         return;
     }
-    if (sngl_window_add(box, child) || sngl_tabs_add(box, child) || sngl_image_adopt(box, child)) return;
+    if (sngl_window_add(box, child) || sngl_image_adopt(box, child)) return;
     box = sngl_slot_host(box);
     if (sngl_stack_put(box, child, NULL)) return;
     if (gtk_widget_get_parent(child) == box) {
@@ -854,7 +854,7 @@ static void sngl_box_insert_before_in(GtkWidget *box, GtkWidget *anchor, GtkWidg
         sngl_box_append_to(box, child);
         return;
     }
-    if (sngl_tabs_add(box, child) || sngl_image_adopt(box, child) || sngl_stack_put(box, child, anchor)) return;
+    if (sngl_image_adopt(box, child) || sngl_stack_put(box, child, anchor)) return;
     /* A child the box already holds moves, as the DOM's insertBefore moves
      * one: a keyed loop putting a row it kept in its new place. */
     if (gtk_widget_get_parent(child) == box) {
@@ -871,10 +871,10 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child) {
         sngl_app_detach(child);
         return;
     }
-    /* What the box let go of may be gone once it has, and the bar and the
-     * tabs ask what it was. */
+    /* What the box let go of may be gone once it has, and the bar asks
+     * what it was. */
     g_object_ref(child);
-    if (!sngl_window_remove(box, child) && !sngl_tabs_remove(box, child) && !sngl_image_unadopt(box, child)) {
+    if (!sngl_window_remove(box, child) && !sngl_image_unadopt(box, child)) {
         box = sngl_slot_host(box);
         if (GTK_IS_STACK(box)) {
             gtk_stack_remove(GTK_STACK(box), child);

@@ -1493,6 +1493,24 @@ type __child0__inst struct {
 	__n1__el     cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	rows           [][]string
 	skip           string
@@ -1527,12 +1545,34 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func Badge__new(label string) *Badge__inst {
 	__self := &Badge__inst{__prop_label: label}
 	__self.Hit = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), ((("hit " + __self.__prop_label) + " ") + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Hit)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Hit, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Hit, Look{})
 	cgo.SnglSignalConnect(__self.Hit, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), ((("hit " + __self.__prop_label) + " ") + fmt.Sprint(__self.Hits)))
@@ -1555,7 +1595,7 @@ func __block_state0__new(r []string, skip string, __on_skip func(string)) *__blo
 	__self.__root = cgo.SnglContentsNew()
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.Local))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
@@ -1676,7 +1716,7 @@ func __child0__new(__p0 []string, __p1 string, __on0 func(string)) *__child0__in
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1, __prop___on0: __on0}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n4, Look{Spaced: true, Spacing: 6})
 	__self.__n1 = __block_state0__new(__self.__prop___p0, __self.__prop___p1, func(__on0_0 string) {
 		__self.__prop___on0(__on0_0)
 	})
@@ -1814,11 +1854,11 @@ func snglInit() {
 func snglBuild() {
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	m.move = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.move)), "m")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.move)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.move, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.move, Look{})
 	cgo.SnglSignalConnect(m.move, "clicked", Move_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.move)))
 	__renderSlot0(m.__n3)
@@ -2518,7 +2558,7 @@ pass sha256:ae79b3d72cd7258394c159105b8ed4f5
 -- run/go/fyne --
 pass sha256:ea72792e5d5328f6097202023a4eab2b
 -- run/go/gtk4 --
-pass sha256:6a1173b5f98b677a97fb1217dc60354b
+pass sha256:59cdf536d8ef381b60e35ed4ec7b0f3b
 -- run/kotlin/android --
 pass sha256:4d27ff52ab85e086b8a8075794272285
 -- run/none/html --

@@ -479,6 +479,24 @@ type __child0__inst struct {
 	__n0        cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	xs__inst0      []int
 	visible__inst0 bool
@@ -513,6 +531,28 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -534,7 +574,7 @@ func __renderSlot0(parent cgo.Widget) {
 				if len(__identified0(m.xs__inst0)) == 0 {
 					__n2 := cgo.SnglTextNew()
 					cgo.SnglTextSetValue(__n2, "nothing here")
-					cgo.SnglSetLook(__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n2, Look{})
 					cgo.SnglOnClick(__n2, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
@@ -635,7 +675,7 @@ func __child0__new(__p0 __anon_id_elem_cdfd47) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.__prop___p0.Elem))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -668,7 +708,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n4, Look{Spaced: true, Spacing: 6})
 	__renderSlot0(m.__n4)
 	cgo.SnglToplevelAppend(m.__n1, m.__n4)
 	cgo.SnglAppAttach(m.__n1)
@@ -863,6 +903,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2560d451920ee7647ae95dbb846ab958
 -- run/go/gtk4 --
-pass sha256:e8cdfd683c81657b45b96a404534335d
+pass sha256:b04dea9bcb04ef9811cd40bf32722eb4
 -- run/none/html --
 pass sha256:556f7f6b770936e568c5418a154ce759

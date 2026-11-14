@@ -494,6 +494,24 @@ import (
 	"unsafe"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	__n0           cgo.Widget
@@ -501,6 +519,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -520,7 +560,7 @@ func snglBuild() {
 	m.__n1 = cgo.GtkSpinnerNew()
 	cgo.GtkSpinnerSetSpinning((cgo.PGtkSpinner)(unsafe.Pointer(m.__n1)), cgo.CGboolean(1))
 	cgo.GtkWidgetSetTooltipText((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), "Loading...")
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -625,7 +665,7 @@ pass sha256:5c9979fb1e1a738c35a7d30ad4371cde
 -- run/go/fyne --
 pass sha256:31c6a0e68080b0c3fb4660295623f912
 -- run/go/gtk4 --
-pass sha256:8502737c2d0a60467e9135d6cc2820bf
+pass sha256:9348ae92689559a16548afd29cc2f7bf
 -- run/kotlin/android --
 pass sha256:8672e3f39175dbd8d5e3b1545ad372d8
 -- run/none/html --

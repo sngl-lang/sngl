@@ -1309,6 +1309,24 @@ type Counter__inst struct {
 	__n0       cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	n              int
 	rows           []int
@@ -1376,6 +1394,28 @@ func Add__inst0(a int, by int) {
 func Add__inst1(a int, by int) {
 	m.total__inst1 += (a + by)
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n4)), fmt.Sprint(m.total__inst1))
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -1492,7 +1532,7 @@ func Counter__new(inc int) *Counter__inst {
 	__self.__n0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), fmt.Sprint(__self.Total))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglSignalConnect(__self.__n0, "clicked", func() {
 		Counter__add(__self, 1, (__self.Step + __self.__prop_inc))
 	})
@@ -1530,24 +1570,24 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, ((((((fmt.Sprint(Plus(1, 2)) + " ") + fmt.Sprint(Span(1, 1, 5))) + " ") + fmt.Sprint(Span(2, 1, (m.n+10)))) + " ") + fmt.Sprint(IntBump(m.n, 3))))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
 	m.__n6 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "go")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{})
 	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n6)
 	m.__n3 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n3)), fmt.Sprint(m.total__inst0))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{})
 	cgo.SnglSignalConnect(m.__n3, "clicked", __n3_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n3)
 	m.__n4 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n4)), fmt.Sprint(m.total__inst1))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n4, Look{})
 	cgo.SnglSignalConnect(m.__n4, "clicked", __n4_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n4)
 	__renderSlot0(m.__n1)
@@ -1925,7 +1965,7 @@ pass sha256:b32b91492226e2f8555de88956ddc70c
 -- run/go/fyne --
 pass sha256:b4f5853c97ef81edec748b89607a2bce
 -- run/go/gtk4 --
-pass sha256:c47a9aa47312da6ada3c7d0df0511809
+pass sha256:213e632851d6f4ac23fe492e129bde13
 -- run/kotlin/android --
 pass sha256:020664f96f0fbc9b18c22e760fc06da3
 -- run/none/html --

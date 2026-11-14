@@ -820,6 +820,24 @@ type Frame__slot0__inst struct {
 	__n1           cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	depth          int
 	visible__inst0 bool
@@ -831,6 +849,28 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __n2_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n2, m.visible__inst0)
@@ -840,10 +880,10 @@ func Frame__slot2__new(n int, __depth int) *Frame__slot2__inst {
 	__self := &Frame__slot2__inst{__prop_n: n, __prop___depth: __depth, __slot0: []cgo.Widget{}, __inst1_live: []*Frame__slot2__inst{}}
 	__self.__n5 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n5)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n5, Look{Spaced: true, Spacing: 6})
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, ("level " + fmt.Sprint((__self.__prop_n * 2))))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
@@ -951,10 +991,10 @@ func Frame__slot0__new(n int, __depth int) *Frame__slot0__inst {
 	__self := &Frame__slot0__inst{__prop_n: n, __prop___depth: __depth, __slot1: []cgo.Widget{}, __inst3_live: []*Frame__slot2__inst{}}
 	__self.__n7 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n7)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n7, Look{Spaced: true, Spacing: 6})
 	__self.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n1, ("level " + fmt.Sprint((__self.__prop_n * 2))))
-	cgo.SnglSetLook(__self.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n1, Look{})
 	cgo.SnglOnClick(__self.__n1, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)))
@@ -1046,7 +1086,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n2, __n2_visible_handler)
 	m.__n8 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n8)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n8, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n8, Look{Spaced: true, Spacing: 6})
 	m.__n3 = Frame__slot0__new(m.depth, 0)
 	m.__n3__el = m.__n3.__root
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3__el)))
@@ -1549,7 +1589,7 @@ pass sha256:57aa43d95d5e86b4a8af521a039911f3
 -- run/go/fyne --
 pass sha256:e9ddfbfa006b945ef0e629f1e2521397
 -- run/go/gtk4 --
-pass sha256:da6f5713886e9ee03e8e1fa1274b5e7e
+pass sha256:5c41aeecca060663e97c87c8aa6fc049
 -- run/kotlin/android --
 pass sha256:60725fb3074820afd43a5db6f5decc7d
 -- run/none/html --

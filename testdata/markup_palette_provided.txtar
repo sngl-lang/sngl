@@ -516,6 +516,24 @@ import (
 	"slices"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	home           cgo.Widget
@@ -529,6 +547,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func Home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -546,7 +586,7 @@ func snglBuild() {
 	cgo.SnglToplevelSetVisible(m.home, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
 	m.__n0 = cgo.SnglFlowNew()
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	m.__n1 = cgo.SnglSpanNew()
 	cgo.SnglSpanSetStyle(m.__n1, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "monospace")
 	m.__n2 = cgo.SnglSpanNew()
@@ -690,7 +730,7 @@ pass sha256:4fdce193761eaeed9449c468ca68a1ad
 -- run/go/fyne --
 pass sha256:4cb40b2485d7b46ef74a968719b557cc
 -- run/go/gtk4 --
-pass sha256:21c2ea03da3d97b2392cfbf6b8d12d4e
+pass sha256:b884b6b267b2a9fdec6f1fd393c40771
 -- run/kotlin/android --
 pass sha256:87c510780598cdd0670e5695b4a347df
 -- run/none/html --

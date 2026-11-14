@@ -550,6 +550,24 @@ type Timer__inst struct {
 	__root              cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	n__inst0             int
 	periods__inst0       []time.Duration
@@ -584,6 +602,28 @@ func __identified0(__xs []time.Duration) []__anon_id_elem_0cec9d {
 		__out = append(__out, __anon_id_elem_0cec9d{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -807,7 +847,7 @@ func snglBuild() {
 	__renderSlot0(m.__n0)
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n__inst0))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -1086,6 +1126,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:abda5ec747ea10f52ff54e8d4f4dfd34
 -- run/go/gtk4 --
-pass sha256:af1c5e803349f25d0446dda240a0d0ee
+pass sha256:e3eeabd6a3eb135480a5cc6f155af6c8
 -- run/none/html --
 pass sha256:905ba1e32e05a0a371dec6ea3e5370b3

@@ -303,8 +303,18 @@ func isCConvert(e ir.Expr) bool {
 // the translator writes.
 func insertCContext(c *ir.Call) {
 	params := c.Func.Params
+	// A parameter the compiler passes is bound by no position, so only an
+	// argument naming it passes it: one GLib declares before a parameter
+	// the caller passes (g_signal_connect_data's flags) would otherwise
+	// read as passed by the argument at its position.
 	omitted := func(p *ir.Param) bool {
-		return (p.CompilerPassed() || p.Default != nil) && !p.Receiver && c.ArgFor(p.Name) == nil
+		if p.Receiver {
+			return false
+		}
+		if p.CompilerPassed() {
+			return !slices.ContainsFunc(c.Args, func(a ir.CallArg) bool { return a.Name == p.Name })
+		}
+		return p.Default != nil && c.ArgFor(p.Name) == nil
 	}
 	passed := 0
 	for _, p := range params {

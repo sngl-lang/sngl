@@ -419,6 +419,24 @@ type __child0__inst struct {
 	__n0        cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	shown          bool
 	visible__inst0 bool
@@ -433,6 +451,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __refreshPage_shown() {
 	for _, __inst3_live_uv := range m.__inst3_live {
@@ -540,11 +580,11 @@ func Flip__new(n int) *Flip__inst {
 	__self := &Flip__inst{__prop_n: n, __slot0: []cgo.Widget{}, __inst1_live: []*__child0__inst{}}
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n4, Look{Spaced: true, Spacing: 6})
 	__self.Go__r0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Go__r0)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Go__r0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.Go__r0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Go__r0, Look{})
 	cgo.SnglSignalConnect(__self.Go__r0, "clicked", func() {
 		__self.Flips = (__self.Flips + 1)
 		m.shown = !m.shown
@@ -554,7 +594,7 @@ func Flip__new(n int) *Flip__inst {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Go__r0)))
 	__self.Line = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.Line, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
-	cgo.SnglSetLook(__self.Line, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Line, Look{})
 	cgo.SnglOnClick(__self.Line, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Line)))
@@ -659,7 +699,7 @@ func __child0__new(__p0 int) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, (fmt.Sprint(__self.__prop___p0) + " extra"))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -692,10 +732,10 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.shown))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	__renderSlot1(m.__n6)
 	cgo.SnglToplevelAppend(m.__n1, m.__n6)
@@ -991,6 +1031,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:777b8828e8b149389ba6283c14c26657
 -- run/go/gtk4 --
-pass sha256:885e963f5ce536155990dafbf342ea47
+pass sha256:39308433b059d6e1d35862632f41427e
 -- run/none/html --
 pass sha256:9f0bd7ddb6a7b470bacec53bc94a80be

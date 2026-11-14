@@ -891,6 +891,24 @@ type Row__inst struct {
 	__n1         cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	shown          bool
 	name           string
@@ -913,11 +931,33 @@ func Row__shout(this *Row__inst) string {
 	return out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func Row__new(label string) *Row__inst {
 	__self := &Row__inst{__prop_label: label}
 	__self.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n1, Row__shout(__self))
-	cgo.SnglSetLook(__self.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n1, Look{})
 	cgo.SnglOnClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
@@ -1031,17 +1071,17 @@ func snglInit() {
 func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
 	m.hide = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.hide)), "h")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.hide)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.hide, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.hide, Look{})
 	cgo.SnglSignalConnect(m.hide, "clicked", Hide_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.hide)))
 	for _, x := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "p", Elem: "p"}, __anon_id_elem_c6a818{Id: "q", Elem: "q"}} {
 		__n2 := cgo.SnglTextNew()
 		cgo.SnglTextSetValue(__n2, Shout__inst0(x))
-		cgo.SnglSetLook(__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+		_setLook(__n2, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(__n2)))
 		__n3 := cgo.SnglTextNew()
 		cgo.SnglTextSetValue(__n3, func() []string {
@@ -1051,7 +1091,7 @@ func snglBuild() {
 			}
 			return __out
 		}()[0])
-		cgo.SnglSetLook(__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+		_setLook(__n3, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(__n3)))
 	}
 	__renderSlot0(m.__n0)
@@ -1548,7 +1588,7 @@ pass sha256:0b0834dd6600e3ab03fd7f00aee9ab83
 -- run/go/fyne --
 pass sha256:b06928c139554f0715e152e7cba57243
 -- run/go/gtk4 --
-pass sha256:9a611b5ab20d69f52cea622a09a4dc02
+pass sha256:ee76b131ed19b8dfd17a9e22c5c5a092
 -- run/kotlin/android --
 pass sha256:def9e3220d52cba240831df7c68cefb0
 -- run/none/html --

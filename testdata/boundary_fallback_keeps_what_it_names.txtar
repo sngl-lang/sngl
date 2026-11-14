@@ -546,6 +546,24 @@ type __child0__inst struct {
 	__n0        cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	tries          int
 	__failed0      bool
@@ -562,6 +580,28 @@ var m = &snglState{}
 
 func Sorry() string {
 	return ("failed after " + fmt.Sprint(m.tries))
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -615,7 +655,7 @@ func __renderSlot0(parent cgo.Widget) {
 					__n3 := cgo.GtkButtonNew()
 					cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__n3)), "boom")
 					cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__n3)), cgo.CGboolean(1))
-					cgo.SnglSetLook(__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n3, Look{})
 					cgo.SnglSignalConnect(__n3, "clicked", func() {
 						func() {
 							defer func() {
@@ -686,7 +726,7 @@ func __child0__new(__p0 string) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0)
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -915,6 +955,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9aaf23777b694691f27d526927868272
 -- run/go/gtk4 --
-pass sha256:5bcce1833da0d9d7b8e16ec115ae6d3b
+pass sha256:6fbd676856d7b27a40f4c45cf4336e94
 -- run/none/html --
 pass sha256:5e8abe2c30616206b2cea19d92489528

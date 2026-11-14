@@ -1537,6 +1537,24 @@ type __child1__inst struct {
 	__n2__el    cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	txt            string
 	xs             []int
@@ -1571,6 +1589,28 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __renderSlot1(parent cgo.Widget) {
@@ -1681,7 +1721,7 @@ func Show__new(n int, __ctx_label string) *Show__inst {
 	__self.__n0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((((__self.__prop___ctx_label + " ") + fmt.Sprint(__self.__prop_n)) + " ") + fmt.Sprint(__self.K)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglSignalConnect(__self.__n0, "clicked", func() {
 		__self.K = (__self.K + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((((__self.__prop___ctx_label + " ") + fmt.Sprint(__self.__prop_n)) + " ") + fmt.Sprint(__self.K)))
@@ -1703,11 +1743,11 @@ func Page__new(__ctx_label string) *Page__inst {
 	__self := &Page__inst{__prop___ctx_label: __ctx_label, On: true, __slot0: []cgo.Widget{}, __inst1_live: []*__child0__inst{}, __inst2_live: []*__child1__inst{}}
 	__self.__n5 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n5)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n5, Look{Spaced: true, Spacing: 6})
 	__self.__n8 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n8)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n8)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.__n8, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n8, Look{})
 	cgo.SnglSignalConnect(__self.__n8, "clicked", func() {
 		__self.On = !__self.On
 		Page__renderSlot0(__self, __self.__n5)
@@ -1853,7 +1893,7 @@ func __child0__new(__p0 string) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
 	__self.__n9 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n9)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n9, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n9, Look{Spaced: true, Spacing: 6})
 	__self.__n1 = Show__new(1, __self.__prop___p0)
 	__self.__n1__el = __self.__n1.__root
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n9)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1__el)))
@@ -1879,7 +1919,7 @@ func __child1__new(__p0 string) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0}
 	__self.__n10 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n10)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n10, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n10, Look{Spaced: true, Spacing: 6})
 	__self.__n2 = Show__new(2, __self.__prop___p0)
 	__self.__n2__el = __self.__n2.__root
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n2__el)))
@@ -1919,11 +1959,11 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
 	m.__n7 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n7)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n7, Look{Spaced: true, Spacing: 6})
 	m.__n11 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n11)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n11)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n11, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n11, Look{})
 	cgo.SnglSignalConnect(m.__n11, "clicked", __n11_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n11)))
 	__renderSlot1(m.__n7)
@@ -2331,6 +2371,6 @@ pass sha256:42687eac7013e390cfc0d4a2ef3fb2cf
 -- run/go/fyne --
 pass sha256:35ec395dee8bf5785d13ad2e06598ccd
 -- run/go/gtk4 --
-pass sha256:9314922d83a6cfba6cbef977e944b312
+pass sha256:9ed5a8a3030c4d4c87c825c0c179381f
 -- run/none/html --
 pass sha256:500954e11540027f6cc4044aae3b6c2a

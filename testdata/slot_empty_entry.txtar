@@ -691,6 +691,24 @@ func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	shown__inst0   bool
 	visible__inst0 bool
@@ -706,6 +724,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
@@ -726,7 +766,7 @@ func __renderSlot0(parent cgo.Widget) {
 				if m.shown__inst0 {
 					__n2 := cgo.SnglTextNew()
 					cgo.SnglTextSetValue(__n2, "shown")
-					cgo.SnglSetLook(__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n2, Look{})
 					cgo.SnglOnClick(__n2, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
@@ -761,13 +801,13 @@ func __n0_visible_handler(__visible bool) {
 
 func Show_clicked_handler() {
 	m.shown__inst0 = true
-	var __lt19 string
+	var __lt22 string
 	if !m.shown__inst0 {
-		__lt19 = "boxed empty"
+		__lt22 = "boxed empty"
 	} else {
-		__lt19 = "boxed full"
+		__lt22 = "boxed full"
 	}
-	cgo.SnglTextSetValue(m.__n1, __lt19)
+	cgo.SnglTextSetValue(m.__n1, __lt22)
 	__renderSlot0(m.__n0)
 }
 
@@ -785,30 +825,30 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	__lt17 := "boxed full"
+	__lt20 := "boxed full"
 	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, __lt17)
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	cgo.SnglTextSetValue(m.__n3, __lt20)
+	_setLook(m.__n3, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
 	m.__n4 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n4, "inner")
-	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n4, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
-	var __lt18 string
+	var __lt21 string
 	if !m.shown__inst0 {
-		__lt18 = "boxed empty"
+		__lt21 = "boxed empty"
 	} else {
-		__lt18 = "boxed full"
+		__lt21 = "boxed full"
 	}
 	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, __lt18)
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	cgo.SnglTextSetValue(m.__n1, __lt21)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	__renderSlot0(m.__n0)
 	m.show = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.show)), "show")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.show)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.show, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.show, Look{})
 	cgo.SnglSignalConnect(m.show, "clicked", Show_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.show)
 	cgo.SnglAppAttach(m.__n0)
@@ -990,7 +1030,7 @@ pass sha256:f9fb60518281ad604b7c5ab537659ff0
 -- run/go/fyne --
 pass sha256:9870d70a99e268b6e5ffd5df24c2a02e
 -- run/go/gtk4 --
-pass sha256:402f9690b737a701a037e2a09f022351
+pass sha256:6d29a9f355453e02a73664bf804f103e
 -- run/kotlin/android --
 pass sha256:b02cf01fcd90b2811d415051aa9acc81
 -- run/none/html --

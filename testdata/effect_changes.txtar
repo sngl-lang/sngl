@@ -1342,6 +1342,24 @@ type Holder struct {
 	Other int
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	todos__inst0        []Todo
 	saved__inst0        []string
@@ -1409,6 +1427,28 @@ func Reset__inst0() {
 	m.todos__inst0 = m.todos__inst0[:0]
 	m.__effect0_dirty = true
 	__effects0_settle()
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __effect0_update() {
@@ -1598,52 +1638,52 @@ func snglBuild() {
 	m.__n3 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n3)), "add")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{})
 	cgo.SnglSignalConnect(m.__n3, "clicked", __n3_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
 	m.__n4 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n4)), "toggle")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n4, Look{})
 	cgo.SnglSignalConnect(m.__n4, "clicked", __n4_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
 	m.__n5 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n5)), "drop")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n5, Look{})
 	cgo.SnglSignalConnect(m.__n5, "clicked", __n5_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n5)
 	m.__n6 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "reset")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{})
 	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n6)
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, strings.Join(m.saved__inst0, ","))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n7 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n7)), "push")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n7, Look{})
 	cgo.SnglSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n7)
 	m.__n8 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n8)), "sibling")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n8, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n8, Look{})
 	cgo.SnglSignalConnect(m.__n8, "clicked", __n8_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n8)
 	m.__n9 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n9)), "swap")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n9)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n9, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n9, Look{})
 	cgo.SnglSignalConnect(m.__n9, "clicked", __n9_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n9)
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.n__inst0))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -2203,7 +2243,7 @@ pass sha256:d41fb2d42c7ad4eb86be99b398b02b42
 -- run/go/fyne --
 pass sha256:27e095f35fefbb610b95f04a565f7dac
 -- run/go/gtk4 --
-pass sha256:45ccb9033e104ce7805f172df2965fb2
+pass sha256:df03ac6418f281b816b58229e5dc0716
 -- run/kotlin/android --
 pass sha256:4f142e88c0281d5e06532d73a21d336c
 -- run/none/html --

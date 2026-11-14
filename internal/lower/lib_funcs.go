@@ -92,19 +92,44 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
 }
 
 // placedProtocols is each protocol function of an #[intrinsic] component pkg
-// names, in a stable order.
+// names, in a stable order, through the bodies of the library components it
+// names: the platform's override of `ui.tabs` is a library body that names
+// the Tabs node, which a later pass splices into the program, after this
+// pass and CMarshal have run.
 func placedProtocols(pkg *ir.Package) []*ir.Func {
 	var comps []*ir.Component
-	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
-		t := e.ExprType()
-		if t == nil {
-			return nil
+	walked := map[*ir.Component]bool{}
+	var bodies []*ir.Component
+	note := func(c *ir.Component) {
+		if c == nil {
+			return
 		}
-		if c, ok := t.Decl.(*ir.Component); ok && c.Protocol != nil && !slices.Contains(comps, c) {
+		if c.Protocol != nil && !slices.Contains(comps, c) {
 			comps = append(comps, c)
 		}
+		if c.PkgPath() != "" && !walked[c] {
+			walked[c] = true
+			bodies = append(bodies, c)
+		}
+	}
+	visit := func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.NodeInst:
+			note(x.Component)
+		case ir.Expr:
+			if t := x.ExprType(); t != nil {
+				c, _ := t.Decl.(*ir.Component)
+				note(c)
+			}
+		}
 		return nil
-	})
+	}
+	_ = ir.Walk(pkg, visit)
+	for len(bodies) > 0 {
+		c := bodies[0]
+		bodies = bodies[1:]
+		_ = ir.Walk(c, visit)
+	}
 	var fns []*ir.Func
 	add := func(fn *ir.Func) {
 		if fn != nil && len(fn.Block) > 0 && !slices.Contains(fns, fn) {

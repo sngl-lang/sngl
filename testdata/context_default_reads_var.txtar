@@ -501,6 +501,24 @@ import (
 	"runtime"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	initialTheme   string
 	visible__inst0 bool
@@ -509,6 +527,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func Home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -528,7 +568,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
 	m.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n0, m.initialTheme)
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.home, m.__n0)
 	cgo.SnglAppAttach(m.home)
 }
@@ -639,7 +679,7 @@ pass sha256:5078b74e035f11c4e2100efa20ff422f
 -- run/go/fyne --
 pass sha256:ccf1b76fa8ea47fc80c91a82a6917a90
 -- run/go/gtk4 --
-pass sha256:eea2bd09f3c0f252fb4a1887f84c546e
+pass sha256:41ec60c08a3fbaec382f48f3a03eed31
 -- run/kotlin/android --
 pass sha256:8a2242c94c50161d022239571774bf60
 -- run/none/html --

@@ -578,6 +578,24 @@ import (
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	visible bool
 	__n0    cgo.Widget
@@ -585,6 +603,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __wrote_visible() {
 	cgo.GtkWidgetSetVisible((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), cgo.CGboolean(func() int {
@@ -611,11 +651,11 @@ func snglBuild() {
 		}
 	}()))
 	cgo.GtkPopoverSetAutohide((cgo.PGtkPopover)(unsafe.Pointer(m.__n0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	m.__n1 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), "toggle")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.GtkPopoverSetChild((cgo.PGtkPopover)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -814,7 +854,7 @@ pass sha256:4e5686bef81d984feed4c15e3fff6b32
 -- run/go/fyne --
 pass sha256:fb7e368339f222bb73669c4232461c03
 -- run/go/gtk4 --
-pass sha256:fd0b66849d49ae49e328fd289d05cf9b
+pass sha256:b92ea2dd8dff2ca201c6407ddd8e9b18
 -- run/kotlin/android --
 pass sha256:0ae3c0e43131e8d418649f2ee5b87c40
 -- run/none/html --

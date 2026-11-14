@@ -157,7 +157,7 @@ sha256:eae507fb4d2a2eb3433ca1ca28e6d5af
   ]
 }
 -- testrun/gtk4/go/hash.sngl/page/1 --
-sha256:ec4d0970fceb1109d72058ba399b136d
+sha256:7c407f58d5365a4266e02f340d74e0fb
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:ec4d0970fceb1109d72058ba399b136d
   ]
 }
 -- testrun/gtk4/go/tilde.sngl/page/1 --
-sha256:a2571d70c9a0a456778f31e9e995938c
+sha256:f27e70a2b57f07b7eb8fe261e68fcab0
 {
   "results": [
     {

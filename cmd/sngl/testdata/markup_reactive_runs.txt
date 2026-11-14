@@ -157,7 +157,7 @@ sha256:4fedc582f0edc66805b969e6a605e992
   ]
 }
 -- testrun/gtk4/go/para.sngl/main/1 --
-sha256:7c3fd68216aa8ba0ef3a213e8e2827e0
+sha256:2b67e1f42f1c00902b7f28b271464aaf
 {
   "results": [
     {

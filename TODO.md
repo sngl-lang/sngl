@@ -1051,6 +1051,8 @@ reaches it the same way.
      through `g_signal_handlers_block_matched`, its `NULL`s an `option`'s
      null. `choose.c` keeps only the calendar's select, whose call depends on
      GTK's version.
+   - Tabs are SNGL: what a widget holds is a `c.held` value kept with
+     `g_object_set_data_full` (`sngl:x/c`), and `tabs.c` is gone.
 
 ### Open questions
 

@@ -697,6 +697,24 @@ type Entry struct {
 	Href  string
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 var entries []Entry = []Entry{Entry{Title: "Home", Href: "/"}, Entry{Title: "About", Href: "/about.html"}}
 var labels map[string]string = map[string]string{"home": "Start", "about": "Us"}
 
@@ -713,6 +731,28 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -721,13 +761,13 @@ func __n0_visible_handler(__visible bool) {
 func __n5_clicked_handler() {
 	m.pick = ((m.pick + 1) % 2)
 	cgo.SnglTextSetValue(m.__n1, entries[m.pick].Title)
-	var __lt18 string
+	var __lt21 string
 	if m.pick == 0 {
-		__lt18 = "home"
+		__lt21 = "home"
 	} else {
-		__lt18 = "about"
+		__lt21 = "about"
 	}
-	m.key = __lt18
+	m.key = __lt21
 	cgo.SnglTextSetValue(m.__n2, func() string {
 		if __v, __ok := labels[m.key]; __ok {
 			return __v
@@ -750,16 +790,16 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	for _, e := range entries {
 		__n4 := cgo.SnglTextNew()
 		cgo.SnglTextSetValue(__n4, e.Title)
-		cgo.SnglSetLook(__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+		_setLook(__n4, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(__n4)))
 	}
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, entries[m.pick].Title)
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, func() string {
@@ -768,12 +808,12 @@ func snglBuild() {
 		}
 		return "?"
 	}())
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	m.__n5 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n5)), "next")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n5, Look{})
 	cgo.SnglSignalConnect(m.__n5, "clicked", __n5_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
@@ -862,6 +902,6 @@ pass sha256:f349a6f9495680894a6c75b6449f4cc8
 -- run/go/fyne --
 pass sha256:5789e9263f9a3b6167f98e484e4f1900
 -- run/go/gtk4 --
-pass sha256:caf8e94e41c56f4de30f9eea037871ae
+pass sha256:5053fc1f52f6ab0db2e453a94a42e65a
 -- run/none/html --
 pass sha256:2608b26bd2bc03c32f990746024e9d6e

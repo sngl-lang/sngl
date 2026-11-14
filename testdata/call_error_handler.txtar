@@ -1063,6 +1063,24 @@ type ErrorEvent struct {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	caught    string
 	after     string
@@ -1106,6 +1124,28 @@ func Check(n int) {
 func Scaled(n int) int {
 	Check(n)
 	return (n * 10)
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func InHandler_clicked_handler() {
@@ -1186,26 +1226,26 @@ func snglBuild() {
 	m.inHandler = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.inHandler)), "Handler")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.inHandler)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.inHandler, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.inHandler, Look{})
 	cgo.SnglSignalConnect(m.inHandler, "clicked", InHandler_clicked_handler)
 	m.inFunc = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.inFunc)), "Func")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.inFunc)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.inFunc, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.inFunc, Look{})
 	cgo.SnglSignalConnect(m.inFunc, "clicked", InFunc_clicked_handler)
 	m.deep = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.deep)), "Deep")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.deep)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.deep, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.deep, Look{})
 	cgo.SnglSignalConnect(m.deep, "clicked", Deep_clicked_handler)
 	m.fine = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.fine)), "Fine")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.fine)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.fine, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.fine, Look{})
 	cgo.SnglSignalConnect(m.fine, "clicked", Fine_clicked_handler)
 	m.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.inHandler)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.inFunc)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.deep)))
@@ -1605,7 +1645,7 @@ pass sha256:99b3dcd8671d39e7e03f644521100d14
 -- run/go/fyne --
 pass sha256:e20307feead2362fec0efd1f1883448d
 -- run/go/gtk4 --
-pass sha256:c836d501a93cb136f99350bee110dc6c
+pass sha256:b9461c371f0e1702fc223c911557c6c1
 -- run/go/html --
 pass sha256:f2377d5d68c73a7bf1329c1084725253
 -- run/kotlin/android --

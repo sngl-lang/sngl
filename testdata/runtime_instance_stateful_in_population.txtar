@@ -1285,6 +1285,24 @@ type Card__slot0__inst struct {
 	__n2__el     cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	items          []int
 	foots          string
@@ -1318,14 +1336,36 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func Counter__new(tag string, seen func(string)) *Counter__inst {
 	__self := &Counter__inst{__prop_tag: tag, __prop_seen: seen, __effect0_live: []string{}, __effect0_desired: []string{}}
 	__self.__n5 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n5)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n5, Look{Spaced: true, Spacing: 6})
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, ((("counter " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
@@ -1395,10 +1435,10 @@ func Card__slot0__new(start int, __p0 __anon_id_elem_cdfd47, __on0 func(string))
 	__self.K = (__self.__prop_start * 2)
 	__self.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n6)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(__self.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(__self.__n6, Look{Spaced: true, Spacing: 6})
 	__self.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n1, ("card " + fmt.Sprint(__self.K)))
-	cgo.SnglSetLook(__self.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n1, Look{})
 	cgo.SnglOnClick(__self.__n1, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)))
@@ -1543,7 +1583,7 @@ func snglInit() {
 func snglBuild() {
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n4, Look{Spaced: true, Spacing: 6})
 	__renderSlot0(m.__n4)
 	cgo.SnglAppAttach(m.__n4)
 }
@@ -2140,7 +2180,7 @@ pass sha256:bc25d9bc0d9c7506976ebb6d2ea62d4d
 -- run/go/fyne --
 pass sha256:214c7a2495fb3cceb57a3c3469e479fc
 -- run/go/gtk4 --
-pass sha256:633f3d68c950b8443a6434a89f3b6298
+pass sha256:14e4ab5be862e0bd739b68711bb5b2d0
 -- run/kotlin/android --
 pass sha256:43176170a40a4642087c5a4ae005b84c
 -- run/none/html --

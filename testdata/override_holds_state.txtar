@@ -2218,350 +2218,350 @@ func LookOf(s Style) Look {
 }
 
 func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
-	var __lt2 float64
+	var __lt5 float64
 	if s.Width == nil {
-		__lt2 = 0.0
+		__lt5 = 0.0
 	} else {
-		__lt2 = max(((*(s.Width)).Px + (16.0 * ((*(s.Width)).Em + (*(s.Width)).Rem))), 0.0)
+		__lt5 = max(((*(s.Width)).Px + (16.0 * ((*(s.Width)).Em + (*(s.Width)).Rem))), 0.0)
 	}
-	var __lt3 float64
+	var __lt6 float64
 	if s.Height == nil {
-		__lt3 = 0.0
+		__lt6 = 0.0
 	} else {
-		__lt3 = max(((*(s.Height)).Px + (16.0 * ((*(s.Height)).Em + (*(s.Height)).Rem))), 0.0)
+		__lt6 = max(((*(s.Height)).Px + (16.0 * ((*(s.Height)).Em + (*(s.Height)).Rem))), 0.0)
 	}
-	var __lt4 float64
+	var __lt7 float64
 	if s.Flex == nil {
-		__lt4 = 0.0
+		__lt7 = 0.0
 	} else {
-		__lt4 = (*(s.Flex))
-	}
-	var __lt5 int
-	switch s.AlignItems {
-	case "start":
-		__lt5 = 1
-	case "center":
-		__lt5 = 2
-	case "end":
-		__lt5 = 3
-	case "baseline":
-		__lt5 = 4
-	default:
-		__lt5 = 0
-	}
-	var __lt6 int
-	switch s.TextAlign {
-	case "center":
-		__lt6 = 1
-	case "right":
-		__lt6 = 2
-	case "justify":
-		__lt6 = 3
-	case "left":
-		__lt6 = 4
-	default:
-		__lt6 = 0
-	}
-	var __lt7 int
-	if s.MaxLines == nil {
-		__lt7 = 0
-	} else {
-		__lt7 = (*(s.MaxLines))
+		__lt7 = (*(s.Flex))
 	}
 	var __lt8 int
-	switch s.WhiteSpace {
-	case "pre", "nowrap":
+	switch s.AlignItems {
+	case "start":
 		__lt8 = 1
-	case "preWrap", "preLine":
+	case "center":
 		__lt8 = 2
+	case "end":
+		__lt8 = 3
+	case "baseline":
+		__lt8 = 4
 	default:
 		__lt8 = 0
 	}
 	var __lt9 int
-	switch s.JustifyContent {
+	switch s.TextAlign {
 	case "center":
 		__lt9 = 1
-	case "end":
+	case "right":
 		__lt9 = 2
-	case "spaceBetween":
+	case "justify":
 		__lt9 = 3
-	case "spaceAround":
+	case "left":
 		__lt9 = 4
-	case "spaceEvenly":
-		__lt9 = 5
 	default:
 		__lt9 = 0
 	}
-	look := Look{Css: CssOf(s), Width: __lt2, Height: __lt3, Grow: __lt4, Cross: __lt5, TextAlign: __lt6, Lines: __lt7, Wrap: __lt8, Hidden: hidden, Cursor: s.Cursor, Justify: __lt9, Spaced: spaced, Spacing: spacing}
+	var __lt10 int
+	if s.MaxLines == nil {
+		__lt10 = 0
+	} else {
+		__lt10 = (*(s.MaxLines))
+	}
+	var __lt11 int
+	switch s.WhiteSpace {
+	case "pre", "nowrap":
+		__lt11 = 1
+	case "preWrap", "preLine":
+		__lt11 = 2
+	default:
+		__lt11 = 0
+	}
+	var __lt12 int
+	switch s.JustifyContent {
+	case "center":
+		__lt12 = 1
+	case "end":
+		__lt12 = 2
+	case "spaceBetween":
+		__lt12 = 3
+	case "spaceAround":
+		__lt12 = 4
+	case "spaceEvenly":
+		__lt12 = 5
+	default:
+		__lt12 = 0
+	}
+	look := Look{Css: CssOf(s), Width: __lt5, Height: __lt6, Grow: __lt7, Cross: __lt8, TextAlign: __lt9, Lines: __lt10, Wrap: __lt11, Hidden: hidden, Cursor: s.Cursor, Justify: __lt12, Spaced: spaced, Spacing: spacing}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt11 *Measurement
+	var __lt14 *Measurement
 	if s.MarginTop != nil {
-		__lt11 = s.MarginTop
+		__lt14 = s.MarginTop
 	} else {
-		var __lt10 *Measurement
+		var __lt13 *Measurement
 		if s.MarginY != nil {
-			__lt10 = s.MarginY
+			__lt13 = s.MarginY
 		} else {
-			__lt10 = s.Margin
+			__lt13 = s.Margin
 		}
-		__lt11 = __lt10
+		__lt14 = __lt13
 	}
-	var __lt13 *Measurement
+	var __lt16 *Measurement
 	if s.MarginRight != nil {
-		__lt13 = s.MarginRight
+		__lt16 = s.MarginRight
 	} else {
-		var __lt12 *Measurement
+		var __lt15 *Measurement
 		if s.MarginX != nil {
-			__lt12 = s.MarginX
+			__lt15 = s.MarginX
 		} else {
-			__lt12 = s.Margin
+			__lt15 = s.Margin
 		}
-		__lt13 = __lt12
+		__lt16 = __lt15
 	}
-	var __lt15 *Measurement
+	var __lt18 *Measurement
 	if s.MarginBottom != nil {
-		__lt15 = s.MarginBottom
+		__lt18 = s.MarginBottom
 	} else {
-		var __lt14 *Measurement
+		var __lt17 *Measurement
 		if s.MarginY != nil {
-			__lt14 = s.MarginY
+			__lt17 = s.MarginY
 		} else {
-			__lt14 = s.Margin
+			__lt17 = s.Margin
 		}
-		__lt15 = __lt14
+		__lt18 = __lt17
 	}
-	var __lt17 *Measurement
+	var __lt20 *Measurement
 	if s.MarginLeft != nil {
-		__lt17 = s.MarginLeft
+		__lt20 = s.MarginLeft
 	} else {
-		var __lt16 *Measurement
+		var __lt19 *Measurement
 		if s.MarginX != nil {
-			__lt16 = s.MarginX
+			__lt19 = s.MarginX
 		} else {
-			__lt16 = s.Margin
+			__lt19 = s.Margin
 		}
-		__lt17 = __lt16
+		__lt20 = __lt19
 	}
-	var __lt19 *Measurement
+	var __lt22 *Measurement
 	if s.PaddingTop != nil {
-		__lt19 = s.PaddingTop
+		__lt22 = s.PaddingTop
 	} else {
-		var __lt18 *Measurement
+		var __lt21 *Measurement
 		if s.PaddingY != nil {
-			__lt18 = s.PaddingY
+			__lt21 = s.PaddingY
 		} else {
-			__lt18 = s.Padding
+			__lt21 = s.Padding
 		}
-		__lt19 = __lt18
+		__lt22 = __lt21
 	}
-	var __lt21 *Measurement
+	var __lt24 *Measurement
 	if s.PaddingRight != nil {
-		__lt21 = s.PaddingRight
+		__lt24 = s.PaddingRight
 	} else {
-		var __lt20 *Measurement
+		var __lt23 *Measurement
 		if s.PaddingX != nil {
-			__lt20 = s.PaddingX
+			__lt23 = s.PaddingX
 		} else {
-			__lt20 = s.Padding
+			__lt23 = s.Padding
 		}
-		__lt21 = __lt20
+		__lt24 = __lt23
 	}
-	var __lt23 *Measurement
+	var __lt26 *Measurement
 	if s.PaddingBottom != nil {
-		__lt23 = s.PaddingBottom
+		__lt26 = s.PaddingBottom
 	} else {
-		var __lt22 *Measurement
+		var __lt25 *Measurement
 		if s.PaddingY != nil {
-			__lt22 = s.PaddingY
+			__lt25 = s.PaddingY
 		} else {
-			__lt22 = s.Padding
+			__lt25 = s.Padding
 		}
-		__lt23 = __lt22
+		__lt26 = __lt25
 	}
-	var __lt25 *Measurement
+	var __lt28 *Measurement
 	if s.PaddingLeft != nil {
-		__lt25 = s.PaddingLeft
+		__lt28 = s.PaddingLeft
 	} else {
-		var __lt24 *Measurement
+		var __lt27 *Measurement
 		if s.PaddingX != nil {
-			__lt24 = s.PaddingX
+			__lt27 = s.PaddingX
 		} else {
-			__lt24 = s.Padding
+			__lt27 = s.Padding
 		}
-		__lt25 = __lt24
-	}
-	var __lt27 string
-	if s.MinWidth == nil {
-		__lt27 = ""
-	} else {
-		var __lt26 float64
-		if s.MinWidth == nil {
-			__lt26 = 0.0
-		} else {
-			__lt26 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
-		}
-		__lt27 = (fmt.Sprint(__lt26) + "px")
-	}
-	var __lt28 string
-	if s.Color == nil {
-		__lt28 = ""
-	} else {
-		__lt28 = (*(s.Color)).Hex()
+		__lt28 = __lt27
 	}
 	var __lt30 string
-	if s.FontSize == nil {
+	if s.MinWidth == nil {
 		__lt30 = ""
 	} else {
 		var __lt29 float64
-		if s.FontSize == nil {
+		if s.MinWidth == nil {
 			__lt29 = 0.0
 		} else {
-			__lt29 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
+			__lt29 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
 		}
 		__lt30 = (fmt.Sprint(__lt29) + "px")
 	}
 	var __lt31 string
-	if s.FontFamily == "" {
+	if s.Color == nil {
 		__lt31 = ""
 	} else {
-		__lt31 = (("font-family: " + s.FontFamily) + "; ")
-	}
-	var __lt32 string
-	switch s.FontWeight {
-	case "normal":
-		__lt32 = "normal"
-	case "bold":
-		__lt32 = "bold"
-	case "bolder":
-		__lt32 = "bolder"
-	case "lighter":
-		__lt32 = "lighter"
-	default:
-		__lt32 = ""
+		__lt31 = (*(s.Color)).Hex()
 	}
 	var __lt33 string
-	switch s.FontStyle {
-	case "normal":
-		__lt33 = "normal"
-	case "italic":
-		__lt33 = "italic"
-	case "oblique":
-		__lt33 = "oblique"
-	default:
+	if s.FontSize == nil {
 		__lt33 = ""
+	} else {
+		var __lt32 float64
+		if s.FontSize == nil {
+			__lt32 = 0.0
+		} else {
+			__lt32 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
+		}
+		__lt33 = (fmt.Sprint(__lt32) + "px")
 	}
 	var __lt34 string
-	if s.Background == nil {
+	if s.FontFamily == "" {
 		__lt34 = ""
 	} else {
-		__lt34 = (*(s.Background)).Hex()
+		__lt34 = (("font-family: " + s.FontFamily) + "; ")
+	}
+	var __lt35 string
+	switch s.FontWeight {
+	case "normal":
+		__lt35 = "normal"
+	case "bold":
+		__lt35 = "bold"
+	case "bolder":
+		__lt35 = "bolder"
+	case "lighter":
+		__lt35 = "lighter"
+	default:
+		__lt35 = ""
 	}
 	var __lt36 string
-	if s.BorderRadius == nil {
+	switch s.FontStyle {
+	case "normal":
+		__lt36 = "normal"
+	case "italic":
+		__lt36 = "italic"
+	case "oblique":
+		__lt36 = "oblique"
+	default:
 		__lt36 = ""
-	} else {
-		var __lt35 float64
-		if s.BorderRadius == nil {
-			__lt35 = 0.0
-		} else {
-			__lt35 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
-		}
-		__lt36 = (fmt.Sprint(__lt35) + "px")
 	}
 	var __lt37 string
-	if s.BorderColor == nil {
+	if s.Background == nil {
 		__lt37 = ""
 	} else {
-		__lt37 = (*(s.BorderColor)).Hex()
+		__lt37 = (*(s.Background)).Hex()
 	}
 	var __lt39 string
-	if s.BorderWidth == nil {
+	if s.BorderRadius == nil {
 		__lt39 = ""
 	} else {
 		var __lt38 float64
-		if s.BorderWidth == nil {
+		if s.BorderRadius == nil {
 			__lt38 = 0.0
 		} else {
-			__lt38 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
+			__lt38 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
 		}
 		__lt39 = (fmt.Sprint(__lt38) + "px")
 	}
 	var __lt40 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt40 = "solid"
-	case "dashed":
-		__lt40 = "dashed"
-	case "dotted":
-		__lt40 = "dotted"
-	case "double":
-		__lt40 = "double"
-	case "none":
-		__lt40 = "none"
-	default:
-		var __lt41 string
-		if s.BorderWidth != nil {
-			__lt41 = "solid"
-		} else {
-			__lt41 = ""
-		}
-		__lt40 = __lt41
+	if s.BorderColor == nil {
+		__lt40 = ""
+	} else {
+		__lt40 = (*(s.BorderColor)).Hex()
 	}
 	var __lt42 string
-	if s.Border == "" {
+	if s.BorderWidth == nil {
 		__lt42 = ""
 	} else {
-		__lt42 = (("border: " + s.Border) + "; ")
+		var __lt41 float64
+		if s.BorderWidth == nil {
+			__lt41 = 0.0
+		} else {
+			__lt41 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
+		}
+		__lt42 = (fmt.Sprint(__lt41) + "px")
 	}
 	var __lt43 string
-	if s.BorderBottom == "" {
-		__lt43 = ""
-	} else {
-		__lt43 = (("border-bottom: " + s.BorderBottom) + "; ")
-	}
-	var __lt44 string
-	if s.BorderLeft == "" {
-		__lt44 = ""
-	} else {
-		__lt44 = (("border-left: " + s.BorderLeft) + "; ")
+	switch s.BorderStyle {
+	case "solid":
+		__lt43 = "solid"
+	case "dashed":
+		__lt43 = "dashed"
+	case "dotted":
+		__lt43 = "dotted"
+	case "double":
+		__lt43 = "double"
+	case "none":
+		__lt43 = "none"
+	default:
+		var __lt44 string
+		if s.BorderWidth != nil {
+			__lt44 = "solid"
+		} else {
+			__lt44 = ""
+		}
+		__lt43 = __lt44
 	}
 	var __lt45 string
-	if s.Opacity == nil {
+	if s.Border == "" {
 		__lt45 = ""
 	} else {
-		__lt45 = fmt.Sprint((*(s.Opacity)))
+		__lt45 = (("border: " + s.Border) + "; ")
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt11)) + Decl("margin-right", Length(__lt13))) + Decl("margin-bottom", Length(__lt15))) + Decl("margin-left", Length(__lt17))) + Decl("padding-top", Length(__lt19))) + Decl("padding-right", Length(__lt21))) + Decl("padding-bottom", Length(__lt23))) + Decl("padding-left", Length(__lt25))) + Decl("min-width", __lt27)) + Decl("color", __lt28)) + Decl("font-size", __lt30)) + __lt31) + Decl("font-weight", __lt32)) + Decl("font-style", __lt33)) + Decl("background", __lt34)) + Decl("border-radius", __lt36)) + Decl("border-color", __lt37)) + Decl("border-width", __lt39)) + Decl("border-style", __lt40)) + __lt42) + __lt43) + __lt44) + Decl("opacity", __lt45))
+	var __lt46 string
+	if s.BorderBottom == "" {
+		__lt46 = ""
+	} else {
+		__lt46 = (("border-bottom: " + s.BorderBottom) + "; ")
+	}
+	var __lt47 string
+	if s.BorderLeft == "" {
+		__lt47 = ""
+	} else {
+		__lt47 = (("border-left: " + s.BorderLeft) + "; ")
+	}
+	var __lt48 string
+	if s.Opacity == nil {
+		__lt48 = ""
+	} else {
+		__lt48 = fmt.Sprint((*(s.Opacity)))
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt14)) + Decl("margin-right", Length(__lt16))) + Decl("margin-bottom", Length(__lt18))) + Decl("margin-left", Length(__lt20))) + Decl("padding-top", Length(__lt22))) + Decl("padding-right", Length(__lt24))) + Decl("padding-bottom", Length(__lt26))) + Decl("padding-left", Length(__lt28))) + Decl("min-width", __lt30)) + Decl("color", __lt31)) + Decl("font-size", __lt33)) + __lt34) + Decl("font-weight", __lt35)) + Decl("font-style", __lt36)) + Decl("background", __lt37)) + Decl("border-radius", __lt39)) + Decl("border-color", __lt40)) + Decl("border-width", __lt42)) + Decl("border-style", __lt43)) + __lt45) + __lt46) + __lt47) + Decl("opacity", __lt48))
 	return css
 }
 
 func Decl(name string, value string) string {
-	var __lt46 string
+	var __lt49 string
 	if value == "" {
-		__lt46 = ""
+		__lt49 = ""
 	} else {
-		__lt46 = (((name + ": ") + value) + "; ")
+		__lt49 = (((name + ": ") + value) + "; ")
 	}
-	return __lt46
+	return __lt49
 }
 
 func Length(m__r0 *Measurement) string {
-	var __lt48 string
+	var __lt51 string
 	if m__r0 == nil {
-		__lt48 = ""
+		__lt51 = ""
 	} else {
-		var __lt47 float64
+		var __lt50 float64
 		if m__r0 == nil {
-			__lt47 = 0.0
+			__lt50 = 0.0
 		} else {
-			__lt47 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+			__lt50 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 		}
-		__lt48 = (fmt.Sprint(__lt47) + "px")
+		__lt51 = (fmt.Sprint(__lt50) + "px")
 	}
-	return __lt48
+	return __lt51
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -3860,7 +3860,7 @@ pass sha256:4c20ce59a916ad615577afac63c41f22
 -- run/go/fyne --
 pass sha256:9f4183e010ca76259e7041be6a2105b9
 -- run/go/gtk4 --
-pass sha256:bca0b35ab3544d9d4fee7ea26141a867
+pass sha256:e08b1642e4457a5812db8a5167e402b8
 -- run/kotlin/android --
 pass sha256:200bf45967b65b09fb943c19e15a8cbd
 -- run/none/html --

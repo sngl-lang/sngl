@@ -2238,6 +2238,10 @@ func typeToGo(t *ir.Type, at site) string {
 		return "any"
 	}
 	switch t.Kind {
+	case ir.TypeAny:
+		// What a Go wrapper takes and answers for a value C holds, whose
+		// type is the program's (internal/cgogen).
+		return "any"
 	case ir.TypeBool:
 		return "bool"
 	case ir.TypeInt:

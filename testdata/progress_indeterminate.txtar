@@ -500,6 +500,24 @@ import (
 	"unsafe"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	__n0           cgo.Widget
@@ -508,6 +526,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
@@ -528,13 +568,13 @@ func snglBuild() {
 	cgo.GtkProgressBarSetFraction((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n1)), 0.2)
 	cgo.GtkProgressBarSetText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n1)), "")
 	cgo.GtkProgressBarSetShowText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n1)), cgo.CGboolean(0))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n4 = cgo.GtkProgressBarNew()
 	cgo.GtkProgressBarSetFraction((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n4)), 0.0)
 	cgo.GtkProgressBarSetText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n4)), "working")
 	cgo.GtkProgressBarSetShowText((cgo.PGtkProgressBar)(unsafe.Pointer(m.__n4)), cgo.CGboolean(0))
-	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n4, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -645,7 +685,7 @@ pass sha256:9590150ea63a6d86fb51b6cf26cb1aa6
 -- run/go/fyne --
 pass sha256:59abfe38f664f8b16684ba4fce7475e2
 -- run/go/gtk4 --
-pass sha256:b747431a72cd83cdbef708084744cf7c
+pass sha256:e4cee531f28c46cb7ca2c08bb8f5ddf1
 -- run/kotlin/android --
 pass sha256:609436404954e795a73f48af8665a3df
 -- run/none/html --

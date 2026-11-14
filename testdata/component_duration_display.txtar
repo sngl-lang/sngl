@@ -591,6 +591,24 @@ func snglStrDuration(v time.Duration) string {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	short  time.Duration
 	long   time.Duration
@@ -602,6 +620,28 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func snglInit() {
 	m = &snglState{}
 	m.short = (time.Duration(100) * time.Millisecond)
@@ -611,18 +651,18 @@ func snglInit() {
 func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
 	m.sum = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.sum, snglStrDuration((m.short + m.long)))
-	cgo.SnglSetLook(m.sum, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.sum, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.sum)))
 	m.trunc = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.trunc, fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
-	cgo.SnglSetLook(m.trunc, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.trunc, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.trunc)))
 	m.scaled = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.scaled, fmt.Sprint(int((m.short*3)/time.Millisecond)))
-	cgo.SnglSetLook(m.scaled, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.scaled, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.scaled)))
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -948,7 +988,7 @@ pass sha256:4657a36ed97500dec96458b00a87f630
 -- run/go/fyne --
 pass sha256:c356e21e9e95d315eb726169541728ae
 -- run/go/gtk4 --
-pass sha256:b974a1a2c35bdaee8f9aeaa730977b18
+pass sha256:4ca8c83ec0a1f0571adab94c66f01dd4
 -- run/kotlin/android --
 pass sha256:11ecdf0e9648925e3d7b30a31ce464a3
 -- run/none/html --

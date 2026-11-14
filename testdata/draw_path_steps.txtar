@@ -797,6 +797,24 @@ type Point struct {
 	Y float64
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -826,6 +844,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func ArcTo(ctx cgo.CairoContext, from Point, corner Point, to Point, r float64) Point {
 	a := TangentArc(from, corner, to, r)
@@ -901,11 +941,11 @@ func __n0_visible_handler(__visible bool) {
 func __drawing0_paint_handler(ctx cgo.CairoContext) {
 	at := Point{}
 	cgo.CairoSave(ctx)
-	var __lt17 []_step__record
+	var __lt20 []_step__record
 	if m.closed__inst0 {
-		__lt17 = []_step__record{_step__record{Op: "close"}}
+		__lt20 = []_step__record{_step__record{Op: "close"}}
 	} else {
-		__lt17 = []_step__record{}
+		__lt20 = []_step__record{}
 	}
 	for _, c := range slices.Concat([]_step__record{_step__record{Op: "moveTo", X: 4.0, Y: 12.0}}, func() []_step__record {
 		__out := make([]_step__record, len(m.corners__inst0))
@@ -913,7 +953,7 @@ func __drawing0_paint_handler(ctx cgo.CairoContext) {
 			__out[__i] = func(c Point) _step__record { return _step__record{Op: "lineTo", X: c.X, Y: c.Y} }(__item)
 		}
 		return __out
-	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt17) {
+	}(), []_step__record{_step__record{Op: "bezierTo", X: 56.0, Y: 36.0, Cx1: 34.0, Cy1: 12.0, Cx2: 44.0, Cy2: 12.0}, _step__record{Op: "arcTo", X: 40.0, Y: 12.0, Cx1: 56.0, Cy1: 12.0, R: 4.0}}, __lt20) {
 		if c.Op == "moveTo" {
 			cgo.CairoMoveTo(ctx, c.X, c.Y)
 			at = Point{X: c.X, Y: c.Y}
@@ -963,7 +1003,7 @@ func snglBuild() {
 	m.__n1 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), "close")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglSignalConnect(m.__n1, "clicked", __n1_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -1511,7 +1551,7 @@ pass sha256:6a1bd87b00a49c61b63cb1df65276bdc
 -- run/go/fyne --
 pass sha256:5646c6196dc7557d5e9ae98cf2867b16
 -- run/go/gtk4 --
-pass sha256:baaea8675bc446eae9ae220a92574558
+pass sha256:0261021d3d6652ada17fd9fa994dfb3b
 -- run/kotlin/android --
 pass sha256:1d5b8036d1323fef3d2d11019b0482af
 -- run/none/html --

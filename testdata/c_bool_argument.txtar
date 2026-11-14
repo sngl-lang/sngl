@@ -603,6 +603,24 @@ import (
 	"unsafe"
 )
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	on             bool
 	v              int
@@ -613,6 +631,28 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -620,13 +660,13 @@ func __n0_visible_handler(__visible bool) {
 
 func __n1_clicked_handler() {
 	m.on = !m.on
-	var __lt17 int
+	var __lt20 int
 	if m.on {
-		__lt17 = 1
+		__lt20 = 1
 	} else {
-		__lt17 = 0
+		__lt20 = 0
 	}
-	m.v = int(C.abs(C.int(__lt17)))
+	m.v = int(C.abs(C.int(__lt20)))
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.v))
 }
 
@@ -645,7 +685,7 @@ func snglBuild() {
 	m.__n1 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.v))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglSignalConnect(m.__n1, "clicked", __n1_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -685,4 +725,4 @@ pass sha256:249008f80877b12b29ab4d14292f2c37
 -- run/go/fyne --
 pass sha256:c07e299dfd96987889d4b637e082ced9
 -- run/go/gtk4 --
-pass sha256:6339ce56d34b166f42abdd0b248726d8
+pass sha256:88663f9dc4d409bed0a65da21608c95f

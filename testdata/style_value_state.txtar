@@ -1364,216 +1364,238 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func LookOf(s Style) Look {
 	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
 func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
-	var __lt0 float64
+	var __lt3 float64
 	if s.Flex == nil {
-		__lt0 = 0.0
+		__lt3 = 0.0
 	} else {
-		__lt0 = (*(s.Flex))
+		__lt3 = (*(s.Flex))
 	}
-	var __lt1 int
+	var __lt4 int
 	if s.MaxLines == nil {
-		__lt1 = 0
+		__lt4 = 0
 	} else {
-		__lt1 = (*(s.MaxLines))
+		__lt4 = (*(s.MaxLines))
 	}
-	look := Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt0, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt1, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
+	look := Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt3, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt4, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
 }
 
 func CssOf(s Style) string {
-	var __lt2 string
+	var __lt5 string
 	if s.Opacity == nil {
-		__lt2 = ""
+		__lt5 = ""
 	} else {
-		__lt2 = fmt.Sprint((*(s.Opacity)))
+		__lt5 = fmt.Sprint((*(s.Opacity)))
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Length(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt2))
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Length(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt5))
 	return css
 }
 
 func Inset(m__r0 *Measurement) float64 {
-	var __lt3 float64
+	var __lt6 float64
 	if m__r0 == nil {
-		__lt3 = 0.0
+		__lt6 = 0.0
 	} else {
-		__lt3 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
-	}
-	return __lt3
-}
-
-func CrossOf(a string) int {
-	var __lt4 int
-	switch a {
-	case "start":
-		__lt4 = 1
-	case "center":
-		__lt4 = 2
-	case "end":
-		__lt4 = 3
-	case "baseline":
-		__lt4 = 4
-	default:
-		__lt4 = 0
-	}
-	return __lt4
-}
-
-func TextAlignOf(a string) int {
-	var __lt5 int
-	switch a {
-	case "center":
-		__lt5 = 1
-	case "right":
-		__lt5 = 2
-	case "justify":
-		__lt5 = 3
-	case "left":
-		__lt5 = 4
-	default:
-		__lt5 = 0
-	}
-	return __lt5
-}
-
-func WrapOf(w string) int {
-	var __lt6 int
-	switch w {
-	case "pre", "nowrap":
-		__lt6 = 1
-	case "preWrap", "preLine":
-		__lt6 = 2
-	default:
-		__lt6 = 0
+		__lt6 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 	}
 	return __lt6
 }
 
-func JustifyOf(j string) int {
+func CrossOf(a string) int {
 	var __lt7 int
-	switch j {
-	case "center":
+	switch a {
+	case "start":
 		__lt7 = 1
-	case "end":
+	case "center":
 		__lt7 = 2
-	case "spaceBetween":
+	case "end":
 		__lt7 = 3
-	case "spaceAround":
+	case "baseline":
 		__lt7 = 4
-	case "spaceEvenly":
-		__lt7 = 5
 	default:
 		__lt7 = 0
 	}
 	return __lt7
 }
 
-func Decl(name string, value string) string {
-	var __lt8 string
-	if value == "" {
-		__lt8 = ""
-	} else {
-		__lt8 = (((name + ": ") + value) + "; ")
+func TextAlignOf(a string) int {
+	var __lt8 int
+	switch a {
+	case "center":
+		__lt8 = 1
+	case "right":
+		__lt8 = 2
+	case "justify":
+		__lt8 = 3
+	case "left":
+		__lt8 = 4
+	default:
+		__lt8 = 0
 	}
 	return __lt8
 }
 
-func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt10 *Measurement
-	if own != nil {
-		__lt10 = own
-	} else {
-		var __lt9 *Measurement
-		if axis != nil {
-			__lt9 = axis
-		} else {
-			__lt9 = all
-		}
-		__lt10 = __lt9
+func WrapOf(w string) int {
+	var __lt9 int
+	switch w {
+	case "pre", "nowrap":
+		__lt9 = 1
+	case "preWrap", "preLine":
+		__lt9 = 2
+	default:
+		__lt9 = 0
 	}
-	return Length(__lt10)
+	return __lt9
 }
 
-func Length(m__r1 *Measurement) string {
+func JustifyOf(j string) int {
+	var __lt10 int
+	switch j {
+	case "center":
+		__lt10 = 1
+	case "end":
+		__lt10 = 2
+	case "spaceBetween":
+		__lt10 = 3
+	case "spaceAround":
+		__lt10 = 4
+	case "spaceEvenly":
+		__lt10 = 5
+	default:
+		__lt10 = 0
+	}
+	return __lt10
+}
+
+func Decl(name string, value string) string {
 	var __lt11 string
-	if m__r1 == nil {
+	if value == "" {
 		__lt11 = ""
 	} else {
-		__lt11 = (fmt.Sprint(Inset(m__r1)) + "px")
+		__lt11 = (((name + ": ") + value) + "; ")
 	}
 	return __lt11
 }
 
-func CssColor(c *snglcolor.Color) string {
-	var __lt12 string
-	if c == nil {
-		__lt12 = ""
+func Side(all *Measurement, axis *Measurement, own *Measurement) string {
+	var __lt13 *Measurement
+	if own != nil {
+		__lt13 = own
 	} else {
-		__lt12 = (*(c)).Hex()
+		var __lt12 *Measurement
+		if axis != nil {
+			__lt12 = axis
+		} else {
+			__lt12 = all
+		}
+		__lt13 = __lt12
 	}
-	return __lt12
+	return Length(__lt13)
 }
 
-func WeightOf(w string) string {
-	var __lt13 string
-	switch w {
-	case "normal":
-		__lt13 = "normal"
-	case "bold":
-		__lt13 = "bold"
-	case "bolder":
-		__lt13 = "bolder"
-	case "lighter":
-		__lt13 = "lighter"
-	default:
-		__lt13 = ""
-	}
-	return __lt13
-}
-
-func SlantOf(s string) string {
+func Length(m__r1 *Measurement) string {
 	var __lt14 string
-	switch s {
-	case "normal":
-		__lt14 = "normal"
-	case "italic":
-		__lt14 = "italic"
-	case "oblique":
-		__lt14 = "oblique"
-	default:
+	if m__r1 == nil {
 		__lt14 = ""
+	} else {
+		__lt14 = (fmt.Sprint(Inset(m__r1)) + "px")
 	}
 	return __lt14
 }
 
-func LineOf(s Style) string {
+func CssColor(c *snglcolor.Color) string {
 	var __lt15 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt15 = "solid"
-	case "dashed":
-		__lt15 = "dashed"
-	case "dotted":
-		__lt15 = "dotted"
-	case "double":
-		__lt15 = "double"
-	case "none":
-		__lt15 = "none"
-	default:
-		var __lt16 string
-		if s.BorderWidth != nil {
-			__lt16 = "solid"
-		} else {
-			__lt16 = ""
-		}
-		__lt15 = __lt16
+	if c == nil {
+		__lt15 = ""
+	} else {
+		__lt15 = (*(c)).Hex()
 	}
 	return __lt15
+}
+
+func WeightOf(w string) string {
+	var __lt16 string
+	switch w {
+	case "normal":
+		__lt16 = "normal"
+	case "bold":
+		__lt16 = "bold"
+	case "bolder":
+		__lt16 = "bolder"
+	case "lighter":
+		__lt16 = "lighter"
+	default:
+		__lt16 = ""
+	}
+	return __lt16
+}
+
+func SlantOf(s string) string {
+	var __lt17 string
+	switch s {
+	case "normal":
+		__lt17 = "normal"
+	case "italic":
+		__lt17 = "italic"
+	case "oblique":
+		__lt17 = "oblique"
+	default:
+		__lt17 = ""
+	}
+	return __lt17
+}
+
+func LineOf(s Style) string {
+	var __lt18 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt18 = "solid"
+	case "dashed":
+		__lt18 = "dashed"
+	case "dotted":
+		__lt18 = "dotted"
+	case "double":
+		__lt18 = "double"
+	case "none":
+		__lt18 = "none"
+	default:
+		var __lt19 string
+		if s.BorderWidth != nil {
+			__lt19 = "solid"
+		} else {
+			__lt19 = ""
+		}
+		__lt18 = __lt19
+	}
+	return __lt18
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -1675,77 +1697,23 @@ func __n1_visible_handler(__visible bool) {
 
 func __n6_clicked_handler() {
 	m.s = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontSize: snglSome(Measurement{Px: 20}), FontWeight: "bold", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
-	cgo.SnglSetLook(m.__n2, LookOf(m.s).Css, int((LookOf(m.s).Width + 0.5)), int((LookOf(m.s).Height + 0.5)), LookOf(m.s).Grow, LookOf(m.s).Cross, LookOf(m.s).TextAlign, LookOf(m.s).Lines, LookOf(m.s).Wrap, func() int {
-		if LookOf(m.s).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Cursor, LookOf(m.s).Justify, func() int {
-		if LookOf(m.s).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Spacing, func() int {
-		if LookOf(m.s).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Columns)
+	_setLook(m.__n2, LookOf(m.s))
 	for _, __inst1_live_uv := range m.__inst1_live {
 		__child0__set___p1(__inst1_live_uv, m.s)
 	}
 	m.on = !m.on
-	var __lt17 Style
+	var __lt20 Style
 	if m.on {
-		__lt17 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt20 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt17 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt20 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
-	cgo.SnglSetLook(m.__n3, LookOf(__lt17).Css, int((LookOf(__lt17).Width + 0.5)), int((LookOf(__lt17).Height + 0.5)), LookOf(__lt17).Grow, LookOf(__lt17).Cross, LookOf(__lt17).TextAlign, LookOf(__lt17).Lines, LookOf(__lt17).Wrap, func() int {
-		if LookOf(__lt17).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__lt17).Cursor, LookOf(__lt17).Justify, func() int {
-		if LookOf(__lt17).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__lt17).Spacing, func() int {
-		if LookOf(__lt17).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__lt17).Columns)
+	_setLook(m.__n3, LookOf(__lt20))
 }
 
 func __n7_clicked_handler() {
 	m.s.Color = snglSome(snglcolor.Color{G: 255, A: 255})
-	cgo.SnglSetLook(m.__n2, LookOf(m.s).Css, int((LookOf(m.s).Width + 0.5)), int((LookOf(m.s).Height + 0.5)), LookOf(m.s).Grow, LookOf(m.s).Cross, LookOf(m.s).TextAlign, LookOf(m.s).Lines, LookOf(m.s).Wrap, func() int {
-		if LookOf(m.s).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Cursor, LookOf(m.s).Justify, func() int {
-		if LookOf(m.s).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Spacing, func() int {
-		if LookOf(m.s).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Columns)
+	_setLook(m.__n2, LookOf(m.s))
 	for _, __inst1_live_uv := range m.__inst1_live {
 		__child0__set___p1(__inst1_live_uv, m.s)
 	}
@@ -1757,25 +1725,7 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __p1 Style) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Elem)
-	cgo.SnglSetLook(__self.__n0, LookOf(__self.__prop___p1).Css, int((LookOf(__self.__prop___p1).Width + 0.5)), int((LookOf(__self.__prop___p1).Height + 0.5)), LookOf(__self.__prop___p1).Grow, LookOf(__self.__prop___p1).Cross, LookOf(__self.__prop___p1).TextAlign, LookOf(__self.__prop___p1).Lines, LookOf(__self.__prop___p1).Wrap, func() int {
-		if LookOf(__self.__prop___p1).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__self.__prop___p1).Cursor, LookOf(__self.__prop___p1).Justify, func() int {
-		if LookOf(__self.__prop___p1).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__self.__prop___p1).Spacing, func() int {
-		if LookOf(__self.__prop___p1).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__self.__prop___p1).Columns)
+	_setLook(__self.__n0, LookOf(__self.__prop___p1))
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -1789,25 +1739,7 @@ func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
 
 func __child0__set___p1(__self *__child0__inst, __v Style) {
 	__self.__prop___p1 = __v
-	cgo.SnglSetLook(__self.__n0, LookOf(__self.__prop___p1).Css, int((LookOf(__self.__prop___p1).Width + 0.5)), int((LookOf(__self.__prop___p1).Height + 0.5)), LookOf(__self.__prop___p1).Grow, LookOf(__self.__prop___p1).Cross, LookOf(__self.__prop___p1).TextAlign, LookOf(__self.__prop___p1).Lines, LookOf(__self.__prop___p1).Wrap, func() int {
-		if LookOf(__self.__prop___p1).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__self.__prop___p1).Cursor, LookOf(__self.__prop___p1).Justify, func() int {
-		if LookOf(__self.__prop___p1).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__self.__prop___p1).Spacing, func() int {
-		if LookOf(__self.__prop___p1).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__self.__prop___p1).Columns)
+	_setLook(__self.__n0, LookOf(__self.__prop___p1))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -1835,86 +1767,32 @@ func snglBuild() {
 	m.__n6 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "swap")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{})
 	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n6)
 	m.__n7 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n7)), "tint")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n7, Look{})
 	cgo.SnglSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n7)
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, "styled")
-	cgo.SnglSetLook(m.__n2, LookOf(m.s).Css, int((LookOf(m.s).Width + 0.5)), int((LookOf(m.s).Height + 0.5)), LookOf(m.s).Grow, LookOf(m.s).Cross, LookOf(m.s).TextAlign, LookOf(m.s).Lines, LookOf(m.s).Wrap, func() int {
-		if LookOf(m.s).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Cursor, LookOf(m.s).Justify, func() int {
-		if LookOf(m.s).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Spacing, func() int {
-		if LookOf(m.s).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.s).Columns)
+	_setLook(m.__n2, LookOf(m.s))
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
-	var __lt18 Style
+	var __lt21 Style
 	if m.on {
-		__lt18 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt21 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt18 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt21 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
 	m.__n3 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n3, "picked")
-	cgo.SnglSetLook(m.__n3, LookOf(__lt18).Css, int((LookOf(__lt18).Width + 0.5)), int((LookOf(__lt18).Height + 0.5)), LookOf(__lt18).Grow, LookOf(__lt18).Cross, LookOf(__lt18).TextAlign, LookOf(__lt18).Lines, LookOf(__lt18).Wrap, func() int {
-		if LookOf(__lt18).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__lt18).Cursor, LookOf(__lt18).Justify, func() int {
-		if LookOf(__lt18).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__lt18).Spacing, func() int {
-		if LookOf(__lt18).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__lt18).Columns)
+	_setLook(m.__n3, LookOf(__lt21))
 	cgo.SnglToplevelAppend(m.__n1, m.__n3)
 	m.__n4 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n4, "kept")
-	cgo.SnglSetLook(m.__n4, LookOf(m.kept[0]).Css, int((LookOf(m.kept[0]).Width + 0.5)), int((LookOf(m.kept[0]).Height + 0.5)), LookOf(m.kept[0]).Grow, LookOf(m.kept[0]).Cross, LookOf(m.kept[0]).TextAlign, LookOf(m.kept[0]).Lines, LookOf(m.kept[0]).Wrap, func() int {
-		if LookOf(m.kept[0]).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.kept[0]).Cursor, LookOf(m.kept[0]).Justify, func() int {
-		if LookOf(m.kept[0]).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.kept[0]).Spacing, func() int {
-		if LookOf(m.kept[0]).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(m.kept[0]).Columns)
+	_setLook(m.__n4, LookOf(m.kept[0]))
 	cgo.SnglToplevelAppend(m.__n1, m.__n4)
 	__renderSlot0(m.__n1)
 	cgo.SnglAppAttach(m.__n1)
@@ -2716,7 +2594,7 @@ pass sha256:aa6af4182a68958e8229de1875a31091
 -- run/go/fyne --
 pass sha256:98b8d936dbba86d2831ba1b895fed845
 -- run/go/gtk4 --
-pass sha256:aecdcc5e0cbd5053f93d9dc166631ba0
+pass sha256:8a65fde6af171b96661dd19de5ef9a91
 -- run/kotlin/android --
 pass sha256:b76f92b388604f774a86191396c56aad
 -- run/none/html --

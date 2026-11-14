@@ -69,7 +69,7 @@ sha256:79d2b48d700130a9f9cad16bb644d4a8
   ]
 }
 -- testrun/gtk4/go/app.sngl/receipt/1 --
-sha256:709e95c2d7161f298e3b3f691e7c1815
+sha256:ab169f21a1d56a8cb9017469cda2ef10
 {
   "results": [
     {

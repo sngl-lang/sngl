@@ -1647,6 +1647,24 @@ type Gauge__inst struct {
 	Shown               cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	level          int
 	mounts         []int
@@ -1690,11 +1708,33 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func Gauge__new(__copy string, __on_level int) *Gauge__inst {
 	__self := &Gauge__inst{__prop___copy: __copy, __prop___on_level: __on_level, __effect1_live: []int{}, __effect1_desired: []int{}}
 	__self.Shown = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.Shown, fmt.Sprint(__self.Seen))
-	cgo.SnglSetLook(__self.Shown, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Shown, Look{})
 	cgo.SnglOnClick(__self.Shown, func() {
 	})
 	Gauge__effects0_settle(__self)
@@ -1975,11 +2015,11 @@ func snglInit() {
 func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
 	m.raise = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.raise)), "raise")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.raise)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.raise, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.raise, Look{})
 	cgo.SnglSignalConnect(m.raise, "clicked", Raise_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.raise)))
 	__renderSlot0(m.__n0)
@@ -2715,7 +2755,7 @@ pass sha256:bbee16778ed4283e7335210fb5d68eb1
 -- run/go/fyne --
 pass sha256:60138447f4d462c69c88bc31ae90a990
 -- run/go/gtk4 --
-pass sha256:54bd2be097791d77b4e8ec27ae3c1fa1
+pass sha256:dfaf6be5f84fdd5ccbee4c8afe66cbc3
 -- run/kotlin/android --
 pass sha256:108e2f4516145e79408ad1c3eed71f34
 -- run/none/html --

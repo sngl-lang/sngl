@@ -941,6 +941,24 @@ type Token struct {
 	Id int
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	log                 []string
 	held                Token
@@ -970,6 +988,28 @@ func Release(t Token) {
 func Report(t Token) {
 	m.log = append(m.log, ("tick " + fmt.Sprint(t.Id)))
 	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __effect0_mount() {
@@ -1116,7 +1156,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log, ","))
-	cgo.SnglSetLook(m.__n1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
 	__effects0_settle()
@@ -1406,7 +1446,7 @@ pass sha256:5132eb7056ae47c0da7ca1bca3c8d7a0
 -- run/go/fyne --
 pass sha256:2cc2c7372b0e0e79e1d92e48c0567252
 -- run/go/gtk4 --
-pass sha256:6d5576bb9375433ee601b058cfff9ed5
+pass sha256:b6e0922eaf58b9990473cb55e9e6f7ce
 -- run/kotlin/android --
 pass sha256:cc856f992a205d3f879134ba05e91d80
 -- run/none/html --

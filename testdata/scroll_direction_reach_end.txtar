@@ -939,6 +939,24 @@ type __child1__inst struct {
 	__n1        cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	shown__inst0   int
 	shown__inst1   int
@@ -961,6 +979,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
@@ -1164,7 +1204,7 @@ func __child0__new(__p0 int) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, ("column " + fmt.Sprint(__self.__prop___p0)))
-	cgo.SnglSetLook(__self.__n0, "", 160, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{Width: 160.0})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -1184,7 +1224,7 @@ func __child1__new(__p0 int) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0}
 	__self.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n1, ("row " + fmt.Sprint(__self.__prop___p0)))
-	cgo.SnglSetLook(__self.__n1, "", 800, 48, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n1, Look{Width: 800.0, Height: 48.0})
 	cgo.SnglOnClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
@@ -1222,21 +1262,21 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n2, __n2_visible_handler)
 	m.list = cgo.SnglScrollNew()
 	cgo.SnglScrollSetDirection(m.list, "horizontal")
-	cgo.SnglSetLook(m.list, "", 0, 120, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.list, Look{Height: 120.0})
 	cgo.SnglScrollOnReachEnd(m.list, List_reachEnd_handler)
 	m.__n5 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n5)), cgo.CGtkOrientation(0))
-	cgo.SnglSetLook(m.__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 8, func() int { return 0 }(), 0)
+	_setLook(m.__n5, Look{Spaced: true, Spacing: 8})
 	__renderSlot0(m.__n5)
 	cgo.SnglScrollSetChild(m.list, m.__n5)
 	cgo.SnglToplevelAppend(m.__n2, m.list)
 	m.cells = cgo.SnglScrollNew()
 	cgo.SnglScrollSetDirection(m.cells, "both")
-	cgo.SnglSetLook(m.cells, "", 0, 240, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.cells, Look{Height: 240.0})
 	cgo.SnglScrollOnReachEnd(m.cells, Cells_reachEnd_handler)
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	__renderSlot1(m.__n6)
 	cgo.SnglScrollSetChild(m.cells, m.__n6)
 	cgo.SnglToplevelAppend(m.__n2, m.cells)
@@ -2198,7 +2238,7 @@ pass sha256:9acdbc41ec1fc0d21c56136e044b7f1d
 -- run/go/fyne --
 pass sha256:4749d73fe5fa467e53081de1f3c1008b
 -- run/go/gtk4 --
-pass sha256:b8246359dab89208ddc260c3d8061195
+pass sha256:881af77f442d959fa4f96d5ca11a1a31
 -- run/kotlin/android --
 pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --

@@ -1194,6 +1194,24 @@ type Holder__inst struct {
 	__n0                cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	closed         int
 	shown          bool
@@ -1213,6 +1231,28 @@ var m = &snglState{}
 func Close__r0(f File) {
 	m.closed += 1
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.closed))
+}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -1308,7 +1348,7 @@ func Holder__new(n int) *Holder__inst {
 	__self.__n0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((fmt.Sprint(__self.F.Fd) + " ") + fmt.Sprint(__self.Label.Fd)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglSignalConnect(__self.__n0, "clicked", func() {
 		__new2 := File{Fd: (__self.F.Fd + 1)}
 		__old3 := __self.F
@@ -1429,7 +1469,7 @@ func snglBuild() {
 	m.__n2 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.closed))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglSignalConnect(m.__n2, "clicked", __n2_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
 	cgo.SnglAppAttach(m.__n1)
@@ -1857,7 +1897,7 @@ pass sha256:502f0dabd7fa81e371f89386cfac785c
 -- run/go/fyne --
 pass sha256:182845de90f09d045d1ac754a63a7a73
 -- run/go/gtk4 --
-pass sha256:b41b84727a16805485c6e7b98203960f
+pass sha256:eb1ec366d5b1144fa95313de0d6e3f12
 -- run/kotlin/android --
 pass sha256:fdc9cbd75242eda716648a1ee8facf56
 -- run/none/html --

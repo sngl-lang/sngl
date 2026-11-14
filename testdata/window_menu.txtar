@@ -898,6 +898,24 @@ type MenuItem__record struct {
 	Select   func()
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 var sizes []string = []string{"Small", "Medium", "Large"}
 
 type snglState struct {
@@ -913,6 +931,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
@@ -1017,7 +1057,7 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.main__r0, Main__r0_visible_handler)
 	m.shown = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.shown, m.size)
-	cgo.SnglSetLook(m.shown, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.shown, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.shown)
 	__renderSlot0(m.main__r0)
 	cgo.SnglAppAttach(m.main__r0)
@@ -1469,7 +1509,7 @@ pass sha256:8d82eadb4788032ff922da70e753311a
 -- run/go/fyne --
 pass sha256:4d9bd36ac571f000505018e382023df3
 -- run/go/gtk4 --
-pass sha256:be6aeebc0342ba37131c8c8c8f5803c4
+pass sha256:e79e354eba563978bc006a051a997baf
 -- run/kotlin/android --
 pass sha256:76edb851cd5031100304b9e3af558cfa
 -- run/none/html --

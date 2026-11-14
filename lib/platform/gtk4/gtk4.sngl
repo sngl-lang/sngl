@@ -15,7 +15,7 @@ import seq "sngl:seq"
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/menu.c", "rt/image.c", "rt/markup.c"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //
@@ -1022,8 +1022,8 @@ const component ui.scroll[platform](style, direction, @reachEnd, content) {
     }
 }
 
-// A `ui.tabs`: the runtime's box of a GtkNotebook (rt's tabs.c). Each
-// TabPage it holds is a page of the notebook, and `selected` the one shown.
+// A `ui.tabs`: a box holding a GtkNotebook. Each TabPage it holds is a page
+// of the notebook, and `selected` the one shown.
 #[marks.intrinsic("gtk4:Tabs")]
 component Tabs(
     selected int,
@@ -1033,9 +1033,8 @@ component Tabs(
 
 // One tab: its panel, a page the notebook shows a tab titled `title` for.
 // The user choosing it is no GTK signal on it but the notebook's page
-// changing, which the runtime reports as `@change`, and only the user's.
-// Named for the tabs' event it raises, which is what a test's press of it
-// calls.
+// changing, which is reported as `@change`, and only the user's. Named for
+// the tabs' event it raises, which is what a test's press of it calls.
 #[marks.intrinsic("gtk4:TabPage")]
 component TabPage(
     title    string,
@@ -1044,62 +1043,201 @@ component TabPage(
     content  ...component ui.node,
 ) ui.node
 
-#[c.native("sngl_tabs_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsNew")]
-func _rtTabsNew() Tabs
+#[c.native("gtk_box_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
+func _tabsBox(orientation _c_GtkOrientation, spacing int) Tabs
 
-#[c.native("sngl_tabs_set_selected")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsSetSelected")]
-func _rtTabsSetSelected(t Tabs, k int)
+#[c.native("gtk_box_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
+func _tabPageBox(orientation _c_GtkOrientation, spacing int) TabPage
 
-#[c.native("sngl_tab_page_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageNew")]
-func _rtTabPageNew() TabPage
+// What a TabPage holds on its box: the tab's title and whether it is
+// disabled, which the notebook hosting it shows, the handler the user
+// choosing it runs, and that notebook while it hosts it.
+struct _TabPageState {
+    title    string
+    disabled bool
+    shown    option[func()]
+    host     option[_p_GtkNotebook]
+}
 
-#[c.native("sngl_tab_page_set_title")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetTitle")]
-func _rtTabPageSetTitle(p TabPage, title string)
+// What Tabs holds on its box: the page the program chose, which the
+// notebook shows.
+struct _TabsState {
+    selected int
+}
 
-#[c.native("sngl_tab_page_set_disabled")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetDisabled")]
-func _rtTabPageSetDisabled(p TabPage, disabled bool)
+const _tabPageKey = "sngl-tab-page"
 
-#[c.native("sngl_tab_page_on_shown")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageOnShown")]
-func _rtTabPageOnShown(
-    p TabPage,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+const _tabsKey = "sngl-tabs"
 
-#[c.native("sngl_tab_page_show")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageShow")]
-func _rtTabPageShow(p TabPage)
+func _tabPage(p _p_GtkWidget) option[_TabPageState] {
+    return _heldTabPage(_as_GObject(_widgetPtr(p)), _tabPageKey)
+}
+
+func _setTabPage(p _p_GtkWidget, s _TabPageState) {
+    _holdTabPage(_as_GObject(_widgetPtr(p)), _tabPageKey, s)
+}
+
+func _pageWidget(p ui.node) _p_GtkWidget {
+    return _as_GtkWidget(_widget(p))
+}
+
+// The notebook a Tabs' box holds, its one child.
+func _notebookOf(t Tabs) _p_GtkNotebook {
+    return _as_GtkNotebook(_widgetPtr(_gtk_widget_get_first_child(_pageWidget(t))))
+}
+
+func _selectedOf(t Tabs) int {
+    var s = _heldTabs(_as_GObject(_widget(t)), _tabsKey)
+    if s != null {
+        return s.selected
+    }
+    return 0
+}
+
+// Runs change with the notebook's own reports of the page it shows
+// blocked: what the program changes is no choice of the user's.
+func _notebookQuietly(nb _p_GtkNotebook, change func()) {
+    _quietly(_ptr_GtkNotebook(nb), "notify", _gtk_notebook_get_type(), "page", change)
+}
+
+// Shows the program's page.
+func _tabsShow(t Tabs) {
+    var nb = _notebookOf(t)
+    var k = _selectedOf(t)
+    if k >= 0 && k < _gtk_notebook_get_n_pages(nb) {
+        _notebookQuietly(nb, func() {
+            _gtk_notebook_set_current_page(nb, k)
+        })
+    }
+}
+
+// A page's tab shows its title, and is insensitive where the page is
+// disabled. GTK still lets the user click it, and _tabsShown puts the
+// program's page back.
+func _tabShows(nb _p_GtkNotebook, page _p_GtkWidget, s _TabPageState) {
+    _gtk_notebook_set_tab_label_text(nb, page, s.title)
+    _gtk_widget_set_sensitive(_gtk_notebook_get_tab_label(nb, page), _to_gboolean(s.disabled ? 0 : 1))
+}
+
+// The notebook hosting a page: the one its state names, while the page is
+// still in it.
+func _hostOf(page _p_GtkWidget, s _TabPageState) option[_p_GtkNotebook] {
+    var host = s.host
+    if host != null && _gtk_widget_is_ancestor(page, _as_GtkWidget(_ptr_GtkNotebook(host))) {
+        return host
+    }
+    return null
+}
+
+// The notebook showing another page: the user's choice, unless it is a
+// disabled page's, which the program's own page replaces. A notebook its
+// box let go of is being torn down, and the pages it drops as it goes are
+// no one's choice.
+func _tabsShown(t Tabs) {
+    var nb = _notebookOf(t)
+    if !_gtk_widget_is_ancestor(_as_GtkWidget(_ptr_GtkNotebook(nb)), _pageWidget(t)) {
+        return
+    }
+    var k = _gtk_notebook_get_current_page(nb)
+    if k < 0 || k == _selectedOf(t) {
+        return
+    }
+    var s = _tabPage(_gtk_notebook_get_nth_page(nb, k))
+    if s != null && !s.disabled {
+        _holdTabs(_as_GObject(_widget(t)), _tabsKey, _TabsState{selected=k})
+        var shown = s.shown
+        if shown != null {
+            shown()
+        }
+    } else {
+        _tabsShow(t)
+    }
+}
+
+// The notebook reports the page it shows through its `page` property, after
+// the change, where `switch-page` fires before it.
+func _newTabs() Tabs {
+    var t = _tabsBox(_to_GtkOrientation(1), 0)
+    var nb = _gtk_notebook_new()
+    _gtk_notebook_set_scrollable(_as_GtkNotebook(_widgetPtr(nb)), true)
+    _gtk_box_append(_as_GtkBox(_widget(t)), nb)
+    _holdTabs(_as_GObject(_widget(t)), _tabsKey, _TabsState{selected=0})
+    _g_signal_connect_notify(
+        _as_gpointer(_widgetPtr(nb)),
+        "notify::page",
+        func(o _p_GObject, spec _p_GParamSpec) {
+            _tabsShown(t)
+        },
+        0,
+    )
+    return t
+}
 
 #[gen.protocol(create)]
 func _create_Tabs() Tabs {
-    return _rtTabsNew()
+    return _newTabs()
+}
+
+// A page appended or inserted is a page of the notebook, at its end.
+func _tabsAdd(t Tabs, page ui.node) {
+    var nb = _notebookOf(t)
+    var w = _pageWidget(page)
+    var s = _tabPage(w)
+    if s != null && _gtk_notebook_page_num(nb, w) < 0 {
+        _notebookQuietly(nb, func() {
+            _gtk_notebook_append_page(nb, w, null)
+        })
+        var hosted = _TabPageState{title=s.title, disabled=s.disabled, shown=s.shown, host=nb}
+        _setTabPage(w, hosted)
+        _tabShows(nb, w, hosted)
+        _tabsShow(t)
+    }
 }
 
 #[gen.protocol(append)]
 func _append_Tabs(parent Tabs, page ui.node) {
-    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(page)))
+    _tabsAdd(parent, page)
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_Tabs(parent Tabs, page ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(page)))
+    _tabsAdd(parent, page)
+}
+
+func _dropTabs(parent Tabs, page ui.node) {
+    var nb = _notebookOf(parent)
+    var w = _pageWidget(page)
+    var k = _gtk_notebook_page_num(nb, w)
+    if k < 0 {
+        return
+    }
+    _g_object_ref(_as_gpointer(_widgetPtr(w)))
+    _notebookQuietly(nb, func() {
+        _gtk_notebook_remove_page(nb, k)
+    })
+    var s = _tabPage(w)
+    if s != null {
+        _setTabPage(w, _TabPageState{title=s.title, disabled=s.disabled, shown=s.shown})
+    }
+    _g_object_unref(_as_gpointer(_widgetPtr(w)))
+    _tabsShow(parent)
 }
 
 #[gen.protocol(remove)]
 func _remove_Tabs(parent Tabs, page ui.node) {
-    _rtBoxRemove(parent, page)
+    _dropTabs(parent, page)
+}
+
+func _writeTabs_selected(t Tabs, selected int) {
+    _holdTabs(_as_GObject(_widget(t)), _tabsKey, _TabsState{selected=selected})
+    _tabsShow(t)
 }
 
 #[gen.protocol(set)]
 func _set_Tabs_selected(t Tabs, selected int) {
-    _rtTabsSetSelected(t, selected)
+    _writeTabs_selected(t, selected)
 }
 
 #[gen.protocol(set)]
@@ -1107,9 +1245,15 @@ func _set_Tabs_look(t Tabs, look Look) {
     _setLook(t, look)
 }
 
+func _newTabPage() TabPage {
+    var p = _tabPageBox(_to_GtkOrientation(1), 0)
+    _setTabPage(_pageWidget(p), _TabPageState{})
+    return p
+}
+
 #[gen.protocol(create)]
 func _create_TabPage() TabPage {
-    return _rtTabPageNew()
+    return _newTabPage()
 }
 
 #[gen.protocol(append)]
@@ -1127,24 +1271,70 @@ func _remove_TabPage(parent TabPage, child ui.node) {
     _rtBoxRemove(parent, child)
 }
 
+func _writeTabPage_title(p TabPage, title string) {
+    var w = _pageWidget(p)
+    var s = _tabPage(w)
+    if s != null {
+        var next = _TabPageState{title=title, disabled=s.disabled, shown=s.shown, host=s.host}
+        _setTabPage(w, next)
+        var host = _hostOf(w, next)
+        if host != null {
+            _tabShows(host, w, next)
+        }
+    }
+}
+
 #[gen.protocol(set)]
 func _set_TabPage_title(p TabPage, title string) {
-    _rtTabPageSetTitle(p, title)
+    _writeTabPage_title(p, title)
+}
+
+func _writeTabPage_disabled(p TabPage, disabled bool) {
+    var w = _pageWidget(p)
+    var s = _tabPage(w)
+    if s != null {
+        var next = _TabPageState{title=s.title, disabled=disabled, shown=s.shown, host=s.host}
+        _setTabPage(w, next)
+        var host = _hostOf(w, next)
+        if host != null {
+            _tabShows(host, w, next)
+        }
+    }
 }
 
 #[gen.protocol(set)]
 func _set_TabPage_disabled(p TabPage, disabled bool) {
-    _rtTabPageSetDisabled(p, disabled)
+    _writeTabPage_disabled(p, disabled)
+}
+
+func _handleTabPage(p TabPage, change func()) {
+    var w = _pageWidget(p)
+    var s = _tabPage(w)
+    if s != null {
+        _setTabPage(w, _TabPageState{title=s.title, disabled=s.disabled, shown=change, host=s.host})
+    }
 }
 
 #[gen.protocol(on)]
 func _on_TabPage(p TabPage, change func()) {
-    _rtTabPageOnShown(p, change)
+    _handleTabPage(p, change)
 }
 
 #[gen.fires("change")]
 func _fire_TabPage_change(p TabPage) {
-    _rtTabPageShow(p)
+    _tabPageShow(p)
+}
+
+// Runs the page's handler as the user choosing it would, unless it is
+// disabled.
+func _tabPageShow(p TabPage) {
+    var s = _tabPage(_pageWidget(p))
+    if s != null && !s.disabled {
+        var shown = s.shown
+        if shown != null {
+            shown()
+        }
+    }
 }
 
 // A tab is a page of a GtkNotebook, which shows a tab for it. `variant` is

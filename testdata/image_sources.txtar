@@ -1211,6 +1211,24 @@ type __child0__inst struct {
 	Frame__3       cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -1264,6 +1282,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
 
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
@@ -1429,7 +1469,7 @@ func __renderSlot1(parent cgo.Widget) {
 				if m.failed__inst0 || !m.hasPhoto__inst0 {
 					__n5 := cgo.SnglTextNew()
 					cgo.SnglTextSetValue(__n5, "JD")
-					cgo.SnglSetLook(__n5, "background: #cccccc; border-radius: 20px; ", 40, 40, 0.0, 2, 1, 0, 0, func() int { return 0 }(), "", 1, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n5, Look{Css: "background: #cccccc; border-radius: 20px; ", Width: 40.0, Height: 40.0, Cross: 2, TextAlign: 1, Justify: 1})
 					cgo.SnglOnClick(__n5, func() {
 					})
 					__place2_i_ref0 := snglSome(m.__anchor1)
@@ -1642,7 +1682,7 @@ func __child0__new(__p0 bool, __p1 string, __on0 func()) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1, __prop___on0: __on0, __slot0: []cgo.Widget{}, __inst1_live: []*__remote_state1__inst{}}
 	__self.Frame__3 = cgo.SnglImageNew()
 	cgo.SnglImageSetFit(__self.Frame__3, "cover")
-	cgo.SnglSetLook(__self.Frame__3, "border-radius: 20px; ", 40, 40, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.Frame__3, Look{Css: "border-radius: 20px; ", Width: 40.0, Height: 40.0})
 	cgo.SnglImageOnClick(__self.Frame__3, func() {
 	})
 	cgo.SnglImageOnLoad(__self.Frame__3, func() {
@@ -1785,10 +1825,10 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	m.__n7 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n7)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n7, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n7, Look{Spaced: true, Spacing: 6})
 	m.frame = cgo.SnglImageNew()
 	cgo.SnglImageSetFit(m.frame, "cover")
-	cgo.SnglSetLook(m.frame, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.frame, Look{})
 	m.__n2 = cgo.SnglImageSourceNew()
 	cgo.SnglImageSourceSetUrl(m.__n2, "logo.svg")
 	cgo.SnglImageSourceSetPicture(m.__n2, m.picture__inst0__inst0)
@@ -1796,7 +1836,7 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.frame)))
 	m.frame__1 = cgo.SnglImageNew()
 	cgo.SnglImageSetFit(m.frame__1, "contain")
-	cgo.SnglSetLook(m.frame__1, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.frame__1, Look{})
 	m.__n3 = cgo.SnglImageSourceNew()
 	cgo.SnglImageSourceSetUrl(m.__n3, m.url__inst0)
 	cgo.SnglImageSourceSetPicture(m.__n3, m.picture__inst1__inst0)
@@ -1804,7 +1844,7 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.frame__1)))
 	m.frame__2 = cgo.SnglImageNew()
 	cgo.SnglImageSetFit(m.frame__2, "contain")
-	cgo.SnglSetLook(m.frame__2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.frame__2, Look{})
 	m.__drawing0 = cgo.SnglImageSourceNew()
 	cgo.SnglDrawingSetWidth(m.__drawing0, 16.0)
 	cgo.SnglDrawingSetHeight(m.__drawing0, 16.0)
@@ -1819,7 +1859,7 @@ func snglBuild() {
 	cgo.SnglCanvasOnPaint(m.__drawing1, __drawing1_paint_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.__drawing1)))
 	m.__n8 = cgo.SnglFlowNew()
-	cgo.SnglSetLook(m.__n8, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n8, Look{})
 	m.__n9 = cgo.SnglSpanNew()
 	cgo.SnglSpanSetWords(m.__n9, "see ")
 	cgo.SnglSpanAppend(m.__n8, m.__n9)
@@ -1830,7 +1870,7 @@ func snglBuild() {
 	m.__n11 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n11)), "grow")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n11)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n11, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n11, Look{})
 	cgo.SnglSignalConnect(m.__n11, "clicked", __n11_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n11)))
 	cgo.SnglToplevelAppend(m.__n1, m.__n7)
@@ -2900,7 +2940,7 @@ pass sha256:de50de046fa35ea9a2c763a8fbea5b84
 -- run/go/fyne --
 pass sha256:589f2bb9edde32d1acd05a31b6651f89
 -- run/go/gtk4 --
-pass sha256:39da339c958d884484f2b0f9ef433e3d
+pass sha256:a792d190194c70bb6badfc12ab6e53e2
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --

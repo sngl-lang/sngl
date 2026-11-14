@@ -803,6 +803,24 @@ type ErrorEvent struct {
 type Test struct {
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	caught string
 	after  string
@@ -852,6 +870,28 @@ func Check(n int) {
 	}
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func Call_clicked_handler() {
 	ViaCall()
 }
@@ -871,12 +911,12 @@ func snglBuild() {
 	m.call = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.call)), "Call")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.call)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.call, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.call, Look{})
 	cgo.SnglSignalConnect(m.call, "clicked", Call_clicked_handler)
 	m.raise = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.raise)), "Raise")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.raise)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.raise, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.raise, Look{})
 	cgo.SnglSignalConnect(m.raise, "clicked", Raise_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.call)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.raise)))
@@ -1185,7 +1225,7 @@ pass sha256:5fcd2807f77705a3bc5317f2600dc3af
 -- run/go/fyne --
 pass sha256:c6ec7a7abc509f47ccabf37a939c9764
 -- run/go/gtk4 --
-pass sha256:989d4c14523b44f2896db11a7684b7a2
+pass sha256:6b12db076973d2db755ba46075db9c14
 -- run/go/html --
 pass sha256:c5dc7c5bf823f210c65244759a7c377c
 -- run/kotlin/android --

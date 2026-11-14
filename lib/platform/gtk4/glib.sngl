@@ -223,3 +223,126 @@ struct _c_GtkStateFlags = int
 #[c.native("gtk_widget_set_state_flags")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetStateFlags")]
 func _gtk_widget_set_state_flags(w _p_GtkWidget, flags _c_GtkStateFlags, clear bool)
+
+// GLib's GParamSpec, which a `notify` handler is handed.
+#[c.native("GParamSpec *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGParamSpec")]
+struct _p_GParamSpec {}
+
+// GLib's connection flags, none of which a handler here asks for.
+#[c.native("GConnectFlags")]
+struct _c_GConnectFlags = int
+
+// Connects fn to a property's change on o: GLib calls it with the object and
+// the property's spec, then the context.
+#[c.native("g_signal_connect_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectData")]
+func _g_signal_connect_notify(
+    o      _c_gpointer,
+    signal string,
+    #[c.type("GCallback")] fn func(o _p_GObject, spec _p_GParamSpec),
+    #[c.context] ctx _c_gpointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags  _c_GConnectFlags,
+)
+
+#[c.native("GtkNotebook *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkNotebook")]
+struct _p_GtkNotebook {}
+
+#[c.native("GtkNotebook *", cast)]
+const func _as_GtkNotebook(p c.pointer) _p_GtkNotebook
+
+#[c.native("void *", cast)]
+const func _ptr_GtkNotebook(n _p_GtkNotebook) c.pointer
+
+#[c.native("gtk_notebook_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookNew")]
+func _gtk_notebook_new() _p_GtkWidget
+
+#[c.native("gtk_notebook_set_scrollable")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookSetScrollable")]
+func _gtk_notebook_set_scrollable(n _p_GtkNotebook, scrollable bool)
+
+#[c.native("gtk_notebook_append_page")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookAppendPage")]
+func _gtk_notebook_append_page(n _p_GtkNotebook, child _p_GtkWidget, label option[_p_GtkWidget]) int
+
+#[c.native("gtk_notebook_remove_page")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookRemovePage")]
+func _gtk_notebook_remove_page(n _p_GtkNotebook, at int)
+
+#[c.native("gtk_notebook_page_num")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookPageNum")]
+func _gtk_notebook_page_num(n _p_GtkNotebook, child _p_GtkWidget) int
+
+#[c.native("gtk_notebook_get_n_pages")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookGetNPages")]
+func _gtk_notebook_get_n_pages(n _p_GtkNotebook) int
+
+#[c.native("gtk_notebook_get_current_page")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookGetCurrentPage")]
+func _gtk_notebook_get_current_page(n _p_GtkNotebook) int
+
+#[c.native("gtk_notebook_set_current_page")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookSetCurrentPage")]
+func _gtk_notebook_set_current_page(n _p_GtkNotebook, at int)
+
+#[c.native("gtk_notebook_get_nth_page")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookGetNthPage")]
+func _gtk_notebook_get_nth_page(n _p_GtkNotebook, at int) _p_GtkWidget
+
+#[c.native("gtk_notebook_set_tab_label_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookSetTabLabelText")]
+func _gtk_notebook_set_tab_label_text(n _p_GtkNotebook, child _p_GtkWidget, text string)
+
+#[c.native("gtk_notebook_get_tab_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookGetTabLabel")]
+func _gtk_notebook_get_tab_label(n _p_GtkNotebook, child _p_GtkWidget) _p_GtkWidget
+
+#[c.native("gtk_notebook_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkNotebookGetType")]
+func _gtk_notebook_get_type() _c_GType
+
+#[c.native("gtk_box_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxAppend")]
+func _gtk_box_append(b _p_GtkBox, child _p_GtkWidget)
+
+#[c.native("gtk_widget_get_first_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetFirstChild")]
+func _gtk_widget_get_first_child(w _p_GtkWidget) _p_GtkWidget
+
+#[c.native("gtk_widget_is_ancestor")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetIsAncestor")]
+func _gtk_widget_is_ancestor(w _p_GtkWidget, ancestor _p_GtkWidget) bool
+
+#[c.native("void *", cast)]
+const func _widgetPtr(w _p_GtkWidget) c.pointer
+
+// What a Tabs' box or a TabPage's holds on it, as g_object_set_data_full
+// keeps it under a key and g_object_get_data reads it back.
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdTabPage(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_TabPageState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldTabPage(o _p_GObject, key string) option[c.held[_TabPageState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdTabs(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_TabsState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldTabs(o _p_GObject, key string) option[c.held[_TabsState]]

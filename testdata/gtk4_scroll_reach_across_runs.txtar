@@ -564,8 +564,8 @@ static GtkWidget * s___anchor0;
 static sngl_map_string____child0__inst s___inst1_live;
 static bool s___rendering0;
 static bool s___renderAgain0;
-static char * s___rel4;
-static char * s___rel9;
+static char * s___rel6;
+static char * s___rel11;
 static GtkWidget * s___n1;
 static GtkWidget * s___n4;
 static GtkWidget * s___n5;
@@ -668,8 +668,8 @@ static void s___snglTeardown(void) {
 }
 	s___effects0_torn = true;
 	s___effect0_teardown();
-	s_x_c__free(s___rel4);
-	s_x_c__free(s___rel9);
+	s_x_c__free(s___rel6);
+	s_x_c__free(s___rel11);
 }
 
 static void s___renderSlot0(GtkWidget * parent) {
@@ -766,14 +766,14 @@ static void s_x_c__free(char * s) {
 static s___child0__inst * s___child0__new(int64_t __p0) {
 	s___child0__inst * __self = ((s___child0__inst *)sngl_keep_copy(&(s___child0__inst[]){(s___child0__inst){.__prop___p0 = __p0}}, sizeof(s___child0__inst)));
 	__self->__n0 = sngl_text_new();
-	char * __rel10 = sngl_cstring(sngl_concat(SNGL_STR("column "), sngl_int_format((int64_t)(__self->__prop___p0))));
-	sngl_text_set_value(__self->__n0, __rel10);
-	s_x_c__free(__rel10);
-	char * __rel11 = sngl_cstring(SNGL_STR(""));
-	char * __rel12 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(__self->__n0, __rel11, (int)(150), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel12, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	char * __rel12 = sngl_cstring(sngl_concat(SNGL_STR("column "), sngl_int_format((int64_t)(__self->__prop___p0))));
+	sngl_text_set_value(__self->__n0, __rel12);
 	s_x_c__free(__rel12);
-	s_x_c__free(__rel11);
+	char * __rel13 = sngl_cstring(SNGL_STR(""));
+	char * __rel14 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(__self->__n0, __rel13, (int)(150), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel14, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel14);
+	s_x_c__free(__rel13);
 	sngl_on_click(__self->__n0, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda15, NULL}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	__self->__root = __self->__n0;
 	return __self;
@@ -781,9 +781,9 @@ static s___child0__inst * s___child0__new(int64_t __p0) {
 
 static void s___child0__set___p0(s___child0__inst * __self, int64_t __v) {
 	__self->__prop___p0 = __v;
-	char * __rel1 = sngl_cstring(sngl_concat(SNGL_STR("column "), sngl_int_format((int64_t)(__self->__prop___p0))));
-	sngl_text_set_value(__self->__n0, __rel1);
-	s_x_c__free(__rel1);
+	char * __rel3 = sngl_cstring(sngl_concat(SNGL_STR("column "), sngl_int_format((int64_t)(__self->__prop___p0))));
+	sngl_text_set_value(__self->__n0, __rel3);
+	s_x_c__free(__rel3);
 }
 
 static void s___child0__destroy(s___child0__inst * __self) {
@@ -818,37 +818,37 @@ static void sngl_init(void) {
 	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
 	s___rendering0 = false;
 	s___renderAgain0 = false;
-	s___rel4 = sngl_cstring(SNGL_STR("horizontal"));
-	s___rel9 = sngl_cstring(SNGL_STR("t"));
+	s___rel6 = sngl_cstring(SNGL_STR("horizontal"));
+	s___rel11 = sngl_cstring(SNGL_STR("t"));
 }
 
 static void sngl_build(void) {
 	s___n1 = sngl_toplevel_new();
-	sngl_toplevel_set_title(s___n1, s___rel9);
+	sngl_toplevel_set_title(s___n1, s___rel11);
 	sngl_toplevel_set_visible(s___n1, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n1, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s___n4 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(s___n4)), (GtkOrientation)((int)(1)));
-	char * __rel2 = sngl_cstring(SNGL_STR(""));
-	char * __rel3 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n4, __rel2, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel3, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
-	s_x_c__free(__rel3);
-	s_x_c__free(__rel2);
-	s___n5 = sngl_scroll_new();
-	sngl_scroll_set_direction(s___n5, s___rel4);
+	char * __rel4 = sngl_cstring(SNGL_STR(""));
 	char * __rel5 = sngl_cstring(SNGL_STR(""));
-	char * __rel6 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n5, __rel5, (int)(400), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel6, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel6);
+	sngl_set_look(s___n4, __rel4, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel5, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
 	s_x_c__free(__rel5);
+	s_x_c__free(__rel4);
+	s___n5 = sngl_scroll_new();
+	sngl_scroll_set_direction(s___n5, s___rel6);
+	char * __rel7 = sngl_cstring(SNGL_STR(""));
+	char * __rel8 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s___n5, __rel7, (int)(400), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel8, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel8);
+	s_x_c__free(__rel7);
 	sngl_scroll_on_reach_end(s___n5, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.asked = s_asked, .columns = s_columns}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s___n3 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(s___n3)), (GtkOrientation)((int)(0)));
-	char * __rel7 = sngl_cstring(SNGL_STR(""));
-	char * __rel8 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n3, __rel7, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel8, (int)(0), (int)(1), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel8);
-	s_x_c__free(__rel7);
+	char * __rel9 = sngl_cstring(SNGL_STR(""));
+	char * __rel10 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s___n3, __rel9, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel10, (int)(0), (int)(1), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel10);
+	s_x_c__free(__rel9);
 	s___renderSlot0(s___n3);
 	sngl_scroll_set_child(s___n5, s___n3);
 	sngl_box_append((GtkWidget *)((void *)(s___n4)), (GtkWidget *)((void *)(s___n5)));
@@ -879,9 +879,9 @@ static void sngl_lambda1(void *env_) {
 	}
 	s_seen = s_asked->value;
 	if (s_still == 10) {
-		char * __rel0 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("asked "), sngl_int_format((int64_t)(s_asked->value))), SNGL_STR(" for ")), sngl_int_format((int64_t)(s_columns->value))), SNGL_STR(" columns")));
-		puts(__rel0);
-		s_x_c__free(__rel0);
+		char * __rel2 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("asked "), sngl_int_format((int64_t)(s_asked->value))), SNGL_STR(" for ")), sngl_int_format((int64_t)(s_columns->value))), SNGL_STR(" columns")));
+		puts(__rel2);
+		s_x_c__free(__rel2);
 		sngl_gtk_quit();
 	}
 }
@@ -1239,6 +1239,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:2cfe8d6780138444a854a74cefd590ae
+pass sha256:c12971e1634070d032066e3b1bf2dd4e
 -- run/go/gtk4 --
-pass sha256:3ccda9e1b5a56442fc7921ce1fde42a7
+pass sha256:2123656b18a68b2e1ee89610d8b1df7d

@@ -376,8 +376,8 @@ static bool s___effects0_settling;
 static bool s___effects0_pending;
 static bool s___effects0_torn;
 static int64_t s___effects0_steps;
-static char * s___rel4;
-static char * s___rel8;
+static char * s___rel6;
+static char * s___rel10;
 static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 
@@ -465,7 +465,7 @@ static void s___effect0_teardown(void) {
 }
 
 static void s___effect1_unmount(void) {
-	puts(s___rel4);
+	puts(s___rel6);
 }
 
 static void s___effect1_down(void) {
@@ -537,8 +537,8 @@ static void s___snglTeardown(void) {
 	s___effects0_torn = true;
 	s___effect1_teardown();
 	s___effect0_teardown();
-	s_x_c__free(s___rel4);
-	s_x_c__free(s___rel8);
+	s_x_c__free(s___rel6);
+	s_x_c__free(s___rel10);
 }
 
 static void s_x_c__free(char * s) {
@@ -563,24 +563,24 @@ static void sngl_init(void) {
 	s___effects0_pending = false;
 	s___effects0_torn = false;
 	s___effects0_steps = 0;
-	s___rel4 = sngl_cstring(SNGL_STR("unmount"));
-	s___rel8 = sngl_cstring(SNGL_STR(""));
+	s___rel6 = sngl_cstring(SNGL_STR("unmount"));
+	s___rel10 = sngl_cstring(SNGL_STR(""));
 }
 
 static void sngl_build(void) {
 	s___n0 = sngl_toplevel_new();
-	sngl_toplevel_set_title(s___n0, s___rel8);
+	sngl_toplevel_set_title(s___n0, s___rel10);
 	sngl_toplevel_set_visible(s___n0, (int)((s_shown->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.shown = s_shown}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s___n1 = sngl_text_new();
-	char * __rel5 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
-	sngl_text_set_value(s___n1, __rel5);
-	s_x_c__free(__rel5);
-	char * __rel6 = sngl_cstring(SNGL_STR(""));
-	char * __rel7 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n1, __rel6, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel7, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	char * __rel7 = sngl_cstring(sngl_int_format((int64_t)(s_n)));
+	sngl_text_set_value(s___n1, __rel7);
 	s_x_c__free(__rel7);
-	s_x_c__free(__rel6);
+	char * __rel8 = sngl_cstring(SNGL_STR(""));
+	char * __rel9 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s___n1, __rel8, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel9, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel9);
+	s_x_c__free(__rel8);
 	sngl_toplevel_append(s___n0, s___n1);
 	sngl_app_attach(s___n0);
 	s___effects0_settle();
@@ -629,9 +629,9 @@ int main(int argc, char **argv) {
 static void sngl_lambda1(void *env_) {
 	if (!s_stopped) {
 		s_stopped = true;
-		char * __rel3 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("tick "), sngl_int_format((int64_t)(s_n))), SNGL_STR(" shown ")), sngl_bool_format(s_shown->value)));
-		puts(__rel3);
-		s_x_c__free(__rel3);
+		char * __rel5 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("tick "), sngl_int_format((int64_t)(s_n))), SNGL_STR(" shown ")), sngl_bool_format(s_shown->value)));
+		puts(__rel5);
+		s_x_c__free(__rel5);
 		sngl_gtk_quit();
 	}
 }
@@ -898,6 +898,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:4beccf77ab6570e727e137ba02c1445d
+pass sha256:705e4afc1d45714c211fa9d92ae712d1
 -- run/go/gtk4 --
-pass sha256:79aed3f9c3099dc7889ec666b6b6add6
+pass sha256:25c8e7b37daa720deb4c1a02ea386861

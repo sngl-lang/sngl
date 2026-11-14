@@ -1006,6 +1006,24 @@ type __child0__inst struct {
 	__n0        cgo.Widget
 }
 
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
+}
+
 type snglState struct {
 	row__copies    map[string]cgo.Widget
 	opened         string
@@ -1021,11 +1039,33 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func __child0__new(__p0 string) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
 	__self.__n0 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n0, ("opened " + __self.__prop___p0))
-	cgo.SnglSetLook(__self.__n0, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
@@ -1128,28 +1168,28 @@ func snglBuild() {
 	m.row__held = nil
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n3, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	for __copy0, name := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "one", Elem: "one"}, __anon_id_elem_c6a818{Id: "two", Elem: "two"}} {
 		row := cgo.GtkButtonNew()
 		m.row__held = snglSome(row)
 		cgo.GtkButtonSetHasFrame((cgo.PGtkButton)(unsafe.Pointer(row)), cgo.CGboolean(func() int { return 0 }()))
-		cgo.SnglSetLook(row, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+		_setLook(row, Look{})
 		m.row__copies[fmt.Sprint(__copy0)] = row
 		cgo.SnglSignalConnect(row, "clicked", func() {
 			m.opened = name.Elem
 			__renderSlot0(m.__n2)
 		})
 		__n4 := cgo.GtkFrameNew(nil)
-		cgo.SnglSetLook(__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+		_setLook(__n4, Look{})
 		__n5 := cgo.SnglTextNew()
 		cgo.SnglTextSetValue(__n5, name.Elem)
-		cgo.SnglSetLook(__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+		_setLook(__n5, Look{})
 		cgo.GtkFrameSetChild((cgo.PGtkFrame)(unsafe.Pointer(__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__n5)))
 		cgo.GtkButtonSetChild((cgo.PGtkButton)(unsafe.Pointer(row)), (cgo.PGtkWidget)(unsafe.Pointer(__n4)))
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(row)))
 	}
 	m.__n2 = cgo.GtkFrameNew(nil)
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	__renderSlot0(m.__n2)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	cgo.SnglAppAttach(m.__n3)
@@ -1635,7 +1675,7 @@ pass sha256:54f13aefc0cdcc46f1a31b8b3f9a5c52
 -- run/go/fyne --
 pass sha256:8a1d08a8dd084cffe09d5792e2c01768
 -- run/go/gtk4 --
-pass sha256:4fd6ad1fec81d00301667e0ddcef9df2
+pass sha256:e1b8527ee50c0ee08bb29932ee9f31a5
 -- run/kotlin/android --
 pass sha256:eddde20277ba4d550a83f09848c95408
 -- run/none/html --

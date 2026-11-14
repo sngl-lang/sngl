@@ -1171,11 +1171,11 @@ static void s_platform_gtk4____drawing1_paint_handler__fn(void *env, cairo_t * a
 	s_platform_gtk4____drawing1_paint_handler(a0);
 }
 
-static char * s___rel0;
-static char * s___rel1;
-static char * s___rel4;
-static char * s___rel7;
-static char * s___rel10;
+static char * s___rel2;
+static char * s___rel3;
+static char * s___rel6;
+static char * s___rel9;
+static char * s___rel12;
 static s___ref_int * s_hits;
 static s___ref_bool * s_on;
 static sngl_list_float s_rs;
@@ -1307,10 +1307,10 @@ static void s_platform_gtk4____drawing1_paint_handler(cairo_t * ctx) {
 	s_platform_gtk4__paint(ctx, (s_ui_draw__Style){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 255}, .strokeWidth = 2.0, .lineCap = 0, .lineJoin = 1, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
 	cairo_restore(ctx);
 	cairo_save(ctx);
-	sngl_cairo_font(ctx, s___rel0, (double)(12.0));
+	sngl_cairo_font(ctx, s___rel2, (double)(12.0));
 	s_platform_gtk4__source(ctx, (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 255});
 	cairo_move_to(ctx, (double)(4.0), (double)(30.0));
-	cairo_show_text(ctx, s___rel1);
+	cairo_show_text(ctx, s___rel3);
 	cairo_restore(ctx);
 }
 
@@ -1318,11 +1318,11 @@ static s_dot__inst * s_dot__new(double r) {
 	s_dot__inst * __self = ((s_dot__inst *)sngl_keep_copy(&(s_dot__inst[]){(s_dot__inst){.__prop_r = ((s___ref_float *)sngl_counted_retain(((s___ref_float *)sngl_counted_new(&(s___ref_float[]){(s___ref_float){.value = r}}, sizeof(s___ref_float), s___ref_float__release, s___ref_float__rekeep, NULL)))), .n = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))))}}, sizeof(s_dot__inst)));
 	__self->__n3 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(__self->__n3)), (GtkOrientation)((int)(1)));
-	char * __rel2 = sngl_cstring(SNGL_STR(""));
-	char * __rel3 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(__self->__n3, __rel2, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel3, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
-	s_x_c__free(__rel3);
-	s_x_c__free(__rel2);
+	char * __rel4 = sngl_cstring(SNGL_STR(""));
+	char * __rel5 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(__self->__n3, __rel4, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel5, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
+	s_x_c__free(__rel5);
+	s_x_c__free(__rel4);
 	__self->__drawing0 = sngl_canvas_new();
 	sngl_canvas_set_width(__self->__drawing0, (int)(40));
 	sngl_canvas_set_height(__self->__drawing0, (int)(40));
@@ -1331,14 +1331,14 @@ static s_dot__inst * s_dot__new(double r) {
 	sngl_canvas_on_paint(__self->__drawing0, (SnglDrawFn)(void (*)(void))sngl_dispatch_cairo_t_p__void, (void *)sngl_heap_copy(&(sngl_fn_cairo_t_p__void[]){sngl_fn_cairo_t_p__void__keep(((sngl_fn_cairo_t_p__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.__prop_r = __self->__prop_r, .n = __self->n}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_cairo_t_p__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_box_append((GtkWidget *)((void *)(__self->__n3)), (GtkWidget *)((void *)(__self->__drawing0)));
 	__self->__n4 = gtk_button_new();
-	gtk_button_set_label((GtkButton *)((void *)(__self->__n4)), s___rel4);
+	gtk_button_set_label((GtkButton *)((void *)(__self->__n4)), s___rel6);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(__self->__n4)), (gboolean)((int)(1)));
-	char * __rel5 = sngl_cstring(SNGL_STR(""));
-	char * __rel6 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(__self->__n4, __rel5, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel6, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel6);
-	s_x_c__free(__rel5);
-	sngl_signal_connect(__self->__n4, s___rel7, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.n = __self->n, .__self = __self}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+	char * __rel7 = sngl_cstring(SNGL_STR(""));
+	char * __rel8 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(__self->__n4, __rel7, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel8, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel8);
+	s_x_c__free(__rel7);
+	sngl_signal_connect(__self->__n4, s___rel9, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.n = __self->n, .__self = __self}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_box_append((GtkWidget *)((void *)(__self->__n3)), (GtkWidget *)((void *)(__self->__n4)));
 	__self->__root = __self->__n3;
 	return __self;
@@ -1649,11 +1649,11 @@ static void s___snglTeardown(void) {
 	sngl_map_string__dot__inst__drop(*__slot26);
 	*__slot26 = __kept26;
 }
-	s_x_c__free(s___rel0);
-	s_x_c__free(s___rel1);
-	s_x_c__free(s___rel4);
-	s_x_c__free(s___rel7);
-	s_x_c__free(s___rel10);
+	s_x_c__free(s___rel2);
+	s_x_c__free(s___rel3);
+	s_x_c__free(s___rel6);
+	s_x_c__free(s___rel9);
+	s_x_c__free(s___rel12);
 }
 
 static void s___lambda4(s___lambda4_caps state) {
@@ -1678,11 +1678,11 @@ static void s___lambda6(s___lambda6_caps state) {
 }
 
 static void sngl_init(void) {
-	s___rel0 = sngl_cstring(SNGL_STR("serif"));
-	s___rel1 = sngl_cstring(SNGL_STR("hi"));
-	s___rel4 = sngl_cstring(SNGL_STR("grow"));
-	s___rel7 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel10 = sngl_cstring(SNGL_STR("flip"));
+	s___rel2 = sngl_cstring(SNGL_STR("serif"));
+	s___rel3 = sngl_cstring(SNGL_STR("hi"));
+	s___rel6 = sngl_cstring(SNGL_STR("grow"));
+	s___rel9 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel12 = sngl_cstring(SNGL_STR("flip"));
 	s_hits = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
 	s_on = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
 	s_rs = sngl_list_float__keep(sngl_list_float_of(2, (double[]){4.0, 8.0}));
@@ -1699,11 +1699,11 @@ static void sngl_init(void) {
 static void sngl_build(void) {
 	s___n2 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(s___n2)), (GtkOrientation)((int)(1)));
-	char * __rel8 = sngl_cstring(SNGL_STR(""));
-	char * __rel9 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n2, __rel8, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel9, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
-	s_x_c__free(__rel9);
-	s_x_c__free(__rel8);
+	char * __rel10 = sngl_cstring(SNGL_STR(""));
+	char * __rel11 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s___n2, __rel10, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel11, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
+	s_x_c__free(__rel11);
+	s_x_c__free(__rel10);
 	s_board = sngl_canvas_new();
 	sngl_canvas_set_width(s_board, (int)(40));
 	sngl_canvas_set_height(s_board, (int)(40));
@@ -1712,14 +1712,14 @@ static void sngl_build(void) {
 	sngl_canvas_on_paint(s_board, (SnglDrawFn)(void (*)(void))sngl_dispatch_cairo_t_p__void, (void *)sngl_heap_copy(&(sngl_fn_cairo_t_p__void[]){sngl_fn_cairo_t_p__void__keep(((sngl_fn_cairo_t_p__void){s___lambda5__fn, sngl_alloc_copy(&(s___lambda5_caps__env[]){{{s___lambda5_caps__env__keep, false}, (s___lambda5_caps){.hits = s_hits}}}, sizeof(s___lambda5_caps__env))}))}, sizeof(sngl_fn_cairo_t_p__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_box_append((GtkWidget *)((void *)(s___n2)), (GtkWidget *)((void *)(s_board)));
 	s_flip = gtk_button_new();
-	gtk_button_set_label((GtkButton *)((void *)(s_flip)), s___rel10);
+	gtk_button_set_label((GtkButton *)((void *)(s_flip)), s___rel12);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(s_flip)), (gboolean)((int)(1)));
-	char * __rel11 = sngl_cstring(SNGL_STR(""));
-	char * __rel12 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s_flip, __rel11, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel12, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel12);
-	s_x_c__free(__rel11);
-	sngl_signal_connect(s_flip, s___rel7, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda6__fn, sngl_alloc_copy(&(s___lambda6_caps__env[]){{{s___lambda6_caps__env__keep, false}, (s___lambda6_caps){.on = s_on}}}, sizeof(s___lambda6_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+	char * __rel13 = sngl_cstring(SNGL_STR(""));
+	char * __rel14 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s_flip, __rel13, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel14, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel14);
+	s_x_c__free(__rel13);
+	sngl_signal_connect(s_flip, s___rel9, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda6__fn, sngl_alloc_copy(&(s___lambda6_caps__env[]){{{s___lambda6_caps__env__keep, false}, (s___lambda6_caps){.on = s_on}}}, sizeof(s___lambda6_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_box_append((GtkWidget *)((void *)(s___n2)), (GtkWidget *)((void *)(s_flip)));
 	s___renderSlot0(s___n2);
 	s___renderSlot1(s___n2);
@@ -1793,4 +1793,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:dba1657086b308d415a2cc854a516b84
+pass sha256:c56ce00494a8fb0674fe4885f25408f5
