@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
 	"duckfam.us/sngl/ir"
 )
@@ -44,7 +45,9 @@ func lowerCanvasPaint(pkg *ir.Package, _ Features, _ Options) error {
 	}
 	p := &painter{}
 	for _, o := range ir.Owners(pkg) {
-		p.findPainted(o.Stmts())
+		if o.Body != nil {
+			p.findPainted(o.Body)
+		}
 	}
 	return p.err
 }
@@ -62,47 +65,63 @@ func paintsThrough(canvas *ir.NodeInst) bool {
 
 // findPainted hands the drawing of each canvas in stmts painted through its
 // protocol to its paint event, reaching through what says when or how many,
-// as walkCanvases does.
-func (p *painter) findPainted(stmts []ir.Stmt) {
-	for _, s := range stmts {
-		switch v := s.(type) {
+// as walkCanvases does, and places what the drawing held that paints
+// nothing -- an effect, a timer -- beside the canvas, after it.
+func (p *painter) findPainted(stmts *[]ir.Stmt) {
+	for i := 0; i < len(*stmts); i++ {
+		switch v := (*stmts)[i].(type) {
 		case *ir.NodeInst:
 			if ir.IsShapeContainer(v) {
 				if paintsThrough(v) {
-					if err := p.paintThrough(v); err != nil && p.err == nil {
+					beside, err := p.paintThrough(v)
+					if err != nil && p.err == nil {
 						p.err = err
+					}
+					if len(beside) > 0 {
+						*stmts = slices.Insert(*stmts, i+1, beside...)
+						i += len(beside)
 					}
 				}
 				continue
 			}
-			p.findPainted(v.Children)
+			p.findPainted(&v.Children)
 		case *ir.If, *ir.For, *ir.Match:
 			for _, b := range ir.TransparentBlocks(v) {
-				p.findPainted(*b)
+				p.findPainted(b)
 			}
 		case *ir.ErrorBoundary:
-			p.findPainted(v.Children)
+			p.findPainted(&v.Children)
 		}
 	}
 }
 
 // paintThrough makes canvas's drawing the handler of its paint event, and
-// gives it the id it is flattened as where it has none.
-func (p *painter) paintThrough(canvas *ir.NodeInst) error {
+// gives it the id it is flattened as where it has none. What the drawing
+// holds that paints nothing and is no shape -- an `effect` or a `timer`,
+// which belongs to no tree -- it answers, for the canvas's parent to place:
+// a lifetime is the component's, wherever it was written.
+func (p *painter) paintThrough(canvas *ir.NodeInst) ([]ir.Stmt, error) {
 	if canvas.ID == "" {
 		canvas.ID = fmt.Sprintf("__drawing%d", p.n)
 		p.n++
 	}
-	draw := canvas.Children
+	var draw, beside []ir.Stmt
+	for _, s := range canvas.Children {
+		if n, ok := s.(*ir.NodeInst); ok && (ir.IsTimerPrimitive(n.Component) || isEffectNode(n)) {
+			beside = append(beside, s)
+			continue
+		}
+		draw = append(draw, s)
+	}
 	canvas.Children = nil
 	ctx := drawingContext(draw)
 	if ctx == nil {
 		// A drawing reading no context paints nothing.
-		return nil
+		return beside, nil
 	}
 	for _, s := range draw {
 		if n, ok := s.(*ir.NodeInst); ok {
-			return fmt.Errorf("%s: %s is painted through its protocol, and holds %s, which paints nothing", nodePos(n), canvas.Name, n.Name)
+			return beside, fmt.Errorf("%s: %s is painted through its protocol, and holds %s, which paints nothing", nodePos(n), canvas.Name, n.Name)
 		}
 	}
 	for _, e := range canvas.Component.Events {
@@ -110,10 +129,10 @@ func (p *painter) paintThrough(canvas *ir.NodeInst) error {
 			fn := &ir.Func{Pkg: canvas.Component.Pkg, Params: []*ir.Param{ctx}, Block: draw}
 			fn.Lowered.Paints = true
 			canvas.Handlers = append(canvas.Handlers, ir.EventHandler{Name: e.Name, Func: fn})
-			return nil
+			return beside, nil
 		}
 	}
-	return fmt.Errorf("%s: %s is painted through its protocol, and declares no event handed the context its shapes paint through", nodePos(canvas), canvas.Component.Name)
+	return beside, fmt.Errorf("%s: %s is painted through its protocol, and declares no event handed the context its shapes paint through", nodePos(canvas), canvas.Component.Name)
 }
 
 // drawingContext is the context draw paints through: the parameter

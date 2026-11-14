@@ -144,7 +144,10 @@ which the checker allows only on a component whose rest slot takes shapes
 runs right after `passShapeDraw` and hands the drawing -- the statements that
 pass put in place of the shapes -- to the canvas's event whose one parameter is
 typed as the context those statements paint through, as a handler marked
-`Lowered.Paints`. It runs before anything flattens a canvas, so a render slot's
+`Lowered.Paints`. An `effect` or a `timer` written in the drawing paints
+nothing and belongs to no tree, so it is placed beside the canvas, after it,
+as the component's lifetime it is; it was refused
+(`testdata/component_treeless_in_canvas.txtar`). It runs before anything flattens a canvas, so a render slot's
 canvas (`passReactivity`) and a record's (`passInstanceBodies`) are flattened
 with the handler, which is lifted and connected through the component's `on`
 as any handler is. A canvas written with no id is given `__drawingN`, its own
