@@ -735,22 +735,28 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func Bad_clicked_handler() {
 	if _, __err := strconv.Atoi("x"); __err != nil {
 		func() {
 			e := ErrorEvent{Message: __err.Error()}
 			_ = e
 			m.caught = "c"
-			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 			if m.caught == "c" {
 				return
 			}
 			m.caught = "never"
-			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 		}()
 	}
 	m.after = (m.after + "b")
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 }
 
 func snglInit() {
@@ -766,8 +772,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.bad)), cgo.CGboolean(1))
 	_setLook(m.bad, Look{})
 	cgo.SnglSignalConnect(m.bad, "clicked", Bad_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.bad)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
@@ -808,4 +814,4 @@ pass sha256:4e94fa1f2de34840322c0d1c1bbfe3c6
 -- run/go/fyne --
 pass sha256:e887d53597d0ae4d067880cbbe510d1f
 -- run/go/gtk4 --
-pass sha256:7c74189e18a6ad0cbc8c732e2f964fd2
+pass sha256:da67d28e8cc76e770deea84ed72c56d0

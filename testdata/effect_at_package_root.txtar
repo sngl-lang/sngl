@@ -247,6 +247,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -322,7 +328,7 @@ func __n0_visible_handler(__visible bool) {
 
 func __n2_clicked_handler() {
 	m.n += 1
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	__effects0_settle()
 }
 
@@ -344,8 +350,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n2 = cgo.GtkButtonNew()
@@ -390,4 +396,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:2023b02792c96331f027a0aaa82a8b36
 -- run/go/gtk4 --
-pass sha256:c6cb973ac830645973de430576182e53
+pass sha256:c5cd91d85ac1d2911e65126bfe9c94f7

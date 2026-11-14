@@ -2819,6 +2819,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _fireCheck(b cgo.Widget, checked bool) {
 	w := (cgo.PGtkCheckButton)(unsafe.Pointer(b))
 	if cgo.GtkCheckButtonGetActive(w) != checked {
@@ -3037,7 +3043,7 @@ func __renderSlot0(parent cgo.Widget) {
 						m.cell__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = cell
 						cgo.SnglSignalConnect(cell, "clicked", func() {
 							m.log = it.Elem
-							cgo.SnglTextSetValue(m.__n0, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 						})
 						cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__n1)), (cgo.PGtkWidget)(unsafe.Pointer(cell)))
 						var __n2 *__checkbox_state0__inst
@@ -3061,7 +3067,7 @@ func __renderSlot0(parent cgo.Widget) {
 							}()
 							__checkbox_state0__set_change(__n2, func(on bool) {
 								m.log = ((it.Elem + " ") + fmt.Sprint(on))
-								cgo.SnglTextSetValue(m.__n0, m.log)
+								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 							})
 							__checkbox_state0__set_label(__n2, it.Elem)
 							__checkbox_state0__set___copy(__n2, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)))
@@ -3076,7 +3082,7 @@ func __renderSlot0(parent cgo.Widget) {
 							}
 							__n2__made := __checkbox_state0__new(false, it.Elem, ((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1)), func(on bool) {
 								m.log = ((it.Elem + " ") + fmt.Sprint(on))
-								cgo.SnglTextSetValue(m.__n0, m.log)
+								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 							})
 							__n2 = __n2__made
 						}
@@ -3158,7 +3164,7 @@ func __renderSlot1(parent cgo.Widget) {
 						}()
 						__child0__set___on0(__n3, func() {
 							m.log = fmt.Sprint(e)
-							cgo.SnglTextSetValue(m.__n0, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 						})
 						__child0__set___p0(__n3, e)
 						__child0__set___p1(__n3, __iterIdx0)
@@ -3173,7 +3179,7 @@ func __renderSlot1(parent cgo.Widget) {
 						}
 						__n3__made := __child0__new(e, __iterIdx0, func() {
 							m.log = fmt.Sprint(e)
-							cgo.SnglTextSetValue(m.__n0, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 						})
 						__n3 = __n3__made
 					}
@@ -3235,7 +3241,7 @@ func __renderSlot2(parent cgo.Widget) {
 						__n4 = m.__inst5_live[__inst5_i]
 						__child1__set___on0(__n4, func() {
 							m.log = (m.log + ".")
-							cgo.SnglTextSetValue(m.__n0, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 						})
 						__child1__set___p0(__n4, __copy0)
 					} else {
@@ -3244,7 +3250,7 @@ func __renderSlot2(parent cgo.Widget) {
 						}
 						__n4__made := __child1__new(__copy0, func() {
 							m.log = (m.log + ".")
-							cgo.SnglTextSetValue(m.__n0, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 						})
 						__n4 = __n4__made
 					}
@@ -3356,7 +3362,7 @@ func snglBuild() {
 			m.pin__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = pin
 			cgo.SnglSignalConnect(pin, "clicked", func() {
 				m.log = it.Elem
-				cgo.SnglTextSetValue(m.__n0, m.log)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 			})
 			cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__n7)), (cgo.PGtkWidget)(unsafe.Pointer(pin)))
 		}
@@ -3375,7 +3381,7 @@ func snglBuild() {
 			m.tick__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = tick
 			cgo.SnglSignalConnect(tick, "clicked", func() {
 				m.log = (fmt.Sprint(r) + fmt.Sprint(k))
-				cgo.SnglTextSetValue(m.__n0, m.log)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 			})
 			cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__n8)), (cgo.PGtkWidget)(unsafe.Pointer(tick)))
 		}
@@ -3387,8 +3393,8 @@ func snglBuild() {
 	__renderSlot1(m.__n6)
 	__renderSlot2(m.__n6)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.log)
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglAppAttach(m.__n5)
@@ -4438,7 +4444,7 @@ pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
 pass sha256:429dd45c6197b2879661be1cb7f55e2c
 -- run/go/gtk4 --
-pass sha256:b4cdc1c12fa5b4f476d8f74ab499f664
+pass sha256:9ab4efd61ccdb7ded2c48f936f27389c
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --

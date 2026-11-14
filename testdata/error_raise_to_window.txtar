@@ -346,6 +346,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func Home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.home, m.visible__inst0)
@@ -364,11 +370,11 @@ func __n2_clicked_handler() {
 			}
 			_ = e
 			m.problem = e.Message
-			cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 		}()
 		m.age = RequireAge("")
 		m.problem = "after"
-		cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 	}()
 }
 
@@ -385,7 +391,7 @@ func __n3_clicked_handler() {
 			}
 			_ = e
 			m.problem = ("call: " + e.Kind)
-			cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 		}()
 		RequireAge("")
 	}()
@@ -404,11 +410,11 @@ func __n4_clicked_handler() {
 			}
 			_ = e
 			m.problem = e.Message
-			cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 		}()
 		m.age = RequireAge("")
 		m.problem = "deep after"
-		cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 	}()
 }
 
@@ -445,8 +451,8 @@ func snglBuild() {
 	_setLook(m.__n4, Look{})
 	cgo.SnglSignalConnect(m.__n4, "clicked", __n4_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglToplevelAppend(m.home, m.__n1)
@@ -485,4 +491,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:476d641187788a842ec3aaa085a99776
 -- run/go/gtk4 --
-pass sha256:a2547975f3bac81fd940edac380eec3e
+pass sha256:f6595a058c4e88fb54e2f5380eb6d501

@@ -920,6 +920,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	name__inst0         string
 	length__inst0       *int
@@ -987,6 +991,12 @@ func Refresh__inst0() {
 	__effects0_settle()
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1009,6 +1019,38 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
+}
+
 func LifetimeEnd(life Lifetime) {
 	snglasync.End(life._id)
 }
@@ -1025,11 +1067,11 @@ func __effect0_mount() {
 		} else {
 			__lt20 = ""
 		}
-		cgo.SnglTextSetValue(m.__n4, __lt20)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), __lt20)
 	}
 	m.asked__inst0 = __effect0_mount_key.N
 	m.loading__inst0 = true
-	cgo.SnglTextSetValue(m.__n3, fmt.Sprint(m.loading__inst0))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), fmt.Sprint(m.loading__inst0))
 	m.life__inst0 = Lifetime{_id: snglasync.Begin()}
 	__async_arg0 := __effect0_mount_key.Key
 	_ = __async_arg0
@@ -1042,7 +1084,7 @@ func __effect0_mount() {
 				return
 			}
 			m.loading__inst0 = false
-			cgo.SnglTextSetValue(m.__n3, fmt.Sprint(m.loading__inst0))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), fmt.Sprint(m.loading__inst0))
 			switch {
 			case (r.tag == 0):
 				var got int = r.Ok
@@ -1053,7 +1095,7 @@ func __effect0_mount() {
 				} else {
 					__lt21 = "-"
 				}
-				cgo.SnglTextSetValue(m.__n2, __lt21)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), __lt21)
 				m.failure__inst0 = nil
 				var __lt22 string
 				if m.failure__inst0 != nil {
@@ -1061,7 +1103,7 @@ func __effect0_mount() {
 				} else {
 					__lt22 = ""
 				}
-				cgo.SnglTextSetValue(m.__n4, __lt22)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), __lt22)
 			default:
 				got := r.Failed
 				m.failure__inst0 = func(_p1 *Failure) *Failure {
@@ -1077,7 +1119,7 @@ func __effect0_mount() {
 				} else {
 					__lt23 = ""
 				}
-				cgo.SnglTextSetValue(m.__n4, __lt23)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), __lt23)
 			}
 		})
 	}()
@@ -1270,10 +1312,10 @@ func Card__new(name string) *Card__inst {
 	} else {
 		__lt26 = __self.__prop_name
 	}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, __lt26)
+	__self.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __lt26)
 	_setLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_onClick(__self.__n0, func() {
 	})
 	Card__effects1_settle(__self)
 	__self.__root = __self.__n0
@@ -1311,7 +1353,7 @@ func Card__effect1_mount(__self *Card__inst) {
 				} else {
 					__lt24 = __self.__prop_name
 				}
-				cgo.SnglTextSetValue(__self.__n0, __lt24)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __lt24)
 				__self.Failure__inst1 = nil
 			default:
 				got := r.Failed
@@ -1407,7 +1449,7 @@ func Card__set_name(__self *Card__inst, __v string) {
 	} else {
 		__lt25 = __self.__prop_name
 	}
-	cgo.SnglTextSetValue(__self.__n0, __lt25)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __lt25)
 	Card__effects1_settle(__self)
 }
 
@@ -1452,12 +1494,12 @@ func snglBuild() {
 	} else {
 		__lt27 = "-"
 	}
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, __lt27)
+	m.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), __lt27)
 	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, fmt.Sprint(m.loading__inst0))
+	m.__n3 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), fmt.Sprint(m.loading__inst0))
 	_setLook(m.__n3, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n3)
 	var __lt28 string
@@ -1466,8 +1508,8 @@ func snglBuild() {
 	} else {
 		__lt28 = ""
 	}
-	m.__n4 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n4, __lt28)
+	m.__n4 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), __lt28)
 	_setLook(m.__n4, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n4)
 	m.__n6 = cgo.GtkButtonNew()
@@ -1526,4 +1568,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:1c148b6aa5d8292198e90775cee346f3
 -- run/go/gtk4 --
-pass sha256:32535fcdcdf20d9fbd5839e994a13944
+pass sha256:95f7be91e54a419c57bcaa917383570b

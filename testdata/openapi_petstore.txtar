@@ -1594,6 +1594,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	offset__inst0       int
 	page__inst0         *PaginatedPetSummaryList
@@ -1787,6 +1791,12 @@ func PetRetrieveCall(id string, life Lifetime, __ctx_server string) Result__PetD
 	return Result__PetDetail{tag: 0, Ok: PetDetail{Breed: PetBreedSummary{}, Photos: PetPhotos{}, Measurements: []PetMeasurement{}, Tags: []PetTag{}}}
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1807,6 +1817,38 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
 }
 
 func ResponseChecked(r Response) Result__Response {
@@ -2369,11 +2411,11 @@ func __n12_clicked_handler() {
 					__lt20 = "nothing"
 				}
 				m.from__inst0 = __lt20
-				cgo.SnglTextSetValue(m.__n5, m.from__inst0)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), m.from__inst0)
 			default:
 				r := __match0.Failed
 				m.from__inst0 = r.Message
-				cgo.SnglTextSetValue(m.__n5, m.from__inst0)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), m.from__inst0)
 			}
 		})
 	}()
@@ -2381,10 +2423,10 @@ func __n12_clicked_handler() {
 
 func __child0__new(__p0 *Failure) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ("Could not load rex: " + (*(__self.__prop___p0)).Message))
+	__self.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("Could not load rex: " + (*(__self.__prop___p0)).Message))
 	_setLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_onClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
 	return __self
@@ -2392,7 +2434,7 @@ func __child0__new(__p0 *Failure) *__child0__inst {
 
 func __child0__set___p0(__self *__child0__inst, __v *Failure) {
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, ("Could not load rex: " + (*(__self.__prop___p0)).Message))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("Could not load rex: " + (*(__self.__prop___p0)).Message))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -2401,10 +2443,10 @@ func __child0__destroy(__self *__child0__inst) {
 
 func __child1__new(__p0 *PetDetail) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0}
-	__self.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n1, ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
+	__self.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
 	_setLook(__self.__n1, Look{})
-	cgo.SnglOnClick(__self.__n1, func() {
+	_onClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
 	return __self
@@ -2412,7 +2454,7 @@ func __child1__new(__p0 *PetDetail) *__child1__inst {
 
 func __child1__set___p0(__self *__child1__inst, __v *PetDetail) {
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n1, ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
 }
 
 func __child1__destroy(__self *__child1__inst) {
@@ -2421,10 +2463,10 @@ func __child1__destroy(__self *__child1__inst) {
 
 func __child2__new(__p0 PetSummary) *__child2__inst {
 	__self := &__child2__inst{__prop___p0: __p0}
-	__self.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n2, __self.__prop___p0.Name)
+	__self.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), __self.__prop___p0.Name)
 	_setLook(__self.__n2, Look{})
-	cgo.SnglOnClick(__self.__n2, func() {
+	_onClick(__self.__n2, func() {
 	})
 	__self.__root = __self.__n2
 	return __self
@@ -2432,7 +2474,7 @@ func __child2__new(__p0 PetSummary) *__child2__inst {
 
 func __child2__set___p0(__self *__child2__inst, __v PetSummary) {
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n2, __self.__prop___p0.Name)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), __self.__prop___p0.Name)
 }
 
 func __child2__destroy(__self *__child2__inst) {
@@ -2441,10 +2483,10 @@ func __child2__destroy(__self *__child2__inst) {
 
 func __child3__new(__p0 PetTag) *__child3__inst {
 	__self := &__child3__inst{__prop___p0: __p0}
-	__self.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n3, __self.__prop___p0.Type.Name)
+	__self.__n3 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n3)), __self.__prop___p0.Type.Name)
 	_setLook(__self.__n3, Look{Css: "padding-top: 2px; padding-right: 8px; padding-bottom: 2px; padding-left: 8px; border-radius: 12px; "})
-	cgo.SnglOnClick(__self.__n3, func() {
+	_onClick(__self.__n3, func() {
 	})
 	__self.__root = __self.__n3
 	return __self
@@ -2452,7 +2494,7 @@ func __child3__new(__p0 PetTag) *__child3__inst {
 
 func __child3__set___p0(__self *__child3__inst, __v PetTag) {
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n3, __self.__prop___p0.Type.Name)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n3)), __self.__prop___p0.Type.Name)
 }
 
 func __child3__destroy(__self *__child3__inst) {
@@ -2527,8 +2569,8 @@ func snglBuild() {
 	_setLook(m.__n12, Look{})
 	cgo.SnglSignalConnect(m.__n12, "clicked", __n12_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n4, m.__n12)
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, m.from__inst0)
+	m.__n5 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), m.from__inst0)
 	_setLook(m.__n5, Look{})
 	cgo.SnglToplevelAppend(m.__n4, m.__n5)
 	cgo.SnglAppAttach(m.__n4)
@@ -4544,7 +4586,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:edd937f71ff3249cfd0450f58c340b03
 -- run/go/gtk4 --
-pass sha256:4d06be21bfec15f4fb6a7c6ea7461276
+pass sha256:9d1d2cf2c56e7245f14e3f244870f4e5
 -- run/kotlin/android --
 pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --

@@ -485,6 +485,7 @@ import (
 	"slices"
 	"syscall"
 	"time"
+	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -546,7 +547,7 @@ func Report(t Token) {
 func Start(args []string, run func()) {
 	fmt.Print((("before " + fmt.Sprint(len(args))) + "\n"))
 	m.n = len(args)
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	if slices.Index(args, "--window") >= 0 {
 		run()
 	}
@@ -555,6 +556,12 @@ func Start(args []string, run func()) {
 
 func __run(args []string, run func()) {
 	Start(args, run)
+}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -721,8 +728,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -782,4 +789,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:049f7ff9b7ce4435a520ef82d968e01a
 -- run/go/gtk4 --
-pass sha256:3860ef30e93a544196b6984ac1fcd85c
+pass sha256:84b5efaff7cf788e16c08abdb3755db6

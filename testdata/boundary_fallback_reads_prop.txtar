@@ -565,6 +565,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	__failed0      bool
 	visible__inst0 bool
@@ -600,6 +604,44 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -617,10 +659,10 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.__failed0 {
-					__n1 := cgo.SnglTextNew()
-					cgo.SnglTextSetValue(__n1, "sorry it broke")
+					__n1 := _newText()
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n1)), "sorry it broke")
 					_setLook(__n1, Look{})
-					cgo.SnglOnClick(__n1, func() {
+					_onClick(__n1, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -706,8 +748,8 @@ func snglBuild() {
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	for _, x := range []__anon_id_elem_c6a818{__anon_id_elem_c6a818{Id: "a", Elem: "a"}, __anon_id_elem_c6a818{Id: "b", Elem: "b"}} {
-		__n4 := cgo.SnglTextNew()
-		cgo.SnglTextSetValue(__n4, x.Elem)
+		__n4 := _newText()
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n4)), x.Elem)
 		_setLook(__n4, Look{})
 		cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(__n4)))
 	}
@@ -849,6 +891,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:253c024225202bf9fe04a772e79474d6
 -- run/go/gtk4 --
-pass sha256:03c0a0bfb5819855b011ca40b50b6dca
+pass sha256:6ba6a5197a365369893d70b9804ae291
 -- run/none/html --
 pass sha256:acc91ef1047a11ffc9ea506a1cf7ba04

@@ -217,6 +217,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -236,8 +242,8 @@ func snglBuild() {
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
 	_setLook(m.__n2, Look{Spaced: true, Spacing: 6})
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, m.picked__inst0)
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.picked__inst0)
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -245,10 +251,10 @@ func snglBuild() {
 	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	for _, a := range []Action__record{Action__record{Label: "One", Run: func() {
 		m.picked__inst0 = "one"
-		cgo.SnglTextSetValue(m.__n1, m.picked__inst0)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.picked__inst0)
 	}}, Action__record{Label: "Two", Run: func() {
 		m.picked__inst0 = "two"
-		cgo.SnglTextSetValue(m.__n1, m.picked__inst0)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.picked__inst0)
 	}}} {
 		__n4 := cgo.GtkButtonNew()
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__n4)), a.Label)
@@ -348,6 +354,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:16124c324936e633c3a866336e7bdec0
 -- run/go/gtk4 --
-pass sha256:5a4adfd0c42cf2d2792093f2bee11de0
+pass sha256:fe7ebcd73694364ad3ec399731bc810d
 -- run/none/html --
 pass sha256:01483a03a0f47cd1bcfba782f2220d84

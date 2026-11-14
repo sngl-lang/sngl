@@ -1125,6 +1125,10 @@ type _TabPageState struct {
 	Host     *cgo.PGtkNotebook
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type _TabsState struct {
 	Selected int
 }
@@ -1297,6 +1301,44 @@ func _tabPageShow(p cgo.Widget) {
 	}
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
+}
+
 func _tabsShown(t cgo.Widget) {
 	nb := (cgo.PGtkNotebook)(unsafe.Pointer(cgo.GtkWidgetGetFirstChild((cgo.PGtkWidget)(unsafe.Pointer(t)))))
 	if !cgo.GtkWidgetIsAncestor((cgo.PGtkWidget)(unsafe.Pointer(nb)), (cgo.PGtkWidget)(unsafe.Pointer(t))) {
@@ -1425,26 +1467,26 @@ func __renderSlot0(parent cgo.Widget) {
 						m.changed = k
 					})
 					if t.__id == 0 {
-						__n0 := cgo.SnglTextNew()
-						cgo.SnglTextSetValue(__n0, "first panel")
+						__n0 := _newText()
+						cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n0)), "first panel")
 						_setLook(__n0, Look{})
-						cgo.SnglOnClick(__n0, func() {
+						_onClick(__n0, func() {
 						})
 						cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(tabs__change)), (cgo.PGtkWidget)(unsafe.Pointer(__n0)))
 					} else {
 						if t.__id == 1 {
-							__n1 := cgo.SnglTextNew()
-							cgo.SnglTextSetValue(__n1, "second panel")
+							__n1 := _newText()
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n1)), "second panel")
 							_setLook(__n1, Look{})
-							cgo.SnglOnClick(__n1, func() {
+							_onClick(__n1, func() {
 							})
 							cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(tabs__change)), (cgo.PGtkWidget)(unsafe.Pointer(__n1)))
 						} else {
 							if t.__id == 2 {
-								__n2 := cgo.SnglTextNew()
-								cgo.SnglTextSetValue(__n2, "more panel")
+								__n2 := _newText()
+								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n2)), "more panel")
 								_setLook(__n2, Look{})
-								cgo.SnglOnClick(__n2, func() {
+								_onClick(__n2, func() {
 								})
 								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(tabs__change)), (cgo.PGtkWidget)(unsafe.Pointer(__n2)))
 							}
@@ -1532,4 +1574,4 @@ pass sha256:fb55da9509d8b8fabcb14cf67466fefe
 -- run/go/fyne --
 pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:97fc17db17b04501528b59db416da1da
+pass sha256:b12588b432221bffc7af07cd1476ea8a

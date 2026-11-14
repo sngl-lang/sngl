@@ -668,6 +668,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -714,6 +715,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -738,7 +745,7 @@ func _setLook(w cgo.Widget, l Look) {
 
 func __effect0_mount() {
 	m.page__inst0 = (m.__effect0_key + 1)
-	cgo.SnglTextSetValue(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("page=" + fmt.Sprint(m.page__inst0)))
 }
 
 func __effect0_down() {
@@ -807,8 +814,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("page=" + fmt.Sprint(m.page__inst0)))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -993,7 +1000,7 @@ pass sha256:79ee7e3ff9bfa7f2bdcf27f81a458a3e
 -- run/go/fyne --
 pass sha256:c0e2d7f92c14b89f911322f530b273ca
 -- run/go/gtk4 --
-pass sha256:97114efceb32f2238531ee92a460fd7b
+pass sha256:896fa9a01136faa71eedd00090b5fcc3
 -- run/kotlin/android --
 pass sha256:ffcd454c8e617cd9e6fc30af1f367735
 -- run/none/html --

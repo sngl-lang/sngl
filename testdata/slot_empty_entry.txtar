@@ -709,6 +709,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	shown__inst0   bool
 	visible__inst0 bool
@@ -724,6 +728,12 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -747,6 +757,38 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -764,10 +806,10 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.shown__inst0 {
-					__n2 := cgo.SnglTextNew()
-					cgo.SnglTextSetValue(__n2, "shown")
+					__n2 := _newText()
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n2)), "shown")
 					_setLook(__n2, Look{})
-					cgo.SnglOnClick(__n2, func() {
+					_onClick(__n2, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -807,7 +849,7 @@ func Show_clicked_handler() {
 	} else {
 		__lt22 = "boxed full"
 	}
-	cgo.SnglTextSetValue(m.__n1, __lt22)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt22)
 	__renderSlot0(m.__n0)
 }
 
@@ -826,12 +868,12 @@ func snglBuild() {
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	__lt20 := "boxed full"
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, __lt20)
+	m.__n3 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), __lt20)
 	_setLook(m.__n3, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
-	m.__n4 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n4, "inner")
+	m.__n4 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), "inner")
 	_setLook(m.__n4, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
 	var __lt21 string
@@ -840,8 +882,8 @@ func snglBuild() {
 	} else {
 		__lt21 = "boxed full"
 	}
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, __lt21)
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt21)
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	__renderSlot0(m.__n0)
@@ -1030,7 +1072,7 @@ pass sha256:f9fb60518281ad604b7c5ab537659ff0
 -- run/go/fyne --
 pass sha256:9870d70a99e268b6e5ffd5df24c2a02e
 -- run/go/gtk4 --
-pass sha256:6d29a9f355453e02a73664bf804f103e
+pass sha256:d0d6524dc86897dc3a32f28ce3846533
 -- run/kotlin/android --
 pass sha256:b02cf01fcd90b2811d415051aa9acc81
 -- run/none/html --

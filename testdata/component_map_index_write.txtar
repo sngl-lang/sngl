@@ -705,6 +705,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -729,7 +735,7 @@ func _setLook(w cgo.Widget, l Look) {
 
 func Put_clicked_handler() {
 	m.counts["a"] = 7
-	cgo.SnglTextSetValue(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
 		}
@@ -739,7 +745,7 @@ func Put_clicked_handler() {
 
 func Bump_clicked_handler() {
 	m.counts["a"] += 5
-	cgo.SnglTextSetValue(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
 		}
@@ -754,8 +760,8 @@ func snglInit() {
 
 func snglBuild() {
 	m.__root = cgo.SnglContentsNew()
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((fmt.Sprint(len(m.counts)) + ":") + fmt.Sprint(func() int {
 		if __v, __ok := m.counts["a"]; __ok {
 			return __v
 		}
@@ -978,7 +984,7 @@ pass sha256:e4faa076dafa00c9d860e4447a4701f3
 -- run/go/fyne --
 pass sha256:955d5f240e029f16516e5c59a41a5cd9
 -- run/go/gtk4 --
-pass sha256:481df0c87d6addbdcc1455382baab9cf
+pass sha256:a06f2349900bc9d49b1b3f2b1b7c1735
 -- run/kotlin/android --
 pass sha256:43312fc709aabc3884429e4914f01638
 -- run/none/html --

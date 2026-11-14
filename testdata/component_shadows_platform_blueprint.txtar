@@ -673,6 +673,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -801,8 +807,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, "user widget")
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "user widget")
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.entry = cgo.GtkEntryNew()
@@ -941,7 +947,7 @@ pass sha256:13ec5f5447c3bd70476022c6f038384b
 -- run/go/fyne --
 pass sha256:51de69565226a4106da04843359ade6c
 -- run/go/gtk4 --
-pass sha256:c8236bd74292d336683d25629ad0d50a
+pass sha256:2033a5b6ba593296b015409e86d17695
 -- run/kotlin/android --
 pass sha256:2552ab02c3a6e1c9a6fe867d11dec8e6
 -- run/none/html --

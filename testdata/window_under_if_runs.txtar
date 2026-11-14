@@ -715,6 +715,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	details             bool
 	ticks               int
@@ -738,6 +742,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -760,10 +770,42 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
+}
+
 func __effect0_mount() {
 	m.handle__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.ticks))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.ticks))
 		if m.ticks <= 3 {
 			m.details = !m.details
 			__renderSlot0(nil)
@@ -929,10 +971,10 @@ func Main__r0_visible_handler(__visible bool) {
 
 func Counter__new() *Counter__inst {
 	__self := &Counter__inst{__effect1_live: []bool{}, __effect1_desired: []bool{}}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.Mounts))
+	__self.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), fmt.Sprint(__self.Mounts))
 	_setLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_onClick(__self.__n0, func() {
 	})
 	Counter__effects1_settle(__self)
 	__self.__root = __self.__n0
@@ -941,7 +983,7 @@ func Counter__new() *Counter__inst {
 
 func Counter__effect1_mount(__self *Counter__inst) {
 	__self.Mounts += 1
-	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.Mounts))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), fmt.Sprint(__self.Mounts))
 	fmt.Println(("mounted " + fmt.Sprint(__self.Mounts)))
 }
 
@@ -1031,10 +1073,10 @@ func __window_state1__slot0__new(__start_visible bool, title string, closed func
 		__self.Visible = __visible
 		cgo.SnglToplevelSetVisible(__self.__n1, __self.Visible)
 	})
-	__self.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n5, "load")
+	__self.__n5 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n5)), "load")
 	_setLook(__self.__n5, Look{})
-	cgo.SnglOnClick(__self.__n5, func() {
+	_onClick(__self.__n5, func() {
 	})
 	cgo.SnglToplevelAppend(__self.__n1, __self.__n5)
 	__self.__n3 = Counter__new()
@@ -1085,8 +1127,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.main__r0, "Main")
 	cgo.SnglToplevelSetVisible(m.main__r0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.main__r0, Main__r0_visible_handler)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.ticks))
+	m.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.ticks))
 	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.__n2)
 	cgo.SnglAppAttach(m.main__r0)
@@ -1127,4 +1169,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:0f8cf121f287d9cee44dd1753d6e5f69
 -- run/go/gtk4 --
-pass sha256:cf315d2abf5dd72e688aaebc6ddf3eab
+pass sha256:99e9e967f8223b55f089cf4bbf333ce4

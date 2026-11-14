@@ -804,15 +804,21 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func Bad_clicked_handler() {
 	if _, __err := strconv.Atoi("x"); __err != nil {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = e.Message
-		cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "b")
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 }
 
 func Good_clicked_handler() {
@@ -820,10 +826,10 @@ func Good_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = "never"
-		cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "g")
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 }
 
 func snglInit() {
@@ -844,8 +850,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.good)), cgo.CGboolean(1))
 	_setLook(m.good, Look{})
 	cgo.SnglSignalConnect(m.good, "clicked", Good_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.bad)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.good)))
@@ -887,4 +893,4 @@ pass sha256:18b16700e85103bc7f54294108053b44
 -- run/go/fyne --
 pass sha256:8232bf48a3fd03d2dc9ef46fce42c3d6
 -- run/go/gtk4 --
-pass sha256:1bf722829246e7e63d90dda08ec3b062
+pass sha256:0e5eb7000faf9729d249fff9efd2f283

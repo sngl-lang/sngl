@@ -499,6 +499,7 @@ import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
 	"os"
 	"runtime"
+	"unsafe"
 )
 
 type Look struct {
@@ -527,6 +528,12 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -566,8 +573,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.home, "t")
 	cgo.SnglToplevelSetVisible(m.home, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.initialTheme)
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.initialTheme)
 	_setLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.home, m.__n0)
 	cgo.SnglAppAttach(m.home)
@@ -679,7 +686,7 @@ pass sha256:5078b74e035f11c4e2100efa20ff422f
 -- run/go/fyne --
 pass sha256:ccf1b76fa8ea47fc80c91a82a6917a90
 -- run/go/gtk4 --
-pass sha256:41ec60c08a3fbaec382f48f3a03eed31
+pass sha256:3f4c03d82c734d0454aa67246af10fff
 -- run/kotlin/android --
 pass sha256:8a2242c94c50161d022239571774bf60
 -- run/none/html --

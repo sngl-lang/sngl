@@ -308,6 +308,12 @@ func _setScrollDirection(sw cgo.Widget, direction string) {
 	cgo.SnglProbeReset(cgo.SnglScrollProbe(sw), (axis == 1))
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setScroll(sw cgo.Widget, s _ScrollState) {
 	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(sw)), "sngl-scroll", s)
 }
@@ -540,8 +546,8 @@ func snglBuild() {
 	m.__n4 = _newScroll()
 	_setScrollDirection(m.__n4, "vertical")
 	_setLook(m.__n4, Look{Grow: 1.0})
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, "rows")
+	m.__n5 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), "rows")
 	_setLook(m.__n5, Look{})
 	cgo.SnglScrollSetChild(m.__n4, m.__n5)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
@@ -581,4 +587,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:96945cd5eabb1205b8a4274ceb20e553
 -- run/go/gtk4 --
-pass sha256:08f37f117746de30f50759d1f36d20ca
+pass sha256:19cc916f6d133bc6e680db59089ae9f1

@@ -642,6 +642,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func snglInit() {
 	m = &snglState{}
 	m.short = (time.Duration(100) * time.Millisecond)
@@ -652,16 +658,16 @@ func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
 	_setLook(m.__n0, Look{Spaced: true, Spacing: 6})
-	m.sum = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.sum, snglStrDuration((m.short + m.long)))
+	m.sum = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.sum)), snglStrDuration((m.short + m.long)))
 	_setLook(m.sum, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.sum)))
-	m.trunc = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.trunc, fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
+	m.trunc = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.trunc)), fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
 	_setLook(m.trunc, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.trunc)))
-	m.scaled = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.scaled, fmt.Sprint(int((m.short*3)/time.Millisecond)))
+	m.scaled = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.scaled)), fmt.Sprint(int((m.short*3)/time.Millisecond)))
 	_setLook(m.scaled, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.scaled)))
 	cgo.SnglAppAttach(m.__n0)
@@ -988,7 +994,7 @@ pass sha256:4657a36ed97500dec96458b00a87f630
 -- run/go/fyne --
 pass sha256:c356e21e9e95d315eb726169541728ae
 -- run/go/gtk4 --
-pass sha256:4ca8c83ec0a1f0571adab94c66f01dd4
+pass sha256:fbf6055c4954e2e49c185e8cfeb4a200
 -- run/kotlin/android --
 pass sha256:11ecdf0e9648925e3d7b30a31ce464a3
 -- run/none/html --

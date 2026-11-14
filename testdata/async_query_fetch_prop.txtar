@@ -723,6 +723,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func LifetimeEnd(life Lifetime) {
 	snglasync.End(life._id)
 }
@@ -768,7 +774,7 @@ func __renderSlot0(parent cgo.Widget) {
 						__query_state1__set_fetch(__n2, Lookup)
 						__query_state1__set_load(__n2, func(got int) {
 							m.total__inst0 += got
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total__inst0))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total__inst0))
 						})
 						__query_state1__set_on(__n2, n.Elem)
 						__query_state1__set___start_value(__n2, nil)
@@ -785,7 +791,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n2__made := __query_state1__new(nil, false, nil, n.Elem, Lookup, func(got int) {
 							m.total__inst0 += got
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total__inst0))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total__inst0))
 						})
 						__n2 = __n2__made
 					}
@@ -1015,8 +1021,8 @@ func snglBuild() {
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_setLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	__renderSlot0(m.__n3)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total__inst0))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total__inst0))
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n4 = cgo.GtkButtonNew()
@@ -1062,4 +1068,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:86c7b2029483bc740f4e7fa8f090cd99
 -- run/go/gtk4 --
-pass sha256:5ee02705803a22a5df1c1bc48baeb490
+pass sha256:6b704f210d7d14dca07a6ebe58128dac

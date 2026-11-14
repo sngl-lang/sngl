@@ -681,10 +681,16 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func Ch_clicked_handler() {
 	Run(func() {
 		m.picks += 1
-		cgo.SnglTextSetValue(m.__n0, ("picks=" + fmt.Sprint(m.picks)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("picks=" + fmt.Sprint(m.picks)))
 	})
 }
 
@@ -700,8 +706,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.ch)), cgo.CGboolean(1))
 	_setLook(m.ch, Look{})
 	cgo.SnglSignalConnect(m.ch, "clicked", Ch_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ("picks=" + fmt.Sprint(m.picks)))
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("picks=" + fmt.Sprint(m.picks)))
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.ch)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
@@ -912,7 +918,7 @@ pass sha256:7e3fdfcff7e6509ea533ef037f08996c
 -- run/go/fyne --
 pass sha256:51d4e97933855089de63a6efab1ea7f8
 -- run/go/gtk4 --
-pass sha256:723d7c718d5eb33b384d3df669e72eb8
+pass sha256:2b4ecddad259a3e105f0e07e0eb13f05
 -- run/kotlin/android --
 pass sha256:27732316e8bdf5e624ea060c4954badd
 -- run/none/html --

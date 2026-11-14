@@ -1076,6 +1076,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -1085,7 +1091,7 @@ func All_clicked_handler() {
 	func() {
 		for _, a := range slices.Concat([]Action__record{Action__record{Label: "inc", Run: func() {
 			m.count__inst0 = (m.count__inst0 + 1)
-			cgo.SnglTextSetValue(m.__n2, ((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0)))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0)))
 		}, Pick: func(__unbound0 int) {
 		}}, Action__record{Label: "none", Run: func() {
 		}, Pick: func(__unbound0 int) {
@@ -1096,7 +1102,7 @@ func All_clicked_handler() {
 					return Action__record{Label: n, Run: func() {
 					}, Pick: func(k int) {
 						m.picked__inst0 = ((m.picked__inst0 + (k * 10)) + len(n))
-						cgo.SnglTextSetValue(m.__n2, ((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0)))
+						cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0)))
 					}}
 				}(__item)
 			}
@@ -1164,13 +1170,13 @@ func snglBuild() {
 	_setLook(m.all, Look{})
 	cgo.SnglSignalConnect(m.all, "clicked", All_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.all)))
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, m.inner__inst0)
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.inner__inst0)
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, ((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0)))
+	m.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((fmt.Sprint(m.count__inst0) + " ") + fmt.Sprint(m.picked__inst0)))
 	_setLook(m.__n2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
@@ -1186,8 +1192,8 @@ func snglBuild() {
 	_setLook(m.all__1, Look{})
 	cgo.SnglSignalConnect(m.all__1, "clicked", All__1_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.all__1)))
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, m.inner__inst1)
+	m.__n3 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), m.inner__inst1)
 	_setLook(m.__n3, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n7)))
@@ -1558,7 +1564,7 @@ pass sha256:544486b3df930725d195a301a1f1780d
 -- run/go/fyne --
 pass sha256:82433ed73fec82617bd6c096b7788861
 -- run/go/gtk4 --
-pass sha256:78a62c40ab4290c4eece98adbe6d0cf0
+pass sha256:5395b16e47b0d93189f13e739f99817a
 -- run/kotlin/android --
 pass sha256:a4d2fd211cc9f0d8fe3e2b50f47faa45
 -- run/none/html --

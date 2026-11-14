@@ -1097,6 +1097,12 @@ func Scribble() {
 	m.copied[0] = 7
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1150,8 +1156,8 @@ func snglInit() {
 
 func snglBuild() {
 	m.__root = cgo.SnglContentsNew()
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ((fmt.Sprint(m.aroundLen) + " ") + "4"))
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((fmt.Sprint(m.aroundLen) + " ") + "4"))
 	_setLook(m.__n0, Look{})
 	m.__n1 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), "scribble")
@@ -1414,7 +1420,7 @@ pass sha256:aacf09520645d20361383ba2c9444305
 -- run/go/fyne --
 pass sha256:08683520ad34b39effb23aa54903a70d
 -- run/go/gtk4 --
-pass sha256:d23dcdeaeb63b36e80f2960b9918e584
+pass sha256:58bb7e252ec6e6d2ecaf6907414112b6
 -- run/kotlin/android --
 pass sha256:2832fa17f3995c64bba4add79053358a
 -- run/none/html --

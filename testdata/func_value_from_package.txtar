@@ -51,6 +51,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"unsafe"
 )
 
 type Holder struct {
@@ -87,6 +88,12 @@ var m = &snglState{}
 func Shout(s string) string {
 	out := strings.ToUpper(s)
 	return (out + "!")
+}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -127,8 +134,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, m.h__inst0.F("a"))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.h__inst0.F("a"))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -164,4 +171,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:619cee3554427e5c09f3b7fbcb759be0
+pass sha256:25192350cf7a8ca30e633e43bc49d8f7

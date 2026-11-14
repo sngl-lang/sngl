@@ -805,6 +805,12 @@ func PtFlip(q Pt) Pt {
 	return r
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -834,9 +840,9 @@ func __n0_visible_handler(__visible bool) {
 
 func __n2_clicked_handler() {
 	m.bonus += 1
-	cgo.SnglTextSetValue(m.__n1, ((((((fmt.Sprint(PtSum(m.p)) + " ") + fmt.Sprint(ListPick__int(m.xs))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((((((fmt.Sprint(PtSum(m.p)) + " ") + fmt.Sprint(ListPick__int(m.xs))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
 	m.n = 2
-	cgo.SnglTextSetValue(m.__n1, ((((((fmt.Sprint(PtSum(m.p)) + " ") + fmt.Sprint(ListPick__int(m.xs))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((((((fmt.Sprint(PtSum(m.p)) + " ") + fmt.Sprint(ListPick__int(m.xs))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
 }
 
 func snglInit() {
@@ -853,8 +859,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "t")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ((((((fmt.Sprint(PtSum(m.p)) + " ") + fmt.Sprint(ListPick__int(m.xs))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((((((fmt.Sprint(PtSum(m.p)) + " ") + fmt.Sprint(ListPick__int(m.xs))) + " ") + fmt.Sprint(ListSecond__int(m.xs))) + " ") + fmt.Sprint(PtFlip(m.p).X)))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n2 = cgo.GtkButtonNew()
@@ -1055,7 +1061,7 @@ pass sha256:747e45322fab4b01a4031d0a5ad39bfd
 -- run/go/fyne --
 pass sha256:50270f9b3d772401e26a1ed612e5612f
 -- run/go/gtk4 --
-pass sha256:795b3792093872fa4ddd161db58b57c1
+pass sha256:bc8c664fd9a707d0226852d5b8bd6317
 -- run/kotlin/android --
 pass sha256:00d410e3f5080820a949cde59fcafc7d
 -- run/none/html --

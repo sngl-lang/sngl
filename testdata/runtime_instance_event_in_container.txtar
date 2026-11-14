@@ -1121,6 +1121,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	items          []int
 	total          int
@@ -1176,15 +1180,53 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
+}
+
 func Card__new(n int, report func(int)) *Card__inst {
 	__self := &Card__inst{__prop_n: n, __prop_report: report, __effect0_live: []int{}, __effect0_desired: []int{}}
 	__self.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n3)), cgo.CGtkOrientation(1))
 	_setLook(__self.__n3, Look{Spaced: true, Spacing: 6})
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(__self.Hits)))
+	__self.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(__self.Hits)))
 	_setLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_onClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	Card__effects0_settle(__self)
@@ -1240,7 +1282,7 @@ func Card__effects0_settle(__self *Card__inst) {
 
 func Card__set_n(__self *Card__inst, __v int) {
 	__self.__prop_n = __v
-	cgo.SnglTextSetValue(__self.__n0, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(__self.Hits)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(__self.Hits)))
 	Card__effects0_settle(__self)
 }
 
@@ -1904,7 +1946,7 @@ pass sha256:fc582bbcaa57d5537e632838a8b3ec54
 -- run/go/fyne --
 pass sha256:7c2838c2e5322a6f0b6111a82d1bf951
 -- run/go/gtk4 --
-pass sha256:2e547f56e9c52056e8a80d02e5d90010
+pass sha256:adee267b31d0ee62bc122c9e9d15f8ea
 -- run/kotlin/android --
 pass sha256:ed21ceef1a2f09f891974437af9dafe6
 -- run/none/html --

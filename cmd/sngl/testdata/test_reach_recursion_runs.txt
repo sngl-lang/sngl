@@ -316,7 +316,7 @@ sha256:7ba12648b66d71dca5280145fdeaa49b
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:7885f45252ac4f22d226cc3f20772c4d
+sha256:626704102c4ad0239f66b00563099b09
 {
   "results": [
     {

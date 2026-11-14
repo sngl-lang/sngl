@@ -732,3 +732,97 @@ func _holdBar(
 #[c.native("g_object_get_data")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
 func _heldBar(o _p_GObject, key string) option[c.held[_BarState]]
+
+// Connects fn to a click gesture's `pressed`, which GLib calls with the
+// gesture, the press's count and where it landed, then the context.
+#[c.native("g_signal_connect_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectPress")]
+func _g_signal_connect_press(
+    o      _c_gpointer,
+    signal string,
+    #[c.type("GCallback")] fn func(o _p_GObject, n int, x float, y float),
+    #[c.context] ctx _c_gpointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags  _c_GConnectFlags,
+) _c_gulong
+
+#[c.native("GtkEventController *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkEventController")]
+struct _p_GtkEventController {}
+
+#[c.native("GtkEventController *", cast)]
+const func _as_GtkEventController(p c.pointer) _p_GtkEventController
+
+#[c.native("GtkGesture *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkGesture")]
+struct _p_GtkGesture {}
+
+#[c.native("void *", cast)]
+const func _ptr_GtkGesture(g _p_GtkGesture) c.pointer
+
+#[c.native("gtk_gesture_click_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkGestureClickNew")]
+func _gtk_gesture_click_new() _p_GtkGesture
+
+#[c.native("void *", cast)]
+const func _ptr_GtkEventController(c _p_GtkEventController) c.pointer
+
+#[c.native("gtk_widget_add_controller")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetAddController")]
+func _gtk_widget_add_controller(w _p_GtkWidget, c _p_GtkEventController)
+
+#[c.native("GtkDrawingArea *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkDrawingArea")]
+struct _p_GtkDrawingArea {}
+
+#[c.native("GtkDrawingArea *", cast)]
+const func _as_GtkDrawingArea(p c.pointer) _p_GtkDrawingArea
+
+#[c.native("gtk_drawing_area_set_content_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDrawingAreaSetContentWidth")]
+func _gtk_drawing_area_set_content_width(a _p_GtkDrawingArea, width int)
+
+#[c.native("gtk_drawing_area_set_content_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDrawingAreaSetContentHeight")]
+func _gtk_drawing_area_set_content_height(a _p_GtkDrawingArea, height int)
+
+// Has GTK draw a with fn, handed a's context and the size it draws at, then
+// the context fn takes: GtkDrawingAreaDrawFunc.
+#[c.native("gtk_drawing_area_set_draw_func")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDrawingAreaSetDrawFunc")]
+func _gtk_drawing_area_set_draw_func(
+    a _p_GtkDrawingArea,
+    #[c.type("GtkDrawingAreaDrawFunc")] fn func(area _p_GtkDrawingArea, cr CairoContext, width int, height int),
+    #[c.context] ctx _c_gpointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("gtk_widget_queue_draw")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetQueueDraw")]
+func _gtk_widget_queue_draw(w _p_GtkWidget)
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdClick(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_ClickState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldClick(o _p_GObject, key string) option[c.held[_ClickState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdCanvas(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_CanvasState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldCanvas(o _p_GObject, key string) option[c.held[_CanvasState]]

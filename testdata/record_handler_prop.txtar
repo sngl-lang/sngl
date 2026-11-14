@@ -196,6 +196,7 @@ static void *s___lambda2_caps__env__keep(const void *p);
 static void s___lambda2_caps__env__release(void *p);
 static void s___lambda2_caps__env__rekeep(void *p);
 static void s___lambda2_caps__env__visit(void *p, sngl_visit fn);
+static GtkWidget * s_platform_gtk4___newText(void);
 static void s___renderSlot0(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
@@ -644,8 +645,11 @@ static sngl_list_GtkWidget_p s___slot0;
 static GtkWidget * s___anchor0;
 static bool s___rendering0;
 static bool s___renderAgain0;
-static char * s___rel5;
-static char * s___rel12;
+static char * s___rel2;
+static char * s___rel3;
+static char * s___rel4;
+static char * s___rel8;
+static char * s___rel15;
 static GtkWidget * s___n0;
 static GtkWidget * s_p;
 static GtkWidget * s_summary;
@@ -663,6 +667,12 @@ static void s___lambda2__inst0(s___lambda2_caps state) {
 
 static s_ui__menuItem__record s___lambda1__inst0(s___lambda1_caps state, sngl_string l) {
 	return (s_ui__menuItem__record){.label = l, .disabled = false, .checked = sngl_string_eq(l, state.language->value), .children = ((sngl_list_menuItem__record){0}), .select = ((sngl_fn_void__void){s___lambda2__inst0__fn, sngl_alloc_copy(&(s___lambda2_caps__env[]){{{s___lambda2_caps__env__keep, false}, (s___lambda2_caps){.language = state.language, .l = l}}}, sizeof(s___lambda2_caps__env))})};
+}
+
+static GtkWidget * s_platform_gtk4___newText(void) {
+	GtkWidget * t = gtk_label_new(s___rel2);
+	gtk_label_set_xalign((GtkLabel *)((void *)(t)), (float)((double)(0.0)));
+	return t;
 }
 
 static void s___renderSlot0(GtkWidget * parent) {
@@ -688,16 +698,16 @@ static void s___renderSlot0(GtkWidget * parent) {
 }
 					for (struct { sngl_list_menuItem__record l; int64_t i; } __loop3 = {sngl_list_menuItem__record_cat(sngl_list_string_map_menuItem__record(s_languages, ((sngl_fn_string__menuItem__record){s___lambda1__inst0__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.language = s_language__inst0}}}, sizeof(s___lambda1_caps__env))})), ((sngl_list_menuItem__record){0})), 0}; __loop3.i < __loop3.l.len; __loop3.i++) { s_ui__menuItem__record it = __loop3.l.data[__loop3.i];
 						GtkWidget * pick = gtk_button_new();
-						char * __rel2 = sngl_cstring(it.label);
-						gtk_button_set_label((GtkButton *)((void *)(pick)), __rel2);
-						s_x_c__free(__rel2);
+						char * __rel5 = sngl_cstring(it.label);
+						gtk_button_set_label((GtkButton *)((void *)(pick)), __rel5);
+						s_x_c__free(__rel5);
 						gtk_widget_set_can_focus((GtkWidget *)((void *)(pick)), (gboolean)((int)(1)));
-						char * __rel3 = sngl_cstring(SNGL_STR(""));
-						char * __rel4 = sngl_cstring(SNGL_STR(""));
-						sngl_set_look(pick, __rel3, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel4, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-						s_x_c__free(__rel4);
-						s_x_c__free(__rel3);
-						sngl_signal_connect(pick, s___rel5, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda4, sngl_alloc_copy(&(sngl_lambda4_env[]){{.hdr = {sngl_lambda4_env__keep, false}, .it = it}}, sizeof(sngl_lambda4_env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+						char * __rel6 = sngl_cstring(SNGL_STR(""));
+						char * __rel7 = sngl_cstring(SNGL_STR(""));
+						sngl_set_look(pick, __rel6, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel7, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+						s_x_c__free(__rel7);
+						s_x_c__free(__rel6);
+						sngl_signal_connect(pick, s___rel8, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda4, sngl_alloc_copy(&(sngl_lambda4_env[]){{.hdr = {sngl_lambda4_env__keep, false}, .it = it}}, sizeof(sngl_lambda4_env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 						GtkWidget * __place0_i_ref0 = s___anchor0;
 						if (__place0_i < (__place0_prev).len) {
 							__place0_i_ref0 = (*sngl_list_GtkWidget_p_at(__place0_prev, __place0_i));
@@ -732,9 +742,9 @@ static void s___renderSlot0(GtkWidget * parent) {
 }
 
 static void s___setsummary_value___lambda2__inst0(s___lambda2_caps state) {
-	char * __rel6 = sngl_cstring(sngl_list_string_join(sngl_list_menuItem__record_map_string(sngl_list_menuItem__record_cat(sngl_list_string_map_menuItem__record(s_languages, ((sngl_fn_string__menuItem__record){s___lambda1__inst0__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.language = s_language__inst0}}}, sizeof(s___lambda1_caps__env))})), ((sngl_list_menuItem__record){0})), ((sngl_fn_menuItem__record__string){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){0}}}, sizeof(s___lambda0_caps__env))})), SNGL_STR(" ")));
-	sngl_text_set_value(s_summary, __rel6);
-	s_x_c__free(__rel6);
+	char * __rel9 = sngl_cstring(sngl_list_string_join(sngl_list_menuItem__record_map_string(sngl_list_menuItem__record_cat(sngl_list_string_map_menuItem__record(s_languages, ((sngl_fn_string__menuItem__record){s___lambda1__inst0__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.language = s_language__inst0}}}, sizeof(s___lambda1_caps__env))})), ((sngl_list_menuItem__record){0})), ((sngl_fn_menuItem__record__string){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){0}}}, sizeof(s___lambda0_caps__env))})), SNGL_STR(" ")));
+	gtk_label_set_label((GtkLabel *)((void *)(s_summary)), __rel9);
+	s_x_c__free(__rel9);
 }
 
 static sngl_string s___lambda0(s___lambda0_caps state, s_ui__menuItem__record it) {
@@ -742,8 +752,11 @@ static sngl_string s___lambda0(s___lambda0_caps state, s_ui__menuItem__record it
 }
 
 static void s___snglTeardown(void) {
-	s_x_c__free(s___rel5);
-	s_x_c__free(s___rel12);
+	s_x_c__free(s___rel2);
+	s_x_c__free(s___rel3);
+	s_x_c__free(s___rel4);
+	s_x_c__free(s___rel8);
+	s_x_c__free(s___rel15);
 }
 
 static void s_x_c__free(char * s) {
@@ -762,31 +775,34 @@ static void sngl_init(void) {
 	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___rendering0 = false;
 	s___renderAgain0 = false;
-	s___rel5 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel12 = sngl_cstring(SNGL_STR("Languages"));
+	s___rel2 = sngl_cstring(SNGL_STR(""));
+	s___rel3 = sngl_cstring(SNGL_STR("pressed"));
+	s___rel4 = sngl_cstring(SNGL_STR("sngl-click"));
+	s___rel8 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel15 = sngl_cstring(SNGL_STR("Languages"));
 }
 
 static void sngl_build(void) {
 	s___n0 = sngl_toplevel_new();
-	sngl_toplevel_set_title(s___n0, s___rel12);
+	sngl_toplevel_set_title(s___n0, s___rel15);
 	sngl_toplevel_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda3__fn, sngl_alloc_copy(&(s___lambda3_caps__env[]){{{s___lambda3_caps__env__keep, false}, (s___lambda3_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda3_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s_p = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(s_p)), (GtkOrientation)((int)(1)));
-	char * __rel7 = sngl_cstring(SNGL_STR(""));
-	char * __rel8 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s_p, __rel7, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel8, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
-	s_x_c__free(__rel8);
-	s_x_c__free(__rel7);
-	s_summary = sngl_text_new();
-	char * __rel9 = sngl_cstring(sngl_list_string_join(sngl_list_menuItem__record_map_string(sngl_list_menuItem__record_cat(sngl_list_string_map_menuItem__record(s_languages, ((sngl_fn_string__menuItem__record){s___lambda1__inst0__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.language = s_language__inst0}}}, sizeof(s___lambda1_caps__env))})), ((sngl_list_menuItem__record){0})), ((sngl_fn_menuItem__record__string){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){0}}}, sizeof(s___lambda0_caps__env))})), SNGL_STR(" ")));
-	sngl_text_set_value(s_summary, __rel9);
-	s_x_c__free(__rel9);
 	char * __rel10 = sngl_cstring(SNGL_STR(""));
 	char * __rel11 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s_summary, __rel10, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel11, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	sngl_set_look(s_p, __rel10, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel11, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
 	s_x_c__free(__rel11);
 	s_x_c__free(__rel10);
+	s_summary = s_platform_gtk4___newText();
+	char * __rel12 = sngl_cstring(sngl_list_string_join(sngl_list_menuItem__record_map_string(sngl_list_menuItem__record_cat(sngl_list_string_map_menuItem__record(s_languages, ((sngl_fn_string__menuItem__record){s___lambda1__inst0__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.language = s_language__inst0}}}, sizeof(s___lambda1_caps__env))})), ((sngl_list_menuItem__record){0})), ((sngl_fn_menuItem__record__string){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){0}}}, sizeof(s___lambda0_caps__env))})), SNGL_STR(" ")));
+	gtk_label_set_label((GtkLabel *)((void *)(s_summary)), __rel12);
+	s_x_c__free(__rel12);
+	char * __rel13 = sngl_cstring(SNGL_STR(""));
+	char * __rel14 = sngl_cstring(SNGL_STR(""));
+	sngl_set_look(s_summary, __rel13, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel14, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
+	s_x_c__free(__rel14);
+	s_x_c__free(__rel13);
 	sngl_box_append((GtkWidget *)((void *)(s_p)), (GtkWidget *)((void *)(s_summary)));
 	s___renderSlot0(s_p);
 	sngl_toplevel_append(s___n0, s_p);
@@ -1730,6 +1746,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1792,7 +1814,7 @@ func __renderSlot0(parent cgo.Widget) {
 }
 
 func __setsummary_value() {
-	cgo.SnglTextSetValue(m.summary, strings.Join(func() []string {
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.summary)), strings.Join(func() []string {
 		__out := make([]string, len(slices.Concat(func() []MenuItem__record {
 			__out := make([]MenuItem__record, len(languages))
 			for __i, __item := range languages {
@@ -1855,8 +1877,8 @@ func snglBuild() {
 	m.p = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.p)), cgo.CGtkOrientation(1))
 	_setLook(m.p, Look{Spaced: true, Spacing: 6})
-	m.summary = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.summary, strings.Join(func() []string {
+	m.summary = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.summary)), strings.Join(func() []string {
 		__out := make([]string, len(slices.Concat(func() []MenuItem__record {
 			__out := make([]MenuItem__record, len(languages))
 			for __i, __item := range languages {
@@ -2255,13 +2277,13 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:b552d32f08eb7790272c642f19a2c7e5
+pass sha256:117addb4db9a37a2f1c10aa394246686
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --
 pass sha256:356307ab58c67c65161a5582dd0c6798
 -- run/go/gtk4 --
-pass sha256:4a3fa4075bc8182def52afc5a0eef610
+pass sha256:3b027ff43804bddcabc3b252bdab01fc
 -- run/go/html --
 pass sha256:5510c033443eae0827f90d3aa3e3e6d0
 -- run/kotlin/android --

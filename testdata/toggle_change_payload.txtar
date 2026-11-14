@@ -936,6 +936,12 @@ func _fireSwitch(s cgo.Widget, checked bool) {
 	}
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func Box_toggled_handler(b cgo.Widget) {
 	if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != m.on {
 		__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
@@ -948,7 +954,7 @@ func Box_toggled_handler(b cgo.Widget) {
 			}
 		}()))
 		m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
-		cgo.SnglTextSetValue(m.__n0, m.seen)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	}
 }
 
@@ -965,7 +971,7 @@ func Sw_notifyActive_handler(s cgo.Widget) {
 		}()))
 		m.lit = __toggle_checked_wrote0
 		m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
-		cgo.SnglTextSetValue(m.__n0, m.seen)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	}
 }
 
@@ -1011,8 +1017,8 @@ func snglBuild() {
 		Sw_notifyActive_handler(m.sw)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.sw)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.seen)
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglAppAttach(m.__n1)
@@ -1437,7 +1443,7 @@ pass sha256:1e2635ade3355bdd6ee5a7e1fe7269c2
 -- run/go/fyne --
 pass sha256:05f334ab69a3387686b076c22ab40163
 -- run/go/gtk4 --
-pass sha256:687ddd85d44a06daeed2de212bb4d28f
+pass sha256:62f06e22de89cec837fc310827ac263a
 -- run/go/html --
 pass sha256:106c1d24cc879a6a15f423068ca44bfa
 -- run/kotlin/android --

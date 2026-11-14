@@ -521,6 +521,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"unsafe"
 )
 
 type Test struct {
@@ -560,6 +561,12 @@ func Summary() string {
 	return ("d=" + fmt.Sprint(d))
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -588,8 +595,8 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, Summary())
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), Summary())
 	_setLook(m.__n0, Look{})
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -769,7 +776,7 @@ pass sha256:8ad5411dcda4071986161ab9270147ac
 -- run/go/fyne --
 pass sha256:ee822af7203b275b35b6a214158c497c
 -- run/go/gtk4 --
-pass sha256:9a02bd20211c1ab6657fc51c09f82daf
+pass sha256:b0df3cff2789a7ead07ab96a369d6c08
 -- run/kotlin/android --
 pass sha256:da53c327d8081bd96c3ad76f44224efb
 -- run/none/html --

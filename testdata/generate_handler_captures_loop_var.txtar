@@ -313,6 +313,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -353,7 +359,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						__child0__set___on0(__n3, func() {
 							m.picked__inst0 = it.Elem
-							cgo.SnglTextSetValue(m.__n2, m.picked__inst0)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), m.picked__inst0)
 						})
 						__child0__set___p0(__n3, it)
 					} else {
@@ -367,7 +373,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n3__made := __child0__new(it, func() {
 							m.picked__inst0 = it.Elem
-							cgo.SnglTextSetValue(m.__n2, m.picked__inst0)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), m.picked__inst0)
 						})
 						__n3 = __n3__made
 					}
@@ -463,8 +469,8 @@ func snglBuild() {
 	_setLook(m.__n4, Look{Spaced: true, Spacing: 6})
 	__renderSlot0(m.__n4)
 	cgo.SnglToplevelAppend(m.__n1, m.__n4)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, m.picked__inst0)
+	m.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), m.picked__inst0)
 	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
 	cgo.SnglAppAttach(m.__n1)
@@ -503,4 +509,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:a191199ae9b3da206bba637c03f9e80c
 -- run/go/gtk4 --
-pass sha256:6b5fd76c6332b431fc1876d7d26b5c63
+pass sha256:2c7b703c8b57ae586c8000e6c34a7f70

@@ -72,6 +72,10 @@ import (
 	"unsafe"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -87,6 +91,13 @@ type Style struct {
 	FontFamily  string
 }
 
+type _CanvasState struct {
+	Width  int
+	Height int
+	Mode   int
+	Paint  *func(*C.cairo_t)
+}
+
 type snglState struct {
 	ticks               int
 	handle__inst0       *C.SnglSchedule
@@ -98,7 +109,11 @@ type snglState struct {
 	__effects0_pending  bool
 	__effects0_torn     bool
 	__effects0_steps    int
-	__rel9              *C.char
+	__rel0              *C.char
+	__rel3              *C.char
+	__rel4              *C.char
+	__rel5              *C.char
+	__rel13             *C.char
 	__n0                *C.GtkWidget
 	__n1                *C.GtkWidget
 	__drawing0          *C.GtkWidget
@@ -107,6 +122,86 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _newText() *C.GtkWidget {
+	t := C.gtk_label_new(m.__rel0)
+	C.gtk_label_set_xalign((*C.GtkLabel)(unsafe.Pointer(t)), C.float(C.double(0.0)))
+	return t
+}
+
+func _newCanvas() *C.GtkWidget {
+	w := C.gtk_drawing_area_new()
+	C.g_object_set_data_full((*C.GObject)(unsafe.Pointer(w)), m.__rel5, C.gpointer(snglContext(_CanvasState{})), snglReleasePtr())
+	C.gtk_drawing_area_set_draw_func((*C.GtkDrawingArea)(unsafe.Pointer(w)), snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__voidPtr(), C.gpointer(snglContext(func(area *C.GtkDrawingArea, cr *C.cairo_t, width int, height int) {
+		_canvasDraw(w, cr, width, height)
+	})), snglReleasePtr())
+	return w
+}
+
+func _setCanvasHeight(w *C.GtkWidget, height int) {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel5))))
+	if s != nil {
+		_setCanvas(w, _CanvasState{Width: (*(s)).Width, Height: height, Mode: (*(s)).Mode, Paint: (*(s)).Paint})
+		C.gtk_drawing_area_set_content_height((*C.GtkDrawingArea)(unsafe.Pointer(w)), C.int(height))
+	}
+}
+
+func _setCanvasScaling(w *C.GtkWidget, mode int) {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel5))))
+	if s != nil {
+		_setCanvas(w, _CanvasState{Width: (*(s)).Width, Height: (*(s)).Height, Mode: mode, Paint: (*(s)).Paint})
+		widget := (*C.GtkWidget)(unsafe.Pointer(w))
+		var __lt3 int
+		if mode != 0 {
+			__lt3 = 1
+		} else {
+			__lt3 = 0
+		}
+		C.gtk_widget_set_hexpand(widget, C.gboolean(C.int(__lt3)))
+		var __lt4 int
+		if mode != 0 {
+			__lt4 = 1
+		} else {
+			__lt4 = 0
+		}
+		C.gtk_widget_set_vexpand(widget, C.gboolean(C.int(__lt4)))
+	}
+}
+
+func _setCanvasWidth(w *C.GtkWidget, width int) {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel5))))
+	if s != nil {
+		_setCanvas(w, _CanvasState{Width: width, Height: (*(s)).Height, Mode: (*(s)).Mode, Paint: (*(s)).Paint})
+		C.gtk_drawing_area_set_content_width((*C.GtkDrawingArea)(unsafe.Pointer(w)), C.int(width))
+	}
+}
+
+func _handleCanvasPaint(w *C.GtkWidget, paint func(*C.cairo_t)) {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel5))))
+	if s != nil {
+		_setCanvas(w, _CanvasState{Width: (*(s)).Width, Height: (*(s)).Height, Mode: (*(s)).Mode, Paint: snglSome(paint)})
+	}
+}
 
 func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
@@ -126,6 +221,52 @@ func Paint(ctx *C.cairo_t, style Style) {
 	}
 }
 
+func _canvasDraw(w *C.GtkWidget, cr *C.cairo_t, width int, height int) {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel5))))
+	if s != nil {
+		paint__r0 := (*(s)).Paint
+		if paint__r0 != nil {
+			if ((*(s)).Width > 0) && ((*(s)).Height > 0) {
+				var sx float64 = (float64(width) / float64((*(s)).Width))
+				var sy float64 = (float64(height) / float64((*(s)).Height))
+				if (*(s)).Mode == 2 {
+					var __lt5 float64
+					if sy > sx {
+						__lt5 = sy
+					} else {
+						__lt5 = sx
+					}
+					sx = __lt5
+					sy = sx
+				} else {
+					if (*(s)).Mode != 3 {
+						var __lt6 float64
+						if sy < sx {
+							__lt6 = sy
+						} else {
+							__lt6 = sx
+						}
+						sx = __lt6
+						sy = sx
+					}
+				}
+				C.cairo_scale(cr, C.double(sx), C.double(sy))
+			}
+			(*(paint__r0))(cr)
+		}
+	}
+}
+
+func _setCanvas(w *C.GtkWidget, s _CanvasState) {
+	C.g_object_set_data_full((*C.GObject)(unsafe.Pointer(w)), m.__rel5, C.gpointer(snglContext(s)), snglReleasePtr())
+	C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(w)))
+}
+
 func Source(ctx *C.cairo_t, c snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
 }
@@ -133,14 +274,14 @@ func Source(ctx *C.cairo_t, c snglcolor.Color) {
 func __effect0_mount() {
 	m.handle__inst0 = C.sngl_every(C.int(int(m.__effect0_key/time.Millisecond)), snglCallback_void__voidPtr(), snglContext(func() {
 		m.ticks += 1
-		__rel2 := C.CString(fmt.Sprint(m.ticks))
-		C.sngl_text_set_value(m.__n1, __rel2)
-		Free(__rel2)
+		__rel6 := C.CString(fmt.Sprint(m.ticks))
+		C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n1)), __rel6)
+		Free(__rel6)
 		if m.ticks == 3 {
 			fmt.Println(("ticked " + fmt.Sprint(m.ticks)))
 			C.sngl_gtk_quit()
 		}
-		C.sngl_canvas_redraw(m.__drawing0)
+		C.gtk_widget_queue_draw((*C.GtkWidget)(unsafe.Pointer(m.__drawing0)))
 	}), snglReleasePtr())
 }
 
@@ -213,7 +354,11 @@ func __effects0_settle() {
 func __snglTeardown() {
 	m.__effects0_torn = true
 	__effect0_teardown()
-	Free(m.__rel9)
+	Free(m.__rel0)
+	Free(m.__rel3)
+	Free(m.__rel4)
+	Free(m.__rel5)
+	Free(m.__rel13)
 }
 
 func __n0_visible_handler(__visible bool) {
@@ -257,12 +402,16 @@ func snglInit() {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
-	m.__rel9 = C.CString("t")
+	m.__rel0 = C.CString("")
+	m.__rel3 = C.CString("pressed")
+	m.__rel4 = C.CString("sngl-click")
+	m.__rel5 = C.CString("sngl-canvas")
+	m.__rel13 = C.CString("t")
 }
 
 func snglBuild() {
 	m.__n0 = C.sngl_toplevel_new()
-	C.sngl_toplevel_set_title(m.__n0, m.__rel9)
+	C.sngl_toplevel_set_title(m.__n0, m.__rel13)
 	C.sngl_toplevel_set_visible(m.__n0, C.int(func() int {
 		if m.visible__inst0 {
 			return 1
@@ -271,31 +420,31 @@ func snglBuild() {
 		}
 	}()))
 	C.sngl_toplevel_on_visible(m.__n0, snglCallback_bool__voidPtr(), snglContext(__n0_visible_handler), snglReleasePtr())
-	m.__n1 = C.sngl_text_new()
-	__rel3 := C.CString(fmt.Sprint(m.ticks))
-	C.sngl_text_set_value(m.__n1, __rel3)
-	Free(__rel3)
-	__rel4 := C.CString("")
-	__rel5 := C.CString("")
-	C.sngl_set_look(m.__n1, __rel4, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel5, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
-	Free(__rel5)
-	Free(__rel4)
+	m.__n1 = _newText()
+	__rel7 := C.CString(fmt.Sprint(m.ticks))
+	C.gtk_label_set_label((*C.GtkLabel)(unsafe.Pointer(m.__n1)), __rel7)
+	Free(__rel7)
+	__rel8 := C.CString("")
+	__rel9 := C.CString("")
+	C.sngl_set_look(m.__n1, __rel8, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel9, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	Free(__rel9)
+	Free(__rel8)
 	C.sngl_toplevel_append(m.__n0, m.__n1)
-	m.__drawing0 = C.sngl_canvas_new()
-	C.sngl_canvas_set_width(m.__drawing0, C.int(40))
-	C.sngl_canvas_set_height(m.__drawing0, C.int(40))
-	C.sngl_canvas_set_scaling(m.__drawing0, C.int(int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center"))))
-	C.sngl_canvas_on_paint(m.__drawing0, snglCallback_cairo_t_p__voidPtr(), snglContext(__drawing0_paint_handler), snglReleasePtr())
+	m.__drawing0 = _newCanvas()
+	_setCanvasWidth(m.__drawing0, 40)
+	_setCanvasHeight(m.__drawing0, 40)
+	_setCanvasScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	_handleCanvasPaint(m.__drawing0, __drawing0_paint_handler)
 	C.sngl_toplevel_append(m.__n0, m.__drawing0)
 	m.frame = C.sngl_image_new()
-	__rel6 := C.CString("contain")
-	C.sngl_image_set_fit(m.frame, __rel6)
-	Free(__rel6)
-	__rel7 := C.CString("")
-	__rel8 := C.CString("")
-	C.sngl_set_look(m.frame, __rel7, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel8, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
-	Free(__rel8)
-	Free(__rel7)
+	__rel10 := C.CString("contain")
+	C.sngl_image_set_fit(m.frame, __rel10)
+	Free(__rel10)
+	__rel11 := C.CString("")
+	__rel12 := C.CString("")
+	C.sngl_set_look(m.frame, __rel11, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel12, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	Free(__rel12)
+	Free(__rel11)
 	m.__drawing1 = C.sngl_image_source_new()
 	C.sngl_drawing_set_width(m.__drawing1, C.double(20.0))
 	C.sngl_drawing_set_height(m.__drawing1, C.double(20.0))
@@ -333,6 +482,8 @@ package main
 extern void snglCallback_GObject_p_GParamSpec_p__void(GObject *, GParamSpec *, void *);
 extern void snglCallback_GObject_p__void(GObject *, void *);
 extern void snglCallback_GObject_p_gpointer__void(GObject *, gpointer, void *);
+extern void snglCallback_GObject_p_int_double_double__void(GObject *, int, double, double, void *);
+extern void snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__void(GtkDrawingArea *, cairo_t *, int, int, void *);
 extern void snglCallback_bool__void(int, void *);
 extern void snglCallback_cairo_t_p__void(cairo_t *, void *);
 extern int snglCallback_int_GtkWidget_p_GtkWidget_p__bool(int, GtkWidget *, GtkWidget *, void *);
@@ -409,6 +560,28 @@ func snglCallback_GObject_p_gpointer__void(a0 *C.GObject, a1 C.gpointer, ctx uns
 
 // snglCallback_GObject_p_gpointer__voidPtr is snglCallback_GObject_p_gpointer__void as the function pointer C calls.
 func snglCallback_GObject_p_gpointer__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_GObject_p_gpointer__void) }
+
+//export snglCallback_GObject_p_int_double_double__void
+func snglCallback_GObject_p_int_double_double__void(a0 *C.GObject, a1 C.int, a2 C.double, a3 C.double, ctx unsafe.Pointer) {
+	fn, ok := snglClosure(ctx).(func(*C.GObject, int, float64, float64))
+	if ok {
+		fn(a0, int(a1), float64(a2), float64(a3))
+	}
+}
+
+// snglCallback_GObject_p_int_double_double__voidPtr is snglCallback_GObject_p_int_double_double__void as the function pointer C calls.
+func snglCallback_GObject_p_int_double_double__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_GObject_p_int_double_double__void) }
+
+//export snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__void
+func snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__void(a0 *C.GtkDrawingArea, a1 *C.cairo_t, a2 C.int, a3 C.int, ctx unsafe.Pointer) {
+	fn, ok := snglClosure(ctx).(func(*C.GtkDrawingArea, *C.cairo_t, int, int))
+	if ok {
+		fn(a0, a1, int(a2), int(a3))
+	}
+}
+
+// snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__voidPtr is snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__void as the function pointer C calls.
+func snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_GtkDrawingArea_p_cairo_t_p_int_int__void) }
 
 //export snglCallback_bool__void
 func snglCallback_bool__void(a0 C.int, ctx unsafe.Pointer) {
@@ -541,4 +714,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:e221752366a09a5378f52aff411f5c0f
+pass sha256:d18ce4b08bca7a5d2bfa96e56a8c86e2

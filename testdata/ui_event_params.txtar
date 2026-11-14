@@ -1435,6 +1435,12 @@ func _fireDay(c cgo.Widget, day *time.Time) {
 	cgo.SnglSignalEmit(c, "day-selected")
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func SetEntryText(e cgo.Widget, text string) {
 	_quietly(unsafe.Pointer(e), "changed", cgo.GtkEditableGetType(), "", func() {
 		cgo.GtkEditableSetText((cgo.PGtkEditable)(unsafe.Pointer(e)), text)
@@ -1606,7 +1612,7 @@ func Box_toggled_handler(b cgo.Widget) {
 			}
 		}()))
 		m.seen = ((("box " + fmt.Sprint(__checkbox_checked_wrote0)) + " ") + fmt.Sprint(m.on))
-		cgo.SnglTextSetValue(m.__n0, m.seen)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	}
 }
 
@@ -1623,7 +1629,7 @@ func Sw_notifyActive_handler(s cgo.Widget) {
 		}()))
 		m.lit = __toggle_checked_wrote0
 		m.seen = ("sw " + fmt.Sprint(__toggle_checked_wrote0))
-		cgo.SnglTextSetValue(m.__n0, m.seen)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	}
 }
 
@@ -1632,7 +1638,7 @@ func Field_changed_handler(e cgo.Widget) {
 		__input_value_wrote0 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 		m.name = __input_value_wrote0
 		m.seen = ((("input " + __input_value_wrote0) + " ") + m.name)
-		cgo.SnglTextSetValue(m.__n0, m.seen)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	}
 	__effects0_settle()
 }
@@ -1652,7 +1658,7 @@ func Day_daySelected_handler(c cgo.Widget) {
 		__lt24 = "day"
 	}
 	m.seen = __lt24
-	cgo.SnglTextSetValue(m.__n0, m.seen)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	__effects0_settle()
 }
 
@@ -1738,8 +1744,8 @@ func snglBuild() {
 	_setLook(m.press, Look{})
 	cgo.SnglSignalConnect(m.press, "clicked", Press_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.press)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.seen)
+	m.__n0 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	_setLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	__effects0_settle()
@@ -2310,7 +2316,7 @@ pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
 pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:9f1ca17bc8b5f2cfdd33fb01cecc0527
+pass sha256:48d6926f656fb5ea5a0fff68584f11f4
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

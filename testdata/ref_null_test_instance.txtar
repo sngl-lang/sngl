@@ -989,6 +989,10 @@ type Look struct {
 	Columns   int
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	shown          bool
 	__slot0        []cgo.Widget
@@ -1023,6 +1027,44 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
 }
 
 func Badge__new(label string) *Badge__inst {
@@ -1096,11 +1138,11 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 					}
 					m.__slot0 = append(m.__slot0, b__el)
-					label := cgo.SnglTextNew()
+					label := _newText()
 					m.label__held = snglSome(label)
-					cgo.SnglTextSetValue(label, "y")
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(label)), "y")
 					_setLook(label, Look{})
-					cgo.SnglOnClick(label, func() {
+					_onClick(label, func() {
 					})
 					__place0_i_ref1 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -1652,7 +1694,7 @@ pass sha256:bdee349e6345fb111b02ffdc0ebaf120
 -- run/go/fyne --
 pass sha256:95c87a2bd959b71a1a7f0836827776a1
 -- run/go/gtk4 --
-pass sha256:b20efc13c3d23a940202556beef24cf7
+pass sha256:0afe9faf32a9e095f94ec2f7891c4739
 -- run/kotlin/android --
 pass sha256:23bb9626bbb474e20690327865d07549
 -- run/none/html --

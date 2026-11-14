@@ -1418,6 +1418,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1516,7 +1522,7 @@ func __n1_visible_handler(__visible bool) {
 
 func __n6_clicked_handler() {
 	m.n += 1
-	cgo.SnglTextSetValue(m.__n2, ((((((fmt.Sprint(Plus(1, 2)) + " ") + fmt.Sprint(Span(1, 1, 5))) + " ") + fmt.Sprint(Span(2, 1, (m.n+10)))) + " ") + fmt.Sprint(IntBump(m.n, 3))))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((((((fmt.Sprint(Plus(1, 2)) + " ") + fmt.Sprint(Span(1, 1, 5))) + " ") + fmt.Sprint(Span(2, 1, (m.n+10)))) + " ") + fmt.Sprint(IntBump(m.n, 3))))
 }
 
 func __n3_clicked_handler() {
@@ -1568,8 +1574,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n1, "t")
 	cgo.SnglToplevelSetVisible(m.__n1, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, ((((((fmt.Sprint(Plus(1, 2)) + " ") + fmt.Sprint(Span(1, 1, 5))) + " ") + fmt.Sprint(Span(2, 1, (m.n+10)))) + " ") + fmt.Sprint(IntBump(m.n, 3))))
+	m.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((((((fmt.Sprint(Plus(1, 2)) + " ") + fmt.Sprint(Span(1, 1, 5))) + " ") + fmt.Sprint(Span(2, 1, (m.n+10)))) + " ") + fmt.Sprint(IntBump(m.n, 3))))
 	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
 	m.__n6 = cgo.GtkButtonNew()
@@ -1965,7 +1971,7 @@ pass sha256:b32b91492226e2f8555de88956ddc70c
 -- run/go/fyne --
 pass sha256:b4f5853c97ef81edec748b89607a2bce
 -- run/go/gtk4 --
-pass sha256:213e632851d6f4ac23fe492e129bde13
+pass sha256:da366b629412cca788a9eea786b914dc
 -- run/kotlin/android --
 pass sha256:020664f96f0fbc9b18c22e760fc06da3
 -- run/none/html --

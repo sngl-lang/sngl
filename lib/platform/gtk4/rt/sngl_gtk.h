@@ -171,27 +171,11 @@ bool sngl_image_adopt(GtkWidget *box, GtkWidget *child);
 bool sngl_image_unadopt(GtkWidget *box, GtkWidget *child);
 void sngl_toplevel_icon_refresh(GtkWidget *toplevel);
 
-/* A canvas is a GtkDrawingArea whose drawing is the handler of its paint,
- * handed the context, in a space of width by height that the scaling mode
- * -- `draw.ScalingMode`'s ordinal -- maps onto the room it is given. A
- * redraw asks it to paint again. */
-GtkWidget *sngl_canvas_new(void);
-void sngl_canvas_set_width(GtkWidget *w, int width);
-void sngl_canvas_set_height(GtkWidget *w, int height);
-void sngl_canvas_set_scaling(GtkWidget *w, int mode);
-void sngl_canvas_on_paint(GtkWidget *w, SnglDrawFn draw, void *data, GDestroyNotify release);
-void sngl_canvas_redraw(GtkWidget *w);
+/* What the stdlib's shapes set that cairo takes as an enum or as a face and
+ * a size. */
 void sngl_cairo_line_cap(cairo_t *cr, int cap);
 void sngl_cairo_line_join(cairo_t *cr, int join);
 void sngl_cairo_font(cairo_t *cr, const char *family, double size);
-/* sngl_on_click runs fn with ctx on a press of w, which a drawing area or
- * a label has no signal of its own for: a GtkGestureClick's, which releases
- * ctx with the gesture, and a second call replaces the first's handler. */
-void sngl_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-/* sngl_click is a press of w, as a test makes one. */
-void sngl_click(GtkWidget *w);
-GtkWidget *sngl_text_new(void);
-void sngl_text_set_value(GtkWidget *w, const char *value);
 
 
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main

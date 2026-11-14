@@ -353,6 +353,12 @@ func (p *placement) hoistShared(pkg *ir.Package) {
 	}
 	made := map[string]local{}
 	for _, fn := range funcs {
+		// A library helper's locals are its own, whatever they are called:
+		// gtk4's _newText makes its label as `t`, which a program's `#t`
+		// read through the instance found instead of its own node.
+		if fn.PkgPath() != "" {
+			continue
+		}
 		_ = ir.Walk(fn.Block, func(n ir.Node) error {
 			if lv, ok := n.(*ir.LocalVar); ok && isPlacedNode(lv.Type) && made[lv.Name].lv == nil && packageVar(pkg, lv.Name) == nil {
 				made[lv.Name] = local{lv, fn}

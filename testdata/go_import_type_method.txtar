@@ -635,6 +635,12 @@ func PointSum(q image.Point) int {
 	return ((q.X + q.Y) + m.bonus)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -664,9 +670,9 @@ func __n0_visible_handler(__visible bool) {
 
 func __n2_clicked_handler() {
 	m.bonus += 1
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(PointSum(m.p)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(PointSum(m.p)))
 	m.p = image.Point{X: (m.p.X + 1), Y: m.p.Y}
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(PointSum(m.p)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(PointSum(m.p)))
 }
 
 func snglInit() {
@@ -681,8 +687,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "t")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(PointSum(m.p)))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(PointSum(m.p)))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.__n2 = cgo.GtkButtonNew()
@@ -728,4 +734,4 @@ pass sha256:aede3a67a3fc4828840c94891a297d22
 -- run/go/fyne --
 pass sha256:6db8f8c70c9184e823487f9983b723a6
 -- run/go/gtk4 --
-pass sha256:3c2e67b34c24762d9ca3a92966b2ed14
+pass sha256:bc108b09fd1ef04753ebbd41e606e531

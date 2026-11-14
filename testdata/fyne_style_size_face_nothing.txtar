@@ -494,6 +494,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __effect0_unmount() {
 	cgo.SnglPictureUnref(m.picture__inst0__inst0)
 }
@@ -762,8 +768,8 @@ func snglBuild() {
 	cgo.SnglImageSourceSetPicture(m.__n1, m.picture__inst0__inst0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.frame)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.frame)))
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, "Heading")
+	m.__n5 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), "Heading")
 	_setLook(m.__n5, Look{Css: "font-weight: bold; ", Width: 120.0})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
@@ -812,4 +818,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:ed82c6b829e194f18224e0812308630b
 -- run/go/gtk4 --
-pass sha256:846bcc5bae5f237844c247240a283463
+pass sha256:c1b0b279fac840e80fe489479ce13c9a

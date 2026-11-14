@@ -2081,6 +2081,12 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func __effect0_mount() {
 	m.k__inst0 = (m.k__inst0 + 1)
 }
@@ -2428,7 +2434,7 @@ func __block_state0__new() *__block_state0__inst {
 func __block_state0__effect2_mount(__self *__block_state0__inst) {
 	__self.Seen = (__self.Seen + 1)
 	m.total = (m.total + 1)
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total))
 }
 
 func __block_state0__effect2_down(__self *__block_state0__inst) {
@@ -2485,7 +2491,7 @@ func __block_state1__new() *__block_state1__inst {
 func __block_state1__effect3_mount(__self *__block_state1__inst) {
 	__self.Held = (__self.Held + 1)
 	m.total = (m.total + __self.Held)
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total))
 }
 
 func __block_state1__effect3_down(__self *__block_state1__inst) {
@@ -2542,7 +2548,7 @@ func __block_state2__new() *__block_state2__inst {
 func __block_state2__effect4_mount(__self *__block_state2__inst) {
 	__self.Kept = (__self.Kept + 1)
 	m.total = (m.total + __self.Kept)
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total))
 }
 
 func __block_state2__effect4_down(__self *__block_state2__inst) {
@@ -2633,8 +2639,8 @@ func snglBuild() {
 	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	__renderSlot2(m.__n6)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total))
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n5)
@@ -3239,6 +3245,6 @@ pass sha256:65b9f3a1d3b725d3eb480f2b11afd5c7
 -- run/go/fyne --
 pass sha256:e74245516ba6f980aae1530347cf090f
 -- run/go/gtk4 --
-pass sha256:c1f481476f29a3a161e1fd9f62e46928
+pass sha256:57093913bc66131790817a9d17655b77
 -- run/none/html --
 pass sha256:46c4197f1cd92ace14f590bb5a9c76bc

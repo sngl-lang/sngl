@@ -315,6 +315,10 @@ type _ScrollState struct {
 	Watched  []cgo.PGtkAdjustment
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type snglState struct {
 	on             bool
 	__slot0        []cgo.Widget
@@ -353,6 +357,44 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
 }
 
 func _newScroll() cgo.Widget {
@@ -568,10 +610,10 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.on {
-					__n0 := cgo.SnglTextNew()
-					cgo.SnglTextSetValue(__n0, "carded")
+					__n0 := _newText()
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n0)), "carded")
 					_setLook(__n0, Look{})
-					cgo.SnglOnClick(__n0, func() {
+					_onClick(__n0, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -615,10 +657,10 @@ func __renderSlot1(parent cgo.Widget) {
 				var __place1_i int = 0
 				m.__slot1 = []cgo.Widget{}
 				if m.on {
-					__n1 := cgo.SnglTextNew()
-					cgo.SnglTextSetValue(__n1, "scrolled")
+					__n1 := _newText()
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n1)), "scrolled")
 					_setLook(__n1, Look{})
-					cgo.SnglOnClick(__n1, func() {
+					_onClick(__n1, func() {
 					})
 					__place1_i_ref0 := snglSome(m.__anchor1)
 					if __place1_i < len(__place1_prev) {
@@ -716,4 +758,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:fbd91941da8035ca5ba037b49e74ec37
+pass sha256:4d8f91de661d9221bb5d5e095aa13cc6

@@ -2133,6 +2133,10 @@ type _TabPageState struct {
 	Host     *cgo.PGtkNotebook
 }
 
+type _ClickState struct {
+	Click *func()
+}
+
 type _TabsState struct {
 	Selected int
 }
@@ -2177,6 +2181,44 @@ func _setLook(w cgo.Widget, l Look) {
 		__lt2 = 0
 	}
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
+func _onClick(w cgo.Widget, click func()) {
+	o := (cgo.PGObject)(unsafe.Pointer(w))
+	if func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(o, "sngl-click")) == nil {
+		g := cgo.GtkGestureClickNew()
+		cgo.GSignalConnectPress(cgo.CGpointer(unsafe.Pointer(g)), "pressed", func(o cgo.PGObject, n int, x float64, y float64) {
+			_click(w)
+		}, 0)
+		cgo.GtkWidgetAddController((cgo.PGtkWidget)(unsafe.Pointer(w)), (cgo.PGtkEventController)(unsafe.Pointer(g)))
+	}
+	cgo.GObjectSetDataFull(o, "sngl-click", _ClickState{Click: snglSome(click)})
+}
+
+func _click(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		click := (*(s)).Click
+		if click != nil {
+			(*(click))()
+		}
+	}
 }
 
 func _newTabs() cgo.Widget {
@@ -2429,10 +2471,10 @@ func Counter__destroy(__self *Counter__inst) {
 
 func Later__new() *Later__inst {
 	__self := &Later__inst{__effect0_live: []bool{}, __effect0_desired: []bool{}}
-	__self.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n3, "later")
+	__self.__n3 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n3)), "later")
 	_setLook(__self.__n3, Look{})
-	cgo.SnglOnClick(__self.__n3, func() {
+	_onClick(__self.__n3, func() {
 	})
 	Later__effects0_settle(__self)
 	__self.__root = __self.__n3
@@ -4076,7 +4118,7 @@ pass sha256:4421ef135162069748340f9230ecf99e
 -- run/go/fyne --
 pass sha256:490af2600e0f6a1897ad91c6df051bfe
 -- run/go/gtk4 --
-pass sha256:603707fd9d167f3992f3b99990baed72
+pass sha256:5689bc12ef2e1218d58ac0bce1a02834
 -- run/kotlin/android --
 pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --

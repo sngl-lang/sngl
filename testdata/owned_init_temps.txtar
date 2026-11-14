@@ -65,6 +65,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -114,6 +115,12 @@ type snglState struct {
 var m = &snglState{}
 
 func Close__r0(f File) {
+}
+
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -220,12 +227,12 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "t")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ((fmt.Sprint(m.n__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
+	m.__n1 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((fmt.Sprint(m.n__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
 	_setLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.total))
+	m.__n2 = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.total))
 	_setLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
 	cgo.SnglAppAttach(m.__n0)
@@ -425,7 +432,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:12bd93448cbb9fd354e3140f7d3fafb1
+pass sha256:55f166c9e041c4fba60419ebf3c03f4d
 -- run/kotlin/android --
 pass sha256:39b403af901cb01581c9b6ebc7043955
 -- run/none/html --

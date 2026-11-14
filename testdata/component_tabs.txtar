@@ -989,6 +989,12 @@ func _handleTabPage(p cgo.Widget, change func()) {
 	}
 }
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _tabsShown(t cgo.Widget) {
 	nb := (cgo.PGtkNotebook)(unsafe.Pointer(cgo.GtkWidgetGetFirstChild((cgo.PGtkWidget)(unsafe.Pointer(t)))))
 	if !cgo.GtkWidgetIsAncestor((cgo.PGtkWidget)(unsafe.Pointer(nb)), (cgo.PGtkWidget)(unsafe.Pointer(t))) {
@@ -1105,20 +1111,20 @@ func snglBuild() {
 			m.changed = k
 		})
 		if t.__id == 0 {
-			__n2 := cgo.SnglTextNew()
-			cgo.SnglTextSetValue(__n2, "Overview content")
+			__n2 := _newText()
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n2)), "Overview content")
 			_setLook(__n2, Look{})
 			cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__n1)), (cgo.PGtkWidget)(unsafe.Pointer(__n2)))
 		} else {
 			if t.__id == 1 {
-				__n3 := cgo.SnglTextNew()
-				cgo.SnglTextSetValue(__n3, "Detail content")
+				__n3 := _newText()
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n3)), "Detail content")
 				_setLook(__n3, Look{})
 				cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__n1)), (cgo.PGtkWidget)(unsafe.Pointer(__n3)))
 			} else {
 				if t.__id == 2 {
-					__n4 := cgo.SnglTextNew()
-					cgo.SnglTextSetValue(__n4, "Settings content")
+					__n4 := _newText()
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n4)), "Settings content")
 					_setLook(__n4, Look{})
 					cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__n1)), (cgo.PGtkWidget)(unsafe.Pointer(__n4)))
 				}
@@ -1935,7 +1941,7 @@ pass sha256:cfaab8ea5c58d24837c2c8c8dda05629
 -- run/go/fyne --
 pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --
-pass sha256:92c5b4904100c139d5cfaf5047299338
+pass sha256:86de17cd1ee519548a57a42be71a7183
 -- run/kotlin/android --
 pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --

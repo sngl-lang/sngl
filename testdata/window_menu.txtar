@@ -951,6 +951,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _newText() cgo.Widget {
+	t := cgo.TextLabel("")
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(t)), cgo.CFloat(0.0))
+	return t
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1382,7 +1388,7 @@ func __renderSlot0(parent cgo.Widget) {
 						__out[__i] = func(s string) MenuItem__record {
 							return MenuItem__record{Label: s, Checked: (s == m.size), Children: []MenuItem__record{}, Select: func() {
 								m.size = s
-								cgo.SnglTextSetValue(m.shown, m.size)
+								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.shown)), m.size)
 								__renderSlot0(m.main__r0)
 							}}
 						}(__item)
@@ -1433,7 +1439,7 @@ func __renderSlot0(parent cgo.Widget) {
 }
 
 func __wrote_size() {
-	cgo.SnglTextSetValue(m.shown, m.size)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.shown)), m.size)
 	__renderSlot0(m.main__r0)
 }
 
@@ -1457,8 +1463,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.main__r0, "Sizes")
 	cgo.SnglToplevelSetVisible(m.main__r0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.main__r0, Main__r0_visible_handler)
-	m.shown = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.shown, m.size)
+	m.shown = _newText()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.shown)), m.size)
 	_setLook(m.shown, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.shown)
 	__renderSlot0(m.main__r0)
@@ -1911,7 +1917,7 @@ pass sha256:8d82eadb4788032ff922da70e753311a
 -- run/go/fyne --
 pass sha256:4d9bd36ac571f000505018e382023df3
 -- run/go/gtk4 --
-pass sha256:2ab4e3e48edc052d2a1d2dfc921baf53
+pass sha256:19ef58d31f53859eb1625526c82a82ad
 -- run/kotlin/android --
 pass sha256:76edb851cd5031100304b9e3af558cfa
 -- run/none/html --

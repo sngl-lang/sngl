@@ -1155,22 +1155,18 @@ func press(w ui.node) {
 #[marks.intrinsic("gtk4:Text")]
 component Text(value string, look Look, @click()) ui.node
 
-#[c.native("sngl_text_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextNew")]
-func _rtTextNew() Text
-
-#[c.native("sngl_text_set_value")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextSetValue")]
-func _rtTextSetValue(w Text, value string)
+#[c.native("gtk_label_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.TextLabel")]
+func _textLabel(text string) Text
 
 #[gen.protocol(create)]
 func _create_Text() Text {
-    return _rtTextNew()
+    return _newText()
 }
 
 #[gen.protocol(set)]
 func _set_Text_value(w Text, value string) {
-    _rtTextSetValue(w, value)
+    _gtk_label_set_label(_as_GtkLabel(_widget(w)), value)
 }
 
 #[gen.protocol(set)]
@@ -1180,12 +1176,18 @@ func _set_Text_look(w Text, look Look) {
 
 #[gen.protocol(on)]
 func _on_Text_click(w Text, click func()) {
-    _rtOnClick(w, click)
+    _onClick(w, click)
 }
 
 #[gen.fires("click")]
 func _fire_Text_click(w Text) {
-    _rtClick(w)
+    _click(w)
+}
+
+func _newText() Text {
+    var t = _textLabel("")
+    _gtk_label_set_xalign(_as_GtkLabel(_widget(t)), _to_float(0.0))
+    return t
 }
 
 const component ui.text[platform](value, style, @click) {
@@ -2792,21 +2794,9 @@ component Canvas(
     shapes      ...component draw.shape,
 ) ui.node
 
-#[c.native("sngl_canvas_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasNew")]
-func _rtCanvasNew() Canvas
-
-#[c.native("sngl_canvas_set_width")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetWidth")]
-func _rtCanvasSetWidth(w Canvas, width int)
-
-#[c.native("sngl_canvas_set_height")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetHeight")]
-func _rtCanvasSetHeight(w Canvas, height int)
-
-#[c.native("sngl_canvas_set_scaling")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetScaling")]
-func _rtCanvasSetScaling(w Canvas, mode int)
+#[c.native("gtk_drawing_area_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDrawingAreaNew")]
+func _drawingArea() Canvas
 
 // Runs `fn` from the main loop when it is next idle: how `async.do` hands
 // work a goroutine finished back in Go. C posts through sngl_post itself.
@@ -2818,70 +2808,171 @@ func _rtPost(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[c.native("sngl_on_click")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglOnClick")]
-func _rtOnClick(
-    w ui.node,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+// What a node a click gesture presses holds: the handler.
+struct _ClickState {
+    click option[func()]
+}
 
-#[c.native("sngl_click")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglClick")]
-func _rtClick(w ui.node)
+const _clickKey = "sngl-click"
 
-#[c.native("sngl_canvas_on_paint")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasOnPaint")]
-func _rtCanvasOnPaint(
-    w Canvas,
-    #[c.type("SnglDrawFn")] fn func(ctx CairoContext),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+// Has a press of w run click, through a click gesture made the first time.
+func _onClick(w ui.node, click func()) {
+    var o = _as_GObject(_widget(w))
+    if _heldClick(o, _clickKey) == null {
+        var g = _gtk_gesture_click_new()
+        _g_signal_connect_press(
+            _as_gpointer(_ptr_GtkGesture(g)),
+            "pressed",
+            func(o _p_GObject, n int, x float, y float) {
+                _click(w)
+            },
+            0,
+        )
+        _gtk_widget_add_controller(_as_GtkWidget(_widget(w)), _as_GtkEventController(_ptr_GtkGesture(g)))
+    }
+    _holdClick(o, _clickKey, _ClickState{click=click})
+}
 
-#[c.native("sngl_canvas_redraw")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasRedraw")]
-func _rtCanvasRedraw(w Canvas)
+func _click(w ui.node) {
+    var s = _heldClick(_as_GObject(_widget(w)), _clickKey)
+    if s != null {
+        var click = s.click
+        if click != null {
+            click()
+        }
+    }
+}
+
+// What a canvas holds on its area: the space its shapes are placed in, how
+// that is shown in the room it is given (draw.ScalingMode's order), and what
+// paints it.
+struct _CanvasState {
+    width  int
+    height int
+    mode   int
+    paint  option[func(ctx CairoContext)]
+}
+
+const _canvasKey = "sngl-canvas"
+
+func _canvasOf(w Canvas) option[_CanvasState] {
+    return _heldCanvas(_as_GObject(_widget(w)), _canvasKey)
+}
+
+func _setCanvas(w Canvas, s _CanvasState) {
+    _holdCanvas(_as_GObject(_widget(w)), _canvasKey, s)
+    _gtk_widget_queue_draw(_as_GtkWidget(_widget(w)))
+}
+
+// The drawing's own space mapped onto the size GTK draws at, so the shapes
+// are rasterized where they land rather than drawn at one size and
+// stretched from it. `center` and `fit` scale it evenly until the whole of it
+// is inside -- a centered canvas is given its own size, so that is no scale
+// -- `fill` until none of the room is left over, and `stretch` each axis to
+// the edges.
+func _canvasDraw(w Canvas, cr CairoContext, width int, height int) {
+    var s = _canvasOf(w)
+    if s != null {
+        var paint = s.paint
+        if paint != null {
+            if s.width > 0 && s.height > 0 {
+                var sx = float(width) / float(s.width)
+                var sy = float(height) / float(s.height)
+                if s.mode == 2 {
+                    sx = sy > sx ? sy : sx
+                    sy = sx
+                } else if s.mode != 3 {
+                    sx = sy < sx ? sy : sx
+                    sy = sx
+                }
+                cr.scale(sx, sy)
+            }
+            paint(cr)
+        }
+    }
+}
+
+func _newCanvas() Canvas {
+    var w = _drawingArea()
+    _holdCanvas(_as_GObject(_widget(w)), _canvasKey, _CanvasState{})
+    _gtk_drawing_area_set_draw_func(_as_GtkDrawingArea(_widget(w)), func(area _p_GtkDrawingArea, cr CairoContext, width int, height int) {
+        _canvasDraw(w, cr, width, height)
+    })
+    return w
+}
+
+func _setCanvasWidth(w Canvas, width int) {
+    var s = _canvasOf(w)
+    if s != null {
+        _setCanvas(w, _CanvasState{width=width, height=s.height, mode=s.mode, paint=s.paint})
+        _gtk_drawing_area_set_content_width(_as_GtkDrawingArea(_widget(w)), width)
+    }
+}
+
+func _setCanvasHeight(w Canvas, height int) {
+    var s = _canvasOf(w)
+    if s != null {
+        _setCanvas(w, _CanvasState{width=s.width, height=height, mode=s.mode, paint=s.paint})
+        _gtk_drawing_area_set_content_height(_as_GtkDrawingArea(_widget(w)), height)
+    }
+}
+
+// A canvas that scales other than `center` expands to take the room.
+func _setCanvasScaling(w Canvas, mode int) {
+    var s = _canvasOf(w)
+    if s != null {
+        _setCanvas(w, _CanvasState{width=s.width, height=s.height, mode=mode, paint=s.paint})
+        var widget = _as_GtkWidget(_widget(w))
+        _gtk_widget_set_hexpand(widget, _to_gboolean(mode != 0 ? 1 : 0))
+        _gtk_widget_set_vexpand(widget, _to_gboolean(mode != 0 ? 1 : 0))
+    }
+}
+
+func _handleCanvasPaint(w Canvas, paint func(ctx CairoContext)) {
+    var s = _canvasOf(w)
+    if s != null {
+        _setCanvas(w, _CanvasState{width=s.width, height=s.height, mode=s.mode, paint=paint})
+    }
+}
 
 #[gen.protocol(create)]
 func _create_Canvas() Canvas {
-    return _rtCanvasNew()
+    return _newCanvas()
 }
 
 #[gen.protocol(set)]
 func _set_Canvas_width(w Canvas, width ui.measurement) {
-    _rtCanvasSetWidth(w, int(px(width)))
+    _setCanvasWidth(w, int(px(width)))
 }
 
 #[gen.protocol(set)]
 func _set_Canvas_height(w Canvas, height ui.measurement) {
-    _rtCanvasSetHeight(w, int(px(height)))
+    _setCanvasHeight(w, int(px(height)))
 }
 
 #[gen.protocol(set)]
 func _set_Canvas_scalingMode(w Canvas, scalingMode draw.ScalingMode) {
-    _rtCanvasSetScaling(w, int(scalingMode))
+    _setCanvasScaling(w, int(scalingMode))
 }
 
 #[gen.protocol(on)]
 func _on_Canvas_click(w Canvas, click func()) {
-    _rtOnClick(w, click)
+    _onClick(w, click)
 }
 
 #[gen.fires("click")]
 func _fire_Canvas_click(w Canvas) {
-    _rtClick(w)
+    _click(w)
 }
 
 #[gen.protocol(on)]
 func _on_Canvas_paint(w Canvas, paint func(ctx CairoContext)) {
-    _rtCanvasOnPaint(w, paint)
+    _handleCanvasPaint(w, paint)
 }
 
 #[gen.protocol(redraw)]
 func _redraw_Canvas(w Canvas) {
-    _rtCanvasRedraw(w)
+    _gtk_widget_queue_draw(_as_GtkWidget(_widget(w)))
 }
 
 // cairo wants each channel as 0..1 where SNGL carries 0..255.
