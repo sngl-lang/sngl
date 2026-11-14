@@ -116,20 +116,25 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child);
  * icon and an entry or a way back into its bar. */
 void sngl_box_append(GtkWidget *box, GtkWidget *child);
 
-/* A window's menu entries and its way back are gtk4.sngl's, which installs
- * the hook the window and the box ask through (menu.c): op is one of
- * SNGL_HOOK_*, child the box where the op names none. sngl_window_back
- * presses the first way back among a window's content, and is whether there
- * was one; sngl_menu_apply builds a window's menu and bar afresh, and
- * sngl_bar_forget drops the bar of a window destroyed; sngl_menu_moved tells
- * box an entry or a way back came or went. */
-enum { SNGL_HOOK_BACK, SNGL_HOOK_APPLY, SNGL_HOOK_FORGET, SNGL_HOOK_MOVED };
+/* A window's menu entries and its way back, and an image, are gtk4.sngl's,
+ * which installs the hook the window, the box and an image's source ask
+ * through (menu.c): op is one of SNGL_HOOK_*, child the box where the op
+ * names none. sngl_window_back presses the first way back among a window's
+ * content, and is whether there was one; sngl_menu_apply builds a window's
+ * menu and bar afresh, and sngl_bar_forget drops the bar of a window
+ * destroyed; sngl_menu_moved tells box an entry or a way back came or went.
+ * sngl_image_placed fits a source put in box to the image box is, and
+ * sngl_image_report tells it whether the source's picture arrived; each is
+ * whether box is an image. */
+enum { SNGL_HOOK_BACK, SNGL_HOOK_APPLY, SNGL_HOOK_FORGET, SNGL_HOOK_MOVED, SNGL_HOOK_IMAGE_PLACED, SNGL_HOOK_IMAGE_REPORT };
 typedef bool (*SnglWindowHook)(int op, GtkWidget *box, GtkWidget *child, void *ctx);
 void sngl_window_hook(SnglWindowHook fn, void *ctx, GDestroyNotify release);
 bool sngl_window_back(GtkWidget *box);
 void sngl_menu_moved(GtkWidget *box, GtkWidget *child);
 void sngl_menu_apply(GtkWidget *box);
 void sngl_bar_forget(GtkWidget *box);
+bool sngl_image_placed(GtkWidget *box, GtkWidget *source);
+bool sngl_image_report(GtkWidget *box, GtkWidget *source);
 
 /* An image is a box holding the source it shows (image.c), a GtkPicture
  * showing a picture or what a drawing paints, which reports to the image
@@ -149,13 +154,11 @@ typedef struct {
 extern const SnglAsset sngl_assets[];
 void sngl_gtk_carry(const SnglAsset *assets);
 void sngl_gtk_carry_file(const char *name, const char *data, int len);
-GtkWidget *sngl_image_new(void);
-void sngl_image_set_fit(GtkWidget *box, const char *fit);
-void sngl_image_on_click(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_image_on_load(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_image_on_failed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-const char *sngl_image_failure(GtkWidget *box);
-void sngl_image_click(GtkWidget *box);
+/* What gtk4.sngl's image asks of a source: whether a widget is one, and
+ * whether its picture failed and why. */
+gboolean sngl_image_source_is(GtkWidget *w);
+gboolean sngl_image_source_failed(GtkWidget *w);
+const char *sngl_image_source_error(GtkWidget *w);
 GtkWidget *sngl_image_source_new(void);
 void sngl_image_source_set_url(GtkWidget *w, const char *url);
 void sngl_image_source_set_picture(GtkWidget *w, SnglPicture *pic);

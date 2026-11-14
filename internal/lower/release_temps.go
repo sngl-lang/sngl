@@ -179,7 +179,21 @@ func reachedBlocks(pkg *ir.Package) []*[]ir.Stmt {
 		}
 	}
 	visit(pkg)
-	return append(out, c.out...)
+	// And each body a call in those leads to, as CMarshal follows them: a
+	// library helper a protocol function calls is in no list of a package's,
+	// and its C call's string was made and never released.
+	all := append(out, c.out...)
+	for i := 0; i < len(all); i++ {
+		_ = ir.Walk(*all[i], func(n ir.Node) error {
+			if call, ok := n.(*ir.Call); ok && call.Func != nil && call.Func.Foreign.Name == "" {
+				before := len(c.out)
+				fn(call.Func)
+				all = append(all, c.out[before:]...)
+			}
+			return nil
+		})
+	}
+	return all
 }
 
 // drawBlocks is each canvas's children, which passShapeDraw made the

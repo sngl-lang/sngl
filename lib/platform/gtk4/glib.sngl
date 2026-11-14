@@ -826,3 +826,43 @@ func _holdCanvas(
 #[c.native("g_object_get_data")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
 func _heldCanvas(o _p_GObject, key string) option[c.held[_CanvasState]]
+
+#[c.native("GtkPicture *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkPicture")]
+struct _p_GtkPicture {}
+
+#[c.native("GtkPicture *", cast)]
+const func _as_GtkPicture(p c.pointer) _p_GtkPicture
+
+// GTK's GtkContentFit: FILL, CONTAIN, COVER and SCALE_DOWN, from 0.
+#[c.native("GtkContentFit")]
+struct _c_GtkContentFit = int
+
+#[c.native("gtk_picture_set_content_fit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPictureSetContentFit")]
+func _gtk_picture_set_content_fit(p _p_GtkPicture, fit _c_GtkContentFit)
+
+#[c.native("sngl_image_source_is")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceIs")]
+func _rtIsSource(w _p_GtkWidget) bool
+
+#[c.native("sngl_image_source_failed")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceFailed")]
+func _rtSourceFailed(w _p_GtkWidget) bool
+
+#[c.native("sngl_image_source_error")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceError")]
+func _rtSourceError(w _p_GtkWidget) string
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdImage(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_ImageState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldImage(o _p_GObject, key string) option[c.held[_ImageState]]

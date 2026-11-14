@@ -1026,6 +1026,13 @@ type _BarState struct {
 	MenuButton *cgo.PGtkWidget
 }
 
+type _ImageState struct {
+	Fit     int
+	Load    *func()
+	Failed  *func()
+	Failure string
+}
+
 type _BackState struct {
 	Press *func()
 }
@@ -1161,6 +1168,14 @@ func _windowHook(op int, box cgo.PGtkWidget, child cgo.PGtkWidget) bool {
 		} else {
 			if op == 3 {
 				_menuMoved(box, child)
+			} else {
+				if op == 4 {
+					return _imagePlaced(box, child)
+				} else {
+					if op == 5 {
+						return _imageReport(box, child)
+					}
+				}
 			}
 		}
 	}
@@ -1275,6 +1290,45 @@ func _menuMoved(box cgo.PGtkWidget, child cgo.PGtkWidget) {
 			}
 		}
 	}
+}
+
+func _imagePlaced(box cgo.PGtkWidget, source cgo.PGtkWidget) bool {
+	s := func(h any) *_ImageState {
+		if v, ok := h.(_ImageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-image"))
+	if s != nil {
+		cgo.GtkPictureSetContentFit((cgo.PGtkPicture)(unsafe.Pointer(source)), (*(s)).Fit)
+		return true
+	}
+	return false
+}
+
+func _imageReport(box cgo.PGtkWidget, source cgo.PGtkWidget) bool {
+	s := func(h any) *_ImageState {
+		if v, ok := h.(_ImageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.PGObject)(unsafe.Pointer(box)), "sngl-image"))
+	if s != nil {
+		if cgo.SnglImageSourceFailed(source) {
+			_setImage(box, _ImageState{Fit: (*(s)).Fit, Load: (*(s)).Load, Failed: (*(s)).Failed, Failure: cgo.SnglImageSourceError(source)})
+			failed := (*(s)).Failed
+			if failed != nil {
+				(*(failed))()
+			}
+		} else {
+			load := (*(s)).Load
+			if load != nil {
+				(*(load))()
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func _backIn(box cgo.PGtkWidget) *cgo.PGtkWidget {
@@ -1402,6 +1456,10 @@ func _entryChanged(w cgo.PGtkWidget) {
 	if host != nil {
 		_menuApply((*(host)))
 	}
+}
+
+func _setImage(box cgo.PGtkWidget, s _ImageState) {
+	cgo.GObjectSetDataFull((cgo.PGObject)(unsafe.Pointer(box)), "sngl-image", s)
 }
 
 func _menuEntrySelect(w cgo.PGtkWidget) {
@@ -1943,6 +2001,6 @@ pass sha256:f4ff9777436983e33bd69fd01659d3bf
 -- run/go/fyne --
 pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --
-pass sha256:cac51c4379126db7f9d201d81033aa78
+pass sha256:8676f534f26a38dea0bc5f04635e0d71
 -- run/kotlin/android --
 pass sha256:fa20068808c94c01b89e4fa11b4d6eeb

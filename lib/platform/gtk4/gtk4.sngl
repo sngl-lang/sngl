@@ -565,6 +565,10 @@ func _windowHook(op int, box _p_GtkWidget, child _p_GtkWidget) bool {
         _barForget(box)
     } else if op == 3 {
         _menuMoved(box, child)
+    } else if op == 4 {
+        return _imagePlaced(box, child)
+    } else if op == 5 {
+        return _imageReport(box, child)
     }
     return false
 }
@@ -2412,7 +2416,7 @@ const component markup.image[platform](alt) {
 // --- Images ---
 
 // An image is the runtime's box holding the source it shows, fitted as `fit`
-// says, or the placeholder where it holds none (rt's image.c). A source is a
+// says, or the placeholder where it holds none. A source, rt's image.c's, is a
 // GtkPicture showing the texture its picture or its drawing make, and
 // reporting to the image holding it whether the picture arrived: `@load` is
 // its picture shown, and `@failed` its picture failing, why being
@@ -2428,53 +2432,136 @@ component Image(
     content ...component option[ui.imageSource],
 ) ui.node
 
-#[c.native("sngl_image_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
-func _rtImageNew() Image
+#[c.native("gtk_box_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
+func _imageBox(orientation _c_GtkOrientation, spacing int) Image
 
-#[c.native("sngl_image_set_fit")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSetFit")]
-func _rtImageSetFit(w Image, fit string)
+// What an image holds on its box: how it fits the source it shows
+// (GtkContentFit), the handlers its picture arriving runs, and why the last
+// one it was told of failed.
+struct _ImageState {
+    fit     int
+    load    option[func()]
+    failed  option[func()]
+    failure string
+}
+
+const _imageKey = "sngl-image"
+
+func _imageOf(box _p_GtkWidget) option[_ImageState] {
+    return _heldImage(_gobject(box), _imageKey)
+}
+
+func _setImage(box _p_GtkWidget, s _ImageState) {
+    _holdImage(_gobject(box), _imageKey, s)
+}
+
+// `none` is `scaleDown`: GTK has no picture that keeps its own size
+// whatever room it is given.
+func _contentFit(fit string) int {
+    if fit == "cover" {
+        return 2
+    }
+    if fit == "fill" {
+        return 0
+    }
+    if fit == "none" || fit == "scaleDown" {
+        return 3
+    }
+    return 1
+}
+
+// Horizontal: a GtkPicture measures its height for the width it is given,
+// and a vertical box gives each child its own whole width, so the picture
+// asked for as much height as that width implies. A horizontal box measures
+// it at its own width.
+func _newImage() Image {
+    _installWindowHook()
+    var img = _imageBox(_to_GtkOrientation(0), 0)
+    _setImage(_pageWidget(img), _ImageState{fit=1})
+    return img
+}
+
+func _setImageFit(img Image, fit string) {
+    var box = _pageWidget(img)
+    var s = _imageOf(box)
+    if s != null {
+        var f = _contentFit(fit)
+        _setImage(box, _ImageState{fit=f, load=s.load, failed=s.failed, failure=s.failure})
+        var c = _firstChild(box)
+        for c != null {
+            var at = c
+            if at != null {
+                if _rtIsSource(at) {
+                    _gtk_picture_set_content_fit(_as_GtkPicture(_widgetPtr(at)), f)
+                }
+                c = _nextSibling(at)
+            }
+        }
+    }
+}
+
+// A source put in box: it fits itself to the image box is, which is
+// whether box is one.
+func _imagePlaced(box _p_GtkWidget, source _p_GtkWidget) bool {
+    var s = _imageOf(box)
+    if s != null {
+        _gtk_picture_set_content_fit(_as_GtkPicture(_widgetPtr(source)), s.fit)
+        return true
+    }
+    return false
+}
+
+// A source in box telling it, once per picture, whether the picture arrived;
+// whether box is an image.
+func _imageReport(box _p_GtkWidget, source _p_GtkWidget) bool {
+    var s = _imageOf(box)
+    if s != null {
+        if _rtSourceFailed(source) {
+            _setImage(box, _ImageState{fit=s.fit, load=s.load, failed=s.failed, failure=_rtSourceError(source)})
+            var failed = s.failed
+            if failed != null {
+                failed()
+            }
+        } else {
+            var load = s.load
+            if load != null {
+                load()
+            }
+        }
+        return true
+    }
+    return false
+}
 
 // Why an image's picture failed, or "".
-#[c.native("sngl_image_failure")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageFailure")]
-func imageFailure(w Image) string
+func imageFailure(w Image) string {
+    var s = _imageOf(_pageWidget(w))
+    if s != null {
+        return s.failure
+    }
+    return ""
+}
 
-#[c.native("sngl_image_on_click")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnClick")]
-func _rtImageOnClick(
-    w Image,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+func _handleImageLoad(w Image, load func()) {
+    var box = _pageWidget(w)
+    var s = _imageOf(box)
+    if s != null {
+        _setImage(box, _ImageState{fit=s.fit, load=load, failed=s.failed, failure=s.failure})
+    }
+}
 
-#[c.native("sngl_image_on_load")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnLoad")]
-func _rtImageOnLoad(
-    w Image,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_image_on_failed")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnFailed")]
-func _rtImageOnFailed(
-    w Image,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_image_click")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageClick")]
-func _rtImageClick(w Image)
+func _handleImageFailed(w Image, failed func()) {
+    var box = _pageWidget(w)
+    var s = _imageOf(box)
+    if s != null {
+        _setImage(box, _ImageState{fit=s.fit, load=s.load, failed=failed, failure=s.failure})
+    }
+}
 
 #[gen.protocol(create)]
 func _create_Image() Image {
-    return _rtImageNew()
+    return _newImage()
 }
 
 #[gen.protocol(append)]
@@ -2494,7 +2581,7 @@ func _remove_Image(parent Image, child ui.node) {
 
 #[gen.protocol(set)]
 func _set_Image_fit(w Image, fit string) {
-    _rtImageSetFit(w, fit)
+    _setImageFit(w, fit)
 }
 
 #[gen.protocol(set)]
@@ -2504,22 +2591,22 @@ func _set_Image_look(w Image, look Look) {
 
 #[gen.protocol(on)]
 func _on_Image_click(w Image, click func()) {
-    _rtImageOnClick(w, click)
+    _onClick(w, click)
 }
 
 #[gen.protocol(on)]
 func _on_Image_load(w Image, load func()) {
-    _rtImageOnLoad(w, load)
+    _handleImageLoad(w, load)
 }
 
 #[gen.protocol(on)]
 func _on_Image_failed(w Image, failed func()) {
-    _rtImageOnFailed(w, failed)
+    _handleImageFailed(w, failed)
 }
 
 #[gen.fires("click")]
 func _fire_Image_click(w Image) {
-    _rtImageClick(w)
+    _click(w)
 }
 
 // The picture a URL names, decoded once: a file the program carries at once,
