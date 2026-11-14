@@ -147,7 +147,15 @@ typed as the context those statements paint through, as a handler marked
 `Lowered.Paints`. An `effect` or a `timer` written in the drawing paints
 nothing and belongs to no tree, so it is placed beside the canvas, after it,
 as the component's lifetime it is; it was refused
-(`testdata/component_treeless_in_canvas.txtar`). It runs before anything flattens a canvas, so a render slot's
+(`testdata/component_treeless_in_canvas.txtar`). One under an `if` or a
+`for` -- a shape's own owned state under a `for` is an effect per copy -- is
+reached through it (`splitLifetimes`): the `if` or `for` is split in two over
+the same head, the drawing keeping the shapes and a copy beside the canvas
+keeping the lifetimes, its loop variables its own. Both agree on each copy
+because `passCopyKeys` has already keyed the copy's cells by its loop
+variable, which both read; with no split the effect reached placement in the
+paint handler, which has no protocol for it
+(`testdata/canvas_for_shape_state.txtar`). It runs before anything flattens a canvas, so a render slot's
 canvas (`passReactivity`) and a record's (`passInstanceBodies`) are flattened
 with the handler, which is lifted and connected through the component's `on`
 as any handler is. A canvas written with no id is given `__drawingN`, its own

@@ -963,14 +963,9 @@ reaches it the same way.
         `Tree`) was declared twice in Go; a render slot in a container of one
         child had no insert; and a node no protocol makes is named as every
         platform names one.
-   - **Not yet:** a test raising an override's event on one copy a loop
-     renders, or inside an instance built at run time, is refused (#318),
-     as on bubbletea (`typed_select_reach_runs.txt`,
-     `typed_select_in_built_block_runs.txt`,
-     `select_rebuilt_by_its_choice_runs.txt`,
-     `slot_render_reentered_runs.txt`). A shape's own owned state is
-     no shape, and a canvas painted through its protocol refuses it
-     (`canvas_for_shape_state.txtar` leaves gtk4 and win32 out).
+   - A shape's own owned state under a `for` in a canvas painted through its
+     protocol is placed beside the canvas, the loop split in two
+     (`canvas_for_shape_state.txtar`).
 2. **A C record gives back what it kept**, in placement, for gtk4 and win32
    alike. Done: a record's destroy drops each field it kept and the box,
    which is a kept block now (`ir.Func.Frees`,

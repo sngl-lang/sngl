@@ -98,21 +98,15 @@ func (p *painter) findPainted(stmts *[]ir.Stmt) {
 // paintThrough makes canvas's drawing the handler of its paint event, and
 // gives it the id it is flattened as where it has none. What the drawing
 // holds that paints nothing and is no shape -- an `effect` or a `timer`,
-// which belongs to no tree -- it answers, for the canvas's parent to place:
-// a lifetime is the component's, wherever it was written.
+// which belongs to no tree, under whatever `if` or `for` it was written in --
+// it answers, for the canvas's parent to place: a lifetime is the
+// component's, wherever it was written.
 func (p *painter) paintThrough(canvas *ir.NodeInst) ([]ir.Stmt, error) {
 	if canvas.ID == "" {
 		canvas.ID = fmt.Sprintf("__drawing%d", p.n)
 		p.n++
 	}
-	var draw, beside []ir.Stmt
-	for _, s := range canvas.Children {
-		if n, ok := s.(*ir.NodeInst); ok && (ir.IsTimerPrimitive(n.Component) || isEffectNode(n)) {
-			beside = append(beside, s)
-			continue
-		}
-		draw = append(draw, s)
-	}
+	draw, beside := splitLifetimes(canvas.Children)
 	canvas.Children = nil
 	ctx := drawingContext(draw)
 	if ctx == nil {
@@ -133,6 +127,66 @@ func (p *painter) paintThrough(canvas *ir.NodeInst) ([]ir.Stmt, error) {
 		}
 	}
 	return beside, fmt.Errorf("%s: %s is painted through its protocol, and declares no event handed the context its shapes paint through", nodePos(canvas), canvas.Component.Name)
+}
+
+// splitLifetimes parts stmts, a drawing, into what paints and the lifetimes
+// it holds -- an `effect`, a `timer` -- reaching through an `if` or a `for`
+// as the shapes' own state put them there: a shape with owned state under a
+// `for` makes and releases it per copy. Each `if` or `for` holding one is
+// split in two, the same head over each part: the drawing keeps its shapes,
+// and a copy holds its lifetimes, its loop variables its own, for the
+// canvas's parent to place. The two agree on each copy because the copy's
+// cells are keyed by its loop variable (passCopyKeys), which both read.
+func splitLifetimes(stmts []ir.Stmt) (draw, beside []ir.Stmt) {
+	for _, s := range stmts {
+		switch v := s.(type) {
+		case *ir.NodeInst:
+			if ir.IsTimerPrimitive(v.Component) || isEffectNode(v) {
+				beside = append(beside, s)
+				continue
+			}
+		case *ir.If:
+			body, bodyLife := splitLifetimes(v.Body)
+			els, elseLife := splitLifetimes(v.Else)
+			if len(bodyLife)+len(elseLife) > 0 {
+				life := *v
+				life.Cond = ir.CloneExprSharingDecls(v.Cond)
+				life.Body, life.Else = bodyLife, elseLife
+				v.Body, v.Else = body, els
+				beside = append(beside, &life)
+				if len(body)+len(els) == 0 {
+					continue
+				}
+			}
+		case *ir.For:
+			body, bodyLife := splitLifetimes(v.Body)
+			els, elseLife := splitLifetimes(v.Else)
+			if len(bodyLife)+len(elseLife) > 0 {
+				life := *v
+				life.Iter = ir.CloneExprSharingDecls(v.Iter)
+				life.Body, life.Else, life.Label = bodyLife, elseLife, ""
+				renames := map[ir.Symbol]ir.Symbol{}
+				if v.KeySym != nil {
+					k := *v.KeySym
+					life.KeySym = &k
+					renames[v.KeySym] = &k
+				}
+				if v.ValueSym != nil {
+					val := *v.ValueSym
+					life.ValueSym = &val
+					renames[v.ValueSym] = &val
+				}
+				life.Body = renameIdents(life.Body, nil, renames)
+				v.Body, v.Else = body, els
+				beside = append(beside, &life)
+				if len(body)+len(els) == 0 {
+					continue
+				}
+			}
+		}
+		draw = append(draw, s)
+	}
+	return draw, beside
 }
 
 // drawingContext is the context draw paints through: the parameter
