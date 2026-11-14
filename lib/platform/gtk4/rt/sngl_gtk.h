@@ -209,17 +209,17 @@ typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
-/* A scroll is a GtkScrolledWindow moving along a direction, "horizontal",
- * "both" or else vertical, that runs its reach-end handler as the end of
- * its content comes within half a viewport of showing (scroll.c). Its
- * content is set through sngl_scroll_set_child, which leaves content it
- * already holds where it is. sngl_scroll_reach_end runs the handler, as a
- * test does. */
-GtkWidget *sngl_scroll_new(void);
+/* A scroll's probe (scroll.c): a box laid out around a scroll's content,
+ * held on the scroll's window, which says through its handler when the
+ * content's length along the scroll changes. sngl_scroll_probe makes it the
+ * first time it is asked. A scroll's content is set through
+ * sngl_scroll_set_child, which leaves content the probe holds where it is. */
+GtkWidget *sngl_scroll_probe(GtkWidget *sw);
+int sngl_probe_content(GtkWidget *probe);
+void sngl_probe_reset(GtkWidget *probe, int across);
+void sngl_probe_on_change(GtkWidget *probe, SnglFn fn, void *ctx, GDestroyNotify release);
+void sngl_probe_hold(GtkWidget *sw, GtkWidget *probe, GtkWidget *content);
 void sngl_scroll_set_child(GtkWidget *sw, GtkWidget *child);
-void sngl_scroll_set_direction(GtkWidget *sw, const char *dir);
-void sngl_scroll_on_reach_end(GtkWidget *sw, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_scroll_reach_end(GtkWidget *sw);
 
 /* A window's keys (keys.c). sngl_key_name is what a window's `@key` calls
  * the key keyval is with state held -- a name, or the character it types,

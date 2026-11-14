@@ -665,7 +665,7 @@ static double sngl_list_float_max(double m, sngl_list_float l) {
 	return m;
 }
 
-static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
+static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
@@ -680,7 +680,7 @@ static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
 	return m;
 }
 
-static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
+static sngl_list_int sngl_list_int_of(int64_t n, int64_t const *xs) {
 	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
 	return l;
@@ -1142,7 +1142,7 @@ static void sngl_map_string____canvas0__inst__drop(sngl_map_string____canvas0__i
 	sngl_drop(v.vals);
 }
 
-static sngl_list__step__record sngl_list__step__record_of(int64_t n, const s_ui_draw___step__record *xs) {
+static sngl_list__step__record sngl_list__step__record_of(int64_t n, s_ui_draw___step__record const *xs) {
 	sngl_list__step__record l = {sngl_alloc(sizeof(s_ui_draw___step__record) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(s_ui_draw___step__record) * (size_t)n);
 	return l;
@@ -1929,4 +1929,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:e7214226e5ac0eef192bc059666049ad
+pass sha256:6f986705494b7d4ededf507191b4103d

@@ -249,26 +249,12 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 	}
 }
 
-// thaw is a copy of the frozen fn the build may write: its parameters and
-// body its own, every declaration it names shared.
+// thaw is a copy of the frozen fn the build may write: its parameters, its
+// body and the locals the body declares its own (a rename of one wrote the
+// library), every other declaration it names shared.
 func thaw(fn *ir.Func) *ir.Func {
-	c := ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func
+	c := ir.CopyFunc(fn)
 	c.Frozen = false
-	params := map[ir.Symbol]*ir.Param{}
-	c.Params = make([]*ir.Param, len(fn.Params))
-	for i, p := range fn.Params {
-		cp := *p
-		c.Params[i] = &cp
-		params[p] = &cp
-	}
-	_ = ir.Walk(c.Block, func(n ir.Node) error {
-		if id, ok := n.(*ir.Ident); ok {
-			if p := params[id.Sym]; p != nil {
-				id.Sym = p
-			}
-		}
-		return nil
-	})
 	return c
 }
 

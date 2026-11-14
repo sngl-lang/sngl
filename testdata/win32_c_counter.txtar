@@ -358,7 +358,7 @@ static double sngl_list_float_max(double m, sngl_list_float l) {
 	return m;
 }
 
-static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
+static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
@@ -373,7 +373,7 @@ static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
 	return m;
 }
 
-static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
+static sngl_list_int sngl_list_int_of(int64_t n, int64_t const *xs) {
 	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
 	return l;
@@ -1023,7 +1023,7 @@ static void sngl_init(void) {
 
 static void sngl_build(void) {
 	s___n0 = sngl_win32_toplevel();
-	(int64_t)SetWindowTextW((HWND)(s___n0), (const unsigned short *)sngl_utf16(SNGL_STR("Counter")));
+	(void)(int64_t)SetWindowTextW((HWND)(s___n0), (const unsigned short *)sngl_utf16(SNGL_STR("Counter")));
 	sngl_win32_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_win32_on_visible(s___n0, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	s___n3 = sngl_win32_box((int)(1));
@@ -1096,4 +1096,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:3181e0fc1c27984dabe4860452445049
+pass sha256:7f355b11f671e11028f9977cc1ac640b

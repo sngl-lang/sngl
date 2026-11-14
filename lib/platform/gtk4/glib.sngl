@@ -346,3 +346,149 @@ func _holdTabs(
 #[c.native("g_object_get_data")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
 func _heldTabs(o _p_GObject, key string) option[c.held[_TabsState]]
+
+// GLib's handler id, which a disconnect names.
+#[c.native("gulong")]
+struct _c_gulong = int
+
+// Connects fn to a signal on o whose handler GLib calls with the object
+// alone, then the context: an adjustment's `changed`, a widget's `destroy`.
+#[c.native("g_signal_connect_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectPlain")]
+func _g_signal_connect_plain(
+    o      _c_gpointer,
+    signal string,
+    #[c.type("GCallback")] fn func(o _p_GObject),
+    #[c.context] ctx _c_gpointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags  _c_GConnectFlags,
+) _c_gulong
+
+#[c.native("g_signal_handler_disconnect")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalHandlerDisconnect")]
+func _g_signal_handler_disconnect(o _c_gpointer, id _c_gulong)
+
+// Runs fn on the main loop's next idle turn, at priority, until it answers
+// false; the id names it to g_source_remove.
+#[c.native("g_idle_add_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GIdleAddFull")]
+func _g_idle_add_full(
+    priority int,
+    #[c.type("GSourceFunc")] fn func() bool,
+    #[c.context] data _c_gpointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+) _c_guint
+
+#[c.native("g_source_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSourceRemove")]
+func _g_source_remove(id _c_guint) bool
+
+#[c.native("GtkAdjustment *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkAdjustment")]
+struct _p_GtkAdjustment {}
+
+#[c.native("void *", cast)]
+const func _ptr_GtkAdjustment(a _p_GtkAdjustment) c.pointer
+
+#[c.native("gtk_scrolled_window_get_hadjustment")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowGetHadjustment")]
+func _gtk_scrolled_window_get_hadjustment(sw _p_GtkScrolledWindow) _p_GtkAdjustment
+
+#[c.native("gtk_scrolled_window_get_vadjustment")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowGetVadjustment")]
+func _gtk_scrolled_window_get_vadjustment(sw _p_GtkScrolledWindow) _p_GtkAdjustment
+
+#[c.native("gtk_adjustment_get_upper")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkAdjustmentGetUpper")]
+func _gtk_adjustment_get_upper(a _p_GtkAdjustment) float
+
+#[c.native("gtk_adjustment_get_value")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkAdjustmentGetValue")]
+func _gtk_adjustment_get_value(a _p_GtkAdjustment) float
+
+#[c.native("gtk_adjustment_get_page_size")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkAdjustmentGetPageSize")]
+func _gtk_adjustment_get_page_size(a _p_GtkAdjustment) float
+
+// GTK's GtkPolicyType: GTK_POLICY_AUTOMATIC, NEVER and EXTERNAL among them.
+#[c.native("GtkPolicyType")]
+struct _c_GtkPolicyType = int
+
+const _policyAutomatic = 1
+
+const _policyNever = 2
+
+const _policyExternal = 3
+
+#[c.native("gtk_scrolled_window_set_policy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowSetPolicy")]
+func _gtk_scrolled_window_set_policy(sw _p_GtkScrolledWindow, across _c_GtkPolicyType, down _c_GtkPolicyType)
+
+#[c.native("gtk_scrolled_window_set_propagate_natural_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowSetPropagateNaturalWidth")]
+func _gtk_scrolled_window_set_propagate_natural_width(sw _p_GtkScrolledWindow, propagate bool)
+
+#[c.native("gtk_scrolled_window_get_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowGetChild")]
+func _gtk_scrolled_window_get_child(sw _p_GtkScrolledWindow) option[_p_GtkWidget]
+
+#[c.native("GtkViewport *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkViewport")]
+struct _p_GtkViewport {}
+
+#[c.native("GtkViewport *", cast)]
+const func _as_GtkViewport(p c.pointer) _p_GtkViewport
+
+#[c.native("gtk_viewport_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkViewportGetType")]
+func _gtk_viewport_get_type() _c_GType
+
+#[c.native("gtk_viewport_get_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkViewportGetChild")]
+func _gtk_viewport_get_child(v _p_GtkViewport) option[_p_GtkWidget]
+
+#[c.native("GtkScrollable *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkScrollable")]
+struct _p_GtkScrollable {}
+
+#[c.native("GtkScrollable *", cast)]
+const func _as_GtkScrollable(p c.pointer) _p_GtkScrollable
+
+#[c.native("gtk_scrollable_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrollableGetType")]
+func _gtk_scrollable_get_type() _c_GType
+
+// GTK's GtkScrollablePolicy: GTK_SCROLL_MINIMUM (0) and NATURAL (1).
+#[c.native("GtkScrollablePolicy")]
+struct _c_GtkScrollablePolicy = int
+
+#[c.native("gtk_scrollable_set_vscroll_policy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrollableSetVscrollPolicy")]
+func _gtk_scrollable_set_vscroll_policy(s _p_GtkScrollable, policy _c_GtkScrollablePolicy)
+
+#[c.native("gtk_scrollable_set_hscroll_policy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrollableSetHscrollPolicy")]
+func _gtk_scrollable_set_hscroll_policy(s _p_GtkScrollable, policy _c_GtkScrollablePolicy)
+
+#[c.native("gtk_widget_get_parent")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetParent")]
+func _gtk_widget_get_parent(w _p_GtkWidget) option[_p_GtkWidget]
+
+// Whether w is an instance of t, as GTK's GTK_IS_ macros ask.
+func _isA(w _p_GtkWidget, t _c_GType) bool {
+    return _g_type_check_instance_is_a(_as_GTypeInstance(_widgetPtr(w)), t)
+}
+
+// What a scroll holds on its window, as tabs hold theirs.
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdScroll(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_ScrollState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldScroll(o _p_GObject, key string) option[c.held[_ScrollState]]

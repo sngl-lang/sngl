@@ -170,7 +170,7 @@ sha256:21ad29440b4ed30abaa2630bbc753297
   ]
 }
 -- testrun/gtk4/c/app.sngl/moved/1 --
-sha256:d51a44b920f332fd3591aa0f47cf43aa
+sha256:ecc6dc1f1bfb42ba004d76cf151afe03
 {
   "results": [
     {
@@ -180,7 +180,7 @@ sha256:d51a44b920f332fd3591aa0f47cf43aa
   ]
 }
 -- testrun/gtk4/c/app.sngl/pictures/1 --
-sha256:6c358fce61c24b30f5bac448ca364e09
+sha256:0924efd293a3922fe98f3cd5aa1b7582
 {
   "results": [
     {
@@ -194,7 +194,7 @@ sha256:6c358fce61c24b30f5bac448ca364e09
   ]
 }
 -- testrun/gtk4/c/late.sngl/overtaken/1 --
-sha256:7f6883ddff7109cb7225389bf5be5f51
+sha256:43059781876f46cbac8197079d7da2f9
 {
   "results": [
     {

@@ -534,7 +534,7 @@ static void sngl_list___anon_id_elem_4ccb28_push(sngl_list___anon_id_elem_4ccb28
 	l->data[l->len++] = v;
 }
 
-static sngl_list__step__record sngl_list__step__record_of(int64_t n, const s_ui_draw___step__record *xs) {
+static sngl_list__step__record sngl_list__step__record_of(int64_t n, s_ui_draw___step__record const *xs) {
 	sngl_list__step__record l = {sngl_alloc(sizeof(s_ui_draw___step__record) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(s_ui_draw___step__record) * (size_t)n);
 	return l;
@@ -1002,7 +1002,7 @@ static void s___ref_bool__rekeep(void *p) {
 	(void)b;
 }
 
-static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
+static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
@@ -1793,4 +1793,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:c56ce00494a8fb0674fe4885f25408f5
+pass sha256:43015d6c43ef9fd95382366b0d9ee720

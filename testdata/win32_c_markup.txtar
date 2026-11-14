@@ -284,7 +284,7 @@ static double sngl_list_float_max(double m, sngl_list_float l) {
 	return m;
 }
 
-static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
+static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
@@ -299,7 +299,7 @@ static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
 	return m;
 }
 
-static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
+static sngl_list_int sngl_list_int_of(int64_t n, int64_t const *xs) {
 	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
 	return l;
@@ -684,4 +684,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:57e75eea39b8a050f0ff11c98536ac85
+pass sha256:71e7c41a7b1bd09a786383b51c4fe85b

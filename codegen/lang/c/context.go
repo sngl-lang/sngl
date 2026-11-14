@@ -855,6 +855,11 @@ func (c *Context) CallStmtLines(n *ir.CallStmt) []string {
 		lines = append(lines, irwalk.IndentLines("\t\t", c.handle(h, at+".message", at+".kind"))...)
 		return append(lines, "\t}", "}")
 	}
+	// A C function's answer a statement drops: converted back to SNGL's
+	// value, `(f(...) != 0)` for a bool, it is a value C warns is unused.
+	if fn := call.Func; fn != nil && fn.Foreign.Path == ir.CPath && !fn.IsCCast() && fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+		return []string{"(void)" + c.EvalExpr(call) + ";"}
+	}
 	return []string{c.EvalExpr(call) + ";"}
 }
 

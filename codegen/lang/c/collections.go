@@ -82,7 +82,7 @@ func (c *Context) listOf(t *ir.Type, elems []string) string {
 	if len(elems) == 0 {
 		return "((" + l + "){0})"
 	}
-	of := c.listOp(t, "of", "L NAME(int64_t n, const T *xs)", `	L l = {sngl_alloc(sizeof(T) * (size_t)n), n, n};
+	of := c.listOp(t, "of", "L NAME(int64_t n, T const *xs)", `	L l = {sngl_alloc(sizeof(T) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(T) * (size_t)n);
 	return l;
 `)
@@ -652,7 +652,7 @@ func (c *Context) MapLit(n *ir.MapLitIR, keys, vals []string) string {
 	}
 	slot := c.mapSlot(n.Type)
 	kt, vt := c.typeName(n.Type.Elems[0]), c.typeName(n.Type.Elems[1])
-	of := c.mapOp(n.Type, "of", "M NAME(int64_t n, const K *ks, const V *vs)", "\tM m = {0};\n\tfor (int64_t i = 0; i < n; i++) {\n\t\t*"+slot+"(&m, ks[i]) = vs[i];\n\t}\n\treturn m;\n")
+	of := c.mapOp(n.Type, "of", "M NAME(int64_t n, K const *ks, V const *vs)", "\tM m = {0};\n\tfor (int64_t i = 0; i < n; i++) {\n\t\t*"+slot+"(&m, ks[i]) = vs[i];\n\t}\n\treturn m;\n")
 	return of + "(" + fmt.Sprint(len(keys)) + ", (" + kt + "[]){" + strings.Join(keys, ", ") + "}, (" + vt + "[]){" + strings.Join(vals, ", ") + "})"
 }
 

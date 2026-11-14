@@ -540,7 +540,7 @@ static sngl_string sngl_list_string_join(sngl_list_string l, sngl_string sep) {
 	return out;
 }
 
-static sngl_list_string sngl_list_string_of(int64_t n, const sngl_string *xs) {
+static sngl_list_string sngl_list_string_of(int64_t n, sngl_string const *xs) {
 	sngl_list_string l = {sngl_alloc(sizeof(sngl_string) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(sngl_string) * (size_t)n);
 	return l;
@@ -2255,7 +2255,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:9d4b4731593be798a806c396ae4179aa
+pass sha256:b18fe630f6a9dd0b9c4700a220d0fd12
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

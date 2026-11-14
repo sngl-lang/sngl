@@ -395,7 +395,7 @@ static double sngl_list_float_max(double m, sngl_list_float l) {
 	return m;
 }
 
-static sngl_list_float sngl_list_float_of(int64_t n, const double *xs) {
+static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
@@ -410,7 +410,7 @@ static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
 	return m;
 }
 
-static sngl_list_int sngl_list_int_of(int64_t n, const int64_t *xs) {
+static sngl_list_int sngl_list_int_of(int64_t n, int64_t const *xs) {
 	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
 	return l;
@@ -666,7 +666,7 @@ static void sngl_release(void *ctx) {
 	sngl_closure_release(ctx);
 }
 
-static sngl_list_string sngl_list_string_of(int64_t n, const sngl_string *xs) {
+static sngl_list_string sngl_list_string_of(int64_t n, sngl_string const *xs) {
 	sngl_list_string l = {sngl_alloc(sizeof(sngl_string) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(sngl_string) * (size_t)n);
 	return l;
@@ -956,7 +956,7 @@ static void sngl_init(void) {
 
 static void sngl_build(void) {
 	s___n1 = sngl_win32_toplevel();
-	(int64_t)SetWindowTextW((HWND)(s___n1), (const unsigned short *)sngl_utf16(SNGL_STR("")));
+	(void)(int64_t)SetWindowTextW((HWND)(s___n1), (const unsigned short *)sngl_utf16(SNGL_STR("")));
 	sngl_win32_set_visible(s___n1, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_win32_on_visible(s___n1, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	s___n4 = sngl_win32_box((int)(1));
@@ -1027,4 +1027,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:872c60c64dae5691d584db51473adcde
+pass sha256:55b11d692b80ff313a9a005333646a92

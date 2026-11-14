@@ -1478,7 +1478,7 @@ sha256:d9831067339b12db4b3136898ba940d2
   ]
 }
 -- testrun/gtk4/go/app.sngl/Tour/1 --
-sha256:ee48d48d5e3e07164811e9fc98ca154c
+sha256:0e5f364f13869c5c8322bffccfa5d865
 {
   "results": [
     {
@@ -1586,7 +1586,7 @@ sha256:701382e22ed08804dbebb01125d35288
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/2 --
-sha256:35c75e5568bd8c9a51c8a407a1442294
+sha256:2ea1f9817ddca85fcec548386c36fb37
 {
   "results": [
     {
@@ -1596,7 +1596,7 @@ sha256:35c75e5568bd8c9a51c8a407a1442294
   ]
 }
 -- testrun/gtk4/go/app.sngl/back/1 --
-sha256:e2ad42beb46372af98425493a0ef002d
+sha256:7824b6eff761eeeebd7a747a03532a4d
 {
   "results": [
     {
@@ -1616,7 +1616,7 @@ sha256:4ce00d8c184e1db5d643978c71e04e5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/detailPage/1 --
-sha256:b7b70988349cdbfcdccca8d7990830e4
+sha256:1254231b162574ceaa1a46731b9ed133
 {
   "results": [
     {
@@ -1780,7 +1780,7 @@ sha256:2cb70c6d15070ebe8a9c393d131c3c34
   ]
 }
 -- testrun/gtk4/go/app.sngl/home/1 --
-sha256:5e5df9b5e6f9b519838d62a3cdc1dc97
+sha256:9dc958bb37e2ede5c2d47b6746a3d73a
 {
   "results": [
     {
@@ -1842,7 +1842,7 @@ sha256:e17e5c23a07d81c10641ea38e1825b36
   ]
 }
 -- testrun/gtk4/go/app.sngl/roam/1 --
-sha256:1cec7454a4236a93797920ade0dafc42
+sha256:a252d22c5fd13abe0e16d494435436d6
 {
   "results": [
     {
@@ -1862,7 +1862,7 @@ sha256:b497b8fbd74bc5853d86c8b300ba5ce2
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:c3b4c04f5d96b8317f46a2e316215894
+sha256:4b3164f371a48d746caba516f921078f
 {
   "results": [
     {
@@ -1884,7 +1884,7 @@ sha256:c3b4c04f5d96b8317f46a2e316215894
   ]
 }
 -- testrun/gtk4/go/app.sngl/spark/1 --
-sha256:073c8e652a0b9508608b6467527d10dc
+sha256:8f9ceef713561ab350e9433ee74b4961
 {
   "results": [
     {
@@ -1914,7 +1914,7 @@ sha256:123787ab84252bcaf607e18058af9cfa
   ]
 }
 -- testrun/gtk4/go/app.sngl/trip/1 --
-sha256:21f2c6438d8444781902ffed60dddf67
+sha256:f70ad4e3034615a1902575ff94d6b768
 {
   "results": [
     {
@@ -1924,7 +1924,7 @@ sha256:21f2c6438d8444781902ffed60dddf67
   ]
 }
 -- testrun/gtk4/go/app.sngl/walk/1 --
-sha256:09894b459620a9e9267756cb8f57d592
+sha256:1264bedc76630e44b2b7b1fcd4bd0988
 {
   "results": [
     {

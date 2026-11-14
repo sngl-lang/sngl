@@ -227,6 +227,17 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 				call = gc.cValueOut(fn.Return, nil, call)
 			}
 		case ir.TypeOption:
+			// A pointer C answers NULL for: Go's option of it is a pointer
+			// to the pointer, nil for NULL.
+			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && ir.CTypeOf(elem) != nil && ir.CStructOf(elem) == nil && ir.CTypeOf(elem).Ptr > 0 {
+				// Spelled as castType spells a conversion to it: cgo's
+				// pointer, which a wrapper package's handle type aliases.
+				t := gc.CType(ir.CTypeOf(elem))
+				if sd, ok := elem.Decl.(*ir.StructDef); ok && gc.Wrapping == "" && wrapper(&sd.Foreign, gc.calls()) != nil {
+					t = gc.goType(elem)
+				}
+				call = "func() *" + t + " { p := (" + t + ")(" + call + "); if p == nil { return nil }; return &p }()"
+			}
 			// What a held parameter registered, found by the pointer C
 			// answers: as it is in a wrapper, which cannot name the
 			// program's type, and asserted back to it in the program.

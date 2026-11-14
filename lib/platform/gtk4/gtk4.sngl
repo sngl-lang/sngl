@@ -948,11 +948,12 @@ const component ui.grid[platform](columns, style, children) {
     }
 }
 
-// A scroll is the runtime's GtkScrolledWindow, which moves along `direction`
-// and reports the end of its content coming within half a viewport of
-// showing -- as it arrives, and when the content changes size while it is
-// there (rt's scroll.c). GTK has no signal saying so; the changes of the
-// adjustment along the axis the end is read on are what answer it.
+// A scroll is a GtkScrolledWindow, which moves along `direction` and reports
+// the end of its content coming within half a viewport of showing -- as it
+// arrives, and when the content changes size while it is there. GTK has no
+// signal saying so: the changes of the adjustment along the axis the end is
+// read on are what answer it, and the runtime's probe (rt's scroll.c), a box
+// laid out around the content, says when the content's length changes.
 #[marks.intrinsic("gtk4:Scroll")]
 component Scroll(
     direction string,
@@ -961,34 +962,262 @@ component Scroll(
     content   ...component option[ui.node],
 ) ui.node
 
-#[c.native("sngl_scroll_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollNew")]
-func _rtScrollNew() Scroll
+#[c.native("gtk_scrolled_window_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkScrolledWindowNew")]
+func _scrollWindow() Scroll
+
+#[c.native("sngl_scroll_probe")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollProbe")]
+func _rtScrollProbe(sw Scroll) _p_GtkWidget
 
 #[c.native("sngl_scroll_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetChild")]
 func _rtScrollSetChild(sw Scroll, child ui.node)
 
-#[c.native("sngl_scroll_set_direction")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetDirection")]
-func _rtScrollSetDirection(sw Scroll, direction string)
+#[c.native("sngl_probe_content")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeContent")]
+func _rtProbeContent(probe _p_GtkWidget) int
 
-#[c.native("sngl_scroll_on_reach_end")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollOnReachEnd")]
-func _rtScrollOnReachEnd(
-    sw Scroll,
+#[c.native("sngl_probe_reset")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeReset")]
+func _rtProbeReset(probe _p_GtkWidget, across bool)
+
+#[c.native("sngl_probe_hold")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeHold")]
+func _rtProbeHold(sw Scroll, probe _p_GtkWidget, content _p_GtkWidget)
+
+#[c.native("sngl_probe_on_change")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeOnChange")]
+func _rtProbeOnChange(
+    probe _p_GtkWidget,
     #[c.type("SnglFn")] fn func(),
     #[c.context] ctx c.pointer,
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[c.native("sngl_scroll_reach_end")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollReachEnd")]
-func _rtScrollReachEnd(sw Scroll)
+// What a scroll holds on its window: the axis the end is read on (0 down, 1
+// across, 2 both, which reads it down), whether the end showed when last
+// measured and the content's length then (-1 before it was), the idle
+// report posted and not run (0 for none), the handler, and the handlers
+// watching the adjustments, beside the adjustment each watches, which the
+// state holds a reference to: the window's destroy disconnects them, and by
+// then its scrollbars no longer answer them.
+struct _ScrollState {
+    axis     int
+    near     bool
+    content  int
+    asked    int
+    reachEnd option[func()]
+    watches  list[int]
+    watched  list[_p_GtkAdjustment]
+}
+
+const _scrollKey = "sngl-scroll"
+
+func _scrollOf(sw Scroll) option[_ScrollState] {
+    return _heldScroll(_as_GObject(_widget(sw)), _scrollKey)
+}
+
+func _setScroll(sw Scroll, s _ScrollState) {
+    _holdScroll(_as_GObject(_widget(sw)), _scrollKey, s)
+}
+
+func _windowOf(sw Scroll) _p_GtkScrolledWindow {
+    return _as_GtkScrolledWindow(_widget(sw))
+}
+
+func _axisOf(direction string) int {
+    if direction == "horizontal" {
+        return 1
+    }
+    if direction == "both" {
+        return 2
+    }
+    return 0
+}
+
+// The adjustment the end is read on.
+func _readAdjustment(sw Scroll, axis int) _p_GtkAdjustment {
+    if axis == 1 {
+        return _gtk_scrolled_window_get_hadjustment(_windowOf(sw))
+    }
+    return _gtk_scrolled_window_get_vadjustment(_windowOf(sw))
+}
+
+// A scroll down lets the content take the window's width, and one across
+// its height; the scrollable content -- a viewport, or the content itself --
+// is asked for its natural length along the axis it moves on.
+func _scrollPolicies(sw Scroll, axis int) {
+    var w = _windowOf(sw)
+    _gtk_scrolled_window_set_policy(w, axis == 0 ? _policyExternal : _policyAutomatic, axis == 1 ? _policyNever : _policyAutomatic)
+    _gtk_scrolled_window_set_propagate_natural_width(w, axis == 0)
+    var c = _gtk_scrolled_window_get_child(w)
+    if c != null && !_isA(c, _gtk_scrollable_get_type()) {
+        c = _gtk_widget_get_parent(c)
+    }
+    if c != null && _isA(c, _gtk_scrollable_get_type()) {
+        var scrollable = _as_GtkScrollable(_widgetPtr(c))
+        _gtk_scrollable_set_vscroll_policy(scrollable, axis != 1 ? 1 : 0)
+        _gtk_scrollable_set_hscroll_policy(scrollable, axis != 0 ? 1 : 0)
+    }
+}
+
+// The child the window was given, where it is not the probe, is the
+// content, and goes in the probe, which becomes the child.
+func _scrollChild(sw Scroll) {
+    var s = _scrollOf(sw)
+    var axis = 0
+    if s != null {
+        axis = s.axis
+    }
+    _scrollPolicies(sw, axis)
+    var probe = _rtScrollProbe(sw)
+    var shown = _gtk_scrolled_window_get_child(_windowOf(sw))
+    if shown != null && shown != probe {
+        var content option[_p_GtkWidget] = shown
+        if _isA(shown, _gtk_viewport_get_type()) {
+            content = _gtk_viewport_get_child(_as_GtkViewport(_widgetPtr(shown)))
+        }
+        if content != null && content != probe {
+            _rtProbeHold(sw, probe, content)
+        }
+    }
+}
+
+// Measures the end against the viewport. The handler runs on the next idle
+// turn rather than here: the adjustment changes while GTK allocates, and a
+// handler adding rows then would change the tree mid-allocation.
+func _scrollChanged(sw Scroll) {
+    var s = _scrollOf(sw)
+    if s != null {
+        var a = _readAdjustment(sw, s.axis)
+        var page = _gtk_adjustment_get_page_size(a)
+        if page > 0.0 {
+            var near = _gtk_adjustment_get_upper(a) - (_gtk_adjustment_get_value(a) + page) <= page / 2.0
+            var content = _rtProbeContent(_rtScrollProbe(sw))
+            var fire = near && (!s.near || content > s.content)
+            var asked = s.asked
+            if fire && asked == 0 {
+                asked = _g_idle_add_full(200, func() bool {
+                    _scrollReport(sw)
+                    return false
+                })
+            }
+            _setScroll(sw, _ScrollState{axis=s.axis, near=near, content=content, asked=asked, reachEnd=s.reachEnd, watches=s.watches, watched=s.watched})
+        }
+    }
+}
+
+func _scrollReport(sw Scroll) {
+    var s = _scrollOf(sw)
+    if s != null {
+        _setScroll(sw, _ScrollState{axis=s.axis, near=s.near, content=s.content, reachEnd=s.reachEnd, watches=s.watches, watched=s.watched})
+        var reachEnd = s.reachEnd
+        if reachEnd != null {
+            reachEnd()
+        }
+    }
+}
+
+// The window going: its report not yet run is dropped, and the handlers on
+// its adjustments, which a viewport may hold past it, are disconnected.
+func _scrollGone(sw Scroll) {
+    var s = _scrollOf(sw)
+    if s != null {
+        if s.asked != 0 {
+            _g_source_remove(s.asked)
+        }
+        for var k, id = s.watches {
+            var a = _as_gpointer(_ptr_GtkAdjustment(s.watched[k]))
+            _g_signal_handler_disconnect(a, id)
+            _g_object_unref(a)
+        }
+        _setScroll(sw, _ScrollState{axis=s.axis})
+    }
+    _rtProbeOnChange(_rtScrollProbe(sw), func() {})
+}
+
+func _watchAdjustment(sw Scroll, a _p_GtkAdjustment, signal string) int {
+    return _g_signal_connect_plain(
+        _as_gpointer(_ptr_GtkAdjustment(a)),
+        signal,
+        func(o _p_GObject) {
+            _scrollChanged(sw)
+        },
+        0,
+    )
+}
+
+func _newScroll() Scroll {
+    var sw = _scrollWindow()
+    var w = _windowOf(sw)
+    var down = _gtk_scrolled_window_get_vadjustment(w)
+    var across = _gtk_scrolled_window_get_hadjustment(w)
+    var watched = [down, down, across, across]
+    var watches = [
+        _watchAdjustment(sw, down, "changed"),
+        _watchAdjustment(sw, down, "value-changed"),
+        _watchAdjustment(sw, across, "changed"),
+        _watchAdjustment(sw, across, "value-changed"),
+    ]
+    for var a = watched {
+        _g_object_ref(_as_gpointer(_ptr_GtkAdjustment(a)))
+    }
+    _setScroll(sw, _ScrollState{content=-1, watches=watches, watched=watched})
+    _rtProbeOnChange(_rtScrollProbe(sw), func() {
+        _scrollChanged(sw)
+    })
+    _g_signal_connect_notify(
+        _as_gpointer(_widget(sw)),
+        "notify::child",
+        func(o _p_GObject, spec _p_GParamSpec) {
+            _scrollChild(sw)
+        },
+        0,
+    )
+    _g_signal_connect_plain(
+        _as_gpointer(_widget(sw)),
+        "destroy",
+        func(o _p_GObject) {
+            _scrollGone(sw)
+        },
+        0,
+    )
+    _scrollPolicies(sw, 0)
+    return sw
+}
+
+func _setScrollDirection(sw Scroll, direction string) {
+    var axis = _axisOf(direction)
+    var s = _scrollOf(sw)
+    if s != null {
+        _setScroll(sw, _ScrollState{axis=axis, content=-1, asked=s.asked, reachEnd=s.reachEnd, watches=s.watches, watched=s.watched})
+    }
+    _scrollPolicies(sw, axis)
+    _rtProbeReset(_rtScrollProbe(sw), axis == 1)
+}
+
+func _handleScroll(sw Scroll, reachEnd func()) {
+    var s = _scrollOf(sw)
+    if s != null {
+        _setScroll(sw, _ScrollState{axis=s.axis, near=s.near, content=s.content, asked=s.asked, reachEnd=reachEnd, watches=s.watches, watched=s.watched})
+    }
+}
+
+// Runs the handler, as the end showing would.
+func _scrollReachEnd(sw Scroll) {
+    var s = _scrollOf(sw)
+    if s != null {
+        var reachEnd = s.reachEnd
+        if reachEnd != null {
+            reachEnd()
+        }
+    }
+}
 
 #[gen.protocol(create)]
 func _create_Scroll() Scroll {
-    return _rtScrollNew()
+    return _newScroll()
 }
 
 #[gen.protocol(append)]
@@ -998,7 +1227,7 @@ func _append_Scroll(parent Scroll, child ui.node) {
 
 #[gen.protocol(set)]
 func _set_Scroll_direction(w Scroll, direction string) {
-    _rtScrollSetDirection(w, direction)
+    _setScrollDirection(w, direction)
 }
 
 #[gen.protocol(set)]
@@ -1008,12 +1237,12 @@ func _set_Scroll_look(w Scroll, look Look) {
 
 #[gen.protocol(on)]
 func _on_Scroll(sw Scroll, reachEnd func()) {
-    _rtScrollOnReachEnd(sw, reachEnd)
+    _handleScroll(sw, reachEnd)
 }
 
 #[gen.fires("reachEnd")]
 func _fire_Scroll_reachEnd(sw Scroll) {
-    _rtScrollReachEnd(sw)
+    _scrollReachEnd(sw)
 }
 
 const component ui.scroll[platform](style, direction, @reachEnd, content) {

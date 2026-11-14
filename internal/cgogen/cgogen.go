@@ -189,13 +189,24 @@ func (g *gen) unwrappable(fn *ir.Func) string {
 
 // add wraps fn, once per C name: a second declaration of one C function
 // (win32's append, once per kind of parent) shares the first's wrapper
-// where it takes and returns the same Go types.
+// where it takes and returns the same Go types, and is a wrapper of its
+// own, named for the declaration, where it does not -- gtk4 connects
+// g_signal_connect_data with a callback of each signal's shape.
 func (g *gen) add(fn *ir.Func) {
 	name := GoName(fn.Foreign.Name)
 	w := g.wrapperFunc(fn, name)
 	sig := g.goSig(w, false)
 	if g.funcs == nil {
 		g.funcs = map[string]*wrapper{}
+	}
+	if prev, ok := g.funcs[name]; ok && g.goSig(prev.fn, false) != sig {
+		own := GoName(fn.Name)
+		if other, taken := g.funcs[own]; taken && other.decl != fn {
+			g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): its Go signature differs from %s's, which wraps the C function, and %s is taken", fn.Name, fn.Foreign.Name, prev.decl.Name, own))
+			return
+		}
+		name = own
+		w = g.wrapperFunc(fn, name)
 	}
 	if prev, ok := g.funcs[name]; ok {
 		if g.goSig(prev.fn, false) != sig {
