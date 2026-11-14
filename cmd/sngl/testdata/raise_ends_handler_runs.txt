@@ -96,7 +96,7 @@ window {
     form()
 }
 -- testrun/gtk4/c/app.sngl/form/1 --
-sha256:3c2577319d49a7e32b91ffb8ce9e2179
+sha256:7f39d2966b9e8329198ce904d9ebbc16
 {
   "results": [
     {

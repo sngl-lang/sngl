@@ -467,48 +467,16 @@ func _on_Toplevel_key(w Toplevel, key func()) {
     _rtToplevelOnKey(w, key)
 }
 
-// A window's way back, while it can go back: a widget the runtime keeps
-// hidden among the window's content, which has the window show a back button
-// that presses it (rt's menu.c).
+// A window's way back, while it can go back: a widget kept hidden among the
+// window's content, which has the window show a back button that presses
+// it.
 #[marks.intrinsic("gtk4:Back")]
 component Back(@press()) ui.node
 
-#[c.native("sngl_back_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackNew")]
-func _rtBackNew() Back
-
-#[c.native("sngl_back_on_press")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackOnPress")]
-func _rtBackOnPress(
-    b Back,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_back_press")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackPress")]
-func _rtBackPress(b Back)
-
-#[gen.protocol(create)]
-func _create_Back() Back {
-    return _rtBackNew()
-}
-
-#[gen.protocol(on)]
-func _on_Back(b Back, press func()) {
-    _rtBackOnPress(b, press)
-}
-
-#[gen.fires("press")]
-func _fire_Back_press(b Back) {
-    _rtBackPress(b)
-}
-
-// One entry of a window's menu, and its submenu's entries: a box the runtime
-// keeps hidden among the window's content, from which the window builds the
-// GMenu behind its header bar's menu button (rt's menu.c). Picking one is no
-// GTK signal on it but the action the runtime makes for it.
+// One entry of a window's menu, and its submenu's entries: a box kept hidden
+// among the window's content, from which the window builds the GMenu behind
+// its header bar's menu button. Picking one is no GTK signal on it but the
+// action made for it.
 #[marks.intrinsic("gtk4:MenuEntry")]
 component MenuEntry(
     label    string,
@@ -518,34 +486,402 @@ component MenuEntry(
     entries  ...component ui.node,
 ) ui.node
 
-#[c.native("sngl_menu_entry_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryNew")]
-func _rtMenuEntryNew() MenuEntry
+#[c.native("gtk_label_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelNew")]
+func _backLabel(text option[string]) Back
 
-#[c.native("sngl_menu_entry_set_label")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetLabel")]
-func _rtMenuEntrySetLabel(e MenuEntry, label string)
+#[c.native("gtk_box_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxNew")]
+func _menuEntryBox(orientation _c_GtkOrientation, spacing int) MenuEntry
 
-#[c.native("sngl_menu_entry_set_disabled")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetDisabled")]
-func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
+// What a menu entry holds on its box.
+struct _MenuEntryState {
+    label    string
+    disabled bool
+    checked  bool
+    select   option[func()]
+}
 
-#[c.native("sngl_menu_entry_set_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetChecked")]
-func _rtMenuEntrySetChecked(e MenuEntry, v bool)
+// What a way back holds on its widget: what pressing it runs.
+struct _BackState {
+    press option[func()]
+}
 
-#[c.native("sngl_menu_entry_on_select")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryOnSelect")]
-func _rtMenuEntryOnSelect(
-    e MenuEntry,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+// A window's bar: the header bar holding the back button and the menu
+// button, decided once as the window is made, since GTK sets a title bar only
+// on a window not yet shown.
+struct _BarState {
+    decided    bool
+    bar        option[_p_GtkWidget]
+    backButton option[_p_GtkWidget]
+    menuButton option[_p_GtkWidget]
+}
+
+const _menuEntryKey = "sngl-menu-entry"
+
+const _backKey = "sngl-back"
+
+const _barKey = "sngl-bar"
+
+func _gobject(w _p_GtkWidget) _p_GObject {
+    return _as_GObject(_widgetPtr(w))
+}
+
+func _entryOf(w _p_GtkWidget) option[_MenuEntryState] {
+    return _heldMenuEntry(_gobject(w), _menuEntryKey)
+}
+
+func _backOf(w _p_GtkWidget) option[_BackState] {
+    return _heldBack(_gobject(w), _backKey)
+}
+
+func _barOf(box _p_GtkWidget) _BarState {
+    var b = _heldBar(_gobject(box), _barKey)
+    if b != null {
+        return b
+    }
+    return _BarState{}
+}
+
+func _setBar(box _p_GtkWidget, b _BarState) {
+    _holdBar(_gobject(box), _barKey, b)
+}
+
+// Installs what the runtime's window and box ask of menus and ways back
+// (rt's menu.c): each window, entry and way back made installs it anew.
+func _installWindowHook() {
+    _rtWindowHook(func(op int, box _p_GtkWidget, child _p_GtkWidget) bool {
+        return _windowHook(op, box, child)
+    })
+}
+
+func _windowHook(op int, box _p_GtkWidget, child _p_GtkWidget) bool {
+    if op == 0 {
+        return _windowBack(box)
+    }
+    if op == 1 {
+        _menuApply(box)
+    } else if op == 2 {
+        _barForget(box)
+    } else if op == 3 {
+        _menuMoved(box, child)
+    }
+    return false
+}
+
+// The window whose menu w is in, through the entries holding it.
+func _menuHost(w _p_GtkWidget) option[_p_GtkWidget] {
+    var p = _gtk_widget_get_parent(w)
+    for p != null {
+        var at = p
+        if at != null {
+            if _rtToplevelWindow(at) != null {
+                return at
+            }
+            if _entryOf(at) == null {
+                return null
+            }
+            p = _gtk_widget_get_parent(at)
+        }
+    }
+    return null
+}
+
+func _entryChanged(w _p_GtkWidget) {
+    var host = _menuHost(w)
+    if host != null {
+        _menuApply(host)
+    }
+}
+
+// The first way back among a window's content.
+func _backIn(box _p_GtkWidget) option[_p_GtkWidget] {
+    var c = _firstChild(box)
+    for c != null {
+        var at = c
+        if at != null {
+            if _backOf(at) != null {
+                return at
+            }
+            c = _nextSibling(at)
+        }
+    }
+    return null
+}
+
+// The entries among w's children.
+func _entriesIn(w _p_GtkWidget) list[_p_GtkWidget] {
+    var out list[_p_GtkWidget] = []
+    var c = _firstChild(w)
+    for c != null {
+        var at = c
+        if at != null {
+            if _entryOf(at) != null {
+                out.push(at)
+            }
+            c = _nextSibling(at)
+        }
+    }
+    return out
+}
+
+func _backPress(w _p_GtkWidget) {
+    var b = _backOf(w)
+    if b != null {
+        var press = b.press
+        if press != null {
+            press()
+        }
+    }
+}
+
+// Presses the first way back among the window's content, and is whether
+// there was one.
+func _windowBack(box _p_GtkWidget) bool {
+    var b = _backIn(box)
+    if b != null {
+        _backPress(b)
+        return true
+    }
+    return false
+}
+
+// A window destroyed takes its bar with it, and a back button in it: the
+// next window decides its own. One over the content stays there.
+func _barForget(box _p_GtkWidget) {
+    var b = _heldBar(_gobject(box), _barKey)
+    if b != null {
+        var back = b.backButton
+        if b.bar != null {
+            back = null
+        }
+        _setBar(box, _BarState{backButton=back})
+    }
+}
+
+// The back button goes in the bar, or over the content of a window made
+// without one, and shows while a way back is among the content.
+func _barApply(box _p_GtkWidget) {
+    var win = _rtToplevelWindow(box)
+    if win != null {
+        var b = _barOf(box)
+        var entries = _entriesIn(box).length() > 0
+        var canBack = _backIn(box) != null
+        var bar = b.bar
+        var menuButton = b.menuButton
+        var backButton = b.backButton
+        if !b.decided && (entries || canBack) {
+            var made = _gtk_header_bar_new()
+            _gtk_window_set_titlebar(win, made)
+            var button = _gtk_menu_button_new()
+            _gtk_menu_button_set_icon_name(_as_GtkMenuButton(_widgetPtr(button)), "open-menu-symbolic")
+            _gtk_header_bar_pack_end(_as_GtkHeaderBar(_widgetPtr(made)), button)
+            bar = made
+            menuButton = button
+        }
+        if backButton == null && canBack {
+            var button = _gtk_button_new_from_icon_name("go-previous-symbolic")
+            _g_signal_connect_plain(
+                _as_gpointer(_widgetPtr(button)),
+                "clicked",
+                func(o _p_GObject) {
+                    _windowBack(box)
+                },
+                0,
+            )
+            if bar != null {
+                _gtk_header_bar_pack_start(_as_GtkHeaderBar(_widgetPtr(bar)), button)
+            } else {
+                _gtk_widget_set_halign(button, 1)
+                _gtk_box_prepend(_as_GtkBox(_widgetPtr(box)), button)
+            }
+            backButton = button
+        }
+        if backButton != null {
+            _setVisible(backButton, canBack)
+        }
+        if menuButton != null {
+            _setVisible(menuButton, entries)
+        }
+        _setBar(box, _BarState{decided=true, bar=bar, backButton=backButton, menuButton=menuButton})
+    }
+}
+
+func _menuEntrySelect(w _p_GtkWidget) {
+    var e = _entryOf(w)
+    if e != null && !e.disabled {
+        var select = e.select
+        if select != null {
+            select()
+        }
+    }
+}
+
+// Adds w's entry to menu as the action named for its place, a check where
+// checkable.
+func _menuAdd(menu _p_GMenu, group _p_GSimpleActionGroup, n int, w _p_GtkWidget, checkable bool) {
+    var e = _entryOf(w)
+    if e != null {
+        var name = "e{n}"
+        var a = _g_simple_action_new(name, null)
+        if checkable {
+            a = _g_simple_action_new_stateful(name, null, _g_variant_new_boolean(e.checked))
+        }
+        _g_simple_action_set_enabled(a, !e.disabled)
+        _g_signal_connect_two(
+            _as_gpointer(_ptr_GSimpleAction(a)),
+            "activate",
+            func(o _p_GObject, arg _c_gpointer) {
+                _menuEntrySelect(w)
+            },
+            0,
+        )
+        _g_action_map_add_action(_as_GActionMap(_ptr_GSimpleActionGroup(group)), _as_GAction(_ptr_GSimpleAction(a)))
+        _g_object_unref(_as_gpointer(_ptr_GSimpleAction(a)))
+        _g_menu_append(menu, e.label, "sngl.{name}")
+    }
+}
+
+// A submenu per top-level entry holding entries, or the entry itself where
+// it holds none. A submenu where one entry is checked draws them all as
+// checks.
+func _menuApply(box _p_GtkWidget) {
+    _barApply(box)
+    var win = _rtToplevelWindow(box)
+    var b = _barOf(box)
+    var button = b.menuButton
+    if win != null && button != null {
+        var menu = _g_menu_new()
+        var group = _g_simple_action_group_new()
+        var n = 0
+        for var c = _entriesIn(box) {
+            var e = _entryOf(c)
+            var kids = _entriesIn(c)
+            if e != null {
+                if kids.length() == 0 {
+                    _menuAdd(menu, group, n, c, e.checked)
+                    n += 1
+                } else {
+                    var checkable = false
+                    for var k = kids {
+                        var ke = _entryOf(k)
+                        if ke != null && ke.checked {
+                            checkable = true
+                        }
+                    }
+                    var sub = _g_menu_new()
+                    for var k = kids {
+                        _menuAdd(sub, group, n, k, checkable)
+                        n += 1
+                    }
+                    _g_menu_append_submenu(menu, e.label, _as_GMenuModel(_ptr_GMenu(sub)))
+                    _g_object_unref(_as_gpointer(_ptr_GMenu(sub)))
+                }
+            }
+        }
+        _gtk_widget_insert_action_group(_as_GtkWidget(_ptr_PGtkWindow(win)), "sngl", _as_GActionGroup(_ptr_GSimpleActionGroup(group)))
+        _gtk_menu_button_set_menu_model(_as_GtkMenuButton(_widgetPtr(button)), _as_GMenuModel(_ptr_GMenu(menu)))
+        _g_object_unref(_as_gpointer(_ptr_GSimpleActionGroup(group)))
+        _g_object_unref(_as_gpointer(_ptr_GMenu(menu)))
+    }
+}
+
+// An entry or a way back came to box or went from it.
+func _menuMoved(box _p_GtkWidget, child _p_GtkWidget) {
+    var toplevel = _rtToplevelWindow(box) != null
+    if _backOf(child) != null {
+        if toplevel {
+            _barApply(box)
+        }
+    } else if _entryOf(child) != null {
+        if toplevel {
+            _menuApply(box)
+        } else if _entryOf(box) != null {
+            _entryChanged(box)
+        }
+    }
+}
+
+func _newBack() Back {
+    _installWindowHook()
+    var b = _backLabel(null)
+    var w = _pageWidget(b)
+    _setVisible(w, false)
+    _holdBack(_gobject(w), _backKey, _BackState{})
+    return b
+}
+
+func _handleBack(b Back, press func()) {
+    _holdBack(_gobject(_pageWidget(b)), _backKey, _BackState{press=press})
+}
+
+#[gen.protocol(create)]
+func _create_Back() Back {
+    return _newBack()
+}
+
+#[gen.protocol(on)]
+func _on_Back(b Back, press func()) {
+    _handleBack(b, press)
+}
+
+#[gen.fires("press")]
+func _fire_Back_press(b Back) {
+    _backPress(_pageWidget(b))
+}
+
+func _newMenuEntry() MenuEntry {
+    _installWindowHook()
+    var e = _menuEntryBox(_to_GtkOrientation(1), 0)
+    var w = _pageWidget(e)
+    _setVisible(w, false)
+    _holdMenuEntry(_gobject(w), _menuEntryKey, _MenuEntryState{})
+    return e
+}
+
+// Writes what entry e holds, and has its window build its menu afresh where
+// that changed it.
+func _writeMenuEntry(e MenuEntry, label string, disabled bool, checked bool) {
+    var w = _pageWidget(e)
+    var s = _entryOf(w)
+    if s != null && (s.label != label || s.disabled != disabled || s.checked != checked) {
+        _holdMenuEntry(_gobject(w), _menuEntryKey, _MenuEntryState{label=label, disabled=disabled, checked=checked, select=s.select})
+        _entryChanged(w)
+    }
+}
+
+func _writeMenuEntryLabel(e MenuEntry, label string) {
+    var s = _entryOf(_pageWidget(e))
+    if s != null {
+        _writeMenuEntry(e, label, s.disabled, s.checked)
+    }
+}
+
+func _writeMenuEntryDisabled(e MenuEntry, disabled bool) {
+    var s = _entryOf(_pageWidget(e))
+    if s != null {
+        _writeMenuEntry(e, s.label, disabled, s.checked)
+    }
+}
+
+func _writeMenuEntryChecked(e MenuEntry, checked bool) {
+    var s = _entryOf(_pageWidget(e))
+    if s != null {
+        _writeMenuEntry(e, s.label, s.disabled, checked)
+    }
+}
+
+func _handleMenuEntry(e MenuEntry, select func()) {
+    var w = _pageWidget(e)
+    var s = _entryOf(w)
+    if s != null {
+        _holdMenuEntry(_gobject(w), _menuEntryKey, _MenuEntryState{label=s.label, disabled=s.disabled, checked=s.checked, select=select})
+    }
+}
 
 #[gen.protocol(create)]
 func _create_MenuEntry() MenuEntry {
-    return _rtMenuEntryNew()
+    return _newMenuEntry()
 }
 
 #[gen.protocol(append)]
@@ -565,22 +901,22 @@ func _remove_MenuEntry(parent MenuEntry, child ui.node) {
 
 #[gen.protocol(set)]
 func _set_MenuEntry_label(e MenuEntry, label string) {
-    _rtMenuEntrySetLabel(e, label)
+    _writeMenuEntryLabel(e, label)
 }
 
 #[gen.protocol(set)]
 func _set_MenuEntry_disabled(e MenuEntry, disabled bool) {
-    _rtMenuEntrySetDisabled(e, disabled)
+    _writeMenuEntryDisabled(e, disabled)
 }
 
 #[gen.protocol(set)]
 func _set_MenuEntry_checked(e MenuEntry, checked bool) {
-    _rtMenuEntrySetChecked(e, checked)
+    _writeMenuEntryChecked(e, checked)
 }
 
 #[gen.protocol(on)]
 func _on_MenuEntry(e MenuEntry, select func()) {
-    _rtMenuEntryOnSelect(e, select)
+    _handleMenuEntry(e, select)
 }
 
 // Its `@key` is each key pressed in the window, heard before the focused

@@ -1053,7 +1053,8 @@ reaches it the same way.
      GTK's version.
    - Tabs are SNGL: what a widget holds is a `c.held` value kept with
      `g_object_set_data_full` (`sngl:x/c`), and `tabs.c` is gone. So is a
-     scroll, but for its probe's layout manager.
+     scroll, but for its probe's layout manager, and a window's menu and way
+     back, which the window reaches through a hook.
 
 ### Open questions
 

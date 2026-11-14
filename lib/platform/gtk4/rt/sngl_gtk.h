@@ -116,26 +116,19 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child);
  * icon and an entry or a way back into its bar. */
 void sngl_box_append(GtkWidget *box, GtkWidget *child);
 
-/* A window's menu entries and its way back (menu.c): hidden widgets among
- * its content, from which the window builds its header bar's menu and back
- * button. sngl_menu_entry_select and sngl_back_press pick one as a test
- * does. sngl_menu_moved tells box an entry or a way back came or went;
- * sngl_menu_apply builds a window's menu afresh, and sngl_bar_forget drops
- * the bar of a window destroyed. sngl_window_back presses the first way back
- * among a window's content, and is whether there was one. */
-GtkWidget *sngl_menu_entry_new(void);
-void sngl_menu_entry_set_label(GtkWidget *w, const char *label);
-void sngl_menu_entry_set_disabled(GtkWidget *w, int v);
-void sngl_menu_entry_set_checked(GtkWidget *w, int v);
-void sngl_menu_entry_on_select(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_menu_entry_select(GtkWidget *w);
-GtkWidget *sngl_back_new(void);
-void sngl_back_on_press(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_back_press(GtkWidget *w);
+/* A window's menu entries and its way back are gtk4.sngl's, which installs
+ * the hook the window and the box ask through (menu.c): op is one of
+ * SNGL_HOOK_*, child the box where the op names none. sngl_window_back
+ * presses the first way back among a window's content, and is whether there
+ * was one; sngl_menu_apply builds a window's menu and bar afresh, and
+ * sngl_bar_forget drops the bar of a window destroyed; sngl_menu_moved tells
+ * box an entry or a way back came or went. */
+enum { SNGL_HOOK_BACK, SNGL_HOOK_APPLY, SNGL_HOOK_FORGET, SNGL_HOOK_MOVED };
+typedef bool (*SnglWindowHook)(int op, GtkWidget *box, GtkWidget *child, void *ctx);
+void sngl_window_hook(SnglWindowHook fn, void *ctx, GDestroyNotify release);
 bool sngl_window_back(GtkWidget *box);
 void sngl_menu_moved(GtkWidget *box, GtkWidget *child);
 void sngl_menu_apply(GtkWidget *box);
-void sngl_bar_apply(GtkWidget *box);
 void sngl_bar_forget(GtkWidget *box);
 
 /* An image is a box holding the source it shows (image.c), a GtkPicture

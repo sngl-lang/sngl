@@ -492,3 +492,243 @@ func _holdScroll(
 #[c.native("g_object_get_data")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
 func _heldScroll(o _p_GObject, key string) option[c.held[_ScrollState]]
+
+// Connects fn to a signal on o whose handler GLib calls with the object and
+// one pointer, then the context: an action's `activate` and its parameter.
+#[c.native("g_signal_connect_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectTwo")]
+func _g_signal_connect_two(
+    o      _c_gpointer,
+    signal string,
+    #[c.type("GCallback")] fn func(o _p_GObject, arg _c_gpointer),
+    #[c.context] ctx _c_gpointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags  _c_GConnectFlags,
+) _c_gulong
+
+#[c.native("gtk_widget_get_first_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.FirstChild")]
+func _firstChild(w _p_GtkWidget) option[_p_GtkWidget]
+
+#[c.native("gtk_widget_get_next_sibling")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetNextSibling")]
+func _nextSibling(w _p_GtkWidget) option[_p_GtkWidget]
+
+#[c.native("gtk_box_prepend")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxPrepend")]
+func _gtk_box_prepend(b _p_GtkBox, child _p_GtkWidget)
+
+#[c.native("gtk_widget_set_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SetVisible")]
+func _setVisible(w _p_GtkWidget, visible bool)
+
+#[c.native("gtk_widget_get_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetVisible")]
+func _isVisible(w _p_GtkWidget) bool
+
+// GTK's GtkAlign: GTK_ALIGN_START is 1.
+#[c.native("GtkAlign")]
+struct _c_GtkAlign = int
+
+#[c.native("gtk_widget_set_halign")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetHalign")]
+func _gtk_widget_set_halign(w _p_GtkWidget, align _c_GtkAlign)
+
+#[c.native("gtk_header_bar_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkHeaderBarNew")]
+func _gtk_header_bar_new() _p_GtkWidget
+
+#[c.native("GtkHeaderBar *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkHeaderBar")]
+struct _p_GtkHeaderBar {}
+
+#[c.native("GtkHeaderBar *", cast)]
+const func _as_GtkHeaderBar(p c.pointer) _p_GtkHeaderBar
+
+#[c.native("gtk_header_bar_pack_start")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkHeaderBarPackStart")]
+func _gtk_header_bar_pack_start(bar _p_GtkHeaderBar, w _p_GtkWidget)
+
+#[c.native("gtk_header_bar_pack_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkHeaderBarPackEnd")]
+func _gtk_header_bar_pack_end(bar _p_GtkHeaderBar, w _p_GtkWidget)
+
+#[c.native("gtk_window_set_titlebar")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetTitlebar")]
+func _gtk_window_set_titlebar(win _p_GtkWindow, bar _p_GtkWidget)
+
+#[c.native("void *", cast)]
+const func _ptr_PGtkWindow(w _p_GtkWindow) c.pointer
+
+#[c.native("gtk_menu_button_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkMenuButtonNew")]
+func _gtk_menu_button_new() _p_GtkWidget
+
+#[c.native("GtkMenuButton *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGtkMenuButton")]
+struct _p_GtkMenuButton {}
+
+#[c.native("GtkMenuButton *", cast)]
+const func _as_GtkMenuButton(p c.pointer) _p_GtkMenuButton
+
+#[c.native("gtk_menu_button_set_icon_name")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkMenuButtonSetIconName")]
+func _gtk_menu_button_set_icon_name(b _p_GtkMenuButton, name string)
+
+#[c.native("gtk_button_new_from_icon_name")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkButtonNewFromIconName")]
+func _gtk_button_new_from_icon_name(name string) _p_GtkWidget
+
+#[c.native("GMenu *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGMenu")]
+struct _p_GMenu {}
+
+#[c.native("void *", cast)]
+const func _ptr_GMenu(m _p_GMenu) c.pointer
+
+#[c.native("g_menu_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMenuNew")]
+func _g_menu_new() _p_GMenu
+
+#[c.native("g_menu_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMenuAppend")]
+func _g_menu_append(m _p_GMenu, label string, action string)
+
+#[c.native("g_menu_append_submenu")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMenuAppendSubmenu")]
+func _g_menu_append_submenu(m _p_GMenu, label string, sub _p_GMenuModel)
+
+#[c.native("GMenuModel *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGMenuModel")]
+struct _p_GMenuModel {}
+
+#[c.native("GMenuModel *", cast)]
+const func _as_GMenuModel(p c.pointer) _p_GMenuModel
+
+#[c.native("gtk_menu_button_set_menu_model")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkMenuButtonSetMenuModel")]
+func _gtk_menu_button_set_menu_model(b _p_GtkMenuButton, model _p_GMenuModel)
+
+#[c.native("GSimpleActionGroup *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGSimpleActionGroup")]
+struct _p_GSimpleActionGroup {}
+
+#[c.native("void *", cast)]
+const func _ptr_GSimpleActionGroup(g _p_GSimpleActionGroup) c.pointer
+
+#[c.native("g_simple_action_group_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionGroupNew")]
+func _g_simple_action_group_new() _p_GSimpleActionGroup
+
+#[c.native("GSimpleAction *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGSimpleAction")]
+struct _p_GSimpleAction {}
+
+#[c.native("void *", cast)]
+const func _ptr_GSimpleAction(a _p_GSimpleAction) c.pointer
+
+#[c.native("GVariantType *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGVariantType")]
+struct _p_GVariantType {}
+
+#[c.native("GVariant *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGVariant")]
+struct _p_GVariant {}
+
+#[c.native("g_variant_new_boolean")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GVariantNewBoolean")]
+func _g_variant_new_boolean(v bool) _p_GVariant
+
+#[c.native("g_simple_action_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionNew")]
+func _g_simple_action_new(name string, param option[_p_GVariantType]) _p_GSimpleAction
+
+#[c.native("g_simple_action_new_stateful")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionNewStateful")]
+func _g_simple_action_new_stateful(name string, param option[_p_GVariantType], state _p_GVariant) _p_GSimpleAction
+
+#[c.native("g_simple_action_set_enabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionSetEnabled")]
+func _g_simple_action_set_enabled(a _p_GSimpleAction, enabled bool)
+
+#[c.native("GActionMap *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGActionMap")]
+struct _p_GActionMap {}
+
+#[c.native("GActionMap *", cast)]
+const func _as_GActionMap(p c.pointer) _p_GActionMap
+
+#[c.native("GAction *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGAction")]
+struct _p_GAction {}
+
+#[c.native("GAction *", cast)]
+const func _as_GAction(p c.pointer) _p_GAction
+
+#[c.native("g_action_map_add_action")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GActionMapAddAction")]
+func _g_action_map_add_action(m _p_GActionMap, a _p_GAction)
+
+#[c.native("GActionGroup *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PGActionGroup")]
+struct _p_GActionGroup {}
+
+#[c.native("GActionGroup *", cast)]
+const func _as_GActionGroup(p c.pointer) _p_GActionGroup
+
+#[c.native("gtk_widget_insert_action_group")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetInsertActionGroup")]
+func _gtk_widget_insert_action_group(w _p_GtkWidget, prefix string, group _p_GActionGroup)
+
+// The window a toplevel's box is shown in, once it is made (rt's
+// sngl_gtk.c).
+#[c.native("sngl_toplevel_window")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelWindow")]
+func _rtToplevelWindow(box _p_GtkWidget) option[_p_GtkWindow]
+
+#[c.native("sngl_window_hook")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglWindowHook")]
+func _rtWindowHook(
+    #[c.type("SnglWindowHook")] fn func(op int, box _p_GtkWidget, child _p_GtkWidget) bool,
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdMenuEntry(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_MenuEntryState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldMenuEntry(o _p_GObject, key string) option[c.held[_MenuEntryState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdBack(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_BackState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldBack(o _p_GObject, key string) option[c.held[_BackState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdBar(
+    o   _p_GObject,
+    key string,
+    #[c.type("gpointer")] s c.held[_BarState],
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldBar(o _p_GObject, key string) option[c.held[_BarState]]

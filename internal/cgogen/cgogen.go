@@ -165,15 +165,20 @@ func (g *gen) collect(p *ir.Package) {
 			g.goType(&ir.Type{Kind: ir.TypeStruct, Decl: sd})
 		}
 	}
-	for _, fn := range p.Funcs {
-		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil {
-			continue
+	// A declaration named for its C function (`_gtk_box_new`) is wrapped
+	// first, so it keeps the wrapper named for the C function whatever file
+	// declares another of it.
+	for _, canonical := range []bool{true, false} {
+		for _, fn := range p.Funcs {
+			if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
+				continue
+			}
+			if why := g.unwrappable(fn); why != "" {
+				g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): %s", fn.Name, fn.Foreign.Name, why))
+				continue
+			}
+			g.add(fn)
 		}
-		if why := g.unwrappable(fn); why != "" {
-			g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): %s", fn.Name, fn.Foreign.Name, why))
-			continue
-		}
-		g.add(fn)
 	}
 }
 
