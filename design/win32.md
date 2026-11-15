@@ -29,7 +29,13 @@ where C writes `UINT` or `DWORD`, and cgo refuses one for the other. So the
 tool preprocesses `windows.h` and `commctrl.h` with
 `x86_64-w64-mingw32-gcc -E` and `i686-w64-mingw32-gcc -E`, and takes each
 prototype, typedef and struct from the headers. The metadata decides what
-exists; the headers decide its spelling.
+exists; the headers decide its spelling. The metadata has no widget model -- a control
+is a class name (`"BUTTON"`), style bits and messages (`BM_SETCHECK`) -- so
+the platform's widgets are written by hand over the generated declarations.
+
+**Both architectures, amd64 the default.** The platform node's `arch` option
+takes `amd64` or `386`, and the tests, CI's included, build and run both
+(`testdata/win32_c_386.txtar`, `c_win32_test_runs.txt`).
 
 **The pin.** `commit` in `main.go` is the win32json commit the file was
 written from, and its first twelve characters are in the generated header.

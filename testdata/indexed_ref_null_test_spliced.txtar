@@ -6,10 +6,8 @@ boundary, and one rendered once, whose null test is a constant
 records (ir.InstancesOf); html, fyne and android from the
 `__instance_<id>` prop passCopyKeys stamps on each root node, holding the
 copy's key: html's `data-sngl-root-<id>`, fyne's maps of the instance's
-copies and its present field, and android's SnglPresent. gtk4 is left out:
-its placement refuses the test's read of `#always`, whose instance has a
-function of its own and whose root carries neither its id nor its root prop
-(TODO.md). A node
+copies and its present field, and android's SnglPresent; gtk4 and win32
+from the nodes placement holds. A node
 under a loop with no `if` between is null-tested by copy too, and `c.r`, a
 recursive instance html places at a fixed position, carries
 `data-sngl-instance` there.

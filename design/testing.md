@@ -213,7 +213,19 @@ window reaches a desktop, and with no window manager a window keeps the size
 the program gives it, where cage's Xwayland kept one at its creation size
 while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
 out of a failure's text. Each launch is recorded as any `sngl test` is
-(`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures).
+(`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures). Wine's Wayland
+driver (`HKCU\Software\Wine\Drivers\Graphics=wayland`) hung under cage
+until killed, and with no display and no null driver Wine hung too, which is
+why the null driver is set. A prefix whose setup was killed fails with
+`could not load kernel32.dll` until it is made again. Arch's `wine` is a
+WoW64 build, which runs a 32-bit `.exe` without `[multilib]`.
+
+**`--simulate` does not raise what the native runtime raises.** It runs a
+target's overrides over stubbed natives (`design/ownership.md`), so a test's
+trigger an override relays from the runtime -- `@input` from an edit's
+change, a select's pick, a timer's tick -- reaches nothing on gtk4 or win32:
+the stub neither keeps what the fire handed it nor calls a callback back. It
+is the ownership debugging mode, and their tests run on the target.
 
 **A C agent's snapshot is the platform's capture, sent as its pixels**
 (`sngl_test_snapshot`). A platform that can draw its program sets
