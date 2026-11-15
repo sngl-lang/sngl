@@ -115,6 +115,7 @@ type reactivityState struct {
 	wrote       map[*ir.Var]*ir.Func
 	setters     map[setterKey]*ir.Func
 	setterFuncs map[*ir.Func]bool
+	memo        *memoState
 	// err holds the first fatal lowering diagnostic (e.g. an unsupported
 	// nested reactive structure). Recorded rather than panicked so the
 	// build fails with a positioned compile error; the partially-built IR
@@ -267,6 +268,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	st.collectFromStmts(pkg.Body)
 	st.typeSlots()
 	st.planPageRefresh(st.root)
+	st.planMemo()
 	// Pass 2: rewrite + inject. Delegates to existing injectIntoStmts;
 	// future tasks add slot synthesis here.
 
@@ -343,6 +345,7 @@ func lowerReactivity(pkg *ir.Package, caps Features, opts Options) error {
 	// that opened it has been built.
 	st.fillPageRefresh()
 	st.destroyHeld()
+	st.memo.apply()
 	if st.err == nil && st.slotDeclSt != nil {
 		st.err = st.slotDeclSt.err
 	}
@@ -1421,7 +1424,7 @@ func (st *reactivityState) updatersFor(s ir.Stmt) []ir.Stmt {
 	if v == nil {
 		return nil
 	}
-	return st.updatesOf(v, fieldRewrite)
+	return append(st.memo.bump(v), st.updatesOf(v, fieldRewrite)...)
 }
 
 // updatesOf is what a write of v runs after it, from the body being walked.
@@ -1478,7 +1481,7 @@ func (st *reactivityState) testWriteUpdates(target ir.Expr) []ir.Stmt {
 		}
 		saved := st.owner
 		st.owner = owner
-		if body := st.updatesOf(v, nil); len(body) > 0 {
+		if body := append(st.memo.bump(v), st.updatesOf(v, nil)...); len(body) > 0 {
 			f = &ir.Func{
 				Name:        "__wrote_" + v.Name,
 				Return:      ir.TypVoid,

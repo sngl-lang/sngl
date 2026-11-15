@@ -106,26 +106,33 @@ func optionElemJS(t *ir.Type) *ir.Type {
 // host's ===. a and b are read more than once, so each is a name or a read of
 // one.
 func jsEqualExpr(t *ir.Type, a, b string) string {
-	n := 0
-	return jsEqual(&n, t, a, b)
+	return (&jsEq{open: map[string]string{}}).equal(t, a, b)
 }
 
-// jsEqual is jsEqualExpr, numbering the parameters of the arrows it writes
-// in n so that one nested in another reads the outer's.
-func jsEqual(n *int, t *ir.Type, a, b string) string {
-	fresh := func(prefix string) string {
-		*n++
-		return prefix + strconv.Itoa(*n)
-	}
+// jsEq numbers the parameters of the arrows jsEqualExpr writes so that one
+// nested in another reads the outer's, and names the function comparing each
+// struct whose fields reach it again, which is called where they do rather
+// than written out without end.
+type jsEq struct {
+	n    int
+	open map[string]string
+}
+
+func (e *jsEq) fresh(prefix string) string {
+	e.n++
+	return prefix + strconv.Itoa(e.n)
+}
+
+func (e *jsEq) equal(t *ir.Type, a, b string) string {
 	if t != nil && t.Kind == ir.TypeList && len(t.Elems) == 1 {
-		x, i := fresh("_x"), fresh("_i")
+		x, i := e.fresh("_x"), e.fresh("_i")
 		return "(" + a + ".length === " + b + ".length && " + a + ".every((" + x + ", " + i + ") => " +
-			jsEqual(n, t.Elems[0], x, b+"["+i+"]") + "))"
+			e.equal(t.Elems[0], x, b+"["+i+"]") + "))"
 	}
 	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && comparedFieldwiseJS(t.Elems[0]) {
-		p, q := fresh("_p"), fresh("_q")
+		p, q := e.fresh("_p"), e.fresh("_q")
 		return "((" + p + ", " + q + ") => " + p + " == null || " + q + " == null ? " + p + " == " + q + " : " +
-			jsEqual(n, t.Elems[0], p, q) + ")(" + a + ", " + b + ")"
+			e.equal(t.Elems[0], p, q) + ")(" + a + ", " + b + ")"
 	}
 	if ed := ir.PayloadEnum(t); ed != nil {
 		var arms []string
@@ -133,7 +140,7 @@ func jsEqual(n *int, t *ir.Type, a, b string) string {
 			if m.Payload == nil {
 				continue
 			}
-			arms = append(arms, a+".tag === "+strconv.Quote(m.Name)+" ? "+jsEqual(n, ir.MemberPayload(t, m.Name), a+".value", b+".value"))
+			arms = append(arms, a+".tag === "+strconv.Quote(m.Name)+" ? "+e.equal(ir.MemberPayload(t, m.Name), a+".value", b+".value"))
 		}
 		payloads := "true"
 		if len(arms) > 0 {
@@ -145,25 +152,86 @@ func jsEqual(n *int, t *ir.Type, a, b string) string {
 		return multiBaseUnitEqualJS(ud, ast.BinEq, a, b)
 	}
 	if def := structDefJS(t); def != nil {
-		bind := map[string]*ir.Type{}
-		for i, tp := range def.TypeParams {
-			if i < len(t.Elems) {
-				bind[tp.Name] = t.Elems[i]
-			}
+		key := t.String()
+		if name, ok := e.open[key]; ok {
+			return name + "(" + a + ", " + b + ")"
 		}
-		if len(def.Fields) == 0 {
-			return "true"
+		if reachesType(t, key, fieldTypesJS, map[string]bool{}) {
+			name, x, y := e.fresh("_eq"), e.fresh("_a"), e.fresh("_b")
+			e.open[key] = name
+			body := e.fields(def, t, x, y)
+			delete(e.open, key)
+			return "(function " + name + "(" + x + ", " + y + ") { return " + body + "; })(" + a + ", " + b + ")"
 		}
-		parts := make([]string, 0, len(def.Fields))
-		for _, f := range def.Fields {
-			ft := f.Type
-			if len(bind) > 0 {
-				ft = ft.Substitute(bind)
-			}
-			key := jsFieldKey(def, f.Name)
-			parts = append(parts, jsEqual(n, ft, a+"."+key, b+"."+key))
-		}
-		return "(" + strings.Join(parts, " && ") + ")"
+		return e.fields(def, t, a, b)
 	}
 	return "(" + a + " === " + b + ")"
+}
+
+func (e *jsEq) fields(def *ir.StructDef, t *ir.Type, a, b string) string {
+	if len(def.Fields) == 0 {
+		return "true"
+	}
+	parts := make([]string, 0, len(def.Fields))
+	for i, ft := range fieldTypesJS(t) {
+		key := jsFieldKey(def, def.Fields[i].Name)
+		parts = append(parts, e.equal(ft, a+"."+key, b+"."+key))
+	}
+	return "(" + strings.Join(parts, " && ") + ")"
+}
+
+// fieldTypesJS is what a value of t holds that jsEqualExpr compares in turn.
+func fieldTypesJS(t *ir.Type) []*ir.Type {
+	if t == nil {
+		return nil
+	}
+	switch {
+	case (t.Kind == ir.TypeList || t.Kind == ir.TypeOption) && len(t.Elems) == 1:
+		return t.Elems
+	case ir.PayloadEnum(t) != nil:
+		var out []*ir.Type
+		for _, m := range ir.PayloadEnum(t).Members {
+			if m.Payload != nil {
+				out = append(out, ir.MemberPayload(t, m.Name))
+			}
+		}
+		return out
+	}
+	def := structDefJS(t)
+	if def == nil {
+		return nil
+	}
+	bind := map[string]*ir.Type{}
+	for i, tp := range def.TypeParams {
+		if i < len(t.Elems) {
+			bind[tp.Name] = t.Elems[i]
+		}
+	}
+	out := make([]*ir.Type, 0, len(def.Fields))
+	for _, f := range def.Fields {
+		ft := f.Type
+		if len(bind) > 0 {
+			ft = ft.Substitute(bind)
+		}
+		out = append(out, ft)
+	}
+	return out
+}
+
+// reachesType reports whether a value of t holds, at any depth, a value of
+// the type whose String is key.
+func reachesType(t *ir.Type, key string, held func(*ir.Type) []*ir.Type, seen map[string]bool) bool {
+	for _, h := range held(t) {
+		k := h.String()
+		if k == key {
+			return true
+		}
+		if !seen[k] {
+			seen[k] = true
+			if reachesType(h, key, held, seen) {
+				return true
+			}
+		}
+	}
+	return false
 }

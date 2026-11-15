@@ -78,3 +78,35 @@ targets in parallel) is not a saving.
 - **Cloning is the largest remaining cost.** `build.Emit` clones the checked
   package for every target, and `ir.ClonePackage` copies by reflection
   everything reachable, library IR included.
+- **A derived function keeps its answer between writes** in the program a
+  build writes, on the targets whose reactivity is lowered
+  (`internal/lower/memo.go`). Every update reading `rows()` called it, and
+  so did each derived function built on it: an answer of the Pokédex's Moves
+  tab, 237 of Mew's moves, built them six times. One taking no parameter but
+  the instance and scalars, reading only vars and what pure calls answer,
+  and called by no var's initializer and no work `async.start` begins (a
+  goroutine in Go, which would write the cell beside the drawing thread)
+  keeps its answer with the count of writes it was computed at, and each
+  write of a var it reads moves the count. A parameter -- the locale
+  passContext hands it -- is kept and compared too. It cut the page's CPU by
+  about a tenth in Go and C (November 2026).
+  `testdata/derived_kept_until_written.txtar`,
+  `testdata/derived_kept_not_under_async_start.txtar` and
+  `cmd/sngl/testdata/derived_kept_runs.txt` pin it.
+- **A prop setter handed the value it holds does nothing**
+  (`lower.propSetter`). A render hands every instance it holds each of its
+  props again, and the setter wrote the cell and ran every update reading it
+  whether the value had changed or not: each of the Pokédex's 237 move rows
+  re-rendered for every move's answer, though one row at most had changed. A
+  value every target's == compares by value -- a scalar, a string, an enum
+  without payloads, a single-base unit, and an option or a program's struct
+  of those -- is compared first. A map and a function are written whatever
+  they hold, and so is a list: compared, the Pokédex's gtk4 Go tests left its
+  forms unrendered and its evolution rows removed a freed widget, and no
+  smaller program has reproduced either yet. With the derived function's cell
+  above, Mew's Moves tab took 3.5 s of CPU on C rather than 10.6 s; with
+  lists compared too it took 1.8 s. A test build's setter still stamps the
+  copies of an `#id` its render started afresh before it returns
+  (`lower.clearCopies`). `testdata/prop_setter_skips_an_equal_value.txtar`,
+  `cmd/sngl/testdata/prop_setter_equal_value_stamps_its_copy_runs.txt` and
+  `codegen/lang/c/testdata/run/equals.txtar` pin it.

@@ -579,13 +579,18 @@ func (p *placement) clearCopies(pkg *ir.Package) {
 		})
 		return out
 	}
-	// What a record's functions stamp, its builders clear.
+	// What a record's functions stamp, its builders clear. A setter handed
+	// what its cell holds stamps all the same before it returns, since the
+	// map it stamps was started afresh by the render handing it.
 	byRecord := map[*ir.Func][]*ir.Var{}
 	inRecord := map[*ir.Func]bool{}
 	for _, r := range p.records {
 		var vs []*ir.Var
 		for _, fn := range r.funcs() {
 			inRecord[fn] = true
+			if guard := setterGuard(fn); guard != nil {
+				guard.Body = append(stampsAgain(append(slices.Clone(guard.Else), fn.Block[1:]...), stamps), guard.Body...)
+			}
 			for _, v := range stamps(fn) {
 				if !slices.Contains(vs, v) {
 					vs = append(vs, v)
@@ -621,6 +626,74 @@ func (p *placement) clearCopies(pkg *ir.Package) {
 		}
 		fn.Block = append(reset, fn.Block...)
 	}
+}
+
+// stampsAgain is what of rest a setter returning early runs again: each
+// stamp, and the locals its key reads, each declared and written as rest
+// does, as no write but theirs.
+func stampsAgain(rest []ir.Stmt, stamps func(*ir.Func) []*ir.Var) []ir.Stmt {
+	locals := map[*ir.Var]bool{}
+	for _, stmt := range rest {
+		if lv, ok := stmt.(*ir.LocalVar); ok {
+			locals[lv.Sym] = true
+		}
+	}
+	needed := map[*ir.Var]bool{}
+	reads := func(stmt ir.Stmt) {
+		_ = ir.Walk(stmt, func(n ir.Node) error {
+			if id, ok := n.(*ir.Ident); ok {
+				if v, ok := id.Sym.(*ir.Var); ok && locals[v] {
+					needed[v] = true
+				}
+			}
+			return nil
+		})
+	}
+	var kept []ir.Stmt
+	for _, stmt := range slices.Backward(rest) {
+		switch {
+		case len(stamps(&ir.Func{Block: []ir.Stmt{stmt}})) > 0:
+		case isLocalVar(stmt, needed):
+		case writesOnly(stmt, locals, needed):
+		default:
+			continue
+		}
+		reads(stmt)
+		kept = append(kept, stmt)
+	}
+	slices.Reverse(kept)
+	return ir.CloneStmtsSharingDecls(kept)
+}
+
+func isLocalVar(stmt ir.Stmt, of map[*ir.Var]bool) bool {
+	lv, ok := stmt.(*ir.LocalVar)
+	return ok && of[lv.Sym]
+}
+
+// writesOnly reports whether stmt writes one of needed and nothing but
+// locals, calling no function as a statement.
+func writesOnly(stmt ir.Stmt, locals, needed map[*ir.Var]bool) bool {
+	wrote, only := false, true
+	_ = ir.Walk(stmt, func(n ir.Node) error {
+		switch n := n.(type) {
+		case *ir.CallStmt:
+			only = false
+		case *ir.Assign:
+			id, ok := n.Target.(*ir.Ident)
+			if !ok || !locals[asVar(id.Sym)] {
+				only = false
+			} else if needed[asVar(id.Sym)] {
+				wrote = true
+			}
+		}
+		return nil
+	})
+	return wrote && only
+}
+
+func asVar(s ir.Symbol) *ir.Var {
+	v, _ := s.(*ir.Var)
+	return v
 }
 
 // dropCopies has a record's destroy take its node out of each map of copies
