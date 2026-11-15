@@ -70,13 +70,15 @@ exists data.sngl.snapshots/data.png
 # program carries (sngl_win32_assets.c, by the path its URL names under the
 # root), from one fetched, or from one on disk, and which paints itself
 # fitted into the image with its alpha. The image hears its picture load,
-# or fail and why, once the picture is in it. The PNG is a red dot on a
-# transparent ground, written at the start.
+# or fail and why, once the picture is in it. A canvasImage paints the same
+# file into its box through the canvas's GDI+ context, decoded once a
+# canvas. The PNG is a red dot on a transparent ground, written at the start.
 
 exec sh -c 'echo iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAALElEQVR4nGNgGJ7ghIbGf1yYIs0EDSFGM15DRg0YDAYQawhOzcQYQlAz3QEA+63jzIuGVSkAAAAASUVORK5CYII= | base64 -d > logo.png'
 sngl test --platform=win32 --language=c image.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 exists image.sngl.snapshots/logo.png
+exists image.sngl.snapshots/canvas.png
 
 # The same programs in Go, which calls the runtime through the wrappers
 # `sngl tool cgogen` writes (lib/platform/win32/cgo) and serves its tests
@@ -95,7 +97,7 @@ stdout 'ok +3 tests, 0 failures'
 sngl test --platform=win32 --language=go data.sngl
 stdout 'ok +4 tests, 0 failures'
 sngl test --platform=win32 --language=go image.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 
 -- controls.sngl --
 import ui "sngl:ui"
@@ -477,6 +479,7 @@ func testDraws(t test.Test, c main) {
 -- image.sngl --
 import ui "sngl:ui"
 import test "sngl:test"
+import draw "sngl:ui/draw"
 import here "file:."
 
 output {
@@ -500,6 +503,11 @@ component main ui.node {
             }
         }
         ui.button #show(text="show", @click { shown = true })
+        draw.canvas(width=48px, height=48px) {
+            draw.canvasImage(x=0.0, y=0.0, w=48.0, h=48.0) {
+                ui.file(path=here.path("logo.png"))
+            }
+        }
     }
 }
 
@@ -524,8 +532,13 @@ func testDraws(t test.Test, c main) {
     t.wait(func() => c.loads == 1, 2000)
     t.snapshot("logo")
 }
+
+func testACanvasPaintsTheFile(t test.Test, c main) {
+    t.wait(func() => c.loads == 1, 2000)
+    t.snapshot("canvas")
+}
 -- testrun/win32/c/controls.sngl/main/1 --
-sha256:1f6b37b26053a2328f62e728fb965081
+sha256:a271f532fce715ccb21dc4ef89bbcbe5
 {
   "results": [
     {
@@ -550,7 +563,7 @@ sha256:1f6b37b26053a2328f62e728fb965081
   }
 }
 -- testrun/win32/c/data.sngl/main/1 --
-sha256:8e7ede0cb93155db4483568e970ef2e7
+sha256:25882a51f57c94cd41fc9f908d9be7e1
 {
   "results": [
     {
@@ -575,7 +588,7 @@ sha256:8e7ede0cb93155db4483568e970ef2e7
   }
 }
 -- testrun/win32/c/image.sngl/main/1 --
-sha256:e34e43323b1d79e63f2e2c2bf628c416
+sha256:58182a82955a064c6a35f03bb3dc6a5f
 {
   "results": [
     {
@@ -589,14 +602,19 @@ sha256:e34e43323b1d79e63f2e2c2bf628c416
     {
       "Desc": "Draws",
       "Passed": true
+    },
+    {
+      "Desc": "ACanvasPaintsTheFile",
+      "Passed": true
     }
   ],
   "snapshots": {
-    "logo.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAIAAABM5OhcAAACoElEQVR4nOzcv2rrMBQH4CuRFyiesidL4E59f8gLdLpk8huE/JlCNvmS68oY57a0jVIa9B0vspqpfJyfwOjMTqfTL6VKV8wLsMACCyywwAILLLDAAgsssMACCyywwPrBsGZ5oV7rz/NzXn6lfr+85KWOpWPpWKU7Flhg3QVW8K2w/1Z4YwLKxEkmikJRKApFoSh8lCgsnoAysc9EUSgKRaEofJwoBAsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACqzZY7hW6V+heoXuF7hW6V+heYdX3CotnYuUJqGPpWPftWKJQFIrCb4lCHUvH0rF+bscCCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssErCmp3P581mczgcuq7Lm0p9sUIITdOsVquwXq/n8/lisYhR99K9bu1eKaW2bbfbbTwej1RRVUTV5WgV43K53O/3ses6qqgqomqwdUE1vHs8BR+wwAILLLAeFFYIIS/BAqscLB1Lx7pLx/KUemZ5UXn8XeJv+Pbwzs6wGUIY//W/a7DqhXXtYLzTrye/mbyKQlH4oSj8IJoe3Bgfc2NztcPqTYyTThWpyjvWpWN1/4qtsrai/8Trf+LzNT5+XR/FHN5rP7wPSvLetCb9jJ5BD1hvwpooeet1sn/9g3d+IwpF4eei0BnLGesuZyywwALr22GFEFJK+VWpWyulFGOMTdO0bcsWW0Vs9Zcpnp6ewm63c/3L9a/y17/MIDWD1AxSM0jNIDWD1AxSM0jNIDWD1AxSM0jNIDWD1AxSM0jNIDWD1AxSM0jNIDWD1AxSM0jNIDWD1AzSKmeQggUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlglYf0dAAaRwb8NNNpUAAAAAElFTkSuQmCC"
+    "canvas.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACECAIAAABaoPPeAAAEPElEQVR4nOzcz07qTBgH4DNN2ZydIUHd68YEN16+G2/ADeCKG6DEP/kWSPKRlBOs0xBAI3Ywkj5vXbQjq+bJ+2symTefzWZ/lEpdWbwBCyywwAILLLDAAgsssMACCyywwAILrF8MK4836r2GNzfx9jvVv7+PtzqWjqVjpe5YYIF1EFjBXmG1V9gwAWXiRiaKQlEoCkWhKDyWKEyegDKxykRRKApFoSg8nigECyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAKrbbCcK3Su0LlC5wqdK3Su0LnCVp8rTJ6JLU9AHUvHOmzHEoWiUBT+SBTqWDqWjvV7OxZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBlRJWPp/PHx4enp+fl8tlXFTqmxVC6Ha7V1dX4e7u7vz8/OLiIst0L92rafcqy3I8Hk+n0+zl5YUqqpKoWn1aZdnl5eXT01O2XC6poiqJqtrWClX97HIlvMACCyywwDpSWCGEeAsWWOlg6Vg61kE6livVlceblsffKv7qvYdPVurFEML6f3feg9VeWNsO1leq+43fbDyKQlH4pSj8IpoK3Do+5tbNtR1WZWI96VSSannHWnWs5VuxldZW5k28v4n9a/3za/tTzMd72z/eayVxbbM2+hk9tR6wPoS1oeSjx4317R988htRKAr3i0LfWL6xDvKNBRZYYP04rBBCWZbxUammVZZllmVZt9sdj8dssZXEVnWY4uTkJDw+Pjr+5fhX+uNfZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGaStnkIIF1kFg5V7D6jW8/S2KYjGdLiaTuLBfdc7OOr1e5/Q0LoAFVgVrOn0dDF6Hw7iwX/3t9/9eX4MF1hasyeR1OPzv9jYu7F2dXu9Pvx+fwGo3rDoB56PRoiji8t61KIr5aCQTq0zMJWCdgCthzWDNBoP/i6LlmVhlYi4BmydgDat2KRNzCdgwAWXizkzMJWDDBJSJOzMxl4ANE1Am7sxEWzq2dGzp2NI5ni0dsMACCyywwAILLLDAAgsssMACC6wfg/WPvTPGQRCIomBFARZ2yx5i4RbcPyFcxZhYGXn5SqKN5le+QautJzPNwsNYGAtjYSyMhbEwFsbCWBgLY2EsjIWxMBbGwlgYC2NhrD83lu/V5K7WYb80rJvEidfeu3HUf5imrtY4BiwTsEp5vOlQynXbLuuaC9ZpnvvW9DWHOAYsE7B2qeiN+FseVQKrb+28LHEAWE5gpTfRvIAqIGAdwEpqonkBVUDAOoCV1ETzAqqAgPUC672Jvz3mBVQBAesTWNHEOPjuMS+gCvj8sVfIXiF7hewVslfIXiF7hewVslfIXiF7hewVslfovFd4HwDHMoUtHE87TgAAAABJRU5ErkJggg==",
+    "logo.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACECAIAAABaoPPeAAAEPElEQVR4nOzcz07qTBgH4DNN2ZydIUHd68YEN16+G2/ADeCKG6DEP/kWSPKRlBOs0xBAI3Ywkj5vXbQjq+bJ+2symTefzWZ/lEpdWbwBCyywwAILLLDAAgsssMACCyywwAILrF8MK4836r2GNzfx9jvVv7+PtzqWjqVjpe5YYIF1EFjBXmG1V9gwAWXiRiaKQlEoCkWhKDyWKEyegDKxykRRKApFoSg8nigECyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAKrbbCcK3Su0LlC5wqdK3Su0LnCVp8rTJ6JLU9AHUvHOmzHEoWiUBT+SBTqWDqWjvV7OxZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBlRJWPp/PHx4enp+fl8tlXFTqmxVC6Ha7V1dX4e7u7vz8/OLiIst0L92rafcqy3I8Hk+n0+zl5YUqqpKoWn1aZdnl5eXT01O2XC6poiqJqtrWClX97HIlvMACCyywwDpSWCGEeAsWWOlg6Vg61kE6livVlceblsffKv7qvYdPVurFEML6f3feg9VeWNsO1leq+43fbDyKQlH4pSj8IpoK3Do+5tbNtR1WZWI96VSSannHWnWs5VuxldZW5k28v4n9a/3za/tTzMd72z/eayVxbbM2+hk9tR6wPoS1oeSjx4317R988htRKAr3i0LfWL6xDvKNBRZYYP04rBBCWZbxUammVZZllmVZt9sdj8dssZXEVnWY4uTkJDw+Pjr+5fhX+uNfZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGqRmkZpCaQWoGaStnkIIF1kFg5V7D6jW8/S2KYjGdLiaTuLBfdc7OOr1e5/Q0LoAFVgVrOn0dDF6Hw7iwX/3t9/9eX4MF1hasyeR1OPzv9jYu7F2dXu9Pvx+fwGo3rDoB56PRoiji8t61KIr5aCQTq0zMJWCdgCthzWDNBoP/i6LlmVhlYi4BmydgDat2KRNzCdgwAWXizkzMJWDDBJSJOzMxl4ANE1Am7sxEWzq2dGzp2NI5ni0dsMACCyywwAILLLDAAgsssMACC6wfg/WPvTPGQRCIomBFARZ2yx5i4RbcPyFcxZhYGXn5SqKN5le+QautJzPNwsNYGAtjYSyMhbEwFsbCWBgLY2EsjIWxMBbGwlgYC2NhrD83lu/V5K7WYb80rJvEidfeu3HUf5imrtY4BiwTsEp5vOlQynXbLuuaC9ZpnvvW9DWHOAYsE7B2qeiN+FseVQKrb+28LHEAWE5gpTfRvIAqIGAdwEpqonkBVUDAOoCV1ETzAqqAgPUC672Jvz3mBVQBAesTWNHEOPjuMS+gCvj8sVfIXiF7hewVslfIXiF7hewVslfIXiF7hewVslfovFd4HwDHMoUtHE87TgAAAABJRU5ErkJggg=="
   }
 }
 -- testrun/win32/c/layout.sngl/main/1 --
-sha256:af37f6238984c4e60e097b8f6fd48c28
+sha256:4b402a6ea7d4a4256dfaa4e2d7b3729a
 {
   "results": [
     {
@@ -614,7 +632,7 @@ sha256:af37f6238984c4e60e097b8f6fd48c28
   }
 }
 -- testrun/win32/c/menus.sngl/_/1 --
-sha256:4d85cb400bbb105d8d6fee0428cde2aa
+sha256:8eca5723c9844729f28a0bf4e25cdf66
 {
   "results": [
     {
@@ -624,7 +642,7 @@ sha256:4d85cb400bbb105d8d6fee0428cde2aa
   ]
 }
 -- testrun/win32/c/menus.sngl/main/1 --
-sha256:3a9b6e2e7681407124ce52e5168ada80
+sha256:aaaa54ba1636d21aa974395baec6bc8c
 {
   "results": [
     {
@@ -642,7 +660,7 @@ sha256:3a9b6e2e7681407124ce52e5168ada80
   }
 }
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:5e8c7dfc0e4bd4a55019408eaa038483
+sha256:3d8b235844db226f0e36a57df1b91b8d
 {
   "results": [
     {
@@ -712,9 +730,13 @@ sha256:d05bb810f36ec0c96dbc14dbf569019c
   ]
 }
 -- testrun/win32/go/image.sngl/main/1 --
-sha256:1037d196190ff4a404e15acf734262bb
+sha256:0bce88cb6ca4c032e2b2dd5640538ac7
 {
   "results": [
+    {
+      "Desc": "ACanvasPaintsTheFile",
+      "Passed": true
+    },
     {
       "Desc": "AMissingFileFails",
       "Passed": true

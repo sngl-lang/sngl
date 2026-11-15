@@ -8,6 +8,7 @@ import api "sngl:platform/win32/api"
 import draw "sngl:ui/draw"
 import markup "sngl:ui/markup"
 import math "sngl:math"
+import family "sngl:family"
 import go "sngl:language/go"
 
 // The runtime every win32 program links: the window procedure, the layout of
@@ -1716,6 +1717,26 @@ func Gfx.font(family c.utf16, size float)
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxText")]
 func Gfx.showText(content c.utf16)
 
+// The space drawn in afterwards moved and scaled, and what is drawn limited
+// to the current path, which `clip` ends; `restore` undoes each.
+#[c.native("sngl_win32_gfx_translate")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxTranslate")]
+func Gfx.translate(x float, y float)
+
+#[c.native("sngl_win32_gfx_scale")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxScale")]
+func Gfx.scale(x float, y float)
+
+#[c.native("sngl_win32_gfx_clip")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxClip")]
+func Gfx.clip()
+
+// The picture `url` names painted into the box at x, y sized w by h, found
+// as a `Picture`'s is, and painted again once a fetched one arrives.
+#[c.native("sngl_win32_gfx_image")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxImage")]
+func Gfx.image(url c.utf16, x float, y float, w float, h float)
+
 // What a `@draw` handler is handed: the context, and the coordinate space
 // the shapes were placed in.
 struct DrawEvent {
@@ -1741,6 +1762,86 @@ component Canvas(
     @paint(ctx Gfx),
     shapes      ...component draw.shape,
 ) ui.node
+
+// What a `drawSource` paints an image a URL names with.
+struct SourceEvent {
+    ctx Gfx
+    url string
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the
+// box and clips to it, and `@leave`. The size in their payload is the
+// drawing's.
+#[marks.intrinsic("win32:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one[ui.imageSource],
+) draw.shape
+
+// A source showing what its shapes draw, `width` by `height` pixels: a
+// picture whose bitmap the shapes paint, as the handler of its `@paint`, and
+// a write to what they read paints again, as a canvas is.
+#[marks.intrinsic("win32:ImageDrawing")]
+component ImageDrawing(
+    width  float,
+    height float,
+    @paint(ctx Gfx),
+    shapes ...component draw.shape,
+) ui.imageSource
+
+#[c.native("sngl_win32_drawing")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Drawing")]
+func _rtDrawing() ImageDrawing
+
+#[c.native("sngl_win32_set_drawing_width")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetDrawingWidth")]
+func _rtSetDrawingWidth(w ImageDrawing, width float)
+
+#[c.native("sngl_win32_set_drawing_height")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetDrawingHeight")]
+func _rtSetDrawingHeight(w ImageDrawing, height float)
+
+#[c.native("sngl_win32_drawing_on_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DrawingOnPaint")]
+func _rtDrawingOnPaint(
+    w ImageDrawing,
+    #[c.type("sngl_win32_paint_fn")] fn func(ctx Gfx),
+    #[c.context] ctx c.pointer,
+    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_win32_drawing_redraw")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DrawingRedraw")]
+func _rtDrawingRedraw(w ImageDrawing)
+
+#[gen.protocol(create)]
+func _create_ImageDrawing() ImageDrawing {
+    return _rtDrawing()
+}
+
+#[gen.protocol(set)]
+func _set_ImageDrawing_width(w ImageDrawing, width float) {
+    _rtSetDrawingWidth(w, width)
+}
+
+#[gen.protocol(set)]
+func _set_ImageDrawing_height(w ImageDrawing, height float) {
+    _rtSetDrawingHeight(w, height)
+}
+
+#[gen.protocol(on)]
+func _on_ImageDrawing_paint(w ImageDrawing, paint func(ctx Gfx)) {
+    _rtDrawingOnPaint(w, paint)
+}
+
+#[gen.protocol(redraw)]
+func _redraw_ImageDrawing(w ImageDrawing) {
+    _rtDrawingRedraw(w)
+}
 
 #[c.native("sngl_win32_canvas")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Canvas")]
@@ -2566,6 +2667,26 @@ const component draw.canvasText[platform](x, y, content, style) {
     })
 }
 
+const component draw.canvasImage[platform](x, y, w, h, src) {
+    drawSource(
+        @url(e) {
+            e.ctx.image(e.url, x, y, w, h)
+        },
+        @enter(e) {
+            e.ctx.save()
+            e.ctx.translate(x, y)
+            e.ctx.scale(w / float(e.width), h / float(e.height))
+            e.ctx.rectangle(0.0, 0.0, float(e.width), float(e.height))
+            e.ctx.clip()
+        },
+        @leave(e) {
+            e.ctx.restore()
+        },
+    ) {
+        src
+    }
+}
+
 const component markup.richText[platform](style, content) {
     Flow(look=lookOf(style), base=baseOf(style)) {
         content
@@ -2609,4 +2730,10 @@ const component ui.file[platform](path) {
 
 const component ui.remote[platform](url) {
     Picture(url=url)
+}
+
+const component draw.image[platform](width, height, shapes) {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }

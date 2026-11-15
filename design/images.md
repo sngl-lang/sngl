@@ -72,6 +72,15 @@ does with it is each target's:
   `canvasImage` still paints nothing. A drawing is a `Canvas`. The manifest's
   permissions are android's own mark (see *An android app asks for what it
   reaches* in [architecture.md](architecture.md)).
+- win32: the runtime's image window and a picture window per source, which
+  WIC decodes from a carried file, a file on disk or one
+  `URLDownloadToCacheFile` fetched (`c_win32_controls_runs.txt`'s
+  `image.sngl`). A drawing is the runtime's drawing, a picture whose bitmap
+  its shapes paint through GDI+ as the handler of its `@paint`. A
+  `canvasImage` paints a URL through the canvas's context, which decodes
+  each URL once per canvas and paints again as a fetched one arrives, and a
+  drawing in place, as gtk4 does (`testdata/win32_c_canvas_image.txtar`,
+  `TestSnapshotDrawnImages`). A window shows no favicon.
 - none: the image holds its source, which a snapshot prints.
 
 **An avatar is a wrapper on `ui.image` that does the fallback**: its

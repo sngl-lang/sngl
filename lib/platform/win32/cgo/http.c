@@ -2,6 +2,6 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 0526b80bdb5a26f0c5e08413
+// The C sources, as a change to them builds this package again: 65b14598f64ae71d1ed35a39
 
 #include "../rt/http.c"

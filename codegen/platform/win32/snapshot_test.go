@@ -127,6 +127,67 @@ ui.window(title="Canvas") {
 	}
 }
 
+// TestSnapshotDrawnImages is a drawing as an image source twice over: a
+// canvasImage painting one in place, mapped from its own space onto the box
+// and clipped to it, and an image showing one as a picture its shapes paint.
+// The drawn disc overruns its drawing, which the clip cuts off.
+func TestSnapshotDrawnImages(t *testing.T) {
+	const src = `import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+output {
+    c {
+        win32
+    }
+}
+
+ui.window(title="Drawn") {
+    ui.hbox {
+        draw.canvas(width=150px, height=120px) {
+            draw.canvasImage(x=10.0, y=10.0, w=100.0, h=100.0) {
+                draw.image(width=10.0, height=10.0) {
+                    draw.rect(x=0.0, y=0.0, w=10.0, h=10.0, style=draw.Style{fill=#ff0000})
+                    draw.circle(cx=10.0, cy=5.0, r=4.0, style=draw.Style{fill=#00ff00})
+                }
+            }
+        }
+        ui.image(style={width=100px, height=100px}) {
+            draw.image(width=20.0, height=20.0) {
+                draw.rect(x=0.0, y=0.0, w=20.0, h=20.0, style=draw.Style{fill=#0000ff})
+            }
+        }
+    }
+}
+`
+	img := snapshot(t, src, 300, 120)
+	if img == nil {
+		return
+	}
+	at := func(x, y int, want func(r, g, b uint32) bool) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		return want(r>>8, g>>8, b>>8)
+	}
+	red := func(r, g, b uint32) bool { return r > 200 && g < 60 && b < 60 }
+	green := func(r, g, b uint32) bool { return g > 200 && r < 60 && b < 60 }
+	blue := func(r, g, b uint32) bool { return b > 200 && r < 60 && g < 60 }
+	if !at(30, 30, red) || !at(100, 100, red) {
+		t.Error("the drawing is not painted scaled onto the canvasImage's box")
+	}
+	if !at(105, 60, green) {
+		t.Error("the drawing's disc is not painted inside its box")
+	}
+	if at(118, 60, green) {
+		t.Error("the drawing's disc is painted past its box, which clips it")
+	}
+	blueAt := false
+	for x := 150; x < 300 && !blueAt; x++ {
+		blueAt = at(x, 60, blue)
+	}
+	if !blueAt {
+		t.Error("the image does not show its drawing")
+	}
+}
+
 // TestSnapshotMarkup is a flow of rich text, which the runtime wraps and
 // draws itself: a paragraph too long for its width wraps onto lines of its
 // own, a keyword token is drawn in the light palette's red and a link in the

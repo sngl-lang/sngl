@@ -648,8 +648,9 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      `#[gen.protocol(redraw)]` (`design/nodes.md`), painted by GDI+ through
      a context whose calls are cairo's (`testdata/win32_c_canvas.txtar`,
      `TestSnapshotCanvas`). gtk4 still draws its canvas from its generator
-     (#294). Left on win32: `canvasImage` and `draw.image`, which are
-     refused. Left on the other targets: `passCanvasReactivity` redraws a
+     (#294). `canvasImage` and `draw.image` are painted as gtk4's are
+     (`testdata/win32_c_canvas_image.txtar`, `TestSnapshotDrawnImages`).
+     Left on the other targets: `passCanvasReactivity` redraws a
      canvas under a branch, flattened into its render slot, only where it
      is painted through its protocol, since html's redraw named a local of
      the slot's render; gtk4 in C does not redraw one a write outside the

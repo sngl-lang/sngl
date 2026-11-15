@@ -133,6 +133,16 @@ void sngl_win32_set_scaling(HWND w, int mode);
 void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_redraw(HWND w);
 
+/* sngl_win32_drawing is a picture, as sngl_win32_picture is, whose bitmap is
+ * painted by the function sngl_win32_drawing_on_paint connects, at the size
+ * sngl_win32_set_drawing_width and sngl_win32_set_drawing_height give in
+ * pixels; sngl_win32_drawing_redraw paints it again. */
+HWND sngl_win32_drawing(void);
+void sngl_win32_set_drawing_width(HWND w, double width);
+void sngl_win32_set_drawing_height(HWND w, double height);
+void sngl_win32_drawing_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release);
+void sngl_win32_drawing_redraw(HWND w);
+
 /* sngl_win32_flow is a flow of rich text: a window that wraps and draws the
  * words of the spans it holds, made by sngl_win32_span and put in it, or in
  * a span in it, by sngl_win32_append. A span is a window never shown,
@@ -176,6 +186,15 @@ void sngl_win32_gfx_fill(sngl_win32_gfx *g, int preserve);
 void sngl_win32_gfx_stroke(sngl_win32_gfx *g);
 void sngl_win32_gfx_font(sngl_win32_gfx *g, const unsigned short *family, double size);
 void sngl_win32_gfx_text(sngl_win32_gfx *g, const unsigned short *text);
+/* translate and scale map the space drawn in afterwards, and clip limits
+ * what is drawn to the current path, which it ends; restore undoes each.
+ * image paints the picture a URL names into the box at x, y sized w by h,
+ * as sngl_win32_set_url finds one, and repaints the drawing once a fetched
+ * one arrives. */
+void sngl_win32_gfx_translate(sngl_win32_gfx *g, double x, double y);
+void sngl_win32_gfx_scale(sngl_win32_gfx *g, double x, double y);
+void sngl_win32_gfx_clip(sngl_win32_gfx *g);
+void sngl_win32_gfx_image(sngl_win32_gfx *g, const unsigned short *url, double x, double y, double w, double h);
 void sngl_win32_set_url(HWND w, const unsigned short *url);
 const char *sngl_win32_image_failure(HWND w);
 void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);

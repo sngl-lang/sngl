@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 0526b80bdb5a26f0c5e08413
+// The C sources, as a change to them builds this package again: 65b14598f64ae71d1ed35a39
 
 package cgo
 
@@ -301,6 +301,21 @@ func SnglWin32Divider() HWND {
 	return C.sngl_win32_divider()
 }
 
+// SnglWin32Drawing calls sngl_win32_drawing.
+func SnglWin32Drawing() HWND {
+	return C.sngl_win32_drawing()
+}
+
+// SnglWin32DrawingOnPaint calls sngl_win32_drawing_on_paint.
+func SnglWin32DrawingOnPaint(w HWND, fn func(Gfx)) {
+	C.sngl_win32_drawing_on_paint(w, snglCallback_sngl_win32_gfx_p__voidPtr(), snglContext(fn), snglReleasePtr())
+}
+
+// SnglWin32DrawingRedraw calls sngl_win32_drawing_redraw.
+func SnglWin32DrawingRedraw(w HWND) {
+	C.sngl_win32_drawing_redraw(w)
+}
+
 // SnglWin32Edit calls sngl_win32_edit.
 func SnglWin32Edit() HWND {
 	return C.sngl_win32_edit()
@@ -392,6 +407,11 @@ func SnglWin32GfxArcNegative(recv Gfx, cx float64, cy float64, r float64, start 
 	C.sngl_win32_gfx_arc_negative(recv, C.double(cx), C.double(cy), C.double(r), C.double(start), C.double(end))
 }
 
+// SnglWin32GfxClip calls sngl_win32_gfx_clip.
+func SnglWin32GfxClip(recv Gfx) {
+	C.sngl_win32_gfx_clip(recv)
+}
+
 // SnglWin32GfxClosePath calls sngl_win32_gfx_close_path.
 func SnglWin32GfxClosePath(recv Gfx) {
 	C.sngl_win32_gfx_close_path(recv)
@@ -421,6 +441,11 @@ func SnglWin32GfxFill(recv Gfx, preserve bool) {
 // SnglWin32GfxFont calls sngl_win32_gfx_font.
 func SnglWin32GfxFont(recv Gfx, family string, size float64) {
 	C.sngl_win32_gfx_font(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))), C.double(size))
+}
+
+// SnglWin32GfxImage calls sngl_win32_gfx_image.
+func SnglWin32GfxImage(recv Gfx, url string, x float64, y float64, w float64, h float64) {
+	C.sngl_win32_gfx_image(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(url))), C.double(x), C.double(y), C.double(w), C.double(h))
 }
 
 // SnglWin32GfxLineCap calls sngl_win32_gfx_line_cap.
@@ -468,6 +493,11 @@ func SnglWin32GfxSave(recv Gfx) {
 	C.sngl_win32_gfx_save(recv)
 }
 
+// SnglWin32GfxScale calls sngl_win32_gfx_scale.
+func SnglWin32GfxScale(recv Gfx, x float64, y float64) {
+	C.sngl_win32_gfx_scale(recv, C.double(x), C.double(y))
+}
+
 // SnglWin32GfxStroke calls sngl_win32_gfx_stroke.
 func SnglWin32GfxStroke(recv Gfx) {
 	C.sngl_win32_gfx_stroke(recv)
@@ -476,6 +506,11 @@ func SnglWin32GfxStroke(recv Gfx) {
 // SnglWin32GfxText calls sngl_win32_gfx_text.
 func SnglWin32GfxText(recv Gfx, content string) {
 	C.sngl_win32_gfx_text(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(content))))
+}
+
+// SnglWin32GfxTranslate calls sngl_win32_gfx_translate.
+func SnglWin32GfxTranslate(recv Gfx, x float64, y float64) {
+	C.sngl_win32_gfx_translate(recv, C.double(x), C.double(y))
 }
 
 // SnglWin32Hold calls sngl_win32_hold.
@@ -693,6 +728,16 @@ func SnglWin32SetDate(d HWND, iso string) {
 // SnglWin32SetDateRange calls sngl_win32_set_date_range.
 func SnglWin32SetDateRange(d HWND, min string, max string) {
 	C.sngl_win32_set_date_range(d, (*C.ushort)(unsafe.Pointer(cbind.UTF16(min))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(max))))
+}
+
+// SnglWin32SetDrawingHeight calls sngl_win32_set_drawing_height.
+func SnglWin32SetDrawingHeight(w HWND, height float64) {
+	C.sngl_win32_set_drawing_height(w, C.double(height))
+}
+
+// SnglWin32SetDrawingWidth calls sngl_win32_set_drawing_width.
+func SnglWin32SetDrawingWidth(w HWND, width float64) {
+	C.sngl_win32_set_drawing_width(w, C.double(width))
 }
 
 // SnglWin32SetEditText calls sngl_win32_set_edit_text.

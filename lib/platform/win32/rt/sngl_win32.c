@@ -139,6 +139,11 @@ typedef struct {
 	 * paints it, a sngl_win32_paint_fn. */
 	int cw, ch, scaling;
 	handler paint;
+	/* A drawing's size (sngl_win32_drawing), and each picture a URL names
+	 * that a drawing painted, decoded once (sngl_win32_gfx_image). */
+	double dw, dh;
+	struct url_picture *pictures;
+	int npictures;
 	/* A span's words, and the appearance a span or a flow sets of its
 	 * spans: a color or -1, a size or 0, a weight and a slant or 0 to
 	 * inherit, an underline, a line through, and a family or NULL. A
@@ -151,6 +156,12 @@ typedef struct {
 	HWND *kids;
 	int nkids, capkids;
 } ctl;
+
+struct url_picture {
+	WCHAR *url;
+	HBITMAP bmp;
+	int w, h;
+};
 
 static int ready;
 /* firing is set while a test's event is raised. */
@@ -412,6 +423,13 @@ static void forget(HWND w) {
 	free(c->why);
 	free(c->url);
 	free(c->text);
+	for (int i = 0; i < c->npictures; i++) {
+		free(c->pictures[i].url);
+		if (c->pictures[i].bmp) {
+			DeleteObject(c->pictures[i].bmp);
+		}
+	}
+	free(c->pictures);
 	if (c->dialog) {
 		HWND owner = GetWindow(c->dialog, GW_OWNER);
 		if (c->open && owner) {
@@ -1994,6 +2012,8 @@ static const sngl_win32_asset *carried_file(const char *name) {
 	return NULL;
 }
 
+static int fetch_for(HWND w, const WCHAR *url);
+
 /* load shows what url names: a file the program carries (carried_file), one
  * fetched where it is an http or https URL, or one on disk. */
 static void load(HWND w, ctl *c) {
@@ -2014,15 +2034,7 @@ static void load(HWND w, ctl *c) {
 		return;
 	}
 	if (wcsncmp(c->url, L"http://", 7) == 0 || wcsncmp(c->url, L"https://", 8) == 0) {
-		fetch *f = malloc(sizeof *f);
-		f->w = w;
-		f->url = _wcsdup(c->url);
-		HANDLE t = CreateThread(NULL, 0, fetched, f, 0, NULL);
-		if (t) {
-			CloseHandle(t);
-		} else {
-			free(f->url);
-			free(f);
+		if (!fetch_for(w, c->url)) {
 			shown_as(w, c, NULL, 0, 0, "the image could not be fetched");
 		}
 		return;
@@ -2126,6 +2138,9 @@ typedef struct {
 
 struct sngl_win32_gfx {
 	GpGraphics *g;
+	/* The window whose drawing this is, which a picture fetched for it is
+	 * posted to. */
+	HWND owner;
 	GpPath *path;
 	/* The current point, where the figure being built started, and whether
 	 * there is a current point, and whether the figure has a point of its
@@ -2300,6 +2315,95 @@ void sngl_win32_gfx_stroke(sngl_win32_gfx *g) {
 	new_path(g);
 }
 
+void sngl_win32_gfx_translate(sngl_win32_gfx *g, double x, double y) {
+	GdipTranslateWorldTransform(g->g, (REAL)x, (REAL)y, MatrixOrderPrepend);
+}
+
+void sngl_win32_gfx_scale(sngl_win32_gfx *g, double x, double y) {
+	GdipScaleWorldTransform(g->g, (REAL)x, (REAL)y, MatrixOrderPrepend);
+}
+
+void sngl_win32_gfx_clip(sngl_win32_gfx *g) {
+	GdipSetClipPath(g->g, g->path, CombineModeIntersect);
+	new_path(g);
+}
+
+/* fetch_for starts a fetch of url, whose file is posted to w. */
+static int fetch_for(HWND w, const WCHAR *url) {
+	fetch *f = malloc(sizeof *f);
+	f->w = w;
+	f->url = _wcsdup(url);
+	HANDLE t = CreateThread(NULL, 0, fetched, f, 0, NULL);
+	if (!t) {
+		free(f->url);
+		free(f);
+		return 0;
+	}
+	CloseHandle(t);
+	return 1;
+}
+
+/* url_picture_of is the picture url names that w's drawing painted,
+ * decoded the first time it is asked for: a carried file or one on disk at
+ * once, a fetched one as it arrives (SNGL_WM_FETCHED), with no bitmap until
+ * then or where it failed. */
+static struct url_picture *url_picture_of(HWND w, ctl *c, const WCHAR *url) {
+	for (int i = 0; i < c->npictures; i++) {
+		if (wcscmp(c->pictures[i].url, url) == 0) {
+			return &c->pictures[i];
+		}
+	}
+	c->pictures = realloc(c->pictures, (size_t)(c->npictures + 1) * sizeof *c->pictures);
+	struct url_picture *p = &c->pictures[c->npictures++];
+	memset(p, 0, sizeof *p);
+	p->url = _wcsdup(url);
+	const char *why = NULL;
+	char *name = _strdup(utf8(url[0] == L'/' ? url + 1 : url));
+	const sngl_win32_asset *a = carried_file(name);
+	free(name);
+	if (a) {
+		p->bmp = decode(a->data, a->len, NULL, &p->w, &p->h, &why);
+	} else if (wcsncmp(url, L"http://", 7) == 0 || wcsncmp(url, L"https://", 8) == 0) {
+		fetch_for(w, url);
+	} else {
+		p->bmp = decode(NULL, 0, url, &p->w, &p->h, &why);
+	}
+	return p;
+}
+
+void sngl_win32_gfx_image(sngl_win32_gfx *g, const unsigned short *url, double x, double y, double w, double h) {
+	ctl *c = ctl_of(g->owner);
+	if (!c || !url || !url[0]) {
+		return;
+	}
+	struct url_picture *p = url_picture_of(g->owner, c, (const WCHAR *)url);
+	DIBSECTION ds;
+	if (!p->bmp || GetObjectW(p->bmp, sizeof ds, &ds) != sizeof ds) {
+		return;
+	}
+	GpBitmap *img = NULL;
+	if (GdipCreateBitmapFromScan0(p->w, p->h, p->w * 4, PixelFormat32bppPARGB, ds.dsBm.bmBits, &img) == Ok) {
+		GdipDrawImageRect(g->g, (GpImage *)img, (REAL)x, (REAL)y, (REAL)w, (REAL)h);
+		GdipDisposeImage((GpImage *)img);
+	}
+}
+
+/* gfx_begin readies a context over gr, drawing for owner, as cairo's
+ * starts: black, a line one wide, and the default font. */
+static void gfx_begin(sngl_win32_gfx *g, GpGraphics *gr, HWND owner) {
+	memset(g, 0, sizeof *g);
+	g->g = gr;
+	g->owner = owner;
+	GdipCreatePath(FillModeWinding, &g->path);
+	GdipSetSmoothingMode(gr, SmoothingModeAntiAlias);
+	GdipSetPixelOffsetMode(gr, PixelOffsetModeHalf);
+	GdipSetTextRenderingHint(gr, TextRenderingHintAntiAlias);
+	g->now.color = 0xff000000;
+	g->now.width = 1;
+	g->now.font_px = 16;
+	wcscpy(g->now.family, L"sans-serif");
+}
+
 void sngl_win32_gfx_font(sngl_win32_gfx *g, const unsigned short *family, double size) {
 	wcsncpy(g->now.family, family ? (const WCHAR *)family : L"", 63);
 	g->now.family[63] = 0;
@@ -2369,16 +2473,9 @@ static void paint_canvas(HWND w, ctl *c, HDC dc) {
 	HBRUSH bg = c->brush ? c->brush : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND);
 	FillRect(mem, &r, bg);
 	sngl_win32_gfx g;
-	memset(&g, 0, sizeof g);
-	if (c->paint.fn && GdipCreateFromHDC(mem, &g.g) == Ok) {
-		GdipCreatePath(FillModeWinding, &g.path);
-		GdipSetSmoothingMode(g.g, SmoothingModeAntiAlias);
-		GdipSetPixelOffsetMode(g.g, PixelOffsetModeHalf);
-		GdipSetTextRenderingHint(g.g, TextRenderingHintAntiAlias);
-		g.now.color = 0xff000000;
-		g.now.width = 1;
-		g.now.font_px = 16;
-		wcscpy(g.now.family, L"sans-serif");
+	GpGraphics *gr = NULL;
+	if (c->paint.fn && GdipCreateFromHDC(mem, &gr) == Ok) {
+		gfx_begin(&g, gr, w);
 		/* The drawing's space onto the area: at its own size, a SNGL px a
 		 * 96th of an inch, centered, or scaled. */
 		double k = (double)c->dpi / 96, sx = k, sy = k;
@@ -2402,6 +2499,44 @@ static void paint_canvas(HWND w, ctl *c, HDC dc) {
 	SelectObject(mem, old);
 	DeleteObject(bmp);
 	DeleteDC(mem);
+}
+
+static void gdiplus_start(void) {
+	if (!gdiplus) {
+		GdiplusStartupInput in = {1, NULL, FALSE, FALSE};
+		GdiplusStartup(&gdiplus, &in, NULL);
+	}
+}
+
+/* render_drawing paints a drawing into its picture's bitmap, its size in
+ * pixels, its drawing's space mapped onto it one to one. */
+static void render_drawing(HWND w, ctl *c) {
+	int iw = (int)ceil(c->dw), ih = (int)ceil(c->dh);
+	if (!c->paint.fn || iw <= 0 || ih <= 0) {
+		return;
+	}
+	BITMAPINFO bi = {{sizeof(BITMAPINFOHEADER), iw, -ih, 1, 32, BI_RGB, 0, 0, 0, 0, 0}, {{0, 0, 0, 0}}};
+	void *bits = NULL;
+	HBITMAP bmp = CreateDIBSection(NULL, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+	if (!bmp) {
+		return;
+	}
+	memset(bits, 0, (size_t)iw * (size_t)ih * 4);
+	/* Drawn through a GDI+ bitmap over the section's own pixels, since GDI+
+	 * drawing on a DC leaves its alpha unwritten. */
+	GpBitmap *img = NULL;
+	GpGraphics *gr = NULL;
+	if (GdipCreateBitmapFromScan0(iw, ih, iw * 4, PixelFormat32bppPARGB, bits, &img) == Ok) {
+		if (GdipGetImageGraphicsContext((GpImage *)img, &gr) == Ok) {
+			sngl_win32_gfx g;
+			gfx_begin(&g, gr, w);
+			((sngl_win32_paint_fn)(void (*)(void))c->paint.fn)(&g, c->paint.ctx);
+			GdipDeletePath(g.path);
+			GdipDeleteGraphics(gr);
+		}
+		GdipDisposeImage((GpImage *)img);
+	}
+	shown_as(w, c, bmp, iw, ih, NULL);
 }
 
 /* --- Window procedures --- */
@@ -2535,6 +2670,18 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		return 0;
 	case SNGL_WM_FETCHED: {
 		WCHAR *url = (WCHAR *)wp, *path = (WCHAR *)lp;
+		for (int i = 0; c && path && i < c->npictures; i++) {
+			struct url_picture *p = &c->pictures[i];
+			if (!p->bmp && wcscmp(p->url, url) == 0) {
+				const char *why = NULL;
+				p->bmp = decode(NULL, 0, path, &p->w, &p->h, &why);
+				if (c->kind == K_CANVAS) {
+					InvalidateRect(w, NULL, FALSE);
+				} else {
+					render_drawing(w, c);
+				}
+			}
+		}
 		/* A fetch for a URL the picture no longer shows is dropped: a
 		 * slow one may land after the one for its new URL. */
 		if (c && c->kind == K_PICTURE && c->url && wcscmp(c->url, url) == 0) {
@@ -3844,10 +3991,7 @@ void sngl_win32_set_span_style(HWND w, int color, int size, int weight, int slan
 }
 
 HWND sngl_win32_canvas(void) {
-	if (!gdiplus) {
-		GdiplusStartupInput in = {1, NULL, FALSE, FALSE};
-		GdiplusStartup(&gdiplus, &in, NULL);
-	}
+	gdiplus_start();
 	return control(SNGL_BOX_CLASS, 0, 0, K_CANVAS);
 }
 
@@ -3895,6 +4039,48 @@ void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_r
 void sngl_win32_redraw(HWND w) {
 	if (w) {
 		InvalidateRect(w, NULL, FALSE);
+	}
+}
+
+HWND sngl_win32_drawing(void) {
+	gdiplus_start();
+	return control(SNGL_BOX_CLASS, 0, 0, K_PICTURE);
+}
+
+static void drawing_size(HWND w, double *at, double v) {
+	ctl *c = ctl_of(w);
+	if (c && *at != v) {
+		*at = v;
+		render_drawing(w, c);
+	}
+}
+
+void sngl_win32_set_drawing_width(HWND w, double width) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		drawing_size(w, &c->dw, width);
+	}
+}
+
+void sngl_win32_set_drawing_height(HWND w, double height) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		drawing_size(w, &c->dh, height);
+	}
+}
+
+void sngl_win32_drawing_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		set_handler(&c->paint, (sngl_win32_fn)(void (*)(void))fn, ctx, release);
+		render_drawing(w, c);
+	}
+}
+
+void sngl_win32_drawing_redraw(HWND w) {
+	ctl *c = ctl_of(w);
+	if (c) {
+		render_drawing(w, c);
 	}
 }
 
