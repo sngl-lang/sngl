@@ -35,6 +35,10 @@ type canvasSetup struct {
 	image bool
 }
 
+func newCanvasSetup(id string, n *ir.NodeInst, drawing *codegen.Canvas) canvasSetup {
+	return canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: canvasIntProp(n, "width"), h: canvasIntProp(n, "height"), scaling: canvasScalingMode(n), image: isImageDrawing(n)}
+}
+
 // canvasIntProp is the integer pixel value of a canvas dimension prop, which
 // is a measurement literal by the time it reaches codegen.
 func canvasIntProp(n *ir.NodeInst, name string) int {

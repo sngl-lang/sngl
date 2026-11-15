@@ -857,6 +857,10 @@ type htmlGen struct {
 	loweredLocals map[string]bool
 
 	canvasSetups []canvasSetup
+	// canvasIDs is each canvas's element id, allocated the first time its
+	// element or a redraw of it asks: a handler is translated as its own
+	// node is reached, which may be before the canvas it redraws.
+	canvasIDs map[*ir.NodeInst]string
 	// usesLoweredCanvas records that some emitted scope drew a canvas, so the
 	// page carries the draw helpers even when its own markup holds none.
 	usesLoweredCanvas bool
@@ -915,6 +919,7 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 		minify:         opts.Minify,
 		noCacheBust:    opts.NoCacheBust,
 		idToNode:       make(map[string]*ir.NodeInst),
+		canvasIDs:      make(map[*ir.NodeInst]string),
 		refToVar:       make(map[string]string),
 		handleReads:    make(map[string]bool),
 		handleVar:      make(map[*ir.Var]string),
@@ -2022,8 +2027,8 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		tag = "link"
 	}
 
-	id := ""
-	if g.nodeIsReactive(n) || g.preview || g.testMode {
+	id := g.canvasIDs[n]
+	if id == "" && (g.nodeIsReactive(n) || g.preview || g.testMode) {
 		id = g.nodeID(n)
 	}
 	if n.ID != "" && !strings.HasPrefix(n.ID, "__n") {
@@ -2038,6 +2043,9 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 			g.idToNode[id] = n
 		}
 	}
+	if drawing != nil {
+		g.canvasIDs[n] = id
+	}
 	if favicon {
 		if id == "" {
 			id = g.nodeID(n)
@@ -2049,8 +2057,7 @@ func (g *htmlGen) renderRawElementIR(b *strings.Builder, n *ir.NodeInst, depth i
 		})
 	}
 	if drawing != nil {
-		cw, ch := canvasIntProp(n, "width"), canvasIntProp(n, "height")
-		cs := canvasSetup{id: id, node: n, drawName: drawing.Name, draw: drawing.Draw, w: cw, h: ch, scaling: canvasScalingMode(n), image: isImageDrawing(n)}
+		cs := newCanvasSetup(id, n, drawing)
 		if cs.image {
 			g.ctx.Helpers[imageDrawHelper] = true
 		}
@@ -3437,24 +3444,41 @@ func (g *htmlGen) translateBlockWithJC(jc *javascript.JsIRContext, body []ir.Stm
 	return lines
 }
 
-// pageCanvas is the canvas the page rendered for n, as the draw call names
-// it, or nil.
-func (g *htmlGen) pageCanvas(n *ir.NodeInst) *canvasutil.Meta {
+// pageCanvasSetup is the canvas the page renders for n, whether or not its
+// element is written yet, or false where n is no canvas of the page's.
+func (g *htmlGen) pageCanvasSetup(n *ir.NodeInst) (canvasSetup, bool) {
 	for _, cs := range g.canvasSetups {
 		if cs.node == n {
-			return &canvasutil.Meta{ID: cs.id, Node: cs.node, DrawName: cs.drawName, Width: cs.w, Height: cs.h, Scaling: cs.scaling}
+			return cs, true
 		}
 	}
-	return nil
+	drawing := g.canvasDraws.ForNode(n)
+	if drawing == nil {
+		return canvasSetup{}, false
+	}
+	id := g.canvasIDs[n]
+	if id == "" {
+		id = g.nodeID(n)
+		g.canvasIDs[n] = id
+	}
+	return newCanvasSetup(id, n, drawing), true
+}
+
+// pageCanvas is the canvas the page renders for n, as the draw call names
+// it, or nil.
+func (g *htmlGen) pageCanvas(n *ir.NodeInst) *canvasutil.Meta {
+	cs, ok := g.pageCanvasSetup(n)
+	if !ok {
+		return nil
+	}
+	return &canvasutil.Meta{ID: cs.id, Node: cs.node, DrawName: cs.drawName, Width: cs.w, Height: cs.h, Scaling: cs.scaling}
 }
 
 func (g *htmlGen) canvasRedrawLine(rs *ir.CanvasRedrawStmt) string {
-	for _, cs := range g.canvasSetups {
-		if cs.node == rs.Canvas {
-			return cs.drawCall()
-		}
+	if cs, ok := g.pageCanvasSetup(rs.Canvas); ok {
+		return cs.drawCall()
 	}
-	return "" // draw func not found (shouldn't happen)
+	return ""
 }
 
 // collectLoweredRefs registers every IsElementRef Ident in g.loweredRefs so the

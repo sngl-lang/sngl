@@ -650,11 +650,8 @@ and with C (MinGW directly), and runs under Wine for tests and `sngl run`.
      `TestSnapshotCanvas`). gtk4 still draws its canvas from its generator
      (#294). `canvasImage` and `draw.image` are painted as gtk4's are
      (`testdata/win32_c_canvas_image.txtar`, `TestSnapshotDrawnImages`).
-     Left on the other targets: `passCanvasReactivity` redraws a
-     canvas under a branch, flattened into its render slot, only where it
-     is painted through its protocol, since html's redraw named a local of
-     the slot's render; gtk4 in C does not redraw one a write outside the
-     slot changes.
+     A canvas under a branch draws and is redrawn from outside its slot on
+     every target (`testdata/canvas_under_branch.txtar`).
    - `sngl:ui/markup`: a flow is a runtime window that wraps and draws the
      words of the spans it holds, each a window never shown, placed through
      the protocol (`testdata/win32_c_markup.txtar`, `TestSnapshotMarkup`).

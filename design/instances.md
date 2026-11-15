@@ -237,7 +237,13 @@ unrolls. A window resets the context, because a loop over pages is not a
 position a page's body is repeated in. A canvas under a `for` is built at run
 time for the same reason -- its surface and draw routine are its owner's one
 field and one method -- which `passCanvasInstances` does by synthesizing a
-component around it (`testdata/canvas_under_loop.txtar`). A lifetime is state
+component around it (`testdata/canvas_under_loop.txtar`). So is one under a
+branch where it is not painted through its protocol: html's render slot made
+the element and nothing drew into it, and fyne's inserted a widget it never
+declared. One painted through its protocol stays where its slot made it, held
+in a package var a redraw elsewhere reads (`holdAfter`), which C named by the
+local's name until a package var's ident won over a local of its name
+(`testdata/canvas_under_branch.txtar`). A lifetime is state
 in the same sense: a component holding an `effect` or a timer is built per copy
 under a `for` (`reactiveCtx.perCopy`) and not substituted there (`isPure`),
 since spliced, the copies shared one key and one handle; an override with no

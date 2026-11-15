@@ -262,11 +262,14 @@ func (c *Context) Ident(n *ir.Ident) string {
 				return s
 			}
 		}
-		if c.locals[n.Name] {
-			return Local(n.Name)
-		}
+		// The package's var before a local of its name: placement holds the
+		// node a slot makes in a var named as the local making it
+		// (holdAfter), and naming both by the local's name dropped the hold.
 		if c.isPackageVar(sym) {
 			return Decl(&sym.DeclInfo)
+		}
+		if c.locals[n.Name] {
+			return Local(n.Name)
 		}
 		// A var no scope of the file's declares: a component's, read where
 		// the build put none of it -- the handler of a boundary inlined
