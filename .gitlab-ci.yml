@@ -210,6 +210,9 @@ test:
   # fetches only what a branch's go.sum adds before its image is rebuilt.
   before_script:
     - mkdir -p .tmp/gocache
+    # Hidden from git as buildhost.Scratch hides .tmp/sngl, or verify reports
+    # every object Go wrote as the tree changing under the run.
+    - echo '*' > .tmp/gocache/.gitignore
     - ln -sfn "$CI_PROJECT_DIR/.tmp/gocache" /tmp/gocache
     - go mod download all
     # The compiler's scratch directory (buildhost.ScratchDir) is made before
