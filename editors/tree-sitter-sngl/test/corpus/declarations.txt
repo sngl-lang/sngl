@@ -357,6 +357,15 @@ component pair[T any, F any](a T, b T) F {
     (func_param
       (identifier)
       (type_identifier
+        (identifier)
+        (type_arguments
+          (type_identifier
+            (identifier))
+          (type_identifier
+            (identifier)))))
+    (func_param
+      (identifier)
+      (type_identifier
         (identifier)))
     (type_identifier
       (identifier))
@@ -424,6 +433,13 @@ func list[T].second[html.platform](this list[T]) {
     (override_target
       (identifier)
       (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)
+        (type_arguments
+          (type_identifier
+            (identifier)))))
     (statement_block)))
 
 ================
@@ -554,5 +570,135 @@ const (
         (integer_literal)))
     (const_spec
       (identifier_list
+        (identifier))
+      (integer_literal))))
+
+================
+An alias names a type under another name
+================
+
+struct P = Point
+enum E = other.Kind
+unit U = meter
+struct F = methodsOf[struct {
+    const func format() string
+}]
+
+---
+
+(source_file
+  (struct_declaration
+    (identifier)
+    (type_identifier
+      (identifier)))
+  (enum_declaration
+    (identifier)
+    (type_identifier
+      (identifier)
+      (identifier)))
+  (unit_declaration
+    (identifier)
+    (type_identifier
+      (identifier)))
+  (struct_declaration
+    (identifier)
+    (type_identifier
+      (identifier)
+      (type_arguments
+        (type_identifier
+          (struct_declaration
+            (func_declaration
+              (func_name
+                (identifier))
+              (type_identifier
+                (identifier)))))))))
+
+================
+A receiver's list may constrain its names
+================
+
+func list[T ordered].sort(this ref[list[T]])
+func pair[K any, V ordered].larger(this pair[K, V], other V) V {
+    return other
+}
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier)
+      (receiver_type_params
+        (type_param_list
+          (type_param
+            (identifier)
+            (type_identifier
+              (identifier)))))
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)
+        (type_arguments
+          (type_identifier
+            (identifier)
+            (type_arguments
+              (type_identifier
+                (identifier))))))))
+  (func_declaration
+    (func_name
+      (identifier)
+      (receiver_type_params
+        (type_param_list
+          (type_param
+            (identifier)
+            (type_identifier
+              (identifier)))
+          (type_param
+            (identifier)
+            (type_identifier
+              (identifier)))))
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)
+        (type_arguments
+          (type_identifier
+            (identifier))
+          (type_identifier
+            (identifier)))))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)))
+    (type_identifier
+      (identifier))
+    (statement_block
+      (return_statement
+        (identifier)))))
+
+================
+A method on another package's type
+================
+
+func http.Response.fine(r http.Response) => r.status == 200
+
+---
+
+(source_file
+  (func_declaration
+    (func_name
+      (identifier)
+      (identifier)
+      (identifier))
+    (func_param
+      (identifier)
+      (type_identifier
+        (identifier)
+        (identifier)))
+    (binary_expression
+      (field_expression
+        (identifier)
         (identifier))
       (integer_literal))))

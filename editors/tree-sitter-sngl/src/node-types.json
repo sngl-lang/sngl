@@ -667,6 +667,16 @@
     "type": "enum_declaration",
     "named": true,
     "fields": {
+      "aliased": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": false,
@@ -881,7 +891,7 @@
         ]
       },
       "receiver": {
-        "multiple": false,
+        "multiple": true,
         "required": false,
         "types": [
           {
@@ -1501,6 +1511,10 @@
         {
           "type": "identifier",
           "named": true
+        },
+        {
+          "type": "type_param_list",
+          "named": true
         }
       ]
     }
@@ -1579,11 +1593,27 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": false,
+      "multiple": true,
       "required": true,
       "types": [
         {
           "type": "_expression",
+          "named": true
+        },
+        {
+          "type": "binding_arg",
+          "named": true
+        },
+        {
+          "type": "event_arg",
+          "named": true
+        },
+        {
+          "type": "named_arg",
+          "named": true
+        },
+        {
+          "type": "spread_expression",
           "named": true
         }
       ]
@@ -1608,6 +1638,16 @@
     "type": "struct_declaration",
     "named": true,
     "fields": {
+      "aliased": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": false,
@@ -1949,6 +1989,16 @@
     "type": "unit_declaration",
     "named": true,
     "fields": {
+      "aliased": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": false,
