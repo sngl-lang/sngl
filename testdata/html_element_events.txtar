@@ -106,6 +106,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -162,10 +165,10 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: r, __on0: () => {
+              let __n2__made = __cf___child0({ __p0: r, __on0: () => {
                 state.hits = state.hits + 1;
               } });
-              __n2 = __n2__new;
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -223,4 +226,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:301371a0aab19ccca9019df3a0b5e6e5
+pass sha256:87bda6fbace1b0bd099a2442ace12d70

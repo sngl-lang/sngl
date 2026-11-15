@@ -128,6 +128,8 @@ func walkAllExprs(e ir.Expr, visit func(ir.Expr)) {
 		}
 	case *ir.Conversion:
 		walkAllExprs(x.Operand, visit)
+	case *ir.CConvert:
+		walkAllExprs(x.Operand, visit)
 	case *ir.Select:
 		walkAllExprs(x.Operand, visit)
 	case *ir.Index:

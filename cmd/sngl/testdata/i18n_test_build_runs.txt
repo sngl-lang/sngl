@@ -23,6 +23,12 @@ stdout '^ok +2 tests, 0 failures$'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
 -- app.sngl --
 import i18n "sngl:i18n"
 import test "sngl:test"
@@ -108,7 +114,7 @@ sha256:95255046d45cf2cb2018c487830b0ce5
   ]
 }
 -- testrun/fyne/go/app.sngl/greeting/1 --
-sha256:80d2c1c129f5048c618cc5925d92bdcd
+sha256:aa61aa2da3ba38663818c56f9d8c46c5
 {
   "results": [
     {
@@ -127,8 +133,28 @@ sha256:2f3718d0bbcc8719b6a9184b7f5fe109
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/greeting/1 --
+sha256:406fdcf056bffd8bdfef66b7401b63db
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/plain/1 --
+sha256:ec5ba6fd19ee66ca1e1d822650e8b413
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/greeting/1 --
-sha256:1b68bd28b8dfb3e326ff4b190e112e22
+sha256:a0a3cfc8f439a3e991d38a93efc9a58b
 {
   "results": [
     {
@@ -138,7 +164,7 @@ sha256:1b68bd28b8dfb3e326ff4b190e112e22
   ]
 }
 -- testrun/gtk4/go/app.sngl/plain/1 --
-sha256:586948144c36e709bd6f9eef6065f488
+sha256:3203079347efbb5d40d4e910d9beb65d
 {
   "results": [
     {
@@ -148,7 +174,7 @@ sha256:586948144c36e709bd6f9eef6065f488
   ]
 }
 -- testrun/html/none/app.sngl/greeting/1 --
-sha256:3dad27b756fb1071673323b462105c79
+sha256:21a8e0552fbab5b45def31f47540f2b4
 {
   "results": [
     {
@@ -159,6 +185,26 @@ sha256:3dad27b756fb1071673323b462105c79
 }
 -- testrun/html/none/app.sngl/plain/1 --
 sha256:ba0ee4a59efa0fb23b36fca191625b9d
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/greeting/1 --
+sha256:5a3ae12459063f4148e2dd835d1ff544
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/plain/1 --
+sha256:8f23b99851a1d4f1517e453d1852dd94
 {
   "results": [
     {

@@ -117,6 +117,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = __prop___p0.elem;
     }
@@ -164,8 +167,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n4__new = __cf___child1({ __p0: line });
-              __n4 = __n4__new;
+              let __n4__made = __cf___child1({ __p0: line });
+              __n4 = __n4__made;
             }
             __inst3_next.set(__key4, __n4);
             let __n4__el = __n4.__root;
@@ -272,6 +275,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -319,8 +325,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: line });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child0({ __p0: line });
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -427,6 +433,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -474,8 +483,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: line });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child0({ __p0: line });
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -582,6 +591,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -629,8 +641,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: line });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child0({ __p0: line });
+              __n3 = __n3__made;
             }
             __inst1_next.set(__key2, __n3);
             let __n3__el = __n3.__root;
@@ -677,4 +689,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:65a1c97cad7f09dfd301a53c66afb5f9
+pass sha256:b084647c243fb92f6bb506d526394ccb

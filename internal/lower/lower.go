@@ -84,7 +84,6 @@ var passes = []pass{
 	passViewForElse,
 	passBoundaryFailed,
 	passUnit,
-	passEnum,
 	// Before passAsyncOffload, which synthesizes calls to the two ids this
 	// reads, and before anything rewrites a body out from under a position.
 	passAsyncCapable,
@@ -121,9 +120,13 @@ var passes = []pass{
 	passAnonStructs,
 	passNoImplicitRecv,
 	passShapeDraw,
+	passCanvasPaint,
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	// After every pass that splices a library body -- the inliners, ShapeDraw,
+	// LibFuncs -- each of which brings its enum members with it.
+	passEnum,
 	// After LibFuncs, so that a library helper's spread is lowered with the
 	// program's.
 	passFlattenStructSpread,
@@ -145,6 +148,7 @@ var passes = []pass{
 	passConditionalTemps,
 	passTernary,
 	passCanvasReactivity,
+	passCanvasRedraw,
 	passInstanceBodies,
 	passDeclarative,
 	passNodeEscape,
@@ -167,6 +171,9 @@ var passes = []pass{
 	// After everything that splices a handler or drops an emit, so what
 	// reads a write's local is what the build keeps.
 	passFoldWrites,
+	// After every pass that makes or reads a node operation, each of which it
+	// writes as the protocol call it carries.
+	passPlacement,
 	// Last: it reads every body the passes above finished rewriting.
 	passMutatedVars,
 	passCSE,
@@ -289,6 +296,14 @@ func namesOrOwn(r renamer) renamer {
 // when opts.StopAfter names a pass that does not exist.
 func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	ir.InstallOverlay(pkg)
+	switch pkg.CCalls {
+	case ir.CCallsDirect:
+		// No C declaration is called through its spelling in the build's
+		// language: CMarshal converts every call.
+		feats.language = ""
+	case ir.CCallsPurego:
+		feats.language = cPurego
+	}
 	if opts.StopAfter == "none" {
 		return nil
 	}

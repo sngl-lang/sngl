@@ -178,8 +178,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := newRowInstance(m, i.Elem)
-						__n2 = __n2__new
+						__n2__made := newRowInstance(m, i.Elem)
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -271,6 +271,9 @@ func newRowInstance(__model *Model, __a_n int) *RowInstance {
 }
 
 func (c *RowInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n0.SetText(Label(c.__prop_n))
 }
@@ -345,6 +348,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let clicks = 0;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = label(__prop_n);
     }
@@ -402,8 +408,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf_row({ n: i.elem });
-              __n2 = __n2__new;
+              let __n2__made = __cf_row({ n: i.elem });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -445,6 +451,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:0a9e56817db3b0178934078016326cf4
+pass sha256:be1b4f8997d01e150323b95e68915edd
 -- run/none/html --
-pass sha256:9740e8d75ed2a4cf7298b0c0ec3fc630
+pass sha256:9f894f8e5b437e8ffde17ae401302995

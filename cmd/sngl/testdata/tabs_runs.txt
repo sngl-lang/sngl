@@ -21,6 +21,12 @@
 # and the interpreter finds the loop in the panel, which is the population
 # of the strip's hidden content slot.
 #
+# On gtk4, placed, a test's null test of a node in a panel read one var
+# each panel's record cleared as it rendered, so the second panel's render
+# said the first's button was gone; a record lets go of only what it made
+# (holdRead). And in C a panel's `var` a handler writes was boxed twice, once
+# for each copy of the panel sharing it (passNoRef).
+#
 # testdata/component_tabs.txtar is the code.
 
 sngl test --platform=none app.sngl
@@ -36,6 +42,9 @@ sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   6 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
 stdout 'ok   6 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -183,7 +192,7 @@ sha256:e0b1822f61d0edc37e5c69e6fa3f79d5
   ]
 }
 -- testrun/bubbletea/go/app.sngl/app/1 --
-sha256:eb45979d7ccccf1c90373717a8140741
+sha256:dd85e75e65b65c6971d4882dfeff5330
 {
   "results": [
     {
@@ -205,7 +214,7 @@ sha256:eb45979d7ccccf1c90373717a8140741
   ]
 }
 -- testrun/bubbletea/go/app.sngl/pair/1 --
-sha256:804cfcdb6349861a18c751f37ec3901d
+sha256:9260d4a105f0e6da17099313b33e9f7b
 {
   "results": [
     {
@@ -215,7 +224,7 @@ sha256:804cfcdb6349861a18c751f37ec3901d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/wrapped/1 --
-sha256:03a58ac79feafed41de9d5858f470ab3
+sha256:3769d0ade5e1d09e384116467aed860f
 {
   "results": [
     {
@@ -225,7 +234,7 @@ sha256:03a58ac79feafed41de9d5858f470ab3
   ]
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:9c98acd8fb6b09dbaa47be8c9513f013
+sha256:8a602bcbbf06e31736756814c0d34def
 {
   "results": [
     {
@@ -247,7 +256,7 @@ sha256:9c98acd8fb6b09dbaa47be8c9513f013
   ]
 }
 -- testrun/fyne/go/app.sngl/pair/1 --
-sha256:c55b0094944f8553c0644d8b290c933b
+sha256:c0bc52e09c1ac10916113248526c40dc
 {
   "results": [
     {
@@ -257,7 +266,49 @@ sha256:c55b0094944f8553c0644d8b290c933b
   ]
 }
 -- testrun/fyne/go/app.sngl/wrapped/1 --
-sha256:05c74e92988b2f30d7ba94040095bbf8
+sha256:134afce36efce39250cd55ef6cca8344
+{
+  "results": [
+    {
+      "Desc": "ATabIsPressedThroughAnInstance",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/app/1 --
+sha256:29329759138f605237eddbd86270c36a
+{
+  "results": [
+    {
+      "Desc": "TheSelectedPanelIsShown",
+      "Passed": true
+    },
+    {
+      "Desc": "SwitchingShowsAnotherPanel",
+      "Passed": true
+    },
+    {
+      "Desc": "APanelKeepsStateOfItsOwn",
+      "Passed": true
+    },
+    {
+      "Desc": "ALoopInAPanelIsIndexedByItself",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/pair/1 --
+sha256:e039e45f18fa79c651ab2bc7bfb94355
+{
+  "results": [
+    {
+      "Desc": "TwoStripsArePressedEachThroughItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/wrapped/1 --
+sha256:0f6cec59e39b5f93afd9c67c945454ad
 {
   "results": [
     {
@@ -267,7 +318,7 @@ sha256:05c74e92988b2f30d7ba94040095bbf8
   ]
 }
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:089a01294d812d9ac2ad06ef2cb0a5bc
+sha256:c1bd9a1a69fa9041387da762f6f6d9a2
 {
   "results": [
     {
@@ -289,7 +340,7 @@ sha256:089a01294d812d9ac2ad06ef2cb0a5bc
   ]
 }
 -- testrun/gtk4/go/app.sngl/pair/1 --
-sha256:faf0d62125bda38fa6e2c77a1e4eb934
+sha256:9fec5ca9f66dd4a538cbb570cf2c7936
 {
   "results": [
     {
@@ -299,7 +350,7 @@ sha256:faf0d62125bda38fa6e2c77a1e4eb934
   ]
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:ab6e90b4ad61fca6c74789f829e97ec0
+sha256:02444b9e0b06f0245a03273e9da39a18
 {
   "results": [
     {
@@ -309,7 +360,7 @@ sha256:ab6e90b4ad61fca6c74789f829e97ec0
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:229f3ed78d3a905b359f6d5a02c47982
+sha256:20c00a9042261564ccabc74c03b4ad68
 {
   "results": [
     {
@@ -331,7 +382,7 @@ sha256:229f3ed78d3a905b359f6d5a02c47982
   ]
 }
 -- testrun/html/none/app.sngl/pair/1 --
-sha256:ececfdee99a8d99d9d04fe9a8ee702fb
+sha256:57bfa5b44bf4c442016134f201b51515
 {
   "results": [
     {
@@ -341,7 +392,7 @@ sha256:ececfdee99a8d99d9d04fe9a8ee702fb
   ]
 }
 -- testrun/html/none/app.sngl/wrapped/1 --
-sha256:26999576997176e227d375fc38ada448
+sha256:dfd27c991c618e761c92acc634b77ccd
 {
   "results": [
     {

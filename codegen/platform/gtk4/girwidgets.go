@@ -1,14 +1,14 @@
 package gtk4
 
 import (
-	"strconv"
+	"sync"
 
 	"duckfam.us/sngl/internal/buildhost"
 	"duckfam.us/sngl/internal/gencache"
 	"duckfam.us/sngl/ir"
-	// The library runner: sngl:platform/gtk4 imports gir:, and a check with
-	// no build around it resolves that through the runner internal/plugin
-	// registers.
+	// The library runner: a program importing gir: is checked through the
+	// runner internal/plugin registers, which a check with no build around
+	// it needs too.
 	_ "duckfam.us/sngl/internal/plugin"
 )
 
@@ -17,68 +17,49 @@ import (
 // changes and not only when the file it named does.
 const girSetting = "gtk4.gir"
 
-// cgoSetting is the "cgo" option, which decides what the declarations call.
-const cgoSetting = "gtk4.cgo"
-
-// The widget declarations are the gir: scheme's package (lib/x/scheme/gir),
-// which sngl:platform/gtk4 imports. The scheme is SNGL; parsing GIR is not, so
-// its handler calls gir.widgets, which this answers from the gtk4.widgets
-// entry of the store -- the file served exactly as the store holds it,
-// directive included, so what the checker reads says what it was generated
-// from.
-func registerGIRScheme(g *Generator) {
-	buildhost.RegisterIntrinsic("gir.widgets", g.girWidgets)
-	gencache.RegisterSetting(girSetting, g.girOption)
-	gencache.RegisterSetting(cgoSetting, func() string { return strconv.FormatBool(g.cgoOption()) })
+// girState is the "gir" option, which selects the GIR a program's gir:
+// import is declared from. The platform's own widgets are committed
+// (widgets.sngl) and read nothing of it.
+type girState struct {
+	// mu guards opt: the generator is one value shared by every check and
+	// build in the process, and the option is read by the scheme's setting
+	// and intrinsic while Configure writes it.
+	mu  sync.Mutex
+	opt string
 }
 
-func (g *Generator) girWidgets(rec *buildhost.Recorder, _ *ir.Call, _ []any) (any, error) {
-	req, err := widgetsRequest(g.girOption(), g.cgoOption())
-	if err != nil {
-		return nil, err
-	}
-	entry, data, err := g.genStore().Entry(req)
-	if err != nil {
-		return nil, err
-	}
-	setting, err := gencache.Setting(girSetting)
-	if err != nil {
-		return nil, err
-	}
-	cgo, err := gencache.Setting(cgoSetting)
-	if err != nil {
-		return nil, err
-	}
-	rec.Add(entry, setting, cgo)
-	return string(data), nil
+func (s *girState) option() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.opt
 }
 
-// widgets loads the generated declarations once per option, which is what
-// says whether the option names introspection data this platform can read.
-// The caller holds mu.
-func (g *Generator) widgets() bool {
-	if !g.fsLoaded {
-		g.fsLoaded = true
-		req, err := widgetsRequest(g.girOpt, g.cgoOpt)
+func (s *girState) setOption(opt string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.opt = opt
+}
+
+// The gir: scheme is SNGL (lib/x/scheme/gir); parsing GIR is not, so its
+// handler calls gir.widgets, which this answers from the gtk4.widgets entry
+// of the store -- the file served exactly as the store holds it, directive
+// included, so what the checker reads says what it was generated from.
+func registerGIRScheme(s *girState) {
+	buildhost.RegisterIntrinsic("gir.widgets", func(rec *buildhost.Recorder, _ *ir.Call, _ []any) (any, error) {
+		req, err := widgetsRequest(s.option())
 		if err != nil {
-			g.fsErr = err
-		} else {
-			_, g.fsErr = g.genStore().Get(req)
+			return nil, err
 		}
-	}
-	return g.fsErr == nil
-}
-
-// cgoOption is what the "cgo" option says now.
-func (g *Generator) cgoOption() bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.cgoOpt
-}
-
-// girOption is the GIR the "gir" option selects now.
-func (g *Generator) girOption() string {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.girOpt
+		entry, data, err := gencache.Default().Entry(req)
+		if err != nil {
+			return nil, err
+		}
+		setting, err := gencache.Setting(girSetting)
+		if err != nil {
+			return nil, err
+		}
+		rec.Add(entry, setting)
+		return string(data), nil
+	})
+	gencache.RegisterSetting(girSetting, s.option)
 }

@@ -498,7 +498,7 @@ window.__sngl_boot = () => {
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n5__new = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
+              let __n5__made = __cf_timer({ interval: p.elem, enabled: true, tick: () => {
                 if (p.elem === 20) {
                   ;
                   state.fast__inst0 += 1;
@@ -510,7 +510,7 @@ window.__sngl_boot = () => {
                 }
                 ;
               } });
-              __n5 = __n5__new;
+              __n5 = __n5__made;
             }
             __inst1_next.set(__key2, __n5);
             __inst1_now_interval.set(__key2, p.elem);
@@ -572,7 +572,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:985399eddafe467120dfb064e60833e5
+pass sha256:5863015be274ed0793d6baf111ad5b26
 -- testrun/html/none/component_timer_schedules.sngl/gated/1 --
 sha256:8dd51f38132b19b76ac0c7639d605cbb
 {
@@ -594,7 +594,7 @@ sha256:30a96ddaa85e36f65a52d09323c51f0d
   ]
 }
 -- testrun/html/none/component_timer_schedules.sngl/row/1 --
-sha256:65156eec2a7eda804f695f6100e5698e
+sha256:6e366dbcd9e9a5114e2f39848ae987af
 {
   "results": [
     {

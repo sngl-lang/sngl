@@ -7,8 +7,8 @@
 # the package body answered by holding no window.
 
 sngl generate --lang go --platform gtk4 -o out app.sngl
-exists out/model.go
-grep 'func Encode' out/model.go
+exists out/main.go
+grep 'func Encode' out/main.go
 
 # A body that renders nothing is still no program, whatever it declares.
 ! sngl generate --lang go --platform gtk4 -o none nothing.sngl

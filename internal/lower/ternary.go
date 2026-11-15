@@ -31,6 +31,7 @@ func lowerTernary(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	pkg.NoTernary = true
 	st := &ternState{}
 	walkPackage(pkg, walkFuncs{
 		stmts: func(stmts []ir.Stmt) []ir.Stmt { return st.transformBlock(stmts) },
@@ -62,12 +63,27 @@ func lowerTernary(pkg *ir.Package, _ Features, _ Options) error {
 
 type ternState struct {
 	counter int
+	// prefix names the temps, "__lt" where it is empty.
+	prefix string
 }
 
 func (st *ternState) freshName() string {
 	n := st.counter
 	st.counter++
+	if st.prefix != "" {
+		return st.prefix + strconv.Itoa(n)
+	}
 	return "__lt" + strconv.Itoa(n)
+}
+
+// ImmediateTernaries is e with each ternary in it a function literal called
+// in place, as NoTernary writes one where there is no statement list to hoist
+// it into: what a fold after lowering splices into a package NoTernary has
+// already run on (ir.Package.NoTernary). Its temps are named from prefix,
+// apart from the ones NoTernary named, which an argument spliced into one of
+// the functions may read.
+func ImmediateTernaries(e ir.Expr, prefix string) ir.Expr {
+	return (&ternState{prefix: prefix}).immediateTernaries(e)
 }
 
 func (st *ternState) transformBlock(block []ir.Stmt) []ir.Stmt {
@@ -222,6 +238,10 @@ func (st *ternState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		}
 		return pre, x
 	case *ir.Conversion:
+		p, op := st.transformExpr(x.Operand)
+		x.Operand = op
+		return p, x
+	case *ir.CConvert:
 		p, op := st.transformExpr(x.Operand)
 		x.Operand = op
 		return p, x

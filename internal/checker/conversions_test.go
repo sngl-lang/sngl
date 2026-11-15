@@ -180,14 +180,6 @@ func test() {
 `)
 }
 
-func TestConvFloatFromStringAccepted(t *testing.T) {
-	expectNoErrors(t, `
-func test() {
-    var x = float("3.14")
-}
-`)
-}
-
 func TestConvStringFromEnumAccepted(t *testing.T) {
 	expectNoErrors(t, `
 enum Status { active, inactive }

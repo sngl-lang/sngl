@@ -14,7 +14,18 @@ stdout 'ok   1 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   1 tests, 0 failures'
 
+# #always is a spliced instance with a function of its own, which a placed
+# target holds by the node it renders, carrying its id (expandCall).
 sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=go app.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -167,7 +178,7 @@ sha256:d5f0c7b70e67e21edda30ee6d47e2803
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:85afd3351b5d0e2c2db9352717c1043c
+sha256:d3d9a6f069592782ec894f1456fe20e0
 {
   "results": [
     {
@@ -177,7 +188,17 @@ sha256:85afd3351b5d0e2c2db9352717c1043c
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:a5b9b45f99a879595b2b79e68c4a77df
+sha256:1dc42c1cd09d729d7f29c03bb111754e
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:a02d63a4676b7f936f7426bd51571356
 {
   "results": [
     {
@@ -187,7 +208,7 @@ sha256:a5b9b45f99a879595b2b79e68c4a77df
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:1af0c6cf827b57e13b5ea948ced8db90
+sha256:a9119e2ab9ff203d09f636f2f3e33778
 {
   "results": [
     {
@@ -197,7 +218,27 @@ sha256:1af0c6cf827b57e13b5ea948ced8db90
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:3d463b31c4c2a3937277b7c607d9af95
+sha256:8ee49b5289150bf127c827941ee93820
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:7d92c2d94c19c46ce8e5860402944557
+{
+  "results": [
+    {
+      "Desc": "SplicedCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:325d230f7ef69f80c5ef9612f51dd9fa
 {
   "results": [
     {

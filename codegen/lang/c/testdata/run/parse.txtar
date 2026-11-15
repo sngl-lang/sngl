@@ -1,0 +1,28 @@
+int.parse and float.parse read the grammar every target reads
+(testdata/parse_numbers.txtar), whatever strtoll and strtod would take, and
+option.or reads either with a default.
+
+-- app.sngl --
+func n(s string) => int.parse(s).or(-1)
+
+func f(s string) => float.parse(s).or(-1.0)
+
+func parsed() string {
+    var ints = "{n("42")} {n("-7")} {n("+3")} {n("x")} {n(" 1")} {n("")} {n("-")} {n("99999999999999999999")} {n("9223372036854775807")} {n("-9223372036854775808")} {n("9223372036854775808")} {int.parse("ff", 16).or(0)} {int.parse("FF", 16).or(0)} {int.parse("12abc").or(-1)} {int.parse("0x10", 16).or(-1)} {int.parse("1", 37).or(-1)}"
+    var floats = "{f("1.5")} {f("-2e3")} {f(".5")} {f("1.")} {f("abc")} {f("")} {f(" 1")} {f("0x10")} {f("1e999")} {f("1e")} {f(".")} {f("inf") > 1000000000.0} {f("-Infinity") < -1000000000.0} {f("NaN") != f("NaN")}"
+    return ints + "\n" + floats
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+int main(void) {
+	sngl_turn_enter();
+	sngl_string s = s_parsed();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	sngl_turn_leave();
+	return 0;
+}
+-- want --
+42 -7 3 -1 -1 -1 -1 -1 9223372036854775807 -9223372036854775808 -1 255 255 -1 -1 -1
+1.5 -2000 0.5 1 -1 -1 -1 -1 -1 -1 -1 true true true

@@ -134,6 +134,9 @@ func inlineComputedExpr(e ir.Expr, bodies map[*ir.Func]ir.Expr) ir.Expr {
 	case *ir.Conversion:
 		x.Operand = inlineComputedExpr(x.Operand, bodies)
 		return x
+	case *ir.CConvert:
+		x.Operand = inlineComputedExpr(x.Operand, bodies)
+		return x
 	case *ir.Select:
 		x.Operand = inlineComputedExpr(x.Operand, bodies)
 		return x

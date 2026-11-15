@@ -23,12 +23,20 @@ var passIterKind = pass{
 }
 
 func stampIterKind(pkg *ir.Package, _ Features, _ Options) error {
-	ir.WalkStmts(pkg, func(s ir.Stmt) error {
+	stamp := func(s ir.Stmt) error {
 		if f, ok := s.(*ir.For); ok {
 			f.Counted = ir.CountedSeq(f)
 			f.IterKind = ir.DeriveIterKind(f)
 		}
 		return nil
-	})
+	}
+	ir.WalkStmts(pkg, stamp)
+	// A closure's function is a reference the walk does not follow, and one
+	// lifted out of a component the inliner spliced away is in no list of
+	// the package's: a keyed loop's update, written in the handler a
+	// canvas's copy relays its @click through, reached C unstamped.
+	for _, fn := range closureFuncs(pkg) {
+		ir.WalkStmts(fn, stamp)
+	}
 	return nil
 }

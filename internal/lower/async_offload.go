@@ -258,7 +258,7 @@ func offloadableFuncs(pkg *ir.Package) []*ir.Func {
 // it one: what calls an ordinary lambda is code this pass can read, and a
 // native has no body here to read at all. A host scheduler calls its callback
 // from the loop it owns, which is the thread the target draws on --
-// `time.AfterFunc` and `gtk4rt.Every` behind `time.timer` are that -- so a
+// `time.AfterFunc` and gtk4's `sngl_every` behind `time.timer` are that -- so a
 // blocking call in a tick is exactly the work this pass exists to move off it.
 //
 // The flag is asked for rather than inferred from the call's shape, which is
@@ -606,6 +606,8 @@ func (st *offloadState) bindArgs(s ir.Stmt) []ir.Stmt {
 				visit(x.Operand)
 			case *ir.Conversion:
 				visit(x.Operand)
+			case *ir.CConvert:
+				visit(x.Operand)
 			case *ir.Select:
 				visit(x.Operand)
 			case *ir.StructLit:
@@ -695,6 +697,8 @@ func (st *offloadState) exprWaits(e ir.Expr) bool {
 			}
 		}
 	case *ir.Conversion:
+		return st.exprWaits(x.Operand)
+	case *ir.CConvert:
 		return st.exprWaits(x.Operand)
 	case *ir.Select:
 		return st.exprWaits(x.Operand)

@@ -20,4 +20,6 @@ window {
 }
 -- testrun/build/bubbletea/go/app.sngl/1 --
 sha256:b28465dbfbe86f88925d0b0def8acbd8
-{}
+{
+  "stdout": "myapp"
+}

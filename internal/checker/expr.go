@@ -1500,12 +1500,28 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		if ud := multiBaseUnitCast(from, target); ud != nil {
 			c.error(x.Pos, "%s(): %s carries a magnitude per base, so it has no single number; read one with %s",
 				name, from, baseNameList(ud))
+		} else if from != nil && from.Kind == ir.TypeString && target.Kind != ir.TypeString && !ir.StringReprStruct(target) {
+			c.error(x.Pos, "%s(): a string is parsed, not converted: %s", name, stringParse(target))
 		} else if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
 	}
 	return &ir.Conversion{AST: x, Type: target}
+}
+
+// stringParse is what reads a string as target: a number's parse, which
+// answers null where the string writes none, and a bool's comparison.
+func stringParse(target *ir.Type) string {
+	switch target.Kind {
+	case ir.TypeInt:
+		return "int.parse(s), or int.parse(s).or(0) for a default"
+	case ir.TypeFloat:
+		return "float.parse(s), or float.parse(s).or(0.0) for a default"
+	case ir.TypeBool:
+		return `compare it, s == "true"`
+	}
+	return "it has no conversion from string"
 }
 
 // staticReceiverSym is the declaration a method call's operand names, when it
@@ -2529,12 +2545,22 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	if len(x.Indices) != 1 {
 		c.error(x.Pos, "an index takes one value")
 	}
-	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
-	if len(x.Indices) > 0 {
-		indexExpr = c.checkExpr(x.Indices[0])
-	}
 	operand := exprType(operandExpr)
 	operandExpr, operand = callComputedOperand(operandExpr, operand)
+	// The index is expected to be what the operand is indexed by, not what
+	// the indexing is expected to be: `return xs[0]` in a func returning a
+	// float typed its 0 a float.
+	var want *ir.Type
+	switch {
+	case operand != nil && operand.Kind == ir.TypeList:
+		want = TypInt
+	case operand != nil && operand.Kind == ir.TypeMap && len(operand.Elems) == 2:
+		want = operand.Elems[0]
+	}
+	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
+	if len(x.Indices) > 0 {
+		indexExpr = c.checkExprExpecting(x.Indices[0], want)
+	}
 
 	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
 	// and the fallback below would hand it back as invalid, which assigns to
@@ -3462,6 +3488,11 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				positional++
 				continue
 			}
+			// A callback's context is the translator's to pass, so a
+			// positional argument goes to the parameter after it.
+			for positional < n && sig.Params[positional].CompilerPassed() {
+				positional++
+			}
 			if positional >= n {
 				c.error(*arg.Value.ExprPos(), "too many arguments: expected %d", n)
 				ok = false
@@ -3504,6 +3535,12 @@ func (c *checker) bindArgs(callPos ast.Pos, args []ast.ArgOrEventHandler, sig *i
 				continue
 			}
 			p := sig.Params[idx]
+			if p.CompilerPassed() {
+				c.error(arg.NamePos, "parameter %q is what C hands its callback, or calls to release it, which the compiler passes", p.Name)
+				ok = false
+				c.checkExpr(arg.Value)
+				continue
+			}
 			if !paramNameOK(p) {
 				c.error(arg.NamePos, "parameter %q must be passed positionally", p.Name)
 				ok = false

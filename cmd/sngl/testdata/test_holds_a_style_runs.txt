@@ -1,0 +1,54 @@
+# A test holding a ui.Style builds on every Go target. The shake kept Style,
+# which the test names, and promoted the structs and enums its fields hold but
+# never a unit, so the Go program named a `Measurement` it did not declare.
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+func testAStyleSaysNothingOfItsBorder(t test.Test) {
+    var s ui.Style = {}
+    t.assert(s.border == "")
+}
+
+ui.window(title="t") {
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:46099cb3d331a263f1e90074f423ac43
+{
+  "results": [
+    {
+      "Desc": "AStyleSaysNothingOfItsBorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/_/1 --
+sha256:1f56b281f4f316d43ae91d3876b70f7a
+{
+  "results": [
+    {
+      "Desc": "AStyleSaysNothingOfItsBorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:b0a41b7ee02548ee1222659390ea5d96
+{
+  "results": [
+    {
+      "Desc": "AStyleSaysNothingOfItsBorder",
+      "Passed": true
+    }
+  ]
+}

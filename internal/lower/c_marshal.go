@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"slices"
 
 	"duckfam.us/sngl/ir"
 )
@@ -13,7 +14,7 @@ import (
 var passCMarshal = pass{
 	name:    "CMarshal",
 	enabled: func(Features) bool { return true },
-	apply:   func(pkg *ir.Package, _ Features, _ Options) error { return CMarshal(pkg) },
+	apply:   func(pkg *ir.Package, f Features, _ Options) error { return marshalC(pkg, f.language) },
 }
 
 // CMarshal is passCMarshal for the interpreter simulating a target.
@@ -21,11 +22,15 @@ var passCMarshal = pass{
 // Every body the program reaches is rewritten, not only the package's own: on
 // the interpreter a library declaration is called where it is declared. A
 // frozen declaration is one the program does not reach (ir.ClonePackageFor).
-func CMarshal(pkg *ir.Package) error {
+func CMarshal(pkg *ir.Package) error { return marshalC(pkg, "") }
+
+// marshalC is passCMarshal for a build in language, which calls a C
+// declaration with a spelling in that language through it (cWrapped).
+func marshalC(pkg *ir.Package, language string) error {
 	if pkg == nil {
 		return nil
 	}
-	m := &cMarshal{done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
+	m := newCMarshal(language)
 	m.index(pkg)
 	if err := m.walk(pkg); err != nil {
 		return err
@@ -69,7 +74,13 @@ func CMarshal(pkg *ir.Package) error {
 	return nil
 }
 
+func newCMarshal(language string) *cMarshal {
+	return &cMarshal{language: language, done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
+}
+
 type cMarshal struct {
+	// language is the build's (Features.language).
+	language string
 	// done is each C call already converted: a body spliced without a deep
 	// copy shares its nodes with the declaration it came from.
 	done map[*ir.Call]bool
@@ -112,7 +123,7 @@ func (m *cMarshal) walkFunc(fn *ir.Func) error {
 }
 
 func (m *cMarshal) walk(root any) error {
-	return ir.Walk(root, func(n ir.Node) error {
+	err := ir.Walk(root, func(n ir.Node) error {
 		call, ok := n.(*ir.Call)
 		if !ok || call.Func == nil {
 			return nil
@@ -123,18 +134,71 @@ func (m *cMarshal) walk(root any) error {
 		}
 		return m.call(call)
 	})
+	if err != nil {
+		return err
+	}
+	return ir.Rewrite(root, m.rewriteCasts)
 }
 
+// rewriteCasts makes each call of a `#[c.native(…, cast)]` function the
+// ir.CConvert it declares. Its argument was converted as any C call's is, so
+// a number reaches a typedef'd enum as a C `int` first, which cgo needs.
+//
+// A cast to a type the build's language spells as a wrapper's is its
+// argument: both are the one handle of the wrapper package (cWrapped).
+func (m *cMarshal) rewriteCasts(n ir.Node) (ir.Node, error) {
+	if c, ok := n.(*ir.Call); ok && c.Func.IsCCast() && len(c.Args) == 1 {
+		// A node is its platform's handle in the wrapper's Go, as the struct
+		// is: nothing to convert. Anything else -- a pointer cast to another
+		// class, a number to an enum -- is converted to the wrapper's type.
+		if m.language == cPurego {
+			return c.Args[0].Value, nil
+		}
+		if sd, ok := c.Func.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
+			if t := c.Args[0].Value.ExprType(); t == nil || t.Kind == ir.TypeComponent || t.Decl == sd {
+				return c.Args[0].Value, nil
+			}
+		}
+		return ir.NewCConvert(c.Func, c.Args[0].Value), nil
+	}
+	return n, nil
+}
+
+// wrapped reports whether the build calls or spells a C declaration through
+// the spelling f has in its language: a Go wrapper's, which `sngl tool
+// cgogen` marks beside the C one (design/win32.md). The wrapper takes and
+// returns the language's own values, so nothing is converted for it.
+func (m *cMarshal) wrapped(f *ir.Foreign) bool {
+	if m.language == cPurego {
+		return f.Scheme == "c"
+	}
+	return m.language != "" && m.language != f.Scheme && f.Scheme == "c" && f.In(m.language) != nil
+}
+
+// cPurego is the language a Go build calling C through purego marshals for
+// (ir.CCallsPurego): purego takes and returns Go's own values, as a wrapper
+// does, so no call is converted and a cast is its operand.
+const cPurego = "purego"
+
 // marshalSpliced converts the C calls of an expression a pass splices after
-// passCMarshal ran.
-func marshalSpliced(e ir.Expr) error {
-	m := &cMarshal{done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
-	return ir.Walk(e, func(n ir.Node) error {
+// passCMarshal ran, and is e with its casts made conversions.
+func marshalSpliced(e ir.Expr, language string) (ir.Expr, error) {
+	m := newCMarshal(language)
+	err := ir.Walk(e, func(n ir.Node) error {
 		if c, ok := n.(*ir.Call); ok && c.Func != nil {
 			return m.call(c)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	out, err := m.rewriteCasts(e)
+	if err != nil {
+		return nil, err
+	}
+	e = out.(ir.Expr)
+	return e, ir.Rewrite(e, m.rewriteCasts)
 }
 
 // call converts each argument of c, when c calls a C function other than a
@@ -142,15 +206,61 @@ func marshalSpliced(e ir.Expr) error {
 // called with the receiver as argument zero, which no parameter declares.
 func (m *cMarshal) call(c *ir.Call) error {
 	fn := c.Func
-	if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() || m.done[c] {
+	// purego takes Go's own values, but a parameter the compiler passes is
+	// still the call's to write: a held value's release.
+	if m.language == cPurego && fn.Foreign.Path == "C" && !fn.IsCCast() && !m.done[c] {
+		m.done[c] = true
+		insertCContext(c)
 		return nil
 	}
+	if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() || m.wrapped(&fn.Foreign) || m.done[c] {
+		return nil
+	}
+	// A cast to a type the wrapper declares converts the language's own value
+	// (rewriteCasts), which no C value is first made of.
+	if fn.IsCCast() && fn.Return != nil {
+		if sd, ok := fn.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
+			return nil
+		}
+	}
 	m.done[c] = true
+	insertCContext(c)
 	off := len(c.Args) - len(fn.Params)
 	if off < 0 {
 		return nil
 	}
 	for i, p := range fn.Params {
+		// A held value crosses as the pointer to the copy the translator
+		// keeps, whatever T is (sngl:x/c's held).
+		if arg := &c.Args[off+i]; p.CAlias.IsCHeld() {
+			if !isCConvert(arg.Value) {
+				arg.Value = &ir.CConvert{Kind: ir.CConvertHeld, To: &ir.CType{Name: "void", Ptr: 1}, Operand: arg.Value, Type: p.Type}
+			}
+			continue
+		}
+		if arg := &c.Args[off+i]; p.CompilerPassed() || p.Type != nil && p.Type.Kind == ir.TypeFunc {
+			if _, done := arg.Value.(*ir.CConvert); !done {
+				arg.Value = callbackArg(p, arg.Value)
+			}
+			continue
+		}
+		if sd := ir.CStructOf(p.Type); sd != nil {
+			if arg := &c.Args[off+i]; !isCConvert(arg.Value) {
+				arg.Value = &ir.CConvert{Kind: ir.CConvertStruct, To: sd.Foreign.C, Operand: arg.Value, Type: p.Type}
+			}
+			continue
+		}
+		// What a `ref` C fills crosses as the C temp the translator hands
+		// the address of (codegen.CInterop.CCall).
+		if p.Type != nil && p.Type.Kind == ir.TypeRef {
+			continue
+		}
+		if p.CAlias != nil && p.CAlias.C != nil {
+			if err := m.aliasArg(fn, p, &c.Args[off+i]); err != nil {
+				return err
+			}
+			continue
+		}
 		kind := marshalKind(p.Type)
 		if kind == ir.BuiltinNone {
 			s, err := optionString(fn, p.Type, c.Args[off+i].Value)
@@ -177,6 +287,100 @@ func (m *cMarshal) call(c *ir.Call) error {
 		}
 		arg.Value = convertArg(conv, arg.Value)
 	}
+	return nil
+}
+
+func isCConvert(e ir.Expr) bool {
+	_, ok := e.(*ir.CConvert)
+	return ok
+}
+
+// insertCContext writes into c the arguments for its callee's #[c.context]
+// and #[c.release] parameters, which no caller passes, and for each other
+// parameter with a default the call leaves out: CallDefaults leaves a
+// native's to it, and a C function takes every parameter it declares. A
+// context's or release's default is the placeholder callbackArg makes what
+// the translator writes.
+func insertCContext(c *ir.Call) {
+	params := c.Func.Params
+	// A parameter the compiler passes is bound by no position, so only an
+	// argument naming it passes it: one GLib declares before a parameter
+	// the caller passes (g_signal_connect_data's flags) would otherwise
+	// read as passed by the argument at its position.
+	omitted := func(p *ir.Param) bool {
+		if p.Receiver {
+			return false
+		}
+		if p.CompilerPassed() {
+			return !slices.ContainsFunc(c.Args, func(a ir.CallArg) bool { return a.Name == p.Name })
+		}
+		return p.Default != nil && c.ArgFor(p.Name) == nil
+	}
+	passed := 0
+	for _, p := range params {
+		if omitted(p) {
+			passed++
+		}
+	}
+	if passed == 0 {
+		return
+	}
+	// Aligned from the end, as call aligns: a receiver-first native's
+	// receiver is an argument no parameter declares.
+	at := len(c.Args) - (len(params) - passed)
+	if at < 0 {
+		return
+	}
+	for _, p := range params {
+		if omitted(p) {
+			c.Args = slices.Insert(c.Args, at, ir.CallArg{Name: p.Name, Value: ir.CloneExprSharingDecls(p.Default)})
+		}
+		at++
+	}
+}
+
+// callbackArg is v, the argument for p, as it crosses to C: a closure as the
+// callback a C function pointer calls, a context as the `void *` the
+// translator writes from it, and a release as its function letting it go,
+// or letting go the held value the call hands over.
+func callbackArg(p *ir.Param, v ir.Expr) ir.Expr {
+	switch {
+	case p.CContext:
+		return &ir.CConvert{Kind: ir.CConvertContext, To: ir.CTypeOf(p.Type), Operand: v, Type: p.Type}
+	case p.CRelease:
+		return &ir.CConvert{Kind: ir.CConvertRelease, To: ir.CTypeOf(p.Type), Operand: v, Type: p.Type}
+	}
+	return &ir.CConvert{Kind: ir.CConvertCallback, Operand: v, Type: p.Type}
+}
+
+// aliasArg converts arg for p, a parameter written with a `#[c.native]`
+// alias, to the C typedef the alias spells: a number cast to it, a bool made
+// 0 or 1 first, and a string encoded as UTF-16. A `null` for an option of
+// one is the NULL it already is.
+func (m *cMarshal) aliasArg(fn *ir.Func, p *ir.Param, arg *ir.CallArg) error {
+	if _, done := arg.Value.(*ir.CConvert); done {
+		return nil
+	}
+	a := p.CAlias
+	v := arg.Value
+	switch a.Type.Kind {
+	case ir.TypeString:
+		if p.Type.Kind == ir.TypeOption {
+			s, err := optionString(fn, p.Type, v)
+			if err != nil || s == nil {
+				return err
+			}
+			v = s
+		}
+	case ir.TypeBool:
+		m.index(fn.Pkg)
+		conv := m.conv[ir.BuiltinCBool]
+		if conv == nil {
+			return fmt.Errorf("C function %q takes a %s, a bool, and no package it or the program imports declares #[builtin(%q)], which sngl:x/c does", fn.Foreign.Name, a.Name, string(ir.BuiltinCBool))
+		}
+		v = convertArg(conv, v)
+	}
+	arg.Value = ir.NewCAliasConvert(a, v)
 	return nil
 }
 
@@ -234,7 +438,7 @@ func isNull(e ir.Expr) bool {
 	return false
 }
 
-// convertArg is arg made through conv: a call of a native conversion, or a
+// convertArg is arg made through conv: the conversion a cast declares, or a
 // bodied one's `=>` expression with arg in place of its parameter, since a
 // library function is emitted only when the program reaches it.
 func convertArg(conv *ir.Func, arg ir.Expr) ir.Expr {
@@ -252,6 +456,9 @@ func convertArg(conv *ir.Func, arg ir.Expr) ir.Expr {
 		})
 		return out
 	}
+	if conv.IsCCast() {
+		return ir.NewCConvert(conv, arg)
+	}
 	return &ir.Call{Type: conv.Return, Func: conv, Args: []ir.CallArg{{Value: arg}}}
 }
 
@@ -263,4 +470,18 @@ func exprBody(fn *ir.Func) ir.Expr {
 		return r.Value
 	}
 	return nil
+}
+
+// CWrappers lowers the bodies of Go functions wrapping C functions (sngl
+// tool cgogen), which call a C function and nothing else: each argument
+// converted as passCMarshal converts it, each string copied for C released
+// after the call as passReleaseTemps releases it, and a ternary a conversion
+// writes (`c.cbool`) made statements, since Go has none.
+func CWrappers(pkg *ir.Package) error {
+	for _, p := range []pass{passCMarshal, passConditionalTemps, passReleaseTemps} {
+		if err := p.apply(pkg, Features{}, Options{}); err != nil {
+			return err
+		}
+	}
+	return lowerTernary(pkg, Features{}, Options{})
 }

@@ -593,7 +593,7 @@ func (c *checker) resolveStructFields(s *ast.StructDef) []*ir.StructField {
 				// Placeholder; actual default checked later when scope is ready.
 				def = &ir.Literal{Type: typ}
 			}
-			fld := &ir.StructField{Name: name, Type: typ, Default: def, DefaultWritten: f.Default != nil}
+			fld := &ir.StructField{Name: name, Type: typ, Default: def, DefaultWritten: f.Default != nil, CAlias: c.cAliasOf(f.Type, typ)}
 			if first == nil {
 				first = fld
 			}
@@ -868,8 +868,53 @@ func (c *checker) buildParams(pl ast.ParamList) []*ir.Param {
 			Variadic: variadic,
 			Doc:      p.Doc(),
 		}
+		if !variadic {
+			params[i].CAlias = c.cAliasOf(p.Type, typ)
+		}
 	}
 	return params
+}
+
+// cAliasOf is the `#[c.native]` alias te was written as, itself or as the
+// element of an option, which typ is te resolved: the alias is expanded
+// there, and a C function's argument crosses as the C type it spells. Nil
+// for any other type. The mark may not have run yet, so an alias written
+// with any mark is the one recorded; an alias takes no other.
+func (c *checker) cAliasOf(te ast.TypeExpr, typ *ir.Type) *ir.Alias {
+	nt, ok := te.(*ast.NamedType)
+	if !ok {
+		return nil
+	}
+	if typ != nil && (typ.Kind == ir.TypeOption || typ.Kind == ir.TypeRef) && len(nt.TypeArgs) == 1 {
+		if elem, ok := nt.TypeArgs[0].(*ast.NamedType); ok {
+			if a := c.namedCAlias(elem); a != nil {
+				return a
+			}
+		}
+	}
+	return c.namedCAlias(nt)
+}
+
+// namedCAlias is the alias nt names where a mark says it crosses to C
+// otherwise than as what it names, or nil. One taking type arguments is
+// sngl:x/c's `held`, the one alias a mark leaves generic (Alias.IsCHeld).
+func (c *checker) namedCAlias(nt *ast.NamedType) *ir.Alias {
+	var a *ir.Alias
+	if nt.Package != "" {
+		a = c.qualifiedAlias(nt)
+	} else if sym, found := c.scope.Lookup(nt.Name); found {
+		a, _ = sym.(*ir.Alias)
+	}
+	if a == nil {
+		return nil
+	}
+	if marked, ok := a.Decl.(ast.Attributed); a.C == nil && a.Builtin == ir.BuiltinNone && (!ok || len(marked.MacroAttrs()) == 0) {
+		return nil
+	}
+	if len(nt.TypeArgs) > 0 && len(a.WrittenParams) == 0 {
+		return nil
+	}
+	return a
 }
 
 // funcHasBody reports whether a declaration was written with a body, either
@@ -905,6 +950,9 @@ func (c *checker) buildFunc(f *ast.FuncDef) *ir.Func {
 		Return:         ret,
 		IsTest:         f.IsTest(),
 		Const:          f.Const,
+	}
+	if f.ReturnType != nil {
+		fn.ReturnCAlias = c.cAliasOf(f.ReturnType, ret)
 	}
 	for i, p := range f.RecvTypeParams {
 		fn.RecvTypeParams[i].Constraint = c.typeParamSym(p.Name, p.Pos).Constraint

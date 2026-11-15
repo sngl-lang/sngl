@@ -27,6 +27,43 @@ stdout '^ok +5 tests, 0 failures$'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +5 tests, 0 failures$'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '^ok +5 tests, 0 failures$'
+sngl test --platform=win32 --language=go app.sngl
+stdout '^ok +5 tests, 0 failures$'
+
+# A node made under a boundary is the body's, as one made outside it: a
+# boundary is where a raise is caught, which C writes as a block, and the
+# node was that block's local, so a handler writing it named nothing C
+# declared. The package body's on win32 above, and a record's here (card),
+# which gtk4 C leaves out, reaching no copy a loop renders yet.
+
+sngl test --platform=none card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=html card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
+sngl test --platform=win32 --language=c card.sngl
+stdout '^ok +1 tests, 0 failures$'
+sngl test --platform=win32 --language=go card.sngl
+stdout '^ok +1 tests, 0 failures$'
+
 -- app.sngl --
 import . "sngl:test"
 import ui "sngl:ui"
@@ -124,6 +161,42 @@ func testTheFallbackStands(t Test, c fallback) {
 ui.window {
     split
 }
+-- card.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component card(label string) ui.node {
+    var n = 0
+    var caught = ""
+    ui.vbox {
+        boundary(@error(e) {
+            caught = e.message
+        }) {
+            ui.text #shown(value="{label}{n}")
+            ui.button #bump(text="+", @click {
+                n += 1
+            })
+        }
+    }
+}
+
+component cards ui.node {
+    ui.vbox {
+        for var it = ["a", "b"] {
+            card #card(label=it)
+        }
+    }
+}
+
+func testAHandlerUpdatesANodeUnderItsBoundary(t Test, c cards) {
+    c.card[1].bump.click()
+    t.assert(c.card[1].shown.value == "b1")
+    t.assert(c.card[0].shown.value == "a0")
+}
+
+ui.window {
+    cards
+}
 -- testrun/android/kotlin/app.sngl/fallback/1 --
 sha256:e42d9e4409c97bc5e74ba416b44a83b6
 {
@@ -158,6 +231,16 @@ sha256:a39d1902dc1d88bbc2ffdc71cdcbd959
     },
     {
       "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/card.sngl/cards/1 --
+sha256:44c4e0750c33047ce2a0ede1c940addc
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
       "Passed": true
     }
   ]
@@ -200,6 +283,16 @@ sha256:6c13d3ecf58690df41d98a02671ec3fa
     }
   ]
 }
+-- testrun/bubbletea/go/card.sngl/cards/1 --
+sha256:5c20d95e77ec3baa885dd97651c47b5f
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/fallback/1 --
 sha256:ce8080ca284ba58cc939160077217329
 {
@@ -238,8 +331,56 @@ sha256:e210e771ff346ccd0b6fe907414abef1
     }
   ]
 }
+-- testrun/fyne/go/card.sngl/cards/1 --
+sha256:df3bf5e5df86767b6321a175e0b69ded
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/fallback/1 --
+sha256:5d5856312425a49491e1b2e865dfde0b
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/first/1 --
+sha256:e8fadf9f87d82533ca95348ed4b21039
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/split/1 --
+sha256:57e53e4c9bc57320b2ee0781f29b9ffa
+{
+  "results": [
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/fallback/1 --
-sha256:e3fcfc6acfc2176c72eba303db196515
+sha256:fb3301edfc77d3713443506a510ed72f
 {
   "results": [
     {
@@ -249,7 +390,7 @@ sha256:e3fcfc6acfc2176c72eba303db196515
   ]
 }
 -- testrun/gtk4/go/app.sngl/first/1 --
-sha256:36412b937ff4042a2d1857a733f1b693
+sha256:4df7f051d68491de2ff3070dab885299
 {
   "results": [
     {
@@ -259,7 +400,7 @@ sha256:36412b937ff4042a2d1857a733f1b693
   ]
 }
 -- testrun/gtk4/go/app.sngl/split/1 --
-sha256:47f8316857bd47ff4277cfefdc3511aa
+sha256:f6f9dbaa4340aaba1a717b93690b56a6
 {
   "results": [
     {
@@ -272,6 +413,16 @@ sha256:47f8316857bd47ff4277cfefdc3511aa
     },
     {
       "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/card.sngl/cards/1 --
+sha256:e720f3e9234b0377ca653bc17b5b21fe
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
       "Passed": true
     }
   ]
@@ -287,7 +438,7 @@ sha256:570c1d76e741a4a755430bef9decd4cf
   ]
 }
 -- testrun/html/none/app.sngl/first/1 --
-sha256:827884675ac59a1b496b0e1ad67d659e
+sha256:26ceff1c6330d3f7d4d33f69b996ca0f
 {
   "results": [
     {
@@ -297,7 +448,7 @@ sha256:827884675ac59a1b496b0e1ad67d659e
   ]
 }
 -- testrun/html/none/app.sngl/split/1 --
-sha256:c71d54497559106271ceb9de308a0e30
+sha256:c6af788fb26302ab73b29ab1b88d777d
 {
   "results": [
     {
@@ -310,6 +461,112 @@ sha256:c71d54497559106271ceb9de308a0e30
     },
     {
       "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/card.sngl/cards/1 --
+sha256:ae040411ddb9ff002efd65b362118905
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/fallback/1 --
+sha256:d9b2ab4398433c9452062ccc0a9d2d4b
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/first/1 --
+sha256:90add142b20711e0daa22e7a3baf553a
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/split/1 --
+sha256:c76fd48fc7d382c343af4f03c65cbeb3
+{
+  "results": [
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/card.sngl/cards/1 --
+sha256:7b90006cf5a39b0267a180c922407701
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/fallback/1 --
+sha256:5105730784318c36bb9997adeb476f75
+{
+  "results": [
+    {
+      "Desc": "TheFallbackStands",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/first/1 --
+sha256:cd8fd7ef05d1fa80370266040ddacc51
+{
+  "results": [
+    {
+      "Desc": "TheFirstDrawIsHeard",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/split/1 --
+sha256:137a17670b2aee5be83686b709772e35
+{
+  "results": [
+    {
+      "Desc": "APropsValueIsItsZero",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderGoesOn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheRenderNotTheClickHearsIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/card.sngl/cards/1 --
+sha256:03c56b28caeb70a2aa6b3999ea343ee3
+{
+  "results": [
+    {
+      "Desc": "AHandlerUpdatesANodeUnderItsBoundary",
       "Passed": true
     }
   ]

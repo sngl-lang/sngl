@@ -322,6 +322,10 @@ func (st *listLambdaState) transformExpr(e ir.Expr) ([]ir.Stmt, ir.Expr) {
 		p, op := st.transformExpr(x.Operand)
 		x.Operand = op
 		return p, x
+	case *ir.CConvert:
+		p, op := st.transformExpr(x.Operand)
+		x.Operand = op
+		return p, x
 	case *ir.Select:
 		p, op := st.transformExpr(x.Operand)
 		x.Operand = op

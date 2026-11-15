@@ -14,7 +14,6 @@ import (
 	"sync"
 	"testing"
 
-	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/internal/gencache"
 	"duckfam.us/sngl/internal/headless"
@@ -55,15 +54,11 @@ func TestScript(t *testing.T) {
 	testinputs.Packages(t, root, "./...")
 	testinputs.Tree(t, "example")
 	conds := scripttest.DefaultConds()
-	// `gtk4` is true when the gtk4 development libraries are installed, so the
-	// generated cgo can be compiled.
-	// The GIR check matters independently of pkg-config: distributions can ship
-	// the libraries without the introspection data, and without the .gir file
-	// the platform reports itself unavailable and refuses to generate.
+	// `gtk4` is true when the gtk4 development libraries are installed, so a
+	// program can be compiled against them.
 	conds["gtk4"] = script.BoolCondition(
-		"gtk4 development libraries and introspection data are available",
-		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil &&
-			codegen.PlatformUnavailable("gtk4") == nil,
+		"gtk4 development libraries are available",
+		exec.Command("pkg-config", "--exists", "gtk4").Run() == nil,
 	)
 	// `headless` is true inside the cage compositor `go tool verify` runs the
 	// suite under, so a GUI program a script builds can run to completion

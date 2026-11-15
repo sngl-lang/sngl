@@ -35,13 +35,18 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 	seedAddressedVars(pkg)
 
 	reg := newBoxRegistry(pkg)
-	rw := &refRewriter{pkg: pkg, reg: reg}
+	rw := &refRewriter{pkg: pkg, reg: reg, handlers: map[*ir.Func]bool{}, done: map[ir.Expr]ir.Expr{}}
 
 	// Step 1: rewrite addressed Var declarations and their initializers.
+	// Once each: two copies of a component can share a var, as a block's
+	// state rendered by two instances does, and boxed twice it was a box of
+	// a box its closures did not take.
+	boxed := map[*ir.Var]bool{}
 	for _, v := range collectAllVars(pkg) {
-		if !pkg.AddressedVars[v] {
+		if !pkg.AddressedVars[v] || boxed[v] {
 			continue
 		}
+		boxed[v] = true
 		elem := v.Type
 		boxDef := reg.boxFor(elem)
 		boxType := &ir.Type{Kind: ir.TypeStruct, Decl: boxDef}
@@ -55,6 +60,29 @@ func lowerNoRef(pkg *ir.Package, _ Features, _ Options) error {
 			},
 		}
 	}
+	// A function's local a closure writes -- one NoLambda lifted, handed
+	// the local's address -- is boxed where it is declared, as a var is:
+	// the closure may outlive the call, and kept only the box's reference
+	// it wrote the box and not the stack. Left unboxed, its declaration and
+	// the closure's state disagreed, which C refused to compile.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		lv, ok := n.(*ir.LocalVar)
+		if !ok || lv.Sym == nil || !pkg.AddressedVars[lv.Sym] || boxed[lv.Sym] {
+			return nil
+		}
+		boxed[lv.Sym] = true
+		elem := lv.Type
+		boxDef := reg.boxFor(elem)
+		boxType := &ir.Type{Kind: ir.TypeStruct, Decl: boxDef}
+		lv.Sym.Type = boxType
+		lv.Type = boxType
+		lv.Init = &ir.StructLit{
+			Type:   boxType,
+			Def:    boxDef,
+			Fields: []ir.FieldInit{{Name: "value", Value: orNullLiteral(lv.Init, elem)}},
+		}
+		return nil
+	})
 
 	// Step 1.5: rewrite Var.Type for ALL Vars, not just addressed ones.
 	// Catches non-addressed Vars whose declared type is ref[T] (e.g.,
@@ -182,6 +210,14 @@ func collectAllVars(pkg *ir.Package) []*ir.Var {
 type refRewriter struct {
 	pkg *ir.Package
 	reg *boxRegistry
+	// handlers is each call's @error rewritten: a lifted lambda's call is
+	// reached from where it was written and from the func it became, and
+	// rewriting a handler twice reads .value of the value.
+	handlers map[*ir.Func]bool
+	// done is each expression rewritten, and what it became: one reached
+	// twice -- an update a pass placed in two bodies sharing it -- would
+	// otherwise read .value of a read, or of a box its `&` became.
+	done map[ir.Expr]ir.Expr
 }
 
 // rewriteType replaces ref[T] with the corresponding __ref_T struct type.
@@ -228,6 +264,15 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 	if e == nil {
 		return nil
 	}
+	if out, ok := r.done[e]; ok {
+		return out
+	}
+	out := r.rewriteExpr1(e)
+	r.done[e], r.done[out] = out, out
+	return out
+}
+
+func (r *refRewriter) rewriteExpr1(e ir.Expr) ir.Expr {
 	switch x := e.(type) {
 	case *ir.Unary:
 		switch x.Op {
@@ -238,7 +283,9 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 			// which yields the boxed elem rather than the box itself.
 			if id, ok := x.Operand.(*ir.Ident); ok {
 				if v, isVar := id.Sym.(*ir.Var); isVar && r.pkg.AddressedVars[v] {
-					return id
+					box := *id
+					box.Type = v.Type
+					return &box
 				}
 			}
 			return r.rewriteExpr(x.Operand)
@@ -255,18 +302,21 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		return x
 	case *ir.Ident:
 		if v, ok := x.Sym.(*ir.Var); ok && r.pkg.AddressedVars[v] {
-			// Reads of an addressed Var go through .value. The Ident's Type
-			// has already been swapped to the box type by step 1; the read
-			// result is the original elem type, recoverable from the box's
-			// "value" field.
+			// Reads of an addressed Var go through .value. The Var's Type
+			// was swapped to the box type by step 1, but the Ident still
+			// carries the elem type, which the read result is: the operand
+			// is a copy typed as the box, so a backend asking what the
+			// select reads through sees one.
 			elem := v.Type
 			if v.Type != nil && v.Type.Kind == ir.TypeStruct {
 				if def, ok := v.Type.Decl.(*ir.StructDef); ok && len(def.Fields) > 0 {
 					elem = def.Fields[0].Type
 				}
 			}
+			box := *x
+			box.Type = v.Type
 			return &ir.Select{
-				Operand: x,
+				Operand: &box,
 				Field:   "value",
 				Type:    elem,
 			}
@@ -294,11 +344,23 @@ func (r *refRewriter) rewriteExpr(e ir.Expr) ir.Expr {
 		return x
 	case *ir.Call:
 		x.Receiver = r.rewriteExpr(x.Receiver)
+		// A call through a function value reads the var holding it.
+		x.Callee = r.rewriteExpr(x.Callee)
 		for i := range x.Args {
 			x.Args[i].Value = r.rewriteExpr(x.Args[i].Value)
 		}
+		// The call's own @error is its own, where a resolved handler is an
+		// alias of one rewritten where it is declared.
+		if h := x.ErrorHandler; h != nil && h.Func != nil && !r.handlers[h.Func] {
+			r.handlers[h.Func] = true
+			r.rewriteStmts(h.Func.Block)
+		}
 		return x
 	case *ir.Conversion:
+		x.Operand = r.rewriteExpr(x.Operand)
+		x.Type = r.rewriteType(x.Type)
+		return x
+	case *ir.CConvert:
 		x.Operand = r.rewriteExpr(x.Operand)
 		x.Type = r.rewriteType(x.Type)
 		return x
@@ -378,6 +440,11 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 	case *ir.LocalVar:
 		n.Init = r.rewriteExpr(n.Init)
 		n.Type = r.rewriteType(n.Type)
+		// A flattened canvas keeps the statements that paint it, which read
+		// state as the body does.
+		if n.CanvasNode != nil {
+			r.rewriteStmts(n.CanvasNode.Children)
+		}
 	case *ir.Return:
 		n.Value = r.rewriteExpr(n.Value)
 	case *ir.If:
@@ -434,6 +501,8 @@ func (r *refRewriter) rewriteStmt(s ir.Stmt) {
 		n.Target = r.rewriteAssignTarget(n.Target)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no ref to rewrite.
+	case *ir.CanvasRedrawStmt:
+		// A reference to a drawing owned elsewhere: no ref of this body's.
 	default:
 		panic(fmt.Sprintf("refRewriter.rewriteStmt: unhandled %T", n))
 	}
@@ -499,10 +568,18 @@ func seedAddressedVarsInExpr(e ir.Expr, set map[*ir.Var]bool) {
 		}
 	case *ir.Call:
 		seedAddressedVarsInExpr(x.Receiver, set)
+		seedAddressedVarsInExpr(x.Callee, set)
 		for i := range x.Args {
 			seedAddressedVarsInExpr(x.Args[i].Value, set)
 		}
+		if x.ErrorHandler != nil && x.ErrorHandler.Func != nil {
+			for _, s := range x.ErrorHandler.Func.Block {
+				seedAddressedVarsInStmt(s, set)
+			}
+		}
 	case *ir.Conversion:
+		seedAddressedVarsInExpr(x.Operand, set)
+	case *ir.CConvert:
 		seedAddressedVarsInExpr(x.Operand, set)
 	case *ir.Select:
 		seedAddressedVarsInExpr(x.Operand, set)
@@ -555,6 +632,11 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		seedAddressedVarsInExpr(n.Value, set)
 	case *ir.LocalVar:
 		seedAddressedVarsInExpr(n.Init, set)
+		if n.CanvasNode != nil {
+			for _, t := range n.CanvasNode.Children {
+				seedAddressedVarsInStmt(t, set)
+			}
+		}
 	case *ir.Return:
 		seedAddressedVarsInExpr(n.Value, set)
 	case *ir.If:
@@ -621,6 +703,9 @@ func seedAddressedVarsInStmt(s ir.Stmt, set map[*ir.Var]bool) {
 		seedAddressedVarsInExpr(n.Target, set)
 	case *ir.Break, *ir.Continue:
 		// A loop escape addresses nothing.
+	case *ir.CanvasRedrawStmt:
+		// Names a drawing's node and draw func, both owned elsewhere: a
+		// reference, as a call's callee is, addressing nothing of this body's.
 	default:
 		panic(fmt.Sprintf("seedAddressedVarsInStmt: unhandled %T", n))
 	}
@@ -665,7 +750,9 @@ func (r *boxRegistry) boxFor(elem *ir.Type) *ir.StructDef {
 		return def
 	}
 	def := &ir.StructDef{
-		Name: "__ref_" + key,
+		Name:    "__ref_" + key,
+		RefBox:  true,
+		Counted: true,
 		Fields: []*ir.StructField{
 			{Name: "value", Type: elem},
 		},
@@ -722,7 +809,27 @@ func canonicalTypeName(t *ir.Type) string {
 		}
 		return "option_" + canonicalTypeName(elem)
 	case ir.TypeFunc:
-		return "func"
+		// A func() keeps its plain name; any other signature is spelled out,
+		// since two func types boxed under one name were one C struct.
+		name := "func"
+		if t.Sig == nil {
+			return name
+		}
+		for _, p := range t.Sig.Params {
+			name += "_" + canonicalTypeName(p.Type)
+		}
+		if t.Sig.Return != nil && t.Sig.Return.Kind != ir.TypeVoid {
+			name += "__" + canonicalTypeName(t.Sig.Return)
+		}
+		return name
+	case ir.TypeMap:
+		if len(t.Elems) == 2 {
+			return "map_" + canonicalTypeName(t.Elems[0]) + "_" + canonicalTypeName(t.Elems[1])
+		}
+	case ir.TypeEnum:
+		if t.Decl != nil {
+			return t.Decl.SymName()
+		}
 	}
 	return t.Kind.String()
 }

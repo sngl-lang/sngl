@@ -151,27 +151,38 @@ type pageRegistry struct {
 // holds was built after the instance mounted, and may be holding something the
 // instance handed it. Recursion falls out -- destroying a held instance runs
 // its teardown, which empties its registries in turn.
+//
+// The teardown then lets go of each render slot's anchor the instance keeps,
+// SlotAnchor with no parent: the platform holds a reference for the var,
+// and each row a rebuilt list destroyed kept its anchor alive.
 func (st *reactivityState) destroyHeld() {
 	for _, comp := range st.pkg.Components {
 		// Only an instance has a teardown to hang this on. A component the
 		// build inlined holds nothing: its registries were hoisted into
 		// whatever it was inlined into, and live as long as that does.
-		if comp == nil || !comp.RuntimeInstance || len(st.held[comp]) == 0 {
+		if comp == nil || !comp.RuntimeInstance || len(st.held[comp])+len(st.anchors[comp]) == 0 {
 			continue
 		}
-		var body []ir.Stmt
+		var body, after []ir.Stmt
 		for _, si := range slices.Backward(st.held[comp]) {
 			body = append(body, st.emptyRegistry(si)...)
 		}
+		for _, a := range st.anchors[comp] {
+			after = append(after, &ir.CallStmt{Call: &ir.Call{
+				Type: ir.TypVoid,
+				Func: nodeOpFunc(ir.NodeOpSlotAnchor),
+				Args: []ir.CallArg{{Value: &ir.Literal{Type: ir.TypNull, Value: "null"}}, {Value: varRef(a)}},
+			}})
+		}
 		if fn := funcNamed(comp.Funcs, TeardownFunc); fn != nil {
-			fn.Block = append(body, fn.Block...)
+			fn.Block = append(append(body, fn.Block...), after...)
 			continue
 		}
 		comp.Funcs = append(comp.Funcs, &ir.Func{
 			Name:   TeardownFunc,
 			Return: ir.TypVoid,
 			Purity: ir.PurityMutates,
-			Block:  body,
+			Block:  append(body, after...),
 		})
 	}
 	st.destroyPageHeld()
@@ -456,8 +467,8 @@ func callMapContains(m, key ir.Expr, valueType *ir.Type) *ir.Call {
 //	    lower.UpdateComponent(<id>, "<prop>", <expr>)   // one per settable prop
 //	} else {
 //	    if list.length(<live>) > <idx> { lower.DestroyComponent(<live>[<idx>]) }
-//	    var <id>__new <Comp> = lower.CreateComponent(...)
-//	    <id> = <id>__new
+//	    var <id>__made <Comp> = lower.CreateComponent(...)
+//	    <id> = <id>__made
 //	}
 //	list.push(<next>, <id>)
 //	list.push(<now_p>, <expr>)                          // one per #[construct] prop
@@ -560,7 +571,9 @@ func (st *reactivityState) reuseOrCreate(si *slotInstance, n *ir.NodeInst, declS
 		}})
 	}
 
-	fresh := &ir.Var{Name: id + "__new", Type: si.elem, Synthesized: true}
+	// Not `<id>__new`, which is the constructor of a record placement makes
+	// of a component named like the instance (placeRecords).
+	fresh := &ir.Var{Name: id + "__made", Type: si.elem, Synthesized: true}
 	create := []ir.Stmt{
 		&ir.LocalVar{
 			Name: fresh.Name,
@@ -692,8 +705,8 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 	cur := &ir.Var{Name: n.ID, Type: elem, Synthesized: true}
 	fresh := &ir.Var{Name: n.ID + "__re" + n1, Type: elem, Synthesized: true}
 	root := rendersAsType(n.Component, declSt.hosted)
-	freshEl := &ir.Var{Name: fresh.Name + instanceRootSuffix, Type: root, Synthesized: true}
-	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + instanceRootSuffix, Type: root, Synthesized: true}
+	freshEl := &ir.Var{Name: fresh.Name + ir.InstanceRootSuffix, Type: root, Synthesized: true}
+	prevEl := &ir.Var{Name: n.ID + "__prev" + n1 + ir.InstanceRootSuffix, Type: root, Synthesized: true}
 
 	// The position the instance's root stands in, a node of the same family:
 	// what a platform binds the name to is its answer.

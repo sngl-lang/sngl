@@ -8,23 +8,23 @@ import (
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/internal/checker"
-	"duckfam.us/sngl/internal/goldentest"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/lib"
 )
 
-// TestProvidedDocsSurviveBuilds holds the compiler to what sharing a target's
+// providedDocsSurviveBuilds holds the compiler to what sharing a target's
 // parsed source across checks depends on: nothing after the parser writes to
 // an AST. A target's package is parsed once per process (checker.PackageSource)
 // and handed to every check, so a write made while building one program would
 // be read back by the next.
 //
-// Every golden fixture is built first, through every target it declares --
-// check, optimize, lower and codegen, since IR keeps its AST and any phase
-// could reach one -- and then each target's shared documents are compared
-// against a fresh parse of the same bytes.
-func TestProvidedDocsSurviveBuilds(t *testing.T) {
-	goldentest.Run(t, "testdata/*.txtar", false, false)
+// TestGolden calls it once every golden fixture is built, through every target
+// it declares -- check, optimize, lower and codegen, since IR keeps its AST and
+// any phase could reach one -- and it compares each target's shared documents
+// against a fresh parse of the same bytes. It was a test of its own, which
+// built every fixture a second time.
+func providedDocsSurviveBuilds(t *testing.T) {
+	t.Helper()
 
 	compared := 0
 	for _, pkg := range lib.Packages() {

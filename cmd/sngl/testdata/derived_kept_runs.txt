@@ -1,0 +1,168 @@
+# A derived function keeps what it last answered until a write of what it
+# reads, on each target whose reactivity is lowered (internal/lower/memo.go):
+# a list a render, a text and another derived function all read is built
+# once per write rather than by each. A click's write, a test's write and a
+# second write of another var each move what it answers, and so does the
+# locale, which passContext hands it as a parameter it compares.
+
+sngl test --platform=none app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=html app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=win32 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+-- app.sngl --
+import i18n "sngl:i18n"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component shelf ui.node {
+    var items = ["a"]
+    var mark = "!"
+
+    func rows() list[string] {
+        return items.map(func(s string) => "{s}{mark}")
+    }
+
+    func greetings() list[string] {
+        return rows().map(func(r string) => "{$"Hello"} {r}")
+    }
+
+    ui.vbox {
+        for var r = rows() {
+            ui.text #row(value=r)
+        }
+        ui.text #count(value="{rows().length()}")
+        ui.text #hello(value=greetings().format())
+        ui.button #add(text="add", @click { items.push("b") })
+        ui.button #ask(text="mark", @click { mark = "?" })
+    }
+}
+
+ui.window {
+    shelf()
+}
+
+func testADerivedListFollowsEachWrite(t test.Test, c shelf) {
+    t.assert(c.count.value == "1")
+    c.add.click()
+    t.assert(c.count.value == "2")
+    t.assert(c.row[1].value == "b!")
+    c.ask.click()
+    t.assert(c.row[0].value == "a?")
+    t.assert(c.hello.value == "Hello a?, Hello b?")
+    c.items = ["c"]
+    t.assert(c.count.value == "1")
+    t.assert(c.hello.value == "Hello c?")
+}
+
+func testADerivedListFollowsTheLocale(t test.Test, c shelf) {
+    t.assert(c.hello.value == "Hello a!")
+    t.setContext(i18n.locale, "fr")
+    t.assert(c.hello.value == "Bonjour a!")
+    c.add.click()
+    t.assert(c.hello.value == "Bonjour a!, Bonjour b!")
+}
+-- i18n.manifest.json --
+{
+  "Hello": {"translations": {"fr": "Bonjour"}}
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:f3bc9d804eccddd601b5eab4be9fe400
+{
+  "results": [
+    {
+      "Desc": "ADerivedListFollowsEachWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ADerivedListFollowsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/shelf/1 --
+sha256:d7bfe0ac11cdc3540fbae1f11e2abfe2
+{
+  "results": [
+    {
+      "Desc": "ADerivedListFollowsEachWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ADerivedListFollowsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:edee03caea48fe8e0d32f37f5c25bbb9
+{
+  "results": [
+    {
+      "Desc": "ADerivedListFollowsEachWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ADerivedListFollowsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/shelf/1 --
+sha256:0f2d1b0c5c89d7d4f603f65f0e2c87d9
+{
+  "results": [
+    {
+      "Desc": "ADerivedListFollowsEachWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ADerivedListFollowsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/shelf/1 --
+sha256:357cdc94c1cadac93a5712bd5e9988e4
+{
+  "results": [
+    {
+      "Desc": "ADerivedListFollowsEachWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ADerivedListFollowsTheLocale",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/shelf/1 --
+sha256:53c3476936b1043e1e474738d055ec8c
+{
+  "results": [
+    {
+      "Desc": "ADerivedListFollowsEachWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ADerivedListFollowsTheLocale",
+      "Passed": true
+    }
+  ]
+}

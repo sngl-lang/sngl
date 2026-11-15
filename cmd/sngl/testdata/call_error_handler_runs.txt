@@ -1,7 +1,7 @@
-# A call's own @error, run rather than read, on the three runners the golden
-# (testdata/call_error_handler.txtar) does not execute: the interpreter, gtk4,
-# and html in a real Chromium. The golden's record runs the same program's tests
-# on bubbletea, fyne and android.
+# A call's own @error, run rather than read, on the runners the golden
+# (testdata/call_error_handler.txtar) does not execute: the interpreter, gtk4
+# in Go and in C, and html in a real Chromium. The golden's record runs the
+# same program's tests on bubbletea, fyne and android.
 #
 # One test clicks all four buttons because the html agent shares one state
 # object across a session, so four tests would each see the ones before it.
@@ -45,6 +45,17 @@ sngl test --platform=gtk4 --language=go app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go boundary.sngl
+stdout '1 tests, 0 failures'
+
+# In C, a handler's own body inlined where the call is, its return a goto past
+# it; a component's func a test reaches is boxed once (lower's walkPackage).
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c boundary.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c return.sngl
 stdout '1 tests, 0 failures'
 
 -- app.sngl --
@@ -197,8 +208,38 @@ sha256:ede15b710b1af8f79ea09beb757c0419
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:39cc72637adb9077a88be2c6fc7a76d5
+{
+  "results": [
+    {
+      "Desc": "EachCallCatchesItsOwnRaise",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/boundary.sngl/main/1 --
+sha256:cd32137696eb5d4d062e772b4a7b341c
+{
+  "results": [
+    {
+      "Desc": "BoundaryAndLambdaCatch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/return.sngl/main/1 --
+sha256:7754ddacef843c5055aa8b4bc1034f5c
+{
+  "results": [
+    {
+      "Desc": "ReturnEndsOnlyTheHandler",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:a8fe0a8faf066192b46632bbd5453c55
+sha256:de15a3fe4f322d3125b1f5c31a521991
 {
   "results": [
     {
@@ -208,7 +249,7 @@ sha256:a8fe0a8faf066192b46632bbd5453c55
   ]
 }
 -- testrun/gtk4/go/boundary.sngl/main/1 --
-sha256:11658cd738ba25a2e40d8ffbd331f810
+sha256:48f8f0f498b5b6ba9bcf8a43467c3138
 {
   "results": [
     {

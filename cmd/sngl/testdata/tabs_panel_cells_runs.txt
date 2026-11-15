@@ -20,6 +20,9 @@ stdout '^ok +1 tests, 0 failures$'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
 sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
@@ -88,7 +91,17 @@ sha256:2c7bb8ddc3380f19148ce68501283003
   ]
 }
 -- testrun/fyne/go/app.sngl/shelf/1 --
-sha256:4f15c4badacdfe155232463931abcfda
+sha256:d29066c72a81941b93871eed7cf35ede
+{
+  "results": [
+    {
+      "Desc": "ACardInAPanelIsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/shelf/1 --
+sha256:5cffa305f60ac42882d98f9055678448
 {
   "results": [
     {
@@ -98,7 +111,7 @@ sha256:4f15c4badacdfe155232463931abcfda
   ]
 }
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:d5fee0350da339adb5f6d77bb3bbc85c
+sha256:9178139bf7f90d90930f15de798cab2d
 {
   "results": [
     {
@@ -108,7 +121,7 @@ sha256:d5fee0350da339adb5f6d77bb3bbc85c
   ]
 }
 -- testrun/html/none/app.sngl/shelf/1 --
-sha256:8568bc596f87bd2999e5ddda40cbea9e
+sha256:ecd5fe77b49c81800782fe9b8bf39281
 {
   "results": [
     {

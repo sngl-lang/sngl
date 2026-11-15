@@ -78,6 +78,7 @@ func applyNoContext(pkg *ir.Package, _ Features, _ Options) error {
 	hiddenParams := buildHiddenParamIndex(pkg, reach, extra)
 	lowerProviders(pkg, reach, extra, hiddenParams)
 	rewriteReads(pkg, reach, extra, hiddenParams)
+	bindClosureContexts(pkg, hiddenParams)
 
 	pkg.Contexts = nil
 	return reportSurvivingReads(pkg)
@@ -398,6 +399,8 @@ func callsIn(root any, shadow map[*ir.Context]bool) []callEdge {
 			if x.Func != nil {
 				calls = append(calls, callEdge{fn: x.Func, shadowed: shadow})
 			}
+		case *ir.Closure:
+			calls = append(calls, callEdge{fn: x.Func, shadowed: shadow})
 		case *ir.Ident:
 			// A function taken as a value is bound where it is taken
 			// (funcValueUnder), so the scope taking it reads what it reads:
@@ -1042,8 +1045,67 @@ func (l *contextLowerer) visit(n ir.Node) (ir.Node, error) {
 		if fn, ok := x.Sym.(*ir.Func); ok && ir.Expr(x) != l.bareCallee && len(l.pc.hidden.funcs[fn]) > 0 && !fn.IsMethod() {
 			return funcValueUnder(x, fn, l.active, l.pc), ir.SkipDir
 		}
+
+	case *ir.Closure:
+		closureUnder(x, l.active, l.pc)
 	}
 	return n, nil
+}
+
+// closureUnder binds what a lambda NoLambda lifted reads of each context
+// where the closure is made, as funcValueUnder does for a function taken as
+// a value: into the closure's state, beside what it captured. A hidden
+// parameter would be one its thunk, which hands it only the lambda's own
+// arguments, never passes (bindClosureContexts takes it back off).
+func closureUnder(x *ir.Closure, active map[*ir.Context]ir.Expr, pc *provLower) {
+	hidden := pc.hidden.funcs[x.Func]
+	if len(hidden) == 0 || x.State == nil || len(x.Func.Params) == 0 {
+		return
+	}
+	sd, _ := x.Func.Params[0].Type.Decl.(*ir.StructDef)
+	if sd == nil {
+		return
+	}
+	for _, ctx := range pc.order {
+		p := hidden[ctx]
+		if p == nil || slices.ContainsFunc(x.State.Fields, func(f ir.FieldInit) bool { return f.Name == p.Name }) {
+			continue
+		}
+		if !slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool { return f.Name == p.Name }) {
+			sd.Fields = append(sd.Fields, &ir.StructField{Name: p.Name, Type: p.Type})
+		}
+		val, ok := active[ctx]
+		if !ok {
+			val = pc.defaults[ctx]
+		}
+		x.State.Fields = append(x.State.Fields, ir.FieldInit{Name: p.Name, Value: ir.CloneExprSharingDecls(val)})
+	}
+}
+
+// bindClosureContexts has each lifted lambda read a context from its state,
+// where closureUnder bound it, in place of the hidden parameter
+// addHiddenParams gave it.
+func bindClosureContexts(pkg *ir.Package, hidden hiddenParamIndex) {
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		x, ok := n.(*ir.Closure)
+		if !ok || len(hidden.funcs[x.Func]) == 0 || len(x.Func.Params) == 0 {
+			return nil
+		}
+		fn := x.Func
+		state := fn.Params[0]
+		bound := map[ir.Symbol]bool{}
+		for _, p := range hidden.funcs[fn] {
+			bound[p] = true
+		}
+		fn.Params = slices.DeleteFunc(fn.Params, func(p *ir.Param) bool { return bound[p] })
+		return ir.RewriteExprs(fn, func(e ir.Expr) (ir.Expr, error) {
+			id, ok := e.(*ir.Ident)
+			if !ok || !bound[id.Sym] {
+				return e, nil
+			}
+			return &ir.Select{Operand: &ir.Ident{Name: state.Name, Type: state.Type, Sym: state}, Field: id.Name, Type: id.Type}, nil
+		})
+	})
 }
 
 // spliceProviders replaces each provider under stmts, in whatever block it

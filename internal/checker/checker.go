@@ -334,6 +334,9 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.checkAsyncRules()
 	c.checkOwnedDerived()
 	c.checkRetainsOutsideNode()
+	c.checkCCasts()
+	c.checkCCallbacks()
+	c.checkCStructs()
 	c.pkg.Symbols = c.symtab
 	// Last, because it needs every lib package loaded and every target's
 	// overrides merged.
@@ -1708,6 +1711,10 @@ func (c *checker) registerImport(imp *ast.Import) {
 	}
 
 	if isPlatform {
+		// A package below a platform's own -- sngl:platform/win32/api, its
+		// generated declarations -- is that platform's, and there where it
+		// is.
+		platName, _, _ = strings.Cut(platName, "/")
 		var target ir.Platform
 		for _, p := range c.cfg.Platforms {
 			if p.PlatformIdentifier() == platName {
@@ -3449,9 +3456,9 @@ func (c *checker) registerRootVisualNode(vn *ast.VisualNode) {
 	case ir.BuiltinOutput:
 		c.registerOutput(vn)
 	case ir.BuiltinCLink:
-		if !c.inLibSource() {
-			c.cLinks = append(c.cLinks, vn)
-		}
+		// A library's is checked in the library's own load
+		// (loadStdlibPackage), its sources read from the library.
+		c.cLinks = append(c.cLinks, vn)
 	case ir.BuiltinGenScheme:
 		// Library source is not body-checked; the library's own plugins are
 		// checked as packages of their own when a scheme asks for one.

@@ -21,6 +21,12 @@ stdout '3 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '3 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '3 tests, 0 failures'
+
 -- app.sngl --
 import async "sngl:async"
 import http "sngl:http"
@@ -121,8 +127,26 @@ sha256:b8b114cf9b594faee003f7acb48ce53d
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/page/1 --
+sha256:9bf437741f320f075b94ff008a1957c5
+{
+  "results": [
+    {
+      "Desc": "ARequestIsClosedInATest",
+      "Passed": true
+    },
+    {
+      "Desc": "AnAnswerAnswersIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheNetworkIsReachedWhenTheTestSaysSo",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/page/1 --
-sha256:e9aa35178103c552152f58974c9d3fa6
+sha256:4e2da4bc3a893cfaea920ddd5e09ecf4
 {
   "results": [
     {
@@ -141,6 +165,24 @@ sha256:e9aa35178103c552152f58974c9d3fa6
 }
 -- testrun/html/none/app.sngl/page/1 --
 sha256:e4d198fc89c75b1112812d124dee1c6f
+{
+  "results": [
+    {
+      "Desc": "ARequestIsClosedInATest",
+      "Passed": true
+    },
+    {
+      "Desc": "AnAnswerAnswersIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheNetworkIsReachedWhenTheTestSaysSo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/page/1 --
+sha256:7869112a43228053c384d2fcd6b6ae82
 {
   "results": [
     {

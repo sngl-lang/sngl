@@ -118,7 +118,8 @@ not start, and a slow fyne run timed out there.
 **Nor does it compile what a record answers.** A script's `sngl build` and
 compiled `sngl run` are answered from a `testrun/build/…` or `testrun/run/…`
 record of the generated program and the arguments (`Records.AnswerTool`; a
-run's record holds what it printed), and compile only under `-update` and
+run's record holds what it printed, and a build's the name of the file it
+wrote, so a Windows build's `app.exe` is printed with nothing built), and compile only under `-update` and
 `-verify`, which the `[toolchain]` condition says: a step running the binary
 they built is guarded by it. A script that only checks generated Go compiles
 writes `gobuild <pkgs>` rather than `exec go build`, answered the same way
@@ -126,13 +127,12 @@ writes `gobuild <pkgs>` rather than `exec go build`, answered the same way
 is off in a script's config so its counters do not move that digest. What still
 compiles in a plain run is sngl's own behavior: the `go://` const evaluator
 `trust_eval` runs, and `serve`'s build of sngl. And a package keeping a `testdata/test_run` --
-`pkg/go/gtk4rt`, whose tests link the host's GTK and skip in CI for want of a
-compositor -- is left out of the test step while that digest of what its tests
-build stands (`internal/cmd/verify/testrun.go`), `-update` running them and
-writing it again. Both compiled in CI: a GTK call CI's 4.8 lacked failed its
-link in three scripts and gtk4rt's own build, where every record stood.
-`go vet` still reads gtk4rt's C, which preprocesses it with the host's headers
-but links nothing.
+one whose tests link what CI lacks, as the host's GTK with a compositor -- is
+left out of the test step while that digest of what its tests build stands
+(`internal/cmd/verify/testrun.go`), `-update` running them and writing it
+again. `go vet` still reads the C a cgo package compiles (gtk4's
+`lib/platform/gtk4/cgo`), which preprocesses it with the host's headers but
+links nothing.
 
 **go test replays what CI ran before, so a test says what it read through
 a subprocess.** A branch pipeline runs the suite without `-count=1` and
@@ -192,14 +192,67 @@ Chromium, through `inBrowser`, and recorded the same way in
 serves and the test's own source file, so an edit to the assertions asks for a
 run too.
 
-**And so is a gtk4 test's `go build` or `go test`** of the program it
-generated (`runGo` in `codegen/platform/gtk4`), recorded in
-`codegen/platform/gtk4/testdata/go_runs/<Test>`: a digest of the files the
-command runs over, its arguments, and the source of every package of this
-module those files import, transitively -- so an edit to `gtk4rt` asks for a
-run as an edit to the codegen does, and only a run that succeeded is recorded.
-The program never depends on the host's GIR, because no test reads one (see
-gtk4 in design/architecture.md).
+**And so is each C compiler's build and run in `codegen/lang/c`'s
+`TestRun`**, recorded in `codegen/lang/c/testdata/run_records/<archive>/<cc>-<variant>`:
+a digest of the compiler, its flags, program.c, main.c, the runtime and what
+the run must print. Its matrix (`clang.Matrix`) is gcc, clang (each also under
+AddressSanitizer and UBSan) and both MinGW compilers, whose programs run
+under Wine, so a plain run needs none of them and `-update` needs all of them.
+
+**A win32 test runs under Wine in a prefix of the cache's**
+(`codegen/platform/win32/launcher.go`). The agent is cross-compiled with
+MinGW's compiler for the program's `arch` (`--opt arch=386` for 32-bit;
+`sngl test` takes options from its flags, not the output block) and run with
+the port of a loopback listener as its argument, which it connects back to
+(`sngl_win32_agent.c`): Wine hands a Windows program none of the host's
+pipes, so the C agent serves over whatever channel it is given
+(`sngl_test_serve`), stdin and stdout for every other C program. The prefix
+is made once, under a lock, with `wineboot -i` and the null graphics driver,
+and reused: the null driver needs no display, so `DISPLAY` is cleared and no
+window reaches a desktop, and with no window manager a window keeps the size
+the program gives it, where cage's Xwayland kept one at its creation size
+while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
+out of a failure's text. Each launch is recorded as any `sngl test` is
+(`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures). Wine's Wayland
+driver (`HKCU\Software\Wine\Drivers\Graphics=wayland`) hung under cage
+until killed, and with no display and no null driver Wine hung too, which is
+why the null driver is set. A prefix whose setup was killed fails with
+`could not load kernel32.dll` until it is made again. Arch's `wine` is a
+WoW64 build, which runs a 32-bit `.exe` without `[multilib]`.
+
+**`--simulate` does not raise what the native runtime raises.** It runs a
+target's overrides over stubbed natives (`design/ownership.md`), so a test's
+trigger an override relays from the runtime -- `@input` from an edit's
+change, a select's pick, a timer's tick -- reaches nothing on gtk4 or win32:
+the stub neither keeps what the fire handed it nor calls a callback back. It
+is the ownership debugging mode, and their tests run on the target.
+
+**A C agent's snapshot is the platform's capture, sent as its pixels**
+(`sngl_test_snapshot`). A platform that can draw its program sets
+`sngl_test_capture` before it serves; the agent sends what it draws as raw
+RGBA (`testlaunch.RawPixelsMime`, with its width and height) and waits for the
+driver's answer to its `snapshotAssert` on the channel it serves on, which
+carries nothing else while a test runs. The driver encodes the PNG with Go's
+`image/png` and keeps it as it keeps any agent's, since C has no encoder to
+hand; a raw frame is four bytes a pixel and a third again in base64, so
+`testrpc`'s frame cap fits a 4K window. win32's capture is `PrintWindow` into
+a DIB section, which the null driver draws as a screen would. The window it
+draws is the toplevel shown last, and a test taking a component has one: a
+placed build rooted at a component attaches what it renders to the
+application, as the package body's nodes are (`lowerDeclarative`), and win32's attach shows
+a node that is no window in a window of its own, which grows as what it holds
+does. gtk4's capture is Go's agent's (`sngl_capture`): what the test shows
+in a window of 800 by 600, rendered by GSK's cairo renderer -- the one widget
+a component's body makes and attaches nowhere (`sngl_test_root`), or the
+content of the toplevel a test of the program attached last, which the agent
+never shows, since it never starts the application.
+
+**A C test's `t.setContext` writes the program's context var**
+(`clang.SetContexts`). passContext already passes what the test set to each
+call after it, the build's included, but a handler reads the program's
+`__ctx_<name>` when it runs, so a click after the setContext read the
+default (`cmd/sngl/testdata/c_set_context_runs.txt`). A context no var of the
+program's holds is passed only, and its setContext writes nothing.
 
 **A test program that goes away before it answers its run fails it**
 (`exitedEarly`, `cmd/sngl/testdata/test_program_exits_runs.txt`): a Go
@@ -227,7 +280,10 @@ their change was about (`TestScriptGrepsNameAFile` is the lint against the
 class). A `deny` that names no reason, no file, a file no target generates, or
 a pattern that does not compile is a failure.
 
-**What a program does when it runs is an `exec` line**, for a Go target:
+**What a program does when it runs is an `exec` line**, for a Go target or
+one whose platform builds and runs its own program (`codegen.ProgramRunner`:
+win32's C, run under Wine in the test agent's prefix, its CRLFs read as
+newlines):
 
 ```
 exec out/go/gtk4 --window x <clicks.txt -- shown.txt
@@ -245,8 +301,8 @@ once its tests pass and runs each line inside the headless compositor the root
 test binary re-execs under, and the target's `run/` digest covers the lines,
 the files they name and the source of every package of this module the
 program imports (`toolchain.HashModuleImports`), so the ordinary run replays
-them as it does the build and an edit to `gtk4rt` or `fynelayout` asks for a
-run. A program meant to be run carries the scenario that drives it -- a
+them as it does the build and an edit to a runtime package (`fynelayout`)
+asks for a run. A program meant to be run carries the scenario that drives it -- a
 timer, a `fmt.Println`, an `os.Exit` -- so it is a fixture of its own,
 `<name>_runs.txtar` beside the `<name>.txtar` showing the plain code.
 
@@ -567,7 +623,14 @@ read: a method keeps a const override from splicing, and an id costs a
 field, so an app build rendered every select differently for having a test
 half. In a test build the override is a runtime splice (`expandCall`), which
 carries the call site's `#id` onto a library component's root wherever a
-handle is read (`handleRead`), as `passInlinePure` does for every one; a
+handle is read (`handleRead`), as `passInlinePure` does for every one, and
+in a placed build onto the root of a program's component with methods of its
+own that renders one node and whose handle the program reads nowhere, which
+placement holds by that node alone: a test's `c.always != null` read a var no
+node made (`indexed_ref_null_test_spliced_runs.txt`). One rendering branches,
+or whose handle the program calls a method through, keeps its id off its
+root, since the root is no instance a method can be called on (pokedex's
+`#detail`); a
 component method generic in its component's parameters alone is bound by
 each splice rather than copied per call (`boundByItsComponent`); and a
 method's parameter of a prop's name is the method's, never the prop

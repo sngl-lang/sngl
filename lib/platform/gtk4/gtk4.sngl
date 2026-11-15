@@ -1,28 +1,30 @@
 import ui "sngl:ui"
-import time "sngl:time"
-import . "sngl:macro"
 import build "sngl:build"
 import marks "sngl:internal/marks"
-import shapes "sngl:ui/draw"
-import markup "sngl:ui/markup"
-import math "sngl:math"
-import go "sngl:language/go"
+import macro "sngl:macro"
 import gen "sngl:x/gen"
 import c "sngl:x/c"
+import go "sngl:language/go"
+import time "sngl:time"
+import draw "sngl:ui/draw"
 import family "sngl:family"
-import gtk "gir:Gtk-4.0"
+import math "sngl:math"
+import markup "sngl:ui/markup"
 
-// The `gtk4` node of a build directive: `output { go { gtk4() } }`.
-// A GLib idle callback runs on the thread that owns every widget, so a blocking
-// call can be moved off it and its answer written back.
-#[gen.can(asyncPost, instanceState)]
-// Withholding reactivity is what asks for the explicit `nID.<prop> = <expr>`
-// after every mutation of a tracked var, which the prop's declared set makes a
-// call (`#[gen.protocol(set)]`); withholding declarative flattens the tree
-// into the calls that build it. The same pair fyne takes, and for the same
-// reason: GTK owns its widgets and diffs nothing.
+// The runtime every gtk4 program links: the toplevels and the application,
+// the look and the layout of a box's children, in C, which each language
+// compiles into the program.
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
+
+// The `gtk4` node of a build directive: `output { c { gtk4() } }`.
+//
+// Every node is a GTK widget and every operation on one a protocol function,
+// here or in widgets.sngl, so the platform asks for `placement`, and each
+// language writes the program whole. GTK owns its widgets and diffs nothing,
+// so the tree is flattened and each write is explicit.
+#[gen.can(insertBefore, asyncPost, instanceState)]
 #[gen.cannot(reactivity, declarative, inlineComponents, structSpread)]
-#[gen.wants(structComponents, stdlibContextParam, canvas, reactiveCanvas)]
+#[gen.wants(placement, stdlibContextParam, canvas, reactiveCanvas)]
 #[gen.name("gtk4")]
 #[gen.native("gtk4")]
 component platform(
@@ -34,103 +36,390 @@ component platform(
     // happens before the event loop, and what it does after, once the loop
     // has exited. `run` presents the windows and runs the loop. A handler
     // that never calls it gets a process whose loop still runs -- timers,
-    // effects, posted work -- with no window on screen. The application has
-    // torn down when `run` returns, and a second call ends the process. `args`
-    // is the command line after the program's name.
+    // effects, posted work -- with no window on screen, which `quit` ends.
+    // The application has torn down when `run` returns, and a second call
+    // ends the process. `args` is the command line after the program's name.
     @run(args list[string], run func()),
-    // Which introspection data to read the widget vocabulary from: "builtin"
-    // for the bundled subset, a path to a `Gtk-4.0.gir`, or unset to probe the
-    // system locations and fall back to the bundled subset.
+    // Which introspection data a program's `gir:Gtk-4.0` import is declared
+    // from: "builtin" for the bundled subset, a path to a `Gtk-4.0.gir`, or
+    // unset to probe the system locations and fall back to the bundled
+    // subset. The platform's own widgets are the bundled subset's whatever
+    // it says.
     const gir           string,
-    // Make, fill and write a GIR class through the C functions GTK names, from
-    // the generated file itself, rather than through pkg/go/gtk4rt. Every
-    // string handed to GTK is then the generated code's own, and the file
-    // builds with cgo whatever it renders.
-    const cgo           bool = false,
-    // What its generated code introduces beside a program's names: the packages
-    // it imports -- `C` is cgo's, which a Go export of `c` would be -- an
-    // instance record's receiver, the Model's own members, and the locals and
-    // helpers its application code declares.
+    // What its generated code introduces beside a program's names: the
+    // runtime's prefix, the program's entry, and the runtime calls a Go
+    // program makes as functions of its own (codegen/platform/gtk4's
+    // shimFile).
     const reservedNames list[string] = [
-        "gtk4rt",
-        "c",
-        "app",
-        "win",
-        "buildUI",
-        "buildWidgetTree",
-        "snglCallbacks",
-        "snglDrawFuncs",
-        "gtkPost",
-        "snglGoDispatch",
-        "snglIdleCallback",
-        "snglActivate",
-        "boolToInt",
-        "snglCalendarDate",
-        "snglCalendarSelect",
+        "sngl_gtk",
+        "sngl_app",
+        "sngl_build",
+        "sngl_main",
+        "main",
+        "snglGtkMain",
+        "snglGtkInit",
+        "snglGtkHold",
+        "snglGtkPresent",
+        "snglGtkRun",
+        "snglGtkStep",
+        "snglGtkReset",
+        "snglGtkCaptureFile",
+        "snglGtkCarryFile",
+        "snglPost",
     ],
 ) build.platform
 
-// --- Windows ---
+// Every node is a widget, held as its pointer. A protocol function handing a
+// node to GTK reaches the pointer through this.
+#[c.native("GtkWidget *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Widget")]
+struct Widget {}
 
-// A toplevel: the host object a `ui.window` is on this platform. A node the
-// package body holds is attached to the application, and attaching one of
-// these creates the GtkWindow and puts it on screen once the loop runs;
-// removing one, as an `if` turning false does, destroys it and everything in
-// it. `visible` shows and hides it without destroying it, and the window
-// manager's close is reported as `visible = false` followed by `@closed`.
-// `@key` is each key pressed in the window, which a controller on the window
-// hears as the key goes down to the focused widget, before anything in it:
-// the press's fields, which the window's override makes a ui.KeyPress of, so
-// a window whose call site hears no key declares none.
-//
-// The menu entries and the way back among its content are the menu behind
-// its header bar's menu button and its back button.
-#[marks.intrinsic("gtk4:Toplevel")]
-component Toplevel(
-    title    string,
-    :visible bool = true,
-    @closed(),
-    @key(
-        key     string,
-        ctrl    bool,
-        alt     bool,
-        shift   bool,
-        meta    bool,
-        editing bool,
-        stop    func(),
-    ),
-    content  ...component ui.node,
-) root
+#[c.native("GtkWidget *", cast)]
+#[gen.protocol(handle)]
+func _handle(n ui.node) Widget
 
-// A window is gtk4rt's toplevel in either mode: the box its content is
-// appended to, which keeps the title, visibility and handlers until the
-// window is made around it. gtk4rt copies the title into C itself.
-#[go.native(_rtPkg, "gtk4rt.ToplevelNew")]
-func _rtToplevelNew() Toplevel
+// A node the program holds at its root, a window, is put on screen when the
+// program attaches it and destroyed, with everything in it, when it detaches
+// it.
+#[c.native("sngl_app_attach")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAppAttach")]
+func _rtAttach(n ui.node)
 
-#[go.native(_rtPkg, "gtk4rt.ToplevelSetTitle")]
-func _rtToplevelSetTitle(w Toplevel, title string)
+#[c.native("sngl_app_detach")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAppDetach")]
+func _rtDetach(n ui.node)
 
-#[go.native(_rtPkg, "gtk4rt.ToplevelSetVisible")]
-func _rtToplevelSetVisible(w Toplevel, visible bool)
+#[gen.protocol(attach)]
+func _attach(n ui.node) {
+    _rtAttach(n)
+}
 
-#[go.native(_rtPkg, "gtk4rt.ToplevelOnClosed")]
-func _rtToplevelOnClosed(w Toplevel, fn func())
+#[gen.protocol(detach)]
+func _detach(n ui.node) {
+    _rtDetach(n)
+}
 
-#[go.native(_rtPkg, "gtk4rt.ToplevelOnVisible")]
-func _rtToplevelOnVisible(w Toplevel, fn func(visible bool))
+// What a component renders several nodes, or a slot, at its top into: a box
+// down the page. A window among them is no child of it but a toplevel the
+// application shows, which the box keeps, so a root component's windows come
+// and go with it (rt's sngl_box_append).
+#[marks.intrinsic("gtk4:Contents")]
+component Contents(content ...component ui.node) ui.node
 
-#[go.native(_rtPkg, "gtk4rt.ToplevelOnKey")]
-func _rtToplevelOnKey(
-    w  Toplevel,
-    fn func(key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()),
+#[c.native("sngl_contents_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglContentsNew")]
+func _rtContents() Contents
+
+#[c.native("sngl_box_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxRemove")]
+func _rtBoxRemove(box ui.node, child ui.node)
+
+#[gen.protocol(contents)]
+func _contents() Contents {
+    return _rtContents()
+}
+
+#[c.native("sngl_slot_anchor")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSlotAnchor")]
+func _rtSlotAnchor(box ui.node, anchor ui.node) ui.node
+
+// A render slot's entries go before an anchor the runtime keeps in its
+// container, so a slot emptied and filled again comes back in its place.
+#[gen.protocol(anchor)]
+func _anchor(parent ui.node, anchor ui.node) ui.node {
+    return _rtSlotAnchor(parent, anchor)
+}
+
+#[gen.protocol(create)]
+func _create_Contents() Contents {
+    return _rtContents()
+}
+
+#[gen.protocol(append)]
+func _append_Contents(parent Contents, child ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Contents(parent Contents, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(remove)]
+func _remove_Contents(parent Contents, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+// Every widget's handlers are GLib signals.
+#[gen.protocol(connect)]
+func _connect(w ui.node, signal string, handler func()) {
+    signalConnect(w, signal, handler)
+}
+
+// What a widget's style asks of the runtime (look.c): its CSS, its least
+// size, its share of a box's spare room, and how a box lays out what it
+// holds.
+struct Look {
+    css       string
+    width     float
+    height    float
+    grow      float
+    cross     int
+    textAlign int
+    lines     int
+    wrap      int
+    hidden    bool
+    cursor    string
+    justify   int
+    spaced    bool
+    spacing   int
+    grid      bool
+    columns   int
+}
+
+#[c.native("sngl_set_look")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSetLook")]
+func _rtSetLook(
+    w       ui.node,
+    css     string,
+    width   int,
+    height  int,
+    grow    float,
+    cross   int,
+    align   int,
+    lines   int,
+    wrap    int,
+    hidden  int,
+    cursor  string,
+    justify int,
+    spaced  int,
+    spacing int,
+    grid    int,
+    columns int,
 )
 
-#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
-func _rtToplevelAppend(box Toplevel, child ui.node)
+// Gives w its look, each widget's `look` set.
+func _setLook(w ui.node, l Look) {
+    _rtSetLook(w, l.css, int(l.width + 0.5), int(l.height + 0.5), l.grow, l.cross, l.textAlign, l.lines, l.wrap, l.hidden ? 1 : 0, l.cursor, l.justify, l.spaced ? 1 : 0, l.spacing, l.grid ? 1 : 0, l.columns)
+}
 
-#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
-func _rtToplevelRemove(box Toplevel, child ui.node)
+// Gives w its look: the `look` set of each class a `gir:Gtk-4.0` import
+// declares, which is no package of the platform's.
+func setLook(w ui.node, l Look) {
+    _setLook(w, l)
+}
+
+// Runs the application: the program built once GTK is ready, and the loop
+// until the last window closes. A Go program's entry; C's calls
+// sngl_app_run with its own build.
+#[c.native("sngl_gtk_main")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkMain")]
+func _rtMain(
+    #[c.type("SnglFn")] build func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+) int
+
+// What an entry whose platform node wrote `@run` starts with, Go's through
+// the wrappers these give it: the windows the build attaches held hidden
+// until the handler's `run` presents them, and the loop run over the tree
+// already built.
+#[c.native("sngl_gtk_hold")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkHold")]
+func _rtHold()
+
+#[c.native("sngl_gtk_present")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkPresent")]
+func _rtPresent()
+
+#[c.native("sngl_gtk_run")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkRun")]
+func _rtRun() int
+
+// GTK made ready without an application, and the loop run once: how a Go
+// test agent starts, and lets the loop run while a test waits.
+#[c.native("sngl_gtk_init")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkInit")]
+func _rtInit()
+
+#[c.native("sngl_gtk_step")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkStep")]
+func _rtStep()
+
+// Every window taken down, as a test agent starts each test after the
+// first: the last test's build put them up.
+#[c.native("sngl_gtk_reset")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkReset")]
+func _rtReset()
+
+// The first window shown, drawn at width by height into the file at path as
+// its size and pixels (rt's sngl_gtk_capture_file): a Go test's snapshot.
+#[c.native("sngl_gtk_capture_file")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkCaptureFile")]
+func _rtCaptureFile(path string, width int, height int) int
+
+// A file a Go program embeds, handed to the runtime before it runs, which
+// its images read as C's read the table its entry hands it.
+#[c.native("sngl_gtk_carry_file")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkCarryFile")]
+func _rtCarryFile(name string, data string, len int)
+
+// Ends the loop, and with it the application, which tears down before the
+// entry returns: how a program whose windows are all hidden, or one an
+// `@run` handler started without calling run, stops.
+#[c.native("sngl_gtk_quit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkQuit")]
+func quit()
+
+// --- The timer ---
+//
+// A GLib timeout, armed as the effect mounts and removed as it unmounts. Its
+// callback runs on the loop's thread, as a signal's handler does, which
+// `schedules` says: a blocking call in a tick is handed to a goroutine.
+#[c.native("SnglSchedule *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Schedule")]
+struct Schedule {}
+
+#[c.native("sngl_every")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEvery", schedules)]
+func _rtEvery(
+    ms int,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+) Schedule
+
+#[c.native("sngl_schedule_cancel")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScheduleCancel")]
+func _rtCancel(s Schedule)
+
+// `enabled` is where the effect is, not part of its key, so toggling it
+// mounts and unmounts the schedule; a schedule is the same one for as long as
+// its period is.
+const component time.timer[platform](interval, enabled, @tick) {
+    var handle Schedule
+
+    if enabled {
+        effect(
+            on = interval,
+            @mount(d) { handle = _rtEvery(int(d), tick) },
+            @unmount(d) {
+                _rtCancel(handle)
+            },
+        )
+    }
+}
+
+// --- Windows ---
+
+// A toplevel: the host object a `ui.window` is. It is the runtime's box its
+// content is appended to, which keeps the title, visibility and handlers
+// until the window is made around it. The window manager's close is
+// reported as `visible = false` followed by `@closed`.
+//
+// `@key` is each key pressed in the window, which a controller on the window
+// hears as the key goes down to the focused widget, before anything in it.
+// The handler takes nothing, since C hands a callback no function to call:
+// what it hears is the runtime's to tell while it runs (`_rtKeyHeard`,
+// `_rtKeyHeld`), and `_rtKeyStop` stops it.
+#[marks.intrinsic("gtk4:Toplevel")]
+component Toplevel(title string, :visible bool = true, @closed(), @key(), content ...component ui.node) root
+
+#[c.native("sngl_toplevel_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelNew")]
+func _rtToplevelNew() Toplevel
+
+#[c.native("sngl_toplevel_set_title")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetTitle")]
+func _rtToplevelSetTitle(w Toplevel, title string)
+
+#[c.native("sngl_toplevel_set_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetVisible")]
+func _rtToplevelSetVisible(w Toplevel, visible bool)
+
+#[c.native("sngl_toplevel_on_closed")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnClosed")]
+func _rtToplevelOnClosed(
+    w Toplevel,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_toplevel_on_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnVisible")]
+func _rtToplevelOnVisible(
+    w Toplevel,
+    #[c.type("SnglBoolFn")] fn func(visible bool),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_toplevel_on_key")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnKey")]
+func _rtToplevelOnKey(
+    w Toplevel,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+// The key a window's `@key` handler is hearing: its name, and whether a
+// modifier was held -- 0 Control, 1 Alt, 2 Shift, 3 Super or Meta -- or, at
+// 4, whether the focused field's text was being edited. Read while the
+// handler runs, and nothing after.
+#[c.native("sngl_key_heard")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyHeard")]
+func _rtKeyHeard() string
+
+#[c.native("sngl_key_held")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyHeld")]
+func _rtKeyHeld(which int) bool
+
+// Stops the key the handler is hearing: the window takes it, so a focused
+// entry types none of it, a focused button is not activated and Tab moves
+// no focus.
+#[c.native("sngl_key_stop")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyStop")]
+func _rtKeyStop()
+
+// A test's key, pressed as the test describes it: the handler hears it, a
+// stop it calls calls the test's, and a key it leaves goes on where it would
+// have gone.
+#[c.native("sngl_toplevel_key")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelKey")]
+func _rtToplevelKey(
+    w       Toplevel,
+    key     string,
+    ctrl    bool,
+    alt     bool,
+    shift   bool,
+    meta    bool,
+    editing bool,
+    #[c.type("SnglFn")] stop func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[gen.fires("key")]
+func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
+    _rtToplevelKey(w, e.key, e.ctrl, e.alt, e.shift, e.meta, e.editing, stop)
+}
+
+// A toplevel's content is a box's, whose append hands the window an entry of
+// its menu or its way back (rt's sngl_box_append).
+#[c.native("sngl_toplevel_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelAppend")]
+func _rtToplevelAppend(w Toplevel, child ui.node)
+
+#[c.native("sngl_toplevel_insert_before")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelInsertBefore")]
+func _rtToplevelInsert(w Toplevel, before ui.node, child ui.node)
+
+#[c.native("sngl_box_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxRemove")]
+func _rtToplevelRemove(w Toplevel, child ui.node)
 
 #[gen.protocol(create)]
 func _create_Toplevel() Toplevel {
@@ -140,6 +429,11 @@ func _create_Toplevel() Toplevel {
 #[gen.protocol(append)]
 func _append_Toplevel(parent Toplevel, child ui.node) {
     _rtToplevelAppend(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Toplevel(parent Toplevel, child ui.node, before ui.node) {
+    _rtToplevelInsert(parent, before, child)
 }
 
 #[gen.protocol(remove)]
@@ -157,8 +451,6 @@ func _set_Toplevel_visible(w Toplevel, visible bool) {
     _rtToplevelSetVisible(w, visible)
 }
 
-// The window manager's close and the host's own change of `visible` are
-// gtk4rt's to report: the window raises close-request, which it answers.
 #[gen.protocol(on)]
 func _on_Toplevel_closed(w Toplevel, closed func()) {
     _rtToplevelOnClosed(w, closed)
@@ -170,24 +462,32 @@ func _on_Toplevel_visible(w Toplevel, visible func(visible bool)) {
 }
 
 #[gen.protocol(on)]
-func _on_Toplevel_key(
-    w   Toplevel,
-    key func(key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()),
-) {
+func _on_Toplevel_key(w Toplevel, key func()) {
     _rtToplevelOnKey(w, key)
 }
 
-// A window's way back, while it can go back: a widget gtk4rt keeps hidden
-// among the window's content, which has the window show a back button that
-// presses it.
+// A window's way back, while it can go back: a widget the runtime keeps
+// hidden among the window's content, which has the window show a back button
+// that presses it (rt's menu.c).
 #[marks.intrinsic("gtk4:Back")]
 component Back(@press()) ui.node
 
-#[go.native(_rtPkg, "gtk4rt.BackNew")]
+#[c.native("sngl_back_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackNew")]
 func _rtBackNew() Back
 
-#[go.native(_rtPkg, "gtk4rt.BackOnPress")]
-func _rtBackOnPress(b Back, fn func())
+#[c.native("sngl_back_on_press")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackOnPress")]
+func _rtBackOnPress(
+    b Back,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_back_press")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackPress")]
+func _rtBackPress(b Back)
 
 #[gen.protocol(create)]
 func _create_Back() Back {
@@ -199,10 +499,15 @@ func _on_Back(b Back, press func()) {
     _rtBackOnPress(b, press)
 }
 
-// One entry of a window's menu, and its submenu's entries: a box gtk4rt keeps
-// hidden among the window's content, from which the window builds the GMenu
-// behind its header bar's menu button. Picking one is no GTK signal on it but
-// the action gtk4rt makes for it.
+#[gen.fires("press")]
+func _fire_Back_press(b Back) {
+    _rtBackPress(b)
+}
+
+// One entry of a window's menu, and its submenu's entries: a box the runtime
+// keeps hidden among the window's content, from which the window builds the
+// GMenu behind its header bar's menu button (rt's menu.c). Picking one is no
+// GTK signal on it but the action the runtime makes for it.
 #[marks.intrinsic("gtk4:MenuEntry")]
 component MenuEntry(
     label    string,
@@ -212,26 +517,30 @@ component MenuEntry(
     entries  ...component ui.node,
 ) ui.node
 
-#[go.native(_rtPkg, "gtk4rt.MenuEntryNew")]
+#[c.native("sngl_menu_entry_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryNew")]
 func _rtMenuEntryNew() MenuEntry
 
-#[go.native(_rtPkg, "gtk4rt.MenuEntrySetLabel")]
+#[c.native("sngl_menu_entry_set_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetLabel")]
 func _rtMenuEntrySetLabel(e MenuEntry, label string)
 
-#[go.native(_rtPkg, "gtk4rt.MenuEntrySetDisabled")]
+#[c.native("sngl_menu_entry_set_disabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetDisabled")]
 func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
 
-#[go.native(_rtPkg, "gtk4rt.MenuEntrySetChecked")]
+#[c.native("sngl_menu_entry_set_checked")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetChecked")]
 func _rtMenuEntrySetChecked(e MenuEntry, v bool)
 
-#[go.native(_rtPkg, "gtk4rt.MenuEntryOnSelect")]
-func _rtMenuEntryOnSelect(e MenuEntry, fn func())
-
-#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
-func _rtMenuEntryAppend(e MenuEntry, child ui.node)
-
-#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
-func _rtMenuEntryRemove(e MenuEntry, child ui.node)
+#[c.native("sngl_menu_entry_on_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryOnSelect")]
+func _rtMenuEntryOnSelect(
+    e MenuEntry,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
 
 #[gen.protocol(create)]
 func _create_MenuEntry() MenuEntry {
@@ -240,12 +549,17 @@ func _create_MenuEntry() MenuEntry {
 
 #[gen.protocol(append)]
 func _append_MenuEntry(parent MenuEntry, child ui.node) {
-    _rtMenuEntryAppend(parent, child)
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_MenuEntry(parent MenuEntry, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
 }
 
 #[gen.protocol(remove)]
 func _remove_MenuEntry(parent MenuEntry, child ui.node) {
-    _rtMenuEntryRemove(parent, child)
+    _rtBoxRemove(parent, child)
 }
 
 #[gen.protocol(set)]
@@ -268,28 +582,26 @@ func _on_MenuEntry(e MenuEntry, select func()) {
     _rtMenuEntryOnSelect(e, select)
 }
 
-// The window's `@error` is the outermost boundary of what it renders, and
-// catches whether or not the call site handles one.
-//
-// Its `@key` is each key pressed in the window, heard by a key controller on
-// the GtkWindow in the capture phase, before the focused widget: a stop is the
-// controller taking the key, so a focused entry types none of it, a focused
-// button is not activated and Tab moves no focus. GDK's keyval is named as a
-// browser names the key -- its character through `gdk_keyval_to_unicode`, or
-// "Enter", "Tab", "ArrowUp", "F1" and the rest, a keypad's key as the main
-// keyboard's -- and with Control, Alt, Super or Meta held a letter is its own,
-// lowercase unless Shift is held. A key pressed while the focused field's
-// input method is composing is the input method's, and the window does not
-// hear it. Escape goes back while the window can, after a key controller in
-// the bubble phase finds that nothing took it: not the handler, not a
-// focused widget.
+// Its `@key` is each key pressed in the window, heard before the focused
+// widget, which the runtime names as a browser names the key -- its character,
+// or "Enter", "Tab", "ArrowUp", "F1" and the rest -- and with Control, Alt,
+// Super or Meta held a letter is its own, lowercase unless Shift is held
+// (rt's keys.c). A stop is the window taking the key. A key pressed while the
+// focused field's input method is composing is the input method's, and the
+// window does not hear it. Escape goes back while the window can, after
+// nothing took it: not the handler, not a focused widget.
 //
 // Its menu's entries are drawn two deep: a top-level entry and its submenu. A
 // window whose call site gives it no `canGoBack` writes no Back, the `if`
 // folding away, and nor does one with no menu write an entry.
+//
+// Its favicon is a source the window takes as its icon (rt's image.c).
+//
+// The window's `@error` is the outermost boundary of what it renders, and
+// catches whether or not the call site handles one.
 const component ui.window[platform](title, visible, canGoBack, @error, @closed, @back, @key, content, favicon, menu) {
-    Toplevel(title=title, :visible=visible, @closed { closed() }, @key(k, ctrl, alt, shift, meta, editing, stop) {
-        key(ui.KeyPress{key=k, ctrl=ctrl, alt=alt, shift=shift, meta=meta, editing=editing}, stop)
+    Toplevel(title=title, :visible=visible, @closed { closed() }, @key {
+        key(ui.KeyPress{key=_rtKeyHeard(), ctrl=_rtKeyHeld(0), alt=_rtKeyHeld(1), shift=_rtKeyHeld(2), meta=_rtKeyHeld(3), editing=_rtKeyHeld(4)}, func() { _rtKeyStop() })
     }) {
         boundary(@error(e) { error(e) }) {
             content
@@ -299,9 +611,9 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
         if canGoBack {
             Back(@press { back() })
         }
-        for var i, it = menu {
+        for var it = menu {
             MenuEntry(label=it.label, disabled=it.disabled, checked=it.checked, @select { it.select() }) {
-                for var j, sub = it.children {
+                for var sub = it.children {
                     MenuEntry(label=sub.label, disabled=sub.disabled, checked=sub.checked, @select { sub.select() })
                 }
             }
@@ -314,30 +626,162 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // What a control holds, read off its widget. A GTK signal hands its handler
 // the widget it fired on and nothing else, so an override reporting a change
 // asks that widget: `@toggled(b) { checked = checkActive(b) }`.
-#[marks.intrinsic("gtk4.checkActive")]
-func checkActive(b gtk.GtkCheckButton) bool
+#[c.native("sngl_check_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCheckActive")]
+func checkActive(b ui.node) bool
 
-#[marks.intrinsic("gtk4.switchActive")]
-func switchActive(s gtk.GtkSwitch) bool
+#[c.native("sngl_switch_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSwitchActive")]
+func switchActive(s ui.node) bool
 
-#[marks.intrinsic("gtk4.entryText")]
-func entryText(e gtk.GtkEntry) string
+#[c.native("sngl_entry_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEntryText")]
+func entryText(e ui.node) string
 
-// Writes an entry's text, which an override does itself rather than binding
-// `text`: see ui.input. gtk4rt blocks "changed" around the write and copies
-// the text into C itself, so neither mode's generated file calls C for it.
-#[go.native(_rtPkg, "gtk4rt.EditableSetTextQuiet")]
-func setEntryText(e gtk.GtkEntry, text string)
+// Writes an entry's text with its "changed" blocked, which an override does
+// itself rather than binding `text`: see ui.input.
+#[c.native("sngl_editable_set_text_quiet")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEditableSetTextQuiet")]
+func setEntryText(e ui.node, text string)
+
+#[c.native("sngl_calendar_day")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarDay")]
+func _rtCalendarDay(c ui.node) string
 
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
-#[marks.intrinsic("gtk4.calendarDate")]
-func calendarDate(c gtk.GtkCalendar) option[time.date]
+func calendarDate(c ui.node) option[time.date] {
+    return time.parseDate(_rtCalendarDay(c))
+}
 
-// A text starts at the left of its box, as html's does: a GtkLabel centers
-// its words in whatever room it is given.
-const component ui.text[platform](value, style) {
-    gtk.GtkLabel(label=value, xalign=0.0, look=lookOf(style)) {}
+// Selects y-m-d on a calendar as a click on the day does, without reporting
+// it.
+#[c.native("sngl_calendar_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarSelect")]
+func selectDay(cal ui.node, y int, m int, d int)
+
+// Offers a drop-down the labels `labels` joins with newlines, and selects
+// `chosen` where one of them is it and nothing where none is. A drop-down
+// takes its choices as a GListModel, which no SNGL expression produces, so
+// the runtime builds one. Neither is a choice anyone made, so the drop-down
+// reports neither.
+#[c.native("sngl_drop_down_offer")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownOffer")]
+func offerChoices(d ui.node, labels string, chosen string)
+
+// Selects the choice labeled `label`, as a pick does: unlike an offer, the
+// drop-down notifies, so its @notifySelected handler runs. A label among none
+// of its choices selects nothing.
+#[c.native("sngl_drop_down_select")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownSelect")]
+func selectLabel(d ui.node, label string)
+
+// The label a drop-down has selected, or "" where it has none.
+#[c.native("sngl_drop_down_label")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownLabel")]
+func dropDownLabel(d ui.node) string
+
+// A test's fire of an event whose handler reads a value off the widget puts
+// the value there first, as the user's flip, typing or click on a day does.
+#[c.native("sngl_fire_flip")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireFlip")]
+func _rtFireFlip(w ui.node, v int)
+
+#[c.native("sngl_fire_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireText")]
+func _rtFireText(e ui.node, text string, signal string)
+
+#[c.native("sngl_fire_day")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireDay")]
+func _rtFireDay(c ui.node, day string)
+
+#[gen.fires("toggled")]
+func _fire_GtkCheckButton_toggled(b GtkCheckButton, checked bool) {
+    _rtFireFlip(b, checked ? 1 : 0)
+}
+
+#[gen.fires("notifyActive")]
+func _fire_GtkSwitch_notifyActive(s GtkSwitch, checked bool) {
+    _rtFireFlip(s, checked ? 1 : 0)
+}
+
+#[gen.fires("changed")]
+func _fire_GtkEntry_changed(e GtkEntry, text string) {
+    _rtFireText(e, text, "changed")
+}
+
+#[gen.fires("activate")]
+func _fire_GtkEntry_activate(e GtkEntry, text string) {
+    _rtFireText(e, text, "activate")
+}
+
+#[gen.fires("daySelected")]
+func _fire_GtkCalendar_daySelected(c GtkCalendar, day option[time.date]) {
+    _rtFireDay(c, day == null ? "" : day.format())
+}
+
+// What GTK says a widget is in: GTK_STATE_FLAG_ACTIVE and
+// GTK_STATE_FLAG_PRELIGHT among them.
+#[c.native("GtkStateFlags")]
+struct _c_GtkStateFlags = int
+
+#[c.native("gtk_widget_set_state_flags")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetStateFlags")]
+func _gtk_widget_set_state_flags(w _p_GtkWidget, flags _c_GtkStateFlags, clear bool)
+
+// Puts w in the state a pointer resting on it puts it in, which its look
+// draws: what a test snapshots to see a button shaded as it is hovered. GTK
+// takes the state back once a pointer moves, and a test has none.
+func hover(w ui.node) {
+    _gtk_widget_set_state_flags(_as_GtkWidget(_widget(w)), 2, false)
+}
+
+// Puts w in the state a press holding it down puts it in, as hover does.
+func press(w ui.node) {
+    _gtk_widget_set_state_flags(_as_GtkWidget(_widget(w)), 1, false)
+}
+
+// A text is the runtime's GtkLabel, starting at the left of its box as
+// html's does, and pressed through a click gesture, which a label has no
+// signal for.
+#[marks.intrinsic("gtk4:Text")]
+component Text(value string, look Look, @click()) ui.node
+
+#[c.native("sngl_text_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextNew")]
+func _rtTextNew() Text
+
+#[c.native("sngl_text_set_value")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTextSetValue")]
+func _rtTextSetValue(w Text, value string)
+
+#[gen.protocol(create)]
+func _create_Text() Text {
+    return _rtTextNew()
+}
+
+#[gen.protocol(set)]
+func _set_Text_value(w Text, value string) {
+    _rtTextSetValue(w, value)
+}
+
+#[gen.protocol(set)]
+func _set_Text_look(w Text, look Look) {
+    _setLook(w, look)
+}
+
+#[gen.protocol(on)]
+func _on_Text_click(w Text, click func()) {
+    _rtOnClick(w, click)
+}
+
+#[gen.fires("click")]
+func _fire_Text_click(w Text) {
+    _rtClick(w)
+}
+
+const component ui.text[platform](value, style, @click) {
+    Text(value=value, look=lookOf(style), @click { click() }) {}
 }
 
 // A control written `focusable=false` is given `can-focus` false, which keeps
@@ -345,11 +789,11 @@ const component ui.text[platform](value, style) {
 // text widget inside it, and a drop-down's on its button -- by Tab and by a
 // click alike, and a click still presses it.
 const component ui.button[platform](text, focusable, style, @click) {
-    gtk.GtkButton(label=text, canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
+    GtkButton(label=text, canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
 }
 
 const component ui.checkbox[platform](label, checked, focusable, style, @change) {
-    gtk.GtkCheckButton(label=label, active=checked, canFocus=focusable, look=lookOf(style), @toggled(b) {
+    GtkCheckButton(label=label, active=checked, canFocus=focusable, look=lookOf(style), @toggled(b) {
         if checkActive(b) != checked {
             checked = checkActive(b)
             change(checked)
@@ -357,30 +801,12 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
     }) {}
 }
 
-const component ui.image[platform](fit, style, @click, @load, @error, src) {
-    Image(
-        fit = string(fit),
-        look = lookOf(style),
-        @click {
-            click()
-        },
-        @load {
-            load()
-        },
-        @failed(m) {
-            error({message=m, kind="image"})
-        },
-    ) {
-        src
-    }
-}
-
 // The value is pushed by an effect rather than bound: setting an entry's text
 // deletes and reinserts it, firing "changed" for each, so writing back the
 // text "changed" just reported re-entered the handler until the stack
 // overflowed. Only a value the entry does not already show is written.
 const component ui.input[platform](value, focusable, style, @input, @change) {
-    gtk.GtkEntry #entry(
+    GtkEntry #entry(
         canFocus = focusable,
         look = lookOf(style),
         @changed(e) {
@@ -405,7 +831,7 @@ const component ui.input[platform](value, focusable, style, @input, @change) {
 // the value binding + changed handler compile and round-trip. (Rich
 // multi-line GtkTextView support is a future enhancement.)
 const component ui.textarea[platform](value, focusable, style, @input, @change) {
-    gtk.GtkEntry #entry(
+    GtkEntry #entry(
         canFocus = focusable,
         look = lookOf(style),
         @changed(e) {
@@ -429,31 +855,224 @@ const component ui.textarea[platform](value, focusable, style, @input, @change) 
 // --- Container widgets ---
 
 const component ui.vbox[platform](style, children) {
-    gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 6)) {
+    GtkBox(orientation="vertical", look=boxLookOf(style, 6)) {
         children
     }
 }
 
 const component ui.hbox[platform](style, children) {
-    gtk.GtkBox(orientation="horizontal", look=boxLookOf(style, 6)) {
+    GtkBox(orientation="horizontal", look=boxLookOf(style, 6)) {
         children
     }
 }
 
-// A grid is a GtkBox gtk4rt lays out a row at a time, so its children come
+// A grid is a GtkBox the runtime lays out a row at a time, so its children come
 // and go as a box's do. GtkFlowBox wraps each child in one of its own, which
 // a render slot's anchor is no sibling of, and GtkGrid places each by a
 // position a child append cannot give it.
 const component ui.grid[platform](columns, style, children) {
-    gtk.GtkBox(orientation="horizontal", look=gridLookOf(style, columns)) {
+    GtkBox(orientation="horizontal", look=gridLookOf(style, columns)) {
         children
     }
+}
+
+// A scroll is the runtime's GtkScrolledWindow, which moves along `direction`
+// and reports the end of its content coming within half a viewport of
+// showing -- as it arrives, and when the content changes size while it is
+// there (rt's scroll.c). GTK has no signal saying so; the changes of the
+// adjustment along the axis the end is read on are what answer it.
+#[marks.intrinsic("gtk4:Scroll")]
+component Scroll(
+    direction string,
+    look      Look,
+    @reachEnd(),
+    content   ...component option[ui.node],
+) ui.node
+
+#[c.native("sngl_scroll_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollNew")]
+func _rtScrollNew() Scroll
+
+#[c.native("sngl_scroll_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetChild")]
+func _rtScrollSetChild(sw Scroll, child ui.node)
+
+#[c.native("sngl_scroll_set_direction")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetDirection")]
+func _rtScrollSetDirection(sw Scroll, direction string)
+
+#[c.native("sngl_scroll_on_reach_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollOnReachEnd")]
+func _rtScrollOnReachEnd(
+    sw Scroll,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_scroll_reach_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollReachEnd")]
+func _rtScrollReachEnd(sw Scroll)
+
+#[gen.protocol(create)]
+func _create_Scroll() Scroll {
+    return _rtScrollNew()
+}
+
+#[gen.protocol(append)]
+func _append_Scroll(parent Scroll, child ui.node) {
+    _rtScrollSetChild(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_direction(w Scroll, direction string) {
+    _rtScrollSetDirection(w, direction)
+}
+
+#[gen.protocol(set)]
+func _set_Scroll_look(w Scroll, look Look) {
+    _setLook(w, look)
+}
+
+#[gen.protocol(on)]
+func _on_Scroll(sw Scroll, reachEnd func()) {
+    _rtScrollOnReachEnd(sw, reachEnd)
+}
+
+#[gen.fires("reachEnd")]
+func _fire_Scroll_reachEnd(sw Scroll) {
+    _rtScrollReachEnd(sw)
 }
 
 const component ui.scroll[platform](style, direction, @reachEnd, content) {
     Scroll(direction=string(direction), look=lookOf(style), @reachEnd { reachEnd() }) {
         content
     }
+}
+
+// A `ui.tabs`: the runtime's box of a GtkNotebook (rt's tabs.c). Each
+// TabPage it holds is a page of the notebook, and `selected` the one shown.
+#[marks.intrinsic("gtk4:Tabs")]
+component Tabs(
+    selected int,
+    look     Look,
+    pages    ...component ui.node,
+) ui.node
+
+// One tab: its panel, a page the notebook shows a tab titled `title` for.
+// The user choosing it is no GTK signal on it but the notebook's page
+// changing, which the runtime reports as `@change`, and only the user's.
+// Named for the tabs' event it raises, which is what a test's press of it
+// calls.
+#[marks.intrinsic("gtk4:TabPage")]
+component TabPage(
+    title    string,
+    disabled bool = false,
+    @change(),
+    content  ...component ui.node,
+) ui.node
+
+#[c.native("sngl_tabs_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsNew")]
+func _rtTabsNew() Tabs
+
+#[c.native("sngl_tabs_set_selected")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsSetSelected")]
+func _rtTabsSetSelected(t Tabs, k int)
+
+#[c.native("sngl_tab_page_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageNew")]
+func _rtTabPageNew() TabPage
+
+#[c.native("sngl_tab_page_set_title")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetTitle")]
+func _rtTabPageSetTitle(p TabPage, title string)
+
+#[c.native("sngl_tab_page_set_disabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageSetDisabled")]
+func _rtTabPageSetDisabled(p TabPage, disabled bool)
+
+#[c.native("sngl_tab_page_on_shown")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageOnShown")]
+func _rtTabPageOnShown(
+    p TabPage,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_tab_page_show")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabPageShow")]
+func _rtTabPageShow(p TabPage)
+
+#[gen.protocol(create)]
+func _create_Tabs() Tabs {
+    return _rtTabsNew()
+}
+
+#[gen.protocol(append)]
+func _append_Tabs(parent Tabs, page ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(page)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Tabs(parent Tabs, page ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(page)))
+}
+
+#[gen.protocol(remove)]
+func _remove_Tabs(parent Tabs, page ui.node) {
+    _rtBoxRemove(parent, page)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_selected(t Tabs, selected int) {
+    _rtTabsSetSelected(t, selected)
+}
+
+#[gen.protocol(set)]
+func _set_Tabs_look(t Tabs, look Look) {
+    _setLook(t, look)
+}
+
+#[gen.protocol(create)]
+func _create_TabPage() TabPage {
+    return _rtTabPageNew()
+}
+
+#[gen.protocol(append)]
+func _append_TabPage(parent TabPage, child ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_TabPage(parent TabPage, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(remove)]
+func _remove_TabPage(parent TabPage, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_title(p TabPage, title string) {
+    _rtTabPageSetTitle(p, title)
+}
+
+#[gen.protocol(set)]
+func _set_TabPage_disabled(p TabPage, disabled bool) {
+    _rtTabPageSetDisabled(p, disabled)
+}
+
+#[gen.protocol(on)]
+func _on_TabPage(p TabPage, change func()) {
+    _rtTabPageOnShown(p, change)
+}
+
+#[gen.fires("change")]
+func _fire_TabPage_change(p TabPage) {
+    _rtTabPageShow(p)
 }
 
 // A tab is a page of a GtkNotebook, which shows a tab for it. `variant` is
@@ -485,14 +1104,14 @@ const component ui.tabs[platform](selected, style, @change, items) {
 // integer division.
 const component ui.progress[platform](style, value, max, label, showValue) {
     if value != null {
-        gtk.GtkProgressBar(fraction=value / max, text=label, showText=showValue, look=lookOf(style)) {}
+        GtkProgressBar(fraction=value / max, text=label, showText=showValue, look=lookOf(style)) {}
     } else {
-        gtk.GtkProgressBar(fraction=0.0, text=label, showText=showValue, look=lookOf(style)) {}
+        GtkProgressBar(fraction=0.0, text=label, showText=showValue, look=lookOf(style)) {}
     }
 }
 
 const component ui.spinner[platform](label, style) {
-    gtk.GtkSpinner(spinning=true, tooltipText=label, look=lookOf(style)) {}
+    GtkSpinner(spinning=true, tooltipText=label, look=lookOf(style)) {}
 }
 
 // `direction` is not forwarded: orientation is a GtkOrientation, and the
@@ -501,17 +1120,17 @@ const component ui.spinner[platform](label, style) {
 // written — a prop reference has no compile-time member to name. A separator is therefore horizontal, which is what
 // `direction` defaults to.
 const component ui.divider[platform](style) {
-    gtk.GtkSeparator(look=lookOf(style)) {}
+    GtkSeparator(look=lookOf(style)) {}
 }
 
 const component ui.link[platform](text, href, disabled, focusable, style, @click) {
-    gtk.GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
+    GtkLinkButton(uri=href, label=text, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @clicked { click() }) {}
 }
 
 // A flip reaches the program through `notify::active`: GtkSwitch's own
 // `state-set` returns a gboolean, which the connect trampoline cannot carry.
 const component ui.toggle[platform](checked, disabled, focusable, style, @change) {
-    gtk.GtkSwitch(active=checked, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifyActive(s) {
+    GtkSwitch(active=checked, sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifyActive(s) {
         if switchActive(s) != checked {
             checked = switchActive(s)
             change(checked)
@@ -519,21 +1138,10 @@ const component ui.toggle[platform](checked, disabled, focusable, style, @change
     }) {}
 }
 
-// GtkCalendar takes the day, month and year as three separate ints -- its own
-// `date` property is a GLib.DateTime, which no SNGL expression produces -- and
-// a `date` offers no way to take those three apart. So the calendar is shown
-// and its selection reported, and the bound value does not reach it, whether
-// or not the `option` holds one.
-// Selects y-m-d on a calendar as a click on the day does: gtk4rt's
-// sngl_calendar_select, since the setter GTK 4.20 adds is not in the GTKs
-// before it and the one they have is deprecated in it.
-#[go.native(_rtPkg, "gtk4rt.CalendarSelectDay")]
-func selectDay(cal gtk.GtkCalendar, y int, m int, d int)
-
 // One calendar, which a bound date selects whenever it changes. With no date
 // it shows GTK's own, today: a calendar always has a day selected.
 const component ui.datepicker[platform](value, disabled, style, @change) {
-    gtk.GtkCalendar #cal(sensitive=(disabled == false), look=lookOf(style), @daySelected(c) {
+    GtkCalendar #cal(sensitive=(disabled == false), look=lookOf(style), @daySelected(c) {
         value = calendarDate(c)
         change(value)
     }) {}
@@ -547,13 +1155,13 @@ const component ui.datepicker[platform](value, disabled, style, @change) {
 // --- Layout ---
 
 const component ui.spacer[platform](style) {
-    gtk.GtkBox(look=lookOf({flex=1, ...style})) {}
+    GtkBox(look=lookOf({flex=1, ...style})) {}
 }
 
 // The same shape html uses: a wrapper carrying the tooltip text, with the
 // wrapped content inside it.
 const component ui.tooltip[platform](style, text, trigger) {
-    gtk.GtkBox(tooltipText=text, look=lookOf(style)) {
+    GtkBox(tooltipText=text, look=lookOf(style)) {
         trigger
     }
 }
@@ -562,20 +1170,20 @@ const component ui.tooltip[platform](style, text, trigger) {
 // the hover, the press and the focus stop a button has.
 const component ui.card[platform](style, clickable, @click, content) {
     if clickable {
-        gtk.GtkButton(hasFrame=false, look=lookOf(style), @clicked { click() }) {
-            gtk.GtkFrame(look=innerFrameLookOf(style)) {
+        GtkButton(hasFrame=false, look=lookOf(style), @clicked { click() }) {
+            GtkFrame(look=innerFrameLookOf(style)) {
                 content
             }
         }
     } else {
-        gtk.GtkFrame(look=lookOf(style)) {
+        GtkFrame(look=lookOf(style)) {
             content
         }
     }
 }
 
 const component ui.stack[platform](style, layers) {
-    gtk.GtkStack(look=lookOf(style)) {
+    GtkStack(look=lookOf(style)) {
         layers
     }
 }
@@ -586,7 +1194,7 @@ const component ui.stack[platform](style, layers) {
 // GtkPositionType, so it is unreachable for the same reason as divider's
 // orientation.
 const component ui.popover[platform](style, open, @close, content) {
-    gtk.GtkPopover(visible=open && shown(style), autohide=true, look=lookBesideVisible(style), @closed { close() }) {
+    GtkPopover(visible=open && shown(style), autohide=true, look=lookBesideVisible(style), @closed { close() }) {
         content
     }
 }
@@ -601,24 +1209,24 @@ const component ui.popover[platform](style, open, @close, content) {
 // leads each row with a check button that selects it; a sortable header's
 // cells are buttons reporting the column.
 const component ui.table[platform](style, columns, selectable, selected, sortable, @select, @sort, rows) {
-    gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
-        gtk.GtkBox(orientation="horizontal", homogeneous=true) {
+    GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
+        GtkBox(orientation="horizontal", homogeneous=true) {
             if selectable {
-                gtk.GtkLabel(label="") {}
+                GtkLabel(label="") {}
             }
             for var col = columns {
                 if sortable {
-                    gtk.GtkButton(label=col, @clicked { sort(col) }) {}
+                    GtkButton(label=col, @clicked { sort(col) }) {}
                 } else {
-                    gtk.GtkLabel(label=col, xalign=0.0) {}
+                    GtkLabel(label=col, xalign=0.0) {}
                 }
             }
         }
-        gtk.GtkSeparator() {}
+        GtkSeparator() {}
         for var k, row = rows {
-            gtk.GtkBox(orientation="horizontal", homogeneous=true) {
+            GtkBox(orientation="horizontal", homogeneous=true) {
                 if selectable {
-                    gtk.GtkCheckButton(active=(k == selected), @toggled(b) {
+                    GtkCheckButton(active=(k == selected), @toggled(b) {
                         if checkActive(b) && selected != k {
                             selected = k
                             select()
@@ -626,7 +1234,7 @@ const component ui.table[platform](style, columns, selectable, selected, sortabl
                     }) {}
                 }
                 for var cell = row.cells {
-                    gtk.GtkLabel(label=cell, xalign=0.0) {}
+                    GtkLabel(label=cell, xalign=0.0) {}
                 }
             }
         }
@@ -652,9 +1260,9 @@ const func _treeRows(items list[ui.treeItem], indent string) list[_TreeRow] {
 // Every node is shown, expanded or not: a row cannot be hidden and shown by
 // its parent's state without a var, which a const component has none of.
 const component ui.tree[platform](style, selected, @select, items) {
-    gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
+    GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
         for var row = _treeRows(items, "") {
-            gtk.GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
+            GtkCheckButton(label=row.indent + row.label, active=(row.label == selected), @toggled(b) {
                 if checkActive(b) && selected != row.label {
                     selected = row.label
                     select()
@@ -673,9 +1281,9 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
         }
     }
     if direction == ui.Orientation.horizontal {
-        gtk.GtkBox(orientation="horizontal", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
+        GtkBox(orientation="horizontal", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
-                gtk.GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
                     if checkActive(b) {
                         pickValue(opt.value)
                     }
@@ -683,9 +1291,9 @@ const component ui.radio[platform](value, disabled, direction, style, @change, o
             }
         }
     } else {
-        gtk.GtkBox(orientation="vertical", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
+        GtkBox(orientation="vertical", sensitive=(disabled == false), look=boxLookOf(style, 6)) {
             for var opt = options {
-                gtk.GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
+                GtkCheckButton(label=opt.label, active=(opt.value == value), @toggled(b) {
                     if checkActive(b) {
                         pickValue(opt.value)
                     }
@@ -700,29 +1308,11 @@ func ui.radio[T].change[platform](value) {
     pickValue(value)
 }
 
-// Offers a drop-down the labels `labels` joins with newlines, and selects
-// `chosen` where one of them is it and nothing where none is. A drop-down
-// takes its choices as a GListModel, which no SNGL expression produces, so
-// gtk4rt builds one, copying both strings into C itself in either mode.
-// Neither is a choice anyone made, so the drop-down reports neither.
-#[go.native(_rtPkg, "gtk4rt.DropDownOffer")]
-func offerChoices(d gtk.GtkDropDown, labels string, chosen string)
-
-// Selects the choice labeled `label`, as a pick does: unlike an offer, the
-// drop-down notifies, so its @notifySelected handler runs. A label among none
-// of its choices selects nothing.
-#[go.native(_rtPkg, "gtk4rt.DropDownSelect")]
-func selectLabel(d gtk.GtkDropDown, label string)
-
-// The label a drop-down has selected, or "" where it has none.
-#[marks.intrinsic("gtk4.dropDownLabel")]
-func dropDownLabel(d gtk.GtkDropDown) string
-
 // One drop-down, offered the choices' labels whenever they change and
 // selecting the label of the bound value whenever it does. `placeholder` and
 // the focus events have nothing to reach.
 const component ui.select[platform](value, disabled, focusable, style, @change, options) {
-    gtk.GtkDropDown #drop(sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifySelected(d) {
+    GtkDropDown #drop(sensitive=(disabled == false), canFocus=focusable, look=lookOf(style), @notifySelected(d) {
         var at = ui.choiceLabeled(options, dropDownLabel(d))
         if at >= 0 && options[at].value != value {
             value = options[at].value
@@ -749,25 +1339,25 @@ func ui.select[T].change[platform](value) {
 // A menu's top-level entries, as html shows them; a submenu has nowhere to
 // open without a var.
 const component ui.menubar[platform](style, items) {
-    gtk.GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
+    GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
         for var it = items {
-            gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
+            GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
         }
     }
 }
 
 const component ui.menu[platform](style, open, items) {
     if open {
-        gtk.GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
+        GtkBox(orientation="vertical", look=boxLookOf(style, 0)) {
             for var it = items {
-                gtk.GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
+                GtkButton(label=it.label, sensitive=(it.disabled == false), @clicked { it.select() }) {}
             }
         }
     }
 }
 
 const component ui.toolbar[platform](style, controls) {
-    gtk.GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
+    GtkBox(orientation="horizontal", look=boxLookOf(style, 4)) {
         controls
     }
 }
@@ -776,18 +1366,18 @@ const component ui.toolbar[platform](style, controls) {
 // and `position` and its bounds have nothing to reach.
 const component ui.splitview[platform](style, direction, panes) {
     if direction == "vertical" {
-        gtk.GtkBox(orientation="vertical", homogeneous=true, look=lookOf(style)) {
+        GtkBox(orientation="vertical", homogeneous=true, look=lookOf(style)) {
             panes
         }
     } else {
-        gtk.GtkBox(orientation="horizontal", homogeneous=true, look=lookOf(style)) {
+        GtkBox(orientation="horizontal", homogeneous=true, look=lookOf(style)) {
             panes
         }
     }
 }
 
 const component ui.drawer[platform](style, open, content) {
-    gtk.GtkBox(orientation="vertical", visible=open && shown(style), look=boxLookBesideVisible(style, 6)) {
+    GtkBox(orientation="vertical", visible=open && shown(style), look=boxLookBesideVisible(style, 6)) {
         content
     }
 }
@@ -795,13 +1385,13 @@ const component ui.drawer[platform](style, open, content) {
 // Shown in place rather than in a window of its own, as html shows it in the
 // page.
 const component ui.modal[platform](style, open, title, closable, @close, content) {
-    gtk.GtkFrame(visible=open && shown(style), look=lookBesideVisible(style)) {
-        gtk.GtkBox(orientation="vertical", spacing=6) {
+    GtkFrame(visible=open && shown(style), look=lookBesideVisible(style)) {
+        GtkBox(orientation="vertical", spacing=6) {
             if title != "" || closable {
-                gtk.GtkBox(orientation="horizontal", spacing=6) {
-                    gtk.GtkLabel(label=title, xalign=0.0, hexpand=true) {}
+                GtkBox(orientation="horizontal", spacing=6) {
+                    GtkLabel(label=title, xalign=0.0, hexpand=true) {}
                     if closable {
-                        gtk.GtkButton(label="Close", @clicked { close() }) {}
+                        GtkButton(label="Close", @clicked { close() }) {}
                     }
                 }
             }
@@ -810,208 +1400,661 @@ const component ui.modal[platform](style, open, title, closable, @close, content
     }
 }
 
-// --- The timer ---
-//
-// GLib already schedules, so this platform needs no timer primitive: the
-// g_timeout_add/g_source_remove pair behind these two is a lifetime with a
-// thing to release, which is what `effect` brackets. A GLib timeout source runs
-// its callback on the thread holding the main loop, which is the thread every
-// GTK call must come from, so a tick body mutates the model in the same place a
-// signal handler does and needs no marshalling of its own.
+// --- Rich text ---
 
-// The runtime package the schedule lives in, named once.
-const _rtPkg = "duckfam.us/sngl/pkg/go/gtk4rt"
+// A flow is one GtkLabel, and the spans in it its Pango markup, which nests
+// as they do: `<b><i>x</i></b>` is what `bold { italic { … } }` means, so
+// Pango resolves the cascade. A span is the runtime's, no widget, holding its
+// words, its link and the tags its style opens and closes, which the runtime
+// writes from what the style sets; any change to one sets its flow's markup
+// again (rt's markup.c).
+#[marks.intrinsic("gtk4:Flow")]
+component Flow(
+    look    Look,
+    content ...component markup.span,
+) ui.node
 
-// The armed source itself, held as an opaque type rather than as an id paired
-// with its callback slot in a table the runtime keeps. `*gtk4rt.Schedule` is a
-// name this declaration can spell -- the same thing `#[cnative]` does for
-// `*C.cairo_t` below.
-#[go.native(_rtPkg, "*gtk4rt.Schedule")]
-struct Schedule {}
+#[marks.intrinsic("gtk4:Span")]
+component Span(
+    words     string = "",
+    href      string = "",
+    spanStyle markup.SpanStyle,
+    content   ...component markup.span,
+) markup.span
 
-#[go.native(_rtPkg, "gtk4rt.Every", schedules)]
-func every(ms int, f func()) Schedule
+#[c.native("sngl_flow_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFlowNew")]
+func _rtFlowNew() Flow
 
-#[go.native(_rtPkg, "gtk4rt.Schedule.Cancel", method)]
-func Schedule.cancel()
+#[c.native("sngl_span_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanNew")]
+func _rtSpanNew() Span
 
-// `enabled` is the effect's *position*, not part of its key: an effect lives as
-// long as the branch it is written in, so `if enabled` is what makes toggling
-// the gate a mount and an unmount. `on=interval` is the key, because a running
-// schedule is the same schedule for as long as its period is unchanged.
-const component time.timer[platform](interval, enabled, @tick) {
-    var handle Schedule
+#[c.native("sngl_span_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanAppend")]
+func _rtSpanAppend(parent ui.node, child markup.span)
 
-    if enabled {
-        effect(
-            on = interval,
-            @mount(d) { handle = every(int(d), tick) },
-            @unmount(d) {
-                handle.cancel()
-            },
-        )
+#[c.native("sngl_span_insert")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanInsert")]
+func _rtSpanInsert(parent ui.node, child markup.span, before markup.span)
+
+#[c.native("sngl_span_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanRemove")]
+func _rtSpanRemove(parent ui.node, child markup.span)
+
+#[c.native("sngl_span_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanAppend")]
+func _rtSpanAppendIn(parent markup.span, child markup.span)
+
+#[c.native("sngl_span_insert")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanInsert")]
+func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span)
+
+#[c.native("sngl_span_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanRemove")]
+func _rtSpanRemoveIn(parent markup.span, child markup.span)
+
+#[c.native("sngl_span_set_words")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetWords")]
+func _rtSpanWords(w Span, words string)
+
+#[c.native("sngl_span_set_href")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetHref")]
+func _rtSpanHref(w Span, href string)
+
+// A run's style: its color's channels, its size in px (0 unset), its weight
+// and slant as markup's enums, `inherit` first, its lines and its family.
+#[c.native("sngl_span_set_style")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetStyle")]
+func _rtSpanStyle(
+    w         Span,
+    r         int,
+    g         int,
+    b         int,
+    a         int,
+    size      float,
+    weight    int,
+    slant     int,
+    underline bool,
+    strike    bool,
+    family    string,
+)
+
+#[gen.protocol(create)]
+func _create_Flow() Flow {
+    return _rtFlowNew()
+}
+
+#[gen.protocol(set)]
+func _set_Flow_look(w Flow, look Look) {
+    _setLook(w, look)
+}
+
+#[gen.protocol(append)]
+func _append_Flow(parent Flow, child markup.span) {
+    _rtSpanAppend(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Flow(parent Flow, child markup.span, before markup.span) {
+    _rtSpanInsert(parent, child, before)
+}
+
+#[gen.protocol(remove)]
+func _remove_Flow(parent Flow, child markup.span) {
+    _rtSpanRemove(parent, child)
+}
+
+#[gen.protocol(create)]
+func _create_Span() Span {
+    return _rtSpanNew()
+}
+
+#[gen.protocol(append)]
+func _append_Span(parent Span, child markup.span) {
+    _rtSpanAppendIn(parent, child)
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Span(parent Span, child markup.span, before markup.span) {
+    _rtSpanInsertIn(parent, child, before)
+}
+
+#[gen.protocol(remove)]
+func _remove_Span(parent Span, child markup.span) {
+    _rtSpanRemoveIn(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Span_words(w Span, words string) {
+    _rtSpanWords(w, words)
+}
+
+#[gen.protocol(set)]
+func _set_Span_href(w Span, href string) {
+    _rtSpanHref(w, href)
+}
+
+#[gen.protocol(set)]
+func _set_Span_spanStyle(w Span, spanStyle markup.SpanStyle) {
+    _rtSpanStyle(w, int(spanStyle.color.r), int(spanStyle.color.g), int(spanStyle.color.b), int(spanStyle.color.a), px(spanStyle.fontSize), int(spanStyle.fontWeight), int(spanStyle.fontStyle), spanStyle.underline, spanStyle.strike, spanStyle.fontFamily)
+}
+
+const component markup.richText[platform](style, content) {
+    Flow(look=lookOf(style)) {
+        content
     }
 }
 
-// How a handler reaches a widget: gtk4rt registers it and connects the signal,
-// copying the name into C itself, so neither mode's generated file calls C to
-// connect one and a wrapped build stays one that cgo does not rebuild. The
-// node is put where its scope holds it, as a Handle (gtk4Translator's
-// OnConnectThrough).
-#[go.native(_rtPkg, "gtk4rt.Connect")]
-func _rtConnect(w ui.node, signal string, handler func())
+const component markup.text[platform](value) {
+    Span(words=value) {}
+}
 
-#[gen.protocol(connect)]
-func _connect(w ui.node, signal string, handler func()) {
-    _rtConnect(w, signal, handler)
+const component markup.run[platform](style, content) {
+    Span(spanStyle=style) {
+        content
+    }
+}
+
+// Pango has `<a href>` and GtkLabel follows one when it is clicked, so this
+// is the one target besides html where a link is a link.
+const component markup.link[platform](href, content) {
+    Span(href=href) {
+        content
+    }
+}
+
+// Pango takes a foreground and nothing a theme could answer, so the fallback
+// is a palette rather than the host: the light one, since the theme GTK
+// ships with is light.
+const component markup.token[platform](kind, content) {
+    Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
+        content
+    }
+}
+
+// Pango markup has no image, and a GtkLabel holds text. So the description
+// is what an image is here, in the brackets that say a picture stood where
+// they are.
+const component markup.image[platform](alt) {
+    Span(words="[{alt}]") {}
+}
+
+// --- Images ---
+
+// An image is the runtime's box holding the source it shows, fitted as `fit`
+// says, or the placeholder where it holds none (rt's image.c). A source is a
+// GtkPicture showing the texture its picture or its drawing make, and
+// reporting to the image holding it whether the picture arrived: `@load` is
+// its picture shown, and `@failed` its picture failing, why being
+// imageFailure's. Appended to a window, a source is the window's icon. A
+// width and a height in its style are its size, whatever its picture's.
+#[marks.intrinsic("gtk4:Image")]
+component Image(
+    fit     string,
+    look    Look,
+    @click(),
+    @load(),
+    @failed(),
+    content ...component option[ui.imageSource],
+) ui.node
+
+#[c.native("sngl_image_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
+func _rtImageNew() Image
+
+#[c.native("sngl_image_set_fit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSetFit")]
+func _rtImageSetFit(w Image, fit string)
+
+// Why an image's picture failed, or "".
+#[c.native("sngl_image_failure")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageFailure")]
+func imageFailure(w Image) string
+
+#[c.native("sngl_image_on_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnClick")]
+func _rtImageOnClick(
+    w Image,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_image_on_load")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnLoad")]
+func _rtImageOnLoad(
+    w Image,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_image_on_failed")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnFailed")]
+func _rtImageOnFailed(
+    w Image,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_image_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageClick")]
+func _rtImageClick(w Image)
+
+#[gen.protocol(create)]
+func _create_Image() Image {
+    return _rtImageNew()
+}
+
+#[gen.protocol(append)]
+func _append_Image(parent Image, child ui.node) {
+    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(insertBefore)]
+func _insert_Image(parent Image, child ui.node, before ui.node) {
+    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+}
+
+#[gen.protocol(remove)]
+func _remove_Image(parent Image, child ui.node) {
+    _rtBoxRemove(parent, child)
+}
+
+#[gen.protocol(set)]
+func _set_Image_fit(w Image, fit string) {
+    _rtImageSetFit(w, fit)
+}
+
+#[gen.protocol(set)]
+func _set_Image_look(w Image, look Look) {
+    _setLook(w, look)
+}
+
+#[gen.protocol(on)]
+func _on_Image_click(w Image, click func()) {
+    _rtImageOnClick(w, click)
+}
+
+#[gen.protocol(on)]
+func _on_Image_load(w Image, load func()) {
+    _rtImageOnLoad(w, load)
+}
+
+#[gen.protocol(on)]
+func _on_Image_failed(w Image, failed func()) {
+    _rtImageOnFailed(w, failed)
+}
+
+#[gen.fires("click")]
+func _fire_Image_click(w Image) {
+    _rtImageClick(w)
+}
+
+// The picture a URL names, decoded once: a file the program carries at once,
+// one fetched when it arrives. Owned by the source deriving it, so it is made
+// once per URL and given back when the URL changes or the source unmounts.
+// The runtime counts its holders, so a program keeping one in a second var
+// holds a reference, not a second decode.
+#[c.native("SnglPicture *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Picture")]
+#[macro.owned(unrefPicture, retain=refPicture)]
+struct Picture {}
+
+#[c.native("sngl_picture_load")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureLoad")]
+func loadPicture(url string) Picture
+
+#[c.native("sngl_picture_ref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureRef")]
+func refPicture(p Picture) Picture
+
+#[c.native("sngl_picture_unref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureUnref")]
+func unrefPicture(p Picture)
+
+// A source showing what a URL names. The URL is what the source says it
+// shows, which a test reads and a drawing paints through; what it shows is
+// the picture.
+#[marks.intrinsic("gtk4:ImageUrl")]
+component ImageUrl(url string, picture Picture) ui.imageSource
+
+#[c.native("sngl_image_source_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceNew")]
+func _rtImageUrlNew() ImageUrl
+
+#[c.native("sngl_image_source_set_picture")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceSetPicture")]
+func _rtImageUrlSetPicture(w ImageUrl, picture Picture)
+
+#[gen.protocol(create)]
+func _create_ImageUrl() ImageUrl {
+    return _rtImageUrlNew()
+}
+
+#[c.native("sngl_image_source_set_url")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceSetUrl")]
+func _rtImageUrlSetUrl(w ImageUrl, url string)
+
+#[gen.protocol(set)]
+func _set_ImageUrl_url(w ImageUrl, url string) {
+    _rtImageUrlSetUrl(w, url)
+}
+
+#[gen.protocol(set)]
+func _set_ImageUrl_picture(w ImageUrl, picture Picture) {
+    _rtImageUrlSetPicture(w, picture)
+}
+
+// A source showing what its shapes draw, `width` by `height` pixels: the
+// shapes, as the calls that paint them, are the handler of its `@paint`, and
+// a write to what they read paints the picture again, as a canvas is.
+#[marks.intrinsic("gtk4:ImageDrawing")]
+component ImageDrawing(
+    width  float,
+    height float,
+    @paint(ctx CairoContext),
+    shapes ...component draw.shape,
+) ui.imageSource
+
+#[c.native("sngl_image_source_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceNew")]
+func _rtImageDrawingNew() ImageDrawing
+
+#[c.native("sngl_drawing_set_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingSetWidth")]
+func _rtDrawingSetWidth(w ImageDrawing, width float)
+
+#[c.native("sngl_drawing_set_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingSetHeight")]
+func _rtDrawingSetHeight(w ImageDrawing, height float)
+
+#[c.native("sngl_drawing_on_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingOnPaint")]
+func _rtDrawingOnPaint(
+    w ImageDrawing,
+    #[c.type("SnglDrawFn")] fn func(ctx CairoContext),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_drawing_redraw")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingRedraw")]
+func _rtDrawingRedraw(w ImageDrawing)
+
+#[gen.protocol(create)]
+func _create_ImageDrawing() ImageDrawing {
+    return _rtImageDrawingNew()
+}
+
+#[gen.protocol(set)]
+func _set_ImageDrawing_width(w ImageDrawing, width float) {
+    _rtDrawingSetWidth(w, width)
+}
+
+#[gen.protocol(set)]
+func _set_ImageDrawing_height(w ImageDrawing, height float) {
+    _rtDrawingSetHeight(w, height)
+}
+
+#[gen.protocol(on)]
+func _on_ImageDrawing_paint(w ImageDrawing, paint func(ctx CairoContext)) {
+    _rtDrawingOnPaint(w, paint)
+}
+
+#[gen.protocol(redraw)]
+func _redraw_ImageDrawing(w ImageDrawing) {
+    _rtDrawingRedraw(w)
+}
+
+const component ui.image[platform](fit, style, @click, @load, @error, src) {
+    Image #frame(
+        fit = string(fit),
+        look = lookOf(style),
+        @click { click() },
+        @load { load() },
+        @failed { error({message=imageFailure(frame), kind="image"}) },
+    ) {
+        src
+    }
+}
+
+const component ui.file[platform](path) {
+    func picture() => loadPicture(path)
+
+    ImageUrl(url=path, picture=picture)
+}
+
+const component ui.remote[platform](url) {
+    func picture() => loadPicture(url)
+
+    ImageUrl(url=url, picture=picture)
+}
+
+const component draw.image[platform](width, height, shapes) {
+    ImageDrawing(width=width, height=height) {
+        shapes
+    }
 }
 
 // --- Drawing ---
-//
-// A canvas here is a GtkDrawingArea and its draw callback is handed a
-// `cairo_t*`, so cairo's own functions are the drawing vocabulary. Declared
-// with `#[cnative(…)]`, which names a C identifier and no language: each is a
-// free function taking the context first, which is the shape a native gets by
-// default. Each argument crosses through the `c` conversion its declared
-// parameter type names (`c.cdouble`, `c.cstring`), which is why this package
-// imports one. Nothing here is Go's.
-//
-// Named as the cgo pointer it is, so a helper that takes the context has the
-// right type in its own signature -- the draw function's own parameter type
-// comes from this platform, but `paint(ctx, style)` is an ordinary func and
-// carries whatever this declaration says.
-#[cnative("*C.cairo_t")]
+
+// A canvas is a GtkDrawingArea whose drawing -- the shapes, as the calls the
+// overrides below make -- is the handler of its `@paint`, handed cairo's
+// context, which lowering connects as it connects any handler; a write to
+// what the drawing reads asks for a paint through its redraw. cairo's own
+// functions are the drawing's vocabulary, but for what it takes as an enum,
+// which the runtime casts (rt's sngl_cairo_*).
+#[c.native("cairo_t *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoContext")]
 struct CairoContext {}
 
-#[cnative("cairo_save")]
+#[c.native("cairo_save")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSave")]
 func CairoContext.save()
 
-#[cnative("cairo_restore")]
+#[c.native("cairo_restore")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoRestore")]
 func CairoContext.restore()
 
-#[cnative("cairo_set_source_rgba")]
+#[c.native("cairo_set_source_rgba")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSetSourceRgba")]
 func CairoContext.setSourceRgba(r float, g float, b float, a float)
 
-#[cnative("cairo_set_line_width")]
+#[c.native("cairo_set_line_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSetLineWidth")]
 func CairoContext.setLineWidth(w float)
 
-// cairo's cap and join are typedef'd enums, not plain ints, so the
-// declarations name those types and a conversion is written where the value is
-// produced. An `int` parameter would emit `C.int(...)` and not compile --
-// which the emitted-cgo build test says, loudly.
-#[cnative("C.cairo_line_cap_t")]
-struct LineCapValue {}
+#[c.native("sngl_cairo_line_cap")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCairoLineCap")]
+func CairoContext.setLineCap(cap int)
 
-#[cnative("C.cairo_line_join_t")]
-struct LineJoinValue {}
+#[c.native("sngl_cairo_line_join")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCairoLineJoin")]
+func CairoContext.setLineJoin(join int)
 
-#[cnative("C.cairo_line_cap_t")]
-const func toLineCap(v int) LineCapValue
-
-#[cnative("C.cairo_line_join_t")]
-const func toLineJoin(v int) LineJoinValue
-
-#[cnative("cairo_set_line_cap")]
-func CairoContext.setLineCap(cap LineCapValue)
-
-#[cnative("cairo_set_line_join")]
-func CairoContext.setLineJoin(join LineJoinValue)
-
-#[cnative("cairo_rectangle")]
+#[c.native("cairo_rectangle")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoRectangle")]
 func CairoContext.rectangle(x float, y float, w float, h float)
 
-#[cnative("cairo_new_sub_path")]
+#[c.native("cairo_new_sub_path")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoNewSubPath")]
 func CairoContext.newSubPath()
 
-// The angle form, so a partial sweep is writable -- a gauge or a pie wedge,
-// which no stdlib shape expresses yet.
-#[cnative("cairo_arc")]
+#[c.native("cairo_arc")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoArc")]
 func CairoContext.arc(cx float, cy float, r float, start float, end float)
 
-#[cnative("cairo_move_to")]
-func CairoContext.moveTo(x float, y float)
-
-#[cnative("cairo_line_to")]
-func CairoContext.lineTo(x float, y float)
-
-#[cnative("cairo_curve_to")]
-func CairoContext.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
-
-#[cnative("cairo_arc_negative")]
+#[c.native("cairo_arc_negative")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoArcNegative")]
 func CairoContext.arcNegative(cx float, cy float, r float, start float, end float)
 
-#[cnative("cairo_close_path")]
+#[c.native("cairo_move_to")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoMoveTo")]
+func CairoContext.moveTo(x float, y float)
+
+#[c.native("cairo_line_to")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoLineTo")]
+func CairoContext.lineTo(x float, y float)
+
+#[c.native("cairo_curve_to")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoCurveTo")]
+func CairoContext.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+
+#[c.native("cairo_close_path")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoClosePath")]
 func CairoContext.closePath()
 
-#[cnative("cairo_fill")]
+#[c.native("cairo_fill")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoFill")]
 func CairoContext.fill()
 
-#[cnative("cairo_fill_preserve")]
+#[c.native("cairo_fill_preserve")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoFillPreserve")]
 func CairoContext.fillPreserve()
 
-#[cnative("cairo_stroke")]
+#[c.native("cairo_stroke")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoStroke")]
 func CairoContext.stroke()
 
-#[cnative("cairo_set_font_size")]
-func CairoContext.setFontSize(size float)
+#[c.native("sngl_cairo_font")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCairoFont")]
+func CairoContext.font(family string, size float)
 
-// The slant and the weight are typedef'd enums like the line cap and join, so
-// they are cast the same way rather than passed as `C.int` -- cgo refuses an
-// int where a `cairo_font_slant_t` belongs.
-//
-// `Style` exposes neither, so both are always the normal value. Declared
-// anyway, because the alternative is a native that lies about its signature.
-#[cnative("C.cairo_font_slant_t")]
-struct FontSlant {}
-
-#[cnative("C.cairo_font_weight_t")]
-struct FontWeight {}
-
-#[cnative("C.cairo_font_slant_t")]
-const func toFontSlant(v int) FontSlant
-
-#[cnative("C.cairo_font_weight_t")]
-const func toFontWeight(v int) FontWeight
-
-#[cnative("cairo_select_font_face")]
-func CairoContext.selectFontFace(family string, slant FontSlant, weight FontWeight)
-
-#[cnative("cairo_show_text")]
+#[c.native("cairo_show_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoShowText")]
 func CairoContext.showText(text string)
 
-// What a `@draw` handler is handed: the context, and the coordinate space the
-// shapes were placed in.
+#[c.native("cairo_translate")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoTranslate")]
+func CairoContext.translate(x float, y float)
+
+#[c.native("cairo_scale")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoScale")]
+func CairoContext.scale(x float, y float)
+
+#[c.native("cairo_clip")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoClip")]
+func CairoContext.clip()
+
+// What a `@draw` handler is handed: the context, and the coordinate space
+// the shapes were placed in.
 struct DrawEvent {
     ctx    CairoContext
     width  int
     height int
 }
 
-#[marks.intrinsic("gtk4:draw:cairo")]
-component draw(@draw(e DrawEvent)) shapes.shape
+// The primitive every shape below paints through: its handler is spliced
+// into the drawing, written against the canvas's context.
+#[marks.intrinsic("gtk4:draw")]
+component Paint(@draw(e DrawEvent)) draw.shape
 
-// cairo takes its line cap and join as enum values. The names are SNGL's, the
-// numbers are `CAIRO_LINE_CAP_*` and `CAIRO_LINE_JOIN_*`, and mapping them
-// here is what makes `lineCap` and `lineJoin` reach this target at all --
-// before the overrides, gtk4 read neither (#223).
-const func lineCap(cap shapes.LineCap) LineCapValue {
-    if cap == shapes.LineCap.round {
-        return toLineCap(1)
-    }
-    if cap == shapes.LineCap.square {
-        return toLineCap(2)
-    }
-    return toLineCap(0)
+// The drawing area a `draw.canvas` is. Its width and height are the space
+// its shapes are placed in, and `scalingMode` how that space is shown in the
+// room it is given.
+#[marks.intrinsic("gtk4:Canvas")]
+component Canvas(
+    width       ui.measurement,
+    height      ui.measurement,
+    scalingMode draw.ScalingMode,
+    @click(),
+    @paint(ctx CairoContext),
+    shapes      ...component draw.shape,
+) ui.node
+
+#[c.native("sngl_canvas_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasNew")]
+func _rtCanvasNew() Canvas
+
+#[c.native("sngl_canvas_set_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetWidth")]
+func _rtCanvasSetWidth(w Canvas, width int)
+
+#[c.native("sngl_canvas_set_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetHeight")]
+func _rtCanvasSetHeight(w Canvas, height int)
+
+#[c.native("sngl_canvas_set_scaling")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasSetScaling")]
+func _rtCanvasSetScaling(w Canvas, mode int)
+
+// Runs `fn` from the main loop when it is next idle: how `async.do` hands
+// work a goroutine finished back in Go. C posts through sngl_post itself.
+#[c.native("sngl_post")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPost")]
+func _rtPost(
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_on_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglOnClick")]
+func _rtOnClick(
+    w ui.node,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_click")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglClick")]
+func _rtClick(w ui.node)
+
+#[c.native("sngl_canvas_on_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasOnPaint")]
+func _rtCanvasOnPaint(
+    w Canvas,
+    #[c.type("SnglDrawFn")] fn func(ctx CairoContext),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_canvas_redraw")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCanvasRedraw")]
+func _rtCanvasRedraw(w Canvas)
+
+#[gen.protocol(create)]
+func _create_Canvas() Canvas {
+    return _rtCanvasNew()
 }
 
-const func lineJoin(join shapes.LineJoin) LineJoinValue {
-    if join == shapes.LineJoin.round {
-        return toLineJoin(1)
-    }
-    if join == shapes.LineJoin.bevel {
-        return toLineJoin(2)
-    }
-    return toLineJoin(0)
+#[gen.protocol(set)]
+func _set_Canvas_width(w Canvas, width ui.measurement) {
+    _rtCanvasSetWidth(w, int(px(width)))
+}
+
+#[gen.protocol(set)]
+func _set_Canvas_height(w Canvas, height ui.measurement) {
+    _rtCanvasSetHeight(w, int(px(height)))
+}
+
+#[gen.protocol(set)]
+func _set_Canvas_scalingMode(w Canvas, scalingMode draw.ScalingMode) {
+    _rtCanvasSetScaling(w, int(scalingMode))
+}
+
+#[gen.protocol(on)]
+func _on_Canvas_click(w Canvas, click func()) {
+    _rtOnClick(w, click)
+}
+
+#[gen.fires("click")]
+func _fire_Canvas_click(w Canvas) {
+    _rtClick(w)
+}
+
+#[gen.protocol(on)]
+func _on_Canvas_paint(w Canvas, paint func(ctx CairoContext)) {
+    _rtCanvasOnPaint(w, paint)
+}
+
+#[gen.protocol(redraw)]
+func _redraw_Canvas(w Canvas) {
+    _rtCanvasRedraw(w)
 }
 
 // cairo wants each channel as 0..1 where SNGL carries 0..255.
@@ -1019,10 +2062,9 @@ func source(ctx CairoContext, c color) {
     ctx.setSourceRgba(float(c.r) / 255.0, float(c.g) / 255.0, float(c.b) / 255.0, float(c.a) / 255.0)
 }
 
-// Fill then stroke the current path, preserving it between the two when both
-// apply. This is `_snglCairoPaint` written in SNGL rather than spliced in as
-// Go text.
-func paint(ctx CairoContext, style shapes.Style) {
+// Fill then stroke the current path, keeping it between the two where both
+// apply.
+func paint(ctx CairoContext, style draw.Style) {
     if style.fill.a > 0 {
         source(ctx, style.fill)
         if style.stroke.a > 0 {
@@ -1033,15 +2075,69 @@ func paint(ctx CairoContext, style shapes.Style) {
     }
     if style.stroke.a > 0 {
         ctx.setLineWidth(style.strokeWidth)
-        ctx.setLineCap(lineCap(style.lineCap))
-        ctx.setLineJoin(lineJoin(style.lineJoin))
+        ctx.setLineCap(int(style.lineCap))
+        ctx.setLineJoin(int(style.lineJoin))
         source(ctx, style.stroke)
         ctx.stroke()
     }
 }
 
-const component shapes.rect[platform](x, y, w, h, style) {
-    draw(@draw(e) {
+// The corner `sngl:ui/draw` solves, drawn as a line in and an arc, which
+// leaves the path at the point it answers: cairo takes a center and two
+// angles where the command gives three points and a radius.
+func arcTo(ctx CairoContext, from draw.Point, corner draw.Point, to draw.Point, r float) draw.Point {
+    var a = draw.tangentArc(from, corner, to, r)
+    if a.degenerate {
+        ctx.lineTo(corner.x, corner.y)
+        return corner
+    }
+    ctx.lineTo(a.tangent1.x, a.tangent1.y)
+    if a.sweep < 0.0 {
+        ctx.arcNegative(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
+    } else {
+        ctx.arc(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
+    }
+    return a.tangent2
+}
+
+// Paints a picture into a box, scaled once per box size rather than per
+// frame; one still on its way paints nothing, and is there the next time the
+// drawing paints after it arrives.
+#[c.native("sngl_picture_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPicturePaint")]
+func paintPicture(cr CairoContext, p Picture, x float, y float, w float, h float)
+
+// What a `drawSource` paints a carried or fetched image with: the context,
+// the URL its source names and the picture the source holds.
+struct SourceEvent {
+    ctx     CairoContext
+    url     string
+    picture Picture
+}
+
+// The primitive a `canvasImage` paints its source through. `@url` paints an
+// image a URL names; a drawing is painted in place rather than as a picture,
+// its shapes between `@enter`, which maps the drawing's own space onto the
+// box and clips to it, and `@leave`. The size in their payload is the
+// drawing's.
+#[marks.intrinsic("gtk4:drawSource")]
+component drawSource(
+    @url(e SourceEvent),
+    @enter(e DrawEvent),
+    @leave(e DrawEvent),
+    source ...component family.one[ui.imageSource],
+) draw.shape
+
+// A canvas's `style` reaches nothing: it is no shape's, and the area's
+// background is its box's.
+const component draw.canvas[platform](width, height, scalingMode, @click, shapes) {
+    Canvas(width=width, height=height, scalingMode=scalingMode, @click { click() }) {
+        shapes
+    }
+}
+
+const component draw.rect[platform](x, y, w, h, style) {
+    Paint(@draw(e) {
         e.ctx.save()
         e.ctx.rectangle(x, y, w, h)
         paint(e.ctx, style)
@@ -1049,8 +2145,8 @@ const component shapes.rect[platform](x, y, w, h, style) {
     })
 }
 
-const component shapes.circle[platform](cx, cy, r, style) {
-    draw(@draw(e) {
+const component draw.circle[platform](cx, cy, r, style) {
+    Paint(@draw(e) {
         e.ctx.save()
         e.ctx.newSubPath()
         e.ctx.arc(cx, cy, r, 0.0, math.tau)
@@ -1059,12 +2155,12 @@ const component shapes.circle[platform](cx, cy, r, style) {
     })
 }
 
-// An ellipse as four cubic segments rather than a scaled circle: `cairo_scale`
-// would scale the *stroke* with the axes, so a 2px outline on a wide ellipse
-// comes out thicker horizontally than vertically. kappa is the control-point
-// offset that makes a cubic match a quarter arc to within a thousandth.
-const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
-    draw(@draw(e) {
+// An ellipse as four cubic segments rather than a scaled circle:
+// `cairo_scale` would scale the stroke with the axes. kappa is the
+// control-point offset that makes a cubic match a quarter arc to within a
+// thousandth.
+const component draw.ellipse[platform](cx, cy, rx, ry, style) {
+    Paint(@draw(e) {
         var k = 0.5522847498307936
         var ox = rx * k
         var oy = ry * k
@@ -1082,67 +2178,45 @@ const component shapes.ellipse[platform](cx, cy, rx, ry, style) {
     })
 }
 
-// A line has no interior, so `fill` is not read: the declaration says a fill
-// on a line is ignored, and here that is the absence of a call rather than a
-// special case in the emitter.
-const component shapes.line[platform](x1, y1, x2, y2, style) {
-    draw(@draw(e) {
+// A line has no inside, so its fill is not read.
+const component draw.line[platform](x1, y1, x2, y2, style) {
+    Paint(@draw(e) {
         e.ctx.save()
         e.ctx.moveTo(x1, y1)
         e.ctx.lineTo(x2, y2)
         e.ctx.setLineWidth(style.strokeWidth)
-        e.ctx.setLineCap(lineCap(style.lineCap))
-        e.ctx.setLineJoin(lineJoin(style.lineJoin))
+        e.ctx.setLineCap(int(style.lineCap))
+        e.ctx.setLineJoin(int(style.lineJoin))
         source(e.ctx, style.stroke)
         e.ctx.stroke()
         e.ctx.restore()
     })
 }
 
-// The corner is solved by `sngl:ui/draw`, which two targets need and neither
-// host has: cairo takes a center and two angles where the command gives three
-// points and a radius. What is left here is the cairo half -- the line in, the
-// arc, and the point the path is left at.
-func arcTo(ctx CairoContext, from shapes.Point, corner shapes.Point, to shapes.Point, r float) shapes.Point {
-    var a = shapes.tangentArc(from, corner, to, r)
-    if a.degenerate {
-        ctx.lineTo(corner.x, corner.y)
-        return corner
-    }
-    ctx.lineTo(a.tangent1.x, a.tangent1.y)
-    if a.sweep < 0.0 {
-        ctx.arcNegative(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
-    } else {
-        ctx.arc(a.center.x, a.center.y, r, a.start, a.start + a.sweep)
-    }
-    return a.tangent2
-}
-
-const component shapes.path[platform](style, steps) {
-    draw(@draw(e) {
+const component draw.path[platform](style, steps) {
+    Paint(@draw(e) {
         // Where the path is, which `arcTo` needs and cairo will not hand back
-        // without an out-parameter. Every other command ends at its own point,
-        // so tracking it here costs one assignment each.
-        var at = shapes.Point{x=0.0, y=0.0}
+        // without an out-parameter.
+        var at = draw.Point{x=0.0, y=0.0}
 
         e.ctx.save()
         for var c = steps {
-            if c.op == shapes.PathOp.moveTo {
+            if c.op == draw.PathOp.moveTo {
                 e.ctx.moveTo(c.x, c.y)
-                at = shapes.Point{x=c.x, y=c.y}
+                at = draw.Point{x=c.x, y=c.y}
             }
-            if c.op == shapes.PathOp.lineTo {
+            if c.op == draw.PathOp.lineTo {
                 e.ctx.lineTo(c.x, c.y)
-                at = shapes.Point{x=c.x, y=c.y}
+                at = draw.Point{x=c.x, y=c.y}
             }
-            if c.op == shapes.PathOp.bezierTo {
+            if c.op == draw.PathOp.bezierTo {
                 e.ctx.curveTo(c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y)
-                at = shapes.Point{x=c.x, y=c.y}
+                at = draw.Point{x=c.x, y=c.y}
             }
-            if c.op == shapes.PathOp.arcTo {
-                at = arcTo(e.ctx, at, shapes.Point{x=c.cx1, y=c.cy1}, shapes.Point{x=c.x, y=c.y}, c.r)
+            if c.op == draw.PathOp.arcTo {
+                at = arcTo(e.ctx, at, draw.Point{x=c.cx1, y=c.cy1}, draw.Point{x=c.x, y=c.y}, c.r)
             }
-            if c.op == shapes.PathOp.close {
+            if c.op == draw.PathOp.close {
                 e.ctx.closePath()
             }
         }
@@ -1151,14 +2225,10 @@ const component shapes.path[platform](style, steps) {
     })
 }
 
-const component shapes.canvasText[platform](x, y, content, style) {
-    draw(@draw(e) {
+const component draw.canvasText[platform](x, y, content, style) {
+    Paint(@draw(e) {
         e.ctx.save()
-        // CAIRO_FONT_SLANT_NORMAL and CAIRO_FONT_WEIGHT_NORMAL. gtk4 read
-        // fontFamily nowhere before this, so a program's font choice was
-        // honored on three targets and dropped here (#223).
-        e.ctx.selectFontFace(style.fontFamily, toFontSlant(0), toFontWeight(0))
-        e.ctx.setFontSize(style.fontSize)
+        e.ctx.font(style.fontFamily, style.fontSize)
         source(e.ctx, style.fill)
         e.ctx.moveTo(x, y)
         e.ctx.showText(content)
@@ -1166,336 +2236,7 @@ const component shapes.canvasText[platform](x, y, content, style) {
     })
 }
 
-// --- Images ---
-//
-// An image is gtk4rt's rather than a GIR class: a box holding the source it
-// shows, fitted as `fit` says, or the placeholder where it holds none. A
-// source is a GtkPicture showing the texture its bytes or its drawing make --
-// a file the program carries, one fetched, or a picture a drawing paints --
-// and reports to the image whether it arrived. Appended to a window, it is the
-// window's icon. A width and a height in its style are its size, whatever its
-// picture's.
-#[marks.intrinsic("gtk4:Image")]
-component Image(
-    fit     string,
-    look    gtk.Look,
-    @click(),
-    @load(),
-    @failed(message string),
-    content ...component option[ui.imageSource],
-) ui.node
-
-#[go.native(_rtPkg, "gtk4rt.ImageFrameNew")]
-func _rtImageFrameNew() Image
-
-#[go.native(_rtPkg, "gtk4rt.ImageFrameSetFit")]
-func _rtImageFrameSetFit(w Image, fit string)
-
-#[go.native(_rtPkg, "gtk4rt.ImageFrameOnClick")]
-func _rtImageFrameOnClick(w Image, fn func())
-
-#[go.native(_rtPkg, "gtk4rt.ImageFrameOnLoad")]
-func _rtImageFrameOnLoad(w Image, fn func())
-
-#[go.native(_rtPkg, "gtk4rt.ImageFrameOnError")]
-func _rtImageFrameOnError(w Image, fn func(message string))
-
-#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
-func _rtBoxAppend(box ui.node, child ui.node)
-
-#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
-func _rtBoxRemove(box ui.node, child ui.node)
-
-#[gen.protocol(create)]
-func _create_Image() Image {
-    return _rtImageFrameNew()
-}
-
-#[gen.protocol(append)]
-func _append_Image(parent Image, child ui.node) {
-    _rtBoxAppend(parent, child)
-}
-
-#[gen.protocol(remove)]
-func _remove_Image(parent Image, child ui.node) {
-    _rtBoxRemove(parent, child)
-}
-
-#[gen.protocol(set)]
-func _set_Image_fit(w Image, fit string) {
-    _rtImageFrameSetFit(w, fit)
-}
-
-// An image's events are gtk4rt's: a click on its box, and the source it
-// holds reporting whether its picture arrived.
-#[gen.protocol(on)]
-func _on_Image_click(w Image, click func()) {
-    _rtImageFrameOnClick(w, click)
-}
-
-#[gen.protocol(on)]
-func _on_Image_load(w Image, load func()) {
-    _rtImageFrameOnLoad(w, load)
-}
-
-#[gen.protocol(on)]
-func _on_Image_failed(w Image, failed func(message string)) {
-    _rtImageFrameOnError(w, failed)
-}
-
-// A scroll is gtk4rt's GtkScrolledWindow, which moves along `direction` and
-// reports the end of its content coming within half a viewport of showing --
-// as it arrives, and when the content changes size while it is there. GTK has
-// no signal saying so; the changes of the adjustment along the axis the end
-// is read on are what answer it.
-#[marks.intrinsic("gtk4:Scroll")]
-component Scroll(
-    direction string,
-    look      gtk.Look,
-    @reachEnd(),
-    content   ...component option[ui.node],
-) ui.node
-
-#[go.native(_rtPkg, "gtk4rt.ScrollNew")]
-func _rtScrollNew() Scroll
-
-#[go.native(_rtPkg, "gtk4rt.ScrolledWindowSetChild")]
-func _rtScrolledWindowSetChild(sw Scroll, child ui.node)
-
-#[go.native(_rtPkg, "gtk4rt.ScrollOnReachEnd")]
-func _rtScrollOnReachEnd(sw Scroll, fn func())
-
-#[go.native(_rtPkg, "gtk4rt.ScrollSetDirection")]
-func _rtScrollSetDirection(sw Scroll, direction string)
-
-#[gen.protocol(create)]
-func _create_Scroll() Scroll {
-    return _rtScrollNew()
-}
-
-#[gen.protocol(append)]
-func _append_Scroll(parent Scroll, child ui.node) {
-    _rtScrolledWindowSetChild(parent, child)
-}
-
-#[gen.protocol(set)]
-func _set_Scroll_direction(w Scroll, direction string) {
-    _rtScrollSetDirection(w, direction)
-}
-
-// The end arriving is no GTK signal: gtk4rt watches the vertical adjustment
-// and calls the handler itself.
-#[gen.protocol(on)]
-func _on_Scroll(sw Scroll, reachEnd func()) {
-    _rtScrollOnReachEnd(sw, reachEnd)
-}
-
-// A `ui.tabs`: gtk4rt's box of a GtkNotebook. Each TabPage it holds is a
-// page of the notebook, and `selected` the one shown.
-#[marks.intrinsic("gtk4:Tabs")]
-component Tabs(
-    selected int,
-    look     gtk.Look,
-    pages    ...component ui.node,
-) ui.node
-
-// One tab: its panel, a page the notebook shows a tab titled `title` for.
-// The user choosing it is no GTK signal on it but the notebook's page
-// changing, which gtk4rt reports as `@change`, and only the user's. Named
-// for the tabs' event it raises, which is what a test's press of it calls.
-#[marks.intrinsic("gtk4:TabPage")]
-component TabPage(
-    title    string,
-    disabled bool = false,
-    @change(),
-    content  ...component ui.node,
-) ui.node
-
-#[go.native(_rtPkg, "gtk4rt.TabsNew")]
-func _rtTabsNew() Tabs
-
-#[go.native(_rtPkg, "gtk4rt.TabsSetSelected")]
-func _rtTabsSetSelected(t Tabs, k int)
-
-#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
-func _rtTabsAppend(t Tabs, page ui.node)
-
-#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
-func _rtTabsRemove(t Tabs, page ui.node)
-
-#[go.native(_rtPkg, "gtk4rt.TabPageNew")]
-func _rtTabPageNew() TabPage
-
-#[go.native(_rtPkg, "gtk4rt.TabPageSetTitle")]
-func _rtTabPageSetTitle(p TabPage, title string)
-
-#[go.native(_rtPkg, "gtk4rt.TabPageSetDisabled")]
-func _rtTabPageSetDisabled(p TabPage, disabled bool)
-
-#[go.native(_rtPkg, "gtk4rt.TabPageOnShown")]
-func _rtTabPageOnShown(p TabPage, fn func())
-
-#[go.native(_rtPkg, "gtk4rt.BoxAppend")]
-func _rtTabPageAppend(p TabPage, child ui.node)
-
-#[go.native(_rtPkg, "gtk4rt.BoxRemove")]
-func _rtTabPageRemove(p TabPage, child ui.node)
-
-#[gen.protocol(create)]
-func _create_Tabs() Tabs {
-    return _rtTabsNew()
-}
-
-#[gen.protocol(append)]
-func _append_Tabs(parent Tabs, page ui.node) {
-    _rtTabsAppend(parent, page)
-}
-
-#[gen.protocol(remove)]
-func _remove_Tabs(parent Tabs, page ui.node) {
-    _rtTabsRemove(parent, page)
-}
-
-#[gen.protocol(set)]
-func _set_Tabs_selected(t Tabs, selected int) {
-    _rtTabsSetSelected(t, selected)
-}
-
-#[gen.protocol(create)]
-func _create_TabPage() TabPage {
-    return _rtTabPageNew()
-}
-
-#[gen.protocol(append)]
-func _append_TabPage(parent TabPage, child ui.node) {
-    _rtTabPageAppend(parent, child)
-}
-
-#[gen.protocol(remove)]
-func _remove_TabPage(parent TabPage, child ui.node) {
-    _rtTabPageRemove(parent, child)
-}
-
-#[gen.protocol(set)]
-func _set_TabPage_title(p TabPage, title string) {
-    _rtTabPageSetTitle(p, title)
-}
-
-#[gen.protocol(set)]
-func _set_TabPage_disabled(p TabPage, disabled bool) {
-    _rtTabPageSetDisabled(p, disabled)
-}
-
-#[gen.protocol(on)]
-func _on_TabPage(p TabPage, change func()) {
-    _rtTabPageOnShown(p, change)
-}
-
-// The picture a URL names, decoded once: a file the program carries at once,
-// one fetched when it arrives. Owned by the source deriving it, so it is made
-// once per URL and given back when the URL changes or the source unmounts.
-// The runtime counts its holders, so a program keeping one in a second var
-// holds a reference, not a second decode.
-#[go.native(_rtPkg, "*gtk4rt.Picture")]
-#[owned(unrefPicture, retain=refPicture)]
-struct Picture {}
-
-#[go.native(_rtPkg, "gtk4rt.LoadPicture")]
-func loadPicture(url string) Picture
-
-#[go.native(_rtPkg, "gtk4rt.RefPicture")]
-func refPicture(p Picture) Picture
-
-#[go.native(_rtPkg, "gtk4rt.UnrefPicture")]
-func unrefPicture(p Picture)
-
-#[marks.intrinsic("gtk4:ImageUrl")]
-component ImageUrl(url string, picture Picture) ui.imageSource
-
-#[marks.intrinsic("gtk4:ImageDrawing")]
-component ImageDrawing(width float, height float, shapes ...component shapes.shape) ui.imageSource
-
-// A source of either kind is a GtkPicture gtk4rt fits to the image holding
-// it. The URL is what a source says it shows, which a test reads; what it
-// shows is the picture, and a drawing's is painted from its shapes.
-#[go.native(_rtPkg, "gtk4rt.ImageSourceNew")]
-func _rtImageSourceNew() ImageUrl
-
-#[go.native(_rtPkg, "gtk4rt.ImageSourceNew")]
-func _rtImageDrawingNew() ImageDrawing
-
-#[go.native(_rtPkg, "gtk4rt.ImageSourceSetPicture")]
-func _rtImageSourceSetPicture(w ImageUrl, picture Picture)
-
-#[gen.protocol(create)]
-func _create_ImageUrl() ImageUrl {
-    return _rtImageSourceNew()
-}
-
-#[gen.protocol(set)]
-func _set_ImageUrl_picture(w ImageUrl, picture Picture) {
-    _rtImageSourceSetPicture(w, picture)
-}
-
-#[gen.protocol(create)]
-func _create_ImageDrawing() ImageDrawing {
-    return _rtImageDrawingNew()
-}
-
-const component ui.file[platform](path) {
-    func picture() => loadPicture(path)
-
-    ImageUrl(url=path, picture=picture)
-}
-
-const component ui.remote[platform](url) {
-    func picture() => loadPicture(url)
-
-    ImageUrl(url=url, picture=picture)
-}
-
-const component shapes.image[platform](width, height, shapes) {
-    ImageDrawing(width=width, height=height) {
-        shapes
-    }
-}
-
-#[cnative("cairo_translate")]
-func CairoContext.translate(x float, y float)
-
-#[cnative("cairo_scale")]
-func CairoContext.scale(x float, y float)
-
-#[cnative("cairo_clip")]
-func CairoContext.clip()
-
-// Paints a picture into a box, scaled once per box size rather than per
-// frame; one still on its way paints nothing, and is there the next time the
-// drawing paints after it arrives.
-#[go.native(_rtPkg, "gtk4rt.CairoPaintPicture")]
-func paintPicture(cr CairoContext, p Picture, x float, y float, w float, h float)
-
-// What a `drawSource` paints a carried or fetched image with: the context, the
-// URL its source names and the picture the source holds.
-struct SourceEvent {
-    ctx     CairoContext
-    url     string
-    picture Picture
-}
-
-// The primitive a `canvasImage` paints its source through. `@url` paints an
-// image a URL names; a drawing is painted in place rather than as a picture,
-// its shapes between `@enter`, which maps the drawing's own space onto the box
-// and clips to it, and `@leave`. The size in their payload is the drawing's.
-#[marks.intrinsic("gtk4:drawSource")]
-component drawSource(
-    @url(e SourceEvent),
-    @enter(e DrawEvent),
-    @leave(e DrawEvent),
-    source ...component family.one[ui.imageSource],
-) shapes.shape
-
-const component shapes.canvasImage[platform](x, y, w, h, src) {
+const component draw.canvasImage[platform](x, y, w, h, src) {
     drawSource(
         @url(e) {
             paintPicture(e.ctx, e.picture, x, y, w, h)
@@ -1513,96 +2254,4 @@ const component shapes.canvasImage[platform](x, y, w, h, src) {
     ) {
         src
     }
-}
-
-// --- Rich text ---
-//
-// The span family, and the one target where the *host* resolves the cascade.
-// Pango markup nests: `<b><i>x</i></b>` is what `bold { italic { … } }` means,
-// so the tree an author wrote is the tree GTK is handed and nothing is
-// flattened. What this platform builds is the string.
-//
-// A flow is therefore one `GtkLabel` and a span is no widget at all -- it is a
-// piece of that label's markup -- which is why neither primitive names a GIR
-// class. `codegen/platform/gtk4/markup.go` collects the span tree ahead of the
-// walk and writes the markup as a Go string expression, so a run whose words
-// come from state is an ordinary concatenation and the updater that moved that
-// state sets the label again, through the flow's `markup` set.
-
-#[marks.intrinsic("gtk4:Flow")]
-component Flow(
-    look    gtk.Look,
-    // The Pango markup the spans make, which the platform writes wherever
-    // one of them changes; nothing passes it.
-    markup  string = "",
-    content ...component markup.span,
-) ui.node
-
-#[go.native(_rtPkg, "gtk4rt.FlowNew")]
-func _rtFlowNew() Flow
-
-#[go.native(_rtPkg, "gtk4rt.LabelSetMarkup")]
-func _rtFlowSetMarkup(w Flow, markup string)
-
-#[gen.protocol(create)]
-func _create_Flow() Flow {
-    return _rtFlowNew()
-}
-
-// gtk4rt copies the markup into C itself, so the label is set in either mode
-// with no C string in the program.
-#[gen.protocol(set)]
-func _set_Flow_markup(w Flow, markup string) {
-    _rtFlowSetMarkup(w, markup)
-}
-
-// One run of words. `spanStyle` is read off the literal -- which
-// fields a `SpanStyle` set is a question about the literal, as it is on every
-// other target -- and becomes the Pango tags wrapped around this run's content.
-#[marks.intrinsic("gtk4:Span")]
-component Span(
-    text      string,
-    href      string,
-    spanStyle markup.SpanStyle,
-    content   ...component markup.span,
-) markup.span
-
-const component markup.richText[platform](style, content) {
-    Flow(look=lookOf(style)) {
-        content
-    }
-}
-
-const component markup.text[platform](value) {
-    Span(text=value) {}
-}
-
-const component markup.run[platform](style, content) {
-    Span(spanStyle=style) {
-        content
-    }
-}
-
-// Pango has `<a href>` and GtkLabel follows one when it is clicked, so this is
-// the one target besides html where a link is a link.
-const component markup.link[platform](href, content) {
-    Span(href=href) {
-        content
-    }
-}
-
-// Pango takes a foreground and nothing a theme could answer, so the fallback
-// is a palette rather than the host: the light one, since the theme GTK ships
-// with is light.
-const component markup.token[platform](kind, content) {
-    Span(spanStyle={color=markup.colorOf(markup.palette, markup.lightPalette, kind)}) {
-        content
-    }
-}
-
-// Pango markup has no image, and a GtkLabel holds text. So the description is
-// what an image is here, in the brackets that say a picture stood where they
-// are.
-const component markup.image[platform](alt) {
-    Span(text="[{alt}]") {}
 }

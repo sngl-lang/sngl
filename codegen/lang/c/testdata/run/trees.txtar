@@ -1,0 +1,61 @@
+A recursive type's value nests as deep as it was built, and keeping it
+walks it, a frame or more of the C stack for each level, so the runtime
+bounds how deep: a tree three thousand deep stops the program with a panic
+rather than overflow the stack. nests.txtar keeps one a thousand deep.
+
+-- app.sngl --
+struct Tree {
+    kids list[Tree]
+}
+
+func zero(n int) int {
+    return 0
+}
+
+func wrap(prev func(int) int) func(int) int {
+    return func(n int) int {
+        return 1 + prev(n)
+    }
+}
+
+func start() func(int) int {
+    return zero
+}
+
+func nest(t Tree) Tree {
+    return Tree{kids = [t]}
+}
+
+func leaf() Tree {
+    return Tree{kids = []}
+}
+
+func holding(t Tree) func(int) int {
+    return func(n int) int {
+        return n + t.kids.length
+    }
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+#include <stdlib.h>
+
+static void caught(const char *msg) {
+	printf("panic: %s\n", msg);
+	exit(0);
+}
+
+int main(void) {
+	sngl_panic_hook = caught;
+	sngl_turn_enter();
+	s_Tree t = s_leaf();
+	for (int i = 0; i < 3000; i++) {
+		t = s_nest(t);
+	}
+	sngl_fn_int__int h = s_holding(t);
+	sngl_env_keep(h.env);
+	printf("held\n");
+	return 0;
+}
+-- want --
+panic: a value nests more than 2000 deep

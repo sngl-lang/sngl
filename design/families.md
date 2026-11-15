@@ -138,6 +138,34 @@ not injected into, since the handler it holds is the one the node's prop
 holds (`testdata/record_handler_prop.txtar`,
 `cmd/sngl/testdata/record_handler_prop_runs.txt`).
 
+A lambda whose types name a type parameter is not lifted: in a generic
+component's body its state would hold the parameter itself, so it is left
+for the inliner to splice at each binding and the target lifts it then
+(`namesTypeParam`, the Pokédex's `cached`). A context a lifted lambda reads
+is bound into its state where the closure is made (`closureUnder`), as
+`funcValueUnder` binds a function taken as a value, since its thunk hands
+it only the lambda's own arguments.
+
+On C the handler is a function `passLambda` lifted, which reads what it
+captured through its state, so the update there is a package function taking
+that state (`liftedSetter`). `holdsWriter` follows a `Closure` into its
+function, since `ir.Walk` stops at one. passReactivity injects into a lifted
+function once, with the package's functions, not at every closure of it it
+meets: a closure is made wherever its prop is, the update included, and the
+handler was handed the update three times. A lifted function is the
+package's, so every splice of the component it was lifted from shared it,
+and its captures (`ir.Package.LiftedCaptures`) named the component's
+declarations rather than the splice's: the root's `language` was
+`language__inst0` after the inliner, and the handler's write was of a var
+no update follows. The splice copies each lifted function capturing what it
+renamed (`spliceLifted`), with the closures of it the copy's body makes, and
+one calling a function of the component's, which the copy calls as the
+splice's own. A function of the component's that read only its props was
+pure, and bound to the caller's var its copy reads state: left pure, the
+fold ran `picked() => chosen != "" ? chosen : "fig"` at the var's first
+value and every later write was lost, so the copy is marked readonly
+(`expandCall`; `cmd/sngl/testdata/slot_method_reads_prop_runs.txt`).
+
 On html a loop over records a page writes into its markup unrolls with each
 record's handler a constant: in a document's fold a function literal is a
 value, a copy reading the values the fold bound for it (`heldLambda`), and
@@ -185,7 +213,10 @@ attaching no node at all (`cmd/sngl/testdata/view_list_lambda_runs.txt`).
 What the function a `const` call is handed reads is what the call reads
 (`gatherLambdaReads`): a const callee cannot keep it for later, so
 `xs.filter(func(x) => x.startsWith(prefix))` re-renders when `prefix`
-changes.
+changes. On a target without lambdas, `passLambda` has already lifted the body,
+which reads `prefix` through its state param, so the reads are what the
+closure's state is built from; read only from the body, setting `prefix`
+re-rendered nothing on either C platform.
 
 **A family registers before what names it.** A component is bound only once its
 own signature resolves, so a member declared above its family would name
@@ -495,8 +526,11 @@ instantiations of one component catch separately.
 **A raise unwinds to the handler that resolved it, and what that handler
 answers for decides what runs after it.** Inside a callee a raise is the host's
 native throw — a panic of `ErrorEvent` on Go, `SnglRaise` on Kotlin, an `Error`
-with a `kind` on JavaScript — and it passes through every fallible function
-between with no signature change. Where it stops has two shapes:
+with a `kind` on JavaScript, a `longjmp` to the innermost catch point
+(`sngl_catch`, a `setjmp` each catch block pushes) on C — and it passes through
+every fallible function between with no signature change. C has no closure to
+wrap a handler in, so a `return` in a caught body takes its catch point off
+before it leaves, and one in a handler inlined at its call is a `goto` past it. The error a raise carries travels in `sngl_raised`, which the handler copies into its point as it starts: C leaves indeterminate a local of the function that called `setjmp` written after the call, as the raise writing the point itself did. Where it stops has two shapes:
 
 - **A call's own `@error`** (`ErrorPerCall`) answers for that call alone: the
   handler runs and the statement after the call runs next. Each language's

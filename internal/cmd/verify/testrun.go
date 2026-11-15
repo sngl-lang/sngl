@@ -16,8 +16,8 @@ import (
 
 // testRunRecord is the file a package keeps when its own tests are answered
 // from a record rather than run: the digest of what they build. A package's
-// tests compile it, and gtk4rt's link the host's GTK -- which on CI is older
-// than a developer's, so a call it lacks failed CI's link while every test of
+// tests compile it, and a package whose tests link the host's GTK -- which
+// on CI is older than a developer's -- failed CI's link where every test of
 // the package skipped there anyway, for want of a compositor. The package is
 // left out of the test step while the digest stands, as a script's build and
 // a fixture's launch are answered from theirs; -update runs its tests and
@@ -37,9 +37,8 @@ func recordedTestRuns(pkgs []string) []string {
 
 // testRunDigest names what pkg's tests build: the files each package of this
 // module they import compiles or embeds, pkg's own tests, and the module's
-// requirements. A dependency's tests are left out -- gtk4rt's tests import
-// much of the compiler, and a test added beside it builds nothing of theirs --
-// and so is the record itself. No toolchain moves it, which -verify is for.
+// requirements. A dependency's tests are left out -- a test added beside
+// one builds nothing of theirs -- and so is the record itself. No toolchain moves it, which -verify is for.
 //
 // The files are those of a cgo build, which the tests are, whatever the host
 // would build by default: with cgo off a cgo file is not listed.

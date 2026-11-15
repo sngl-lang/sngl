@@ -25,6 +25,11 @@ func SkipReason(out string) (string, bool) {
 		{"Package gtk4 was not found", "gtk4 dev libraries not installed"},
 		{"No package 'gtk4' found", "gtk4 dev libraries not installed"},
 		{"go not found in PATH", "go not on PATH"},
+		// win32's: a build for Windows wants MinGW's compiler, and its test
+		// agent Wine (codegen/platform/win32).
+		{"-w64-mingw32-gcc, which is not on PATH", "MinGW's compiler not on PATH"},
+		{"wine is not on PATH", "wine not on PATH"},
+		{"wineboot is not on PATH", "wine not on PATH"},
 		// The JDK selector pins a supported JDK; if Gradle still rejects the
 		// runtime, that is an environment mismatch rather than a regression.
 		{"install JDK 21", "no compatible JDK for the Android build"},

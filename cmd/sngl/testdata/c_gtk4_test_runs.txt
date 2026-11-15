@@ -1,0 +1,1398 @@
+# A gtk4 program in C runs its tests in the C test agent (pkg/c/runtime):
+# each test builds the program, and a click is GTK's "clicked", which reaches
+# the closure GLib holds through its dispatcher, the closure's state the box
+# NoRef made of the component's var.
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A slot renders into a box no class declared the append and remove of:
+# the card's `if` takes its body out of the card's box and puts it back
+# before its anchor, and a window under `if` is rendered into the
+# application, SNGL_APP, which the runtime's box calls attach to and detach
+# from it.
+
+sngl test --platform=gtk4 --language=c slots.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A timer is a GLib timeout armed with the closure its effect mounts, whose
+# body is the program's @tick handler: NoLambda leaves a lambda that emits
+# to the inliner that answers the emit. A test's wait runs GTK's loop, and
+# each test tears down the one before, so its timer ticks no later test's
+# state.
+
+sngl test --platform=gtk4 --language=c timer.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A canvas's click is a GtkGestureClick's press, which a test makes through
+# the handler rt keeps on the drawing area (testdata/gtk4_c_canvas.txtar).
+
+sngl test --platform=gtk4 --language=c canvas.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A test's value is written into the widget as a user's edit would: a flip's
+# state set, which fires the signal, and an entry's text put there with its
+# "changed" blocked before the test fires it. A switch reports through
+# notify::active, which connects like any signal.
+
+sngl test --platform=gtk4 --language=c controls.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A scroll's end arriving is no signal: rt's scroll.c reads it off the
+# adjustments, and a test fires the handler rt keeps. Its direction is the
+# member's name, which NoEnum writes in place of the ordinal a string of an
+# enum would otherwise format as.
+
+sngl test --platform=gtk4 --language=c scroll.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A window's @key hears a key a test presses through rt's toplevel, as the
+# program's handler takes it: the name a string, and rt's stop a closure the
+# handler calls. The test's stop writes a local of the test's, which the
+# lambda C lifts reaches through its address. int.parse and float.parse read
+# the whole of s, and answer none where it is no number.
+
+sngl test --platform=gtk4 --language=c keys.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A unit of several bases is a struct of a double per base, which C adds,
+# scales and compares through functions the file defines: a style built as
+# the program runs holds them, and gtk4's look reads their fields. The
+# numeric builtins are math.h's and the list's, a color's text is the
+# runtime's, a string split by "" is its characters, a root's function a
+# test calls is handed no component, and an assert in a loop is the test's.
+# A struct copied out of a list copies its list after the list's copy is
+# defined, and an option a root's var starts null is the option's zero.
+
+sngl test --platform=gtk4 --language=c units.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A program whose output block names no C target is tested in C all the
+# same: the test configures gtk4 for the language it runs in, which is what
+# declares the widgets a C program calls.
+
+sngl test --platform=gtk4 --language=c bare.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A row a slot population copies keeps its methods, which name the copy as
+# their receiver; a checkbox's and an input's change handlers are boxed as
+# two types; a spread the build cannot read is merged by a helper the file
+# defines; and a scroll a slot holds is the widget its create made.
+
+sngl test --platform=gtk4 --language=c rows.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A window's menu is rt's: each entry a hidden box among the window's
+# content, from which menu.c builds the header bar's GMenu, and a test picks
+# one copy of an entry a loop renders by its key (sngl_copy_put). A window's
+# way back is a hidden widget the bar's back button presses, as an Escape
+# nothing took does.
+
+sngl test --platform=gtk4 --language=c menus.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A tabs is rt's box of a GtkNotebook (tabs.c), whose page a test chooses as
+# a click does. A test's day is written into the calendar unreported, and
+# its choice selected on the drop-down, which reports it; a date is its text.
+
+sngl test --platform=gtk4 --language=c choose.sngl
+stdout 'ok +3 tests, 0 failures'
+
+# A flow is one label whose spans' words are its Pango markup, set again
+# from the same expression wherever a span's prop is written. A payload enum
+# is a tag and a field per member carrying one, and one a call the build
+# folds returns is the literal naming its member. A widget a branch took away
+# reads null, through the weak pointer rt holds it by.
+
+sngl test --platform=gtk4 --language=c flow.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A callback's strings are made in the arena, which it gives back as it
+# returns, so what a handler stores is kept: copied out to the heap, a list's
+# elements, a map's keys and values and a struct's fields with it, and what
+# the holder held before given back as the turn ends.
+
+sngl test --platform=gtk4 --language=c keep.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A critical GLib logs fails the test running: a widget misused is a bug GTK
+# survives and a test reading state would miss. A component built at run
+# time attaches an instance by its root, renders a slot at its top into a
+# box it makes first, and holds its slot's anchor itself.
+
+sngl test --platform=gtk4 --language=c records.sngl
+stdout 'ok +3 tests, 0 failures'
+
+# A slot in a container of one child renders into a box that is the child; a
+# tab a slot took away is gone from the notebook before the slot reads it
+# again; and what a render no longer builds reads null though GTK still holds
+# it: a widget by its weak pointer, a copy by the table of them, which a
+# record's destroy and a widget finalized each leave too.
+
+sngl test --platform=gtk4 --language=c holders.sngl
+stdout 'ok +4 tests, 0 failures'
+
+# A snapshot is what the test shows in a window of 800 by 600, as Go's agent
+# draws it: the component a test takes, the one widget its body makes and
+# attaches nowhere, or the window a test of the program attached last. The
+# agent hands the driver the pixels, which it keeps as a PNG, and the Go
+# agent draws what the C one did.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=gtk4 --language=c snap.sngl
+stdout 'ok +2 tests, 0 failures'
+exists snap.sngl.snapshots/zero.png
+exists snap.sngl.snapshots/one.png
+exists snap.sngl.snapshots/whole.png
+! cmp snap.sngl.snapshots/zero.png snap.sngl.snapshots/one.png
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=gtk4 --language=go snap.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# async.do runs its work on the loop, after the turn that posted it, through
+# the sngl_post the runtime defines as a GLib idle.
+
+sngl test --platform=gtk4 --language=c async.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- snap.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component main ui.node {
+    var n = 0
+    ui.vbox {
+        ui.text(value="Count {n}")
+        ui.button #inc(text="More", @click { n += 1 })
+    }
+}
+
+ui.window(title="Counter") {
+    main()
+}
+
+func testDrawsTheComponent(t test.Test, c main) {
+    t.snapshot("zero")
+    c.inc.click()
+    t.snapshot("one")
+}
+
+func testDrawsTheWindow(t test.Test) {
+    t.snapshot("whole")
+}
+-- app.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var n = 0
+    ui.vbox {
+        ui.button #count(text="{n}", @click {
+            n += 1
+        })
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClickReachesTheClosure(t test.Test, c main) {
+    c.count.click()
+    c.count.click()
+    t.assert(c.n == 2)
+}
+-- slots.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component card(name = "") ui.node {
+    var open = true
+    ui.button #toggle(text=name, @click {
+        open = !open
+    })
+    if open {
+        ui.text(value="body of " + name)
+    }
+}
+
+var details = false
+
+ui.window(title="t") {
+    card(name="a")
+}
+
+if details {
+    ui.window(title="details") {
+        ui.text(value="more")
+    }
+}
+
+func testToggleRemovesAndRestoresTheBody(t test.Test, c card) {
+    c.toggle.click()
+    t.assert(!c.open)
+    c.toggle.click()
+    t.assert(c.open)
+}
+-- timer.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var (
+        beats = 0
+        running = true
+    )
+    time.timer(interval=100ms, enabled=running, @tick {
+        beats += 1
+    })
+    ui.text(value="{beats}")
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testTheTimerRunsTheHandler(t test.Test, c main) {
+    t.wait(func() => c.beats >= 2, 2000)
+    t.assert(c.beats >= 2)
+}
+
+func testTheGateStopsTheTimer(t test.Test, c main) {
+    c.running = false
+    t.wait(func() => c.beats > 0, 300)
+    t.assert(c.beats == 0)
+}
+-- canvas.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+import draw "sngl:ui/draw"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component dot(r float) ui.node {
+    var n = 0
+    ui.vbox {
+        draw.canvas(width=40px, height=40px) {
+            draw.circle(cx=20.0, cy=20.0, r=r + float(n))
+        }
+        ui.button(text="grow", @click {
+            n += 1
+        })
+    }
+}
+
+component main ui.node {
+    var hits = 0
+    var rs = [4.0, 8.0]
+    ui.vbox {
+        draw.canvas #board(width=40px, height=40px, scalingMode=draw.ScalingMode.fit, @click {
+            hits += 1
+        }) {
+            draw.rect(x=0.0, y=0.0, w=float(hits), h=10.0, style=draw.Style{lineCap=draw.LineCap.round})
+        }
+        for var r = rs {
+            dot(r=r)
+        }
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClickRedraws(t test.Test, c main) {
+    c.board.click()
+    c.board.click()
+    t.assert(c.hits == 2)
+}
+-- controls.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var on = false
+    var dark = false
+    var name = "a"
+    var changes = 0
+    ui.vbox {
+        ui.checkbox #box(label="x", checked=on, @change(v) {
+            on = v
+            changes += 1
+        })
+        ui.toggle #flip(checked=dark, @change(v) {
+            dark = v
+        })
+        ui.input #field(value=name, @input(v) {
+            name = v
+        })
+        ui.text(value="{name} {on}")
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testValuesReachTheHandlers(t test.Test, c main) {
+    c.box.change(true)
+    t.assert(c.on)
+    t.assert(c.changes == 1)
+    c.flip.change(true)
+    t.assert(c.dark)
+    c.field.input("bee")
+    t.assert(c.name == "bee")
+}
+-- keys.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component app root {
+    var typed = ""
+    var total = 0.0
+    var count = 0
+    ui.window #win(title="t", @key(e, stop) {
+        if e.ctrl {
+            return
+        }
+        typed = typed + e.key
+        total += float.parse(e.key).or(0.0)
+        count += int.parse(e.key).or(0)
+        if e.key == "x" {
+            stop()
+        }
+    }) {
+        ui.text(value=typed)
+    }
+}
+
+app()
+
+func testKeysReachTheWindow(t test.Test, c app) {
+    var stopped = 0
+    c.win.key(ui.KeyPress{key="7"}, func() { stopped += 1 })
+    c.win.key(ui.KeyPress{key="x"}, func() { stopped += 1 })
+    c.win.key(ui.KeyPress{key="s", ctrl=true}, func() { stopped += 1 })
+    c.win.key(ui.KeyPress{key="2.5"}, func() { stopped += 1 })
+    t.assert(c.typed == "7x2.5")
+    t.assert(stopped == 1)
+    t.assert(c.total == 9.5)
+    t.assert(c.count == 7)
+}
+-- bare.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component main ui.node {
+    var n = 0
+    ui.button #b(text="{n}", @click {
+        n += 1
+    })
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testClicks(t test.Test, c main) {
+    c.b.click()
+    t.assert(c.n == 1)
+}
+-- units.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+struct key {
+    label string
+    tags  list[string] = []
+}
+
+component app root {
+    var span = 1
+    var pad ui.measurement = 4px
+    var shade color = #15171c
+    var picked option[key] = null
+
+    func grow() {
+        span += 1
+        pad = pad * 2 + 1em
+        var keys = [key{label="a", tags=["x", "y"]}]
+        picked = keys[0]
+    }
+
+    ui.window(title="t") {
+        ui.text(value="x", style={flex=span, padding=pad, margin=pad - 2px, background=shade})
+    }
+}
+
+app()
+
+func testUnitsAndNumbers(t test.Test, c app) {
+    c.grow()
+    t.assert(c.span == 2)
+    t.assert(c.picked != null && c.picked.tags.length() == 2)
+    t.assert(c.pad == 8px + 1em)
+    t.assert(c.pad.px == 8.0 && c.pad.em == 1.0)
+    t.assert(string(c.shade) == "#15171c")
+    t.assert(float.max(1.5, 2.5, 0.5) == 2.5 && int.min(3, 1, 2) == 1)
+    t.assert(float.round(2.5) == 3.0 && float.abs(-2.0) == 2.0 && int.clamp(9, 0, 5) == 5)
+    for var ch = string.split("héllo", "") {
+        t.assert(string.length(ch) == 1)
+    }
+}
+-- rows.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component tag(label string, style ui.Style = ui.Style{}) ui.node {
+    ui.text(value=label, style={...style, padding=4px})
+}
+
+component row(label string, foot component(v int) ui.node) ui.node {
+    var marks = 0
+
+    func mark(n int) {
+        marks = marks + n
+    }
+
+    func summary() string {
+        return "{label}={marks}"
+    }
+
+    ui.vbox {
+        ui.text(value=summary())
+        foot(marks)
+        ui.effect(@mount { mark(2) })
+    }
+}
+
+component main ui.node {
+    var items = ["a", "b"]
+    var log = ""
+    var shown = true
+    var look = ui.Style{}
+    ui.vbox {
+        ui.button #hide(text="hide", @click { shown = false })
+        for var it = items {
+            row(label=it) {
+                component foot(v) {
+                    ui.text(value="foot {it} {v}")
+                }
+            }
+            ui.checkbox(label=it, @change(on) { log = "{it} {on}" })
+            ui.input(value=it, @change(v) { log = "{it}={v}" })
+            tag(label=it, style=look)
+        }
+        if shown {
+            ui.scroll {
+                ui.text(value="maybe")
+            }
+        }
+        ui.text(value=log)
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testRows(t test.Test, c main) {
+    t.assert(c.log == "")
+    c.hide.click()
+    t.assert(!c.shown)
+}
+-- scroll.sngl --
+import ui "sngl:ui"
+import c "sngl:language/c"
+import test "sngl:test"
+
+output {
+    c {
+        gtk4(gir="builtin")
+    }
+}
+
+component main ui.node {
+    var rows = [1, 2, 3]
+    var asked = 0
+    var way = ui.ScrollDirection.vertical
+    ui.vbox {
+        ui.text #label(value="{way}")
+        ui.scroll #list(direction=way, @reachEnd {
+            asked += 1
+            rows.push(asked + 3)
+        }) {
+            ui.vbox {
+                for var r = rows {
+                    ui.text(value="row {r}")
+                }
+            }
+        }
+    }
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testTheEndAsksForMore(t test.Test, c main) {
+    c.list.reachEnd()
+    t.assert(c.asked == 1)
+}
+
+func testADirectionIsItsName(t test.Test, c main) {
+    t.assert(string(c.way) == "vertical")
+    c.way = ui.ScrollDirection.both
+    t.assert(string(c.way) == "both")
+    t.assert("{c.way}" == "both")
+}
+-- menus.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+import "sngl:test"
+
+const sizes = ["Small", "Medium", "Large"]
+
+component app root {
+    var size = "Medium"
+    var saved = 0
+    var backs = 0
+
+    ui.window #main(title=pages.current.title, canGoBack=pages.canGoBack(), @back {
+        backs += 1
+        pages.back()
+    }) {
+        component menu {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Save", @select { saved += 1 })
+                ui.menuItem(label="Close", disabled=true)
+            }
+            ui.menuItem(label="Size") {
+                for var s = sizes {
+                    ui.menuItem(label=s, checked=s == size, @select { size = s })
+                }
+            }
+        }
+        nav.stack #pages {
+            nav.page #home(href="/", title="Home") {
+                ui.text(value="home")
+            }
+            nav.page #about(href="/about", title="About") {
+                ui.text(value="about")
+            }
+        }
+        ui.button #toAbout(text="About", @click { pages.go(about) })
+        ui.text #shown(value=size)
+    }
+}
+
+app()
+
+func testPickingAnEntryChecksIt(t test.Test, c app) {
+    t.assert(c.main.menu[1].children[1].checked)
+    c.main.menu[1].children[2].select()
+    t.assert(c.shown.value == "Large")
+    c.main.menu[0].children[0].select()
+    t.assert(c.saved == 1)
+}
+
+func testTheWindowsBackReturns(t test.Test, c app) {
+    t.assert(!c.main.canGoBack)
+    c.toAbout.click()
+    t.assert(c.main.canGoBack)
+    c.main.back()
+    t.assert(c.backs == 1)
+    t.assert(c.main.title == "Home")
+}
+-- choose.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+import time "sngl:time"
+
+component strip ui.node {
+    var idx = 0
+    var changed = -1
+    var extra = false
+    var picked option[time.date] = null
+    var seen = "none"
+    var fruit = "Apple"
+
+    ui.vbox {
+        ui.tabs #tabs(:selected=idx, @change(i) {
+            changed = i
+        }) {
+            ui.tab(label="One") {
+                ui.text(value="first panel")
+            }
+            ui.tab(label="Off", disabled=true) {
+                ui.text(value="second panel")
+            }
+            if extra {
+                ui.tab(label="More") {
+                    ui.text(value="more panel")
+                }
+            }
+        }
+        ui.datepicker #day(:value=picked, @change(value) { seen = value == null ? "no day" : "day" })
+        ui.select #fruits(:value=fruit) {
+            ui.choice(label="Apple", value="Apple")
+            ui.choice(label="Banana", value="Banana")
+        }
+    }
+}
+
+func testPressingATabSelectsIt(t test.Test, c strip) {
+    c.extra = true
+    c.tabs.change(2)
+    t.assert(c.idx == 2)
+    t.assert(c.changed == 2)
+}
+
+func testADayIsChosen(t test.Test, c strip) {
+    var d time.date = "2024-03-05"
+    c.day.change(d)
+    t.assert(c.picked == d)
+    t.assert(c.seen == "day")
+}
+
+func testAChoiceIsPicked(t test.Test, c strip) {
+    c.fruits.change("Banana")
+    t.assert(c.fruit == "Banana")
+}
+
+ui.window(title="t") {
+    strip
+}
+-- flow.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+import md "sngl:ui/markup"
+
+enum Shape {
+    round  float
+    square float
+    empty
+}
+
+func area(s Shape) float {
+    match var v = s {
+        round {
+            return 3.0 * v * v
+        }
+        square {
+            return v * v
+        }
+        empty {
+            return 0.0
+        }
+    }
+}
+
+// A call the build folds is written back as the literal naming its member.
+func first(side float) Shape {
+    if side > 2.0 {
+        return {square=side}
+    }
+    return Shape.empty
+}
+
+component main node {
+    var loud = true
+    var shape Shape = {round=1.0}
+    var picked = first(3.0)
+    var shown = true
+
+    vbox {
+        md.paragraph {
+            md.text(value="quiet ")
+            if loud {
+                md.bold {
+                    md.text(value="LOUD")
+                }
+            } else {
+                md.italic {
+                    md.text(value="soft")
+                }
+            }
+            md.text(value=" end")
+        }
+        button #flip(text="flip", @click {
+            loud = !loud
+            shape = {square=2.0}
+            picked = Shape.empty
+        })
+        button #toggle(text="t", @click { shown = !shown })
+        text(value="{area(shape)}")
+        if shown {
+            text #label(value="shown")
+        }
+    }
+}
+
+func testFlip(t Test, c main) {
+    c.flip.click()
+    t.assert(!c.loud)
+    t.assert(c.shape == Shape{square=2.0})
+    t.assert(area(c.shape) == 4.0)
+    t.assert(c.picked == Shape.empty)
+}
+
+func testNullTestsFollowTheBranch(t Test, c main) {
+    t.assert(c.picked == Shape{square=3.0})
+    t.assert(c.label != null)
+    c.toggle.click()
+    t.assert(c.label == null)
+    c.toggle.click()
+    t.assert(c.label != null)
+}
+
+window {
+    main
+}
+-- keep.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+struct Entry {
+    name string
+    tags list[string]
+}
+
+component ticker ui.node {
+    var n = 0
+    var last = "none"
+    var seen list[string] = []
+    var names map[string, string] = {}
+    var entry = Entry{name="", tags=[]}
+
+    ui.button #tick(text="tick", @click {
+        n += 1
+        last = "tick {n}"
+        seen.push("t{n}")
+        names["k{n}"] = "v{n}"
+        entry = {name="e{n}", tags=["a{n}", "b{n}"]}
+    })
+    ui.text(value=last)
+}
+
+func testWhatAHandlerStoresOutlivesIt(t test.Test, c ticker) {
+    c.tick.click()
+    c.tick.click()
+    t.assert(c.last == "tick 2")
+    t.assert(c.seen.format(",") == "t1,t2")
+    t.assert(c.names["k1"] == "v1" && c.names["k2"] == "v2")
+    t.assert(c.entry.name == "e2" && c.entry.tags.format(",") == "a2,b2")
+}
+
+ui.window(title="t") {
+    ticker
+}
+-- records.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+// An instance a record's body makes is attached to the box around it by
+// its root, and a record whose body is a slot renders it into a box it
+// makes first, after the widgets written ahead of it.
+component counter(tag string, @seen(v string)) ui.node {
+    var n = 0
+
+    ui.vbox {
+        ui.text(value="counter {tag} {n}")
+        ui.effect(on="{tag}:{n}", @mount(k) { seen(k) })
+    }
+}
+
+component card(start int, foot component(v int) ui.node) ui.node {
+    var k = start * 2
+
+    ui.vbox {
+        ui.text(value="card {k}")
+        foot(k)
+    }
+}
+
+component population ui.node {
+    var items = [1, 2]
+    var foots = ""
+
+    ui.vbox {
+        for var i = items {
+            card(start=i) {
+                component foot(v) {
+                    counter(tag="{i}/{v}", @seen(s) { foots = foots + s + " " })
+                }
+            }
+        }
+    }
+}
+
+func testInstancesMount(t test.Test, c population) {
+    t.assert(c.foots == "1/2:0 2/4:0 ")
+}
+
+component badge(label string) ui.node {
+    var hits = 0
+
+    ui.button #hit(text="hit {label} {hits}", @click { hits = hits + 1 })
+}
+
+component rows ui.node {
+    var lines = [["a", "b"], ["a", "b"]]
+    var skip = "b"
+
+    ui.vbox {
+        ui.button #move(text="m", @click { skip = "a" })
+        for var r = lines {
+            ui.vbox {
+                var local = 0
+
+                ui.text(value="{local}")
+                for var n = r {
+                    if n != skip {
+                        badge #b(label=n)
+                    }
+                }
+            }
+        }
+    }
+}
+
+func testACopyPerRow(t test.Test, c rows) {
+    t.assert(c.b[0][0] != null)
+    t.assert(c.b[0][1] == null)
+    c.move.click()
+    t.assert(c.b[0][0] == null)
+    t.assert(c.b[0][1] != null)
+    t.assert(c.b[1][1] != null)
+}
+
+// Each instance renders its slot before an anchor of its own: one an
+// instance destroyed held is no other's.
+component sign(:msg string = "inner") ui.node {
+    ui.vbox {
+        ui.text(msg)
+        ui.button(text="again", @click { msg = "again" })
+    }
+}
+
+component asked ui.node {
+    var shown = true
+
+    if shown {
+        sign #failed()
+    }
+}
+
+component page ui.node {
+    var on = true
+    var outer = "outer"
+
+    ui.vbox {
+        ui.text #failed(outer)
+        if on {
+            asked()
+        }
+    }
+}
+
+func testAnInstanceBuiltAgain(t test.Test, c page) {
+    t.assert(c.failed.value == "outer")
+    c.on = false
+    c.on = true
+    t.assert(c.failed.value == "outer")
+}
+
+ui.window {
+    population
+    rows
+    page
+}
+-- holders.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+// A slot inside a container holding one child -- a card's frame, a
+// scroll -- renders into a box that is that child.
+component framed ui.node {
+    var opened = ""
+
+    ui.vbox {
+        for var name = ["one", "two"] {
+            ui.card #row(clickable=true, @click { opened = name }) {
+                ui.text(value=name)
+            }
+        }
+        ui.card(variant="outlined") {
+            if opened != "" {
+                ui.text(value="opened {opened}")
+            }
+        }
+        ui.scroll {
+            if opened != "" {
+                ui.text(value="scrolled {opened}")
+            }
+        }
+    }
+}
+
+func testClickOpens(t test.Test, c framed) {
+    c.row[1].click()
+    t.assert(c.opened == "two")
+    c.row[0].click()
+    t.assert(c.opened == "one")
+}
+
+// A tab a slot takes away is out of the notebook, and the slot's next
+// render reads nothing of it.
+component strip ui.node {
+    var idx = 0
+    var changed = -1
+    var extra = false
+
+    ui.tabs #tabs(:selected=idx, @change(i) { changed = i }) {
+        ui.tab(label="One") {
+            ui.text(value="first panel")
+        }
+        if extra {
+            ui.tab(label="More") {
+                ui.text(value="more panel")
+            }
+        }
+    }
+}
+
+func testATabComesAndGoes(t test.Test, c strip) {
+    c.extra = true
+    c.tabs.change(1)
+    t.assert(c.changed == 1)
+    c.idx = 0
+    c.extra = false
+    t.assert(c.changed == 1)
+}
+
+// A test reads one copy of a node loops render by its key, null where the
+// render took it away, whether the file or an instance holds it.
+component picks ui.node {
+    var items = ["a", "b", "c"]
+    var skip = "a"
+
+    ui.button #change(text="skip b", @click { skip = "b" })
+    for var it = items {
+        if it != skip {
+            ui.button #only(text=it)
+            ui.text #note(value=it)
+            ui.checkbox #tick(label=it, @change(on) {})
+        }
+    }
+}
+
+func testTheCopiesABranchRenders(t test.Test, c picks) {
+    t.assert(c.only[0] == null)
+    t.assert(c.tick[1] != null)
+    c.change.click()
+    t.assert(c.only[0] != null)
+    t.assert(c.only[1] == null)
+    t.assert(c.note[1] == null)
+    t.assert(c.tick[1] == null)
+}
+
+// A widget a branch the render no longer takes built reads null, whether or
+// not GTK has let it go yet.
+enum Dir { up, down }
+
+component dial ui.node {
+    var d Dir = up
+
+    match d {
+        up { ui.text #north(value="north") }
+        else { ui.text(value="south") }
+    }
+    ui.button #spin(text="Spin", @click {
+        d = d == Dir.up ? Dir.down : Dir.up
+    })
+}
+
+func testTheBranchTaken(t test.Test, c dial) {
+    t.assert(c.north != null)
+    c.spin.click()
+    t.assert(c.north == null)
+    c.spin.click()
+    t.assert(c.north != null)
+}
+
+ui.window {
+    dial
+    framed
+    strip
+    picks
+}
+-- async.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var log = ""
+    var got = 0
+    ui.vbox {
+        ui.button #go(text="go", @click {
+            var n = 6 * 7
+            async.do(func() {
+                got = n
+            })
+            log = "posted"
+        })
+        ui.text #shown(value=log)
+    }
+}
+
+func testWorkRunsOnTheLoop(t test.Test, c main) {
+    c.go.click()
+    t.wait(func() => c.got == 42, 2000)
+    t.assert(c.got == 42)
+    t.assert(c.log == "posted")
+}
+
+ui.window {
+    main()
+}
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:e487e0ab8bf7b7b9bc95b4b2b13c800c
+{
+  "results": [
+    {
+      "Desc": "ClickReachesTheClosure",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/async.sngl/main/1 --
+sha256:4f0e4a3d9bb94f50c1e4f97de4fac3fb
+{
+  "results": [
+    {
+      "Desc": "WorkRunsOnTheLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/bare.sngl/main/1 --
+sha256:c704d72640e94e77127207d98ac5dc37
+{
+  "results": [
+    {
+      "Desc": "Clicks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/canvas.sngl/main/1 --
+sha256:3d8049728eb47b473b9b5f05424462b1
+{
+  "results": [
+    {
+      "Desc": "ClickRedraws",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/choose.sngl/strip/1 --
+sha256:0fad372545115fbf89cf778a10079f6e
+{
+  "results": [
+    {
+      "Desc": "PressingATabSelectsIt",
+      "Passed": true
+    },
+    {
+      "Desc": "ADayIsChosen",
+      "Passed": true
+    },
+    {
+      "Desc": "AChoiceIsPicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/controls.sngl/main/1 --
+sha256:31af245e678d599b6d134817b985f69c
+{
+  "results": [
+    {
+      "Desc": "ValuesReachTheHandlers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/flow.sngl/main/1 --
+sha256:9e97a695b914e3198eb40006a0fe8e77
+{
+  "results": [
+    {
+      "Desc": "Flip",
+      "Passed": true
+    },
+    {
+      "Desc": "NullTestsFollowTheBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/dial/1 --
+sha256:afdc3cab2b7c9e49f2a914d860cb03cb
+{
+  "results": [
+    {
+      "Desc": "TheBranchTaken",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/framed/1 --
+sha256:8c08ed291336cf15bf27c829b38de897
+{
+  "results": [
+    {
+      "Desc": "ClickOpens",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/picks/1 --
+sha256:db37ba5f36dc31a5c9d4b84dc2952ac7
+{
+  "results": [
+    {
+      "Desc": "TheCopiesABranchRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/holders.sngl/strip/1 --
+sha256:61b5363289d82b8f22d4d7127473e6b0
+{
+  "results": [
+    {
+      "Desc": "ATabComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/keep.sngl/ticker/1 --
+sha256:2cec7564dae2e9c4369801056c870477
+{
+  "results": [
+    {
+      "Desc": "WhatAHandlerStoresOutlivesIt",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/keys.sngl/app/1 --
+sha256:2af2764214ff87bdb6eced1445cf8b1f
+{
+  "results": [
+    {
+      "Desc": "KeysReachTheWindow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/menus.sngl/app/1 --
+sha256:464448a467173bacba7d030242e308c5
+{
+  "results": [
+    {
+      "Desc": "PickingAnEntryChecksIt",
+      "Passed": true
+    },
+    {
+      "Desc": "TheWindowsBackReturns",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/records.sngl/page/1 --
+sha256:a5c1d68622709b6261e80928c80c88ef
+{
+  "results": [
+    {
+      "Desc": "AnInstanceBuiltAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/records.sngl/population/1 --
+sha256:a57229a09e9a265edf0ec87a4194eba2
+{
+  "results": [
+    {
+      "Desc": "InstancesMount",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/records.sngl/rows/1 --
+sha256:28a2d49b398396ec275b550ad4a607e1
+{
+  "results": [
+    {
+      "Desc": "ACopyPerRow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/rows.sngl/main/1 --
+sha256:947b4ed2a15a3744520403cd2f938f3e
+{
+  "results": [
+    {
+      "Desc": "Rows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/scroll.sngl/main/1 --
+sha256:c28a8e7fbc24c3f92dfd95b53ee499ea
+{
+  "results": [
+    {
+      "Desc": "TheEndAsksForMore",
+      "Passed": true
+    },
+    {
+      "Desc": "ADirectionIsItsName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/slots.sngl/card/1 --
+sha256:9b83549e34516b5f59183acb204dd3e0
+{
+  "results": [
+    {
+      "Desc": "ToggleRemovesAndRestoresTheBody",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/snap.sngl/_/1 --
+sha256:40ffd4698f3c26fb34bbfa47cf0c4883
+{
+  "results": [
+    {
+      "Desc": "DrawsTheWindow",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "whole.png": "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FmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABVhxYB9bYsYMBAAAABGL+1j3CuGmMYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAhWXLAuWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsOKCdcEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIIVF6wLFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARrLhgXbDGbh0MAAAAIBDzt+4Rxs1igAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgBUH1oEFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWHFgHViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViAFQfWgTV27GAAAAAAgZi/dY8wbhojWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIIVF6wLFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARrLhgXbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2DFBeuCNXbrYAAAAACBmL91jzBuFgMswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAKsOLAOLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMCKA+vAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAqw4sA4swAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswIoD68AaO3YsAAAAACDM3zqMnmmMYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2CNgtUAX811mLwncCsAAAAASUVORK5CYII="
+  }
+}
+-- testrun/gtk4/c/snap.sngl/main/1 --
+sha256:3a6a8f8bcb618a795aa58ec4a98a127b
+{
+  "results": [
+    {
+      "Desc": "DrawsTheComponent",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "one.png": "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lRj94eiRl8LhyNO9vUOx2KM7d5iHAQCUk9B/PgMAlJcOxxlJjCaTyU7HuXDpkoi4rtvU1DT/6xORcNj3fRGJRMIiMjQci8UTkUgkk8l0Pf6YeQYNFg0WDRYNFg0WDRYNFg0WDdZCgxXkVp0dzsDg+bHxP148+HxJsLRt21NTU8Fpu9YFz7Ms9e8f7+x8+MjhQxsbGhY9gQaLBosGiwaLBosGiwaLBosGa1GDJSL3t7T8cvnXmqgdDgdnVCLitD/wdX+/67rfDJxraW42fxj863jIOfHZyWw29+HHn1y4eNHcRrAQLAQLwUKwECwEC8FCsBYJlmVZ927a7LS3mxuyqbFxd/eu/c88239u8OXDB83t4N/e3T1zxWLPgd7U1asdjmNuAwCUGfV76vKGhs3mIwAAAACsiMmJMRosGiwaLBqsymmwAADWCBYvJ15OvJx4OVXiywnBQrAQLAQLwUKwECwEC8FCsBAsBAvBQrAQLAQLwUKwECwEC8FCsBCs/0uwQlLaiWw+AgAAAMDK0GJpCncKdwp3CncKdwp3CncKdwr31SvctWhLiZr1PHMHAAAAAJbPrOcpUdb6mtrJiWuFfM7cBwAAAIDlUMjnJifG11fXqFszN92/p2fcG8W5OfMtAAAAACyZO0KhdXatXR1V2cwt3/cLhcL8D9QDAAAALIV/2LljE4BhIAiCsMnz/TdsHBhXIFAw2cE1MNFa/6pmpnpL7tXufpcOlg6WDpYOlg6WDpYOlg6WDpYOlg6WDpYOlg6WDpYOlg6WDtZNHSzAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAqwTwHrYsYMBAAAABGL+1j3CuGmMYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAhWXLAuWGO3DgYAAAAQiPlb9wjjZjHAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAigPrwAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAKsOLAOrLFjBwMAAAAIxPyte4Rx0xjBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgEay4YF2wCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgxQXrgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBCsuWBcsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYccG6YI3dOhgAAABAIOZv3SOMm8UAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAC7AAKw6sAwuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuw4sA6sAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAArDqwDa+zYwQAAAAACMX/rHmHcNEawCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBCsuWBcsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYccG6YBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwYoL1gVr7NbBAAAAAAIxf+seYdwsBliABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABVhxYB1YgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgAVYgBUH1oEFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWIAFWHFgHViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViABViAFQfWgTV27FgAAAAAQJi/dRg90xjBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwRoFqwEABeDjnj+jq68AAAAASUVORK5CYII=",
+    "zero.png": "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AAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuwAAuw4sA6sAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAALsAArDqwDa+zYwQAAAAACMX/rHmHcNEawCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBCsuWBcsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYccG6YBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwYoL1gWLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAhWXLAuWGO3DgYAAAAQiPlb9wjjZjHAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAAizAigPrwAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAIswAKsOLAOLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMACLMCKA+vAGjt2MAAAAIBAzN+6Rxg3jREsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwYoL1gWLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAhWXLAuWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsOKCdcEau3UwAAAAgEDM37pHGDeLARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgAVYcWAcWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYAEWYMWBdWABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABFmABVhxYBxZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgARZgxYF1YI0dOxYAAAAAEOZvHUbPNEawCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsAgWwSJYBItgESyCRbAIFsEiWASLYBEsgkWwCBbBIlgEi2ARLIJFsEbBagBgXP6RAicOSwAAAABJRU5ErkJggg=="
+  }
+}
+-- testrun/gtk4/c/timer.sngl/main/1 --
+sha256:612e75a8f698369d2815651f3839b3d7
+{
+  "results": [
+    {
+      "Desc": "TheTimerRunsTheHandler",
+      "Passed": true
+    },
+    {
+      "Desc": "TheGateStopsTheTimer",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/units.sngl/app/1 --
+sha256:d573928607763ed7514b0b0372a2ab98
+{
+  "results": [
+    {
+      "Desc": "UnitsAndNumbers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/snap.sngl/_/1 --
+sha256:f6417567bd35813a95d4fe0b42bed226
+{
+  "results": [
+    {
+      "Desc": "DrawsTheWindow",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/snap.sngl/main/1 --
+sha256:c92453b1cdefb30b5d19c54274171298
+{
+  "results": [
+    {
+      "Desc": "DrawsTheComponent",
+      "Passed": true
+    }
+  ]
+}

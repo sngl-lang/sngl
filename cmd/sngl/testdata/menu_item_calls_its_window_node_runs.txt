@@ -5,6 +5,12 @@
 # handed it the node's instance besides -- `c.refresh__inst0(c.app)`, too
 # many arguments and a field the Model does not hold, on fyne, gtk4 and
 # bubbletea -- where the program's own call of the clone hands it nothing.
+#
+# C lifts the item's handler into a function before the inliner splices the
+# node, and captured the node for its call: the inliner, looking for the
+# handle, found a field of the closure's state, and the closure held a node
+# no scope declared. A method called through a `#id` captures nothing now
+# (analyzeCaptures), and the inliner points the call at the copy, as Go's.
 
 sngl test --platform=none app.sngl
 stdout '1 tests, 0 failures'
@@ -19,6 +25,9 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '1 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -103,8 +112,18 @@ sha256:b338a89613e6e4fbfc82de08d10961ce
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/shell/1 --
+sha256:83eea2793ece5758fe4e19de2cdb2627
+{
+  "results": [
+    {
+      "Desc": "AMenuReachesItsNode",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:0271472b7d24224e7c45c8dcd19611af
+sha256:8485f81e81572e4a27897755249b3db5
 {
   "results": [
     {
@@ -114,7 +133,7 @@ sha256:0271472b7d24224e7c45c8dcd19611af
   ]
 }
 -- testrun/html/none/app.sngl/shell/1 --
-sha256:5e52e6f379aaaab6e8def6b4dfd6e20d
+sha256:3b1c01e3718c253b279244416293ed33
 {
   "results": [
     {

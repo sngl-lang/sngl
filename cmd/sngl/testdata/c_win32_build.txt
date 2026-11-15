@@ -1,0 +1,65 @@
+# win32 writes a program in C whose sngl.build names the system it is for, so
+# `sngl build` cross-compiles it with MinGW's compiler for that architecture
+# and names the program .exe.
+
+[!exec:x86_64-w64-mingw32-gcc] skip 'MinGW (x86_64) required'
+[!exec:i686-w64-mingw32-gcc] skip 'MinGW (i686) required'
+
+sngl build app.sngl -o out
+stdout 'out/app.exe'
+[toolchain] exists out/app.exe
+
+# The arch option picks 32-bit Windows, and with it i686's compiler.
+
+sngl build app386.sngl -o out386
+stdout 'out386/app.exe'
+[toolchain] exists out386/app.exe
+
+-- app.sngl --
+import ui "sngl:ui"
+
+output {
+    c {
+        win32
+    }
+}
+
+component counter ui.node {
+    var n = 0
+    ui.button(text="{n}", @click {
+        n += 1
+    })
+}
+
+ui.window(title="count") {
+    counter()
+}
+-- app386.sngl --
+import ui "sngl:ui"
+
+output {
+    c {
+        win32(arch="386")
+    }
+}
+
+component counter ui.node {
+    var n = 0
+    ui.button(text="{n}", @click {
+        n += 1
+    })
+}
+
+ui.window(title="count") {
+    counter()
+}
+-- testrun/build/win32/c/app.sngl/1 --
+sha256:d4fbdb64aaf34c59ff4a1348f0cd22e5
+{
+  "stdout": "app.exe"
+}
+-- testrun/build/win32/c/app386.sngl/1 --
+sha256:d4e9312dd9406d1f6e532a9722d4121d
+{
+  "stdout": "app.exe"
+}

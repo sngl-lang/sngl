@@ -73,9 +73,10 @@ type Reader struct {
 
 func NewReader(r io.Reader) *Reader {
 	sc := bufio.NewScanner(r)
-	// Snapshot frames can be hundreds of KB after base64. 8 MiB cap is
-	// generous and prevents runaway memory on a bad sender.
-	sc.Buffer(make([]byte, 64*1024), 8*1024*1024)
+	// A snapshot frame is its picture in base64, and a C agent's is its raw
+	// pixels, which the driver encodes (internal/testlaunch): a 4K window's
+	// is 44 MiB. The cap still stops a bad sender's runaway frame.
+	sc.Buffer(make([]byte, 64*1024), 64*1024*1024)
 	return &Reader{sc: sc}
 }
 

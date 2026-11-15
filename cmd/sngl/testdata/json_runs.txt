@@ -20,6 +20,12 @@ stdout '5 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '5 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '5 tests, 0 failures'
+
 -- app.sngl --
 // sngl:json reads text as a declared type and writes a value back: a field
 // named on the wire by its mark, an option a key that may be missing or null,
@@ -249,8 +255,40 @@ sha256:f2ce958f46dd51490644fbf70ea153df
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/_/1 --
+sha256:f75f82037b08bb51e3d6c4f59a3652ae
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/panel/1 --
+sha256:fd49f69702bb2a8d9a5fae6770f6440a
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:4466c963fca4c0634747950b186f4ea0
+sha256:1fa0033d1f5690bdc62a6bb4b9e63a67
 {
   "results": [
     {
@@ -272,7 +310,7 @@ sha256:4466c963fca4c0634747950b186f4ea0
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:7dce806019ba6670297cbae863fe4ede
+sha256:9b54ce299ced48c420bcad2e134d18b5
 {
   "results": [
     {
@@ -305,6 +343,38 @@ sha256:89db6126a1b138b5870981f00ebdb9f0
 }
 -- testrun/html/none/app.sngl/panel/1 --
 sha256:15e7e9b337e424569df004064d23d4d8
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/_/1 --
+sha256:8b575d2a21a0a376047815188264d3be
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panel/1 --
+sha256:79fa55ebc39e3efc0716eab389341d32
 {
   "results": [
     {

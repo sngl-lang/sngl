@@ -436,13 +436,14 @@ func packageComponents(uri string, snapshots []string) []Component {
 	return comps
 }
 
-var platformOrder = []string{"html", "android", "bubbletea", "fyne"}
+var platformOrder = []string{"html", "android", "bubbletea", "fyne", "win32"}
 
 var platformDisplayName = map[string]string{
 	"html":      "HTML (Interactive)",
 	"android":   "Android",
 	"bubbletea": "Bubbletea",
 	"fyne":      "Fyne",
+	"win32":     "Win32",
 }
 
 func previewTabs(name string, snapshots []string) []PreviewTab {

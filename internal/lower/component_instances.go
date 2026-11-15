@@ -86,6 +86,7 @@ func (st *inlineCompState) componentInstance(n *ir.NodeInst) (*ir.Component, err
 		return nil, fmt.Errorf("%s: %q instantiates itself at a type it was not rendered at, or is rendered at more than %d types; this target writes a copy of a generic component per instantiation, and a recursion reaching a deeper type at every level needs one per level -- render it at the type it was given", nodePos(n), c.Name, maxInstances)
 	}
 	inst := ir.InstantiateComponent(c, b)
+	retypeThis(inst, c)
 	inst.Name = freshName(st.declNames(), c.Name+"__"+strings.Join(key, "_"))
 	st.compInsts[c] = append(st.compInsts[c], componentInstance{args, inst})
 	at := slices.Index(st.pkg.Components, c)
@@ -156,4 +157,25 @@ func retypeComponent(t *ir.Type, from, to *ir.Component) *ir.Type {
 		return &cp
 	}
 	return t.MapChildren(func(c *ir.Type) *ir.Type { return retypeComponent(c, from, to) })
+}
+
+// retypeThis makes a method of inst, a copy of c, take the copy as its
+// `this`, and a call handing a method the component hand it the copy: the
+// clone shares c's declaration where the body names it, which a target
+// typing the receiver by its record reads as another component.
+func retypeThis(inst, c *ir.Component) {
+	for _, f := range inst.Funcs {
+		for _, p := range append([]*ir.Param{f.RecvParam}, f.Params...) {
+			if p != nil {
+				p.Type = retypeComponent(p.Type, c, inst)
+			}
+		}
+	}
+	_ = ir.Walk(inst, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.Sym == ir.Symbol(c) {
+			id.Sym = inst
+			id.Type = retypeComponent(id.Type, c, inst)
+		}
+		return nil
+	})
 }

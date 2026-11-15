@@ -10,6 +10,13 @@
 # goroutine and their messages posted back to be delivered on it
 # (codegen/platform/bubbletea/post.go).
 #
+# On a placed target (gtk4) a timer in a `for` is a record whose root,
+# the box a component rendering no node of its own holds, was typed as the
+# timer's family parameter, which neither C nor Go writes; it is the
+# platform's handle now (passPlacement). And a keyed loop putting a timer it
+# kept before another moved a widget its box already held, which GTK
+# refuses: the runtime's insert moves it, as the DOM's insertBefore does.
+#
 # android's test runner lowered no t.wait at all; it moves Compose's test
 # clock on while it asks the predicate. And android hoisted every timer to
 # the top of the screen, which dropped one under a loop -- it has none of the
@@ -30,6 +37,9 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
 sngl test --platform=android --language=kotlin app.sngl
@@ -112,7 +122,7 @@ sha256:606c456c026e23b408f80b326e48c59b
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:98e792235403b7c46d4bb21f1f118d7a
+sha256:32a4b730be521db2f8cc24d7ff340faa
 {
   "results": [
     {
@@ -125,8 +135,22 @@ sha256:98e792235403b7c46d4bb21f1f118d7a
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/main/1 --
+sha256:584f2066f24bad5e3d41191b786798be
+{
+  "results": [
+    {
+      "Desc": "ATimerInATabsLoopTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AStatefulTimerInATabsLoopTicks",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:3ad8c37f4d0ee123b0a2e087b22e0cb8
+sha256:5b1175fd42c8f79968ceebe8f03aee8d
 {
   "results": [
     {
@@ -140,7 +164,7 @@ sha256:3ad8c37f4d0ee123b0a2e087b22e0cb8
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:043253a616d35c38a9b1b6c6dcb40cfc
+sha256:e14966a917a2edc692f7a5d982c4b54c
 {
   "results": [
     {

@@ -56,7 +56,7 @@ sha256:6af3bf336217458dc518c77991519b3d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/fitting/1 --
-sha256:770dc957498789d1e9eeaaf307c05793
+sha256:f9401fcdc7efe5d4f4e8df5bb3068e2c
 {
   "results": [
     {
@@ -66,7 +66,7 @@ sha256:770dc957498789d1e9eeaaf307c05793
   ]
 }
 -- testrun/fyne/go/app.sngl/fitting/1 --
-sha256:5a9d617a1139f56d10364b8dd0a3e88f
+sha256:e306ecb25be16094ebbd2d39cc5a34cf
 {
   "results": [
     {
@@ -76,7 +76,7 @@ sha256:5a9d617a1139f56d10364b8dd0a3e88f
   ]
 }
 -- testrun/gtk4/go/app.sngl/fitting/1 --
-sha256:fcc87003ac10ef09166db414cfdf9ce4
+sha256:36fde8084c22fc4a5cb5a747ca532c20
 {
   "results": [
     {
@@ -86,7 +86,7 @@ sha256:fcc87003ac10ef09166db414cfdf9ce4
   ]
 }
 -- testrun/html/none/app.sngl/fitting/1 --
-sha256:480241a16ca2eec1b5c726133ae6bdcb
+sha256:31879099b80d18fc475b5ca634183d2d
 {
   "results": [
     {

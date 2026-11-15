@@ -1,6 +1,7 @@
 # testdata/raise_ends_handler.txtar's program, run on the targets its records
 # only compile: the interpreter, which runs the checked IR and answers a raise
-# itself (dispatchRaise), html in a real Chromium, and gtk4.
+# itself (dispatchRaise), html in a real Chromium, and gtk4 in Go and in C,
+# where the catch point the click's body runs under is a setjmp.
 #
 # A raise the boundary catches ends the click: the write ahead of it stays, and
 # the write after it, the callee's write after its own raise and the caller's
@@ -15,6 +16,9 @@ stdout '2 tests, 0 failures'
 [!gtk4] skip 'gtk4 development libraries required'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
 stdout '2 tests, 0 failures'
 
 -- app.sngl --
@@ -91,8 +95,22 @@ func testCalledRaiseEndsHandler(t Test, c form) {
 window {
     form()
 }
+-- testrun/gtk4/c/app.sngl/form/1 --
+sha256:942416d0965dee4ac666916bc1b710a8
+{
+  "results": [
+    {
+      "Desc": "DirectRaiseEndsHandler",
+      "Passed": true
+    },
+    {
+      "Desc": "CalledRaiseEndsHandler",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:94f28d5ff03e3542561c5e7ac0372752
+sha256:1c5b09d2c670476bc2bf5e26ce4c5ffb
 {
   "results": [
     {

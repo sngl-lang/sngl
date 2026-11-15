@@ -23,6 +23,11 @@ func (c *converter) foreignAttrs(f Foreign, fn *Func) []ast.MacroAttr {
 	if a, ok := c.correspondenceAttr(f, fn); ok {
 		out = append(out, a)
 	}
+	for _, also := range f.Also {
+		if a, ok := c.correspondenceAttr(also, nil); ok {
+			out = append(out, a)
+		}
+	}
 	if f.Unusable != "" {
 		// Language-neutral, and deliberately a second mark rather than a flag:
 		// a flag carries no payload and the reason is the point.
@@ -61,9 +66,13 @@ func (c *converter) correspondenceAttr(f Foreign, fn *Func) (ast.MacroAttr, bool
 		}
 		return c.attr("language/"+f.Scheme, "native", append(args, nativeFlagIdents(fn)...)...), true
 	case "c":
-		// cnative(name) and nothing else: C is an ABI rather than a target, so
-		// there is no module to name and Path is the constant "C".
-		return c.attr("macro", "cnative", posArg(ast.NewStringLiteral(f.Name))), true
+		// c.native(name), and cast on a conversion: C is an ABI rather than a
+		// target, so there is no module to name and Path is the constant "C".
+		args := []ast.Arg{posArg(ast.NewStringLiteral(f.Name))}
+		if fn.IsCCast() {
+			args = append(args, posArg(&ast.IdentExpr{Name: "cast"}))
+		}
+		return c.attr("x/c", "native", args...), true
 	}
 	return ast.MacroAttr{}, false
 }

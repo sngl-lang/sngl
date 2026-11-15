@@ -164,6 +164,13 @@ component language(
     // code that imports SNGL runtime packages (pkg/go/i18n, …) resolves
     // locally instead of via the public proxy.
     const goModExtra    string,
+    // How Go calls C. "wrapper" calls the package `sngl tool cgogen` wrote
+    // for a declaration that has one, so the program has no `import "C"` of
+    // its own and its build is cached, and calls the rest directly. "direct"
+    // calls every C declaration from the program itself, which compiles the
+    // C each one's package ships beside it. "purego" calls C through
+    // purego, with no cgo at all.
+    const cgo           string = "wrapper",
     // Names a program's declaration is renamed away from in generated Go: Go's
     // keywords and predeclared identifiers, and what every Go target's code
     // declares beside a program's.
@@ -248,8 +255,8 @@ enum NativeFlag {
     // method; only the API knows which it is.
     method
     // The identifier runs a callback it is handed from the loop it owns,
-    // rather than inline on the thread that called it: `gtk4rt.Every` gives
-    // its function to a GLib timeout source, and the source runs it from the
+    // rather than inline on the thread that called it: gtk4's `sngl_every`
+    // gives its function to a GLib timeout source, and the source runs it from the
     // main loop, which is the thread the target draws on.
     //
     // passAsyncOffload reads it to know the callback is a body it may enter.

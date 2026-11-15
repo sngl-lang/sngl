@@ -31,4 +31,6 @@ window {
 }
 -- testrun/build/bubbletea/go/bt.sngl/1 --
 sha256:652bca0a0635e179dadd3fb972ed58a5
-{}
+{
+  "stdout": "tapp"
+}

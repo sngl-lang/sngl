@@ -42,18 +42,15 @@ func TestBinaryName(t *testing.T) {
 		opts        *ir.StructLit
 		platform    string
 		multiTarget bool
-		windows     bool
 		want        string
 	}{
-		{"default when name unset", mkOpts(""), "bubbletea", false, false, "app"},
-		{"single target uses bare name", mkOpts("myapp"), "bubbletea", false, false, "myapp"},
-		{"multi target appends platform", mkOpts("myapp"), "bubbletea", true, false, "myapp-bubbletea"},
-		{"sanitizes name", mkOpts("My App!"), "fyne", false, false, "my-app"},
-		{"windows extension", mkOpts("myapp"), "bubbletea", false, true, "myapp.exe"},
-		{"multi target windows", mkOpts("myapp"), "fyne", true, true, "myapp-fyne.exe"},
+		{"default when name unset", mkOpts(""), "bubbletea", false, "app"},
+		{"single target uses bare name", mkOpts("myapp"), "bubbletea", false, "myapp"},
+		{"multi target appends platform", mkOpts("myapp"), "bubbletea", true, "myapp-bubbletea"},
+		{"sanitizes name", mkOpts("My App!"), "fyne", false, "my-app"},
 	}
 	for _, c := range cases {
-		got := binaryName(c.opts, c.platform, c.multiTarget, c.windows)
+		got := binaryName(c.opts, c.platform, c.multiTarget)
 		if got != c.want {
 			t.Errorf("%s: binaryName = %q; want %q", c.desc, got, c.want)
 		}

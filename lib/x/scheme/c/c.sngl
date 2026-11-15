@@ -1,6 +1,6 @@
 import gen "sngl:x/gen"
 
-// `c:` names the C header a program's `#[cnative]` declarations come from,
+// `c:` names the C header a program's `#[c.native]` declarations come from,
 // and resolves to a package holding the one `c.link` that includes it.
 //
 // `c:pkg:<library>/<header>` asks pkg-config for the library's compiler and
@@ -9,7 +9,7 @@ import gen "sngl:x/gen"
 // included as written: `c:lib/math.h`.
 //
 // It declares nothing a program calls. The program declares each function it
-// calls with `#[cnative("name")]`, which is what a header cannot be read for
+// calls with `#[c.native("name")]`, which is what a header cannot be read for
 // in reasonable time: GTK's takes a C parser minutes.
 gen.scheme(name="c", @generate(out, importPath) {
     if !importPath.startsWith("pkg:") {
@@ -66,7 +66,9 @@ func pkgConfig(args list[string]) list[string] {
 }
 
 // The package an import resolves to, written into f: one c.link, and the
-// inputs pkg-config read.
+// inputs pkg-config read. The link's library is the first pkg-config names,
+// which is the one the header belongs to: `-lgtk-4` before what GTK links
+// against.
 func link(f gen.File, include string, system bool, cflags list[string], ldflags list[string], inputs list[string]) {
     if inputs.length() > 0 {
         f.line("import cache \"sngl:x/gen/cache\"")
@@ -85,7 +87,17 @@ func link(f gen.File, include string, system bool, cflags list[string], ldflags 
     if system {
         sys = "true"
     }
-    f.line("c.link(include=" + quote(include) + ", system=" + sys + ", cflags=" + quoteAll(cflags) + ", ldflags=" + quoteAll(ldflags) + ")")
+    var library = ""
+    for var flag = ldflags {
+        if library == "" && flag.startsWith("-l") {
+            library = flag.substring(2, flag.length())
+        }
+    }
+    var lib = ""
+    if library != "" {
+        lib = ", library=" + quote(library)
+    }
+    f.line("c.link(include=" + quote(include) + ", system=" + sys + ", cflags=" + quoteAll(cflags) + ", ldflags=" + quoteAll(ldflags) + lib + ")")
 }
 
 const func quote(s string) => "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\{", "\\\{").replace("\}", "\\\}") + "\""

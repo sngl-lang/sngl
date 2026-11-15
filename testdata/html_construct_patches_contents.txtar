@@ -143,6 +143,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n2.value = __prop___p1;
       __n3.textContent = __prop___p1;
@@ -190,6 +193,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p1 = __p1;
     let __prop___p2 = __p2;
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       if (__prop___p1) {
         __n4.setAttribute("start", "4");
@@ -198,6 +204,9 @@ body { font-family: system-ui, sans-serif; }
       }
     }
     function __set___p2(__v) {
+      if (__prop___p2 === __v) {
+        return;
+      }
       __prop___p2 = __v;
       __n5.textContent = __prop___p2;
     }
@@ -239,6 +248,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       let __n6__re6 = __cf_seeded({ start: __prop___p0 });
       let __n6__re6__el = __n6__re6.__root;
@@ -249,6 +261,9 @@ body { font-family: system-ui, sans-serif; }
       __n6 = __n6__re6;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n7.value = __prop___p1;
     }
@@ -351,7 +366,7 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n9__new = __cf___child0({ __p0: state.big ? "section" : "div", __p1: state.name, __on0: (e) => {
+              let __n9__made = __cf___child0({ __p0: state.big ? "section" : "div", __p1: state.name, __on0: (e) => {
                 state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
@@ -376,7 +391,7 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               } });
-              __n9 = __n9__new;
+              __n9 = __n9__made;
             }
             __inst1_next.push(__n9);
             __inst1_now___p0.push(state.big ? "section" : "div");
@@ -437,8 +452,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n10__new = __cf___child1({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered, __p2: state.label });
-              __n10 = __n10__new;
+              let __n10__made = __cf___child1({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered, __p2: state.label });
+              __n10 = __n10__made;
             }
             __inst3_next.push(__n10);
             __inst3_now___p0.push(state.numbered ? "ol" : "ul");
@@ -524,7 +539,7 @@ body { font-family: system-ui, sans-serif; }
               if (__inst5_live.length > __inst5_i) {
                 __inst5_live[__inst5_i].__destroy();
               }
-              let __n11__new = __cf___child2({ __p0: state.k, __p1: state.name, __on0: (e) => {
+              let __n11__made = __cf___child2({ __p0: state.k, __p1: state.name, __on0: (e) => {
                 state.name = e.currentTarget.value;
                 for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
                   ;
@@ -549,7 +564,7 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               } });
-              __n11 = __n11__new;
+              __n11 = __n11__made;
             }
             __inst5_next.push(__n11);
             __inst5_i = __inst5_i + 1;
@@ -626,4 +641,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:6d7374810e8c07e0fd333423854b8ed8
+pass sha256:f27c4d5d2c4e95274459e9de7ab5baca

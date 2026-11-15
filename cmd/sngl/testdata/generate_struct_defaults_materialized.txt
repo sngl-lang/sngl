@@ -49,4 +49,6 @@ window {
 }
 -- testrun/build/bubbletea/go/bt.sngl/1 --
 sha256:6ad5ffcc4c98edd1fd72803af1cd33cb
-{}
+{
+  "stdout": "sd"
+}

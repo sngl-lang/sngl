@@ -80,7 +80,7 @@ sha256:ce9916b566352273af210addfb7777f0
   ]
 }
 -- testrun/gtk4/go/app.sngl/holder/1 --
-sha256:88bd0468afe7a42a7eaeeda485dd7de9
+sha256:aeffcbc748b44a25e9a2e3a4db6aadc4
 {
   "results": [
     {

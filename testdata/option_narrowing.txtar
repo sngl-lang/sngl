@@ -581,6 +581,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0 * 2);
     }
@@ -624,8 +627,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: state.maybe__inst0 });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: state.maybe__inst0 });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -718,4 +721,4 @@ pass sha256:99b3764eb8886e7ca4d2b04547d2dfd7
 -- run/kotlin/android --
 pass sha256:aaea1c4ae9ed3548c2933ddf937102b6
 -- run/none/html --
-pass sha256:419def7a0d261aebdaaa813e337748fd
+pass sha256:549b8ed39e6157df77d6be64a80d78d9

@@ -23,11 +23,11 @@ import (
 // once.
 //
 // Not *every* gated pass, and the exceptions are the fields that read the other
-// way round. The five `#[gen.wants]` requests are asked for by being set, so
+// way round. The `#[gen.wants]` requests are asked for by being set, so
 // silence correctly leaves them off; and InsertBefore is a grant rather than a
 // withdrawal, so passSlotChildInstances -- which wants it beside a withheld
-// Reactivity -- is off for the zero value too. order_test.go's soleGate records
-// all six as gating nothing on their own.
+// Reactivity -- is off for the zero value too. caps_test.go's
+// TestZeroFeaturesRunsEveryCapabilityGatedPass lists both kinds.
 //
 // There used to be a second record, Caps, saying the same thing inverted --
 // NoTernary against Ternary -- with ToLowerCaps, Merge and String each naming
@@ -204,6 +204,10 @@ type Features struct {
 	// sngl:ui/nav with an address per page: a link becomes a ui.link to the
 	// page's href, and a go passing no params passes the page's own.
 	NavigationHrefs bool
+	// Placement requests passPlacement, for a platform whose every node
+	// operation is a protocol function: each one left after the tree is
+	// flattened becomes the call it carries.
+	Placement bool
 
 	// Reserved is every name the build's two build-tree nodes reserve by
 	// default -- the language's reservedWords and the platform's
@@ -212,6 +216,18 @@ type Features struct {
 	// declaration the program gave one of them. Not a capability, so String
 	// does not list it and no pass is gated on it.
 	Reserved []string
+
+	// platform is the platform node's protocol: its connect, and for
+	// passPlacement its handle, attach and detach.
+	platform *ir.NodeProtocol
+
+	// language is the language node's #[gen.name], which is also the scheme
+	// its native marks spell a declaration in: a C declaration with a
+	// spelling there beside its C one is called through it, and CMarshal
+	// leaves the call alone (cWrapped). Empty for a Go build calling C
+	// directly, and cPurego for one calling it through purego
+	// (ir.Package.CCalls).
+	language string
 
 	// connect is the platform node's #[gen.protocol(connect)], which
 	// passDeclarative splices into each handler it attaches to a widget whose
@@ -330,6 +346,7 @@ func (f Features) String() string {
 		{"Canvas", f.Canvas},
 		{"ReactiveCanvas", f.ReactiveCanvas},
 		{"NavigationHrefs", f.NavigationHrefs},
+		{"Placement", f.Placement},
 	} {
 		if c.held {
 			parts = append(parts, c.name)

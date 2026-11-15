@@ -186,10 +186,11 @@ func settleOnSet(c *ir.Component, setters, mounts []*ir.Func, reports map[*ir.Pa
 		}
 	}
 	for _, setter := range setters {
-		assign, ok := setter.Block[0].(*ir.Assign)
-		if !ok {
+		at := slices.IndexFunc(setter.Block, func(s ir.Stmt) bool { _, ok := s.(*ir.Assign); return ok })
+		if at < 0 {
 			continue
 		}
+		assign := setter.Block[at].(*ir.Assign)
 		id, ok := assign.Target.(*ir.Ident)
 		if !ok {
 			continue
@@ -217,6 +218,10 @@ func settleOnSet(c *ir.Component, setters, mounts []*ir.Func, reports map[*ir.Pa
 				setter.Block = append(setter.Block, callOf(r.Settle))
 				called = append(called, r.Settle)
 			}
+		}
+		if at > 0 {
+			setter.Block = slices.Insert(setter.Block, at, marks...)
+			continue
 		}
 		if ir.RebuildIncomparable(cell.Type) == "" {
 			marks = []ir.Stmt{&ir.If{
@@ -354,19 +359,95 @@ func promoteProps(c *ir.Component) []*ir.Func {
 
 // propSetter is the function UpdateComponent reaches for one prop: it writes
 // the cell, and passReactivity appends whatever reads that cell.
+//
+// A value equal to the cell's returns before the write, so nothing reading
+// the prop updates: a render hands every instance it holds each prop again,
+// and the Pokédex's 237 move rows each re-rendered for every move's answer
+// that arrived, though one row at most had changed.
 func propSetter(p *ir.Prop, v *ir.Var) *ir.Func {
 	param := &ir.Param{Name: "__v", Type: p.Type}
+	cell := func() *ir.Ident { return &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true} }
+	arg := func() *ir.Ident { return &ir.Ident{Name: param.Name, Type: param.Type, Sym: param} }
+	var block []ir.Stmt
+	if comparedByValue(p.Type, map[*ir.StructDef]bool{}) {
+		block = append(block, &ir.If{
+			Cond: &ir.Binary{Op: ast.BinEq, Left: cell(), Right: arg(), Type: ir.TypBool},
+			Body: []ir.Stmt{&ir.Return{}},
+		})
+	}
+	block = append(block, &ir.Assign{Target: cell(), Op: ast.AssignSet, Value: arg()})
 	return &ir.Func{
 		Name:   ir.ComponentSetter(p.Name),
 		Params: []*ir.Param{param},
 		Return: ir.TypVoid,
 		Purity: ir.PurityMutates,
-		Block: []ir.Stmt{&ir.Assign{
-			Target: &ir.Ident{Name: v.Name, Type: v.Type, Sym: v, Synthesized: true},
-			Op:     ast.AssignSet,
-			Value:  &ir.Ident{Name: param.Name, Type: param.Type, Sym: param},
-		}},
+		Block:  block,
 	}
+}
+
+// setterGuard is the return propSetter put first in fn, or nil: the value
+// it compares is fn's last parameter, a record's setter taking the record
+// before it, and what follows the return may since have become its else.
+func setterGuard(fn *ir.Func) *ir.If {
+	if len(fn.Block) == 0 {
+		return nil
+	}
+	guard, ok := fn.Block[0].(*ir.If)
+	if !ok || len(guard.Body) != 1 {
+		return nil
+	}
+	if ret, ok := guard.Body[0].(*ir.Return); !ok || ret.Value != nil {
+		return nil
+	}
+	eq, ok := guard.Cond.(*ir.Binary)
+	if !ok || eq.Op != ast.BinEq {
+		return nil
+	}
+	arg, ok := eq.Right.(*ir.Ident)
+	if !ok || len(fn.Params) == 0 || arg.Sym != ir.Symbol(fn.Params[len(fn.Params)-1]) {
+		return nil
+	}
+	return guard
+}
+
+// comparedByValue reports whether every target's == between two values of t
+// is SNGL's: a scalar, a string, an enum without payloads, a single-base unit,
+// and an option or a program's struct of those. A map, a function, a handle
+// and a host's value are left to be written whatever they hold, and so is a
+// list: with lists compared, the Pokédex's gtk4 Go tests left its forms
+// unrendered and its evolution rows removed a freed widget, which no smaller
+// program has yet reproduced.
+func comparedByValue(t *ir.Type, seen map[*ir.StructDef]bool) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
+		return true
+	case ir.TypeEnum:
+		return ir.PayloadEnum(t) == nil
+	case ir.TypeUnit:
+		ud := ir.UnitDeclOf(t)
+		return ud != nil && ud.IsSingleBase()
+	case ir.TypeOption:
+		return len(t.Elems) == 1 && comparedByValue(t.Elems[0], seen)
+	case ir.TypeStruct:
+		def := ir.CopiedStruct(t)
+		if def == nil || len(def.TypeParams) > 0 || ir.IsBuilder(t) {
+			return false
+		}
+		if seen[def] {
+			return true
+		}
+		seen[def] = true
+		for _, f := range def.Fields {
+			if f == nil || !comparedByValue(f.Type, seen) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // PropCell is the cell a prop is promoted to. Prefixed rather than shadowing

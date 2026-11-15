@@ -18,7 +18,7 @@ func close(f file) {
 
 func open(fd int) => file{fd=fd}
 
-#[macro.cnative("view_show")]
+#[c.native("view_show")]
 func show(#[macro.retains] f file)
 
 func helper() {

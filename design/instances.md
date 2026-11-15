@@ -237,7 +237,13 @@ unrolls. A window resets the context, because a loop over pages is not a
 position a page's body is repeated in. A canvas under a `for` is built at run
 time for the same reason -- its surface and draw routine are its owner's one
 field and one method -- which `passCanvasInstances` does by synthesizing a
-component around it (`testdata/canvas_under_loop.txtar`). A lifetime is state
+component around it (`testdata/canvas_under_loop.txtar`). So is one under a
+branch where it is not painted through its protocol: html's render slot made
+the element and nothing drew into it, and fyne's inserted a widget it never
+declared. One painted through its protocol stays where its slot made it, held
+in a package var a redraw elsewhere reads (`holdAfter`), which C named by the
+local's name until a package var's ident won over a local of its name
+(`testdata/canvas_under_branch.txtar`). A lifetime is state
 in the same sense: a component holding an `effect` or a timer is built per copy
 under a `for` (`reactiveCtx.perCopy`) and not substituted there (`isPure`),
 since spliced, the copies shared one key and one handle; an override with no
@@ -330,15 +336,25 @@ over, so an `@load` reading its loop variable wrote under the last key
 (`cmd/sngl/testdata/instance_reuse_reads_loop_var_runs.txt`).
 
 **A slot re-renders where it was written.** html renders each into a
-`display:contents` wrapper of its own; fyne and gtk4 render into the container
+`display:contents` wrapper of its own; fyne, gtk4 and win32 render into the container
 the slot sits in, so each slot keeps a hidden anchor there
 (`codegen.SlotAnchorField`), added by its first render -- which runs while the
 container is built, at the slot's position -- and inserts its entries before
 it. Appending instead moved a re-rendered slot after every sibling below it
-(`testdata/render_slot_in_place.txtar`); gtk4's cgo mode does the same through
-two preamble helpers (`gtk4.TestCgoSlotReRendersInPlace`). A gtk4
-record also holds a reference on its root, since the slot holding it removes
-it before appending it again and GTK frees a widget its parent held alone. In
+(`testdata/render_slot_in_place.txtar`); gtk4's runtime keeps the anchor
+(`sngl_slot_anchor`) and inserts before it (`sngl_box_insert_before`), and
+win32's keeps a hidden spacer, which takes no room, among a box's or a
+window's children (`sngl_win32_slot_anchor`), where it once appended past
+the nodes below the slot (`cmd/sngl/testdata/render_slot_keeps_its_place_runs.txt`). The
+slot's var holds a reference on the anchor, which an instance's teardown gives
+back by asking for it with no box (`destroyHeld`): each row a rebuilt list
+destroyed kept its hidden label alive
+(`cmd/sngl/testdata/c_record_gives_back_runs.txt`'s `anchor.sngl`). A child
+another box holds is taken out of it, referenced, before it goes in: a render
+that builds its container afresh puts each instance it kept into the new one,
+and left in the old, the instance's root went with it when GTK freed it
+(`sngl_moved_from`; `examples/pokedex`'s tabs, in
+`cmd/sngl/testdata/examples_runs.txt`). In
 a table part -- a `tbody`, a `tr` -- html writes the anchor as a `template`,
 which the parser leaves where it is written where it moves a span out before
 the table, and the boot puts the span in its place
@@ -529,7 +545,11 @@ the cell, and the override's handler writes it as it would write a bound one.
 The interpreter also answers a `#id` read in a view now (`bindHandle`), which it
 never did for any prop. `testdata/unbound_prop_state.txtar`,
 `cmd/sngl/testdata/unbound_prop_state_runs.txt` and
-`testdata/error_unbound_prop_const.sngl` are the three halves.
+`testdata/error_unbound_prop_const.sngl` are the three halves. The
+optimizer's splice (`inlineComponentCall`) leaves a call with an unbound
+two-way prop alone, as it does a component with vars: spliced there, gtk4's
+`ui.tabs` folded its `selected` to the default and its tab handler wrote a
+name nothing declared (`testdata/select_under_tabs.txtar`).
 
 **A test reaches a `#id` inside a component built at run time**, which the
 typed-text half of `slot_body_updates_in_place_runs.txt` needs: on html an
@@ -584,7 +604,12 @@ Under a `for` it gives each of the spliced vars one cell per copy
 of a node the copy renders, called through the node's `#id`, is keyed as a
 cell-touching func is (`nodeMethods`): the node is spliced under the same
 loops, so its own method takes the key, and a caller is handed it; one whose
-clone touches no cell drops it as repointHandleCalls points the call. An
+clone touches no cell drops it as repointHandleCalls points the call. C lifts
+a lambda before the inliner runs, and a method called through a `#id` in one
+captures nothing (`analyzeCaptures`): captured, the call reached the handle
+through the closure's state, which repointHandleCalls never looked in, and
+the closure held a node no scope declared
+(`cmd/sngl/testdata/menu_item_calls_its_window_node_runs.txt`). An
 openapi adapter's `refresh` under a `for` called its query's short an
 argument on bubbletea (`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`). On every
 target a function a splice hoists out of loops takes the loop variables it
@@ -632,6 +657,16 @@ component that reads its props, which would be the Model's
 `bubbletea_recursive_func_refused.txt`);
 it used to reach the Model as a field nothing declared, or the view as an
 empty string.
+
+**A method spliced into a component is that component's** (`rehomeReceiver`):
+it reads the state the splice renamed onto the component, and a call of it
+is made on the component's instance. Kept a method of the component spliced,
+a test build rooted at `main` called `b.reset()` as `badge.reset__inst1()`,
+on the component itself, which passNoImplicitRecv hands a method as its
+receiver and C writes as no value. Spliced into the package body, it loses
+its receiver instead (`dropReceiver`), and so does every method of the root
+placement lifts into the package (`liftRoot`), whose state is the package's
+(`cmd/sngl/testdata/test_reach_review_runs.txt`'s sitecall on C).
 
 **A spliced instance starts again each time its position is taken**, as one a
 target builds there does and as the interpreter's `evictUnreached` has it.

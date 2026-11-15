@@ -1090,7 +1090,7 @@ const component ui.textarea[platform](placeholder, value, rows, style, @input, @
 // brackets.
 
 // `*time.Ticker` is a name this declaration can spell, which is what
-// `#[cnative]` does for `*C.cairo_t` in gtk4.sngl, one scheme over -- and `C`
+// `#[c.native]` does for `*C.cairo_t` in gtk4.sngl, one scheme over -- and `C`
 // is a field of it, which is why `sngl:language/go` had to grow a channel type
 // before any of this could be written down.
 #[go.native("time", "*time.Ticker")]

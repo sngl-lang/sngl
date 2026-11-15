@@ -25,6 +25,8 @@ func Allocates(e Expr) bool {
 	switch x := e.(type) {
 	case *Call:
 		return x.Func != nil && x.Func.Intrinsic == ""
+	case *CConvert:
+		return x.Kind == CConvertString
 	case *StructLit:
 		return ReleaseOf(x.Type) != nil || slices.ContainsFunc(x.Fields, func(f FieldInit) bool { return Allocates(f.Value) })
 	case *ListLit:

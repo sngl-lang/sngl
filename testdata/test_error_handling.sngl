@@ -55,7 +55,7 @@ func requireAge(s string) int {
     if s.length == 0 {
         error.raise("an age is required", "validation")
     }
-    return int(s)
+    return int.parse(s).or(0)
 }
 
 func parseTwice(s string) int {

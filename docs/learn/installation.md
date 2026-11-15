@@ -45,14 +45,16 @@ sngl version
 The `sngl` binary type-checks and generates code for every target on its own.
 Building or running what it generates needs that target's toolchain:
 
-| Platform    | Language             | Needs                                                                  |
-|-------------|----------------------|------------------------------------------------------------------------|
-| `html`      | `none` (the default) | nothing: the output is static HTML and JavaScript                      |
-| `html`      | `go`                 | Go, to build the generated HTTP server                                 |
-| `bubbletea` | `go`                 | Go                                                                     |
-| `fyne`      | `go`                 | Go with cgo, a C compiler, and the OpenGL and X11 development headers  |
-| `gtk4`      | `go`                 | Go with cgo, a C compiler, and the GTK 4 development files             |
-| `android`   | `kotlin` or `go`     | JDK 17–23 and the Android SDK (compileSdk 35); `go` also uses gomobile |
+| Platform    | Language             | Needs                                                                             |
+|-------------|----------------------|-----------------------------------------------------------------------------------|
+| `html`      | `none` (the default) | nothing: the output is static HTML and JavaScript                                 |
+| `html`      | `go`                 | Go, to build the generated HTTP server                                            |
+| `bubbletea` | `go`                 | Go                                                                                |
+| `fyne`      | `go`                 | Go with cgo, a C compiler, and the OpenGL and X11 development headers             |
+| `gtk4`      | `go`                 | Go with cgo, a C compiler, and the GTK 4 development files                        |
+| `gtk4`      | `c`                  | A C compiler and the GTK 4 development files                                      |
+| `win32`     | `c`                  | MinGW-w64, which cross-compiles from any host; Wine to run or test it off Windows |
+| `android`   | `kotlin` or `go`     | JDK 17–23 and the Android SDK (compileSdk 35); `go` also uses gomobile            |
 
 On Debian or Ubuntu, the desktop targets need:
 
@@ -62,6 +64,14 @@ sudo apt install gcc libgl-dev libx11-dev libxcursor-dev libxrandr-dev \
     libxinerama-dev libxi-dev libxxf86vm-dev
 # gtk4
 sudo apt install gcc libgtk-4-dev gir1.2-gtk-4.0
+```
+
+win32 cross-compiles with MinGW-w64, for `amd64` by default and `386` with the
+platform's `arch` option, and `sngl run` and `sngl test` run the program under
+Wine:
+
+```bash
+sudo apt install mingw-w64 wine
 ```
 
 The gtk4 platform reads its widget set from the system's `Gtk-4.0.gir`. Without

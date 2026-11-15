@@ -24,6 +24,6 @@ component main node {
         return p.value
     }
     func set(this main, x int) {
-        n.value.value = x + p.value
+        n.value = x + p.value
     }
 }

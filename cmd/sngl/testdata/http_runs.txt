@@ -20,6 +20,12 @@ stdout '10 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
 stdout '10 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '10 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '10 tests, 0 failures'
+
 -- app.sngl --
 // Requests to a local server, decoded into declared types: a path segment
 // escaped, a query written from a struct, a status read off the response and
@@ -440,8 +446,66 @@ sha256:d6160fcd6bf1346aae45f71064e91b04
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/_/1 --
+sha256:dc42cebee8018fc21eea3e5402115615
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/adapter/1 --
+sha256:5ee08523e4b08cf0ee0b512e8ffac7e4
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/panel/1 --
+sha256:cce761d43a3d02959aee8945bc4cdc52
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:2b891c74824933696e5803b547f9b511
+sha256:f113fcdeee8c62ab4940795f8df911f4
 {
   "results": [
     {
@@ -475,7 +539,7 @@ sha256:2b891c74824933696e5803b547f9b511
   ]
 }
 -- testrun/gtk4/go/app.sngl/adapter/1 --
-sha256:154bac6ebce16eeb09c5eb9146e165c0
+sha256:eb8b3eda68ff6a6a549dd33233cce741
 {
   "results": [
     {
@@ -485,7 +549,7 @@ sha256:154bac6ebce16eeb09c5eb9146e165c0
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:8f57166652089ad75dbde217bcbf6344
+sha256:234d31457971fbaab2d60e71138562fc
 {
   "results": [
     {
@@ -533,7 +597,7 @@ sha256:d28a0aa459b2617a8d26e52a0a3111c6
   ]
 }
 -- testrun/html/none/app.sngl/adapter/1 --
-sha256:dac99e4085c9f8674f1a6ad7fef9adb3
+sha256:fa9e4b1c234b4952992dde54f9bd11b2
 {
   "results": [
     {
@@ -543,7 +607,65 @@ sha256:dac99e4085c9f8674f1a6ad7fef9adb3
   ]
 }
 -- testrun/html/none/app.sngl/panel/1 --
-sha256:0b5b7bc8231aca693b2b9a96343ba26a
+sha256:e4e0bc7505e6b32c78d8f0747914f0a3
+{
+  "results": [
+    {
+      "Desc": "HandlerWaits",
+      "Passed": true
+    },
+    {
+      "Desc": "QueryAsks",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/_/1 --
+sha256:9b3b21d42f4edec3c0057e7d650d5a35
+{
+  "results": [
+    {
+      "Desc": "GetDecodes",
+      "Passed": true
+    },
+    {
+      "Desc": "PathEscape",
+      "Passed": true
+    },
+    {
+      "Desc": "NotFound",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Query",
+      "Passed": true
+    },
+    {
+      "Desc": "Send",
+      "Passed": true
+    },
+    {
+      "Desc": "Transport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/adapter/1 --
+sha256:f5744999a8c52e9fd71e7385fb9aa7a5
+{
+  "results": [
+    {
+      "Desc": "AdapterSpreadsItsKey",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panel/1 --
+sha256:5cac8426d2fa160d33d5215c4a34821e
 {
   "results": [
     {

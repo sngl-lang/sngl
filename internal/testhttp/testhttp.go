@@ -76,12 +76,14 @@ func StartAt(root string) error {
 //
 //	/books/{title}          a book from testBooks, or a 404
 //	/echo                   what the request was: method, query, body, X-Sngl header
-//	/status/{code}          that status, with "status {code}" as the body, `after`
-//	                        milliseconds late where the query says so
+//	/status/{code}          that status, with "status {code}" as the body
 //	/dot.png                a 2x2 PNG, for an image a program fetches
 //	/api/v1/pets/           a page of names, `limit` (default 20) from `offset`
 //	/api/v1/pets/{name}/    a pet as the petstore of openapi_runs.txt declares one, or a 404
 //	/examples/{name}/{path} examples/{name}/testdata/http/{path}, as exampleFile names it
+//
+// /status/ and /dot.png answer `after` milliseconds late where the query says
+// so, so that a test can have one request outlive another's.
 //
 // Every answer carries the CORS headers a page served from elsewhere needs
 // to read it, and a preflight is answered for any method and header.
@@ -150,6 +152,9 @@ func serve(examples fs.FS, w http.ResponseWriter, r *http.Request) {
 		})
 		w.Write(out)
 	case path == "/dot.png":
+		if !held(r) {
+			return
+		}
 		h.Set("Content-Type", "image/png")
 		w.Write(testDotPNG)
 	case strings.HasPrefix(path, "/status/"):
@@ -157,19 +162,28 @@ func serve(examples fs.FS, w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			code = http.StatusBadRequest
 		}
-		// An answer held back, so a test can have one request outlive
-		// another's.
-		if ms, err := strconv.Atoi(r.URL.Query().Get("after")); err == nil && ms > 0 {
-			select {
-			case <-time.After(time.Duration(ms) * time.Millisecond):
-			case <-r.Context().Done():
-				return
-			}
+		if !held(r) {
+			return
 		}
 		w.WriteHeader(code)
 		io.WriteString(w, "status "+strconv.Itoa(code))
 	default:
 		http.NotFound(w, r)
+	}
+}
+
+// held waits the `after` milliseconds r's query asks, and says whether r is
+// still to be answered: false where its client went away meanwhile.
+func held(r *http.Request) bool {
+	ms, err := strconv.Atoi(r.URL.Query().Get("after"))
+	if err != nil || ms <= 0 {
+		return true
+	}
+	select {
+	case <-time.After(time.Duration(ms) * time.Millisecond):
+		return true
+	case <-r.Context().Done():
+		return false
 	}
 }
 

@@ -84,6 +84,9 @@ body { display: flex; flex-direction: column; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0);
     }
@@ -130,8 +133,8 @@ body { display: flex; flex-direction: column; }
               if (__inst1_live.has(__key2)) {
                 (__inst1_live.has(__key2) ? __inst1_live.get(__key2) : null).__destroy();
               }
-              let __n2__new = __cf___child0({ __p0: i });
-              __n2 = __n2__new;
+              let __n2__made = __cf___child0({ __p0: i });
+              __n2 = __n2__made;
             }
             __inst1_next.set(__key2, __n2);
             let __n2__el = __n2.__root;
@@ -223,4 +226,4 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d40214647fea2299dc140cb4d15226b5
+pass sha256:2e5342422bbac68f85acce3a1616ff27

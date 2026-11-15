@@ -1,0 +1,47 @@
+Calls of C functions, which main.c defines ahead of the program: a string
+one returns is copied into the turn as the call returns, so a later call
+overwriting the C function's buffer changes nothing already read, and a
+bool one returns is its `int`, nonzero for true.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_name")]
+func name(i int) string
+
+#[c.native("test_even")]
+func even(i int) bool
+
+func names() string {
+    var first = name(1)
+    var second = name(2)
+    return "{first} {second}"
+}
+
+func odd(i int) => !even(i)
+-- main.c --
+#include <stdio.h>
+
+static const char *test_name(int i) {
+	static char buf[32];
+	snprintf(buf, sizeof buf, "n\xc3\xa9" "e %d", i);
+	return buf;
+}
+
+static int test_even(int i) {
+	return i % 2 == 0;
+}
+
+#include "program.c"
+
+int main(void) {
+	sngl_string s = s_names();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	printf("%d %d\n", s_odd(3), s_odd(4));
+	return 0;
+}
+-- want --
+née 1 née 2
+1 0

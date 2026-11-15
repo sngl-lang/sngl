@@ -398,8 +398,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n5__new := newRowInstance(m, it.Elem)
-						__n5 = __n5__new
+						__n5__made := newRowInstance(m, it.Elem)
+						__n5 = __n5__made
 					}
 					__inst0_next[__key1] = __n5
 					__n5__el := __n5.Root
@@ -467,8 +467,8 @@ func (m *Model) __renderSlot1(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n6__new := new__child0Instance(m, t, m.active)
-						__n6 = __n6__new
+						__n6__made := new__child0Instance(m, t, m.active)
+						__n6 = __n6__made
 					}
 					__inst1_next[__key2] = __n6
 					__n6__el := __n6.Root
@@ -647,6 +647,9 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 }
 
 func (c *RowInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.__n0.SetText(c.__prop_label)
 }
@@ -685,11 +688,17 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(c.__prop___p0.Elem)
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	var __lt14 snglcolor.Color
 	if c.__prop___p1 == 0 {
@@ -711,4 +720,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:64017a6aa6e8541d21863cbfe0890e7e
+pass sha256:0549fdc4a241088caadf434adcb8ec90

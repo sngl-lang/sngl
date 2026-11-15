@@ -9,6 +9,13 @@ struct option[T any] {}
 // has one.
 const func option[T].format(this option[T], none string = "", _item _formatArgs[T]) => this == null ? none : _format(this, _item)
 
+// The value, or otherwise where there is none: `int.parse(s).or(0)`.
+//
+// An intrinsic, which each language writes as its own: a call of it in a
+// library body a program reaches late is no method of the target's.
+#[_intrinsic("option.or")]
+const func option[T].or(this option[T], otherwise T) => this == null ? otherwise : this
+
 // Puts the option's format on the end of out.
 func option[T].appendFormat(this option[T], out ref[builder], none string = "", _item _formatArgs[T]) {
     if this == null {

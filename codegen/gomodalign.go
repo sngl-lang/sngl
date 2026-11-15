@@ -364,8 +364,11 @@ func hostModFile() *modfile.File {
 // pointing the sngl module at the host root when the host *is* sngl.
 func hostReplaceLines(mf *modfile.File, modRoot string) []string {
 	var lines []string
-	if mf.Module != nil && mf.Module.Mod.Path == snglModulePath {
-		lines = append(lines, "replace "+snglModulePath+" => "+modRoot)
+	// The host module is its own root: sngl's checkout, or a program's
+	// module holding a wrapper package `sngl tool cgogen` wrote, which the
+	// program imports.
+	if mf.Module != nil {
+		lines = append(lines, "replace "+mf.Module.Mod.Path+" => "+modRoot)
 	}
 	for _, r := range mf.Replace {
 		newPath := r.New.Path

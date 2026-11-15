@@ -16,6 +16,7 @@ func (*Unary) irNode()       {}
 func (*Ternary) irNode()     {}
 func (*Call) irNode()        {}
 func (*Conversion) irNode()  {}
+func (*CConvert) irNode()    {}
 func (*Select) irNode()      {}
 func (*Index) irNode()       {}
 func (*StructLit) irNode()   {}

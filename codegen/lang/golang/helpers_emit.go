@@ -501,69 +501,59 @@ func namesTimePackage(t *ir.Type) bool {
 }
 
 func recordExprHelpers(h *HelperSet, e ir.Expr) {
-	if e == nil {
-		return
+	if e != nil {
+		recordHelpers(h, e)
 	}
-	switch n := e.(type) {
-	case *ir.Conversion:
-		recordValueHelpers(h, n.Type)
-		switch StringToNumberHelper(n) {
-		case "snglParseInt":
-			h.NeedParseInt = true
-		case "snglParseFloat":
-			h.NeedParseFloat = true
+}
+
+// recordHelpers records what everything under root needs: a literal's or a
+// conversion's value, a local's declared type and each function's
+// signature, the functions a closure, a lambda or a handler holds included.
+func recordHelpers(h *HelperSet, root any) {
+	sig := func(f *ir.Func) {
+		if f == nil {
+			return
 		}
-		recordExprHelpers(h, n.Operand)
-	case *ir.Literal:
-		recordValueHelpers(h, n.Type)
-	case *ir.Binary:
-		recordExprHelpers(h, n.Left)
-		recordExprHelpers(h, n.Right)
-	case *ir.Unary:
-		recordExprHelpers(h, n.Operand)
-	case *ir.Call:
-		for _, a := range n.Args {
-			recordExprHelpers(h, a.Value)
+		for _, p := range f.Params {
+			if p != nil {
+				recordTypeHelpers(h, p.Type)
+			}
 		}
-		if n.Receiver != nil {
-			recordExprHelpers(h, n.Receiver)
-		}
-	case *ir.Select:
-		recordExprHelpers(h, n.Operand)
-	case *ir.Index:
-		recordExprHelpers(h, n.Operand)
-		recordExprHelpers(h, n.Idx)
-	case *ir.StructLit:
-		for _, f := range n.Fields {
-			recordExprHelpers(h, f.Value)
-		}
-	case *ir.ListLit:
-		for _, el := range n.Elems {
-			recordExprHelpers(h, el)
-		}
-	case *ir.MapLitIR:
-		for _, en := range n.Entries {
-			recordExprHelpers(h, en.Key)
-			recordExprHelpers(h, en.Value)
-		}
-	case *ir.Spread:
-		recordExprHelpers(h, n.Operand)
-	case *ir.Lambda:
-		if n.Func != nil {
-			recordFuncHelpers(h, n.Func)
-		}
-	case *ir.Closure:
-		if n.Func != nil {
-			recordFuncHelpers(h, n.Func)
-		}
-		if n.State != nil {
-			recordExprHelpers(h, n.State)
-		}
-	case *ir.Ident, *ir.ContextRead:
-		// Terminal — no type or sub-expression to record.
-	default:
-		panic(fmt.Sprintf("recordExprHelpers: unhandled ir.Expr %T", n))
+		recordTypeHelpers(h, f.Return)
 	}
+	_ = ir.Walk(root, func(n ir.Node) error {
+		switch n := n.(type) {
+		case *ir.Conversion:
+			recordValueHelpers(h, n.Type)
+			switch StringToNumberHelper(n) {
+			case "snglParseInt":
+				h.NeedParseInt = true
+			case "snglParseFloat":
+				h.NeedParseFloat = true
+			}
+		case *ir.Literal:
+			recordValueHelpers(h, n.Type)
+		case *ir.LocalVar:
+			recordTypeHelpers(h, n.Type)
+			if _, isLit := n.Init.(*ir.Literal); isLit {
+				recordValueHelpers(h, n.Type)
+			}
+		case *ir.Lambda:
+			sig(n.Func)
+		case *ir.Closure:
+			// The walk reaches a closure's state and not its function.
+			recordFuncHelpers(h, n.Func)
+		case *ir.NodeInst:
+			for _, hd := range n.Handlers {
+				sig(hd.Func)
+			}
+		case *ir.ErrorBoundary:
+			if n.Handler != nil {
+				sig(n.Handler.Func)
+			}
+		}
+		return nil
+	})
 }
 
 func recordFuncHelpers(h *HelperSet, f *ir.Func) {
@@ -580,63 +570,5 @@ func recordFuncHelpers(h *HelperSet, f *ir.Func) {
 }
 
 func recordStmtHelpers(h *HelperSet, stmts []ir.Stmt) {
-	for _, s := range stmts {
-		switch n := s.(type) {
-		case *ir.Assign:
-			recordExprHelpers(h, n.Target)
-			recordExprHelpers(h, n.Value)
-		case *ir.Toggle:
-			recordExprHelpers(h, n.Target)
-		case *ir.Emit:
-			for _, a := range n.Args {
-				recordExprHelpers(h, a.Value)
-			}
-		case *ir.CallStmt:
-			if n.Call != nil {
-				recordExprHelpers(h, n.Call)
-			}
-		case *ir.LocalVar:
-			recordInitHelpers(h, n.Type, n.Init)
-		case *ir.Return:
-			recordExprHelpers(h, n.Value)
-		case *ir.If:
-			recordExprHelpers(h, n.Cond)
-			recordStmtHelpers(h, n.Body)
-			recordStmtHelpers(h, n.Else)
-		case *ir.Match:
-			recordExprHelpers(h, n.Subject)
-			for _, arm := range n.Arms {
-				for _, p := range arm.Patterns {
-					recordExprHelpers(h, p)
-				}
-				recordStmtHelpers(h, arm.Body)
-			}
-		case *ir.For:
-			recordExprHelpers(h, n.Iter)
-			recordStmtHelpers(h, n.Body)
-		case *ir.NodeInst:
-			for _, p := range n.Props {
-				recordExprHelpers(h, p.Value)
-			}
-			for _, hd := range n.Handlers {
-				if hd.Func != nil {
-					recordFuncHelpers(h, hd.Func)
-				}
-			}
-			recordStmtHelpers(h, n.Children)
-		case *ir.SlotInst:
-			recordStmtHelpers(h, n.Children)
-		case *ir.ErrorBoundary:
-			recordStmtHelpers(h, n.Children)
-			if n.Handler != nil && n.Handler.Func != nil {
-				recordFuncHelpers(h, n.Handler.Func)
-			}
-		case *ir.CanvasRedrawStmt:
-			// No helpers needed.
-		case *ir.Break, *ir.Continue:
-			// A loop escape needs no helper.
-		default:
-			panic(fmt.Sprintf("recordStmtHelpers: unhandled ir.Stmt %T", n))
-		}
-	}
+	recordHelpers(h, stmts)
 }

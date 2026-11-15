@@ -125,8 +125,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n2__new := newChildInstance(m, m.n)
-						__n2 = __n2__new
+						__n2__made := newChildInstance(m, m.n)
+						__n2 = __n2__made
 					}
 					__inst0_next = append(__inst0_next, __n2)
 					__inst0_i = (__inst0_i + 1)
@@ -278,9 +278,10 @@ func (c *ChildInstance) __effects0_settle() {
 }
 
 func (c *ChildInstance) SetN(__v int) {
-	if c.__prop_n != __v {
-		c.__effect0_dirty = true
+	if c.__prop_n == __v {
+		return
 	}
+	c.__effect0_dirty = true
 	c.__prop_n = __v
 	c.__effects0_settle()
 }
@@ -482,9 +483,10 @@ body { font-family: system-ui, sans-serif; }
       }
     }
     function __set_n(__v) {
-      if (__prop_n !== __v) {
-        __effect0_dirty = true;
+      if (__prop_n === __v) {
+        return;
       }
+      __effect0_dirty = true;
       __prop_n = __v;
       __effects0_settle();
     }
@@ -525,8 +527,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf_child({ n: state.n });
-              __n2 = __n2__new;
+              let __n2__made = __cf_child({ n: state.n });
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -579,8 +581,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:369b64af340417a68a1168b34a25e501
+pass sha256:fe91655ca18371e58996d54d5af74847
 -- run/kotlin/android --
 pass sha256:6c137ad117451b122036e0347ac0c934
 -- run/none/html --
-pass sha256:1d0e81056d3e89c445b4a9aceed26fac
+pass sha256:fad5c96b7ef43a5b43967ed0107ca838

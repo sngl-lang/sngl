@@ -1,0 +1,277 @@
+# gtk4 writes a program in C, which `sngl build` compiles with the host's C
+# compiler, linking GTK through the pkg-config its sngl.build names. It needs
+# no display.
+
+[!exec:pkg-config] skip 'pkg-config required'
+[!exec:cc] skip 'C compiler required'
+[!gtk4] skip 'gtk4 development libraries required'
+
+sngl build --platform=gtk4 --lang=c app.sngl -o out
+[toolchain] exists out/app
+
+# A generic component built at run time is copied per type, and its method
+# takes the copy as its `this`, which C names as the record the method is
+# written in.
+
+sngl build --platform=gtk4 --lang=c generic.sngl -o out/generic
+[toolchain] exists out/generic/app
+
+# An update reactivity places in two bodies is one expression both share, of
+# which NoRef rewrites each read of a box once.
+
+sngl build --platform=gtk4 --lang=c shared.sngl -o out/shared
+[toolchain] exists out/shared/app
+
+# A page a loop copies is told apart by the indices of its copy, a list.
+
+sngl build --platform=gtk4 --lang=c pages.sngl -o out/pages
+[toolchain] exists out/pages/app
+
+-- app.sngl --
+import ui "sngl:ui"
+
+component counter ui.node {
+    var n = 0
+    ui.button(text="{n}", @click {
+        n += 1
+    })
+}
+
+ui.window(title="count") {
+    counter()
+}
+-- generic.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+    go {
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+}
+
+component show[T any](
+    xs list[T],
+    w  struct {
+        v T
+    },
+    @chose(w struct {
+        v T
+    }),
+) {
+    var held = w
+    var hits = 0
+    func boxed() struct {
+        v T
+    } {
+        return {v=held.v}
+    }
+    ui.button(text="{hits} {xs.length}", @click {
+        hits = hits + 1
+        held = boxed()
+        chose(held)
+    })
+}
+
+// Held under an `if`, so it is built at run time.
+component held[T any](:value T, next T) {
+    var hits = 0
+    ui.button(text="{hits}", @click {
+        hits += 1
+        value = next
+    })
+}
+
+var items = [1, 2]
+var names = ["a", "b"]
+var got = 0
+var said = ""
+var shown = true
+var n = 0
+
+ui.window(title="x") {
+    for var i = items {
+        show(xs=[i], w={v=i}, @chose(w) { got = w.v })
+    }
+    for var s = names {
+        show(xs=[s], w={v=s}, @chose(w) { said = w.v })
+    }
+    if shown {
+        held(:value=n, next=4)
+    }
+}
+-- shared.sngl --
+import ui "sngl:ui"
+
+output {
+    none {
+        html
+    }
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+}
+
+var n = 1
+
+func at[T any](xs list[T]) T {
+    var i = n
+    if i >= xs.length {
+        i = 0
+    }
+    return xs[i]
+}
+
+func count[T any](xs list[T], want T) int {
+    var c = 0
+    for var x = xs {
+        if x == want {
+            c += 1
+        }
+    }
+    return c
+}
+
+func both[T any](xs list[T], want T) int {
+    var c = count(xs, want)
+    return c + count([at(xs)], want)
+}
+
+func last[T any](xs list[T]) T {
+    var i = xs.length - 1
+    return xs[i]
+}
+
+func pad[T any](xs list[T], extra list[T] = []) int {
+    var c = xs.length + extra.length
+    return c + n
+}
+
+func blank[T any]() list[T] {
+    var out list[T] = []
+    if n < 0 {
+        return out
+    }
+    return out
+}
+
+component box {
+    var k = 0
+    func nth[T any](xs list[T]) T {
+        var i = k
+        return xs[i]
+    }
+    ui.text(value="{nth([1, 2])} {nth(["a", "b"])}")
+    ui.button(text="k", @click {
+        k = 1
+    })
+}
+
+var xs = [10, 20, 10]
+var names = ["a", "b"]
+var e list[string] = ["z"]
+var fns = last([
+    func(x int) string {
+        return "{x}"
+    },
+])
+var acts = last([
+    func(x int, s string) {
+        n = x
+    },
+])
+
+ui.window(title="t") {
+    ui.text(value="{both(xs, 10)} {both(names, "b")} {e.length} {pad([1])} {fns(1)}")
+    box()
+    ui.button(text="go", @click {
+        n = 2
+        e = blank()
+        acts(1, "s")
+    })
+}
+-- pages.sngl --
+import nav "sngl:ui/nav"
+import ui "sngl:ui"
+
+output {
+    go {
+        gtk4
+        fyne
+        bubbletea
+    }
+    kotlin {
+        android
+    }
+}
+
+struct Row {
+    name string
+    cols list[string]
+}
+
+struct Sel {
+    pick string
+}
+
+const rows list[Row] = [
+    {name="a", cols=["1", "2"]},
+    {name="b", cols=["3"]},
+]
+
+component grid ui.node {
+    nav.stack #pages {
+        for var r = rows {
+            for var c = r.cols {
+                nav.page #cell(href=c == "3" ? "/" : "/" + r.name + "/" + c, title=r.name + c, params=Sel{pick=c}) {
+                    component content(s) {
+                        ui.text #line(value="{r.name} {c} picked {s.pick}")
+                        ui.text(value=pages.current == cell ? "showing" : "hidden")
+                        ui.button #pick(text="pick", @click { pages.go(cell, Sel{pick="x"}) })
+                    }
+                }
+            }
+        }
+        nav.page #about(href="/about", title="About") {
+            ui.text(value="about")
+        }
+    }
+    ui.text #heading(value=pages.current.title)
+    ui.button #toAbout(text="About", @click { pages.go(about) })
+    ui.button #back(text="Back", @click { pages.back() })
+}
+
+ui.window(title="Grid") {
+    grid
+}
+-- testrun/build/gtk4/c/app.sngl/1 --
+sha256:8f133ed0f16581b1c6fd0bb4a3303035
+{
+  "stdout": "app"
+}
+-- testrun/build/gtk4/c/generic.sngl/1 --
+sha256:2ea3653b7de6ffcf60264d2a06466d58
+{
+  "stdout": "app"
+}
+-- testrun/build/gtk4/c/pages.sngl/1 --
+sha256:87b1f94cc82897b8122e665e122325dc
+{
+  "stdout": "app"
+}
+-- testrun/build/gtk4/c/shared.sngl/1 --
+sha256:2cdd5e4c00c2ff423b14083c6f0e415e
+{
+  "stdout": "app"
+}

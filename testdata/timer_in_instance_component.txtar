@@ -203,8 +203,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n2__new = __cf_Car({});
-              __n2 = __n2__new;
+              let __n2__made = __cf_Car({});
+              __n2 = __n2__made;
             }
             __inst1_next.push(__n2);
             __inst1_i = __inst1_i + 1;
@@ -253,4 +253,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b125af87eed82e1a3fcdb7c2222c8a6e
+pass sha256:f81e4df3d318e58fd6fceb662ee2a142

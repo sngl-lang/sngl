@@ -1,0 +1,572 @@
+# A test reaches into what a placed program builds at run time. A node a
+# render slot makes -- under an `if` the test's path went through, or one
+# the test fires -- is held in a package var of its option, set as it is
+# made and null at each render's start (holdRead); a trigger fires the node
+# that var holds. A node the package body makes under a branch is held the
+# same way. A node a record holds is held as the record's constructor makes
+# it, and let go as the record is destroyed, unless another record's took
+# its place, so it is null once its branch is gone. An instance of a
+# component built at run time is held as it is set, from the instances kept
+# or a new one, and let go as it is destroyed (deepfire's `c.p`), and a test
+# reads its state and fires its events through the record.
+
+sngl test --platform=win32 --language=c forward.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go forward.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c deepfire.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go deepfire.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c reserved.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go reserved.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c context.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go context.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c panel.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go panel.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c branch.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go branch.sngl
+stdout 'ok +2 tests, 0 failures'
+
+sngl test --platform=win32 --language=c slot.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go slot.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A component with state of its own is a record on win32, which keeps it
+# per instance (#[gen.can(instanceState)]). A test reaches one copy of
+# those a loop renders through the package's map from each copy's key,
+# which each copy's root is read with: its state, a node it makes, the
+# event it raises, and null once the loop no longer makes it.
+
+sngl test --platform=win32 --language=c copies.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go copies.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- forward.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component pick(@chose(a int, b string)) node {
+    button #go(text="go", @click {
+        chose(1, "x")
+    })
+}
+
+component wrap(@picked(a int, b string)) node {
+    var on = true
+    if on {
+        pick #p(@chose {
+            picked()
+        })
+    }
+}
+
+component main node {
+    var log = ""
+    vbox {
+        wrap #w(@picked(n, s) {
+            log = log + "{n}{s};"
+        })
+    }
+}
+
+func testForward(t Test, c main) {
+    if c.w.p != null {
+        c.w.p.go.click()
+        t.assert(c.log == "1x;")
+    }
+}
+
+window {
+    main
+}
+-- deepfire.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(label string, @tapped(n int)) node {
+    var taps = 0
+    button #tap(text="tap", @click {
+        taps = taps + 1
+        tapped(taps)
+    })
+}
+
+component panel(tag string) node {
+    var log = ""
+    vbox {
+        tile #t(label="x", @tapped(k) {
+            log = log + "{tag}{k};"
+        })
+        for var n = ["a", "b"] {
+            tile #u(label=n, @tapped(k) {
+                log = log + "{n}{k};"
+            })
+        }
+    }
+}
+
+component main node {
+    var show = true
+    vbox {
+        if show {
+            panel #p(tag="P")
+        }
+        panel #q(tag="Q")
+    }
+}
+
+func testFire(t Test, c main) {
+    if c.p != null {
+        c.p.t.tapped(5)
+        t.assert(c.p.log == "P5;")
+        c.p.u[1].tapped(6)
+        t.assert(c.p.log == "P5;b6;")
+        c.p.t.tap.click()
+        t.assert(c.p.log == "P5;b6;P1;")
+    } else {
+        t.assert(false)
+    }
+    c.q.u[0].tapped(2)
+    t.assert(c.q.log == "a2;")
+    t.assert(c.q.t.taps == 0)
+}
+
+window {
+    main
+}
+-- reserved.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component badge(label string) node {
+    var hits = 0
+    button #m(text="hit", @click {
+        hits = hits + 1
+    })
+}
+
+component main node {
+    var show = true
+    vbox {
+        if show {
+            badge #b(label="one")
+        }
+    }
+}
+
+func testReserved(t Test, c main) {
+    if c.b != null {
+        c.b.m.click()
+        t.assert(c.b.hits == 1)
+    }
+}
+
+window {
+    main
+}
+-- context.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+context #mode(true)
+
+component blank node {
+    text(value="y")
+}
+
+component holder node {
+    vbox {
+        if mode {
+            blank #w
+        }
+        text(value="h")
+    }
+}
+
+component main node {
+    vbox {
+        mode(false) {
+            holder #p
+        }
+    }
+}
+
+func testContext(t Test, c main) {
+    t.assert(c.p.w == null)
+}
+
+window {
+    main
+}
+-- panel.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component panel ui.node {
+    var selected = 0
+    ui.tabs(:selected=selected) {
+        ui.tab(label="One") {
+            var taps = 0
+            ui.button #tap(text="{taps}", @click { taps += 1 })
+        }
+    }
+}
+
+func testPanel(t Test, c panel) {
+    if c.tap != null {
+        c.tap.click()
+    }
+    t.assert(c.tap != null && c.tap.text == "1")
+}
+-- branch.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component branch ui.node {
+    var on = true
+    ui.button #flip(text="flip", @click { on = !on })
+    if on {
+        ui.vbox {
+            var taps = 0
+            ui.button #tap(text="{taps}", @click { taps += 1 })
+        }
+    }
+}
+
+func testBranch(t Test, c branch) {
+    if c.tap != null {
+        c.tap.click()
+    }
+    t.assert(c.tap != null && c.tap.text == "1")
+    c.flip.click()
+    c.flip.click()
+    t.assert(c.tap != null && c.tap.text == "0")
+}
+
+func testGoneWithItsBranch(t Test, c branch) {
+    t.assert(c.tap != null)
+    c.flip.click()
+    t.assert(c.tap == null)
+    c.flip.click()
+    t.assert(c.tap != null && c.tap.text == "0")
+}
+-- slot.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+output {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+    none {
+        html
+    }
+}
+
+component card(content ...component node) node {
+    var open = 0
+    vbox {
+        button(text="t {open}", @click { open = open + 1 })
+        content
+    }
+}
+
+component main node {
+    var rows = [["a", "b"], ["c"]]
+    var log = ""
+    var shown = true
+    vbox {
+        button #swap(text="swap", @click { rows = [["d"], ["e", "f", "g"]] })
+        for var row = rows {
+            card {
+                for var i, it = row {
+                    button #cell(text=it, @click { log = "{i}{it}" })
+                    button #mark(text=it, @click {
+                        var s = "!"
+                        log = "{it}{s}{row.map(func(x string) => x + "").length()}"
+                    })
+                }
+            }
+        }
+        if shown {
+            button #tag(text="x{log}", @click {
+                var s = "q"
+                log = log + s
+            })
+        }
+        text(value=log)
+    }
+}
+
+func testHandlerReadsItsContentsLoop(t Test, c main) {
+    c.cell[1][0].click()
+    t.assert(c.log == "0c")
+    c.cell[0][1].click()
+    t.assert(c.log == "1b")
+    c.swap.click()
+    c.cell[1][2].click()
+    t.assert(c.log == "2g")
+    c.mark[1][1].click()
+    t.assert(c.log == "f!3")
+    if c.tag != null {
+        c.tag.click()
+    }
+    t.assert(c.log == "f!3q")
+}
+
+window {
+    main
+}
+-- copies.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component tile(label string, @tapped(n int)) node {
+    var taps = 0
+    text #face(value="<{label}:{taps}>")
+    button #tap(text="tap", @click {
+        taps = taps + 1
+        tapped(taps)
+    })
+}
+
+component main node {
+    var names list[string] = ["a", "b", "c"]
+    var log = ""
+    vbox {
+        for var i, n = names {
+            tile #r(label="{i}{n}", @tapped(k) {
+                log = log + "{n}{k};"
+            })
+        }
+        button #rev(text="rev", @click {
+            names = ["c", "b", "a"]
+        })
+        button #drop(text="drop", @click {
+            names = ["b", "c"]
+        })
+    }
+}
+
+func testReorder(t Test, c main) {
+    c.r[0].tap.click()
+    t.assert(c.r[0].taps == 1)
+    t.assert(c.log == "a1;")
+    c.rev.click()
+    t.assert(c.r[0].label == "0c")
+    t.assert(c.r[0].face.value == "<0c:{c.r[0].taps}>")
+    c.r[0].tap.click()
+    t.assert(c.log == "a1;c{c.r[0].taps};")
+    c.r[2].tapped(9)
+    t.assert(c.log == "a1;c{c.r[0].taps};a9;")
+}
+
+func testDrop(t Test, c main) {
+    c.r[2].tap.click()
+    t.assert(c.r[2].taps == 1)
+    c.drop.click()
+    t.assert(c.r[2] == null)
+    t.assert(c.r[1].label == "1c")
+    c.r[1].tap.click()
+    t.assert(c.log == "c1;c{c.r[1].taps};")
+}
+
+window {
+    main
+}
+-- testrun/win32/c/branch.sngl/branch/1 --
+sha256:d11a96654a5b3382b30802ef91101d5b
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    },
+    {
+      "Desc": "GoneWithItsBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/context.sngl/main/1 --
+sha256:3552260a74d0fe55b42b7912d804418e
+{
+  "results": [
+    {
+      "Desc": "Context",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/copies.sngl/main/1 --
+sha256:043c55ef69f309e25103f040a8a4d95c
+{
+  "results": [
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    },
+    {
+      "Desc": "Drop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/deepfire.sngl/main/1 --
+sha256:5da9db1a40b3f88749b970d21234981a
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/forward.sngl/main/1 --
+sha256:b7f392e2417e3658b4cea3c9ceb0c3f1
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/panel.sngl/panel/1 --
+sha256:95ceb7a0034890fd99e3a82fd4cf7bc3
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/reserved.sngl/main/1 --
+sha256:b57ee84af2059e26631cd560976d3d3e
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/slot.sngl/main/1 --
+sha256:1b2ce58f296087ca62c4e7ed1c2a216a
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/branch.sngl/branch/1 --
+sha256:27aa04c3bc3d904ee81e6678267d6df7
+{
+  "results": [
+    {
+      "Desc": "Branch",
+      "Passed": true
+    },
+    {
+      "Desc": "GoneWithItsBranch",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/context.sngl/main/1 --
+sha256:faa65361da5dfc9e72981805255f70d8
+{
+  "results": [
+    {
+      "Desc": "Context",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/copies.sngl/main/1 --
+sha256:c326e64d9b3de405e2a4241263c5ca23
+{
+  "results": [
+    {
+      "Desc": "Drop",
+      "Passed": true
+    },
+    {
+      "Desc": "Reorder",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/deepfire.sngl/main/1 --
+sha256:6f489074954f443c34d7ba4f2688dde1
+{
+  "results": [
+    {
+      "Desc": "Fire",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/forward.sngl/main/1 --
+sha256:6e6e9e1207916a92d01bbf906050fbac
+{
+  "results": [
+    {
+      "Desc": "Forward",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/panel.sngl/panel/1 --
+sha256:ac8f50be3c5ec35b5e72b64c3ac8c106
+{
+  "results": [
+    {
+      "Desc": "Panel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/reserved.sngl/main/1 --
+sha256:f2bf074a85186632e08d21481459e12c
+{
+  "results": [
+    {
+      "Desc": "Reserved",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/slot.sngl/main/1 --
+sha256:f99615ff52a69988be9cc2987de018c0
+{
+  "results": [
+    {
+      "Desc": "HandlerReadsItsContentsLoop",
+      "Passed": true
+    }
+  ]
+}

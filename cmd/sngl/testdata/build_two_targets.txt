@@ -24,7 +24,11 @@ ui.window {
 }
 -- testrun/build/bubbletea/go/app.sngl/1 --
 sha256:d98a75df1e0bffdccddebd7318d1694c
-{}
+{
+  "stdout": "app-bubbletea"
+}
 -- testrun/build/gtk4/go/app.sngl/1 --
-sha256:75be04083ba20a2a56b28c1899644dab
-{}
+sha256:0103c38b6adddb9a9957c69043b6ff22
+{
+  "stdout": "app-gtk4"
+}

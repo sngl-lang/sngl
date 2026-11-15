@@ -1,0 +1,46 @@
+# `sngl snapshot` on gtk4 builds the program for it, whose entry draws its
+# first window at the size asked for into a file (sngl_gtk_capture_file).
+# Built in C and in Go, the program draws its window alike, pixel for pixel.
+# A program whose entry builds nothing has no window to draw, and writes no
+# picture.
+
+[!gtk4] skip 'gtk4 development libraries required'
+[!headless] skip 'a display to draw in required'
+
+sngl snapshot --force --width=300 --height=120 --out=shots c.sngl go.sngl
+exists shots/c_gtk4.png
+exists shots/go_gtk4.png
+cmp shots/c_gtk4.png shots/go_gtk4.png
+
+-- c.sngl --
+import ui "sngl:ui"
+
+output {
+    c {
+        gtk4
+    }
+}
+
+ui.window(title="Snapshot") {
+    ui.vbox {
+        ui.text(value="Hello from GTK")
+        ui.button(text="Press")
+        ui.checkbox(label="Check me")
+    }
+}
+-- go.sngl --
+import ui "sngl:ui"
+
+output {
+    go {
+        gtk4
+    }
+}
+
+ui.window(title="Snapshot") {
+    ui.vbox {
+        ui.text(value="Hello from GTK")
+        ui.button(text="Press")
+        ui.checkbox(label="Check me")
+    }
+}

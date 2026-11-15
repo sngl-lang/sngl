@@ -74,15 +74,15 @@ type ErrorEvent struct {
 	Kind    string
 }
 
-type Result__Response struct {
-	tag    int
-	Ok     Response
-	Failed Failure
-}
-
 type Result__string struct {
 	tag    int
 	Ok     string
+	Failed Failure
+}
+
+type Result__Response struct {
+	tag    int
+	Ok     Response
 	Failed Failure
 }
 
@@ -207,8 +207,8 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 						if len(m.__inst0_live) > __inst0_i {
 							m.__inst0_live[__inst0_i].Destroy()
 						}
-						__n2__new := newAskerInstance(m, "one", m.where__inst0)
-						__n2 = __n2__new
+						__n2__made := newAskerInstance(m, "one", m.where__inst0)
+						__n2 = __n2__made
 					}
 					__inst0_next = append(__inst0_next, __n2)
 					__inst0_i = (__inst0_i + 1)
@@ -508,11 +508,17 @@ func (c *AskerInstance) Destroy() {
 }
 
 func (c *AskerInstance) SetKey(__v string) {
+	if c.__prop_key == __v {
+		return
+	}
 	c.__prop_key = __v
 	c.__effects0_settle()
 }
 
 func (c *AskerInstance) Set__ctx_server(__v string) {
+	if c.__prop___ctx_server == __v {
+		return
+	}
 	c.__prop___ctx_server = __v
 	c.__effects0_settle()
 }
@@ -526,4 +532,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:547073ea8313b7291b513d81c0f3601b
+pass sha256:139a282421a3d5cfb1e0166fadbecdec

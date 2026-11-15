@@ -134,7 +134,7 @@ sha256:d077fc6b3946dc6cbdb3312dc862dbbf
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:3cdefd95819b0f5c0308da4915f552a8
+sha256:1c9867b9365f9811fc2b906135dece02
 {
   "results": [
     {
@@ -144,7 +144,7 @@ sha256:3cdefd95819b0f5c0308da4915f552a8
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/2 --
-sha256:3cdefd95819b0f5c0308da4915f552a8
+sha256:1c9867b9365f9811fc2b906135dece02
 {
   "results": [
     {
@@ -154,7 +154,7 @@ sha256:3cdefd95819b0f5c0308da4915f552a8
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/3 --
-sha256:3cdefd95819b0f5c0308da4915f552a8
+sha256:1c9867b9365f9811fc2b906135dece02
 {
   "results": [
     {
@@ -185,6 +185,36 @@ sha256:b616d3e411a14c73695f394e1da3078c
 }
 -- testrun/html/none/app.sngl/main/3 --
 sha256:b616d3e411a14c73695f394e1da3078c
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:44423bcc75ca22ffb69bbcb5536fbdf0
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/2 --
+sha256:44423bcc75ca22ffb69bbcb5536fbdf0
+{
+  "results": [
+    {
+      "Desc": "ItRenders",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/3 --
+sha256:44423bcc75ca22ffb69bbcb5536fbdf0
 {
   "results": [
     {

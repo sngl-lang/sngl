@@ -243,9 +243,6 @@ func listTests() []string {
 // JSON-RPC over stdin/stdout: stdin carries Driver→Agent requests;
 // stdout carries Agent→Driver notifications + responses.
 func Main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Defense-in-depth: the JSON-RPC stream travels over this process's real
 	// stdin/stdout, so reserve those fds for RPC and redirect os.Stdin/os.Stdout
 	// elsewhere. Test code (e.g. bubbletea/lipgloss probing the terminal) could
@@ -259,8 +256,19 @@ func Main() {
 	}
 	os.Stdout = os.Stderr
 
-	in := testrpc.NewReader(rpcIn)
-	out := testrpc.NewWriter(rpcOut)
+	Serve(rpcIn, rpcOut, func(run func()) { go run() })
+}
+
+// Serve speaks JSON-RPC over r and w until r ends or the driver cancels, as
+// Main does over stdin and stdout. A run of tests is handed to run, which
+// calls it where the platform's tests must run -- on a goroutine of its own,
+// or on the thread a platform's windows belong to -- while Serve goes on
+// reading, so the driver's answers reach a test waiting on one.
+func Serve(r io.Reader, w io.Writer, run func(func())) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	in := testrpc.NewReader(r)
+	out := testrpc.NewWriter(w)
 
 	for {
 		select {
@@ -290,13 +298,13 @@ func Main() {
 		case "run":
 			var params struct{ Filter string }
 			_ = json.Unmarshal(msg.Params, &params)
-			// Run on a goroutine so the Main loop keeps reading stdin —
-			// in particular, so snapshotAssert responses from the driver
-			// can be routed to the per-test goroutine via deliverResponse.
-			go func(id uint64, filter string) {
-				runFiltered(out, filter)
+			// Off this loop, so it keeps reading -- in particular, so
+			// snapshotAssert responses from the driver can be routed to
+			// the running test via deliverResponse.
+			run(func() {
+				runFiltered(out, params.Filter)
 				_ = out.Respond(id, map[string]any{}, nil)
-			}(id, params.Filter)
+			})
 		case "cancel":
 			cancel()
 			_ = out.Respond(id, map[string]any{}, nil)

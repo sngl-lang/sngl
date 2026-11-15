@@ -42,7 +42,7 @@ func init() {
 	dumpCmd.Flags().StringSlice("omit", nil, "omit struct fields by name (comma-separated, e.g. --omit AST,Pos); Pos or At also drops the position a reference to a declaration carries")
 	dumpCmd.Flags().String("lang", "", "target language")
 	dumpCmd.Flags().String("platform", "", "target platform")
-	dumpCmd.Flags().StringSlice("opt", nil, "generator options (key=value, for codegen stage)")
+	dumpCmd.Flags().StringSlice("opt", nil, "generator options (key=value): what a build with them lowers, and for the codegen stage what it generates")
 	dumpCmd.Flags().String("after", "", "dump IR after named pass (lowered stage only; 'none' = pre-lower state)")
 	dumpCmd.Flags().Bool("list", false, "print resolved feats and pass list, then exit (lowered stage only)")
 }
@@ -169,6 +169,9 @@ func runDump(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
+		if err := dumpPrepare(cmd, pkg, target); err != nil {
+			return err
+		}
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
 			Trust:    cliTrust,
@@ -185,7 +188,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
+				if err := lower.Lower(pkg, feats, build.LowerOptions(target, plat)); err != nil {
 					return err
 				}
 			}
@@ -202,6 +205,9 @@ func runDump(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
+		if err := dumpPrepare(cmd, pkg, target); err != nil {
+			return err
+		}
 		start := time.Now()
 		if err := optimize.Optimize(pkg, &optimize.Config{
 			Trust:    cliTrust,
@@ -218,7 +224,7 @@ func runDump(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
+				if err := lower.Lower(pkg, feats, build.LowerOptions(target, plat)); err != nil {
 					return err
 				}
 			}
@@ -244,6 +250,9 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 		return err
 	}
 	pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
+	if err := dumpPrepare(cmd, pkg, target); err != nil {
+		return err
+	}
 
 	plat := codegen.LookupPlatform(target.Platform)
 	lang := codegen.LookupLang(target.Lang)
@@ -282,7 +291,9 @@ func runDumpLowered(cmd *cobra.Command, args []string, f dumpFormat, inp dumpInp
 
 	stopAfter, _ := cmd.Flags().GetString("after")
 	start = time.Now()
-	if err := lower.Lower(pkg, feats, lower.Options{StopAfter: stopAfter, Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
+	opts := build.LowerOptions(target, plat)
+	opts.StopAfter = stopAfter
+	if err := lower.Lower(pkg, feats, opts); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", feats.String(), "stopAfter", stopAfter, "duration", time.Since(start))
@@ -301,6 +312,9 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		return err
 	}
 	pkg = ir.ClonePackageFor(pkg, target.Platform, target.Lang)
+	if err := dumpPrepare(cmd, pkg, target); err != nil {
+		return err
+	}
 
 	plat := codegen.LookupPlatform(target.Platform)
 	lang := codegen.LookupLang(target.Lang)
@@ -311,11 +325,6 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		return fmt.Errorf("unknown language %q (available: %v)", target.Lang, codegen.Langs())
 	}
 
-	optSlice, _ := cmd.Flags().GetStringSlice("opt")
-	cliOpts := build.ParseCLIOpts(optSlice)
-	if err := build.ApplyCLIOpts(target.Options, cliOpts); err != nil {
-		return err
-	}
 	if _, ok := codegen.OptionField(target.Options, "projectDir"); !ok {
 		codegen.SetOptionField(target.Options, "projectDir", dir)
 	}
@@ -337,7 +346,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 		return err
 	}
 	start = time.Now()
-	if err := lower.Lower(pkg, feats, lower.Options{Platform: target.Platform, Language: target.Lang, ClaimsIntrinsic: codegen.ClaimsIntrinsicFunc(plat), RendersNative: codegen.RendersNativeFunc(plat)}); err != nil {
+	if err := lower.Lower(pkg, feats, build.LowerOptions(target, plat)); err != nil {
 		return err
 	}
 	slog.Info("lower", "dir", dir, "caps", feats.String(), "duration", time.Since(start))
@@ -369,7 +378,7 @@ func runDumpCodegen(cmd *cobra.Command, args []string, inp dumpInput) error {
 	req.Fold = func() codegen.Fold { return optimize.NewFold(pkg, optCfg) }
 	mem := codegen.NewMemSink()
 	start = time.Now()
-	if err := plat.Generate(req, mem); err != nil {
+	if err := codegen.Generate(plat, req, mem); err != nil {
 		return err
 	}
 	slog.Info("codegen", "dir", dir, "lang", target.Lang, "platform", target.Platform, "duration", time.Since(start))
@@ -396,6 +405,17 @@ func dumpCLITargets(cmd *cobra.Command) ([]ir.StaticTarget, error) {
 		return nil, err
 	}
 	return build.SelectedTargets(lang, plat), nil
+}
+
+// dumpPrepare applies --opt to target and makes of pkg what a build with
+// those options would before optimizing it (build.PrepareTarget): a test
+// harness's root, and the tests a build that runs none drops.
+func dumpPrepare(cmd *cobra.Command, pkg *ir.Package, target build.Target) error {
+	optSlice, _ := cmd.Flags().GetStringSlice("opt")
+	if err := build.ApplyCLIOpts(target.Options, build.ParseCLIOpts(optSlice)); err != nil {
+		return err
+	}
+	return build.PrepareTarget(pkg, target)
 }
 
 func dumpResolveTarget(cmd *cobra.Command, pkg *ir.Package) (build.Target, error) {

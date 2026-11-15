@@ -65,13 +65,14 @@ ui.window(title="Todos") {
 
 ## Platforms
 
-| Target   | Platform  | Languages                           | Needs to build the output                  |
-|----------|-----------|-------------------------------------|--------------------------------------------|
-| Web      | html      | `none` (static site), `go` (server) | nothing for a static site; Go for a server |
-| Terminal | bubbletea | `go`                                | Go                                         |
-| Desktop  | fyne      | `go`                                | Go, cgo, OpenGL and X11 headers            |
-| Desktop  | gtk4      | `go`                                | Go, cgo, GTK 4 development files           |
-| Android  | android   | `kotlin`, `go`                      | JDK and the Android SDK                    |
+| Target   | Platform  | Languages                           | Needs to build the output                            |
+|----------|-----------|-------------------------------------|------------------------------------------------------|
+| Web      | html      | `none` (static site), `go` (server) | nothing for a static site; Go for a server           |
+| Terminal | bubbletea | `go`                                | Go                                                   |
+| Desktop  | fyne      | `go`                                | Go, cgo, OpenGL and X11 headers                      |
+| Desktop  | gtk4      | `go`, `c`                           | Go and cgo, or a C compiler; GTK 4 development files |
+| Desktop  | win32     | `c`                                 | MinGW-w64; Wine to run it off Windows                |
+| Android  | android   | `kotlin`, `go`                      | JDK and the Android SDK                              |
 
 ## Next Steps
 

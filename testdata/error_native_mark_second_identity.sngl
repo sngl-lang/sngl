@@ -3,10 +3,15 @@
 // `js.native` emitted `Math.PI` into the *Go* output, silently. A value each
 // language spells differently is an `#[marks.intrinsic]`.
 //
+// The one pair kept is a C function and the Go wrapper `sngl tool cgogen`
+// writes for it, which `ir.Foreign.Also` holds beside the C spelling; any
+// other language beside C is still a second identity.
+//
 // And the call flags are refused on a value, which makes no call.
 import ui "sngl:ui"
 import go "sngl:language/go"
 import js "sngl:language/js"
+import c "sngl:x/c"
 
 #[go.native("math", "math.Pi")]
 #[js.native("Math.PI")] // ERROR(check) "a second host identity"
@@ -14,7 +19,15 @@ const pi float
 
 #[go.native("math", "math.E", method)] // ERROR(check) "a const or var names a value and makes none"
 const e float
-// ERROR(check:16) "const \"e\" has no value"
+// ERROR(check:21) "const \"e\" has no value"
+
+#[go.native("example.com/cairo", "CairoSave")]
+#[c.native("cairo_save")]
+func save(n int)
+
+#[c.native("cairo_restore")]
+#[js.native("restore")] // ERROR(check) "a second host identity"
+func restore(n int)
 
 output {
     go {

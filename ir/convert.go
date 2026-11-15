@@ -25,6 +25,9 @@ type converter struct {
 	// dotted is the packages this file dot-imported. A name from one is
 	// spelled bare, and qualifying it with the package would not resolve.
 	dotted map[string]bool
+	// self is the URI of the package converted: its own marks are spelled
+	// bare, as sngl:x/c writes `#[native]`.
+	self string
 }
 
 // --- Package → Document ---
@@ -34,6 +37,7 @@ func (c *converter) convertPackage(pkg *Package) *ast.Document {
 
 	c.aliases = map[string]string{}
 	c.dotted = map[string]bool{}
+	c.self = strings.TrimPrefix(pkg.Path, "sngl:")
 	for _, imp := range pkg.Imports {
 		uri, ok := strings.CutPrefix(imp.Path, "sngl:")
 		if !ok {
@@ -820,7 +824,7 @@ func (c *converter) aliasFor(uri string) string {
 	uri = strings.TrimPrefix(uri, "sngl:")
 	// sngl:builtin is ambient: every file reaches its names bare, and it
 	// cannot be imported under any alias.
-	if c.dotted[uri] || uri == "builtin" {
+	if c.dotted[uri] || uri == "builtin" || (c.self != "" && uri == c.self) {
 		return ""
 	}
 	if a := c.aliases[uri]; a != "" {
@@ -912,6 +916,17 @@ func (c *converter) convertExpr(e Expr) ast.Expr {
 		return c.convertCallExpr(e)
 	case *Conversion:
 		return c.convertConversion(e)
+	case *CConvert:
+		// Printed as the call of the cast it was written through, or the
+		// conversion to the alias its parameter was written as, which is
+		// the one source spelling it has.
+		if e.Kind == CConvertCallback || e.Kind == CConvertContext || e.Kind == CConvertRelease || e.Kind == CConvertStruct || e.Kind == CConvertHeld {
+			return c.convertExpr(e.Operand)
+		}
+		if e.Via == nil && e.Alias != nil {
+			return &ast.CallExpr{Func: &ast.IdentExpr{Name: e.Alias.Name}, Args: ast.ArgList{Args: []ast.ArgOrEventHandler{ast.Arg{Value: c.convertExpr(e.Operand)}}}}
+		}
+		return c.convertCallExpr(&Call{Type: e.Type, Func: e.Via, Args: []CallArg{{Value: e.Operand}}})
 	case *Select:
 		// A node a population declares is read through the node it populates.
 		operand := e.Operand

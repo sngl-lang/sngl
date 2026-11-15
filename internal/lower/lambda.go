@@ -93,12 +93,29 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 				walkExpr(arm.Value)
 			}
 		case *ir.Call:
+			// A method of a component called through its `#id` names the
+			// instance, and is no read of a value: the inliner points the
+			// call at the method's copy for that instance, which takes no
+			// handle, once it splices it. Captured, the call reached the
+			// handle through the closure's state, where the inliner never
+			// looked, and the closure held a node no scope declared.
+			h, asArg := (*ir.Var)(nil), false
+			if x.Func != nil {
+				h, asArg = handleReceiver(x)
+			}
+			if h == nil || asArg {
+				walkExpr(x.Receiver)
+			}
 			walkExpr(x.Callee)
-			walkExpr(x.Receiver)
 			for i := range x.Args {
+				if h != nil && asArg && i == 0 {
+					continue
+				}
 				walkExpr(x.Args[i].Value)
 			}
 		case *ir.Conversion:
+			walkExpr(x.Operand)
+		case *ir.CConvert:
 			walkExpr(x.Operand)
 		case *ir.Select:
 			walkExpr(x.Operand)
@@ -259,6 +276,11 @@ func lowerLambda(pkg *ir.Package, _ Features, _ Options) error {
 		stmts: func(stmts []ir.Stmt) []ir.Stmt {
 			return liftLambdasInStmts(stmts, l)
 		},
+		// A test's lambdas read the component it takes, which each target's
+		// test writer points at the program's state; lifted first, those
+		// reads sit behind a capture of a component no test holds. What is
+		// left the target lifts, as it does a lambda that emits.
+		skip: func(f *ir.Func) bool { return f.IsTest },
 	})
 
 	if err := assertNoLambdaSurvives(pkg); err != nil {
@@ -274,6 +296,20 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 	case nil:
 		return nil
 	case *ir.Lambda:
+		// A lambda that emits is left to the inliner, which answers the emit
+		// with the handler each call site wrote only in a body it splices:
+		// lifted, the emit would sit in one function every instance shares,
+		// answered by none. What is left once the emit is answered, the
+		// target lifts as it does the handlers InstanceEvents makes lambdas.
+		if emits(x.Func) {
+			return x
+		}
+		// One whose types name a type parameter is in a generic component's
+		// body, which the inliner splices at each binding: lifted now, its
+		// state would hold the parameter itself, which no target writes.
+		if namesTypeParam(x.Func) {
+			return x
+		}
 		// Lift directly. l.Lift pushes its frame and rewrites the body via
 		// rewriteStmts/rewriteExpr — those encounter nested *ir.Lambda nodes
 		// and lift them inline (with the outer frame on the stack), so that
@@ -300,11 +336,15 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 		return x
 	case *ir.Call:
 		x.Receiver = liftLambdas(x.Receiver, l)
+		x.Callee = liftLambdas(x.Callee, l)
 		for i := range x.Args {
 			x.Args[i].Value = liftLambdas(x.Args[i].Value, l)
 		}
 		return x
 	case *ir.Conversion:
+		x.Operand = liftLambdas(x.Operand, l)
+		return x
+	case *ir.CConvert:
 		x.Operand = liftLambdas(x.Operand, l)
 		return x
 	case *ir.Select:
@@ -404,18 +444,22 @@ func liftLambdasInStmt(s ir.Stmt, l *lifter) {
 		liftLambdasInStmts(n.Children, l)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no lambda to lift.
+	case *ir.CanvasRedrawStmt:
+		// The draw func it names is lifted where it is owned.
 	default:
 		panic(fmt.Sprintf("liftLambdasInStmt: unhandled %T", n))
 	}
 }
 
-// assertNoLambdaSurvives walks pkg verifying that no *ir.Lambda remains.
-// Cheap (one extra walk); failure here means the pass missed a position.
+// assertNoLambdaSurvives walks pkg's declarations verifying that no
+// *ir.Lambda remains in an initializer or a default, where nothing after this
+// pass answers one. Cheap (one extra walk); failure here means the pass
+// missed a position.
 func assertNoLambdaSurvives(pkg *ir.Package) error {
 	var found bool
 	walkPackage(pkg, walkFuncs{
 		expr: func(e ir.Expr) ir.Expr {
-			if _, ok := e.(*ir.Lambda); ok {
+			if x, ok := e.(*ir.Lambda); ok && !emits(x.Func) && !namesTypeParam(x.Func) {
 				found = true
 			}
 			return e
@@ -437,6 +481,8 @@ type lifter struct {
 	// the same Sym as its enclosing lambda re-uses the outer's ref-typed
 	// state field instead of taking a fresh address.
 	enclosing []scopeFrame
+	// written is writtenVars(pkg), read on the first Lift.
+	written map[*ir.Var]bool
 }
 
 // newLifter seeds the name registry from the package as it stands. Seeding
@@ -471,6 +517,17 @@ type scopeFrame struct {
 // lambda expression.
 func (l *lifter) Lift(body []ir.Stmt, params []*ir.Param, ret *ir.Type, src *ast.LambdaExpr) *ir.Closure {
 	caps := analyzeCaptures(body, params)
+	// A var something else writes is held by reference too: the closure
+	// reads what the write gives it, as a closure does on a language with
+	// closures of its own. A record's prop cell its setter writes is one.
+	if l.written == nil {
+		l.written = writtenVars(l.pkg)
+	}
+	for i := range caps {
+		if v, ok := caps[i].Sym.(*ir.Var); ok && l.written[v] {
+			caps[i].Mutable = true
+		}
+	}
 
 	// Synthesize names.
 	capsName, funcName := l.freshNames()
@@ -682,6 +739,9 @@ func (l *lifter) rewriteStmt(s ir.Stmt, captureField map[ir.Symbol]ir.Expr, capt
 		l.rewriteStmts(n.Children, captureField, captureMutable)
 	case *ir.Break, *ir.Continue:
 		// A loop escape holds no ident to rewrite.
+	case *ir.CanvasRedrawStmt:
+		// A reference to a drawing owned elsewhere, as analyzeCaptures
+		// reads it: nothing of this body's is in it.
 	default:
 		panic(fmt.Sprintf("lifter.rewriteStmt: unhandled %T", n))
 	}
@@ -726,11 +786,16 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 		return x
 	case *ir.Call:
 		x.Receiver = l.rewriteExpr(x.Receiver, captureField, captureMutable)
+		// A captured function value called is read through the state.
+		x.Callee = l.rewriteExpr(x.Callee, captureField, captureMutable)
 		for i := range x.Args {
 			x.Args[i].Value = l.rewriteExpr(x.Args[i].Value, captureField, captureMutable)
 		}
 		return x
 	case *ir.Conversion:
+		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
+		return x
+	case *ir.CConvert:
 		x.Operand = l.rewriteExpr(x.Operand, captureField, captureMutable)
 		return x
 	case *ir.Select:
@@ -756,7 +821,9 @@ func (l *lifter) rewriteExpr(e ir.Expr, captureField map[ir.Symbol]ir.Expr, capt
 	case *ir.Lambda:
 		// Inner lambda. Lift inline so its caps-init runs while the enclosing
 		// frame is still on l.enclosing; outerCaptureAccess can then return
-		// the outer's bare Select for any Sym both lambdas capture.
+		// the outer's bare Select for any Sym both lambdas capture. An outer
+		// lambda holding one that emits emits too, so is never lifted with
+		// this one inside it.
 		return l.Lift(x.Func.Block, x.Func.Params, x.Func.Return, x.AST)
 	case *ir.Closure:
 		// Already lifted; do not descend.
@@ -793,4 +860,41 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		return &cp
 	}
 	return e
+}
+
+// emits reports whether f's body emits an event, in a lambda nested in it
+// included: the component it is written in answers that emit only where the
+// inliner splices it.
+// namesTypeParam reports whether f's signature or anything its body reads
+// is of a type that names a type parameter.
+func namesTypeParam(f *ir.Func) bool {
+	open := func(t *ir.Type) bool { return t != nil && t.HasTypeParam() }
+	if open(f.Return) || slices.ContainsFunc(f.Params, func(p *ir.Param) bool { return open(p.Type) }) {
+		return true
+	}
+	found := false
+	for _, s := range f.Block {
+		_ = ir.Walk(s, func(n ir.Node) error {
+			if e, ok := n.(ir.Expr); ok && open(e.ExprType()) {
+				found = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+	}
+	return found
+}
+
+func emits(f *ir.Func) bool {
+	found := false
+	for _, s := range f.Block {
+		_ = ir.Walk(s, func(n ir.Node) error {
+			if _, ok := n.(*ir.Emit); ok {
+				found = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+	}
+	return found
 }

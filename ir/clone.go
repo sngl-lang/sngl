@@ -275,6 +275,9 @@ func (c *cloner) cloneStruct(out, v reflect.Value) {
 				out.Field(i).Set(p)
 			}
 			continue
+		case fieldShare:
+			out.Field(i).Set(v.Field(i))
+			continue
 		case fieldPlatformOverrides, fieldLanguageOverrides:
 			if c.only != nil {
 				key := c.only.platform
@@ -313,6 +316,10 @@ const (
 	// package being cloned maps to its clone, and any other -- a library
 	// package -- is shared rather than copied whole.
 	fieldDeclPkg
+	// A reference to a declaration no clone copies: a parameter's C alias,
+	// and the conversion's that reads it, which the checker resolved and
+	// whose package may be the library's.
+	fieldShare
 	fieldPlatformOverrides
 	fieldLanguageOverrides
 )
@@ -339,6 +346,8 @@ func fieldKindOf(t reflect.Type, name string) fieldKind {
 		return fieldFuncBody
 	case name == "Pkg" && t == declInfoType:
 		return fieldDeclPkg
+	case name == "CAlias" && (t == reflect.TypeFor[Param]() || t == reflect.TypeFor[StructField]()), name == "Alias" && t == reflect.TypeFor[CConvert](), name == "ReturnCAlias" && t == reflect.TypeFor[Func]():
+		return fieldShare
 	case carriesOverrides(t) && (name == "PlatformOverrides" || name == "Platform"):
 		return fieldPlatformOverrides
 	case carriesOverrides(t) && (name == "LanguageOverrides" || name == "Language"):

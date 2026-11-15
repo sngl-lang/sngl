@@ -164,10 +164,10 @@ func CompileIR(ctx *codegen.CodegenCtx, cfg Config) ([]byte, error) {
 	// Source is left empty.
 	mem := codegen.NewMemSink()
 	tr := &golang.Translator{}
-	// A `#[cnative]` call is a call into C, which cgo reaches only through the
+	// A `#[c.native]` call is a call into C, which cgo reaches only through the
 	// headers the program's c.link directives name.
 	var preamble string
-	if links := ir.ReachedCLinks(ctx.Pkg); len(links) > 0 {
+	if links := golang.CLinks(ctx.Pkg); len(links) > 0 {
 		preamble = tr.EmitCHeader(links)
 	}
 	e := tr.NewFileEmitter(mem, codegen.FileOptions{

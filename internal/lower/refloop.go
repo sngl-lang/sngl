@@ -205,6 +205,8 @@ func (r *refLoopRewriter) expr(e ir.Expr) ir.Expr {
 		}
 	case *ir.Conversion:
 		x.Operand = r.expr(x.Operand)
+	case *ir.CConvert:
+		x.Operand = r.expr(x.Operand)
 	case *ir.Select:
 		x.Operand = r.expr(x.Operand)
 	case *ir.Index:

@@ -18,11 +18,15 @@ found by kind among what the program and the C function's own package import
 after `LibFuncs`, so a promoted library helper's calls are reached, and before
 `NoTernary`, which lowers `cbool`'s. `cstring` answers a `c.str`, which is
 `#[owned(free)]`, so a C string is an owned value like any other and
-`ReleaseTemps` will see it. The printer keeps only the other direction, a C
-number coming back as `int(...)`. A `bool` argument used to panic the printer,
-cgo having no conversion for one (`testdata/c_bool_argument.txtar`); `free`
-reaches cgo's `C.free` through `unsafe.Pointer`, a qualified native name the
-printer spells as written (`testdata/c_free.txtar`). An argument whose own
+`ReleaseTemps` will see it. Each conversion is a `#[c.native(…, cast)]`, and
+the pass writes it, and every call of a cast, as an `ir.CConvert` the
+language renders (`design/architecture.md`, *C is described as C spells
+it*); a `CConvert` of a string is an allocation, as the call it replaced was.
+The printer keeps only the other direction, a C number coming back as
+`int(...)`. A `bool` argument used to panic the printer, cgo having no
+conversion for one (`testdata/c_bool_argument.txtar`); `free` reaches C's
+`free` through `pointerTo`, a cast to `void *` Go writes as `unsafe.Pointer`
+(`testdata/c_free.txtar`). An argument whose own
 type is no longer the one its parameter names is converted already and left:
 a body the pass rewrote in place may be spliced by a later pass and walked
 again with the splice (`marshalSpliced`), and before this a gtk4 link
@@ -67,8 +71,9 @@ does not reach: a composed type -- `list[T]` for a `T` with a retain --
 copied var to var is still released by each, as before; and a local's
 reassignment, which releases nothing today, retains nothing either.
 
-gtk4's `Picture` is the first use: `gtk4rt.Picture.refs` counts its holders,
-`RefPicture` adds one and `UnrefPicture` gives the decode back at the last,
+gtk4's `Picture` is the first use: the runtime's `SnglPicture` counts its
+holders, `sngl_picture_ref` adds one and `sngl_picture_unref` gives the
+decode back at the last,
 so a program keeping the picture a source derived -- the last one shown while
 the URL moves on -- holds a reference, not a second decode. A `gir:` class
 whose chain reaches `GObject.Object` would be declared
@@ -144,13 +149,12 @@ written by hand, and gtk4 has none to write: what it declares --
 and strings cairo and GTK copy (`cairo_select_font_face` builds a toy face
 that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that
 keep a pointer -- a signal's, an idle's, a timeout's, a draw func's or a weak
-ref's user data, `g_object_set_data` -- are in gtk4rt and the inline-cgo
-scaffold, outside the IR, and are handed `GINT_TO_POINTER(idx)` or `NULL`,
-nothing allocated. `lib/retains_test.go` pins it: no function a library
+ref's user data, `g_object_set_data` -- are in the runtime, outside the IR,
+and are handed what it allocates and frees itself, a handler's closure
+crossing as its context with the release GLib calls (`sngl_signal_connect`). `lib/retains_test.go` pins it: no function a library
 package or what it imports declares has a `#[retains]` parameter, so the
-first one written is noticed as the decision it is. The scaffold's `gtkPost`
-hands `g_idle_add` a Go pointer, `&f`, which GLib keeps past the call as cgo
-forbids; nothing calls it, and gtk4rt's `Post` passes an index instead.
+first one written is noticed as the decision it is. A Go closure crosses to C as a handle the wrappers keep, never as a Go
+pointer GLib would keep past the call, as cgo forbids.
 
 **An owned value has one of four lifetimes**, the narrowest that fits:
 
@@ -215,7 +219,7 @@ brackets them. Four things become node lifetime:
   only reports writes brackets nothing, and an `@unmount` would make it a
   bracket ended by every change of its key, releasing what the native still
   holds, so its cells are released by the component's unmount effect instead
-  (`cmd/sngl/testdata/simulate_cnative_owned.txt`); so are the cells of every
+  (`cmd/sngl/testdata/simulate_c_native_owned.txt`); so are the cells of every
   other call the component encloses -- an event handler's, a timer's
   `@tick`'s, a component function's, which `retain` reaches by rewriting
   every block of the component after the effects
@@ -326,7 +330,7 @@ temp already bound is an identifier, and `released` remembers an argument
 already given a release. On a target without declarative views the view
 bodies are reached too (`viewBlocks`): `passDeclarative` flattened each into
 the statements that build it, and a widget's declared constructor hands C a
-string there (`testdata/gtk4_declared_create.txtar`). On the interpreter,
+string there (`testdata/win32_c_counter.txtar`). On the interpreter,
 `ReleaseTemps` reaches every body the program does, library ones included,
 the way `CMarshal` does, since nothing there is spliced.
 
@@ -409,6 +413,15 @@ here, although `ir.IsConst` says so: it is constant at each call site, not at
 package level. The interpreter's test teardown runs `Teardown` after the timers
 stop and before the leak check.
 
+**What an `@run` handler reaches holds no application-lifetime value**
+(`runReach`). Its code after `run()` runs after the application has torn
+down, so a constant there -- `say("after")`'s C string -- would be read after
+`Teardown` freed it. The handler's body, each function it calls and theirs,
+with the lambdas in each, make and release such a value per statement, as
+any other temp. C on win32 printed it by luck under Wine and gtk4's
+printed garbage (`testdata/gtk4_run_handler_runs.txtar`,
+`win32_c_run_handler_runs.txtar`).
+
 A package `var` of an owned type the program declares is released the same
 way, last of all (`packageVars`, `testdata/owned_package_var.sngl`,
 `testdata/application_teardown.txtar`): its initializer ran before any
@@ -440,39 +453,19 @@ empty function the program wrote is inlined away with its calls, and a
 release is called after the inliner ran. `codegen.HasBody` is the test, on
 Go, Kotlin and JavaScript alike (`testdata/owned_release_empty_body.txtar`).
 `c.free` calls cgo's `C.free`, which `<stdlib.h>`
-declares: gtk4's preamble includes it, and fyne's and bubbletea's
-(`EmitCHeader`) include it beside the program's links, since every `c.str`
+declares: gtk4's and win32's programs include it, and fyne's and
+bubbletea's (`EmitCHeader`) include it beside the program's links, since every `c.str`
 those targets make is freed.
 
 **gtk4's widget protocol is declared, so its strings are the passes'.** The
-inline-cgo translator used to build the calls that make a widget, add a
-child, write a prop and connect a handler after lowering, writing
-`C.CString` into them where no pass saw the allocation, and
-`emitShared.ownCStrings` wrote by hand the release `ReleaseTemps` would have:
-a literal's copy kept in a package `var` for the application and never freed,
-any other bound to a `__ctmpN` and freed after its statement. #293 moved each
-of those calls into SNGL as a `#[gen.protocol(op)]` function -- declgen
-writes a GIR class's, `gtk4.sngl` the tags no GIR class is behind -- which
-`passDeclarative` splices into the op it makes and marshals there
-(`design/nodes.md`, `design/architecture.md`). With no call left building a
-string, `ownCStrings` went, and `constCString`, `cTempName` and the `__cstrN`
-vars with it.
-
-Where a string goes now depends on what the declared call takes. By default
-a protocol calls gtk4rt as a `#[go.native]` with a Go string, which gtk4rt
-copies into C and frees itself -- the constructor's class name, a signal
-name, a setter's text, the window's title and a flow's markup -- so a
-program's temps are only what it hands C on its own (`design/architecture.md`, *Which file
-a program gets*). Under `gtk4(cgo=true)` a protocol is the class's own `#[cnative]`s,
-so a string it hands GTK is a `CMarshal` temp `ReleaseTemps` frees after the
-call, or for a literal an application-lifetime value freed at teardown, where
-the translator's `__cstr` was never freed; a constructor refusing NULL is
-handed one such `""` (`testdata/gtk4_translator_strings.txtar`,
-`testdata/gtk4_declared_create.txtar`). Either way `--simulate gtk4` runs the
-same protocol functions, so every `c.str` a widget is handed is one the
-tracker follows (below). The canvas's draw function and click
-are still the translator's, and make no C string; they go with #294, which
-retires `passShapeDraw`.
+calls that make a widget, add a child, write a prop and connect a handler are
+`#[gen.protocol(op)]` functions -- declgen writes a GIR class's, `gtk4.sngl`
+the runtime's -- calling `#[c.native]`s, which placement splices into the op
+and `CMarshal` marshals there (`design/nodes.md`), so a string one hands GTK
+is a temp `ReleaseTemps` frees after the call, or for a literal an
+application-lifetime value freed at teardown. `--simulate gtk4` runs the same
+protocol functions, so every `c.str` a widget is handed is one the tracker
+follows (below).
 
 **Nothing it reaches is held.** The review of the ownership work left a list
 of values the compiler held, and the spec's *Owned values* and Effective
@@ -518,17 +511,9 @@ pokedex's pages, and the pictures they held, were held until the process
 ended (`testdata/teardown_page_registries.txtar`, found by the ASan check
 below). The entry points, and where each calls it:
 
-- **gtk4**, `main` of a program whose root is the application
-  (`emitGTK4AppMain`): after `gtk4rt.RunWindows` returns, inside `run` where
-  the program wrote `@run` and after the hidden loop where the handler never
-  called it.
-- **gtk4**, `main` of a build rooted at a component (the `rootComponent`
-  option): `gtk4rt.Run`/`RunHidden` with `@run` (`emitGTK4RunMainWrapped`),
-  the same way; `gtk4rt.Run` without (`emitGTK4MainWrapped`), whose Model is
-  made on activate, so the teardown asks whether one was. Neither tore down
-  before.
-- **gtk4**, inline-cgo `main`: after `g_application_run`, through the package
-  `snglModel`. It refuses `@run`, and has no `gtk4rt` to quit on a signal.
+- **gtk4** and **win32**, the entries their generators write (`appMain`,
+  `goRunMain`): after the loop returns, inside `run` where the program wrote
+  `@run` and after the hidden loop where the handler never called it.
 - **fyne**, `main` rooted at the application (`emitIRAppMain`) or a component
   (`emitIRRunMain` with `@run`, `emitIRMain` without): after
   `fynelayout.RunWindows`, `ShowAndRun` or `a.Run` returns, inside `run` as on
@@ -557,7 +542,7 @@ below). The entry points, and where each calls it:
   holds nothing the activity made.
 
 A loop exits when the last window closes or when the process is asked to
-stop: `gtk4rt` and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
+stop: gtk4's runtime (`sngl_app_run`) and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
 ctrl+c does, so a terminal's ctrl+c or i3 restarting a bar tears down rather
 than killing the process mid-loop. fyne's driver quits on both already, but
 registers from a goroutine `Run` starts and missed a signal sent during
@@ -634,7 +619,7 @@ for a message the interpreter no longer gave.
 **Simulated natives are the debugging mode.** `sngl test --simulate <target>`
 runs a program on the interpreter specialized for a target rather than `none`
 (`interp.PrepareFor`, platform axis only: the interpreter is the language), so
-that target's overrides run. A `#[cnative]` call is stubbed always
+that target's overrides run. A `#[c.native]` call is stubbed always
 (`callCNative`), since the interpreter has nothing else to run: its `Block` is
 the checker's `return <zero>`, so the stub keys on `Foreign.Path == "C"`, not
 on an empty body. A `#[go.native]` is stubbed the same way, which is how
@@ -677,11 +662,10 @@ and has no teardown to leak check at. A node whose component declares its
 protocol is made, filled and connected through it after every settle
 (`Env.hostProtocols`): its create once, its sets for each prop written and
 again when the value changes, its connect once per handler, the stubbed
-natives handed what the target hands them. Under `gtk4(cgo=true)` that is
-each `c.str` a widget is handed, which the tracker follows; by default the
-protocol is gtk4rt's `#[go.native]`s, which copy a Go string themselves
+natives handed what the target hands them: on gtk4 each `c.str` a widget
+is handed, which the tracker follows
 (`cmd/sngl/testdata/simulate_gtk4_widget_strings.txt`,
-`cmd/sngl/testdata/simulate_cnative_owned.txt`).
+`cmd/sngl/testdata/simulate_c_native_owned.txt`).
 
 ## What ASan saw on gtk4
 
@@ -790,7 +774,7 @@ nothing the check is for.
 were freed by the translator's own statements and never appeared here, so
 the check neither found them nor could tell whether a future site forgot
 one. Every call that made one is a declared protocol now (above), so its
-strings are `CMarshal`'s and `ReleaseTemps`' or gtk4rt's, and the tracker
+strings are `CMarshal`'s and `ReleaseTemps`', and the tracker
 holds the first under `--simulate gtk4` on every commit.
 
 **To rerun it**, which a toolkit upgrade or a change to the instance emitter
@@ -804,7 +788,8 @@ a test and both are a page of code the note above describes.
 
 ## A C language target
 
-Decided ahead of the target, with no code until one exists to need it. On
+Decided ahead of the target; *What the C target builds* below says how
+much of it the target holds and how. On
 every target today a `string` is the host's: Go, Kotlin and JavaScript
 collect it, and the only string the program gives back is the `c.str` a C
 call makes of one. In C a `string` is an allocation, every concatenation,
@@ -920,11 +905,14 @@ today's targets the pass wraps a `string` argument of a C call in `cstring`,
 which allocates a NUL-terminated copy the program frees. On the C target the
 program's string already is one: the representation keeps its length beside
 the bytes and a NUL after them, one byte per string, so handing it to a
-`char *` parameter is a pointer to the bytes and no allocation. The target
-writes `CMarshal` in `#[gen.can]`, so the pass does not run: `cstring`,
+`char *` parameter is a pointer to the bytes and no allocation. `cstring`,
 `cint`, `cdouble` and `cbool` are all identities or casts there, and the
 reason the conversions live in the IR -- that an allocation must be where a
-pass can see it -- holds for none of them. A string holding a NUL byte is
+pass can see it -- holds for none of them, so the target's `CInterop` renders
+each as the operand itself. The pass still runs: it also writes the
+arguments no caller passes, a callback's `#[c.context]` and `#[c.release]`,
+and marks a callback and a C struct for the translator, which the C target
+renders as directly as Go does through cgo. A string holding a NUL byte is
 truncated at the C boundary, as `C.CString` truncates it today. A `#[moves]`
 `char *` parameter gets the heap copy above; a `#[retains]` one gets the
 node's, released when the node hands the native its next value or unmounts.
@@ -938,3 +926,207 @@ leaks only what no lifetime can hold, which is a `#[retains]` call no
 component encloses, and the checker refuses that before any code is written.
 A C target declares its widget protocol as `#[gen.protocol]` functions, as
 gtk4 does, so every call to the toolkit is IR before the passes run.
+
+### What the C target builds
+
+**The arena and the turn are the runtime's** (`pkg/c/runtime/sngl.c`). A
+string a statement makes is `sngl_alloc`ed from the arena. A turn is
+bracketed by `sngl_turn_enter` and `sngl_turn_leave`: the program's start
+(`sngl_start`), each test function, each canvas draw (`c_canvas.go`'s
+`draws`). The outermost leave ends the turn: it frees what was dropped and
+resets the arena, overwriting what the turn made (0x5a) so that a value read
+past its turn reads as garbage rather than as what it was; under
+AddressSanitizer it poisons what it gave back, so such a read is reported
+where it happens. Every callback C
+makes into the program goes through the dispatcher `cCallback` defines for its
+C signature, which brackets it with `sngl_call_enter` and `sngl_call_leave`:
+a signal's handler, a timer's tick, an idle. These give the arena back to
+where it stood when the callback was entered, at any depth. So a handler a
+test fires runs as its own allocation scope inside the test's turn, and a
+test sees a store that was not kept as garbage, which
+`cmd/sngl/testdata/c_gtk4_test_runs.txt`'s `keep.sngl` holds. A depth left
+nonzero by a test's failure is reset by the agent, which ends the turn after
+every test.
+
+**A store keeps, in the renderer and not in a lowering step.** The design
+above placed the copy at the store in a `#[gen.can]` lowering step. The
+renderer is where both halves of the question are answered: whether a target
+is a holder (`holder` in `codegen/lang/c/keep.go`: a package var, a record's
+field through the platform's `State`, a box, or an element or field of one)
+and what the value's C type is. So `AssignText` writes a store into a holder
+as a slot whose old value is dropped and whose new one is kept. The same
+applies to a box's first value, a closure's environment (the caps struct,
+field by field), a lambda C lifts, a record's vars as its constructor sets
+them, the package's vars in `sngl_init`, an element `push` or `insert` puts
+in a holder's list, and a key a holder's map takes (`mapSlotKept`). Keeping
+is deep: a list's buffer is copied and each element kept, and likewise a
+map's keys and values, a struct's fields, an option's value, and a payload
+enum's payload by its tag. `owns` says which types have anything to keep.
+
+**A list or a map made is the turn's too.** A literal's buffer, a spread's,
+a copy, a slice, a filter's or a map's result, a split's pieces and a map's
+keys are `sngl_alloc`ed, as a string's bytes are, and a holder keeps a copy.
+A holder's own list or map grows in kept memory and drops the buffer it
+outgrew (`grow_kept`, `slot_kept`, chosen by `holder` as an element's keep
+is), and its `remove` and `clear` drop what they take out.
+
+**Holders share a kept buffer rather than each copying it.** A string's
+bytes, a list's buffer and a map's keys and values are kept blocks that
+count their holders: a holder keeping one already kept counts once more
+(`sngl_share`), and a drop lets go of one hold, the last giving back the
+block and what is in it. A holder writing its list or map in place -- a
+push, an insert, a remove, a clear, a sort, an element or a key -- first
+copies a buffer another holds (`unshare`), each list or map on the way to
+it included, since `EvalMutTarget` reaches the receiver as a write. A
+block records the length its holders last wrote it at, and a value saying
+another -- a list read before its holder's `clear` -- is copied rather
+than shared, since its elements past the holder's length were given back.
+A buffer whose elements may hold a counted box is never shared: the
+collector of cycles visits a box once for each holder reaching it, and a
+shared buffer is one box's holder however many hold the buffer. So a
+holder's store no longer copies the value first (`value.copy`), since its
+keep copies or shares. Before, every keep was a deep copy, and the
+Pokédex's Moves tab, each row a prop holding the names it has looked up,
+copied that map into each of 237 rows for each answer: two minutes of the
+CPU for one page. `codegen/lang/c/testdata/run/shares.txtar` holds each
+write through a shared buffer, and the clear.
+
+**A record gives back its box and what its fields kept as it is
+destroyed.** A component built at run time -- a row a keyed `for` keeps -- is
+a record (`internal/lower/placerecords.go`), a box whose fields the
+constructor and each write keep. Placement marks the record's destroy
+`ir.Func.Frees`, and C writes, after its teardown, a drop of each field that
+keeps anything and then of the box, which `sngl_keep_copy` made a kept block
+for that. Before, the destroy ran the teardown alone, so each row a rebuilt
+list made held its prop, its vars and the record itself for the life of the
+process. `cmd/sngl/testdata/c_record_gives_back_runs.txt` counts the kept
+blocks (`sngl_kept_blocks`) across three rebuilds, on gtk4 and on win32. The
+drops wait for the turn's end, like any other, so a handler of the row still
+running reads the record until then; an `async` result that lands later finds
+its lifetime ended by the teardown and touches nothing.
+
+**A closure's environment is a value of the turn's, kept like any other.**
+C has no closure, so a function value is its function and an environment,
+which begins with how it is kept (`sngl_env`) and is made in
+the turn's arena, as a string is. A holder storing a closure the turn made
+copies the environment into a counted block, as a box is, keeping what it
+captured with it; a holder storing one already kept shares it, counting one
+more holder, and the last to let go gives back each capture and then the
+block. Dropping one the turn made does nothing, since
+what it captured is the turn's or held by what it was read from. Sharing
+is safe because nothing writes an environment once it is made: a var a
+closure or anything else writes is captured as its box, which the copies
+would share anyway (`lower`'s lambda lifting). Copying instead made keeping
+a closure that captured a closure copy all it reached, so a chain of them
+kept a link a turn was quadratic. A callback
+crossing to C is kept as it crosses and given back when C releases it
+(`sngl_closure_release`). Before, an environment was a heap copy nothing
+freed, holding a kept copy of each capture, so a `filter`'s predicate leaked
+each call and each row a rebuilt list made kept its handlers' captures;
+`c_record_gives_back_runs.txt`'s `closure.sngl` counts the kept blocks, and
+`codegen/lang/c`'s sanitized `TestRun` checks leaks.
+
+**A value C holds is kept as it crosses, and dropped when C lets it go.** A
+`#[c.native]` function's parameter written `c.held[T]` (`sngl:x/c`) hands C
+a pointer to a heap copy of the argument, kept deep as a holder keeps a
+store (`ir.CConvertHeld`); the function's `#[c.release]` parameter is handed
+`sngl_held_release_T`, which drops what the copy kept, at the turn's end as
+any drop is, and frees the copy. One answering `option[c.held[T]]` reads the
+copy back (`sngl_held_T`), a shallow read the turn holds as it holds what it
+reads from any holder: a later store keeps its own, and a drop C makes
+during the turn waits for the turn's end. An owned `T` is refused at the
+check, since no lifetime of the compiler's reaches what C holds; that is
+the one boundary the lifetimes above stop at. Go registers the value in
+`cbind`'s registry as it registers a callback's closure, and purego through
+`cload.Hold`. `codegen/lang/c`'s `held` run counts the kept blocks after C
+lets every value go, sanitized (`testdata/c_held_value.txtar`,
+`testdata/c_held_purego.txtar`).
+
+**A var a closure writes is a counted box its holders share.** NoRef boxes
+such a var -- a function's local, a record's prop a handler of its body
+writes -- and marks the box `ir.StructDef.Counted`. C makes it a counted
+block (`sngl_counted_new`) and treats it as a value a holder keeps: keeping
+it retains it, dropping it releases it, and an environment, a record's field
+or a package var holding it does each as it holds anything. The last holder
+letting go gives it back at once with what it holds, as a holder's drop
+does, freed as the turn ends; one the turn made and no holder took -- a
+local no closure kept -- is the turn's and is given back as the turn ends.
+A holder taking a box again in the turn its last holder let go of it keeps
+it again, what it holds kept anew from memory the turn still has
+(`sngl_counted_retain`). Before, a box was a kept block nothing gave back,
+so each call making a closure that writes a local leaked the box and what
+it held; a record gave back the box it made for a prop and not one handed
+to it. `codegen/lang/c/testdata/run/closures.txtar` keeps two closures
+sharing a local across turns, lets go of them one at a time, and takes a
+box again the turn it was let go of, under AddressSanitizer and
+LeakSanitizer.
+
+**The turn's end collects a cycle of counted boxes.** Counting gives back no
+cycle, and a closure stored in the var it calls is one: the box holds the
+closure, whose environment holds the box. So does a closure in a list in
+it, or two vars whose closures call each other. Only counted boxes can
+close one -- every other value is copied into each holder, and a record is
+given back by its destroy -- so the runtime collects them by trial deletion
+(Bacon and Rajan's synchronous collector, `sngl_collect_cycles`). A release
+leaving a box still held marks it to be tried. At the turn's end, after the
+boxes the turn made and no holder took are given back, the holds the tried
+boxes have on one another are taken off their counts; a box with a count
+left is held from outside them, and it and all it reaches get theirs back;
+the rest are garbage, given back with what they hold. The turn's end is
+what makes this exact: no local is left, so every hold on a box is a
+holder's, and each is counted -- no stack is scanned. Each box carries a
+visit handing the collector the boxes it holds, generated with its release
+(`boxOps`), and a kept environment, itself a counted block, carries one
+too (`envOps`), which reaches through what it captured, a list's elements
+and so on (`visits`, the `visit` of `ownHelper`); the walk stops at each
+box and each kept environment, handing it to the collector as a block of
+its own.
+`codegen/lang/c/testdata/run/cycles.txtar` lets go of each such cycle, and
+of one half of a pair C still holds the other half of, which the try keeps
+and the next call runs through, under AddressSanitizer and LeakSanitizer.
+
+**No walk of the runtime's grows the C stack with what it walks.** A chain
+of boxes is as long as the program built it, and overflowing the stack is
+a crash -- or, on a thread without a guard page, memory written past it --
+rather than a panic. So the collector's walks keep what they have yet to
+visit in heap lists, a visit only counting and queuing each box it hands
+on, and a box given back joins a list its contents are let go of from
+(`sngl_let_go`), rather than letting go of the next from inside its own
+release. `codegen/lang/c/testdata/run/chains.txtar` tries and then gives
+back a chain of a hundred thousand boxes, which the recursive walks
+overflowed the stack on. Keeping, dropping and visiting a value still
+recurse, a frame or more for each value nested in another, which is
+unbounded only through a closure the turn made captured by one it made, or
+a recursive type's value; each of those levels enters `sngl_deeper`, which
+panics past `SNGL_MAX_DEPTH` (2000), deep enough for any value a program
+means to build and shallow enough for Windows' 1 MB stack. A limit of the
+target's is fine where it stops the program cleanly; what is not is
+writing memory the stack does not own. `nests.txtar` keeps a closure and a
+tree a thousand deep and panics on a closure three thousand deep, and
+`trees.txtar` on a tree as deep; it also keeps a chain three thousand long
+a link a turn, where each keep shares the link before it rather than walk
+it.
+
+**A frame never steps over the guard page.** A program's own recursion is
+the C stack's, with no counter, and running out of it stops at the guard
+page below the stack -- unless a frame larger than the page moves the stack
+pointer past the guard at once and writes what lies beyond. Every build
+passes `-fstack-clash-protection` (`c.Flags`), which touches each page of a
+frame as it grows it; MinGW probes a large frame (`__chkstk`) whatever the
+flags. `codegen/lang/c/testdata/run/clash.txtar` recurses with a 40 KB
+frame on a thread whose stack, guard and the memory below it it lays out
+itself, and without the flag gcc's and clang's builds write that memory.
+
+**A drop waits for the turn's end, and is a no-op for what was never kept.**
+A local of the turn may still be reading what a holder held when the holder
+is overwritten (`var s = label; label = "x"; use(s)`). So `sngl_drop` only
+queues the block. The runtime keeps the set of blocks `sngl_keep_alloc` made,
+and a block outside it is left alone: a literal, the zero a var starts at, a
+value some path stored without keeping. A store the renderer misses
+therefore leaks, or at worst reads freed memory, and never frees what it does
+not own.
+
+**Not yet, each a leak rather than a fault:**
+
+- `CMarshal`'s `cstring` is still a copy the program frees (`CConvert`),
+  where the design above made it the identity.

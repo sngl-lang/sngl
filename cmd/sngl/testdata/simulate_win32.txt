@@ -1,0 +1,49 @@
+# win32 under --simulate, with no C toolchain and no Wine: the interpreter
+# runs the target's overrides -- a canvas's text among them, which no other
+# target's override draws through win32's context -- and makes, fills and
+# connects each node through the #[gen.protocol] functions win32.sngl
+# declares, every runtime call a stubbed #[c.native]. A string the runtime is
+# handed is a `c.utf16` the turn's arena holds, so the tracker has none to
+# follow, and the run ends with nothing held.
+
+env PATH=
+
+sngl test --simulate win32 app.sngl
+stdout '^ok   1 tests, 0 failures$'
+! stdout 'leak'
+
+-- app.sngl --
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+import test "sngl:test"
+
+output {
+    c {
+        win32
+    }
+}
+
+component page ui.node {
+    var n = 0
+
+    ui.vbox {
+        ui.text("{n}")
+        ui.link(text="site", href="https://example.com")
+        draw.canvas(width=60px, height=20px) {
+            draw.canvasText(x=0.0, y=16.0, content="n {n}", style=draw.Style{fill=#000000, fontFamily="serif"})
+        }
+        ui.button #more(text="more", @click {
+            n = n + 1
+        })
+    }
+}
+
+func testCounts(t test.Test, c page) {
+    c.n = 2
+    c.more.click()
+    t.assert(c.n == 3)
+}
+
+ui.window(title="t") {
+    page
+}

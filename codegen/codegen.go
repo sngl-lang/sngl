@@ -60,6 +60,21 @@ type LangTranslator interface {
 	NewFileEmitter(sink Sink, opts FileOptions) FileEmitter
 }
 
+// CInterop is how a language calls C. The IR describes C as C spells it --
+// `#[c.native]` names, ir.CType, ir.CConvert -- and each language renders that
+// as it reaches C: Go through cgo, C directly. A language that calls no C
+// does not implement it.
+type CInterop interface {
+	// CType spells a C type: `*C.cairo_t` in Go, `cairo_t *` in C.
+	CType(t *ir.CType) string
+	// CConvert renders a conversion to a C type.
+	CConvert(x *ir.CConvert) string
+	// CCall renders c, a call of a C function, with its arguments rendered,
+	// and converts what it returns back to SNGL's: a number, a C struct, and
+	// what each `ref` it fills hands back (lower.RefParams).
+	CCall(c *ir.Call, args []string) string
+}
+
 // UnimplementedFileEmitter is returned by languages that have not migrated to
 // the FileEmitter surface; every emitting method errors.
 type UnimplementedFileEmitter struct {
@@ -376,6 +391,27 @@ type TestLauncher interface {
 	LaunchTest(ctx context.Context, dir string, lang LangTranslator, opts *ir.StructLit) (RPCChannel, Cleanup, error)
 }
 
+// A ProgramRunner is a platform that builds the program it wrote to dir
+// and runs it itself, once per run, rather than as a Go program is: win32's
+// C, cross-compiled and run under Wine. A golden's `exec` runs one through
+// it (internal/toolchain.Exec). A run that could not start, did not end in
+// time or exited non-zero has its Err set.
+type ProgramRunner interface {
+	RunProgram(ctx context.Context, dir string, runs []ProgramRun) (output string, ran []ProgramRan, err error)
+}
+
+// A ProgramRun is one execution of a program: its arguments and its stdin.
+type ProgramRun struct {
+	Args  []string
+	Stdin []byte
+}
+
+// A ProgramRan is what one ProgramRun printed, and how it ended.
+type ProgramRan struct {
+	Stdout, Stderr string
+	Err            error
+}
+
 // SkipError signals that a target's prerequisites are missing on the
 // host (e.g. pkg-config can't find gtk4). sngl test surfaces this as
 // a SKIP line rather than a FAIL. Match via errors.As.
@@ -552,6 +588,11 @@ type CCompiler interface {
 	// for the headers the program's c.link directives name. Called once per
 	// output file. Returns empty string when links is empty.
 	EmitCHeader(links []*ir.CLink) string
+	// CSources is the files the language compiles into pkg's program beside
+	// the ones its platform generated: the sources its c.links ship, and
+	// what its C functions' callbacks need, keyed by the path relative to
+	// the output directory.
+	CSources(pkg *ir.Package, generated map[string][]byte) (map[string][]byte, error)
 }
 
 // MutationModelEmitter is optionally implemented by platforms that emit a

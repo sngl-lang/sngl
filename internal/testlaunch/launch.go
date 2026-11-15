@@ -4,12 +4,15 @@
 package testlaunch
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"log/slog"
 	"maps"
@@ -96,6 +99,9 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		build.IsolateRootComponent(groupPkg, group.Component)
+		if err := build.ApplyCgo(groupPkg, build.Target{Lang: LangIdent(lang), Platform: plat.PlatformIdentifier(), Options: opts}); err != nil {
+			return results, err
+		}
 		if group.Component == "" && !groupPkg.IsProgram() {
 			// Tests taking no component, in a package whose body renders
 			// nothing, render nothing either. Left in, every component was
@@ -190,7 +196,7 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 		FileAssets: assets,
 		ProjectFS:  build.ProjectFS(cfg.Dir),
 	}
-	if err := plat.Generate(req, codegen.NewDirSink(tmpDir)); err != nil {
+	if err := codegen.Generate(plat, req, codegen.NewDirSink(tmpDir)); err != nil {
 		return nil, fmt.Errorf("generate: %w", err)
 	}
 
@@ -352,10 +358,12 @@ func exitedEarly(results []*codegen.TestResult, current map[string]*codegen.Test
 
 func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.Message, fixtureBase string) {
 	var p struct {
-		Test  string `json:"test"`
-		Name  string `json:"name"`
-		Mime  string `json:"mime"`
-		Bytes string `json:"bytes"`
+		Test   string `json:"test"`
+		Name   string `json:"name"`
+		Mime   string `json:"mime"`
+		Bytes  string `json:"bytes"`
+		Width  int    `json:"width"`
+		Height int    `json:"height"`
 	}
 	if err := json.Unmarshal(m.Params, &p); err != nil {
 		_ = w.Respond(*m.ID, nil, &testrpc.RPCError{Code: -32602, Message: err.Error()})
@@ -366,12 +374,39 @@ func handleSnapshotAssert(w *testrpc.Writer, store *snapshot.Store, m *testrpc.M
 		_ = w.Respond(*m.ID, nil, &testrpc.RPCError{Code: -32602, Message: "bad base64"})
 		return
 	}
+	if p.Mime == RawPixelsMime {
+		if raw, err = encodePixels(raw, p.Width, p.Height); err != nil {
+			_ = w.Respond(*m.ID, nil, &testrpc.RPCError{Code: -32602, Message: err.Error()})
+			return
+		}
+		p.Mime = "image/png"
+	}
 	res, err := store.Assert(fixtureBase, p.Name, p.Mime, raw)
 	if err != nil {
 		_ = w.Respond(*m.ID, nil, &testrpc.RPCError{Code: -32603, Message: err.Error()})
 		return
 	}
 	_ = w.Respond(*m.ID, map[string]any{"pass": res.Pass, "diff": res.Diff}, nil)
+}
+
+// RawPixelsMime is a snapshot sent as its pixels, four bytes each, red,
+// green, blue and alpha, row by row from the top, with its width and height
+// beside them: a C agent's, since C has no PNG encoder to hand and the driver
+// has Go's.
+const RawPixelsMime = "image/x-sngl-rgba"
+
+// encodePixels is the PNG of a snapshot sent as RawPixelsMime, which the
+// store keeps as it keeps any agent's PNG.
+func encodePixels(pix []byte, width, height int) ([]byte, error) {
+	if width <= 0 || height <= 0 || len(pix) != width*height*4 {
+		return nil, fmt.Errorf("snapshot: %d bytes of pixels for %d by %d", len(pix), width, height)
+	}
+	img := &image.NRGBA{Pix: pix, Stride: width * 4, Rect: image.Rect(0, 0, width, height)}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // prepareForLaunch runs the generate pipeline's full optimize→lower→optimize

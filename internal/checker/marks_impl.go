@@ -24,10 +24,13 @@ var markImpls = map[markKey]markImpl{
 	{"macro", "wildcard"}:              markWildcard,
 	{"macro", "construct"}:             markConstruct,
 	{"macro", "foreign"}:               markForeign,
-	{"macro", "cnative"}:               markCNative,
 	{"macro", "owned"}:                 markOwned,
 	{"macro", "retains"}:               markRetains,
 	{"macro", "moves"}:                 markMoves,
+	{"x/c", "native"}:                  markCNative,
+	{"x/c", "context"}:                 markCContext,
+	{"x/c", "type"}:                    markCType,
+	{"x/c", "release"}:                 markCRelease,
 	{"macro", "unusable"}:              markUnusable,
 	{"language/kotlin", "native"}:      markKotlinNative,
 	{"language/go", "native"}:          markGoNative,
@@ -41,6 +44,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "native"}:                markGenNative,
 	{"x/gen", "protocol"}:              markGenProtocol,
 	{"x/gen", "connects"}:              markGenConnects,
+	{"x/gen", "fires"}:                 markGenFires,
 	{"ui/markup/md", "order"}:          markMdOrder,
 	{"json", "identifier"}:             markJSONIdentifier,
 	{"http", "identifier"}:             markHTTPIdentifier,
@@ -286,33 +290,93 @@ func markKotlinNative(m *mark) error {
 	return nil
 }
 
-// markCNative implements #[cnative("name")]: the declaration is that C
-// identifier.
+// markCNative implements #[c.native("name")] and #[c.native("name", cast)]: the
+// declaration is that C identifier, that C type, or a conversion to that C
+// type.
 //
 // The scheme is "c" rather than a language's, because C is an ABI and not a
 // SNGL target: a platform wrapping a C library describes it once and any
-// backend that can call C reads the same declarations. The path is "C", which
-// is what the Go renderer already keys its cgo spelling on.
+// backend that can call C reads the same declarations. The name is C's own
+// spelling, parsed here into the ir.CType a translator spells in its
+// language, so no `C.` or `unsafe.` reaches a declaration.
 func markCNative(m *mark) error {
 	name := m.args.String("name")
 	if name == "" {
-		return fmt.Errorf("#[cnative]: a C identifier is required")
+		return fmt.Errorf("#[c.native]: a C identifier is required")
 	}
-	fm := ir.Foreign{Scheme: "c", Path: "C", Name: name}
+	flags, err := uniqueFlags(m.args.Idents("flags"), fmt.Sprintf("#[c.native(%q)]", name))
+	if err != nil {
+		return err
+	}
+	cast := slices.Contains(flags, flagCast)
+	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name}
 	switch d := m.sym.(type) {
 	case *ir.Func:
+		if cast {
+			if d.IsMethod() || len(d.Params) != 1 || d.Return == nil || d.Return.Kind == ir.TypeVoid {
+				return fmt.Errorf("#[c.native(%q, cast)] converts one value to a C type, so it takes one parameter and returns that type", name)
+			}
+			if fm.C, err = ir.ParseCType(name); err != nil {
+				return fmt.Errorf("#[c.native(%q, cast)]: %w", name, err)
+			}
+		} else if !ir.IsCIdent(name) {
+			return fmt.Errorf("#[c.native(%q)] names no C function: a function is its C identifier, and a conversion to a C type is #[c.native(%q, cast)]", name, name)
+		}
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}
 	case *ir.StructDef:
+		if cast {
+			return fmt.Errorf("#[c.native(%q)] carries cast, which describes a conversion; a struct is a C type", name)
+		}
+		if fm.C, err = ir.ParseCType(name); err != nil {
+			return fmt.Errorf("#[c.native(%q)]: %w", name, err)
+		}
+		// One with fields is the program's own struct with a C layout,
+		// which a backend declares as it does any other (Foreign.Marked).
+		if len(d.Fields) > 0 {
+			if fm.C.Ptr > 0 {
+				return fmt.Errorf("#[c.native(%q)] declares fields, so it names a C struct, held by value: a pointer to one is a ref[%s] parameter", name, d.Name)
+			}
+			fm.Marked = true
+		}
 		if err := claimForeign(&d.Foreign, fm, name); err != nil {
 			return err
 		}
+	case *ir.Alias:
+		return markCAlias(d, name, cast)
 	default:
-		return fmt.Errorf("#[cnative] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
+		return fmt.Errorf("#[c.native] cannot mark %s; only a function or a struct names a C identifier", ast.DeclFormName(m.decl))
 	}
 	return nil
 }
+
+// markCAlias implements #[c.native] on an alias: a C typedef of a scalar SNGL
+// spells as the type the alias names. `#[c.native("UINT")] struct UINT = int`
+// is an `int` wherever it is written, and a C function's argument for a
+// parameter written with it crosses as a `UINT` rather than a C `int`. What
+// the alias may name is checkCAlias's, once it is resolved.
+func markCAlias(a *ir.Alias, name string, cast bool) error {
+	if cast {
+		return fmt.Errorf("#[c.native(%q)] carries cast, which describes a conversion; an alias is a C type", name)
+	}
+	if len(a.WrittenParams) > 0 {
+		return fmt.Errorf("#[c.native(%q)] names one C type, so the alias takes no type parameters", name)
+	}
+	t, err := ir.ParseCType(name)
+	if err != nil {
+		return fmt.Errorf("#[c.native(%q)]: %w", name, err)
+	}
+	if a.C != nil {
+		return fmt.Errorf("#[c.native(%q)]: the alias already spells %s", name, a.C)
+	}
+	a.C = t
+	return nil
+}
+
+// flagCast says a #[c.native] function is a conversion to the C type its name
+// spells, declared as sngl:x/c's NativeFlag.
+const flagCast = "cast"
 
 // markJSNative implements #[js.native("name")] and #[js.native("name",
 // "module")]: the declaration *is* that JavaScript identifier.
@@ -407,6 +471,12 @@ func markBuiltin(m *mark) error {
 		d.Builtin = kind
 	case *ir.Func:
 		if !kind.IsCMarshal() && kind != ir.BuiltinText && kind != ir.BuiltinFormatWith && kind != ir.BuiltinAppendFormatWith && kind != ir.BuiltinHTTPClosed {
+			return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
+		}
+		d.Builtin = kind
+		return nil
+	case *ir.Alias:
+		if kind != ir.BuiltinCHeld {
 			return fmt.Errorf("#[builtin(%q)] cannot mark %s", raw, ast.DeclFormName(m.decl))
 		}
 		d.Builtin = kind
@@ -874,8 +944,21 @@ func markConstruct(m *mark) error {
 // on one declaration kept whichever ran last, silently, and the *Go* output
 // said `Math.PI`. A value each language spells differently is an
 // `#[marks.intrinsic]`, which is what `math.sin` already is.
+//
+// The one pair kept is a C declaration and its Go wrapper (sngl tool
+// cgogen): the C spelling stays the primary, whichever is written first,
+// and the Go one is in Foreign.Also.
 func claimForeign(dst *ir.Foreign, fm ir.Foreign, name string) error {
 	if dst.Name != "" {
+		c, wrapper := *dst, fm
+		if fm.Scheme == "c" {
+			c, wrapper = fm, *dst
+		}
+		if c.Scheme == "c" && wrapper.Scheme == "go" && len(c.Also) == 0 && len(wrapper.Also) == 0 {
+			c.Also = []ir.Foreign{wrapper}
+			*dst = c
+			return nil
+		}
 		return fmt.Errorf("#[native(%q)] is a second host identity; %q already names this declaration's, and a declaration names one identifier", name, dst.Name)
 	}
 	*dst = fm
@@ -985,6 +1068,38 @@ func markGenProtocol(m *mark) error {
 		if t := fn.Params[2].Type; t == nil || t.Kind != ir.TypeFunc {
 			return fmt.Errorf("#[gen.protocol(connect)] is handed the handler, a function, as its third parameter")
 		}
+	case ir.ProtocolInsertBefore:
+		if len(fn.Params) != 3 {
+			return fmt.Errorf("#[gen.protocol(insertBefore)] takes the parent, the child and the child it goes before: func f(parent P, child ui.node, before ui.node)")
+		}
+		for _, p := range fn.Params {
+			if p.Type == nil || p.Type.Kind != ir.TypeComponent {
+				return fmt.Errorf("#[gen.protocol(insertBefore)] declares the #[intrinsic] component it adds to, then the two nodes")
+			}
+		}
+	case ir.ProtocolHandle:
+		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(handle)] takes a node: func f(n ui.node) H")
+		}
+		if fn.Return == nil || fn.Return.Kind == ir.TypeVoid || fn.Return.Kind == ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(handle)] declares the type a node is held as, which is no component, as its return type")
+		}
+	case ir.ProtocolContents:
+		if len(fn.Params) != 0 || fn.Return == nil || fn.Return.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(contents)] takes nothing and returns the container it makes: func f() Box")
+		}
+	case ir.ProtocolAnchor:
+		if len(fn.Params) != 2 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent || fn.Params[1].Type == nil || fn.Params[1].Type.Kind != ir.TypeComponent || fn.Return == nil || fn.Return.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(anchor)] takes the container and the anchor a render slot holds, and returns the anchor: func f(parent ui.node, anchor ui.node) ui.node")
+		}
+	case ir.ProtocolRedraw:
+		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(redraw)] takes the #[intrinsic] canvas it asks to paint again: func f(w C)")
+		}
+	case ir.ProtocolAttach, ir.ProtocolDetach:
+		if len(fn.Params) != 1 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+			return fmt.Errorf("#[gen.protocol(%s)] takes the node at the program's root: func f(w Window)", op)
+		}
 	case ir.ProtocolSet:
 		if len(fn.Params) != 2 {
 			return fmt.Errorf("#[gen.protocol(set)] takes the widget and the value, named as the prop it sets: func f(w W, label string)")
@@ -1007,6 +1122,30 @@ func markGenProtocol(m *mark) error {
 	}
 	fn.Protocol = op
 	m.c.protocols = append(m.c.protocols, protocolMark{fn: fn, pos: m.attr.Pos})
+	return nil
+}
+
+// markGenFires implements #[gen.fires(event)]: the function is how a test
+// fires event on a node of the component its first parameter is, handed what
+// the test hands the event after it. Which component, and whether it has
+// the event, is bindProtocols' question, as for #[gen.protocol].
+func markGenFires(m *mark) error {
+	fn, ok := m.sym.(*ir.Func)
+	if !ok {
+		return fmt.Errorf("#[gen.fires] cannot mark %s; it marks a function", ast.DeclFormName(m.decl))
+	}
+	event := m.args.String("event")
+	if event == "" {
+		return fmt.Errorf("#[gen.fires] names the event it fires, and the name is empty")
+	}
+	if fn.Protocol != ir.ProtocolNone {
+		return fmt.Errorf("#[gen.fires(%q)]: already the %s operation", event, fn.Protocol)
+	}
+	if len(fn.Params) == 0 || fn.Params[0].Type == nil || fn.Params[0].Type.Kind != ir.TypeComponent {
+		return fmt.Errorf("#[gen.fires] declares the #[intrinsic] component it fires on as its first parameter: func f(w W, value string)")
+	}
+	fn.Protocol = ir.ProtocolFire
+	m.c.protocols = append(m.c.protocols, protocolMark{fn: fn, pos: m.attr.Pos, event: event})
 	return nil
 }
 

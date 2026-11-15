@@ -20,6 +20,9 @@ stdout '^ok +1 tests, 0 failures$'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +1 tests, 0 failures$'
+
 sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +1 tests, 0 failures$'
 
@@ -75,7 +78,17 @@ sha256:3b782b7881b117dc2a83ff450f90bd7a
   ]
 }
 -- testrun/fyne/go/app.sngl/panes/1 --
-sha256:1d953cb4d966b15e7df609198d71ad8b
+sha256:aff7f03255da45ba0e40017c04db243b
+{
+  "results": [
+    {
+      "Desc": "PresentInAPanel",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/panes/1 --
+sha256:0f358018879d7e328e0bb3352d6fd404
 {
   "results": [
     {
@@ -85,7 +98,7 @@ sha256:1d953cb4d966b15e7df609198d71ad8b
   ]
 }
 -- testrun/gtk4/go/app.sngl/panes/1 --
-sha256:9d5069acdd7de975b74aa96e9ed9482e
+sha256:6e28e648627040b3ce54349da7ce8c8c
 {
   "results": [
     {
@@ -95,7 +108,7 @@ sha256:9d5069acdd7de975b74aa96e9ed9482e
   ]
 }
 -- testrun/html/none/app.sngl/panes/1 --
-sha256:9726b8214f1c1666f8695e2cadf5680d
+sha256:58b63d421f14e8ef472d7440f140753b
 {
   "results": [
     {

@@ -329,7 +329,7 @@ sha256:d310914cb37f46b132241cf1431d6ce8
   ]
 }
 -- testrun/gtk4/go/answered.sngl/ended/1 --
-sha256:34f2da4d92d907e512022b7ee31d9d8b
+sha256:f2c122daa68f783037eeaa2d770a4bd7
 {
   "results": [
     {
@@ -339,7 +339,7 @@ sha256:34f2da4d92d907e512022b7ee31d9d8b
   ]
 }
 -- testrun/gtk4/go/ended.sngl/ended/1 --
-sha256:6b7be255f13eabf544db8e0e836c07a7
+sha256:d44ebce95dd286c9e973db32e3ef44de
 {
   "results": [
     {
@@ -349,7 +349,7 @@ sha256:6b7be255f13eabf544db8e0e836c07a7
   ]
 }
 -- testrun/gtk4/go/inflight.sngl/keyed/1 --
-sha256:5547ea942ce30c6812d3ce296f358919
+sha256:b87dcc318a3db7627a91b5dafc6dfb4a
 {
   "results": [
     {
@@ -359,7 +359,7 @@ sha256:5547ea942ce30c6812d3ce296f358919
   ]
 }
 -- testrun/gtk4/go/inflight.sngl/manual/1 --
-sha256:1865206c62db560e641726649bd16c9d
+sha256:89510bd151ae0356fac37f253dfe9472
 {
   "results": [
     {

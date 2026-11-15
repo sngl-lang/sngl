@@ -3,7 +3,7 @@
 # Each platform fires the event by the mechanism it already exposes, and none
 # of them needs layout or a synthetic pointer:
 #
-#   gtk4       g_signal_emit_by_name on the widget
+#   gtk4       g_signal_emit_by_name on the widget (the runtime's sngl_signal_emit)
 #   fyne       the widget's own callback field (what test.Tap calls)
 #   html       .click() on the element, through its addEventListener
 #   bubbletea  the activating key through Update, with focus set
@@ -11,12 +11,6 @@
 # What they all skip is whether the widget is visible, sensitive and hittable:
 # a signal emitted at a hidden button still fires. Catching that needs real
 # input at a position, which is a different kind of test.
-#
-# gtk4 had the scaffolding for this and none of the wiring: gtkEventInvoker was
-# declared, emitEventInvokers was written and called, and nothing anywhere
-# constructed an invoker, so the slice was always empty. The runtime half
-# already shipped -- gtk4rt.Emit is g_signal_emit_by_name, commented "used by
-# generated test invokers".
 #
 # No pointer or key simulation is involved, and no layout: emitting the signal
 # runs the real trampoline and Go callback bridge, synchronously. What it does
@@ -47,19 +41,11 @@ sngl test --platform bubbletea click.sngl
 stdout 'ok'
 
 # The invoker is named for the event a program writes, not the one the platform
-# subscribes to. gtk4's button override is `@clicked { click() }`, so by the
-# time a handler is promoted it is named "clicked" while a test writes
-# `click()`. The pairing is recorded during the substitution that inlines the
-# program's block, which is the last point both names exist.
-sngl generate --platform=gtk4 --lang=go --out=out rooted.sngl
-grep 'func \(m \*Model\) incClick\(\)' out/model.go
-grep 'gtk4rt.Emit\(m.inc, "clicked"\)' out/model.go
-
-# A synthesized id is not something a test can name, so it gets no invoker:
-# an invoker is the id and the event run together (`incClick`), where the
-# window's Toplevel handlers are promoted as `__n0_closed_handler`.
-! grep 'func \(m \*Model\) __n[0-9]+[A-Z]' out/model.go
-
+# subscribes to: a handler is promoted under the platform's event while a test
+# writes `click()`. The pairing is recorded during the substitution that
+# inlines the program's block, which is the last point both names exist. gtk4
+# writes no invoker: a placed test fires the signal the program's handler is
+# connected to (#[gen.fires]).
 sngl generate --platform=fyne --lang=go --out=fy rooted.sngl
 grep 'func \(m \*Model\) incClick\(\)' fy/model.go
 grep 'm.inc.OnTapped\(\)' fy/model.go
@@ -128,7 +114,7 @@ sha256:7521ea1f673cf40d7144af4cf23dafc8
   ]
 }
 -- testrun/gtk4/go/click.sngl/counter/1 --
-sha256:eed0313a63b85b100b770b18c15f4ffb
+sha256:6760fc9dfffb80f0fa6a662ef06d9fe7
 {
   "results": [
     {

@@ -104,10 +104,18 @@ module.exports = grammar({
         "struct",
         optional(field("name", $.identifier)),
         optional($.type_param_list),
-        "{",
-        repeat(seq(repeat($.attribute), choice($.struct_field, $.func_declaration), optional($._terminator))),
-        "}",
+        choice(
+          seq(
+            "{",
+            repeat(seq(repeat($.attribute), choice($.struct_field, $.func_declaration), optional($._terminator))),
+            "}",
+          ),
+          $._alias,
+        ),
       ),
+
+    // `struct Name = Type`: the type under another name.
+    _alias: ($) => seq("=", field("aliased", $.type_identifier)),
 
     struct_field: ($) =>
       seq(
@@ -124,13 +132,18 @@ module.exports = grammar({
         "enum",
         optional(field("name", $.identifier)),
         optional($.type_param_list),
-        "{",
-        optional(seq(
-          $._enum_item,
-          repeat(seq(choice(",", $._terminator), $._enum_item)),
-          optional(choice(",", $._terminator)),
-        )),
-        "}",
+        choice(
+          seq(
+            "{",
+            optional(seq(
+              $._enum_item,
+              repeat(seq(choice(",", $._terminator), $._enum_item)),
+              optional(choice(",", $._terminator)),
+            )),
+            "}",
+          ),
+          $._alias,
+        ),
       ),
 
     _enum_item: ($) =>
@@ -144,7 +157,7 @@ module.exports = grammar({
       )),
 
     unit_declaration: ($) =>
-      seq("unit", optional(field("name", $.identifier)), "{", optional($._arg_list), "}"),
+      seq("unit", optional(field("name", $.identifier)), choice(seq("{", optional($._arg_list), "}"), $._alias)),
 
     const_declaration: ($) =>
       choice(
@@ -216,14 +229,23 @@ module.exports = grammar({
 
     func_name: ($) =>
       choice(
-      seq(field("receiver", $.identifier), optional($.receiver_type_params), ".", field("name", $.identifier)),
+      seq(
+        field("receiver", $.identifier),
+        optional(seq(".", field("receiver", $.identifier))),
+        optional($.receiver_type_params),
+        ".",
+        field("name", $.identifier),
+      ),
       field("name", $.identifier)
     ),
 
-    // A receiver's list restates the receiver's names, with no constraints:
-    // `func list[T].map[U any]`.
+    // A receiver's list restates the receiver's names, `func list[T].map[U
+    // any]`, or names a constraint for each, `func list[T ordered].sort`.
     receiver_type_params: ($) =>
-      seq("[", $.identifier, repeat(seq(",", $.identifier)), "]"),
+      choice(
+        seq("[", $.identifier, repeat(seq(",", $.identifier)), "]"),
+        $.type_param_list,
+      ),
 
     type_param_list: ($) =>
       seq("[", $.type_param, repeat(seq(",", $.type_param)), "]"),
@@ -794,6 +816,8 @@ module.exports = grammar({
       seq(
         $._string_interpolation_start,
         $._expression,
+        // The arguments of the value's format method: `{x, 16, width=8}`.
+        optional(seq(",", $._arg_list)),
         $._string_interpolation_end,
       ),
 

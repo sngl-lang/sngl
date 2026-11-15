@@ -1,0 +1,13 @@
+// `#[c.context]` marks a parameter the compiler passes, so it has no default,
+// and only a function with no body has one: a body says what it does with
+// its parameters itself.
+import c "sngl:x/c"
+
+#[c.native("defaulted")]
+func defaulted(f func(), #[c.context] data c.pointer = c.pointer{}) // ERROR(check) "parameter \"data\" is a callback's context, which the compiler passes, so it takes no default"
+
+func bodied(f func(), #[c.context] data c.pointer) { // ERROR(check) "#[c.context] cannot mark a parameter of a function with a body"
+}
+
+#[c.native("both")]
+func both(f func(), #[c.context] #[c.release] data c.pointer) // ERROR(check) "parameter \"data\" is marked both #[c.context] and #[c.release]"

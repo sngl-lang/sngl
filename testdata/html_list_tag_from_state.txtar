@@ -93,6 +93,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       if (__prop___p1) {
         __n0.setAttribute("start", "4");
@@ -131,6 +134,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p1(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.ordered === b.ordered && a.start === b.start)(__prop___p1, __v)) {
+        return;
+      }
       __prop___p1 = __v;
       if (__prop___p1.ordered) {
         __n1.setAttribute("start", String(__prop___p1.start));
@@ -195,8 +201,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child0({ __p0: state.numbered ? "ol" : "ul", __p1: state.numbered });
+              __n3 = __n3__made;
             }
             __inst1_next.push(__n3);
             __inst1_now___p0.push(state.numbered ? "ol" : "ul");
@@ -256,8 +262,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst3_live.length > __inst3_i) {
                 __inst3_live[__inst3_i].__destroy();
               }
-              let __n4__new = __cf___child1({ __p0: l.ordered ? "ol" : "ul", __p1: l });
-              __n4 = __n4__new;
+              let __n4__made = __cf___child1({ __p0: l.ordered ? "ol" : "ul", __p1: l });
+              __n4 = __n4__made;
             }
             __inst3_next.push(__n4);
             __inst3_now___p0.push(l.ordered ? "ol" : "ul");
@@ -312,4 +318,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5570e35444fc9265933b9851eb865ab1
+pass sha256:12ec5f703d74684aa5cdc68fe845f767

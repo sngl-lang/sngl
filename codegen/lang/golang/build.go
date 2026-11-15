@@ -23,10 +23,18 @@ func init() {
 	})
 }
 
+// BuildModule builds the program dir holds into out for the target its
+// manifest names, as `go.buildModule` does, and is the file it wrote: what
+// a platform running a program itself builds it with (win32's snapshot).
+func BuildModule(dir, out string) (string, error) {
+	return buildModule(dir, out, "", "")
+}
+
 // buildModule answers `go.buildModule`, which sngl:language/go's run and build
 // commands call: it bootstraps a go.mod in dir, tidies it when it is new, and
 // builds the program into out.
 func buildModule(dir, out, goVersion, goModExtra string) (string, error) {
+	out = exeFor(dir, out)
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		return "", fmt.Errorf("go not found in PATH")

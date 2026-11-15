@@ -31,11 +31,25 @@ FROM golang:1.27-bookworm
 #   openjdk-17    the Android toolchain launches on JDK 17-23
 #                 (internal/androidtc); a default outside that window makes
 #                 every android record unproducible.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+#   clang         the C target is held to every compiler on the host
+#                 (codegen/lang/c's Compilers), gcc the image's own;
+#                 libclang-rt is clang's sanitizers, which TestRun builds
+#                 each program under too.
+#   mingw-w64     the C target's 64- and 32-bit Windows compilers, whose
+#   wine          executables run under Wine: wine32 is an i386 package, so
+#                 the image takes that architecture.
+#   libcurl       the C target's HTTP client where no platform answers a
+#                 request; gtk4's runtime links it, its cgo included.
+#   libicu-dev    the C target's translations (icu-i18n).
+RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-install-recommends \
+        clang libclang-rt-14-dev \
+        gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 \
+        wine wine64 wine32:i386 \
         chromium fonts-liberation fonts-noto-color-emoji \
         libgl-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev \
         libxi-dev libxxf86vm-dev \
         libgtk-4-dev gir1.2-gtk-4.0 \
+        libcurl4-openssl-dev libicu-dev \
         cage \
         nodejs \
         openjdk-17-jdk-headless unzip \

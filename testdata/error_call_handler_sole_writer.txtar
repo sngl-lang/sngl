@@ -14,7 +14,7 @@ func requireAge(s string) int {
     if s.length == 0 {
         error.raise("an age is required", "validation")
     }
-    return int(s)
+    return int.parse(s).or(0)
 }
 
 component check node {
@@ -48,10 +48,11 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -59,11 +60,6 @@ func snglOptEqual[T comparable](p, q *T) bool {
 		return p == q
 	}
 	return *p == *q
-}
-
-func snglParseInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
 }
 
 type Measurement struct {
@@ -173,7 +169,7 @@ func RequireAge(s string) int {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "an age is required", Kind: "validation"})
 	}
-	return snglParseInt(s)
+	return snglopt.Or(snglparse.Int(s, 10), 0)
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -494,16 +490,12 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"os"
-	"strconv"
 )
-
-func snglParseInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
-}
 
 type ErrorEvent struct {
 	Message string
@@ -532,7 +524,7 @@ func RequireAge(s string) int {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "an age is required", Kind: "validation"})
 	}
-	return snglParseInt(s)
+	return snglopt.Or(snglparse.Int(s, 10), 0)
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -629,7 +621,11 @@ body { font-family: system-ui, sans-serif; }
       throw Object.assign(new Error("an age is required"), { kind: "validation" });
     }
     ;
-    return Math.trunc(s);
+    return ((s2, b) => {
+      if (!(b >= 2 && b <= 36) || !/^[+-]?[0-9a-z]+$/i.test(s2) || [...s2.replace(/^[+-]/, "").toLowerCase()].some((c) => parseInt(c, 36) >= b)) return null;
+      const n = parseInt(s2, b);
+      return Math.abs(n) <= 9223372036854776e3 ? n : null;
+    })(s, 10) ?? 0;
   }
   var $0 = document.getElementById("$0");
   $0.addEventListener("click", function() {
@@ -649,8 +645,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:9592cb144a7a4dea3c683b5dfeee3efb
+pass sha256:c2569aeda85e37d42efdf6a2b21f6334
 -- run/go/fyne --
-pass sha256:cb88971048f6c7ede11acb4fe5f9424a
+pass sha256:a58db7859d3401efdc47100a2bacb88b
 -- run/none/html --
-pass sha256:0d8c40873a0989ccd5b9e8715419093b
+pass sha256:15346590a7e79ee6e60d0e945f1e7259

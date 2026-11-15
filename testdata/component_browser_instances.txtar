@@ -352,6 +352,9 @@ window.__sngl_boot = () => {
       __effect0_teardown();
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown.textContent = __prop_label + "[" + log.join(",") + "]";
       __effects0_settle();
@@ -379,6 +382,9 @@ window.__sngl_boot = () => {
     let __prop_onpick = onpick;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = "pick " + __prop_label + ":" + String(hits);
     }
@@ -412,10 +418,16 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "<" + __prop___p0.elem + __prop___p1 + ">";
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n1.textContent = "<" + __prop___p0.elem + __prop___p1 + ">";
     }
@@ -465,8 +477,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n5__new = __cf_row({ label: "x" });
-              __n5 = __n5__new;
+              let __n5__made = __cf_row({ label: "x" });
+              __n5 = __n5__made;
             }
             __inst1_next.push(__n5);
             __inst1_i = __inst1_i + 1;
@@ -530,8 +542,8 @@ window.__sngl_boot = () => {
               if (__inst3_live.has(__key4)) {
                 (__inst3_live.has(__key4) ? __inst3_live.get(__key4) : null).__destroy();
               }
-              let __n6__new = __cf___child0({ __p0: it, __p1: decorate__inst0() });
-              __n6 = __n6__new;
+              let __n6__made = __cf___child0({ __p0: it, __p1: decorate__inst0() });
+              __n6 = __n6__made;
             }
             __inst3_next.set(__key4, __n6);
             let __n6__el = __n6.__root;
@@ -596,11 +608,11 @@ window.__sngl_boot = () => {
               if (__inst5_live.has(__key6)) {
                 (__inst5_live.has(__key6) ? __inst5_live.get(__key6) : null).__destroy();
               }
-              let __n7__new = __cf_pick({ label: item.elem, onpick: (s) => {
+              let __n7__made = __cf_pick({ label: item.elem, onpick: (s) => {
                 state.picked__inst0 = s;
                 __n4.textContent = "picked=" + state.picked__inst0;
               } });
-              __n7 = __n7__new;
+              __n7 = __n7__made;
             }
             __inst5_next.set(__key6, __n7);
             let __n7__el = __n7.__root;
@@ -673,9 +685,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:e7670f246ac3c9f213fd7a44a1b46a3c
+pass sha256:1e3d1dc335dda80c9052c53b3b9fecc2
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:3111017f5761b74aa472ca10e0f42dd0
+sha256:0d3044e5839dd06307ea1dc8d3ca00b8
 {
   "results": [
     {
@@ -685,7 +697,7 @@ sha256:3111017f5761b74aa472ca10e0f42dd0
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:d420e1e7d7cdb2d061f9fcfb67bfd12a
+sha256:64df499d20895fb4d4273f4437274086
 {
   "results": [
     {
@@ -695,7 +707,7 @@ sha256:d420e1e7d7cdb2d061f9fcfb67bfd12a
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:04a5af3dadb01cfc1e3f898e356fe167
+sha256:51ac89c55ccc4d3c756ce5dfb172e883
 {
   "results": [
     {

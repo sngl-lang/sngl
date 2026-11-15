@@ -1,0 +1,106 @@
+# A C test's t.setContext writes the var the program holds the context in,
+# `__ctx_<name>`, as Go's agent writes the Model's field: the build is passed
+# the value already (passContext), but a handler reads the program's var
+# when it runs, so a click after the setContext said "hello". win32 asks for
+# stdlibContextParam as gtk4 does; without it a provider reached NoRef
+# unlowered and the launcher panicked.
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +3 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+context[string] #greeting("hello")
+
+component page ui.node {
+    var said = ""
+    ui.vbox {
+        ui.text #shown(value=greeting)
+        greeting("inner") {
+            ui.text #inner(value=greeting)
+        }
+        ui.button #say(text="Say", @click { said = greeting })
+    }
+}
+
+ui.window {
+    page()
+}
+
+func testAHandlerReadsTheDefault(t test.Test, c page) {
+    c.say.click()
+    t.assert(c.said == "hello")
+}
+
+func testAHandlerReadsWhatTheTestSet(t test.Test, c page) {
+    t.setContext(greeting, "hi")
+    c.say.click()
+    t.assert(c.said == "hi")
+}
+
+func testTheBuildReadsWhatTheTestSet(t test.Test, c page) {
+    t.setContext(greeting, "hi")
+    t.assert(c.shown.value == "hi")
+    t.assert(c.inner.value == "inner")
+}
+-- testrun/gtk4/c/app.sngl/page/1 --
+sha256:c2054a7c3a8487ff3c265aa9932fd1d9
+{
+  "results": [
+    {
+      "Desc": "AHandlerReadsTheDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsWhatTheTestSet",
+      "Passed": true
+    },
+    {
+      "Desc": "TheBuildReadsWhatTheTestSet",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/page/1 --
+sha256:1385a7f3b50b71ff2f5aee0477756a58
+{
+  "results": [
+    {
+      "Desc": "AHandlerReadsTheDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsWhatTheTestSet",
+      "Passed": true
+    },
+    {
+      "Desc": "TheBuildReadsWhatTheTestSet",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/page/1 --
+sha256:085ba2deab6a99d669ecb54225e5f5ba
+{
+  "results": [
+    {
+      "Desc": "AHandlerReadsTheDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsWhatTheTestSet",
+      "Passed": true
+    },
+    {
+      "Desc": "TheBuildReadsWhatTheTestSet",
+      "Passed": true
+    }
+  ]
+}

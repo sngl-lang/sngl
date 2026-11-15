@@ -337,21 +337,6 @@ func TestEvalCall_CgoNativePrefix(t *testing.T) {
 	}
 }
 
-func TestEvalCall_LegacyCgoPrefix(t *testing.T) {
-	// Existing callers may still pass "C.foo" in Foreign.Name.
-	// Renderer must not double up the prefix.
-	gc := newMinimalIRCtx()
-	call := &ir.Call{
-		Receiver: &ir.Ident{Name: "C"},
-		Func:     &ir.Func{Foreign: ir.Foreign{Path: "C", Name: "C.gtk_label_new"}},
-	}
-	got := gc.EvalExpr(call)
-	want := "C.gtk_label_new()"
-	if got != want {
-		t.Errorf("EvalExpr legacy cgo call = %q; want %q", got, want)
-	}
-}
-
 func TestEmitFuncDef_PlainFunc(t *testing.T) {
 	gc := newMinimalIRCtx()
 	fn := &ir.Func{
@@ -440,7 +425,7 @@ func TestRequireImportAs_Idempotent(t *testing.T) {
 
 func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
 	// Bare: the name is already pointer-like or an interface, so no "*".
-	for _, name := range []string{"unsafe.Pointer", "fyne.CanvasObject", "gtk4rt.Handle"} {
+	for _, name := range []string{"unsafe.Pointer", "fyne.CanvasObject", "cbind.Handle"} {
 		if got := IRTypeToGo(ir.NativeGoNamed(name)); got != name {
 			t.Errorf("IRTypeToGo(NativeGoNamed %q) = %q; want %q", name, got, name)
 		}
@@ -450,7 +435,7 @@ func TestIRTypeToGo_NativeGoNamed(t *testing.T) {
 // A concrete host type reaches the Go printer as a native type, spelled as
 // itself in a result clause.
 func TestGoReturnType_Native(t *testing.T) {
-	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject")); got != " fyne.CanvasObject" {
+	if got := goReturnType(ir.NativeGoNamed("fyne.CanvasObject"), site{}); got != " fyne.CanvasObject" {
 		t.Errorf("goReturnType(native) = %q; want %q", got, " fyne.CanvasObject")
 	}
 }

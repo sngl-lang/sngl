@@ -127,16 +127,13 @@ func primitiveConvertible(from, target *ir.Type) bool {
 	switch target.Kind {
 	case ir.TypeInt, ir.TypeFloat:
 		switch from.Kind {
-		case ir.TypeInt, ir.TypeFloat, ir.TypeString, ir.TypeBool, ir.TypeEnum, ir.TypeUnit:
+		case ir.TypeInt, ir.TypeFloat, ir.TypeBool, ir.TypeEnum, ir.TypeUnit:
 			return true
 		}
 	case ir.TypeString:
 		return true // any listed primitive → string
 	case ir.TypeBool:
-		switch from.Kind {
-		case ir.TypeBool, ir.TypeString:
-			return true
-		}
+		return from.Kind == ir.TypeBool
 	}
 	return false
 }

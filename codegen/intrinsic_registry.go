@@ -151,6 +151,14 @@ func DeclareLangImplements(lang string, ids ...string) {
 	}
 }
 
+// LangImplements reports whether lang declared it answers id outside the
+// emitter registry (DeclareLangImplements).
+func LangImplements(lang, id string) bool {
+	intrinsicMu.RLock()
+	defer intrinsicMu.RUnlock()
+	return langDeclared[lang][id]
+}
+
 // AnyTargetImplements reports whether some registered language or platform can
 // emit the intrinsic id declares. It is the question the completeness check
 // asks: an intrinsic nothing implements and with no body of its own is a build

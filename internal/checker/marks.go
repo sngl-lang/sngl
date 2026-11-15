@@ -55,7 +55,7 @@ func (c *checker) applyMarks(decl ast.Stmt, sym any) {
 	}
 	c.afterMarks(func() {
 		for _, attr := range a.MacroAttrs() {
-			c.applyMark(attr, a, sym, nil)
+			c.applyMark(attr, a, sym, nil, "")
 		}
 	})
 }
@@ -118,20 +118,20 @@ func (c *checker) applyParamMarks(p ast.Param, prop *ir.Prop) {
 	marked := p
 	c.afterMarks(func() {
 		for _, attr := range marked.MacroAttrs() {
-			c.applyMark(attr, marked, prop, paramMarks)
+			c.applyMark(attr, marked, prop, paramMarks, "a parameter")
 		}
 	})
 }
 
-// applyMark runs one mark. allowed is what a parameter list admits, nil for a
-// declaration.
-func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, allowed map[markKey]bool) {
+// applyMark runs one mark. allowed is what site, a position that admits only
+// some marks, admits, nil for a declaration.
+func (c *checker) applyMark(attr ast.MacroAttr, decl markTarget, sym any, allowed map[markKey]bool, site string) {
 	uri, fn, ok := c.resolveMacro(attr)
 	if !ok {
 		return
 	}
 	if allowed != nil && !allowed[markKey{uri, attr.Name}] {
-		c.error(attr.Pos, "#[%s] cannot mark a parameter", attr.MacroName())
+		c.error(attr.Pos, "#[%s] cannot mark %s", attr.MacroName(), site)
 		return
 	}
 	args, err := markArgsFor(fn, attr.Args, c.markConstValue)
@@ -178,7 +178,11 @@ func (c *checker) resolveMacro(attr ast.MacroAttr) (uri string, fn *ir.Func, ok 
 	}
 	nsSym, found := c.scope.Lookup(attr.Alias)
 	if !found {
-		c.error(attr.Pos, "unknown macro package %q: import it with import %q", attr.Alias, macroImportHint(attr.Alias))
+		if hint := macroImportHint(attr.Alias, attr.Name); hint != "" {
+			c.error(attr.Pos, "unknown macro package %q: import it with import %q", attr.Alias, hint)
+		} else {
+			c.error(attr.Pos, "unknown macro package %q: nothing is imported as %s, and no library package declares a mark %s.%s", attr.Alias, attr.Alias, attr.Alias, attr.Name)
+		}
 		return "", nil, false
 	}
 	ns, isNS := nsSym.(*ir.Namespace)
@@ -516,12 +520,23 @@ func MacroIsImplemented(pkg, name string) bool {
 	return ok
 }
 
-// macroImportHint is the import a mark's alias most likely wanted, for the
-// error that says the alias names nothing. A guess at the URI from the alias:
-// the marks a program writes are all `sngl:<alias>` but for the compiler's own
-// tier, which no program imports.
-func macroImportHint(alias string) string {
-	return "sngl:" + alias
+// macroImportHint is the import a mark written with an alias nothing imports
+// wanted: the one package declaring a mark of that name the compiler
+// implements whose path is the alias or ends in it, so `c.native` is
+// sngl:x/c and `go.native` sngl:language/go. It is empty where no package or
+// more than one does, which a diagnostic says rather than guess.
+func macroImportHint(alias, name string) string {
+	found := ""
+	for k := range markImpls {
+		if k.name != name || k.pkg != alias && !strings.HasSuffix(k.pkg, "/"+alias) {
+			continue
+		}
+		if found != "" {
+			return ""
+		}
+		found = "sngl:" + k.pkg
+	}
+	return found
 }
 
 // pkgURIOf names a package the way an import writes it, for a diagnostic about

@@ -42,6 +42,7 @@ spec instead.
 - `design/plugins.md` — plugin principles and known gaps
 - `design/import-schemes.md` — plugin schemes, `c:` and `openapi:`
 - `design/navigation.md` — `sngl:ui/nav` on each target
+- `design/win32.md` — win32gen and its metadata pin, the Go wrappers (`sngl tool cgogen`), the win32 runtime's layout
 - `design/types.md` — anonymous and generic structs, constraint functions and aliases, monomorphization, units and their display, member lookup
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach
 - `design/performance.md` — profiling, the store (`internal/gencache`), what costs
@@ -120,7 +121,7 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 - `internal/checker/` — two-pass type checker producing `ir/`
 - `internal/optimize/` — folding, DCE, the per-document `Fold`
 - `internal/lower/` — capability-gated IR→IR passes; entry `lower.Lower`
-- `codegen/lang/{golang,javascript,kotlin}`, `codegen/platform/{html,fyne,gtk4,bubbletea,android}` — generators
+- `codegen/lang/{golang,javascript,kotlin,c}`, `codegen/platform/{html,fyne,gtk4,bubbletea,android,win32}` — generators
 - `internal/interp/` — the interpreter, the reference every target is held to
 - `internal/build/` — what `sngl generate` runs, shared with the golden harness
 - `lib/<path>` is `sngl:<path>`; `lib/platform/<name>` and
@@ -138,7 +139,7 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
 - `cmd/sngl/testdata/*.txt` — CLI script tests, including anything that runs
   generated code.
 - Toolchain, browser and gtk4 runs are recorded, in the goldens, the scripts
-  and the packages' own records (gtk4, html, `internal/build`). After a codegen
+  and the packages' own records (html, win32, `internal/build`). After a codegen
   change, `go tool verify -update` rerecords all of them (scripts' android runs
   want `ANDROID_HOME` set); `-verify` on one package reruns it whatever its
   records say.

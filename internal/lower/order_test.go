@@ -252,7 +252,8 @@ var soleGate = map[string][]string{
 	"StructSpread":     {"NoStructSpread"},
 	"GenericFuncs":     {"Monomorphize", "MonomorphizeEnums"},
 	"FocusOrder":       {"FocusOrder"},
-	"Canvas":           {"Canvas"},
+	"Canvas":           {"Canvas", "CanvasPaint"},
+	"Placement":        {"Placement"},
 
 	// Gates nothing. It is the one capability the lowering never reads: the
 	// build asks it, to decide whether a constant view loop is unrolled.
@@ -285,7 +286,7 @@ var soleGate = map[string][]string{
 	// ReactiveCanvas is the redraw the platform wants, CanvasReactivity is the
 	// pass that injects it. Effects is the same shape inverted -- withholding
 	// it is what asks for the pass.
-	"ReactiveCanvas": {"CanvasReactivity"},
+	"ReactiveCanvas": {"CanvasReactivity", "CanvasRedraw"},
 	// Read by passEffect rather than gating it: with it, only the reports are
 	// lowered and the node is left for the platform's own bracket.
 	"Effects": {},

@@ -1,8 +1,9 @@
 # A window after html's document is a `<dialog>` in it, run in Chromium and on
-# the interpreter, which holds it to the same answers, and on fyne and gtk4,
-# where it is a toplevel of its own. A test's component may be a root
-# component, and its windows' handles are reached through it like any other
-# node's: a read of `c.log.visible` is the cell the window keeps for it.
+# the interpreter, which holds it to the same answers, and on fyne, gtk4 and
+# win32, where it is a toplevel of its own. A test's component
+# may be a root component, and its windows' handles are reached through it
+# like any other node's: a read of `c.log.visible` is the cell the window
+# keeps for it.
 #
 # `log` starts hidden and `open`/`close` through its `#id` show and hide it,
 # writing the cell it keeps for its `visible`; a close the program makes is no
@@ -24,6 +25,14 @@ sngl test --platform=fyne --language=go app.sngl
 stdout '3 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '3 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '3 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
 stdout '3 tests, 0 failures'
 
 # bubbletea and android show one window, and refuse the second.
@@ -95,7 +104,7 @@ func testADialogUnderAnIfComesAndGoes(t Test, c app) {
     t.assert(c.mounts == 2)
 }
 -- testrun/fyne/go/app.sngl/app/1 --
-sha256:82468270703307b36d2ba94036e7c3dc
+sha256:0cb37404a76e0de45d8bdd2aa072dc4c
 {
   "results": [
     {
@@ -112,8 +121,26 @@ sha256:82468270703307b36d2ba94036e7c3dc
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/app/1 --
+sha256:6891f25d9867deb92f5a788a89dbb573
+{
+  "results": [
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:0e78176b87f16f670078694b9a41bf79
+sha256:07a874583d00fe65042deeb8827480cd
 {
   "results": [
     {
@@ -131,7 +158,43 @@ sha256:0e78176b87f16f670078694b9a41bf79
   ]
 }
 -- testrun/html/none/app.sngl/app/1 --
-sha256:700fb001f9594934dfa2e65d90226c87
+sha256:a05107e21c44b4b9b1304c4f1d13b8d8
+{
+  "results": [
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    },
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/app/1 --
+sha256:9f31febab130c57b729229aaf4d87030
+{
+  "results": [
+    {
+      "Desc": "OpenAndCloseADialog",
+      "Passed": true
+    },
+    {
+      "Desc": "TheDocumentWindowKeepsItsCell",
+      "Passed": true
+    },
+    {
+      "Desc": "ADialogUnderAnIfComesAndGoes",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/app/1 --
+sha256:a0e2b6c5969d570c4bd4b651db0c4c28
 {
   "results": [
     {

@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/ir"
 )
 
@@ -144,6 +145,14 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 		if len(b) > 0 {
 			result = ir.InstantiateExpr(result, b)
 		}
+	}
+	// After lowering for a target that writes no ternary, one spliced here
+	// reaches a language with no way to write it, so it is written as
+	// NoTernary writes one with no statement list to hoist into: a library's
+	// `func f(s) => (a ? "x" : "") + …`, inlined into a render slot's call
+	// placement made, panicked Go's emitter.
+	if ctx != nil && ctx.noTernary && containsTernary(result) {
+		result = lower.ImmediateTernaries(result, "__lti")
 	}
 	return result
 }
@@ -337,6 +346,8 @@ func callsFunc(e ir.Expr, target *ir.Func) bool {
 		}
 	case *ir.Conversion:
 		return callsFunc(x.Operand, target)
+	case *ir.CConvert:
+		return callsFunc(x.Operand, target)
 	case *ir.Select:
 		return callsFunc(x.Operand, target)
 	case *ir.Index:
@@ -489,6 +500,19 @@ func callsFuncInArgs(args []ir.CallArg, target *ir.Func) bool {
 // *ir.ContextRead. Used by inlineCall to defer inlining a context-reading
 // wrapper body until after NoContext (in lower) has threaded the hidden
 // context param and rewritten the ContextRead to a plain Ident.
+// containsTernary reports whether a ternary is anywhere in e.
+func containsTernary(e ir.Expr) bool {
+	found := false
+	_ = ir.Walk(e, func(n ir.Node) error {
+		if _, ok := n.(*ir.Ternary); ok {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
+}
+
 func containsContextRead(e ir.Expr) bool {
 	if e == nil {
 		return false
@@ -523,6 +547,8 @@ func containsContextRead(e ir.Expr) bool {
 			}
 		}
 	case *ir.Conversion:
+		return containsContextRead(x.Operand)
+	case *ir.CConvert:
 		return containsContextRead(x.Operand)
 	case *ir.Select:
 		return containsContextRead(x.Operand)
@@ -706,6 +732,8 @@ func substituteParams(e ir.Expr, subs map[*ir.Param]ir.Expr) ir.Expr {
 		}
 	case *ir.Conversion:
 		x.Operand = substituteParams(x.Operand, subs)
+	case *ir.CConvert:
+		x.Operand = substituteParams(x.Operand, subs)
 	case *ir.Select:
 		// A field of a struct literal argument is that field's value: copying
 		// the whole literal into every field read, for literalField to cut
@@ -824,6 +852,10 @@ func cloneExpr(e ir.Expr) ir.Expr {
 		}
 		return &cp
 	case *ir.Conversion:
+		cp := *x
+		cp.Operand = cloneExpr(x.Operand)
+		return &cp
+	case *ir.CConvert:
 		cp := *x
 		cp.Operand = cloneExpr(x.Operand)
 		return &cp

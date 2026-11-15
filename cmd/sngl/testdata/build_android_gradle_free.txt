@@ -16,4 +16,6 @@ ui.window(title="Hello") {
 }
 -- testrun/build/android/kotlin/app.sngl/1 --
 sha256:59f208ee1df62ca2588f91e901ac2254
-{}
+{
+  "stdout": "app"
+}

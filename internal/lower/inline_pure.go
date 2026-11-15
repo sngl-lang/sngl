@@ -1640,6 +1640,10 @@ func deepCloneExpr(e ir.Expr) ir.Expr {
 		clone := *n
 		clone.Operand = deepCloneExpr(n.Operand)
 		return &clone
+	case *ir.CConvert:
+		clone := *n
+		clone.Operand = deepCloneExpr(n.Operand)
+		return &clone
 	case *ir.StructLit:
 		clone := *n
 		clone.Fields = append([]ir.FieldInit{}, n.Fields...)

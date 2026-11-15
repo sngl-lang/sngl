@@ -11,51 +11,78 @@ import (
 	"duckfam.us/sngl/codegen/platform/gtk4/gir"
 	"duckfam.us/sngl/internal/parser"
 	"duckfam.us/sngl/ir"
+	"duckfam.us/sngl/lib"
 )
 
-// widgetSourceFile is the name the synthesized declarations are served under.
-// It carries a .sngl suffix because the checker reads a lib package by
-// directory listing, and only .sngl files in it are source.
-const widgetSourceFile = "widgets.gir.sngl"
-
 // lookPropName is the prop every widget declaration carries beyond what GIR
-// describes: what gtk4rt.SetLook gives the widget, which the overrides build
-// from a ui.Style in style.sngl.
+// describes: the platform's Look, which its overrides build from a ui.Style
+// (style.sngl).
 const lookPropName = "look"
 
-// lookDecl declares the record that prop takes, in the package the widgets
-// are, since gtk4.sngl imports that package and it can import nothing back.
-const lookDecl = `
-#[go.native("duckfam.us/sngl/pkg/go/gtk4rt", "gtk4rt.Look")]
-struct Look {
-    css       string
-    width     float
-    height    float
-    grow      float
-    cross     int
-    textAlign int
-    lines     int
-    wrap      int
-    hidden    bool
-    cursor    string
-    justify   int
-    spaced    bool
-    spacing   int
-    grid      bool
-    columns   int
-}
-`
+// widgetHeader is the imports widgetDecls's declarations are written against.
+const widgetHeader = "import marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport c \"sngl:x/c\"\n"
 
-// widgetSource writes the SNGL source for every class in reg. A GIR property
-// becomes a typed prop and a GLib signal an event, both under the SNGL
-// spelling of their name; #[intrinsic] names the C type, which is the key the
-// emitter reads its per-prop setters back out of the same registry under.
-//
-// cgo selects how a class is made, filled and written: through the C
-// functions GIR names, or, by default, through pkg/go/gtk4rt, whose generic
-// calls take the class, the property and the adder by name, so a program
-// rendering only GIR classes has no cgo of its own.
-func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
+// WidgetSource is the platform's own widget declarations: every class of the
+// bundled GIR, made, filled and written through the C functions GTK names,
+// under header, the generated file's first lines. The platform declares the
+// Look every widget takes and the `_setLook` that gives it one, and a box's
+// child is appended by the runtime's sngl_box_append, which aligns it.
+func WidgetSource(header string) ([]byte, error) {
+	reg, err := gir.Minimal()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(header + "\n" + widgetHeader + widgetDecls(reg, "")), nil
+}
+
+// girSource is the gir: scheme's package for reg: the same declarations,
+// written in a package of their own against the platform's Look and its
+// `setLook`. Each function and type the platform's own widgets.sngl declares
+// is called through the wrapper cgogen wrote for it there, which Go reaches C
+// by, whatever package declares it; one the bundled GIR has not, Go refuses
+// (golang's unwrappedCalls), and C calls directly.
+func girSource(reg *gir.TypeRegistry) []byte {
+	return []byte(withWrappers(widgetHeader + "import gtk4 \"sngl:platform/gtk4\"\n" + widgetDecls(reg, "gtk4.")))
+}
+
+// withWrappers is src with the #[go.native] mark the platform's committed
+// widget declarations carry beside each declaration of the same name.
+func withWrappers(src string) string {
+	marks := map[string]string{}
+	if own, err := lib.FS.ReadFile("platform/gtk4/widgets.sngl"); err == nil {
+		lines := strings.Split(string(own), "\n")
+		for i, l := range lines {
+			if name := declName(l); name != "" && i > 0 && strings.HasPrefix(lines[i-1], "#[go.native(") {
+				marks[name] = lines[i-1]
+			}
+		}
+	}
+	var b strings.Builder
+	for _, l := range strings.SplitAfter(src, "\n") {
+		if m, ok := marks[declName(l)]; ok {
+			b.WriteString(m + "\n")
+		}
+		b.WriteString(l)
+	}
+	return b.String()
+}
+
+// declName is the function or struct a line of declarations declares, or "".
+func declName(line string) string {
+	for _, kw := range []string{"func ", "struct "} {
+		if rest, ok := strings.CutPrefix(line, kw); ok {
+			if end := strings.IndexAny(rest, "( {"); end > 0 {
+				return kw + rest[:end]
+			}
+		}
+	}
+	return ""
+}
+
+// widgetDecls is the declarations of every class in reg. platform is the
+// qualifier the platform's own Look and look setter are named through: ""
+// in its package, "gtk4." in the gir: scheme's.
+func widgetDecls(reg *gir.TypeRegistry, platform string) string {
 	names := make([]string, 0, len(reg.Classes))
 	for name, info := range reg.Classes {
 		// A GIR <class> without a c:type is not a C type anything can
@@ -67,14 +94,18 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 	slices.Sort(names)
 
 	var b strings.Builder
-	b.WriteString("import . \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport ui \"sngl:ui\"\nimport gen \"sngl:x/gen\"\nimport go \"sngl:language/go\"\nimport c \"sngl:x/c\"\n")
-	b.WriteString(lookDecl)
 	declared := map[string]bool{}
 	casts := map[string]string{}
-	children := childOps{cgo: cgo, natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
+	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
+			continue
+		}
+		// A class made with another object, a GtkApplicationWindow with its
+		// application, is the runtime's to make: a Go program cannot hand C
+		// an untyped pointer where it takes a typed one.
+		if ctorTakesPointer(reg, info, true) {
 			continue
 		}
 		declared[info.CType] = true
@@ -84,7 +115,7 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		// the prop was given. Written on every generated declaration because
 		// it is true of every one of them -- these are widgets by
 		// construction, the GIR classes this platform wraps.
-		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
+		fmt.Fprintf(&b, "\n#[gen.renders(identity)]\n#[marks.intrinsic(%q)]\ncomponent %s(\n", intrinsicPrefix+info.CType, info.CType)
 		taken := map[string]bool{lookPropName: true, restSlotName: true}
 		var props []setProp
 		for _, p := range info.Props {
@@ -116,13 +147,17 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 			props = append(props, setProp{prop: p, name: n})
 			fmt.Fprintf(&b, "    %s %s,\n", n, typ)
 		}
-		fmt.Fprintf(&b, "    %s Look = Look{},\n", lookPropName)
+		fmt.Fprintf(&b, "    %s %sLook = %sLook{},\n", lookPropName, platform, platform)
 		// A signal hands its callback the instance it fired on, as GTK's own
 		// signature does (`void toggled(GtkCheckButton *self, gpointer)`), so
 		// a handler reads the widget that fired rather than reaching it
 		// through a `#id` -- which names no one widget where the node is
 		// rendered more than once.
 		events := map[string]bool{}
+		// A test fires a signal as GTK would emit it. One whose handler reads
+		// a value off the widget the platform declares itself, putting the
+		// value in place first; the gir: package's fires it bare.
+		var fires [][2]string
 		for _, s := range info.Signals {
 			// A signal the fixed trampoline cannot carry is not declared, so
 			// binding it is a checker error on an event that does not exist
@@ -137,11 +172,16 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 			}
 			events[n] = true
 			writeEvent(&b, n, s.Name, info.CType)
+			if platform != "" || !valuedFires[info.CType+"::"+s.Name] {
+				fires = append(fires, [2]string{n, s.Name})
+			}
 		}
+		var notifies [][2]string
 		for _, prop := range notifyProps[info.CType] {
 			if n, ok := snglName("notify-" + prop); ok && !events[n] {
 				events[n] = true
 				writeEvent(&b, n, "notify::"+prop, info.CType)
+				notifies = append(notifies, [2]string{n, "notify::" + prop})
 			}
 		}
 		// GIR does not say which widgets accept children, and declaring a
@@ -151,9 +191,20 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 		// from, so a body would be emitted by nobody. The checker refuses one on
 		// an #[intrinsic] component.
 		fmt.Fprintf(&b, "    %s ...component ui.node,\n) ui.node\n", restSlotName)
-		writeCreate(&b, reg, info, casts, cgo)
+		writeCreate(&b, reg, info, casts, children.ptrs)
+		for _, f := range fires {
+			fmt.Fprintf(&b, "\n#[gen.fires(%q)]\nfunc _fire_%s_%s(w %s) {\n    _rtSignalEmit(w, %q)\n}\n", f[0], info.CType, f[0], info.CType, f[1])
+		}
+		for _, nf := range notifies {
+			fmt.Fprintf(&b, "\n#[gen.protocol(on)]\nfunc _on_%s_%s(w %s, %s func()) {\n    _rtNotifyConnect(w, %q, %s)\n}\n", info.CType, nf[0], info.CType, nf[0], nf[1], nf[0])
+		}
 		children.write(&b, info)
 		children.writeSets(&b, reg, info, props, casts)
+		setLook := "_setLook"
+		if platform != "" {
+			setLook = platform + "setLook"
+		}
+		fmt.Fprintf(&b, "\n#[gen.protocol(set)]\nfunc _set_%s_%s(self %s, %s %sLook) {\n    %s(self, %s)\n}\n", info.CType, lookPropName, info.CType, lookPropName, platform, setLook, lookPropName)
 		// Each action is a method reached through a `#id` on the widget,
 		// declared as the C identifier it is: `bar.pulse()` is
 		// gtk_progress_bar_pulse(bar). One whose name a prop, an event or the
@@ -163,23 +214,118 @@ func widgetSource(reg *gir.TypeRegistry, cgo bool) []byte {
 			if !ok || taken[n] || events[n] {
 				continue
 			}
-			if params, ok := actionParams(a.Params); ok {
-				fmt.Fprintf(&b, "\n#[macro.cnative(%q)]\nfunc %s.%s(%s)\n", a.CIdent, info.CType, n, params)
+			params, ok := actionParams(a.Params)
+			if !ok {
+				continue
 			}
+			// The method casts its receiver to the class the C function takes,
+			// as C and Go both need: a node is held as the GtkWidget it is.
+			children.ptrs[info.CType] = true
+			children.classPtr(&b, info.CType)
+			native, args := "_"+a.CIdent, []string{fmt.Sprintf("%s(_ptr_%s(w))", ptrFunc(info.CType), info.CType)}
+			plain := params
+			for _, ap := range a.Params {
+				an, _ := snglName(ap.Name)
+				args = append(args, an)
+			}
+			plain = strings.ReplaceAll(plain, "#[macro.moves] ", "")
+			sep := ""
+			if params != "" {
+				sep = ", "
+			}
+			// The setter of a prop may be the same C function, declared
+			// already (cSet), as GtkImage's file is gtk_image_set_from_file.
+			children.native(&b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w %s%s%s)\n", a.CIdent, native, ptrType(info.CType), sep, params))
+			fmt.Fprintf(&b, "\nfunc %s.%s(w %s%s%s) {\n    %s(%s)\n}\n", info.CType, n, info.CType, sep, plain, native, strings.Join(args, ", "))
 		}
 	}
 	children.writeCasts(&b)
+	b.WriteString(connectPlaced)
 	castTypes := make([]string, 0, len(casts))
 	for cType := range casts {
 		castTypes = append(castTypes, cType)
 	}
 	slices.Sort(castTypes)
 	for _, cType := range castTypes {
-		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nstruct %s {}\n", cType, castType(cType))
-		fmt.Fprintf(&b, "\n#[macro.cnative(\"C.%s\")]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
+		fmt.Fprintf(&b, "\n#[c.native(%q)]\nstruct %s {}\n", cType, castType(cType))
+		fmt.Fprintf(&b, "\n#[c.native(%q, cast)]\nconst func %s(v %s) %s\n", cType, castFunc(cType), casts[cType], castType(cType))
 	}
-	return []byte(b.String())
+	return b.String()
 }
+
+// valuedFires is each signal whose handler reads a value off the widget, a
+// check button's state or an entry's text, which a test hands its fire: the
+// platform declares those fires itself, putting the value in place first.
+var valuedFires = map[string]bool{
+	"GtkCheckButton::toggled":   true,
+	"GtkEntry::changed":         true,
+	"GtkEntry::activate":        true,
+	"GtkCalendar::day-selected": true,
+}
+
+// ctorTakesPointer reports whether info's primary constructor takes a
+// pointer, which it is handed as an untyped one (ctorParam). typed leaves out
+// a nullable typed pointer, which a placed platform hands its own type
+// (typedNull).
+func ctorTakesPointer(reg *gir.TypeRegistry, info *gir.ClassInfo, typed bool) bool {
+	if len(info.Constructors) == 0 {
+		return false
+	}
+	for _, p := range pickPrimaryConstructorInfo(info).Params {
+		if spelled, err := ctorParam(reg, p); err == nil && spelled.typ == "option[c.pointer]" {
+			if typed && typedNull(p) != "" {
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// typedNull is the C type a nullable pointer parameter points to, which a
+// placed platform's create hands null as a pointer of: gtk_drop_down_new's
+// model is a GListModel *, and Go hands C no untyped pointer where it takes a
+// typed one. "" for any other parameter.
+func typedNull(p gir.ConstructorParam) string {
+	base, ok := strings.CutSuffix(p.CType, "*")
+	if !ok || !p.Nullable || strings.ContainsAny(base, "* ") || base == "" {
+		return ""
+	}
+	return base
+}
+
+// connectPlaced declares how a handler is connected: through the runtime's
+// trampolines, which hand the handler only its context whatever GLib hands
+// them, so every handler crosses as one callback shape.
+const connectPlaced = `
+#[c.native("sngl_signal_connect")]
+func _rtSignalConnect(
+    w ui.node,
+    signal string,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+#[c.native("sngl_notify_connect")]
+func _rtNotifyConnect(
+    w ui.node,
+    signal string,
+    #[c.type("SnglFn")] fn func(),
+    #[c.context] ctx c.pointer,
+    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
+)
+
+// Emits w's signal as GTK would, which a test fires an event with.
+#[c.native("sngl_signal_emit")]
+func _rtSignalEmit(w ui.node, signal string)
+
+// Connects handler to w's signal, as the connect protocol does. A property
+// notification is its event's own protocol.
+func signalConnect(w ui.node, signal string, handler func()) {
+    _rtSignalConnect(w, signal, handler)
+}
+`
 
 // writeEvent declares the event n, which GTK knows as signal: the name the
 // connect gtk4.sngl declares is handed (#[gen.connects]) where SNGL spells it
@@ -192,13 +338,13 @@ func writeEvent(b *strings.Builder, n, signal, cType string) {
 }
 
 // writeCreate declares how a class is made: the #[gen.protocol(create)]
-// function lowering splices where the program renders the class, calling
-// gtk4rt.New with the class's name, or under cgo its primary constructor as a
-// native with a zero per parameter -- the props are written once it returns. A class whose constructor has a
-// parameter no zero can be spelled for gets neither (unconstructible says
-// why). casts collects the C types a zero crosses through a cast to, with
-// the SNGL type the cast takes.
-func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string, cgo bool) {
+// function lowering splices where the program renders the class, calling its
+// primary constructor as a native with a zero per parameter -- the props are
+// written once it returns. A class whose constructor has a parameter no zero
+// can be spelled for gets none. casts collects the C types a zero crosses
+// through a cast to, with the SNGL type the cast takes, and ptrs the C type
+// each nullable pointer parameter is handed null as (typedNull).
+func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, casts map[string]string, ptrs map[string]bool) {
 	if len(info.Constructors) == 0 {
 		return
 	}
@@ -215,33 +361,31 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 		if !ok {
 			return
 		}
+		if base := typedNull(p); spelled.typ == "option[c.pointer]" && base != "" {
+			ptrs[base] = true
+			spelled.typ = "option[" + ptrType(base) + "]"
+		}
 		params[i] = name + " " + spelled.typ
 		zeros[i] = spelled.zero
 		if spelled.cast != "" {
 			used[spelled.cast] = spelled.castFrom
 		}
 	}
-	if !cgo {
-		fmt.Fprintf(b, "\n#[go.native(%q, \"gtk4rt.New\")]\nfunc _rtNew_%s(typeName string) %s\n", gtk4rtPkg, info.CType, info.CType)
-		fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return _rtNew_%s(%q)\n}\n", info.CType, info.CType, info.CType, info.CType)
-		return
-	}
 	maps.Copy(casts, used)
 	native := "_" + ctor.Name
-	fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
+	fmt.Fprintf(b, "\n#[c.native(%q)]\nfunc %s(%s) %s\n", ctor.Name, native, strings.Join(params, ", "), info.CType)
 	fmt.Fprintf(b, "\n#[gen.protocol(create)]\nfunc _create_%s() %s {\n    return %s(%s)\n}\n", info.CType, info.CType, native, strings.Join(zeros, ", "))
 }
 
 // childOps writes how each class takes a child in and gives one up: the
 // #[gen.protocol(append)] and #[gen.protocol(remove)] functions lowering
 // splices where the program puts a node into the class or takes one out,
-// calling the C call GIR names through gtk4rt (rtOp), or under cgo as a native
-// taking the C pointers it declares. There the receiver is cast to the class
+// calling the C call GIR names as a native taking the C pointers it declares. There the receiver is cast to the class
 // that declares the call, so a subclass reaches its parent's adder, and the
-// child to GtkWidget; each cast is a native of its own,
-// `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer to another.
+// child to GtkWidget; each cast is a `#[c.native(…, cast)]` of its own, which
+// Go writes `(*C.GtkBox)(unsafe.Pointer(w))`, since cgo converts no C pointer
+// to another.
 type childOps struct {
-	cgo     bool
 	natives map[string]bool
 	ptrs    map[string]bool
 	// classPtrs is each class a `_ptr_` cast is declared for.
@@ -269,14 +413,25 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 		return
 	}
 	o.classPtrs[cType] = true
-	fmt.Fprintf(b, "\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
+	fmt.Fprintf(b, "\n#[c.native(\"void *\", cast)]\nconst func _ptr_%s(w %s) c.pointer\n", cType, cType)
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
-	// A box's alignItems is gtk4rt's to apply as a child arrives, so a box
-	// takes one through gtk4rt on cgo too: GTK's own call left it unaligned.
-	if !o.cgo || call.Func == "gtk_box_append" {
-		o.rtOp(b, info, op, call)
+	// A box's alignItems is the runtime's to apply as a child arrives, so a
+	// box takes one through it: GTK's own call left it unaligned.
+	if call.Func == "gtk_box_append" {
+		o.ptrs["GtkWidget"] = true
+		o.classPtr(b, info.CType)
+		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[c.native(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
+		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    _sngl_box_append(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
+			op, op, info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"))
+		// A child a render slot renders goes before the slot's anchor, which
+		// the runtime puts in place as it puts any child of a box.
+		if op == "append" {
+			o.native(b, "_sngl_box_insert_before", fmt.Sprintf("\n#[c.native(\"sngl_box_insert_before\")]\nfunc _sngl_box_insert_before(parent %s, anchor %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget"), ptrType("GtkWidget")))
+			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    _sngl_box_insert_before(%s(_ptr_%s(parent)), %s(_widget(before)), %s(_widget(child)))\n}\n",
+				info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"), ptrFunc("GtkWidget"))
+		}
 		return
 	}
 	owner := adderReceiver(call, info.CType)
@@ -285,25 +440,10 @@ func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call g
 	native := "_" + call.Func
 	if !o.natives[call.Func] {
 		o.natives[call.Func] = true
-		fmt.Fprintf(b, "\n#[macro.cnative(%q)]\nfunc %s(parent %s, child %s)\n", call.Func, native, ptrType(owner), ptrType("GtkWidget"))
+		fmt.Fprintf(b, "\n#[c.native(%q)]\nfunc %s(parent %s, child %s)\n", call.Func, native, ptrType(owner), ptrType("GtkWidget"))
 	}
 	fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %s(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
 		op, op, info.CType, info.CType, native, ptrFunc(owner), info.CType, ptrFunc("GtkWidget"))
-}
-
-// rtOp is op over gtk4rt: its wrapper of the call where it has one, and
-// ChildCall naming the call otherwise.
-func (o *childOps) rtOp(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
-	var body string
-	if fn, ok := rtChildWrappers[call.Func]; ok {
-		native := "_rt" + fn
-		o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(parent ui.node, child ui.node)\n", gtk4rtPkg, fn, native))
-		body = fmt.Sprintf("%s(parent, child)", native)
-	} else {
-		o.native(b, "_rtChildCall", fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.ChildCall\")]\nfunc _rtChildCall(fn string, parent ui.node, child ui.node)\n", gtk4rtPkg))
-		body = fmt.Sprintf("_rtChildCall(%q, parent, child)", call.Func)
-	}
-	fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %s\n}\n", op, op, info.CType, info.CType, body)
 }
 
 // writeCasts declares the pointer types and casts the calls written so far
@@ -312,10 +452,10 @@ func (o *childOps) writeCasts(b *strings.Builder) {
 	if len(o.ptrs) == 0 {
 		return
 	}
-	b.WriteString("\n#[macro.cnative(\"unsafe.Pointer\")]\nconst func _widget(w ui.node) c.pointer\n")
+	b.WriteString("\n#[c.native(\"void *\", cast)]\nconst func _widget(w ui.node) c.pointer\n")
 	for _, cType := range slices.Sorted(maps.Keys(o.ptrs)) {
-		fmt.Fprintf(b, "\n#[macro.cnative(\"*C.%s\")]\nstruct %s {}\n", cType, ptrType(cType))
-		fmt.Fprintf(b, "\n#[macro.cnative(\"(*C.%s)\")]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
+		fmt.Fprintf(b, "\n#[c.native(\"%s *\")]\nstruct %s {}\n", cType, ptrType(cType))
+		fmt.Fprintf(b, "\n#[c.native(\"%s *\", cast)]\nconst func %s(p c.pointer) %s\n", cType, ptrFunc(cType), ptrType(cType))
 	}
 }
 
@@ -327,9 +467,7 @@ type setProp struct {
 
 // writeSets declares, for each prop of info a value can be written to, the
 // #[gen.protocol(set)] function lowering splices wherever the program writes
-// it. The call is gtk4rt's: its wrapper where it wraps the setter
-// (rtSetterTable), and its set by the property's name otherwise. Under cgo it
-// is GIR's setter, its receiver cast to the class or interface that declares
+// it: GIR's setter, its receiver cast to the class or interface that declares
 // it, and where GTK ships none, the preamble's sngl_set_prop_* by the
 // property's name; either set by name is converted by GObject to the type the
 // property's GParamSpec declares. A string handed to a C setter is converted
@@ -344,11 +482,7 @@ func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gi
 			continue
 		}
 		var call string
-		if rt, ok := rtSetterTable[p.Setter]; ok && p.Setter != "" && !o.cgo {
-			call = o.rtSet(b, reg, p, n, rt.fn, rt.kind)
-		} else if !o.cgo {
-			call = o.rtPropSet(b, reg, p, n, kind)
-		} else if p.Setter != "" {
+		if p.Setter != "" {
 			call = o.cSet(b, reg, info, p, n, casts)
 		} else {
 			call = o.propSet(b, reg, info, p, n, kind)
@@ -370,36 +504,6 @@ func (o *childOps) native(b *strings.Builder, name, decl string) {
 		o.natives[name] = true
 		b.WriteString(decl)
 	}
-}
-
-// rtSet is the call of gtk4rt's wrapper of p's setter, which takes the
-// widget as a Handle and the value as Go holds it.
-func (o *childOps) rtSet(b *strings.Builder, reg *gir.TypeRegistry, p gir.Prop, n, fn string, kind rtSetterKind) string {
-	typ, value := map[rtSetterKind]string{rtStr: "string", rtBool: "bool", rtInt: "int", rtFloat: "float", rtOrient: "int"}[kind], n
-	if kind == rtOrient {
-		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
-	}
-	native := "_rt" + fn
-	o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(w ui.node, v %s)\n", gtk4rtPkg, fn, native, typ))
-	return fmt.Sprintf("%s(self, %s)", native, value)
-}
-
-// rtPropSet is the call of gtk4rt's generic set of p by its name.
-func (o *childOps) rtPropSet(b *strings.Builder, reg *gir.TypeRegistry, p gir.Prop, n string, kind propValueKind) string {
-	fn, typ, value := "SetInt", "int", n
-	switch kind {
-	case propString:
-		fn, typ = "SetString", "string"
-	case propBool:
-		fn, typ = "SetBool", "bool"
-	case propFloat:
-		fn, typ = "SetFloat", "float"
-	case propEnum:
-		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
-	}
-	native := "_rt" + fn
-	o.native(b, native, fmt.Sprintf("\n#[go.native(%q, \"gtk4rt.%s\")]\nfunc %s(w ui.node, prop string, v %s)\n", gtk4rtPkg, fn, native, typ))
-	return fmt.Sprintf("%s(self, %q, %s)", native, p.Name, value)
 }
 
 // cSet is the call of p's GIR setter.
@@ -440,7 +544,7 @@ func (o *childOps) cSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.Cla
 		value = enumMatch(e, n, func(v int) string { return fmt.Sprintf("%s(%d)", castFunc(e.CType), v) })
 	}
 	native := "_" + p.Setter
-	o.native(b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w %s, v %s)\n", p.Setter, native, ptrType(recv), typ))
+	o.native(b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w %s, v %s)\n", p.Setter, native, ptrType(recv), typ))
 	return fmt.Sprintf("%s(%s(_ptr_%s(self)), %s)", native, ptrFunc(recv), info.CType, value)
 }
 
@@ -457,7 +561,7 @@ func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.
 	}
 	o.classPtr(b, info.CType)
 	native := "_" + fn
-	o.native(b, native, fmt.Sprintf("\n#[macro.cnative(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
+	o.native(b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
 	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s)", native, info.CType, p.Name, value)
 }
 
@@ -565,24 +669,6 @@ func ctorScalarCast(p gir.ConstructorParam) string {
 	return p.GIRType
 }
 
-// unconstructible is the build error for a GIR class rendered with no create
-// declared for it, saying which of writeCreate's reasons kept it.
-func unconstructible(reg *gir.TypeRegistry, cType string, info *gir.ClassInfo) error {
-	if len(info.Constructors) == 0 {
-		return fmt.Errorf("gtk4: %s cannot be constructed: GTK declares no constructor for it", cType)
-	}
-	ctor := pickPrimaryConstructorInfo(info)
-	for _, p := range ctor.Params {
-		if _, err := ctorParam(reg, p); err != nil {
-			return fmt.Errorf("gtk4: %s cannot be constructed: %s takes %s %s, %w", cType, ctor.Name, p.GIRType, p.Name, err)
-		}
-		if _, ok := snglName(p.Name); !ok {
-			return fmt.Errorf("gtk4: %s cannot be constructed: %s's parameter %q has no SNGL spelling", cType, ctor.Name, p.Name)
-		}
-	}
-	return fmt.Errorf("gtk4: %s cannot be constructed: the gir: package declares no create for it", cType)
-}
-
 // actionParams is the parameter list of an action's declaration, and false
 // when a parameter's name has no SNGL spelling. A transfer-full parameter is
 // #[moves]: GTK frees what it is handed, so the caller must not.
@@ -613,17 +699,6 @@ var notifyProps = map[string][]string{
 	"GtkDropDown": {"selected"},
 }
 
-// notifySignal is the GObject signal behind a `@notify<Prop>` event, or ""
-// when event is not one.
-func notifySignal(cType, event string) string {
-	for _, prop := range notifyProps[cType] {
-		if n, ok := snglName("notify-" + prop); ok && n == event {
-			return "notify::" + prop
-		}
-	}
-	return ""
-}
-
 // restSlotName is the rest slot every generated widget declares. Reserved
 // against the property names too: a GTK property spelling the same word would
 // otherwise collide with it in the one parameter list.
@@ -633,25 +708,6 @@ const restSlotName = "children"
 // widget's C type, so the id both dispatches the emitter and names the GIR
 // class its metadata comes from.
 const intrinsicPrefix = "gtk4:"
-
-// widgetCType returns the C type comp's intrinsic id names, or "" when comp is
-// not one of this platform's widget declarations.
-func widgetCType(comp *ir.Component) string {
-	if comp == nil {
-		return ""
-	}
-	cType, ok := strings.CutPrefix(comp.Intrinsic, intrinsicPrefix)
-	if !ok {
-		return ""
-	}
-	// A nested namespace is not a widget: `gtk4:draw:arc` names this
-	// platform's drawing op, and read as a C type it resolves to no GIR class
-	// and fails the build.
-	if strings.Contains(cType, ":") {
-		return ""
-	}
-	return cType
-}
 
 // snglName is the SNGL spelling of a GIR property or signal name:
 // "default-width" becomes "defaultWidth". A name that lands on a SNGL keyword
@@ -708,27 +764,6 @@ func snglTypeName(t *ir.Type) (string, bool) {
 		return "float", true
 	}
 	return "", false
-}
-
-// --- Reading the metadata back out ---
-//
-// A generated declaration says which props and events a widget has; what each
-// one costs in C — the setter to call, the type to cast the widget to, the
-// type to cast the value to — is derived per host install and cannot be
-// written in SNGL. The emitter recovers it from the same registry the
-// declaration was generated from, keyed by the C type the intrinsic id names.
-
-// girProp returns the GIR property behind a SNGL prop name.
-func girProp(info *gir.ClassInfo, snglProp string) (gir.Prop, bool) {
-	if info == nil {
-		return gir.Prop{}, false
-	}
-	for _, p := range info.Props {
-		if n, ok := snglName(p.Name); ok && n == snglProp {
-			return p, true
-		}
-	}
-	return gir.Prop{}, false
 }
 
 // girSetter is the C setter GIR names for one property of one class, with
@@ -806,27 +841,4 @@ func girScalarCast(p gir.Prop) string {
 		return "double"
 	}
 	return p.GIRType
-}
-
-// girSignal returns the GLib signal behind a SNGL event name. The registry
-// keeps every signal, connectable or not, so the emitter can tell a name it
-// has never heard of from one it is refusing.
-func girSignal(info *gir.ClassInfo, event string) (gir.Signal, bool) {
-	if info == nil {
-		return gir.Signal{}, false
-	}
-	for _, s := range info.Signals {
-		if n, ok := snglName(s.Name); ok && n == event {
-			return s, true
-		}
-	}
-	return gir.Signal{}, false
-}
-
-// girSignalReturnLabel spells a signal's return type for a diagnostic.
-func girSignalReturnLabel(s gir.Signal) string {
-	if s.ReturnType == "" || s.ReturnType == "none" {
-		return "void"
-	}
-	return s.ReturnType
 }

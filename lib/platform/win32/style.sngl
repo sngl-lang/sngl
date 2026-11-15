@@ -1,0 +1,129 @@
+import ui "sngl:ui"
+
+// What a ui.Style becomes on Win32: the Look the runtime lays a node out and
+// paints it by. Win32 itself styles no control past its font and the colors
+// its parent answers WM_CTLCOLOR* with, and lays out nothing, so what the
+// runtime's layout reads -- a box's gap and padding, a node's flex share and
+// least size, and whether its display hides it -- is the rest. A control
+// draws in the system's message font, sized by fontSize alone; fontFamily,
+// fontWeight and fontStyle reach only a flow of rich text, which draws its
+// words itself (`baseOf`).
+
+// What a Style may say that this platform does not answer yet:
+//
+//   - margin and its sides: the runtime's box gives each child the room it
+//     measures and no more; a padding on the box is the room around them.
+//   - maxWidth, maxHeight: a node is its measured size or larger, never
+//     capped.
+//   - flexDirection: vbox and hbox are the axis.
+//   - justifyContent: a box starts its children at its own start. A grid,
+//     a flow and a stack also stretch each child across it, whatever its
+//     alignItems; a line aligns them, a baseline as its start.
+//   - position, top, bottom, left, right, zIndex: the runtime lays children
+//     out itself, with no flow to take one out of and no offsets.
+//   - textAlign, maxLines, whiteSpace: a STATIC control draws its text from
+//     the left, every line of it.
+//   - borderRadius, borderColor, borderWidth, border, borderBottom,
+//     borderLeft, borderCollapse, borderStyle: no control draws a border of
+//     the program's; an edit draws its own sunken one.
+//   - opacity: a child window is drawn opaque.
+//   - cursor: every window shows the arrow its class gives it.
+//   - listStyleType: no control here draws a list marker.
+const unstyled list[string] = [
+    "margin",
+    "marginTop",
+    "marginRight",
+    "marginBottom",
+    "marginLeft",
+    "marginX",
+    "marginY",
+    "maxWidth",
+    "maxHeight",
+    "flexDirection",
+    "justifyContent",
+    "position",
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "zIndex",
+    "textAlign",
+    "maxLines",
+    "whiteSpace",
+    "borderRadius",
+    "borderColor",
+    "borderWidth",
+    "border",
+    "borderBottom",
+    "borderLeft",
+    "borderCollapse",
+    "borderStyle",
+    "opacity",
+    "cursor",
+    "listStyleType",
+]
+
+// A length in pixels at 96 DPI, an em being 16 of them, as html's default
+// is.
+const func px(m ui.measurement) => m.px + 16.0 * (m.em + m.rem)
+
+// The runtime lays nothing outside the room a box gives a child, so a
+// negative length, which CSS allows, is none, and so is an unset one.
+const func inset(m option[ui.measurement]) => m == null ? 0 : int(float.max(px(m), 0.0))
+
+// One side of a padding: the first of its own field, its axis's and the
+// whole box's that is set, as CSS reads them.
+const func side(all option[ui.measurement], axis option[ui.measurement], own option[ui.measurement]) int {
+    return inset(own != null ? own : axis != null ? axis : all)
+}
+
+// A color as 0xRRGGBB, or -1 for none, which is what an unset or a
+// transparent one is.
+const func rgb(c option[color]) int {
+    if c != null && c.a != 0 {
+        return int(c.r) * 65536 + int(c.g) * 256 + int(c.b)
+    }
+    return -1
+}
+
+// Where a line box places its children across it: the runtime's A_STRETCH,
+// A_START, A_CENTER or A_END.
+const func alignOf(a ui.Alignment) int {
+    return match a {
+        start, baseline => 1
+        center => 2
+        end => 3
+        unset, stretch => 0
+    }
+}
+
+// A block rather than an expression, so the optimizer calls it instead of
+// splicing a computed Style into each of the fields that read it.
+const func lookOf(s ui.Style) Look {
+    var look Look = {
+        flex = s.flex == null ? 0.0 : s.flex,
+        gap = inset(s.gap),
+        padTop = side(s.padding, s.paddingY, s.paddingTop),
+        padRight = side(s.padding, s.paddingX, s.paddingRight),
+        padBottom = side(s.padding, s.paddingY, s.paddingBottom),
+        padLeft = side(s.padding, s.paddingX, s.paddingLeft),
+        minWidth = inset(s.minWidth),
+        width = inset(s.width),
+        height = inset(s.height),
+        align = alignOf(s.alignItems),
+        color = rgb(s.color),
+        background = rgb(s.background),
+        fontPx = inset(s.fontSize),
+        hidden = s.display == ui.Display.none ? 1 : 0,
+    }
+    return look
+}
+
+// A box's Look, whose gap is otherwise where its style sets none.
+const func boxLookOf(s ui.Style, otherwise int) Look {
+    var look = lookOf(s)
+    if s.gap == null {
+        look.gap = otherwise
+    }
+    return look
+}

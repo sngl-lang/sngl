@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/cellbuf v0.0.15
 	github.com/davecgh/go-spew v1.1.1
+	github.com/ebitengine/purego v0.11.3
 	github.com/evanw/esbuild v0.28.0
 	github.com/fogleman/gg v1.3.0
 	github.com/fsnotify/fsnotify v1.9.0
@@ -164,6 +165,7 @@ tool (
 	duckfam.us/sngl/cmd/sngl
 	duckfam.us/sngl/internal/cmd/docsgen
 	duckfam.us/sngl/internal/cmd/verify
+	duckfam.us/sngl/internal/cmd/win32gen
 	fyne.io/fyne/v2
 	github.com/bwplotka/mdox
 	golang.org/x/tools/cmd/stringer

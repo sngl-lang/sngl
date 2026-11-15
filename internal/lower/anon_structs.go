@@ -44,6 +44,15 @@ func lowerAnonStructs(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
+	// A `_formatArgs[X]` BuiltinMethods never saw -- a library generic's
+	// copy Monomorphize made for a call an override's body spliced in after
+	// it -- is X's format's anonymous struct as every other is, which the
+	// call's own argument already was.
+	packs := &builtinMethods{pkg: pkg}
+	if pkg.Symbols != nil {
+		packs.scope = pkg.Symbols.Root
+	}
+	packs.packTypes()
 	a := &anonStructs{pkg: pkg, names: map[string]bool{}, merged: map[*ir.StructDef]*ir.StructDef{}}
 	for _, sd := range pkg.Structs {
 		if !sd.Anon {

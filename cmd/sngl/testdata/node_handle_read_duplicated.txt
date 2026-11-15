@@ -3,27 +3,32 @@
 # uniqueNodeIDs renames the later copies of an id and lets the first keep the
 # name, so a test naming `#inc` still means the `#inc` it wrote. A read cannot
 # follow that rename: the checker declares one var per written id and every
-# spliced copy of that body shares it, so `bar.pulse()` in each copy resolves to
-# the first copy's field. The second widget is created and then never touched.
+# spliced copy of that body shares it, so `{bar.text}` in each copy resolves
+# to the first copy's node. The second is created and then never read.
+# Qualifying the read is what would make it quietly wrong, so the duplicate is
+# refused in the pass that first knows of it rather than left to the host
+# compiler to miss.
 #
-# Before ir.Var.NodeHandle the same program emitted a bare `bar` and cgo said
-# `undefined: bar` -- loudly wrong. Qualifying the read is what would have made
-# it quietly wrong, so the duplicate is refused in the pass that first knows of
-# it rather than left to the host compiler to miss.
+# A method called through the handle is a call of the node, which
+# repointHandleCalls points at each copy's own: `bar.pulse()` in each copy of
+# dup.sngl pulses its own bar.
 #
 # The rename is keyed by name and the refusal by symbol, and they are different
 # questions: the rename repairs the emitted namespace, where any two `#bar`s
 # collide, while the refusal is about a read that cannot say which copy it
 # meant, which only arises within one body. innocent.sngl is the difference.
 
-! sngl generate --lang go --platform gtk4 --out out dup.sngl
+! sngl generate --lang go --platform gtk4 --out out read.sngl
 stderr 'is read here, and .* renders more than one of it'
 
 # The diagnostic names the read, not just the node: the remedies it offers are
 # actionable where the read is written, and a user landing on the node sees
 # nothing wrong there.
-! sngl generate --lang go --platform gtk4 --out out1 dup.sngl
-stderr 'dup\.sngl:15:9'
+stderr 'read\.sngl:7:22'
+
+sngl generate --lang go --platform gtk4 --out out1 dup.sngl
+grep 'WidgetPulse\(m\.bar\)' out1/main.go
+grep 'WidgetPulse\(m\.bar__1\)' out1/main.go
 
 # Two unrelated components may each write `#bar`. `reader` is rendered once and
 # is the only thing that reads it; `quiet` is rendered twice and reads nothing.
@@ -31,9 +36,9 @@ stderr 'dup\.sngl:15:9'
 # refused -- and the message then asserted that a component rendered once
 # renders more than one.
 sngl generate --lang go --platform gtk4 --out out2 innocent.sngl
-grep 'C\.gtk_progress_bar_pulse\(m\.bar\)' out2/model.go
-grep 'bar__1 ' out2/model.go
-grep 'bar__2 ' out2/model.go
+grep 'WidgetPulse\(m\.bar\)' out2/main.go
+grep 'bar__1 ' out2/main.go
+grep 'bar__2 ' out2/main.go
 
 # The same program with `quiet`'s id spelled differently. This is the pair that
 # keeps the keying honest: the two differ only in a name that `reader`'s read was
@@ -41,15 +46,32 @@ grep 'bar__2 ' out2/model.go
 # compile. If a future change rejoins the two by spelling, exactly one of this
 # pair goes red.
 sngl generate --lang go --platform gtk4 --out out3 renamed.sngl
-grep 'C\.gtk_progress_bar_pulse\(m\.bar\)' out3/model.go
-grep 'baz ' out3/model.go
-grep 'baz__1 ' out3/model.go
+grep 'WidgetPulse\(m\.bar\)' out3/main.go
+grep 'baz ' out3/main.go
+grep 'baz__1 ' out3/main.go
 
-# One instance is the ordinary case: the handle is the Model's field, and the
-# native receiver reaches it.
+# One instance is the ordinary case: the handle is the program's var, and the
+# action's receiver reaches it.
 sngl generate --lang go --platform gtk4 --out out4 single.sngl
-grep 'C\.gtk_progress_bar_pulse\(m\.bar\)' out4/model.go
+grep 'WidgetPulse\(m\.bar\)' out4/main.go
 
+-- read.sngl --
+import . "sngl:ui"
+
+component bump() node {
+    var n = 0
+    vbox {
+        button #bar(text="b", @click { n += 1 })
+        text(value="{bar.text}")
+    }
+}
+
+window {
+    vbox {
+        bump()
+        bump()
+    }
+}
 -- dup.sngl --
 import . "sngl:ui"
 import "sngl:time"

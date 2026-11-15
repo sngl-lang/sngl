@@ -21,6 +21,10 @@ func InstanceRootProp(id string) string { return InstanceRootPrefix + id }
 // InstanceRootPrefix is what every InstanceRootProp begins with.
 const InstanceRootPrefix = "__instance_"
 
+// InstanceRootSuffix names the binding a lowering makes beside a component
+// instance's own for the node it attaches: the instance's root.
+const InstanceRootSuffix = "__el"
+
 // TriggerTarget reads a test's event trigger -- `c.inc.click()`, a call the
 // checker tagged with an Event -- off the call's receiver as the checker
 // resolved it: the variable holding the instance under test, the `#id` of the

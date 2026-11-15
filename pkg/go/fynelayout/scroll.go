@@ -9,8 +9,8 @@ import (
 // ReachScroll is a scroll that calls OnReachEnd when the end of its content
 // comes within half a viewport of showing: as it arrives, and again when the
 // content grows while it is there. The end is the right edge of a horizontal
-// scroll and the bottom of any other. It is gtk4rt's scroll's rule, on what
-// Fyne reports.
+// scroll and the bottom of any other. It is gtk4's scroll's rule
+// (lib/platform/gtk4/rt/scroll.c), on what Fyne reports.
 //
 // Fyne reports a scroll (OnScrolled) and a resize of the viewport (Layout),
 // and nothing of its own when the content grows, which is what a handler

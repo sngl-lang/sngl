@@ -163,6 +163,8 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 		if inner := unwrappedOptionOperand(x); inner != nil {
 			return foldExpr(inner, ctx)
 		}
+	case *ir.CConvert:
+		x.Operand = foldExpr(x.Operand, ctx)
 	case *ir.Select:
 		x.Operand = foldExpr(x.Operand, ctx)
 		if v := literalField(x); v != nil {
@@ -723,8 +725,15 @@ func alwaysPresent(t *ir.Type) bool {
 	}
 	switch t.Kind {
 	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString,
-		ir.TypeUnit, ir.TypeEnum, ir.TypeStruct, ir.TypeList, ir.TypeMap:
+		ir.TypeUnit, ir.TypeEnum, ir.TypeList, ir.TypeMap:
 		return true
+	case ir.TypeStruct:
+		// A host type declaring no fields is what the host holds it as, a
+		// pointer more often than not: gtk4's Widget is a GtkWidget*, and a
+		// test's `c.w == null` of a node the program never built folded to
+		// false.
+		sd, _ := t.Decl.(*ir.StructDef)
+		return sd == nil || sd.Foreign.Path == "" || len(sd.Fields) > 0
 	}
 	return false
 }

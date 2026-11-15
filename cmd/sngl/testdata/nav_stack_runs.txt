@@ -36,6 +36,9 @@ stdout '5 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
 stdout '5 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '5 tests, 0 failures'
+
 sngl test --platform=android --opt testRunner=robolectric app.sngl
 stdout '5 tests, 0 failures'
 
@@ -233,7 +236,7 @@ sha256:0f23871027b10c82c6080cfb861208cf
   ]
 }
 -- testrun/fyne/go/app.sngl/site/1 --
-sha256:81bb34a3baae485a8b2ff831f4a8cd01
+sha256:e7eaccc7905c9d12560003b61732f3dd
 {
   "results": [
     {
@@ -258,8 +261,34 @@ sha256:81bb34a3baae485a8b2ff831f4a8cd01
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/site/1 --
+sha256:f458006f6f6d987ce225b7c0c314ab89
+{
+  "results": [
+    {
+      "Desc": "AStackStartsAtTheRootPage",
+      "Passed": true
+    },
+    {
+      "Desc": "GoShowsThePageAndBackReturns",
+      "Passed": true
+    },
+    {
+      "Desc": "ParamsTravelWithTheEntry",
+      "Passed": true
+    },
+    {
+      "Desc": "ALinkGoesToItsPage",
+      "Passed": true
+    },
+    {
+      "Desc": "APageNotShowingIsNotMounted",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/site/1 --
-sha256:ea6e369c6374624d65f0615da9503dc2
+sha256:93a811bae4fcdc699b11ae4adc28ac3a
 {
   "results": [
     {

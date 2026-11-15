@@ -80,7 +80,7 @@ The tiers, and the split between them is the whole point of the system:
   the reason the checker already refuses *ordering* and *casting* a multi-base
   value: a magnitude per base has no one ratio to report.
 - **`lib/math/` → `sngl:math`** — mathematical constants and functions: `pi` and `tau`, `sqrt`, `pow` and the trigonometry. A package rather than methods on `float`, because a constant has no receiver and nothing to fold — a zero-parameter static method survived only where the optimizer ran. The functions moved here from `float`: each takes a float without being about one, so a call reads `math.sin(x)`, and their intrinsic ids are `math.<name>`.
-- **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter[int]` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter[T]` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. A list reaching an iter[T] position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
+- **`lib/seq/` → `sngl:seq`** — integer sequences: `count`, `range` and `step`, the `iter[int]` a counting loop iterates. Nothing else can produce one, since building a range in SNGL would need a loop and a loop needs a range; a sequence in a loop head lowers to the host's counting loop (`ir.IterCounted`), and anywhere else it is the pull sequence `iter[T]` is spelled as -- `func(func(T) bool)` in Go, a generator in JS, `Iterable<T>` in Kotlin -- so no list is built to iterate one. C writes no pull sequence: there an `iter[T]` held or passed is the `list[T]` of its elements (`listed` in `codegen/lang/c`), which a `sngl:seq` call outside a loop head builds; a loop head still counts. A list reaching an iter[T] position is wrapped by the conversion the checker already inserts there (`wrapIfNeeded`); a two-variable loop over one gets its ordinal from a counter (`passIndexedIter`), since a pull sequence hands out no index.
 - **`lib/async/` → `sngl:async`** — `start` and `do`: handing a closure somewhere else to run. They are each other's halves — `start` begins work that must not block the caller, `do` brings the answer back to the thread the target draws on — and **each is answered by a different half of the build**, which is why they are two declarations. Starting work is the host *language*'s (`go func(){}()`); reaching the drawing thread is the *platform*'s, because there is no such thread in general. `passAsyncOffload` has always written both for a blocking call on a language that cannot suspend; they are *declared* because a platform package needs to name one — a platform whose own `.sngl` describes a schedule (a timer handing its tick to a host scheduler) has to be back on the drawing thread before it touches a widget, and with no declaration has nothing to write but that platform's own spelling of `fyne.Do`, in its own package. A generator reaching its own thread from hand-written Go needs no name; a platform *package* does. That is the line against `ir.NodeOps`, which stay undeclared precisely because nothing can name them. `query`, `Result` and `Failure` sit beside them: a request bracketed by the tree is the two one level up (see *Queries* in `design/language.md`). A target that answers neither is refused at the call by `passAsyncCapable` rather than emitting code that does not compile: `async.do` on bubbletea used to come out as `m.post(...)`, a method on the model that does not exist.
 - **`lib/http/` → `sngl:http`** and **`lib/json/` → `sngl:json`** — a
   request while the program runs, and a declared type read from and written
@@ -117,7 +117,7 @@ The tiers, and the split between them is the whole point of the system:
   build node is never rendered, which is why it may have a body and is exempt
   from the const-component rule.
 - **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`); `openapi` writes a package from an OpenAPI 3 document (see *The `openapi:` scheme* in `design/import-schemes.md`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
-- **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[cnative]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`). Also the conversions a C call's arguments cross through, `#[builtin]` functions `lower.CMarshal` finds by kind (`cString`, `cInt`, `cDouble`, `cBool`), and the owned `str` with its `free`.
+- **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[c.native]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`). Also the conversions a C call's arguments cross through, `#[builtin]` functions `lower.CMarshal` finds by kind (`cString`, `cInt`, `cDouble`, `cBool`), and the owned `str` with its `free`.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A package documents itself with a **package comment**: a run of line comments
@@ -300,15 +300,21 @@ A component's own var or func that shadows a name the package declares at
 its top level is renamed the same way, since a target holds both in one
 namespace -- Android's test state class, html's state object -- where the
 two were one member (`cmd/sngl/testdata/state_member_shares_a_name_runs.txt`).
-A name the lowering synthesized (`__root`) is left to the lowering.
+A name the lowering synthesized (`__root`) is left to the lowering. And a
+body's own local or loop variable named as one of its component's vars or
+funcs, or as the package's top level, is renamed, since a target holds the
+two in one scope there: a spliced override's `for var k, row = rows` read the
+program's `row` it was handed, which a test build keeps as a Go package var
+and a C closure captures by name
+(`cmd/sngl/testdata/gtk4_test_runs.txt`).
 
-**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme -- gtk4's imports `gir:`, whose package is the half of the platform derived from the host.
+**A target is its library package.** `sngl:platform/<name>` and `sngl:language/<name>` are `lib/platform/<name>` and `lib/language/<name>`, and the layout is the registration (`codegen/declared.go`), as `lib/x/scheme/<name>` is a scheme's: each directory is a `DeclaredPlatform` or `DeclaredLang`. Its Go, where it has any, is a generator registered by key (`codegen.RegisterNative`) and named by the node's `#[gen.native("html")]`; `LookupPlatform` and `LookupLang` resolve a declared target through that mark, once, and a node naming none generates nothing -- `none`, whose programs the interpreter runs. A package may import a library scheme, as a program may import `gir:`, whose package gtk4 declares from the host's introspection data.
 
 The point is that the checker does not know where a package comes from: a lib/ directory or a scheme's handler. The last is how gtk4's widget set reaches it -- one component declaration per GTK widget class, generated from the host's introspection data -- and the first how the overrides written against it do. `nodeNative` reads `#[gen.native]` off the source rather than the checked package, since `Unavailable` is asked during a check and checking the target to answer would re-enter it.
 
 A target that is unavailable contributes no package, which is a whole-package decision on purpose: `mergePlatformExtensions` walks *every* registered platform's source, so a platform loading overrides whose widgets it cannot also declare would report them as undefined in a build targeting something else. gtk4 is unavailable when its `gir` option names a file it cannot read; `DeclaredPlatform.Unavailable` asks the generator its node names.
 
-**A platform is configured before the check, from the `output` block as well as the command line.** gtk4's `gir` option decides what the `gir:` import declares, so it is a check-time option, and `build.Check` hands each `codegen.OptionConfigurable` the literal options the first `output` block naming it declares -- `true` and `false` read by name, since both are declared, so a block's `gtk4(cgo=true)` selects the per-class protocol -- overlaid by `CheckConfig.Opts` (`--opt`). Only the command line configured it before, so a program whose block named a GIR was checked against the probed one and built against its own: a `#[moves]` the named GIR declared was not there to check, and its argument was freed (`testdata/gir_transfer_full.txtar`, `TestGIRSchemeFollowsTheOption`). A path is relative to the working directory, as `--opt`'s is.
+**A platform is configured before the check, from the `output` block as well as the command line.** gtk4's `gir` option decides what the `gir:` import declares, so it is a check-time option, and `build.Check` hands each `codegen.OptionConfigurable` the literal options the first `output` block naming it declares -- `true` and `false` read by name, since both are declared -- overlaid by `CheckConfig.Opts` (`--opt`). Only the command line configured it before, so a program whose block named a GIR was checked against the probed one and built against its own: a `#[moves]` the named GIR declared was not there to check, and its argument was freed (`testdata/gir_transfer_full.txtar`). A path is relative to the working directory, as `--opt`'s is.
 
 The `#[builtin]` mark only stamps the kind on whichever IR the declaration
 became. What a kind then *requires* — that a node kind names a component, that
@@ -410,7 +416,7 @@ the type a macro returns, and the flag enums the marks take.
 
 Notable stdlib packages:
 
-- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Go imports the runtime where an emitted spelling names it, as it does every package: `ir.Package.UsesI18n` counts a method of a component a test build rooted elsewhere never emits, and the import it raised was unused (`cmd/sngl/testdata/i18n_test_build_runs.txt`). Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`, and C's in `pkg/c/runtime/sngl_i18n.c`: Go's template walk ported, so a placeholder, a quote and a plural's `#` read as Go reads them, over ICU for a plural's category, a number and a date -- ICU4C through pkg-config, and on Windows the `icu.dll` it has carried since 10 1903, whose C API MinGW links with no header (Jonathan's call over gettext, which formats no number). It ships with the manifest as an array of its bytes only where a program translates (`clang.I18nRuntime`); the `i18n_*_runs.txt` scripts run both C platforms. Go imports the runtime where an emitted spelling names it, as it does every package: `ir.Package.UsesI18n` counts a method of a component a test build rooted elsewhere never emits, and the import it raised was unused (`cmd/sngl/testdata/i18n_test_build_runs.txt`). Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
@@ -459,6 +465,9 @@ Notable stdlib packages:
     MainActivity.
   - JavaScript emits a test body's entry-point call with the locale NoContext
     threaded, as Go does.
+  - Every Go target embeds the manifest beside the program it writes
+    (`golang.EmitI18nManifestEmbed`): gtk4 and win32 wrote none, and a plural
+    a fold could not answer read the source's words.
 
 ## HTTP and JSON
 
@@ -554,6 +563,36 @@ no cast: it was `a[i] as List<T>`, unchecked, and a pokedex build warned
 about it ninety times. Each integer width is its own factory, since a `Byte`
 or `UInt` field decoded as an `Int` failed its cast; the
 interpreter walks the plan over its own values (`internal/interp/codec.go`).
+**C has no reflection to hand a descriptor to, so the plan is functions of
+the file** (`codegen/lang/c/codec.go`): a decoder, an encoder and a query
+writer per type, keyed by its type token and declared ahead, so a type
+holding itself calls its own. They walk a tree `pkg/c/runtime/sngl_codec.c`
+parses and write into its buffer, which word a failure as every target does
+and write a float as Go's encoding/json does, and what they make is the
+turn's. A request is a function of the file per call, its arguments its
+parameters, so the IR built around the call (the hook, the Result) reads
+them by name. It calls `sngl_http_fetch` (`lib/language/c/rt/sngl_fetch.c`),
+which waits for the answer over whichever client answers
+`sngl_http_start`. C has no thread to wait on, and its arena and kept
+blocks are no thread's to share, so what `async.start` begins runs on the
+loop's thread on a stack of its own (`sngl_work_start`,
+`pkg/c/runtime/sngl_work.c`: ucontext, or a fiber on Windows), with its
+own arena and catch points; a wait there gives the loop back until the
+answer wakes it. The waits first nested instead, each running the loop
+inside it, so a page asking for a request a row finished each only after
+those begun inside it: the Pokédex's Moves tab, 237 moves of Mew's, saw
+none until the last arrived. A wait off a work's stack -- a test, a
+handler calling the request itself -- still runs the loop inside it. The
+turn stays open while a work waits, as it did while a nested wait ran, so
+what the work read before its wait is there after. C's own client is
+libcurl's (`sngl_http.c`, every request on one thread driving one multi
+handle, its answer posted back), which `clang.HTTPRuntime` ships where no
+platform link ships the header; gtk4's link ships it, so its pictures are
+fetched by it in either language, and win32 ships the header with its own
+WinHTTP client (`design/win32.md`). A Go program links `sngl_http.c` for
+its pictures and never the wait, which is why the wait is a file of its
+own. `json_runs.txt`, `http_runs.txt` and
+`http_answer_runs.txt` run both C platforms.
 The `Result` the call answers is built by translating IR around the names
 the runtime handed back (`codegen.ResultOK`, `ResultFailed`, `HostValue`), so
 each language's own spelling names the Result, Failure and Response.
@@ -615,14 +654,16 @@ every access, so a write went nowhere a later read looked.
 **Only the program's own entry point opens the platform's place**, so a
 test never touches the reader's settings and each test starts with none,
 without a flag saying it is one: a Go `main` calls `snglsettings.Open`
-(gtk4 and bubbletea a JSON file in `os.UserConfigDir()/<output name>`, fyne
+(gtk4, win32 and bubbletea a JSON file in `os.UserConfigDir()/<output name>`, fyne
 its Preferences, made with `app.NewWithID(<output name>)`), android's
 MainActivity calls `SnglSettings.init`, and a Go test, the test agent's
 `main` and a Robolectric test on a plain `ComponentActivity` run none of
 them. html has no entry point of its own, so a test page says
 `__snglSettingsInMemory`. The interpreter opens nothing (see `design/trust.md`).
-`codegen.UsesSettings` gates each of these, so a program keeping no settings
-emits what it did. `settings_kept.sngl` and `settings_kept.txtar` are the
+A C `main` calls `sngl_settings_open` (`clang.OpenSettings`), whose file is
+Go's: settings.json in the same directory, so a program built in either
+language reads what the other kept. `codegen.UsesSettings` gates each of
+these, so a program keeping no settings emits what it did. `settings_kept.sngl` and `settings_kept.txtar` are the
 memory side, `cmd/sngl/testdata/settings_kept_runs.txt` runs gtk4 and fyne
 twice, `TestSettings_AKeptValueOutlivesAReload` reloads a page in Chromium,
 and `pkg/go/snglsettings`' tests hold the file. Nothing yet relaunches an

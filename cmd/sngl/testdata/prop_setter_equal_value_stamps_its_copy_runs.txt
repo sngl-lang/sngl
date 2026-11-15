@@ -1,0 +1,125 @@
+# A test reaches the copies of an `#id` under a `for` through a map each
+# render starts afresh, and each instance the render keeps stamps its copy
+# again from the setter of its index (lower.clearCopies). A setter handed the
+# value its cell holds returns before the write (lower.propSetter), so the
+# rows kept stamped nothing and only the row the render added was reached: the
+# Pokédex's Sprites tests found no label at 4. The setter stamps before it
+# returns. A golden's run of the same test passed without the stamp; `sngl
+# test` fails it.
+
+sngl test --platform=none app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import "sngl:test"
+
+struct Sprite {
+    label string
+    url   string
+}
+
+component page ui.node {
+    var pics = [Sprite{label="a", url="x"}, Sprite{label="b", url="y"}]
+
+    ui.vbox {
+        for var p = pics {
+            ui.vbox {
+                ui.image(alt=p.label) {
+                    ui.remote(url=p.url)
+                }
+                ui.text #spriteLabel(value=p.label)
+            }
+        }
+        ui.button #more(text="more", @click { pics.push(Sprite{label="c", url="z"}) })
+    }
+}
+
+func testEveryCopyIsReachedAfterARender(t test.Test, c page) {
+    c.more.click()
+    t.assert(c.spriteLabel[0] != null && c.spriteLabel[0].value == "a")
+    t.assert(c.spriteLabel[1] != null && c.spriteLabel[1].value == "b")
+    t.assert(c.spriteLabel[2] != null && c.spriteLabel[2].value == "c")
+}
+
+ui.window {
+    page()
+}
+-- testrun/fyne/go/app.sngl/page/1 --
+sha256:32744e3f7f1919b299de9cd090bdc01b
+{
+  "results": [
+    {
+      "Desc": "EveryCopyIsReachedAfterARender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/page/1 --
+sha256:11391def4ad5d8dd405a916ad57791b8
+{
+  "results": [
+    {
+      "Desc": "EveryCopyIsReachedAfterARender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/page/1 --
+sha256:8dd4e728a8907303d919fb980d990233
+{
+  "results": [
+    {
+      "Desc": "EveryCopyIsReachedAfterARender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/page/1 --
+sha256:b63cd625824df882c522296d7accd328
+{
+  "results": [
+    {
+      "Desc": "EveryCopyIsReachedAfterARender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/page/1 --
+sha256:7bfae1daab5feeb866b6b3ff8f1f6e23
+{
+  "results": [
+    {
+      "Desc": "EveryCopyIsReachedAfterARender",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/page/1 --
+sha256:845884943b41e8a2fe3654bcf4dbd634
+{
+  "results": [
+    {
+      "Desc": "EveryCopyIsReachedAfterARender",
+      "Passed": true
+    }
+  ]
+}

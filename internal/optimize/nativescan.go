@@ -205,6 +205,8 @@ func scanExpr(e ir.Expr, visit func(ir.Expr)) {
 		}
 	case *ir.Conversion:
 		scanExpr(x.Operand, visit)
+	case *ir.CConvert:
+		scanExpr(x.Operand, visit)
 	case *ir.Select:
 		scanExpr(x.Operand, visit)
 	case *ir.Index:

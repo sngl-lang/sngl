@@ -52,7 +52,7 @@ func spliceSets(pkg *ir.Package, caps Features) error {
 }
 
 func setCall(fn *ir.Func, node ir.Expr, value ir.Expr, caps Features) (ir.Expr, error) {
-	call, err := protocolSplice(fn, []ir.Expr{node, value})
+	call, err := protocolSplice(fn, []ir.Expr{node, value}, caps.language)
 	if err != nil {
 		return nil, err
 	}

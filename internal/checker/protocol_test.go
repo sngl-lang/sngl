@@ -18,13 +18,14 @@ import (
 // the connect, set and on fixtures.
 func TestGenProtocolPlacement(t *testing.T) {
 	const otherSrc = "import sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\n\n#[marks.intrinsic(\"other:Other\")]\ncomponent Other(@tap) sngl.node\n"
-	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport other \"sngl:x/protocolother\"\n\n" +
+	const head = "\nimport sngl \"sngl:ui\"\nimport marks \"sngl:internal/marks\"\nimport macro \"sngl:macro\"\nimport gen \"sngl:x/gen\"\nimport c \"sngl:x/c\"\nimport other \"sngl:x/protocolother\"\nimport draw \"sngl:ui/draw\"\n\n" +
 		"#[marks.intrinsic(\"extstub:Thing\")]\ncomponent Thing(x int, :shown bool, @tap) sngl.node\n\n" +
+		"#[marks.intrinsic(\"extstub:Pad\")]\ncomponent Pad(shapes ...component draw.shape) sngl.node\n\n" +
 		"component Plain() sngl.node {}\n\n" +
-		"#[macro.cnative(\"thing_new\")]\nfunc thingNew() Thing\n\n" +
-		"#[macro.cnative(\"plain_new\")]\nfunc plainNew() Plain\n\n" +
-		"#[macro.cnative(\"other_new\")]\nfunc otherNew() other.Other\n\n" +
-		"#[macro.cnative(\"thing_add\")]\nfunc thingAdd(parent Thing, child sngl.node)\n\n"
+		"#[c.native(\"thing_new\")]\nfunc thingNew() Thing\n\n" +
+		"#[c.native(\"plain_new\")]\nfunc plainNew() Plain\n\n" +
+		"#[c.native(\"other_new\")]\nfunc otherNew() other.Other\n\n" +
+		"#[c.native(\"thing_add\")]\nfunc thingAdd(parent Thing, child sngl.node)\n\n"
 	for _, tc := range []struct {
 		name, decls, want string
 	}{
@@ -38,6 +39,9 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"append twice", "#[gen.protocol(append)]\nfunc _a(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n\n#[gen.protocol(append)]\nfunc _b(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n", "#[gen.protocol(append)]: Thing already has _a"},
 		{"remove twice", "#[gen.protocol(remove)]\nfunc _a(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n\n#[gen.protocol(remove)]\nfunc _b(parent Thing, child sngl.node) {\n    thingAdd(parent, child)\n}\n", "#[gen.protocol(remove)]: Thing already has _a"},
 		{"a connect beside the target", "#[gen.protocol(connect)]\nfunc _connect(w sngl.node, event string, handler func()) {}\n", ""},
+		{"contents beside the target", "#[gen.protocol(contents)]\nfunc _contents() Thing {\n    return thingNew()\n}\n", ""},
+		{"contents taking a node", "#[gen.protocol(contents)]\nfunc _contents(w Thing) Thing {\n    return w\n}\n", "#[gen.protocol(contents)] takes nothing and returns the container it makes"},
+		{"contents twice", "#[gen.protocol(contents)]\nfunc _a() Thing {\n    return thingNew()\n}\n\n#[gen.protocol(contents)]\nfunc _b() Thing {\n    return thingNew()\n}\n", "#[gen.protocol(contents)]: extstub already has _a"},
 		{"connect twice", "#[gen.protocol(connect)]\nfunc _a(w sngl.node, event string, handler func()) {}\n\n#[gen.protocol(connect)]\nfunc _b(w sngl.node, event string, handler func()) {}\n", "#[gen.protocol(connect)]: extstub already has _a"},
 		{"a set of a prop", "#[gen.protocol(set)]\nfunc _set_x(w Thing, x int) {\n    thingAdd(w, w)\n}\n", ""},
 		{"a set of no prop", "#[gen.protocol(set)]\nfunc _set_y(w Thing, y int) {}\n", "#[gen.protocol(set)] sets the prop its value parameter is named as, and Thing has no prop y"},
@@ -48,6 +52,15 @@ func TestGenProtocolPlacement(t *testing.T) {
 		{"an on of no event", "#[gen.protocol(on)]\nfunc _on_hold(w Thing, hold func()) {}\n", "#[gen.protocol(on)] connects the event its handler parameter is named as, and Thing has no event @hold nor two-way prop :hold"},
 		{"an on twice", "#[gen.protocol(on)]\nfunc _a(w Thing, tap func()) {}\n\n#[gen.protocol(on)]\nfunc _b(w Thing, tap func()) {}\n", "#[gen.protocol(on)]: Thing already connects @tap with _a"},
 		{"an on of another package's", "#[gen.protocol(on)]\nfunc _on_tap(w other.Other, tap func()) {}\n", "#[gen.protocol(on)]: Other is declared by"},
+		{"a fire of an event", "#[gen.fires(\"tap\")]\nfunc _fire_tap(w Thing, at int) {}\n", ""},
+		{"a fire of no event", "#[gen.fires(\"hold\")]\nfunc _fire_hold(w Thing) {}\n", "#[gen.fires(\"hold\")] fires an event of Thing, which has no event @hold nor two-way prop :hold"},
+		{"a fire twice", "#[gen.fires(\"tap\")]\nfunc _a(w Thing) {}\n\n#[gen.fires(\"tap\")]\nfunc _b(w Thing) {}\n", "#[gen.fires(\"tap\")]: Thing already fires @tap with _a"},
+		{"a fire of no node", "#[gen.fires(\"tap\")]\nfunc _fire_tap(at int) {}\n", "#[gen.fires] declares the #[intrinsic] component it fires on as its first parameter"},
+		{"a fire of another package's", "#[gen.fires(\"tap\")]\nfunc _fire_tap(w other.Other) {}\n", "#[gen.fires(\"tap\")]: Other is declared by"},
+		{"a redraw of a canvas", "#[gen.protocol(redraw)]\nfunc _redraw(w Pad) {}\n", ""},
+		{"a redraw of one taking no shapes", "#[gen.protocol(redraw)]\nfunc _redraw(w Thing) {}\n", "#[gen.protocol(redraw)] asks a canvas to paint again, and Thing takes no shapes"},
+		{"a redraw of two", "#[gen.protocol(redraw)]\nfunc _redraw(w Pad, again Pad) {}\n", "#[gen.protocol(redraw)] takes the #[intrinsic] canvas it asks to paint again"},
+		{"a redraw twice", "#[gen.protocol(redraw)]\nfunc _a(w Pad) {}\n\n#[gen.protocol(redraw)]\nfunc _b(w Pad) {}\n", "#[gen.protocol(redraw)]: Pad already has _a"},
 		{"connects on an event", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"button-press\")]\n    @pressed,\n) sngl.node\n", ""},
 		{"connects on a prop", "#[marks.intrinsic(\"extstub:Press\")]\ncomponent Press(\n    #[gen.connects(\"press\")]\n    x int,\n) sngl.node\n", "#[gen.connects] cannot mark a parameter; it marks an event"},
 	} {

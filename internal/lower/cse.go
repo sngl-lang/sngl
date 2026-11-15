@@ -202,6 +202,12 @@ func exprKey(e ir.Expr) (string, bool) {
 			key.WriteString("," + a.Name + "=" + arg)
 		}
 		return key.String() + ")", true
+	case *ir.CConvert:
+		operand, ok := exprKey(x.Operand)
+		if !ok {
+			return "", false
+		}
+		return "c(" + x.To.String() + "," + operand + ")", true
 	}
 	return "", false
 }
@@ -254,6 +260,8 @@ func visitExprCalls(e ir.Expr, fn func(*ir.Call)) {
 		visitExprCalls(x.Operand, fn)
 		visitExprCalls(x.Idx, fn)
 	case *ir.Conversion:
+		visitExprCalls(x.Operand, fn)
+	case *ir.CConvert:
 		visitExprCalls(x.Operand, fn)
 	case *ir.ListLit:
 		for _, el := range x.Elems {

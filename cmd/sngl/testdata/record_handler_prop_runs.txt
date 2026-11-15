@@ -22,6 +22,14 @@ stdout 'ok   2 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok   2 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok   2 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   2 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok   2 tests, 0 failures'
+
 -- app.sngl --
 import ui "sngl:ui"
 import "sngl:test"
@@ -110,8 +118,22 @@ sha256:05248fa6dc9609d09bddc586584b0ee7
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/app/1 --
+sha256:3e01d221a94aeb38f685f0892f44866e
+{
+  "results": [
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/app/1 --
-sha256:c129073838a1aba43720c28a9901037f
+sha256:1233d589c03fdcf5919609997d11efa0
 {
   "results": [
     {
@@ -126,6 +148,34 @@ sha256:c129073838a1aba43720c28a9901037f
 }
 -- testrun/html/none/app.sngl/app/1 --
 sha256:9a4077cc607e3b955be34af5831db632
+{
+  "results": [
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/app/1 --
+sha256:a40b4a08bbf1d74d48ae586d171f34e8
+{
+  "results": [
+    {
+      "Desc": "PickingAnEntryUpdatesTheSummary",
+      "Passed": true
+    },
+    {
+      "Desc": "AnEntryOfTheUpdatedListUpdatesItAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/app/1 --
+sha256:11dee368f570f26d48eae323246e291b
 {
   "results": [
     {

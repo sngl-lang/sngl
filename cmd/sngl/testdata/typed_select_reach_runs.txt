@@ -5,8 +5,8 @@
 # invoker an int where it takes a label: the test did not compile
 # (FuncLowering.CopyOf, keptCopies). One copy of a loop's is reached through
 # the copy's instance, `c.pick__state[1]` (nameInstance). Where a test still
-# cannot reach the node -- a copy bubbletea spliced into each element, a select
-# inside an instance a loop builds -- the build says so, naming #318, where the
+# cannot reach the node -- a copy bubbletea or gtk4 spliced into each element, a
+# select inside an instance a loop builds -- the build says so, naming #318, where the
 # invoker chose nothing or did not compile. android's test raises the event
 # with the value itself (valueTriggers), so only the nested case, through one
 # copy of a loop's, is refused there.
@@ -41,8 +41,8 @@ stderr 'loop.sngl:19:21: the test raises `change` through the target''s override
 sngl test --platform=fyne --language=go loop.sngl
 stdout '1 tests, 0 failures'
 
-sngl test --platform=gtk4 --language=go loop.sngl
-stdout '1 tests, 0 failures'
+! sngl test --platform=gtk4 --language=go loop.sngl
+stderr 'loop.sngl:19:21: the test raises `change` through the target''s override of the event.*#318'
 
 sngl test --platform=android --language=kotlin loop.sngl
 stdout '1 tests, 0 failures'
@@ -175,7 +175,7 @@ sha256:28ce2b45bd2fe25a58a4680ab68a50c3
   ]
 }
 -- testrun/bubbletea/go/unbound.sngl/main/1 --
-sha256:fe0ce4716550390282fbf9d0fa31b061
+sha256:c85760060fc51cb2857c0fe3350a83a3
 {
   "results": [
     {
@@ -185,7 +185,7 @@ sha256:fe0ce4716550390282fbf9d0fa31b061
   ]
 }
 -- testrun/fyne/go/loop.sngl/main/1 --
-sha256:cd8f7589c78316916427be5eef2ab135
+sha256:6a402ba4af33e10c42086985ba0fb2c0
 {
   "results": [
     {
@@ -204,18 +204,8 @@ sha256:975e56a7f05d68411fd4d625b60fde3f
     }
   ]
 }
--- testrun/gtk4/go/loop.sngl/main/1 --
-sha256:13128a3a5d0703957ab592dc66132502
-{
-  "results": [
-    {
-      "Desc": "SecondCopy",
-      "Passed": true
-    }
-  ]
-}
 -- testrun/gtk4/go/unbound.sngl/main/1 --
-sha256:5c08db330523af48b385f7ac974c0b0f
+sha256:0ceb62b074dd7d7e7326a9440c0c27fd
 {
   "results": [
     {
@@ -225,7 +215,7 @@ sha256:5c08db330523af48b385f7ac974c0b0f
   ]
 }
 -- testrun/html/none/loop.sngl/main/1 --
-sha256:fb5de5ac7971acbfec3814d2b103d6e9
+sha256:bb34093b436fe18456c1fce36d066253
 {
   "results": [
     {
@@ -235,7 +225,7 @@ sha256:fb5de5ac7971acbfec3814d2b103d6e9
   ]
 }
 -- testrun/html/none/unbound.sngl/main/1 --
-sha256:872440b87e43054c134f85fc68303c30
+sha256:360688fa8a3c4495cd25be7bed294b82
 {
   "results": [
     {

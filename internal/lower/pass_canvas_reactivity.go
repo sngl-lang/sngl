@@ -61,6 +61,19 @@ func mergeVarSets(a, b map[*ir.Var]bool) map[*ir.Var]bool {
 func injectCanvasRedraws(stmts []ir.Stmt, vars []*ir.Var, stateVars map[*ir.Var]bool, funcs *[]*ir.Func) {
 	var canvases []canvasEntry
 	collectCanvases(stmts, stateVars, &canvases)
+	// A canvas under a branch or a loop is in its render slot's function by
+	// now, flattened there by passReactivity, and a write anywhere in the
+	// owner changes what it draws as much as one a plain child's does. Only
+	// one painted through its protocol is redrawn from there: its redraw is
+	// a read of the node, which placement holds where every function reaches
+	// it, where html's names a local of the slot's render.
+	if funcs != nil {
+		for _, fn := range *funcs {
+			if fn != nil {
+				collectCanvases(fn.Block, stateVars, &canvases)
+			}
+		}
+	}
 
 	if len(canvases) == 0 {
 		return
@@ -110,6 +123,12 @@ func collectCanvases(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out *[]canvasE
 			collectCanvases(n.Failed, stateVars, out)
 		case *ir.ContextProvider:
 			collectCanvases(n.Children, stateVars, out)
+		case *ir.LocalVar:
+			if paintsThrough(n.CanvasNode) {
+				if deps := canvasStateVars(n.CanvasNode, stateVars); len(deps) > 0 {
+					*out = append(*out, canvasEntry{canvas: n.CanvasNode, deps: deps})
+				}
+			}
 		}
 	}
 }
@@ -174,6 +193,12 @@ func canvasStateVars(canvas *ir.NodeInst, stateVars map[*ir.Var]bool) map[*ir.Va
 		}
 	}
 	walk(canvas.Children)
+	// A canvas painted through its protocol holds its drawing as a handler.
+	for _, h := range canvas.Handlers {
+		if h.Func != nil && h.Func.Lowered.Paints {
+			walk(h.Func.Block)
+		}
+	}
 	return out
 }
 
@@ -206,6 +231,8 @@ func gatherStateVarRefs(e ir.Expr, stateVars map[*ir.Var]bool, out map[*ir.Var]b
 			gatherStateVarRefs(arm.Value, stateVars, out)
 		}
 	case *ir.Conversion:
+		gatherStateVarRefs(x.Operand, stateVars, out)
+	case *ir.CConvert:
 		gatherStateVarRefs(x.Operand, stateVars, out)
 	case *ir.Select:
 		gatherStateVarRefs(x.Operand, stateVars, out)
@@ -296,7 +323,7 @@ func gatherBlockMutations(stmts []ir.Stmt, stateVars map[*ir.Var]bool, out map[*
 }
 
 // injectIntoNodeHandlers walks the visual tree and injects CanvasRedrawStmt
-// into event handlers on non-canvas NodeInsts (e.g. button @click) and into a
+// into event handlers on NodeInsts (a button's @click, a canvas's own) and into a
 // boundary's own @error -- a window's included, which every window override
 // wraps its content in -- since a write there changes what a canvas draws as
 // much as a click does.
@@ -315,11 +342,14 @@ func injectIntoNodeHandlers(stmts []ir.Stmt, stateVars map[*ir.Var]bool, canvase
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if ir.IsShapeContainer(n) {
-				continue // canvas nodes themselves don't have user handlers
-			}
 			for i := range n.Handlers {
 				inject(n.Handlers[i].Func)
+			}
+			// A canvas's own @click writes what it draws as often as a
+			// button does; its children are the drawing, and hold no
+			// handler.
+			if ir.IsShapeContainer(n) {
+				continue
 			}
 		case *ir.ErrorBoundary:
 			if n.Handler != nil {

@@ -25,6 +25,7 @@ package toolchain
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -38,6 +39,8 @@ import (
 	"time"
 
 	"duckfam.us/sngl/codegen"
+	clang "duckfam.us/sngl/codegen/lang/c"
+	"duckfam.us/sngl/codegen/lang/golang"
 	"duckfam.us/sngl/internal/androidtc"
 	"duckfam.us/sngl/internal/gradle"
 	"duckfam.us/sngl/internal/headless"
@@ -65,7 +68,11 @@ func Unavailable(lang, platform string) string {
 		}
 		return ""
 	case "gtk4":
-		if reason := needGo(); reason != "" {
+		if lang == "c" {
+			if len(clang.Compilers()) == 0 {
+				return "no C compiler on PATH"
+			}
+		} else if reason := needGo(); reason != "" {
 			return reason
 		}
 		if _, err := exec.LookPath("pkg-config"); err != nil {
@@ -74,8 +81,25 @@ func Unavailable(lang, platform string) string {
 		if err := exec.Command("pkg-config", "--exists", "gtk4").Run(); err != nil {
 			return "gtk4 dev libraries not installed (pkg-config)"
 		}
-		if err := codegen.PlatformUnavailable("gtk4"); err != nil {
+		if err := codegen.PlatformUnavailable(platform); err != nil {
 			return err.Error()
+		}
+		return ""
+	case "win32":
+		// Go calls the same compilers, through cgo.
+		if lang == "go" {
+			if reason := needGo(); reason != "" {
+				return reason
+			}
+		}
+		// Which architecture the program is for is its manifest's to say,
+		// which a probe has not seen, so both MinGW compilers are wanted.
+		// Running it off Windows wants Wine besides, which the launch asks
+		// for: this asks only whether the program builds.
+		for _, cc := range clang.Matrix() {
+			if cc.Windows && cc.Path == "" {
+				return cc.Name + " not on PATH"
+			}
 		}
 		return ""
 	case "android":
@@ -162,6 +186,9 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 	}
 	defer token()
 
+	if lang == "c" {
+		return cBuild(dir)
+	}
 	switch platform {
 	case "bubbletea", "fyne", "gtk4":
 		return goTest(ctx, dir)
@@ -170,6 +197,10 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 			return goTest(ctx, dir)
 		}
 		return nodeCheck(ctx, dir, files)
+	case "win32":
+		// Cross-compiled for the target its manifest names, as C is.
+		_, err := golang.BuildModule(dir, filepath.Join(dir, "app"))
+		return "", err
 	case "android":
 		if _, err := os.Stat(filepath.Join(dir, "gradlew")); err != nil {
 			return directApk(dir)
@@ -177,6 +208,34 @@ func Build(ctx context.Context, files map[string][]byte, lang, platform string) 
 		return gradleTest(ctx, dir)
 	}
 	return "", fmt.Errorf("no host toolchain wired for platform %s", platform)
+}
+
+// cBuild compiles a C program with every compiler on the host that builds for
+// it, under each standard its output holds to.
+func cBuild(dir string) (string, error) {
+	var out strings.Builder
+	target := clang.TargetOf(dir)
+	built := false
+	for _, cc := range clang.Compilers() {
+		if cc.Target != target {
+			// A program is built by each compiler for the system its
+			// manifest names: a host program links host libraries, and a
+			// Windows one Windows'.
+			continue
+		}
+		built = true
+		for _, std := range clang.Standards {
+			o, err := cc.BuildDir(dir, filepath.Join(dir, "app-"+cc.Name+"-"+std), std)
+			out.WriteString(o)
+			if err != nil {
+				return out.String(), err
+			}
+		}
+	}
+	if !built {
+		return out.String(), &SkipError{Reason: "no C compiler on PATH builds for " + cmp.Or(target, "the host")}
+	}
+	return out.String(), nil
 }
 
 // directMu serializes gradle-free builds: they share the toolchain cache's
@@ -280,10 +339,18 @@ const runTimeout = time.Minute
 
 // Exec builds the generated files for one Go target into a program and runs
 // it once per run, in the display this process has, which for a program that
-// presents windows is the headless compositor its test binary runs inside.
+// presents windows is the headless compositor its test binary runs inside. A
+// platform building and running its own program (codegen.ProgramRunner) does
+// both for a target in another language, and for win32's in Go, which runs
+// under Wine.
 func Exec(ctx context.Context, files map[string][]byte, lang, platform string, runs []Run) (output string, ran []Ran, err error) {
-	if lang != "go" {
-		return "", nil, fmt.Errorf("no way to run a %s/%s program", lang, platform)
+	// win32 runs its program under Wine off Windows, in either language.
+	if lang != "go" || platform == "win32" {
+		runner, ok := codegen.LookupPlatform(platform).(codegen.ProgramRunner)
+		if !ok {
+			return "", nil, fmt.Errorf("no way to run a %s/%s program", lang, platform)
+		}
+		return execRunner(ctx, runner, files, lang, platform, runs)
 	}
 	dir, release, err := codegen.BuildDirForContent("fixture", files, lang, platform)
 	if err != nil {
@@ -329,6 +396,36 @@ func Exec(ctx context.Context, files map[string][]byte, lang, platform string, r
 		err := cmd.Run()
 		cancel()
 		ran = append(ran, Ran{Stdout: stdout.String(), Stderr: stderr.String(), Err: err})
+	}
+	return output, ran, nil
+}
+
+// execRunner is Exec through the platform's own build and run.
+func execRunner(ctx context.Context, runner codegen.ProgramRunner, files map[string][]byte, lang, platform string, runs []Run) (string, []Ran, error) {
+	dir, release, err := codegen.BuildDirForContent("fixture", files, lang, platform)
+	if err != nil {
+		return "", nil, err
+	}
+	defer release()
+	for name, data := range files {
+		if err := writeUnder(dir, name, data); err != nil {
+			return "", nil, err
+		}
+	}
+	prs := make([]codegen.ProgramRun, len(runs))
+	for i, r := range runs {
+		if r.Wayland {
+			return "", nil, fmt.Errorf("a %s/%s program speaks no Wayland", lang, platform)
+		}
+		prs[i] = codegen.ProgramRun{Args: r.Args, Stdin: r.Stdin}
+	}
+	output, prans, err := runner.RunProgram(ctx, dir, prs)
+	if err != nil {
+		return output, nil, err
+	}
+	ran := make([]Ran, len(prans))
+	for i, r := range prans {
+		ran[i] = Ran{Stdout: r.Stdout, Stderr: r.Stderr, Err: r.Err}
 	}
 	return output, ran, nil
 }

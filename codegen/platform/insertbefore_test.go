@@ -31,10 +31,16 @@ func TestEveryPlatformPairsInsertBefore(t *testing.T) {
 	asserted := map[string]bool{
 		"html": true, // codegen/platform/html/insertbefore_test.go
 	}
+	// A platform asking for placement answers the op with its components'
+	// #[gen.protocol(insertBefore)] functions rather than a translator, and
+	// passPlacement refuses a program reaching one that declares none, so it
+	// has no pairing to assert.
 	declares := func(gen codegen.PlatformGenerator) bool {
 		for _, lang := range codegen.Langs() {
-			if lt := codegen.LookupLang(lang); lt != nil && codegen.CapsOrNone(lt.LanguageIdentifier(), gen.PlatformIdentifier()).InsertBefore {
-				return true
+			if lt := codegen.LookupLang(lang); lt != nil {
+				if f := codegen.CapsOrNone(lt.LanguageIdentifier(), gen.PlatformIdentifier()); f.InsertBefore && !f.Placement {
+					return true
+				}
 			}
 		}
 		return false

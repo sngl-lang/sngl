@@ -509,6 +509,11 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// Its own declaration set from the first registration on: pass1 defers
 	// work as well as the bodies.
 	defer c.enterDeclSet()()
+	// Its c.links are its own, which pass1 finds and its load checks: a
+	// platform's runtime is C its package ships (sngl:x/c's link).
+	savedCLinks := c.cLinks
+	c.cLinks = nil
+	defer func() { c.cLinks = savedCLinks }()
 	c.pass1()
 
 	// PluralKey's Go runtime type is qualified (i18n.PluralKey) so IRTypeToGo
@@ -539,6 +544,7 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	// checks its bodies deferred are drained by finishDeclarations.
 	c.checkDeclarationBodies(stdlibPkg, nil)
 	c.finishDeclarations(stdlibPkg)
+	c.checkCLinks()
 
 	if _, ok := targetNamespaceName(pkgName); ok {
 		c.checkTargetComponentsConst(stdlibPkg)

@@ -785,7 +785,7 @@ type NativeTypeRef struct {
 	CgoC bool   // true → cgo type, false → Go-package type
 	Name string // "GtkLabel" or "fyne.Container"
 	// Bare renders Name as-is (no leading "*"/"C."), for named Go types that
-	// are already pointer-like (e.g. an opaque handle "gtk4rt.Handle").
+	// are already pointer-like (e.g. an opaque handle "cbind.Handle").
 	Bare bool
 }
 
@@ -810,7 +810,7 @@ func NativeNamed(name string) *Type {
 
 // NativeGoNamed returns an *ir.Type that renders as the bare Go type name
 // (no leading "*"), for already-pointer-like named types such as an opaque
-// handle (e.g. "gtk4rt.Handle").
+// handle (e.g. "cbind.Handle").
 func NativeGoNamed(name string) *Type {
 	return &Type{Kind: TypeNative, Meta: NativeTypeRef{CgoC: false, Name: name, Bare: true}}
 }

@@ -27,6 +27,11 @@ stdout 'ok   3 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok   3 tests, 0 failures'
 
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   3 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok   3 tests, 0 failures'
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -185,7 +190,7 @@ sha256:aa607bef905885175dbcb68dd9a08826
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:136d81aafe6df154b2f00fdfa48d74a2
+sha256:753e4b1e89a07bc20685deacc54bc0e8
 {
   "results": [
     {
@@ -199,7 +204,7 @@ sha256:136d81aafe6df154b2f00fdfa48d74a2
   ]
 }
 -- testrun/fyne/go/app.sngl/single/1 --
-sha256:fb199606fb826b81442b3d2765e69494
+sha256:d1ce5149af7558ab042c56062ad6a9a3
 {
   "results": [
     {
@@ -209,7 +214,7 @@ sha256:fb199606fb826b81442b3d2765e69494
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:55e6b8db496631f14e7087034e300a99
+sha256:c12c036ce86cd64dd7e71e3b93f1fa51
 {
   "results": [
     {
@@ -223,7 +228,7 @@ sha256:55e6b8db496631f14e7087034e300a99
   ]
 }
 -- testrun/gtk4/go/app.sngl/single/1 --
-sha256:c28fe1a614dd6360a1c4f66292d44f67
+sha256:74c81fc3231b5adb7fc414cc11052de5
 {
   "results": [
     {
@@ -233,7 +238,7 @@ sha256:c28fe1a614dd6360a1c4f66292d44f67
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:ba0fe1dd9bc75ba5cf6405760adf3412
+sha256:f4ebc22d02ccd387eca8b89a02ca5d82
 {
   "results": [
     {
@@ -247,7 +252,55 @@ sha256:ba0fe1dd9bc75ba5cf6405760adf3412
   ]
 }
 -- testrun/html/none/app.sngl/single/1 --
-sha256:6e023c20416760a151cc51065888a09e
+sha256:6a7a79d65de664695cebe933ae88cb83
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:90fe9fa5995426a84d51a9eacd976925
+{
+  "results": [
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    },
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/single/1 --
+sha256:7db6596dff2a8f08585ac0a71a9da897
+{
+  "results": [
+    {
+      "Desc": "WhereAnotherComponentLoopsTheId",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:9b66ad6df711e51f4646871824b87906
+{
+  "results": [
+    {
+      "Desc": "AfterTheLoopsRenderAgain",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfANestedLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/single/1 --
+sha256:1c103446d0c09ee5dc708d2355e2de8a
 {
   "results": [
     {

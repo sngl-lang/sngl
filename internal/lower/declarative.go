@@ -80,10 +80,13 @@ type declarativeState struct {
 	// registry, as it keeps one written at the body's top, so the next render
 	// destroys it.
 	nestedInstance func(n *ir.NodeInst) []ir.Stmt
+	// language is the build's (Features.language), which protocolSplice
+	// marshals for.
+	language string
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
-	st := &declarativeState{liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: caps.connect}
+	st := &declarativeState{language: caps.language, liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: programConnect(pkg, caps.connect)}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -91,6 +94,32 @@ func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
 		st.lifter = newLifter(pkg)
 	}
 	return st
+}
+
+// programConnect is connect, the platform's connect as the capabilities read
+// it (codegen.CapsFor, from the library as loaded with no program's options),
+// as the program's own load of the platform declares it (ir.TargetPackages).
+// The two are one declaration unless the program loaded its library under
+// options of its own -- gtk4's cgo -- and a splice must call into the
+// program's: the C conversions its body makes are the ones the program
+// emits, and the other load's sngl:x/c emitted a second `free`.
+func programConnect(pkg *ir.Package, connect *ir.Func) *ir.Func {
+	if pkg == nil || connect == nil {
+		return connect
+	}
+	for _, p := range ir.TargetPackages(pkg) {
+		if p.Path != connect.PkgPath() || p == connect.Pkg {
+			continue
+		}
+		for _, c := range p.Components {
+			if c.Gen != nil && c.Gen.TargetName != "" {
+				if fn := c.Protocol.Op(ir.ProtocolConnect); fn != nil {
+					return fn
+				}
+			}
+		}
+	}
+	return connect
 }
 
 // capturesPerIteration reports whether a handler body reads a binding that
@@ -368,7 +397,9 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 			// into a top-level Func + state struct. lifter.Lift appends the
 			// synthesized struct + Func to pkg, so we don't push h.Func into
 			// *funcs ourselves.
-			handlerArg = st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
+			cl := st.lifter.Lift(h.Func.Block, h.Func.Params, h.Func.Return, nil)
+			cl.Func.Lowered.ComponentEvent = h.ComponentEvent
+			handlerArg = cl
 		case st.inlineHandlers || capturesPerIteration(captures):
 			// Closure-supporting target whose handler body reads a
 			// per-iteration binding: emit the handler as an inline closure
@@ -428,7 +459,7 @@ func (st *declarativeState) made(n *ir.NodeInst) ir.Expr {
 	if n.Component == nil || n.Component.Protocol == nil || n.Component.Protocol.Create == nil {
 		return nil
 	}
-	made, err := protocolSplice(n.Component.Protocol.Create, nil)
+	made, err := protocolSplice(n.Component.Protocol.Create, nil, st.language)
 	if err != nil && st.err == nil {
 		st.err = fmt.Errorf("%s: %w", n.Name, err)
 	}
@@ -446,18 +477,25 @@ func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr
 	}
 	fn, args := n.Component.Protocol.Handler(event), []ir.Expr{node}
 	if fn == nil {
-		if st.connect == nil {
+		// The platform's connect is for an event the node declares. One it
+		// does not is a spliced component's, its two-way prop's change, which
+		// the component's own body raises and no signal of the node's does.
+		var declared *ir.EventDecl
+		for _, e := range n.Component.Events {
+			if e.Name == event {
+				declared = e
+			}
+		}
+		if st.connect == nil || declared == nil {
 			return nil
 		}
 		name := event
-		for _, e := range n.Component.Events {
-			if e.Name == event && e.Connects != "" {
-				name = e.Connects
-			}
+		if declared.Connects != "" {
+			name = declared.Connects
 		}
 		fn, args = st.connect, append(args, &ir.Literal{Type: ir.TypString, Value: name})
 	}
-	connect, err := protocolSplice(fn, args)
+	connect, err := protocolSplice(fn, args, st.language)
 	if err != nil && st.err == nil {
 		st.err = fmt.Errorf("%s: %w", n.Name, err)
 	}
@@ -472,16 +510,46 @@ func (st *declarativeState) connected(n *ir.NodeInst, event string, node ir.Expr
 // by the platform, since whether it is a method or a closure is the shape of
 // the code it writes, and a copy here would be a second body every pass
 // after this one rewrites.
-func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
-	body := exprBody(fn)
-	if body == nil && len(fn.Block) == 1 {
-		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
-			body = cs.Call
-		}
-	}
+//
+// A body calling a function of one call or return is that function's body in
+// turn, which is how a platform's protocol delegates to the package it
+// imports: gtk4's connect to the widget package's signalConnect, which is a
+// native or a C call by the package's option.
+//
+// language is the build's (Features.language): a call of a C declaration
+// with a spelling in it is called through that and not converted.
+func protocolSplice(fn *ir.Func, args []ir.Expr, language string) (ir.Expr, error) {
+	body := spliceBody(fn)
 	if body == nil {
 		return nil, fmt.Errorf("#[gen.protocol(%s)] %s is spliced where its op is made, so its body is one return or one call", fn.Protocol, fn.Name)
 	}
+	spliced := bindSplice(fn, body, args)
+	if c, ok := spliced.(*ir.Call); ok && c.Func != nil && c.Receiver == nil && c.Func.Foreign.Name == "" && c.Func.Intrinsic == "" && spliceBody(c.Func) != nil && len(c.Args) == len(c.Func.Params) {
+		inner := make([]ir.Expr, len(c.Args))
+		for i, a := range c.Args {
+			inner[i] = a.Value
+		}
+		spliced = bindSplice(c.Func, spliceBody(c.Func), inner)
+	}
+	return marshalSpliced(spliced, language)
+}
+
+// spliceBody is fn's one return value or one call, or nil.
+func spliceBody(fn *ir.Func) ir.Expr {
+	if body := exprBody(fn); body != nil {
+		return body
+	}
+	if len(fn.Block) == 1 {
+		if cs, ok := fn.Block[0].(*ir.CallStmt); ok {
+			return cs.Call
+		}
+	}
+	return nil
+}
+
+// bindSplice is a copy of body, fn's, with each of fn's parameters args
+// reaches bound to its argument.
+func bindSplice(fn *ir.Func, body ir.Expr, args []ir.Expr) ir.Expr {
 	bound := map[ir.Symbol]ir.Expr{}
 	for i, arg := range args {
 		bound[fn.Params[i]] = arg
@@ -500,10 +568,7 @@ func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
 		}
 		return n, nil
 	})
-	if err := marshalSpliced(spliced); err != nil {
-		return nil, err
-	}
-	return spliced, nil
+	return spliced
 }
 
 // childOp is the node op intrinsic (AppendChild, RemoveChild) of child under
@@ -511,7 +576,7 @@ func protocolSplice(fn *ir.Func, args []ir.Expr) (ir.Expr, error) {
 // #[gen.protocol(op)] function does with the two rides along as the last
 // operand; a component made through a create and declaring no append takes
 // no child.
-func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.CallStmt, error) {
+func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr, language string) (*ir.CallStmt, error) {
 	call := &ir.Call{
 		Type: ir.TypVoid,
 		Func: intrinsic,
@@ -536,7 +601,7 @@ func childOp(intrinsic *ir.Func, op ir.ProtocolOp, parent, child ir.Expr) (*ir.C
 		}
 		return stmt, nil
 	}
-	spliced, err := protocolSplice(fn, []ir.Expr{parent, child})
+	spliced, err := protocolSplice(fn, []ir.Expr{parent, child}, language)
 	if err != nil {
 		return stmt, fmt.Errorf("%s: %w", comp.Name, err)
 	}
@@ -619,7 +684,7 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 // appendChildStmt attaches a node to a parent expression: what the tree
 // attaches for it (attachRef).
 func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) ir.Stmt {
-	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child))
+	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child), st.language)
 	if err != nil && st.err == nil {
 		st.err = err
 	}
@@ -680,13 +745,10 @@ func (st *declarativeState) componentRootLocal(n *ir.NodeInst, id string) *ir.Lo
 // not a node.
 func (st *declarativeState) attachName(n *ir.NodeInst) string {
 	if st.instanceRecords && n != nil && n.Component != nil && hasRealComponentBody(n.Component) {
-		return n.ID + instanceRootSuffix
+		return n.ID + ir.InstanceRootSuffix
 	}
 	return n.ID
 }
-
-// instanceRootSuffix names the root binding beside an instance's own.
-const instanceRootSuffix = "__el"
 
 // lowerNodeForSlot emits the same create/setProp/attachHandler/appendChild
 // sequence passDeclarative produces for one NodeInst's subtree, then
@@ -710,7 +772,7 @@ func newDeclarativeStateForSlot(pkg *ir.Package, caps Features) *declarativeStat
 	// keeps handlers as closures -- which is Lambda held, not withheld --
 	// and whether an instance is a record is the target's answer rather than
 	// the slot's. The connect is the platform's wherever a node is built.
-	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative, connect: caps.connect})
+	st := newDeclarativeState(pkg, Features{Lambda: true, Reactivity: caps.Reactivity, Declarative: caps.Declarative, connect: caps.connect, language: caps.language})
 	st.inlineHandlers = true
 	// Seed the counter past every __nN already allocated package-wide
 	// — including those inside sibling slot Funcs created by earlier

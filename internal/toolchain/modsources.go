@@ -18,7 +18,8 @@ const modulePath = "duckfam.us/sngl"
 // HashModuleImports writes into h the source of every package of this module
 // that the Go files among files import, transitively: what a build of them
 // reads from the checkout rather than from the files themselves, so a record
-// keyed on files alone would outlive an edit to a runtime such as gtk4rt.
+// keyed on files alone would outlive an edit to a runtime such as gtk4's
+// wrappers.
 func HashModuleImports(h io.Writer, files map[string][]byte) error {
 	root, err := moduleRoot()
 	if err != nil {

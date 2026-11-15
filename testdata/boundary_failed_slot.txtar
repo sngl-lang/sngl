@@ -568,6 +568,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0;
     }
@@ -661,8 +664,8 @@ body { font-family: system-ui, sans-serif; }
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n3__new = __cf___child0({ __p0: state.seen__inst0 });
-              __n3 = __n3__new;
+              let __n3__made = __cf___child0({ __p0: state.seen__inst0 });
+              __n3 = __n3__made;
             }
             __inst1_next.push(__n3);
             __inst1_i = __inst1_i + 1;
@@ -705,4 +708,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2e602c5e074da48a7665a5562fa24f2b
 -- run/none/html --
-pass sha256:a4acddb98c906083778c3f360ff71682
+pass sha256:89f7b6b11100b5ee03437badd7bca278

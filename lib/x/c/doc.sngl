@@ -1,13 +1,35 @@
-// Package c is what a SNGL package says about the C library its `#[cnative]`
-// declarations name: the header a cgo preamble includes, and the flags it
-// compiles and links with.
+// Package c is what a SNGL package says about the C library its `#[c.native]`
+// declarations name: the header a language's C build includes, and the flags
+// it compiles and links with.
 //
 // The `c:` scheme writes one of these for each import -- `c:pkg:gtk4/gtk/gtk.h`
 // runs pkg-config for gtk4 and includes `<gtk/gtk.h>`, `c:lib/math.h`
 // includes `"lib/math.h"` -- and the program declares the functions it calls
-// beside it with `#[cnative]`. A package may also write one by hand.
+// beside it with `#[c.native]`. A package may also write one by hand.
+//
+// A link may name the shared library a language opens at run time
+// (`library`), and C sources beside the file writing it (`sources`), which
+// every language compiles into the program: a platform's runtime written once
+// in C.
 //
 // It also declares how a SNGL value crosses to C. An argument of a C function
 // is converted by its parameter's type: a `string` to a `str` the program owns
 // and gives back with `free`, an `int` or a `bool` to a C `int`, a `float` to
-// a `double`.
+// a `double`. A parameter written with a `#[c.native]` alias crosses as the
+// typedef it spells, and `utf16` crosses a string as the NUL-terminated
+// UTF-16 Win32 reads.
+//
+// What a C function returns crosses back the same way: an `int` or a `float`
+// as the number, a `bool` as a C `int` that is nonzero for true, and a
+// `string` as a NUL-terminated UTF-8 `const char *` the C function keeps,
+// which the call copies before anything else runs.
+//
+// A `func` parameter is a callback: C calls a function pointer and hands it a
+// `void *` back, the parameter `#[context]` marks, and a function taking one
+// may mark the parameter it is handed its release by `#[release]`. Neither is
+// passed by a caller. Where the C function declares the pointer as a typedef
+// of its own, as GLib's `GCallback` is, `#[type]` names it, which a program
+// written in C needs and Go does not. A `#[c.native]` struct declaring fields
+// is a C struct,
+// converted field by field, and a `ref` parameter is a pointer C fills, which
+// the call writes back to the variable `&x` named.

@@ -37,7 +37,7 @@ type Package struct {
 	Path string `json:",omitempty"`
 	// Library says the library wrote the package: a sngl: package, or what a
 	// library plugin generated (gtk4's `gir:` widgets, a `c:` link). Its
-	// declarations are the library's to vouch for -- a `#[cnative]` one names
+	// declarations are the library's to vouch for -- a `#[c.native]` one names
 	// a header the target's own preamble includes -- where a program's must
 	// say so itself.
 	Library bool `json:",omitempty"`
@@ -68,7 +68,11 @@ type Package struct {
 	// every ordinary build, where a window is the root and a component is
 	// only ever a component.
 	RootComponent string `json:",omitempty"`
-	Contexts      []*Context
+	// CCalls is how a Go build calls a C declaration: the Go language's `cgo`
+	// option. The build sets it on its copy, and lowering and the Go emitter
+	// read it there.
+	CCalls   CCalls `json:",omitempty"`
+	Contexts []*Context
 	// Symbols is the scope chain the package's names resolve through, an
 	// index over declarations a dump writes where they stand.
 	Symbols *SymbolTable `json:"-"`
@@ -95,7 +99,7 @@ type Package struct {
 	// them, and everything its imports reach, through Imports.
 	Schemes []*Scheme `json:"-"`
 	// CLinks are the C headers and flags the package's `c.link` directives
-	// name: what a cgo preamble includes and links for the `#[cnative]`
+	// name: what a cgo preamble includes and links for the `#[c.native]`
 	// declarations beside them.
 	CLinks []*CLink `json:",omitempty"`
 
@@ -182,6 +186,10 @@ type Package struct {
 	UsesI18n          bool
 	UsesAlert         bool
 	UsesErrorHandling bool
+	// NoTernary says lowering hoisted every ternary into statements, for a
+	// target that writes none, so nothing after it may put one back: the
+	// fold after lowering inlines no body still holding one.
+	NoTernary bool `json:",omitempty"`
 	// Teardown is the handler a platform calls when the program is going away,
 	// or nil where no effect declared an @unmount. Nothing guarantees it runs
 	// -- a killed process and a closed tab both skip it -- so what belongs in
@@ -534,11 +542,36 @@ type CLink struct {
 	System  bool
 	CFlags  []string
 	LDFlags []string
+	// PkgConfig are the packages pkg-config gives the flags of.
+	PkgConfig []string `json:",omitempty"`
+	// Library is the shared library the header declares, as a linker names
+	// it (`gtk-4`): what a language loading C at run time opens.
+	Library string `json:",omitempty"`
+	// Sources are the C files the link ships, read where it was checked,
+	// which each language compiles into the program.
+	Sources []CSource `json:",omitempty"`
+}
+
+// CSource is a C file a c.link ships: its name, which is the file's own
+// without the directory it sat in, since a header beside it is included by
+// that name, and what it holds.
+type CSource struct {
+	Name string
+	// Path is the file as the c.link names it, relative to the file the
+	// link is written in: what a wrapper package beside it includes it by
+	// (sngl tool cgogen).
+	Path string `json:",omitempty"`
+	Text string `json:"-"`
 }
 
 // ReachedCLinks is every c.link pkg and the packages it imports carry, each
 // once, in the order an import first reaches it.
-func ReachedCLinks(pkg *Package) []*CLink {
+func ReachedCLinks(pkg *Package) []*CLink { return ReachedCLinksExcept(pkg, nil) }
+
+// ReachedCLinksExcept is ReachedCLinks without the links of each package
+// skip reports, whose imports are still walked: a Go program's package
+// whose C a wrapper package calls, which links it in its own build.
+func ReachedCLinksExcept(pkg *Package, skip func(*Package) bool) []*CLink {
 	var out []*CLink
 	seen := map[*Package]bool{}
 	var walk func(p *Package)
@@ -547,13 +580,132 @@ func ReachedCLinks(pkg *Package) []*CLink {
 			return
 		}
 		seen[p] = true
-		out = append(out, p.CLinks...)
+		if skip == nil || !skip(p) {
+			out = append(out, p.CLinks...)
+		}
 		for _, imp := range p.Imports {
 			walk(imp.Pkg)
 		}
 	}
 	walk(pkg)
 	return out
+}
+
+// CalledCLinks are the c.links of pkg and its imports (ReachedCLinks), and of
+// each package whose C its code calls, among them a platform's own, whose
+// runtime the protocol calls call: a program imports none of its target's
+// packages, and what it calls of them is what placement wrote.
+func CalledCLinks(pkg *Package) []*CLink { return CalledCLinksExcept(pkg, nil) }
+
+// CalledCLinksExcept is CalledCLinks without the links of each package skip
+// reports (ReachedCLinksExcept).
+func CalledCLinksExcept(pkg *Package, skip func(*Package) bool) []*CLink {
+	out := ReachedCLinksExcept(pkg, skip)
+	add := func(p *Package) {
+		for _, l := range ReachedCLinksExcept(p, skip) {
+			if !slices.Contains(out, l) {
+				out = append(out, l)
+			}
+		}
+	}
+	_ = Walk(pkg, func(n Node) error {
+		switch x := n.(type) {
+		case *Call:
+			if x.Func != nil && x.Func.Foreign.Path == CPath {
+				add(x.Func.Pkg)
+			}
+		case *CConvert:
+			if x.Via != nil {
+				add(x.Via.Pkg)
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// TargetPackages is each package the target overrides pkg installs call
+// into: the platform's and language's packages as the program's check loaded
+// them, which the program imports none of. A target is loaded under the
+// program's options -- gtk4's cgo -- so it is this load, not the library's
+// own, whose declarations the program's code calls.
+func TargetPackages(pkg *Package) []*Package {
+	var out []*Package
+	for _, o := range pkg.Targets.Overrides {
+		for _, ovs := range []map[string]Override{o.Platform, o.Language} {
+			for _, ov := range ovs {
+				for _, st := range ov.Stmts {
+					_ = Walk(st, func(n Node) error {
+						if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Pkg != nil && !slices.Contains(out, c.Func.Pkg) {
+							out = append(out, c.Func.Pkg)
+						}
+						return nil
+					})
+				}
+			}
+		}
+	}
+	slices.SortFunc(out, func(a, b *Package) int { return strings.Compare(a.Path, b.Path) })
+	return out
+}
+
+// ReachedCCallbacks is the type of each callback a C function pkg, a package
+// it imports or a target package of it (TargetPackages) declares takes, each
+// type once, in the order an import first reaches it: what a translator
+// writes a dispatcher for. A function skip reports is left out: one a Go
+// wrapper calls, whose package holds its dispatchers.
+func ReachedCCallbacks(pkg *Package, skip func(*Func) bool) []*FuncSig {
+	var out []*FuncSig
+	reachedCFuncs(pkg, skip, func(fn *Func) {
+		if !slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CContext }) {
+			return
+		}
+		for _, p := range fn.Params {
+			if t := p.Type; !p.CContext && t != nil && t.Kind == TypeFunc && t.Sig != nil &&
+				!slices.ContainsFunc(out, func(s *FuncSig) bool { return FuncOf(s.Params, s.Return).Equal(t) }) {
+				out = append(out, t.Sig)
+			}
+		}
+	})
+	return out
+}
+
+// ReachesCHeld reports whether a C function ReachedCCallbacks would look at
+// takes or answers a value C holds (sngl:x/c's held), which a translator
+// registers as it registers a callback's closure.
+func ReachesCHeld(pkg *Package, skip func(*Func) bool) bool {
+	held := false
+	reachedCFuncs(pkg, skip, func(fn *Func) {
+		held = held || fn.ReturnCAlias.IsCHeld() || slices.ContainsFunc(fn.Params, func(p *Param) bool { return p.CAlias.IsCHeld() })
+	})
+	return held
+}
+
+// reachedCFuncs calls each with every C function, conversions aside, that
+// pkg, a package it imports or a target package of it declares, and skip
+// does not report.
+func reachedCFuncs(pkg *Package, skip func(*Func) bool, each func(*Func)) {
+	seen := map[*Package]bool{}
+	var walk func(p *Package)
+	walk = func(p *Package) {
+		if p == nil || seen[p] {
+			return
+		}
+		seen[p] = true
+		for _, fn := range p.Funcs {
+			if fn.Foreign.Path != CPath || fn.IsCCast() || skip != nil && skip(fn) {
+				continue
+			}
+			each(fn)
+		}
+		for _, imp := range p.Imports {
+			walk(imp.Pkg)
+		}
+	}
+	walk(pkg)
+	for _, p := range TargetPackages(pkg) {
+		walk(p)
+	}
 }
 
 func (i *Import) SymName() string { return i.Alias }
@@ -696,6 +848,28 @@ type Foreign struct {
 	// the checker rejects any reference to it. Only a foreign declaration can
 	// be one: SNGL's own syntax cannot express a type SNGL has no name for.
 	Unusable string
+	// C is the C type a `#[c.native]` struct is, or a `#[c.native(…, cast)]`
+	// function converts to, parsed from Name. Nil for a C function, whose
+	// Name is the identifier to call.
+	C *CType
+	// Also is the declaration's spelling in each other language that has
+	// one: today a Go wrapper's (`#[go.native]`) beside a C declaration's,
+	// which stays the primary, since every C pass reads it there. In finds
+	// either.
+	Also []Foreign `json:",omitempty"`
+}
+
+// In is the declaration's spelling in scheme, or nil where it has none.
+func (f *Foreign) In(scheme string) *Foreign {
+	if f.Name != "" && f.Scheme == scheme {
+		return f
+	}
+	for i := range f.Also {
+		if f.Also[i].Scheme == scheme {
+			return &f.Also[i]
+		}
+	}
+	return nil
 }
 
 // Func represents any function: top-level, type-attached method, or lambda.
@@ -724,7 +898,12 @@ type Func struct {
 	RecvTypeParams []TypeParam // receiver-level: ["T"] for func list[T].length()
 	Params         []*Param
 	Return         *Type
-	Block          []Stmt // type-checked statements (expression bodies become a single Return)
+	// ReturnCAlias is the `#[c.native]` alias the return type was written as
+	// (Param.CAlias's rule): what a C function hands back crosses as the C
+	// type the alias spells, or, for sngl:x/c's `held` written as an
+	// option's element, as the value a held parameter handed C.
+	ReturnCAlias *Alias `json:",omitempty"`
+	Block        []Stmt // type-checked statements (expression bodies become a single Return)
 	// PlatformOverrides holds the body each target implements this function
 	// with, keyed by platform. The checker collects every registered target's;
 	// ir.SpecializeForTarget swaps the chosen one into Block. Empty for a
@@ -746,6 +925,11 @@ type Func struct {
 	Purity Purity
 	Const  bool `json:",omitempty"`
 	IsTest bool
+	// Frees is set on a record's destroy (internal/lower/placerecords.go):
+	// as it returns, the function gives back its first parameter, a box,
+	// and what each of the box's fields kept. A language that collects its
+	// memory has nothing to do for it.
+	Frees bool `json:",omitempty"`
 	// Trigger is the event of its component a target's override says how a
 	// test raises, for a method written as that override
 	// (`func ui.select[T].change[platform](value)`); empty for every other
@@ -809,6 +993,26 @@ const (
 	ProtocolConnect ProtocolOp = "connect"
 	ProtocolSet     ProtocolOp = "set"
 	ProtocolOn      ProtocolOp = "on"
+	// ProtocolInsertBefore is a component's, beside its append.
+	ProtocolInsertBefore ProtocolOp = "insertBefore"
+	// ProtocolHandle, ProtocolAttach and ProtocolDetach are a build-target
+	// node's, as connect is, for a platform asking for placement.
+	ProtocolHandle ProtocolOp = "handle"
+	ProtocolAttach ProtocolOp = "attach"
+	ProtocolDetach ProtocolOp = "detach"
+	// ProtocolContents is a build-target node's too: the container a
+	// component built as a record renders into, where its body renders more
+	// than one node or a slot at its top.
+	ProtocolContents ProtocolOp = "contents"
+	// ProtocolAnchor is a build-target node's too: the hidden node a render
+	// slot keeps in its container, which its entries go before.
+	ProtocolAnchor ProtocolOp = "anchor"
+	// ProtocolRedraw is a component's: how a canvas is asked to paint its
+	// drawing again.
+	ProtocolRedraw ProtocolOp = "redraw"
+	// ProtocolFire is a component's, by the event: how a test fires the
+	// event as the host would (#[gen.fires]).
+	ProtocolFire ProtocolOp = "fire"
 )
 
 // NodeProtocol is the functions a platform declares to build an #[intrinsic]
@@ -818,14 +1022,34 @@ type NodeProtocol struct {
 	Create *Func
 	Append *Func
 	Remove *Func
+	// InsertBefore puts a child ahead of another of the component's.
+	InsertBefore *Func
 	// Connect is held by a build-target node, not by the component: one
 	// connects a handler to every widget its platform makes.
 	Connect *Func
+	// Handle, Attach and Detach are a build-target node's too: the type every
+	// node is held as, and how a node at the program's root is shown and
+	// taken away (passPlacement).
+	Handle *Func
+	Attach *Func
+	Detach *Func
+	// Contents makes the container a component's body renders into where
+	// it renders more than one node, or a slot, at its top.
+	Contents *Func
+	// Anchor is the node a render slot's entries go before, where the slot
+	// renders into a container it shares with nodes written around it.
+	Anchor *Func
+	// Redraw asks a canvas to paint its drawing again.
+	Redraw *Func
 	// Set is each prop's set, by the prop's name.
 	Set map[string]*Func
 	// On is each event's own connect, by the event's name, which a node of
 	// the component is connected through in place of the platform's.
 	On map[string]*Func
+	// Fire is how a test fires each event, by the event's name: the node and
+	// what the test hands the event, put where the host reads it, and the
+	// host's report raised (passPlacement).
+	Fire map[string]*Func
 }
 
 // Handler is the function declared to connect event, nil where none is.
@@ -834,6 +1058,14 @@ func (p *NodeProtocol) Handler(event string) *Func {
 		return nil
 	}
 	return p.On[event]
+}
+
+// Firer is the function declared to fire event, nil where none is.
+func (p *NodeProtocol) Firer(event string) *Func {
+	if p == nil {
+		return nil
+	}
+	return p.Fire[event]
 }
 
 // Setter is the function declared to set prop, nil where none is.
@@ -858,6 +1090,20 @@ func (p *NodeProtocol) Op(op ProtocolOp) *Func {
 		return p.Remove
 	case ProtocolConnect:
 		return p.Connect
+	case ProtocolInsertBefore:
+		return p.InsertBefore
+	case ProtocolHandle:
+		return p.Handle
+	case ProtocolAttach:
+		return p.Attach
+	case ProtocolDetach:
+		return p.Detach
+	case ProtocolContents:
+		return p.Contents
+	case ProtocolAnchor:
+		return p.Anchor
+	case ProtocolRedraw:
+		return p.Redraw
 	}
 	return nil
 }
@@ -879,6 +1125,10 @@ type FuncLowering struct {
 	// at all -- and the platforms that give a slot render a host-typed
 	// container parameter were giving those one as well.
 	SlotRender bool
+	// Paints says this is the handler a canvas painted through its
+	// protocol is handed its drawing as (lower's passCanvasPaint): what it
+	// reads is what the canvas redraws for.
+	Paints bool
 	// AsyncHoist says this is a computed passAsyncReactive synthesized for an
 	// async subexpression a view prop read: a zero-argument body returning it,
 	// lowered as a named async computed is. Said here rather than read off the
@@ -1032,7 +1282,7 @@ type Var struct {
 	// IsElementRef is a fact about a *reference* (ir.Ident) and a read of a
 	// program-written `#id` does not carry it -- only the `__nN` handles a
 	// lowering pass synthesizes do. Reading the reference is what left a
-	// `#[cnative]` method call emitting `C.gtk_progress_bar_pulse(bar)` against
+	// `#[c.native]` method call emitting `C.gtk_progress_bar_pulse(bar)` against
 	// a field the same file declares as `m.bar`.
 	//
 	// It answers *where the handle lives* and nothing about what may be read
@@ -1448,6 +1698,22 @@ type Output struct {
 	Run *EventHandler `json:"-"`
 }
 
+// CCalls is how a Go build calls a C declaration (Package.CCalls).
+type CCalls int
+
+const (
+	// CCallsWrapper calls the Go wrapper `sngl tool cgogen` marks beside a
+	// declaration (`#[go.native]` beside `#[c.native]`), and the declaration
+	// itself through cgo where it has none.
+	CCallsWrapper CCalls = iota
+	// CCallsDirect calls every C declaration from the program through cgo,
+	// whatever wrapper it has.
+	CCallsDirect
+	// CCallsPurego calls every C declaration through purego, opening the
+	// library its c.link names: no cgo at all.
+	CCallsPurego
+)
+
 // ReceiverParam is the surface name of the implicit method receiver (SNGL's
 // `this`). The checker binds the desugared receiver under this name so that
 // `this` written in a method body resolves to it. It is NOT reserved, so code
@@ -1485,7 +1751,31 @@ type Param struct {
 	// Transfer is what a native function does with the argument past the
 	// call, written `#[retains]` or `#[moves]`.
 	Transfer Transfer `json:",omitempty"`
+	// CAlias is the `#[c.native]` alias the parameter's type was written as,
+	// itself or as an option's element: `c.utf16`, `UINT`. Its type is
+	// expanded where it is written, so this is what remembers that the
+	// argument crosses as the C type the alias spells. The alias is shared
+	// by every clone (ClonePackage): its mark may run after the parameter is
+	// built, so the C type is read from it, not copied.
+	CAlias *Alias `json:",omitempty"`
+	// CContext marks the `void *` a `#[c.native]` function hands back to the
+	// callback it takes, written `#[c.context]`. No caller passes it: the
+	// translator does, from the closure the call converts.
+	CContext bool `json:",omitempty"`
+	// CRelease marks the parameter taking the function C calls with the
+	// context once it is done with the callback, written `#[c.release]`:
+	// GLib's GClosureNotify. No caller passes it either; the translator
+	// hands over its function releasing the closure.
+	CRelease bool `json:",omitempty"`
+	// CFuncType is the C function-pointer type a callback or a release
+	// parameter is, sngl:x/c's #[type]: what a language passing a function
+	// of its own there casts it to, which its SNGL type does not say.
+	CFuncType *CType `json:",omitempty"`
 }
+
+// CompilerPassed reports whether the translator, not a caller, passes p: a C
+// callback's context or release.
+func (p *Param) CompilerPassed() bool { return p.CContext || p.CRelease }
 
 // Transfer is what a callee does with an owned argument once it returns.
 type Transfer int
@@ -1541,6 +1831,17 @@ type StructDef struct {
 	// namespace is flat -- so passHoistBodyTypes renames the later one after
 	// its owner.
 	BodyOwner string `json:",omitempty"`
+	// RefBox says lower.NoRef synthesized this struct to box a `ref` for a
+	// language that has none: a value of it is a reference, which every copy
+	// shares. A language whose struct is a value, as C's is, holds a box
+	// through a pointer.
+	RefBox bool `json:",omitempty"`
+	// Counted says the box is one NoRef made for a `ref`, which every
+	// holder of it shares: a language that gives memory back counts its
+	// holders, and the last to let go gives it back with what it holds. A
+	// record (a RefBox placement makes) is given back by its destroy
+	// instead (Func.Frees).
+	Counted bool `json:",omitempty"`
 	// A declaration's members are looked up on the declaration, so this is
 	// where every type's methods live — struct, enum, unit and component
 	// alike.
@@ -1597,6 +1898,10 @@ type StructField struct {
 	// its SNGL name in the IR and on every host.
 	JSON string `json:",omitempty"`
 	HTTP string `json:",omitempty"`
+	// CAlias is the `#[c.native]` alias the field's type was written as, which
+	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
+	// rule, for the same reason.
+	CAlias *Alias `json:",omitempty"`
 }
 
 // EnumDef is a resolved enum type declaration.

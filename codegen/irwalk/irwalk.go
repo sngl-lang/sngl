@@ -138,8 +138,22 @@ func EvalExpr(r Renderer, e ir.Expr) string {
 		return r.Call(n)
 	case *ir.Conversion:
 		return r.Conversion(n)
+	case *ir.CConvert:
+		// Only a language that calls C renders one (codegen.CInterop), and
+		// lower.CMarshal writes one only for a call of a C function.
+		if c, ok := r.(interface{ CConvert(*ir.CConvert) string }); ok {
+			return c.CConvert(n)
+		}
+		panic(fmt.Sprintf("irwalk.EvalExpr: %T calls no C, and is handed a conversion to %s", r, n.To))
 	case *ir.Lambda:
 		return r.Lambda(n)
+	case *ir.Closure:
+		// Only a language with no closure of its own meets one: passLambda
+		// writes it where the language claims no `lambda`.
+		if c, ok := r.(interface{ Closure(*ir.Closure) string }); ok {
+			return c.Closure(n)
+		}
+		panic(fmt.Sprintf("irwalk.EvalExpr: %T writes closures itself, and is handed a lifted one", r))
 	case *ir.MatchExpr:
 		return r.MatchExpr(n)
 	default:
@@ -190,6 +204,10 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 	case *ir.Break:
 		return []string{r.BreakText(n)}
 	case *ir.Continue:
+		// A language whose statements end in a terminator says so.
+		if c, ok := r.(interface{ ContinueText() string }); ok {
+			return []string{c.ContinueText()}
+		}
 		return []string{"continue"}
 	case *ir.For:
 		return evalFor(r, n)
@@ -214,9 +232,10 @@ func evalStmtImpl(r Renderer, s ir.Stmt) []string {
 // which is what a host loop can express.
 func evalFor(r Renderer, n *ir.For) []string {
 	// A loop with no head has no expression to render, and asking for one
-	// would render the language's nil.
+	// would render the language's nil. A counted loop's sequence is never
+	// built, so its head is its bounds (ir.Counted) and not the call.
 	iter := ""
-	if n.Iter != nil {
+	if n.Iter != nil && n.IterKind != ir.IterCounted {
 		iter = EvalExpr(r, n.Iter)
 	}
 	child := r.Scoped(n.Key)
@@ -314,8 +333,20 @@ func EvalMutTarget(r Renderer, e ir.Expr) string {
 	case *ir.Ident:
 		return r.MutTargetIdent(n)
 	case *ir.Select:
+		// A language selecting through a pointer otherwise than a value
+		// says how.
+		if s, ok := r.(interface {
+			MutTargetSelect(n *ir.Select, operand string) string
+		}); ok {
+			return s.MutTargetSelect(n, EvalMutTarget(r, n.Operand))
+		}
 		return EvalMutTarget(r, n.Operand) + "." + r.MutTargetField(n)
 	case *ir.Index:
+		if x, ok := r.(interface {
+			MutTargetIndex(n *ir.Index, operand, idx string) string
+		}); ok {
+			return x.MutTargetIndex(n, EvalMutTarget(r, n.Operand), EvalExpr(r, n.Idx))
+		}
 		return EvalMutTarget(r, n.Operand) + "[" + EvalExpr(r, n.Idx) + "]"
 	default:
 		return EvalExpr(r, e)

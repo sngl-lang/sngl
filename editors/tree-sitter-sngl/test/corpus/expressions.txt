@@ -740,3 +740,29 @@ var v = import("c:stdio.h").FILE{}
         (string_literal)
         (identifier))))
   (anon_struct_literal))
+
+================
+An interpolation hands its format method arguments
+================
+
+var s = "{n, 16} {xs, sep="; ", base=2}"
+
+---
+
+(source_file
+  (var_declaration
+    (var_spec
+      (identifier_list
+        (identifier))
+      (string_literal
+        (string_interpolation
+          (identifier)
+          (integer_literal))
+        (string_interpolation
+          (identifier)
+          (named_arg
+            (identifier)
+            (string_literal))
+          (named_arg
+            (identifier)
+            (integer_literal)))))))

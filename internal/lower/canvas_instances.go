@@ -8,7 +8,11 @@ import (
 
 // passCanvasInstances makes each canvas under a `for` a component built at
 // run time, since a canvas's surface and draw routine are otherwise one field
-// and one method of its owner, shared by every copy.
+// and one method of its owner, shared by every copy. So too one under a
+// branch that is not painted through its protocol: its render slot made the
+// element and nothing drew into it, or on fyne named a widget nothing
+// declared. One painted through its protocol is held where its slot made it
+// (passPlacement), and redrawn from there.
 var passCanvasInstances = pass{
 	name:    "CanvasInstances",
 	enabled: hasInstanceRuntime,
@@ -22,10 +26,10 @@ func lowerCanvasInstances(pkg *ir.Package, _ Features, _ Options) error {
 	st := &slotChildSynth{pkg: pkg, reactive: collectReactiveVars(pkg)}
 	for _, c := range append([]*ir.Component(nil), pkg.Components...) {
 		if c != nil {
-			st.canvasesUnderLoops(c.Stmts, false)
+			st.canvasesUnderSlots(c.Stmts, slotNone)
 		}
 	}
-	st.canvasesUnderLoops(pkg.Body, false)
+	st.canvasesUnderSlots(pkg.Body, slotNone)
 	return nil
 }
 
@@ -44,28 +48,38 @@ func (st *slotChildSynth) synthesizeCanvas(n *ir.NodeInst) *ir.NodeInst {
 	return inst
 }
 
-func (st *slotChildSynth) canvasesUnderLoops(stmts []ir.Stmt, inLoop bool) {
+// slotKind is what a canvas is rendered under: nothing that renders it again,
+// a branch, or a loop, the last of which wins.
+type slotKind int
+
+const (
+	slotNone slotKind = iota
+	slotBranch
+	slotLoop
+)
+
+func (st *slotChildSynth) canvasesUnderSlots(stmts []ir.Stmt, under slotKind) {
 	for i, s := range stmts {
 		switch n := s.(type) {
 		case *ir.NodeInst:
-			if inLoop && ir.IsShapeContainer(n) {
+			if ir.IsShapeContainer(n) && (under == slotLoop || under == slotBranch && !paintsThrough(n)) {
 				stmts[i] = st.synthesizeCanvas(n)
 				continue
 			}
-			st.canvasesUnderLoops(n.Children, inLoop)
+			st.canvasesUnderSlots(n.Children, under)
 		case *ir.For:
-			st.canvasesUnderLoops(n.Body, true)
-			st.canvasesUnderLoops(n.Else, inLoop)
+			st.canvasesUnderSlots(n.Body, slotLoop)
+			st.canvasesUnderSlots(n.Else, max(under, slotBranch))
 		case *ir.If, *ir.Match:
 			for _, b := range ir.TransparentBlocks(n) {
-				st.canvasesUnderLoops(*b, inLoop)
+				st.canvasesUnderSlots(*b, max(under, slotBranch))
 			}
 		case *ir.ErrorBoundary:
-			st.canvasesUnderLoops(n.Children, inLoop)
+			st.canvasesUnderSlots(n.Children, under)
 		case *ir.ContextProvider:
-			st.canvasesUnderLoops(n.Children, inLoop)
+			st.canvasesUnderSlots(n.Children, under)
 		case *ir.SlotInst:
-			st.canvasesUnderLoops(n.Children, inLoop)
+			st.canvasesUnderSlots(n.Children, under)
 		}
 	}
 }

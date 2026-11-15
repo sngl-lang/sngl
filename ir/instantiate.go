@@ -40,6 +40,36 @@ func InstantiateFunc(fn *Func, bindings map[string]*Type) *Func {
 	return out
 }
 
+// CopyFunc is a copy of fn on InstantiateFunc's terms with no binding: its
+// body and what the body declares -- its parameters, its locals, a lambda's
+// -- are the copy's own, and everything the body refers to beyond that is
+// shared. A pass may rename or rewrite the copy's locals without writing
+// fn's, which a frozen library declaration needs.
+func CopyFunc(fn *Func) *Func {
+	if fn == nil {
+		return nil
+	}
+	c := newCloner()
+	c.shareDecls = true
+	c.own = ownDecls(fn)
+	c.deepNext = true
+	out := c.clone(reflect.ValueOf(fn)).Interface().(*Func)
+	_ = Walk(out, func(n Node) error {
+		switch x := n.(type) {
+		case *Call:
+			if x.Func == out {
+				x.Func = fn
+			}
+		case *Ident:
+			if x.Sym == Symbol(out) {
+				x.Sym = fn
+			}
+		}
+		return nil
+	})
+	return out
+}
+
 // InstantiateStmts copies stmts with bindings applied to every type in them,
 // as InstantiateFunc copies a function's body: what the statements declare is
 // copied, and everything they refer to beyond that is shared. It is how a

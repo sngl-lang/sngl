@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"os"
@@ -56,7 +57,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		main:    true,
 		quiet:   true, // suppress per-file print; only print artifact path
 		onTarget: func(target build.Target, _ *ir.Package, _, srcDir string) error {
-			finalName := binaryName(target.Options, target.Platform, multiTarget, isWindowsTarget(target))
+			finalName := binaryName(target.Options, target.Platform, multiTarget)
 			finalPath, err := filepath.Abs(filepath.Join(outDir, finalName))
 			if err != nil {
 				return err
@@ -67,22 +68,36 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			if !build.HasCommand(target, ir.BuiltinGenBuild) {
 				return fmt.Errorf("platform %q with language %q does not support building", target.Platform, target.Lang)
 			}
+			// The build answers the name of what it wrote: a build for
+			// Windows names its program .exe whatever it was asked for, as
+			// MinGW's compiler does, and only the language's build knows
+			// what it built for (c.buildProgram).
 			compile := func() (string, error) {
-				return "", build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath)
+				if err := build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath); err != nil {
+					return "", err
+				}
+				if _, err := os.Stat(finalPath); err != nil {
+					if _, exeErr := os.Stat(finalPath + ".exe"); exeErr == nil {
+						return finalName + ".exe", nil
+					}
+				}
+				return finalName, nil
 			}
 			// A script's build is answered from its record, so verify
 			// compiles nothing a record says built: the binary is there only
-			// under -update and -verify, which `[toolchain]` says.
+			// under -update and -verify, which `[toolchain]` says. The
+			// record keeps the name, which is all the answer says.
 			if testRuns != nil {
+				run := compile
 				compile = func() (string, error) {
-					return testRuns.AnswerTool(toolKey("build", target, args), srcDir, optSlice, func() (string, error) {
-						return "", build.RunCommand(target, ir.BuiltinGenBuild, srcDir, finalPath)
-					})
+					return testRuns.AnswerTool(toolKey("build", target, args), srcDir, optSlice, run)
 				}
 			}
-			if _, err := compile(); err != nil {
+			built, err := compile()
+			if err != nil {
 				return fmt.Errorf("build failed: %w", err)
 			}
+			finalPath = filepath.Join(filepath.Dir(finalPath), cmp.Or(built, finalName))
 			fmt.Println(finalPath)
 			return nil
 		},
@@ -90,8 +105,8 @@ func runBuild(cmd *cobra.Command, args []string) error {
 }
 
 // "-<platform>" is appended on a multi-target build so the targets don't
-// overwrite each other's binary.
-func binaryName(opts *ir.StructLit, platform string, multiTarget bool, windows bool) string {
+// overwrite each other's binary. A Windows build's ".exe" is its own.
+func binaryName(opts *ir.StructLit, platform string, multiTarget bool) string {
 	base := optionString(opts, "name")
 	if base == "" {
 		base = "app"
@@ -99,9 +114,6 @@ func binaryName(opts *ir.StructLit, platform string, multiTarget bool, windows b
 	base = sanitizeBinaryBase(base)
 	if multiTarget {
 		base = base + "-" + platform
-	}
-	if windows {
-		base += ".exe"
 	}
 	return base
 }
@@ -162,11 +174,6 @@ func isMultiTarget(args []string, cliLang, cliPlat string, optSlice []string) bo
 		return false
 	}
 	return len(targets) > 1
-}
-
-// No platform sets a goos option yet, so this is false until one does.
-func isWindowsTarget(target build.Target) bool {
-	return optionString(target.Options, "goos") == "windows"
 }
 
 func moveFile(src, dst string) error {

@@ -9,6 +9,7 @@ import (
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/build"
 	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
@@ -133,7 +134,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		if err != nil {
 			return nil, err
 		}
-		pkg = ir.ClonePackageFor(pkg, platform, lang)
+		pkg = prepare(pkg, platform, lang)
 		optCfg := &optimize.Config{
 			Platform: platform,
 			Language: lang,
@@ -151,7 +152,7 @@ func snapshotTarget(sourceFile, platform, lang string, width, height int, policy
 		if err != nil {
 			return nil, err
 		}
-		if err := lower.Lower(pkg, feats, lower.Options{Platform: platform}); err != nil {
+		if err := lower.Lower(pkg, feats, lowerOptions(platform, lang)); err != nil {
 			return nil, fmt.Errorf("lower: %w", err)
 		}
 		// Unconditional. It used to run only when the target had capabilities to lower
@@ -185,7 +186,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	if err != nil {
 		return nil, err
 	}
-	pkg = ir.ClonePackageFor(pkg, platform, lang)
+	pkg = prepare(pkg, platform, lang)
 	optCfg := &optimize.Config{
 		Platform: platform,
 		Language: lang,
@@ -203,7 +204,7 @@ func textSnapshotTarget(sourceFile, platform, lang string, width, height int, po
 	if err != nil {
 		return nil, err
 	}
-	if err := lower.Lower(pkg, feats, lower.Options{Platform: platform}); err != nil {
+	if err := lower.Lower(pkg, feats, lowerOptions(platform, lang)); err != nil {
 		return nil, fmt.Errorf("lower: %w", err)
 	}
 	// Unconditional. It used to run only when the target had capabilities to lower
@@ -237,9 +238,13 @@ func snapshotViaHTML(sourceFile, platform, lang string, width, height int, polic
 type BatchConfig struct {
 	Docs      []DocEntry // documents to snapshot
 	Platforms []string   // platforms to snapshot for
-	Width     int
-	Height    int
-	OutDir    string
+	// Langs is the language each platform is built in, the output block's;
+	// a platform it does not name is built in the first its generator
+	// supports (LangForPlatform).
+	Langs  map[string]string
+	Width  int
+	Height int
+	OutDir string
 	// Trust is what a build may run of the project's own code; nil refuses.
 	Trust *trust.Policy
 }
@@ -305,7 +310,10 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	var results []Result
 
 	for _, platform := range cfg.Platforms {
-		lang := LangForPlatform(platform)
+		lang := cfg.Langs[platform]
+		if lang == "" {
+			lang = LangForPlatform(platform)
+		}
 		langT := codegen.LookupLang(lang)
 		if langT == nil {
 			return nil, fmt.Errorf("lang %q not registered", lang)
@@ -323,7 +331,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				// blank. Both rewrite in place and both are target-specific, so a
 				// document snapshotted for several platforms gets a copy per
 				// platform -- the second otherwise lowers what the first left.
-				pkg := ir.ClonePackageFor(p.pkg, platform, lang)
+				pkg := prepare(p.pkg, platform, lang)
 				batchOptCfg := &optimize.Config{
 					Platform: platform,
 					Language: lang,
@@ -337,7 +345,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				if err != nil {
 					return nil, err
 				}
-				if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
+				if err := lower.Lower(pkg, batchFeats, lowerOptions(platform, lang)); err != nil {
 					return nil, fmt.Errorf("batch snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 				}
 				batchDocs = append(batchDocs, codegen.BatchDoc{
@@ -408,7 +416,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 				continue
 			}
 
-			pkg := ir.ClonePackageFor(p.pkg, platform, lang)
+			pkg := prepare(p.pkg, platform, lang)
 			batchOptCfg := &optimize.Config{
 				Platform: platform,
 				Language: lang,
@@ -422,7 +430,7 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err := lower.Lower(pkg, batchFeats, lower.Options{Platform: platform}); err != nil {
+			if err := lower.Lower(pkg, batchFeats, lowerOptions(platform, lang)); err != nil {
 				return nil, fmt.Errorf("snapshot %s/%s: lower: %w", p.entry.ID, platform, err)
 			}
 			if !batchFeats.LowersNothing() {
@@ -461,14 +469,38 @@ func GenerateBatch(cfg BatchConfig) ([]Result, error) {
 	return results, nil
 }
 
-// LangForPlatform returns the default language for a platform.
+// LangForPlatform returns the language a platform is snapshotted in: the
+// first it supports, which is its default where --lang is left out. html's
+// is the page with its script, which the gallery's interactive preview is.
 func LangForPlatform(platform string) string {
-	switch platform {
-	case "bubbletea", "fyne", "gtk4":
-		return "go"
-	case "android":
-		return "kotlin"
-	default:
-		return "js"
+	if platform != "html" {
+		if plat := codegen.LookupPlatform(platform); plat != nil {
+			if langs := plat.SupportedLangs(); len(langs) > 0 {
+				return langs[0]
+			}
+		}
 	}
+	return "js"
+}
+
+// prepare is pkg's copy for platform and lang, prepared as every build's
+// is: a snapshot runs no test, so the program it draws holds none
+// (build.PrepareTarget).
+func prepare(pkg *ir.Package, platform, lang string) *ir.Package {
+	pkg = ir.ClonePackageFor(pkg, platform, lang)
+	// No options, so no option it could refuse.
+	_ = build.PrepareTarget(pkg, build.Target{Platform: platform, Lang: lang})
+	return pkg
+}
+
+// lowerOptions is what a snapshot hands lower.Lower for platform in lang, as
+// a build does (build.LowerOptions): a pass asking which intrinsics the
+// platform writes itself, or which language it writes, was answered nothing.
+func lowerOptions(platform, lang string) lower.Options {
+	opts := lower.Options{Platform: platform, Language: lang}
+	if plat := codegen.LookupPlatform(platform); plat != nil {
+		opts.ClaimsIntrinsic = codegen.ClaimsIntrinsicFunc(plat)
+		opts.RendersNative = codegen.RendersNativeFunc(plat)
+	}
+	return opts
 }

@@ -19,17 +19,23 @@ handed. A run list flattened in `ir` was built and reverted, being a second
 representation of a tree. Where the cascade is resolved is each host's answer —
 CSS on html, Pango and Compose's `SpanStyle` merge natively on gtk4 and
 android, fyne flattens at render time because the tree is what a reactive
-program mutates, and bubbletea flattens at compile time because lipgloss
-returns a string with reset sequences in it.
+program mutates, bubbletea flattens at compile time because lipgloss
+returns a string with reset sequences in it, and win32's runtime walks the
+tree each time it lays out or draws a flow: a span is a window never shown,
+placed in its flow through the protocol as any node is, which the flow reads
+its words, link and look off (`testdata/win32_c_markup.txtar`,
+`TestSnapshotMarkup`).
 
 **A reactive `if` or `for` among spans** is a render slot only where a span
 can hold one, which is html's `display:contents` wrapper and what
 `#[gen.can(inlineSlots)]` says. Withheld, `slotFlows` makes the flow holding it
 the slot -- wrapped in a one-pass loop over a const, which re-renders its body
 on any state it reads -- and the `if` inside is an ordinary one: fyne builds
-the flow around it, gtk4 guards the runs in its markup with `gtk4rt.When` and
-refuses a `for` there, a label's markup being one expression
-(`testdata/markup_reactive_span.txtar`). Only the flow's own content is asked:
+the flow around it, and gtk4 builds its spans, the runtime's own objects
+(rt's `markup.c`), each holding its words and the Pango tags its style
+writes, which set the flow's label again whenever one changes, so a `for`
+there is as ordinary (`testdata/markup_reactive_span.txtar`,
+`cmd/sngl/testdata/markup_reactive_runs.txt`). Only the flow's own content is asked:
 an `if` holding a whole paragraph is its container's ordinary slot
 (`testdata/markup_flow_under_reactive_if.txtar`).
 
@@ -52,7 +58,7 @@ the light half. A kind the program sets wins on all five. An unset or constant
 palette is a literal by the time it is emitted -- `UnprovidedContext` folds the
 first, and an inlined body reads a provider's value in place of the context --
 so only a palette read from state reaches an emitter as a run-time value:
-`gtk4rt.Foreground`, `style.color`, fyne's `SetColor`, and a fallback chain on
+gtk4's span style (`sngl_span_set_style`), `style.color`, fyne's `SetColor`, and a fallback chain on
 bubbletea and android.
 
 **Text in the family is literal.** Every character of a `markup.text` renders

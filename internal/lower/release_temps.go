@@ -27,9 +27,12 @@ var passReleaseTemps = pass{
 		if !feats.Declarative {
 			blocks = append(blocks, viewBlocks(pkg)...)
 		}
+		afterApp := runReach(pkg)
 		for _, block := range blocks {
+			st.local = afterApp[block]
 			st.block(block)
 		}
+		st.local = false
 		st.packageVars()
 		if st.promote {
 			return lowerLibFuncs(pkg, feats, opts)
@@ -47,11 +50,49 @@ func ReleaseTemps(pkg *ir.Package) error {
 		return nil
 	}
 	st := newReleaseTemps(pkg)
+	afterApp := runReach(pkg)
 	for _, block := range reachedBlocks(pkg) {
+		st.local = afterApp[block]
 		st.block(block)
 	}
+	st.local = false
 	st.packageVars()
 	return nil
+}
+
+// runReach is each block the platform node's `@run` handler reaches: its
+// body, each function it calls, and theirs, with the lambdas in each. What
+// the handler does after `run` returns is after the application has torn
+// down, so a constant there is no application-lifetime value, which the
+// teardown would have released before it is read; it is made and released
+// where it is used, as any other temp is.
+func runReach(pkg *ir.Package) map[*[]ir.Stmt]bool {
+	out := map[*[]ir.Stmt]bool{}
+	if pkg == nil || pkg.Run == nil {
+		return out
+	}
+	seen := map[*ir.Func]bool{}
+	var visit func(f *ir.Func)
+	visit = func(f *ir.Func) {
+		if f == nil || seen[f] || f.Frozen || len(f.Block) == 0 {
+			return
+		}
+		seen[f] = true
+		out[&f.Block] = true
+		_ = ir.Walk(f, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.Lambda:
+				if x.Func != nil {
+					out[&x.Func.Block] = true
+				}
+			case *ir.Call:
+				visit(x.Func)
+			}
+			return nil
+		})
+	}
+	visit(pkg.Run)
+	return out
 }
 
 // packageVars releases what each owned package var holds at teardown, after
@@ -138,7 +179,21 @@ func reachedBlocks(pkg *ir.Package) []*[]ir.Stmt {
 		}
 	}
 	visit(pkg)
-	return append(out, c.out...)
+	// And each body a call in those leads to, as CMarshal follows them: a
+	// library helper a protocol function calls is in no list of a package's,
+	// and its C call's string was made and never released.
+	all := append(out, c.out...)
+	for i := 0; i < len(all); i++ {
+		_ = ir.Walk(*all[i], func(n ir.Node) error {
+			if call, ok := n.(*ir.Call); ok && call.Func != nil && call.Func.Foreign.Name == "" {
+				before := len(c.out)
+				fn(call.Func)
+				all = append(all, c.out[before:]...)
+			}
+			return nil
+		})
+	}
+	return all
 }
 
 // drawBlocks is each canvas's children, which passShapeDraw made the
@@ -176,7 +231,10 @@ type releaseTemps struct {
 	released map[*ir.Var]bool
 	// promote says a library release was called after LibFuncs ran.
 	promote bool
-	event   *ir.Type
+	// local says the block being rewritten may run after the application
+	// has torn down (runReach), so it holds no application-lifetime value.
+	local bool
+	event *ir.Type
 }
 
 func newReleaseTemps(pkg *ir.Package) *releaseTemps {
@@ -297,7 +355,7 @@ func (st *releaseTemps) stmt(s ir.Stmt) []ir.Stmt {
 	var pre []ir.Stmt
 	var temps []temp
 	for _, f := range c.found {
-		if st.constant(f.expr) {
+		if !st.local && st.constant(f.expr) {
 			*f.slot = st.application(f.expr)
 			continue
 		}
@@ -428,9 +486,9 @@ func callsLibrary(release *ir.Func) bool {
 }
 
 // constant reports whether e is built from constants: a literal of an owned
-// type whose fields are, or a call of a const function, or of sngl:x/c's
-// `cstring`, whose arguments are; a list or map literal of such values is
-// one too.
+// type whose fields are, a call of a const function whose arguments are, or a
+// conversion to C of a constant -- a C string copied from a literal; a list or
+// map literal of such values is one too.
 func (st *releaseTemps) constant(e ir.Expr) bool {
 	switch x := e.(type) {
 	case *ir.StructLit:
@@ -449,9 +507,11 @@ func (st *releaseTemps) constant(e ir.Expr) bool {
 			}
 		}
 		return true
+	case *ir.CConvert:
+		return constantArg(x.Operand)
 	case *ir.Call:
 		fn := x.Func
-		if fn == nil || x.Receiver != nil || x.ErrorMode != ir.ErrorNone || !(fn.Const || fn.Builtin == ir.BuiltinCString) {
+		if fn == nil || x.Receiver != nil || x.ErrorMode != ir.ErrorNone || !fn.Const {
 			return false
 		}
 		for _, a := range x.Args {
@@ -592,6 +652,11 @@ func (st *releaseTemps) eventType() *ir.Type {
 		}
 	}
 	visit(st.pkg)
+	// A program that reaches no boundary still raises a sngl:builtin
+	// `error`, which error.raise is declared on.
+	if def := ir.LookupIntrinsic("error.raise"); st.event == nil && def != nil {
+		st.event = def.Receiver
+	}
 	return st.event
 }
 
@@ -670,6 +735,10 @@ func (c *tempCollector) visit(slot *ir.Expr, borrowed bool) {
 		// it, or it out of one -- passes through; converted to anything else
 		// it is read.
 		c.visit(&x.Operand, borrowed && ir.Owned(x.Type) && ir.Owned(x.Operand.ExprType()) || !ir.Owned(x.Type))
+	case *ir.CConvert:
+		// Read: a string is copied, and anything else crosses as it is
+		// for the call.
+		c.visit(&x.Operand, true)
 	case *ir.Select:
 		c.visit(&x.Operand, true)
 	case *ir.Index:

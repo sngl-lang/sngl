@@ -422,12 +422,12 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                                                                                                                     |
-|----------|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| `bool`   | `true` or `false`.                                                                                                                              |
-| `int`    | Signed integer of the target's own width: 64 bits on Go and Kotlin, a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
-| `float`  | 64-bit IEEE-754 floating point.                                                                                                                 |
-| `string` | Immutable UTF-8 text.                                                                                                                           |
+| Type     | Description                                                                                                                                        |
+|----------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bool`   | `true` or `false`.                                                                                                                                 |
+| `int`    | Signed integer of the target's own width: 64 bits on Go, Kotlin and C, a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                                                                                                                    |
+| `string` | Immutable UTF-8 text.                                                                                                                              |
 
 A value whose width is part of what it means takes a sized numeric instead,
 `int64` or `uint8` and the rest, which every target holds at its width.
@@ -706,8 +706,9 @@ func wrapped() int {
 An explicit conversion is written `T(x)`, naming a type and an operand. The
 permitted conversions among primitives are:
 
-- to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum, or a
-  single-base unit;
+- to `int` — from `int`, `float` (truncating), `string`, `bool`, an enum
+  whose members carry no payload (the index of the member it holds, in the
+  order the enum declares them), or a single-base unit;
 - to `float` — from the same set as `int`;
 - to `bool` — from `bool` or `string`;
 - to a string-representable type — from `string` or from itself.
@@ -1279,7 +1280,17 @@ by bare name. A `func` written in a component body is a method of the
 component.
 
 A **function literal** (`FuncLit`) is an anonymous function written `func(params) => expr` or `func(params) [Type] { … }`; it is an ordinary expression of
-function type and may capture variables from the enclosing scope.
+function type and may capture variables from the enclosing scope. It
+captures the variable, not the value it held: a write the enclosing code
+makes after the literal is evaluated is what the literal reads, a write the
+literal makes is what the enclosing code reads, and every function value
+made from literals capturing one variable shares it, a copy of one
+included. A captured variable lives as long as a function value that
+captured it, past the end of the call that declared it.
+
+How deep calls may nest, and how deep a value may nest inside another, is
+limited by the target. A program past either limit stops; it never runs on
+with memory the overflow wrote.
 
 ### Purity
 

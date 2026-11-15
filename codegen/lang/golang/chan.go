@@ -39,7 +39,7 @@ func (gc *GoIRContext) MakeChanText(n *ir.Call) (string, bool) {
 	if n == nil || n.Func == nil || n.Func.Intrinsic != chanMakeIntrinsic {
 		return "", false
 	}
-	return "make(" + IRTypeToGo(n.Type) + ")", true
+	return "make(" + typeToGo(n.Type, gc.site()) + ")", true
 }
 
 // selectLines writes a real `select`, with each arm's body inlined.

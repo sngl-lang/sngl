@@ -1,0 +1,117 @@
+import build "sngl:build"
+import marks "sngl:internal/marks"
+import gen "sngl:x/gen"
+
+// C's keywords, through C23, which no declaration may take.
+const keywords = [
+    "auto",
+    "break",
+    "case",
+    "char",
+    "const",
+    "continue",
+    "default",
+    "do",
+    "double",
+    "else",
+    "enum",
+    "extern",
+    "float",
+    "for",
+    "goto",
+    "if",
+    "inline",
+    "int",
+    "long",
+    "register",
+    "restrict",
+    "return",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "struct",
+    "switch",
+    "typedef",
+    "union",
+    "unsigned",
+    "void",
+    "volatile",
+    "while",
+    "alignas",
+    "alignof",
+    "constexpr",
+    "nullptr",
+    "static_assert",
+    "thread_local",
+    "typeof",
+    "typeof_unqual",
+]
+
+// What the headers every program includes define as a macro, which no local
+// may take either: stdbool.h's and stddef.h's.
+const macros = [
+    "bool",
+    "true",
+    "false",
+    "NULL",
+    "offsetof",
+]
+
+// The `c` node of a build directive: `output { c { gtk4() } }`. Its props are
+// the build options every C target accepts, and its slot is the platforms
+// built with them.
+//
+// C has no closure, so a lambda is lifted to a function and the struct of
+// what it captures (passLambda). Nor has it a reference that outlives the
+// frame it points into, so a `ref` is a box (passNoRef). An enum is the
+// integer its member's position is, and a match the if chain it means.
+#[gen.can(
+    toggle,
+    ternary,
+    computed,
+    reactivity,
+    declarative,
+    inlineComponents,
+    viewStatements,
+)]
+#[gen.name("c")]
+#[gen.native("c")]
+component language(
+    // The compiler a build runs: `cc` where it is unset, or `$CC` where the
+    // environment names one.
+    const cc            string,
+    // The standard the program is compiled as, `c11` or `c17`; it compiles
+    // as either.
+    const std           string = "c17",
+    // Names a program's declaration is renamed away from in generated C: C's
+    // keywords and the macros its headers define.
+    const reservedWords list[string] = [...keywords, ...macros],
+    const platforms     ...component build.platform,
+) build.language {
+    gen.run(@run(dir, args) {
+        var cmd = launch(buildProgram(dir, dir + "/app", cc, std))
+        for var a = args {
+            cmd.push(a)
+        }
+        var code = gen.shell(cmd=cmd, dir=dir)
+        if code != 0 {
+            error.raise("exit status {code}", "exit")
+        }
+    })
+    gen.build(@build(dir, out) {
+        buildProgram(dir, out, cc, std)
+    })
+}
+
+// Compiles the program the build wrote to dir into the executable out with
+// cc under std, and returns its path: every .c file there, linking what its
+// sngl.build names. A program built for another system is compiled by the
+// compiler for it, whatever cc says, and a Windows one's path ends `.exe`.
+#[marks.intrinsic("c.buildProgram", build)]
+func buildProgram(dir string, out string, cc string, std string) string
+
+// The command running the program at path: itself, or under Wine where it is
+// a Windows program and the host is not Windows.
+#[marks.intrinsic("c.launch", build)]
+func launch(path string) list[string]

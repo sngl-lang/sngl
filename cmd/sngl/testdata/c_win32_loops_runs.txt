@@ -1,0 +1,432 @@
+# A loop of components renders on win32: each copy a keyed `for` keeps is a
+# component built at run time, which placement writes as a record -- a box
+# struct of its vars and nodes, its constructor the body, its setters and
+# teardown functions of the package taking it -- and a test reaches one copy
+# through the package's map from each copy's key to its node, which the
+# render that stamps the keys starts afresh, so a copy the render no longer
+# makes is null.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +2 tests, 0 failures'
+exists app.sngl.snapshots/dropped.png
+
+# A loop at the top of a component's body renders into the container the
+# platform's #[gen.protocol(contents)] makes, which the component's other
+# top nodes go into in the order written.
+
+sngl test --platform=win32 --language=c top.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# Three controls a copy, an input's value an effect writes: the effect's
+# mount reads the input its render slot made, which placement holds in a
+# package var beside the slot's local, and each copy's handler still reads
+# its own.
+
+sngl test --platform=win32 --language=c rows.sngl
+stdout 'ok +2 tests, 0 failures'
+
+# A method of a nested component the test calls through its instance is
+# handed no receiver: its state is the program's.
+
+sngl test --platform=win32 --language=c nested.sngl
+stdout 'ok +3 tests, 0 failures'
+
+# A copy's own method, called from its view and from a var's initializer,
+# is a function of the package's handed the record: the var it initializes
+# is set once the record holds what the method reads.
+
+sngl test --platform=win32 --language=c methods.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# A sngl:seq sequence held or passed is the list of what it counts, which is
+# what C holds an iter[T] as; one a loop walks where it is written is counted
+# and never built.
+
+sngl test --platform=win32 --language=c seq.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# The same programs in Go, which calls the runtime through the wrappers
+# `sngl tool cgogen` writes (lib/platform/win32/cgo) and serves its tests
+# over TCP as C's agent does, draw what C's drew: each snapshot is held to
+# the one the C run wrote.
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go top.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go rows.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go nested.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=go seq.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go methods.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component main ui.node {
+    var names = ["ann", "bob", "cy"]
+    var picked = ""
+    ui.vbox {
+        for var name = names {
+            ui.button #row(text=name, @click { picked = name })
+        }
+        ui.button #drop(text="Drop", @click { names = ["dee"] })
+    }
+}
+
+ui.window {
+    main()
+}
+
+func testAClickReachesItsCopy(t test.Test, c main) {
+    c.row[1].click()
+    t.assert(c.picked == "bob")
+    c.row[2].click()
+    t.assert(c.picked == "cy")
+}
+
+func testARenderReplacesTheCopies(t test.Test, c main) {
+    t.assert(c.row[2] != null)
+    c.drop.click()
+    t.assert(c.row[1] == null)
+    t.assert(c.row[2] == null)
+    c.row[0].click()
+    t.assert(c.picked == "dee")
+    t.snapshot("dropped")
+}
+
+-- top.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var seen = ""
+    var xs = ["a", "b"]
+    for var x = xs {
+        button #pick(text=x, @click { seen = seen + x })
+    }
+}
+
+func testClickInLoop(t Test, c main) {
+    c.pick[1].click()
+    c.pick[0].click()
+    t.assert(c.seen == "ba")
+}
+
+-- rows.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component main node {
+    var items = ["a", "b"]
+    var log = ""
+    vbox {
+        button #swap(text="swap", @click { items = ["c", "d", "e"] })
+        for var it = items {
+            button #tap(text=it, @click { log = it })
+            checkbox #box(label=it, @change(on) { log = "{it} {on}" })
+            input #field(value=it, @change(v) { log = "{it}={v}" })
+        }
+        text(value=log)
+    }
+}
+
+func testOneCopy(t Test, c main) {
+    c.tap[1].click()
+    t.assert(c.log == "b")
+    c.box[0].change(true)
+    t.assert(c.log == "a true")
+    c.field[1].change("x")
+    t.assert(c.log == "b=x")
+}
+
+func testOneCopyAfterTheLoopRendersAgain(t Test, c main) {
+    c.swap.click()
+    c.tap[2].click()
+    t.assert(c.log == "e")
+    c.box[1].change(true)
+    t.assert(c.log == "d true")
+    c.field[0].change(value="y")
+    t.assert(c.log == "c=y")
+}
+
+window {
+    main
+}
+
+-- nested.sngl --
+import . "sngl:ui"
+import . "sngl:test"
+
+component bar(label string) node {
+    var hits = 0
+    func reset() {
+        hits = 0
+    }
+    vbox {
+        button #btn(text=label, @click {
+            hits = hits + 1
+        })
+        text #shown(value="{label}: {hits}")
+        for var i = [1] {
+            button #row(text="r{i}", @click {
+                hits = hits + 10
+            })
+        }
+    }
+}
+
+component main node {
+    var greeting = "hello"
+    vbox {
+        bar #b(label="go")
+        text #t(value=greeting)
+    }
+}
+
+func testANestedComponentsStateAndNodes(t Test, c main) {
+    c.b.btn.click()
+    t.assert(c.b.hits == 1)
+    t.assert(c.b.shown.value == "go: 1")
+    c.b.reset()
+    t.assert(c.b.hits == 0)
+}
+
+func testANodesOneWayProp(t Test, c main) {
+    t.assert(c.t.value == "hello")
+    c.greeting = "bye"
+    t.assert(c.t.value == "bye")
+    t.assert(c.b.label == "go")
+}
+
+func testOneCopyOfALoopInANestedComponent(t Test, c main) {
+    c.b.row[0].click()
+    t.assert(c.b.hits == 10)
+}
+
+window {
+    main
+}
+-- seq.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+import seq "sngl:seq"
+
+func sum(xs iter[int]) int {
+    var s = 0
+    for var x = xs {
+        s = s + x
+    }
+    return s
+}
+
+component main ui.node {
+    var n = 5
+    var log = ""
+    ui.vbox {
+        ui.button #go(text="go", @click {
+            var evens = seq.step(0, n, 2)
+            var down = seq.step(n, 0, -2)
+            log = "{sum(evens)} {sum(down)} {sum(seq.count(n))} {sum(seq.range(2, n))} {sum([7, 8])}"
+        })
+    }
+}
+
+func testHeldAndPassed(t test.Test, c main) {
+    c.go.click()
+    t.assert(c.log == "6 9 10 9 15")
+}
+
+ui.window {
+    main()
+}
+-- methods.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component row(label string) ui.node {
+    var base = "<"
+    var shown = decorate()
+    func decorate() string {
+        return base
+    }
+    ui.button #b(text="{label}{decorate()}{shown}")
+}
+
+component main ui.node {
+    var names = ["ann", "bob"]
+    ui.vbox {
+        for var name = names {
+            row #r(label=name)
+        }
+    }
+}
+
+ui.window {
+    main()
+}
+
+func testAMethodReadsItsCopy(t test.Test, c main) {
+    t.assert(c.r[1].shown == "<")
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:4adab804ef8bf6ae30bc51449991e14f
+{
+  "results": [
+    {
+      "Desc": "AClickReachesItsCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ARenderReplacesTheCopies",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "dropped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAAByCAIAAACZawnaAAAC9klEQVR4nOzcz8riPBQHYBO8AenKvW68/wvwJlz1DsQ/K3HXfog0hJp+6tsqM/M+JzC00ZnVwzmRIb/54XDY7Xan06lt25lS4yqEUFXVZrMJ2+12uVyuVqsYY/epUj+spmnqut7v9/F8PlNF1SSqZrNZjHG9Xh+Px9i2LVVUTaIq2bqhSu+WNeECCyywwALrH4AVQugewQJrOlg6lo71kY5ljVnz7sH4Gxx/+Wb6/4niJlhgFWCFEHIidzqPm23bFje7N6PQKDQKjcLvjMJi5VPv/zfBAusNWMUxZ/b1Zp9R+NIoHGpIxf2hL+tYOtatY91P5b3nfDM1quImWGCVYfWIpOd88/FTo9AofGMUWiMXWGCBBdZfBCuE0DRN96rU2GqaJsYYq6qq65ottiaxdb9MsVgsgutfrn995PrX5XLpNh3eHd4d3h3e//DDe/egY+lYOpaOpWPpWDqWjqVjTdax5tfrVdqMtBlpM9JmpM1Im5E2I21G2oy0GWkz0makzUibkTYjbUbazDfSZtSYcpnidpkiv3LjosTTixJgvQqrh0kWw2MWg1E4wShM1wbzP++vqdJOvt/9AzqWjtV1rKFK3avXxor7+bOOpWP1O1ZeT6GQdJcE1nuw1M8KLLDA+hYsR6V0VHJ4H3t4z3/TFVWln4q97zz9i2D9XlhDIHr7xa8VN41Co7AwCp2xnLE+csZ6fWlXxXYF1lhYaqikzUibkTYjbUbajLQZaTPSZqTNSJuRNiNtRtqMtBlpM9JmpM1Im5E2I23m16bNgAUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBdZIWDqWjqVj6Vg6lo6lY+lYOpaOpWP9UR3rvwEARjAAhsyfL2UAAAAASUVORK5CYII="
+  }
+}
+-- testrun/win32/c/methods.sngl/main/1 --
+sha256:cf9f5c60d643e83fcba31bf107045ef9
+{
+  "results": [
+    {
+      "Desc": "AMethodReadsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/nested.sngl/main/1 --
+sha256:bb2b143aa6ea2cd4f2d79da6caba9da5
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/rows.sngl/main/1 --
+sha256:d66602eeaaf4578923396b133acd916c
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/seq.sngl/main/1 --
+sha256:9ae617b90b7fa353cd5f10672dfff24c
+{
+  "results": [
+    {
+      "Desc": "HeldAndPassed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/top.sngl/main/1 --
+sha256:1d908ac9d4c7cebed962fd823434daf2
+{
+  "results": [
+    {
+      "Desc": "ClickInLoop",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:267f97c9db67e15622b687f4f9e64cec
+{
+  "results": [
+    {
+      "Desc": "AClickReachesItsCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "ARenderReplacesTheCopies",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/methods.sngl/main/1 --
+sha256:1bde48869b442bbc975d7282ba66a989
+{
+  "results": [
+    {
+      "Desc": "AMethodReadsItsCopy",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/nested.sngl/main/1 --
+sha256:82bcbc590deb3b17bcf2dbc4369a86d8
+{
+  "results": [
+    {
+      "Desc": "ANestedComponentsStateAndNodes",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodesOneWayProp",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyOfALoopInANestedComponent",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/rows.sngl/main/1 --
+sha256:b430329a27c550eac8abc7ae6d09dd39
+{
+  "results": [
+    {
+      "Desc": "OneCopy",
+      "Passed": true
+    },
+    {
+      "Desc": "OneCopyAfterTheLoopRendersAgain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/seq.sngl/main/1 --
+sha256:4009d4e98340f2eb63e31fd0daac8b59
+{
+  "results": [
+    {
+      "Desc": "HeldAndPassed",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/top.sngl/main/1 --
+sha256:a5a319ffaf97ea74e66fce4103706f02
+{
+  "results": [
+    {
+      "Desc": "ClickInLoop",
+      "Passed": true
+    }
+  ]
+}

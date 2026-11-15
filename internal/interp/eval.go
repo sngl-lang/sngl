@@ -488,6 +488,9 @@ type Env struct {
 	entries []entryFrame
 	// origin is the scope this one is a Snapshot of, or nil.
 	origin *Env
+	// frame says this scope is a Frame of its parent, whose bindings it
+	// reads and writes through.
+	frame bool
 	// ended says this is the snapshot a lambda call ran in, and the call has
 	// returned (LambdaValue.Call).
 	ended bool
@@ -659,7 +662,7 @@ func (env *Env) Snapshot() *Env {
 // to a binding env holds lands in env.
 func (env *Env) Frame() *Env {
 	cp := env.scopeCopy(0)
-	cp.parent, cp.origin = env, nil
+	cp.parent, cp.origin, cp.frame = env, nil, true
 	return cp
 }
 
@@ -1215,6 +1218,8 @@ func (env *Env) Eval(e ir.Expr) (any, error) {
 		return env.evalCall(n)
 	case *ir.Conversion:
 		return env.evalConversion(n)
+	case *ir.CConvert:
+		return env.evalCConvert(n)
 	case *ir.ListLit:
 		return env.evalListLit(n)
 	case *ir.StructLit:
@@ -1596,6 +1601,12 @@ func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
 	if e.Type == nil {
 		return v, nil
 	}
+	// An enum's number is the index of the member it holds.
+	if e.Type.Kind == ir.TypeInt || e.Type.Kind == ir.TypeFloat {
+		if i, ok := enumIndex(e.Operand.ExprType(), v); ok {
+			v = i
+		}
+	}
 	switch e.Type.Kind {
 	case ir.TypeInt:
 		if r, ok := opeval.ConvertInt(v, e.Type.Bits, e.Type.Unsigned); ok {
@@ -1616,6 +1627,25 @@ func (env *Env) evalConversion(e *ir.Conversion) (any, error) {
 		return false, nil
 	}
 	return v, nil
+}
+
+// enumIndex is the index of the member v holds of the enum t, in the order
+// t declares them, which is what `int` and `float` of it are.
+func enumIndex(t *ir.Type, v any) (int, bool) {
+	if t == nil || t.Kind != ir.TypeEnum {
+		return 0, false
+	}
+	ed, ok := t.Decl.(*ir.EnumDef)
+	if !ok {
+		return 0, false
+	}
+	switch m := v.(type) {
+	case string:
+		return ed.MemberIndex(m), true
+	case EnumValue:
+		return ed.MemberIndex(m.Member), true
+	}
+	return 0, false
 }
 
 func (env *Env) evalListLit(e *ir.ListLit) (any, error) {
@@ -1791,6 +1821,7 @@ func (env *Env) evalBinary(e *ir.Binary) (any, error) {
 
 // binaryValues is e applied to its operands' values, left and right.
 func (env *Env) binaryValues(e *ir.Binary, left, right any) (any, error) {
+	left, right = enumOrdinals(e.Left, left, right), enumOrdinals(e.Right, right, left)
 	lu, leftIsUnit := left.(unitValue)
 	ru, rightIsUnit := right.(unitValue)
 
@@ -2819,9 +2850,15 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 		params = append([]*ir.Param{fn.RecvParam}, params...)
 	}
 	for {
+		// Each call has a scope of its own for its parameters and locals,
+		// which a closure it makes keeps after it returns, so a function
+		// value that captured a local reads and writes it for as long as
+		// it lives (testdata/closure_captures_variable.sngl). One returning
+		// nothing writes its caller's bindings in place; one returning a
+		// value writes a snapshot, carried back as it returns.
 		var execEnv *Env
 		if !isPure {
-			execEnv = env
+			execEnv = env.Frame()
 		} else {
 			execEnv = env.Snapshot()
 		}
@@ -2834,13 +2871,7 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 		if len(params) > 0 && params[0].Receiver && len(args) == len(params)-1 {
 			argOffset = 1
 		}
-		// A recursive call reuses the same Param symbols in the same env, so
-		// the previous frame's bindings still need saving and restoring.
-		savedVars := make(map[ir.Symbol]any, len(params))
 		for i, p := range params {
-			if v, ok := execEnv.vals[p]; ok {
-				savedVars[p] = v
-			}
 			argIdx := i - argOffset
 			if argIdx >= 0 && argIdx < len(args) {
 				execEnv.Set(p, bindArg(args[argIdx], p))
@@ -2858,14 +2889,6 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 					delete(execEnv.assigned, sym)
 				}
 				env.RebindFrom(execEnv)
-			} else {
-				for _, p := range params {
-					if orig, ok := savedVars[p]; ok {
-						execEnv.vals[p] = orig
-					} else {
-						delete(execEnv.vals, p)
-					}
-				}
 			}
 		}
 
@@ -2911,26 +2934,17 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 
 		if nested {
 			restoreVoid()
-			for _, sym := range localVars {
-				delete(execEnv.vals, sym)
-			}
 			return nestedResult, nil
 		}
 
 		if tailExpr == nil {
 			restoreVoid()
-			for _, sym := range localVars {
-				delete(execEnv.vals, sym)
-			}
 			return nil, nil
 		}
 
 		if isPure {
 			result, newArgs, isTail, err := execEnv.evalTailAware(tailExpr, fn)
 			restoreVoid()
-			for _, sym := range localVars {
-				delete(execEnv.vals, sym)
-			}
 			if err != nil {
 				return nil, err
 			}
@@ -2943,9 +2957,6 @@ func (env *Env) runUserFunc(fn *ir.Func, args []any) (any, error) {
 
 		result, err := execEnv.Eval(tailExpr)
 		restoreVoid()
-		for _, sym := range localVars {
-			delete(execEnv.vals, sym)
-		}
 		return result, err
 	}
 }
@@ -3666,4 +3677,30 @@ func (env *Env) refPresent(e ir.Expr) (bool, error) {
 		return env.refPresent(sel.Operand)
 	}
 	return true, nil
+}
+
+// enumOrdinals is v, a value of x, as its member's ordinal where the value it
+// is compared with is an int: a lowering that makes ints of an enum's
+// members (lower's NoEnum) writes the member it compares with as one, and a
+// fold after it reads the zero of an enum field as its first member's name,
+// so `Style{}.borderStyle != 0` was true.
+func enumOrdinals(x ir.Expr, v, other any) any {
+	name, ok := v.(string)
+	if _, isInt := other.(int); !ok || !isInt || x == nil {
+		return v
+	}
+	t := x.ExprType()
+	if t == nil || t.Kind != ir.TypeEnum || ir.PayloadEnum(t) != nil {
+		return v
+	}
+	ed, _ := t.Decl.(*ir.EnumDef)
+	if ed == nil {
+		return v
+	}
+	for i, m := range ed.Members {
+		if m.Name == name {
+			return i
+		}
+	}
+	return v
 }

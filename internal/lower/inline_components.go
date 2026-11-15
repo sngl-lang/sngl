@@ -2,6 +2,7 @@ package lower
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 
@@ -40,7 +41,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, placed: feats.Placement, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
 	cellOwners := implicitCellOwners(pkg)
 	st.readAbroad = handlesReadAbroad(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
@@ -373,6 +374,9 @@ type inlineCompState struct {
 	keep        map[*ir.Component]bool
 	reactive    map[*ir.Var]bool
 	platform    string
+	// placed is Features.Placement: every node is a protocol's, and a test
+	// reads an instance it reaches through the node that carries its id.
+	placed bool
 	// instanceState is Features.InstanceState: whether a component built at run
 	// time keeps its own state on this target.
 	instanceState bool
@@ -424,16 +428,47 @@ type hoistTarget struct {
 	// left standing, route mode skipped it for having one and emitted
 	// `s.Keep__inst0(…)` against a file that declared nothing of the name.
 	method bool
+	// comp is the component a method hoisted here is one of.
+	comp *ir.Component
 }
 
 func componentHoist(c *ir.Component) hoistTarget {
-	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true}
+	return hoistTarget{vars: &c.Vars, funcs: &c.Funcs, method: true, comp: c}
 }
 
 // packageHoist is the package's own declarations, where what a callee spliced
 // into the package body declares goes.
 func packageHoist(pkg *ir.Package) hoistTarget {
 	return hoistTarget{vars: &pkg.Vars, funcs: &pkg.Funcs}
+}
+
+// rehomeReceiver makes fn, a method of the component spliced into comp, a
+// method of comp: it reads the state the splice renamed onto comp, and a call
+// of it is made on comp's instance. Left a method of the spliced component, a
+// test build rooted at a component called `b.reset()` on `badge` itself
+// (passNoImplicitRecv hands a method its receiver's component), which C
+// writes as no value: test_reach_runs.txt's sitecall on gtk4 C and win32 C.
+func rehomeReceiver(fn *ir.Func, comp *ir.Component) {
+	if comp == nil || fn.Receiver == nil {
+		return
+	}
+	from, ok := fn.Receiver.Decl.(*ir.Component)
+	if !ok || from == comp {
+		return
+	}
+	t := comp.SymType()
+	fn.Receiver = t
+	params := map[ir.Symbol]ir.Symbol{}
+	fn.Params = slices.Clone(fn.Params)
+	for i, p := range fn.Params {
+		if p != nil && p.Receiver {
+			cp := *p
+			cp.Type = t
+			fn.Params[i] = &cp
+			params[p] = &cp
+		}
+	}
+	fn.Block = renameIdents(fn.Block, nil, params)
 }
 
 // dropReceiver makes fn an ordinary func rather than a method of a component
@@ -1306,6 +1341,8 @@ func walkExprIdents(e ir.Expr, visit func(*ir.Ident)) {
 		}
 	case *ir.Conversion:
 		walkExprIdents(n.Operand, visit)
+	case *ir.CConvert:
+		walkExprIdents(n.Operand, visit)
 	case *ir.Call:
 		if n.Receiver != nil {
 			walkExprIdents(n.Receiver, visit)
@@ -1396,6 +1433,8 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		if !hoist.method {
 			dropReceiver(clone)
 			st.demoted[clone] = true
+		} else {
+			rehomeReceiver(clone, hoist.comp)
 		}
 		carryPointsTo(st.pkg, ir.SlotReturnKey(f), ir.SlotReturnKey(clone))
 		*hoist.funcs = append(*hoist.funcs, clone)
@@ -1448,6 +1487,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Writes = renameVarList(fn.Writes, symRenames)
 	}
 	body := renameIdents(splicedBody(comp, typeArgs), renames, symRenames)
+	body = st.spliceLifted(body, varStart, funcStart, symRenames)
 	repointNodeHandles(body, symRenames)
 	st.pointSpliceCalls(comp, symRenames, body, (*hoist.funcs)[funcStart:])
 
@@ -1496,6 +1536,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		fn.Block = substituteParams(fn.Block, bindings)
 		fn.Reads = withSubstitutedReads(fn.Reads, fn.Block, bindings)
 		fn.Block = substituteVars(fn.Block, provided)
+		// A method that read only its component's props was pure, and bound
+		// to the caller's var it reads state: `picked() => chosen != "" ?
+		// chosen : "fig"`, left pure, was folded at the var's first value.
+		if fn.Purity == ir.PurityPure && readsVar(fn.Block) {
+			fn.Purity = ir.PurityReadonly
+		}
 	}
 	// After the props, as passInlinePure does: a provided value is the
 	// caller's expression.
@@ -1532,6 +1578,13 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// of one is made on (an openapi adapter's `query.refresh()`).
 	override := comp.PkgPath() != "" && comp.SpecializedFor != ""
 	carry := override || (comp.PkgPath() != "" && len(comp.Funcs) == 0 && st.handleRead(n.Handle))
+	// A placed program's instance with methods of its own is spliced with
+	// its methods hoisted and no node of its own, so a test reading it by
+	// its `#id` -- `c.always != null` -- reads the node it renders, which
+	// carries the id: placement holds a node by its id alone. Only one
+	// rendering a single node, which the id can name, and not one the
+	// program reads, whose handle is the instance its methods are called on.
+	carry = carry || st.placed && comp.PkgPath() == "" && ownMethods(comp) > 0 && singleNode(body) && !st.handleRead(n.Handle)
 	if carry && n.ID != "" {
 		var methods []any
 		for _, fn := range (*hoist.funcs)[funcStart:] {
@@ -1571,6 +1624,123 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	}
 
 	return body, nil
+}
+
+// readsVar reports whether block reads a var that is not const.
+func readsVar(block []ir.Stmt) bool {
+	found := false
+	_ = ir.Walk(block, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && !v.IsConst {
+				found = true
+				return ir.SkipAll
+			}
+		}
+		return nil
+	})
+	return found
+}
+
+// spliceLifted gives a splice its own copy of every function passLambda
+// lifted out of the component that captures state the splice renamed. A
+// lifted function is the package's, so every splice of the component shared
+// one, and its captures (ir.Package.LiftedCaptures) named the component's
+// declarations rather than the splice's: a handler's write of `language` was
+// a write of no var the program held, and passReactivity injected no update
+// after it (cmd/sngl/testdata/record_handler_prop_runs.txt on C). The copy's
+// captures name the splice's vars, and a lifted function another one's body
+// makes a closure of is copied with it.
+func (st *inlineCompState) spliceLifted(body []ir.Stmt, varStart, funcStart int, symRenames map[ir.Symbol]ir.Symbol) []ir.Stmt {
+	if len(st.pkg.LiftedCaptures) == 0 {
+		return body
+	}
+	copies := map[*ir.Func]*ir.Func{}
+	var copyOf func(f *ir.Func) *ir.Func
+	var repoint func(stmts []ir.Stmt) []ir.Stmt
+	// needs is whether f, or a lifted function its body makes a closure of,
+	// captures a renamed declaration.
+	needs := map[*ir.Func]bool{}
+	var needsCopy func(f *ir.Func) bool
+	needsCopy = func(f *ir.Func) bool {
+		if v, ok := needs[f]; ok {
+			return v
+		}
+		needs[f] = false
+		caps, lifted := st.pkg.LiftedCaptures[f]
+		if !lifted {
+			return false
+		}
+		found := false
+		for sym := range caps {
+			if _, ok := symRenames[sym]; ok {
+				found = true
+			}
+		}
+		// A function of the component's it calls is the splice's copy too,
+		// which reads the splice's props: `all.filter(func(f) => f !=
+		// picked())` called the component's own `picked`, whose prop read
+		// the build folded to the prop's default.
+		for _, s := range f.Block {
+			_ = ir.Walk(s, func(n ir.Node) error {
+				switch x := n.(type) {
+				case *ir.Closure:
+					if x.Func != nil && needsCopy(x.Func) {
+						found = true
+					}
+				case *ir.Call:
+					if _, ok := symRenames[x.Func]; ok && x.Func != nil {
+						found = true
+					}
+				}
+				return nil
+			})
+		}
+		needs[f] = found
+		return found
+	}
+	copyOf = func(f *ir.Func) *ir.Func {
+		if c, ok := copies[f]; ok {
+			return c
+		}
+		c := cloneFuncShallow(f)
+		c.Name = st.names.next(f.Name, "inst")
+		copies[f] = c
+		params := map[ir.Symbol]ir.Symbol{}
+		c.Params = make([]*ir.Param, len(f.Params))
+		for i, p := range f.Params {
+			cp := *p
+			c.Params[i] = &cp
+			params[p] = &cp
+		}
+		maps.Copy(params, symRenames)
+		c.Block = repoint(renameIdents(deepCloneStmts(f.Block), nil, params))
+		caps := map[ir.Symbol]string{}
+		for sym, name := range st.pkg.LiftedCaptures[f] {
+			if to, ok := symRenames[sym]; ok {
+				sym = to
+			}
+			caps[sym] = name
+		}
+		st.pkg.LiftedCaptures[c] = caps
+		st.pkg.Funcs = append(st.pkg.Funcs, c)
+		return c
+	}
+	w := newExprWalker(func(e ir.Expr) ir.Expr {
+		if c, ok := e.(*ir.Closure); ok && c.Func != nil && needsCopy(c.Func) {
+			c.Func = copyOf(c.Func)
+		}
+		return e
+	})
+	repoint = w.stmts
+	for _, v := range (*st.hoist.vars)[varStart:] {
+		if v.Init != nil {
+			v.Init = w.expr(v.Init)
+		}
+	}
+	for _, fn := range (*st.hoist.funcs)[funcStart:] {
+		fn.Block = repoint(fn.Block)
+	}
+	return repoint(body)
 }
 
 // calleeReadsInContent is body, the callee's spliced around the call site's
@@ -1988,6 +2158,21 @@ func rendersFocusStop(c *ir.Component, seen map[*ir.Component]bool) bool {
 		return !found
 	})
 	return found
+}
+
+// singleNode reports whether body renders one node and nothing else.
+func singleNode(body []ir.Stmt) bool {
+	n := 0
+	for _, s := range body {
+		switch s.(type) {
+		case *ir.NodeInst:
+			n++
+		case *ir.LocalVar, *ir.CallStmt:
+		default:
+			return false
+		}
+	}
+	return n == 1
 }
 
 // handleRead reports whether an identifier in the package reads h.

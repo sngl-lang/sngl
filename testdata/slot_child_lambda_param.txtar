@@ -163,7 +163,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								return nil
 							}().Destroy()
 						}
-						__n2__new := new__child0Instance(m, m.pick, func(v string) {
+						__n2__made := new__child0Instance(m, m.pick, func(v string) {
 							var at int = ChoiceLabeled__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, v)
 							if (at >= 0) && ([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value != m.pick) {
 								m.pick = []Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}[at].Value
@@ -172,7 +172,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 								}
 							}
 						})
-						__n2 = __n2__new
+						__n2 = __n2__made
 					}
 					__inst0_next[__key1] = __n2
 					__n2__el := __n2.Root
@@ -282,6 +282,9 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	if c.__n0.Selected != ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0) {
 		c.__n0.SetSelected(ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0))
@@ -303,4 +306,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:df6cc1071c4df70ade3528618fc1e9d2
+pass sha256:942ec45e82f05b26223b69483f636fed

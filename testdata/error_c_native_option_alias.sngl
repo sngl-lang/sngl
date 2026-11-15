@@ -1,0 +1,25 @@
+// An `option` crosses to C as a pointer, NULL for `null`: a string's, as an
+// `option[utf16]` does. C has no NULL number or bool, so an option of an
+// alias of one is refused, and a C function answers no alias of string,
+// since a string it answers is read as a `char *`.
+import c "sngl:x/c"
+
+c.link(include="h.h")
+
+#[c.native("UINT")]
+struct UINT = int
+
+#[c.native("BOOL")]
+struct BOOL = bool
+
+#[c.native("takeU")]
+func takeU(x option[UINT]) int // ERROR(check) "C has no NULL UINT"
+
+#[c.native("takeB")]
+func takeB(x option[BOOL]) int // ERROR(check) "C has no NULL BOOL"
+
+#[c.native("takeW")]
+func takeW(s option[c.utf16]) int
+
+#[c.native("giveW")] // ERROR(check) "answers a utf16"
+func giveW() c.utf16

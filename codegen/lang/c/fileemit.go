@@ -1,0 +1,196 @@
+package c
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strings"
+
+	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/irwalk"
+	"duckfam.us/sngl/ir"
+)
+
+// FileEmitter implements codegen.FileEmitter for C. A platform writes its
+// own code into it and declares the program's through Struct and Func; Close
+// writes the file in the order C reads it: the includes, the types, each
+// function's prototype, and then what was written.
+type FileEmitter struct {
+	sink   codegen.Sink
+	opts   codegen.FileOptions
+	ctx    *Context
+	body   bytes.Buffer
+	closed bool
+	// written is each function written, by its C name.
+	written map[string]bool
+}
+
+var _ codegen.FileEmitter = (*FileEmitter)(nil)
+
+func newFileEmitter(sink codegen.Sink, opts codegen.FileOptions) *FileEmitter {
+	ctx := NewContext(codegen.NewExprCtx(&ir.Package{}))
+	ctx.file.include(RuntimeHeader, false)
+	return &FileEmitter{sink: sink, opts: opts, ctx: ctx}
+}
+
+// NewFile is a C file of the program pkg, for a platform writing one.
+func NewFile(sink codegen.Sink, opts codegen.FileOptions, pkg *ir.Package, platform string) *FileEmitter {
+	fe := newFileEmitter(sink, opts)
+	fe.ctx.Ctx = codegen.NewExprCtx(pkg)
+	fe.ctx.Ctx.Platform = platform
+	return fe
+}
+
+// Prototype declares a function the platform writes itself, ahead of every
+// function the file writes.
+func (fe *FileEmitter) Prototype(proto string) {
+	fe.ctx.file.protos = append(fe.ctx.file.protos, proto)
+}
+
+// Context is the renderer the file's code is written through.
+func (fe *FileEmitter) Context() *Context { return fe.ctx }
+
+func (fe *FileEmitter) Write(p []byte) (int, error) {
+	if fe.closed {
+		return 0, io.ErrClosedPipe
+	}
+	return fe.body.Write(p)
+}
+
+// Prepend writes text ahead of everything written so far: the statics a
+// platform declares once it knows them all, which its functions read.
+func (fe *FileEmitter) Prepend(text string) {
+	rest := append([]byte(nil), fe.body.Bytes()...)
+	fe.body.Reset()
+	fe.body.WriteString(text)
+	fe.body.Write(rest)
+}
+
+func (fe *FileEmitter) EvalExpr(e ir.Expr) string   { return fe.ctx.EvalExpr(e) }
+func (fe *FileEmitter) EvalStmt(s ir.Stmt) []string { return fe.ctx.EvalStmt(s) }
+
+// RequireImport includes a header: `<name>` for one written in angle
+// brackets, `"name"` otherwise.
+func (fe *FileEmitter) RequireImport(path string) string {
+	if name, ok := strings.CutPrefix(path, "<"); ok {
+		fe.ctx.file.include(strings.TrimSuffix(name, ">"), true)
+	} else {
+		fe.ctx.file.include(path, false)
+	}
+	return path
+}
+
+// Struct defines sd's C struct.
+func (fe *FileEmitter) Struct(sd *ir.StructDef) { fe.ctx.defineStruct(sd) }
+
+// Func writes fn, a function of the program, with its prototype ahead of
+// every function the file writes.
+func (fe *FileEmitter) Func(fn *ir.Func) { fe.FuncAs(fn, funcName(fn), "") }
+
+// FuncAs writes fn under name, taking first, where it is not empty, the
+// parameter first declares: a record a platform's function reads its state
+// through.
+//
+// A function is written once by name: the program and its platform may each
+// load a library, and two loads declare one function twice.
+func (fe *FileEmitter) FuncAs(fn *ir.Func, name, first string) {
+	if fe.written[name] {
+		return
+	}
+	if fe.written == nil {
+		fe.written = map[string]bool{}
+	}
+	fe.written[name] = true
+	sig := fe.signatureAs(fn, name, first)
+	fe.ctx.file.protos = append(fe.ctx.file.protos, "static "+sig+";")
+	ctx := fe.ctx.WithReturn(fn.Return)
+	for _, p := range fn.Params {
+		ctx = ctx.WithLocal(p.Name)
+	}
+	fmt.Fprintf(&fe.body, "\nstatic %s {\n", sig)
+	block := fn.Block
+	if fn.Frees {
+		// A record's destroy ends in a return, which the box's giving back
+		// goes before.
+		if n := len(block); n > 0 {
+			if ret, ok := block[n-1].(*ir.Return); ok && ret.Value == nil {
+				block = block[:n-1]
+			}
+		}
+	}
+	for _, l := range irwalk.EvalBlock(ctx, block) {
+		fe.body.WriteString("\t" + l + "\n")
+	}
+	if fn.Frees {
+		for _, l := range ctx.frees(fn.Params[0]) {
+			fe.body.WriteString("\t" + l + "\n")
+		}
+	}
+	fe.body.WriteString("}\n")
+}
+
+// signature is fn's C declarator: its return type, its name and its
+// parameters, `void` where it takes none.
+func (fe *FileEmitter) signatureAs(fn *ir.Func, name, first string) string {
+	var params []string
+	if first != "" {
+		params = append(params, first)
+	}
+	for _, p := range fn.Params {
+		params = append(params, fe.ctx.typeName(p.Type)+" "+Local(p.Name))
+	}
+	if len(params) == 0 {
+		params = []string{"void"}
+	}
+	return fe.ctx.typeName(fn.Return) + " " + name + "(" + strings.Join(params, ", ") + ")"
+}
+
+// Err is the first construct the file's code holds that C does not yet
+// write.
+func (fe *FileEmitter) Err() error { return fe.ctx.Err() }
+
+func (fe *FileEmitter) Close() error {
+	if fe.closed {
+		return nil
+	}
+	fe.closed = true
+	if err := fe.ctx.Err(); err != nil {
+		return err
+	}
+	w, err := fe.sink.Create(fe.opts.Name)
+	if err != nil {
+		return err
+	}
+	var b strings.Builder
+	if fe.opts.Source != "" && fe.opts.Platform != "" {
+		fmt.Fprintf(&b, "/* Code generated by sngl (%s) from %s; DO NOT EDIT. */\n\n", fe.opts.Platform, fe.opts.Source)
+	}
+	for _, inc := range fe.ctx.file.includes {
+		b.WriteString("#include " + inc + "\n")
+	}
+	if types := fe.ctx.file.typeSection(); types != "" {
+		b.WriteString("\n" + types)
+	}
+	f := fe.ctx.file
+	if len(f.protos) > 0 {
+		b.WriteString("\n" + strings.Join(f.protos, "\n") + "\n")
+	}
+	if len(f.helpers) > 0 {
+		b.WriteString("\n" + strings.Join(f.helpers, "\n"))
+	}
+	if _, err := io.WriteString(w, b.String()); err != nil {
+		w.Close()
+		return err
+	}
+	if _, err := fe.body.WriteTo(w); err != nil {
+		w.Close()
+		return err
+	}
+	for _, l := range f.lifted {
+		if _, err := io.WriteString(w, "\n"+l); err != nil {
+			w.Close()
+			return err
+		}
+	}
+	return w.Close()
+}

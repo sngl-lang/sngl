@@ -42,8 +42,17 @@ if [ -n "$go_files" ]; then
 		printf '%s\n' "$unformatted"
 		fail "gofmt would reformat staged Go (above)" "gofmt -w $(printf '%s ' $unformatted)"
 	fi
-	pkgs=$(printf '%s\n' "$go_files" | xargs -n1 dirname | sort -u |
+	dirs=$(printf '%s\n' "$go_files" | xargs -n1 dirname | sort -u |
 		while read -r d; do [ -d "$d" ] && printf './%s\n' "$d"; done)
+	# A package whose build constraints exclude every file on this host (the
+	# win32 cgo wrappers) is one `./...` skips, so verify never fixes it; named
+	# outright, `go fix` refuses it. A package that does not parse still has
+	# GoFiles and stays in.
+	pkgs=""
+	if [ -n "$dirs" ]; then
+		# shellcheck disable=SC2086
+		pkgs=$(go list -e -f '{{if or .GoFiles .CgoFiles .TestGoFiles .XTestGoFiles}}{{.Dir}}{{end}}' $dirs)
+	fi
 	if [ -n "$pkgs" ]; then
 		# `go fix -diff` exits non-zero when it has a diff *and* when it cannot
 		# build, so the output is what tells the two apart: a rewrite it would

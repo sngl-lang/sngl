@@ -3,8 +3,8 @@
 # lowering splices into the target's node ops, so the GTK natives they call are
 # stubbed and handed the `c.str`s CMarshal converts their strings to. Each is
 # freed by ReleaseTemps after the call that read it -- a reactive label's text
-# on every write, a link button's uri and its constructor's "" -- and a
-# switch's notify is connected through gtk4rt, which makes none.
+# on every write, a link button's uri and its constructor's "" -- and each
+# signal's name, which GLib's connect is handed as one.
 
 env PATH=
 
@@ -20,7 +20,7 @@ import gtk "gir:Gtk-4.0"
 
 output {
     go {
-        gtk4(gir="builtin", cgo=true)
+        gtk4(gir="builtin")
     }
 }
 

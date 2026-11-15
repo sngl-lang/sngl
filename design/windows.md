@@ -289,7 +289,7 @@ exception, naming a declaration rather than holding a value.
 `gtk4(@run(args, run) { … })`. A handler is not a value, so the const rule
 does not reach it, and its body is program code: `enterFuncBody` resets
 `outputDepth`, or a call in it resolved as a target at the next level down.
-The event is what says a platform supports it: gtk4 and fyne declare it, and
+The event is what says a platform supports it: gtk4, fyne and win32 declare it, and
 on html or android it is an event the node does not declare. The build
 (`internal/build/run.go`) makes the handler a function of the program's,
 `ir.Package.Run`, so every lowering pass reads it as it reads any other --
@@ -298,41 +298,73 @@ builds the tree first, its first settle included, so a write in the handler
 updates widgets that exist; then calls the function with the command line and
 a `run` that presents the window and runs the loop. A handler that never calls
 it gets the loop with no window presented (`RunWindows(false)` in
-`gtk4rt` and `fynelayout`), which is how a status bar launched by i3 starts.
+`fynelayout`, `sngl_gtk_run` with the hold in place on gtk4), which is how a
+status bar launched by i3 starts.
 The application tears down before `run` returns, and a second `run` is
 refused (design/ownership.md, *The application ends before the process
 does*; `golang.EmitAppStart` writes both hosts' part of `main`).
 `golang.ModelCallee` spells the call, since a handler that touches no state is
-emitted free. gtk4's cgo mode has no entry point to wrap and refuses it.
+emitted free.
 `testdata/platform_run_handler.txtar` is the code and
-`testdata/platform_run_handler_runs.txtar` runs it.
+`testdata/platform_run_handler_runs.txtar` runs it. win32's C `main` is its
+generator's (`appMain`): the runtime holds what the build attaches hidden,
+telling each window's `visible` so, until the handler's `run` presents it,
+and a loop started with nothing shown ends only as the program quits
+(`testdata/win32_c_run_handler_runs.txtar`). gtk4's entries, C's and
+Go's, are win32's over GTK (`codegen/platform/gtk4`'s `appMain` and
+`goRunMain`): `sngl_gtk_hold` makes GTK ready and the tree is built before
+the loop, the windows attached with no GtkWindow made yet; the loop
+`sngl_gtk_run` starts makes each one, and a hold still in place as it does
+reports each window's `visible` false, which `run`'s `sngl_gtk_present` lifts
+first. `gtk4.quit()` ends the loop (`testdata/gtk4_run_handler_runs.txtar`).
+
+**A window's `@key` on gtk4 takes nothing.** The runtime's key controller
+hears the key (`rt/keys.c`), but C hands a callback no
+function to call, so the Toplevel's `@key` passes no `stop`: the override
+reads the key off the runtime while its handler runs (`sngl_key_heard`,
+`sngl_key_held`) and hands the program's handler a stop that is the runtime's
+(`sngl_key_stop`), which also calls a test's own. A test presses a key
+through `sngl_toplevel_key` (`cmd/sngl/testdata/gtk4_test_runs.txt`,
+`keys.sngl`).
 
 **The package body is the application's view, and a window is a component.**
 Every node at the root of the package body is `lower.AppendChild(__app, n)`
 (`ir.AppParent`, written by passDeclarative), and a render slot there is
 handed the application as its parent; what attaching to it means is each
-platform translator's answer. On gtk4 and fyne `ui.window` is overridden by
-the platform's `Toplevel` primitive (`title`, `:visible`, `@closed`, a rest
-slot of `ui.node`), and attaching a Toplevel creates its window: `gtk4rt.App`
-and `fynelayout.App` are what a slot is handed, and the box calls a slot makes
-(`BoxAppend`/`BoxRemove`/`InsertBefore`/`SlotAnchor`, fyne's `InsertBefore`,
-`Remove`, `SlotAnchor`) answer for the application when handed it. A Toplevel's
-handle is the box its content is appended to, so a child and a slot inside a
-window are ordinary box operations. BuildUI -- what a test and a snapshot take
--- shows the first Toplevel's content (`gtk4rt.ToplevelWindow`); `main` builds
-the tree, its first settle included, and runs `RunWindows(show)`.
+platform translator's answer. On fyne `ui.window` is overridden by the
+platform's `Toplevel` primitive (`title`, `:visible`, `@closed`, a rest slot
+of `ui.node`), and attaching a Toplevel creates its window: `fynelayout.App`
+is what a slot is handed, and the box calls a slot makes (`InsertBefore`,
+`Remove`, `SlotAnchor`) answer for the application when handed it. A
+Toplevel's handle is the box its content is appended to, so a child and a slot
+inside a window are ordinary box operations. BuildUI -- what a test and a
+snapshot take -- shows the first Toplevel's content; `main` builds the tree,
+its first settle included, and runs `RunWindows(show)`. A placed platform's
+attach and detach are its `#[gen.protocol(attach)]` and `detach`.
 
 **A test whose root component holds a window shows that window too.** A test
 build roots at a component, not the package body, so the window is a node of
 it rather than an application child; BuildUI used to append its box to a box
 of the harness's own, in a window of its own -- on gtk4 a bare title bar over
 content given no height, and on fyne nothing, a Toplevel being no container
-fyne draws (#299). Now BuildUI hands the first Toplevel among the root's nodes
-to `gtk4rt.ToplevelWindow`, and fyne's returns its `Container`, as an
-application root does. A snapshot makes a window per call and destroys it
-after, so `ToplevelWindow` forgets that window and its bar on `destroy`: the
-next one builds its own, where the toplevel used to keep writing titles and
-menus to the destroyed one. `cmd/sngl/testdata/test_root_window_snapshot_runs.txt`.
+fyne draws (#299). Now fyne's BuildUI returns the first Toplevel's
+`Container` among the root's nodes, as an application root does.
+`cmd/sngl/testdata/test_root_window_snapshot_runs.txt`.
+
+On gtk4, placed, a root component renders its windows into the
+container `#[gen.protocol(contents)]` makes (`Contents`), as it renders any
+nodes at its top. A window is no child of a box: the runtime's
+`sngl_box_append` and `sngl_box_insert_before` attach a toplevel they are
+handed to the application, and the box keeps it, so the box's own attach --
+a test's, or the package body's -- shows its windows in no wrapper, and its
+remove and detach take them off screen. A snapshot draws the first window
+attached (`cmd/sngl/testdata/gtk4_test_runs.txt`,
+`windows.sngl`): the window itself, its header bar and all, made then where a
+test's build attached it with no application to show it; a test's component
+alone is drawn as a window's whole content. Each test starts with the last
+one's windows taken down (`sngl_gtk_reset`, the reset a platform hands
+`WriteTests`): left attached, the second test's snapshot drew the first's
+window.
 
 What makes that reach the two platforms is generic: `ui.window` is an ordinary
 component, composed through its override like any other, and a builtin node
@@ -487,13 +519,10 @@ and the tree decides what exists: a handler writing `details = false`
 destroys the window, one calling `open()` keeps it on screen. A close that
 leaves no window on screen ends the program, unless it started with none; a
 start with none on screen reports every window hidden, which is what makes a
-later `open()` a change (`pkg/go/gtk4rt/toplevel_test.go` drives the rules
-through `ToplevelRequestClose`). Each setter ignores the value the window
+later `open()` a change. Each setter ignores the value the window
 already has, since the binding's write-back sets it again. gtk4 holds the
 application (`g_application_hold`) and fyne keeps a window it never shows,
-because both would otherwise end when the last window goes. gtk4's inline-cgo
-mode builds one window with no `@closed` and no state-driven `visible`, and
-refuses the rest. On gtk4 `WAYLAND_DEBUG` is how a fixture tells a window
+because both would otherwise end when the last window goes. On gtk4 `WAYLAND_DEBUG` is how a fixture tells a window
 reached the screen (`testdata/window_open_runs.txtar`,
 `window_several_runs.txtar`, `window_visible_runs.txtar`).
 
@@ -517,8 +546,9 @@ making it its wrapper's prop. Each target:
   the literal, as a node's `if` around the content could not: content is
   inserted once.
 - gtk4 and fyne keep the entries as hidden nodes among the window's content
-  (gtk4rt's and fynelayout's `MenuEntry`), which a render slot inserts and
-  removes like any node; `BoxAppend`, `InsertBefore` and `Remove` tell the
+  (the runtime's `MenuEntry`, `rt/menu.c`, and fynelayout's), which a render
+  slot inserts and removes like any node; the box's append, insert and remove
+  (`sngl_box_append` and its kin, fyne's `InsertBefore` and `Remove`) tell the
   window, which builds a GMenu behind a header bar's menu button, or fyne's
   main menu. A `Back` node under `if canGoBack` is the way back: gtk4 puts its
   button in the header bar where the window has one -- made as the window is,

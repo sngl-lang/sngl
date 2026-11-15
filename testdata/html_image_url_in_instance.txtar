@@ -111,6 +111,9 @@ window.__sngl_boot = () => {
     let __prop_url = url;
     let taps = 0;
     function __set_url(__v) {
+      if (__prop_url === __v) {
+        return;
+      }
       __prop_url = __v;
       __n0.src = __prop_url;
     }
@@ -171,8 +174,8 @@ window.__sngl_boot = () => {
               if (__inst1_live.length > __inst1_i) {
                 __inst1_live[__inst1_i].__destroy();
               }
-              let __n1__new = __cf_card({ url: state.u });
-              __n1 = __n1__new;
+              let __n1__made = __cf_card({ url: state.u });
+              __n1 = __n1__made;
             }
             __inst1_next.push(__n1);
             __inst1_i = __inst1_i + 1;
@@ -223,4 +226,4 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:fd0d6555629125aaaaade0d553809248
+pass sha256:5dab4a8777bd0bdaa9683253f6c9d256

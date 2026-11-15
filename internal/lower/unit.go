@@ -68,6 +68,8 @@ func rewriteUnitExpr(e ir.Expr) ir.Expr {
 		}
 	case *ir.Conversion:
 		x.Operand = rewriteUnitExpr(x.Operand)
+	case *ir.CConvert:
+		x.Operand = rewriteUnitExpr(x.Operand)
 	case *ir.Select:
 		x.Operand = rewriteUnitExpr(x.Operand)
 	case *ir.Index:

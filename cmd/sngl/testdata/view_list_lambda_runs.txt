@@ -4,6 +4,10 @@
 # in a view that loop was a statement of the view, which reactivity made a
 # render slot attaching no node, and the build panicked. A view's own
 # expressions are left for the emitter, as a node's props already were.
+#
+# On C, passLambda lifts the filter's body before reactivity runs, and the
+# lifted body reads `prefix` through its state param; the slot's deps are
+# what that state is built from, or setting `prefix` re-renders nothing.
 
 sngl test --platform=none app.sngl
 stdout '2 tests, 0 failures'
@@ -21,6 +25,14 @@ sngl test --platform=html app.sngl
 stdout '2 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '2 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
 stdout '2 tests, 0 failures'
 
 -- app.sngl --
@@ -111,8 +123,22 @@ sha256:9ec0fbe6bcebf0a6a95f4b9b4f40f147
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/names/1 --
+sha256:2621aea40d8f79fce13953fa4d9db777
+{
+  "results": [
+    {
+      "Desc": "TheLoopFollowsWhatItFilters",
+      "Passed": true
+    },
+    {
+      "Desc": "AConditionFiltersToo",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/names/1 --
-sha256:63a9f30087658177db73e382b5c08f32
+sha256:22c1daa3c7f887786defd21764390cb9
 {
   "results": [
     {
@@ -126,7 +152,35 @@ sha256:63a9f30087658177db73e382b5c08f32
   ]
 }
 -- testrun/html/none/app.sngl/names/1 --
-sha256:f6336810cd4ddff381a75093dd8066e6
+sha256:6d3a1077ccee650090753442d0c75746
+{
+  "results": [
+    {
+      "Desc": "AConditionFiltersToo",
+      "Passed": true
+    },
+    {
+      "Desc": "TheLoopFollowsWhatItFilters",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/names/1 --
+sha256:2e498e012a11f075e18f920fd0744c97
+{
+  "results": [
+    {
+      "Desc": "TheLoopFollowsWhatItFilters",
+      "Passed": true
+    },
+    {
+      "Desc": "AConditionFiltersToo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/names/1 --
+sha256:b8fa74f763f4486888c06098aec186d9
 {
   "results": [
     {

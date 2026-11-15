@@ -349,9 +349,20 @@ func cloneComponent(comp *ir.Component, name string, body []ir.Stmt) *ir.Compone
 		if cf.RecvDecl() == ir.Symbol(comp) {
 			cf.Receiver = out.SymType()
 		}
+		// A method's `this` (ReceiverParam) names the copy too.
+		if len(f.Params) > 0 && f.Params[0].Type != nil && f.Params[0].Type.Decl == ir.Symbol(comp) {
+			this, t := *f.Params[0], *f.Params[0].Type
+			t.Decl = &out
+			this.Type = &t
+			cf.Params = append([]*ir.Param{&this}, f.Params[1:]...)
+			syms[f.Params[0]] = &this
+		}
 		out.Funcs[i] = cf
 		syms[f] = cf
 	}
+	// A call handing a method the component, as its receiver, hands it the
+	// copy.
+	syms[comp] = &out
 	if comp.Methods != nil {
 		out.Methods = make(map[string]*ir.Func, len(comp.Methods))
 		for k, f := range comp.Methods {

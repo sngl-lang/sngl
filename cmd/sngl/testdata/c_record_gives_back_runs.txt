@@ -1,0 +1,291 @@
+# A component built at run time gives back what it kept when it is
+# destroyed, on each platform placement writes C for: its record's destroy
+# drops each field it kept -- a string, a list and its elements -- and then
+# the record, a box kept like any other block (ir.Func.Frees). It gave back
+# nothing, so each row a rebuilt list made grew the runtime's kept set by
+# its prop, its vars and, on win32, the record itself. The test counts the
+# kept blocks through the runtime's sngl_kept_blocks. Go collects what it
+# allocates, so the program is C's alone.
+#
+# A row rendering a slot of its own also lets go of the anchor gtk4 keeps
+# for it (#[gen.protocol(anchor)]): its teardown asks sngl_slot_anchor with no
+# box, which gives back the reference the var held. Each row a rebuilt list
+# destroyed kept its hidden label alive. anchor.sngl counts the labels GTK
+# has not finalized, through a gtk_label_new of count.c's that the runtime's
+# calls resolve to.
+
+# A closure gives back what it captured. Its environment is made in the
+# turn's arena behind a header saying how it is kept (sngl_env), a holder
+# storing it keeps a counted copy the holders after it share, and the last
+# to let go gives it back with the holder's value: a package var's
+# replaced, a record's prop box (ir.StructDef.Counted) as the record is
+# destroyed, a callback's context as C releases it. Each
+# closure.sngl test fails where the environment was a heap copy nothing gave
+# back, which kept what it captured.
+
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c anchor.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=c closure.sngl
+stdout 'ok +2 tests, 0 failures'
+
+sngl test --platform=win32 --language=c closure.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import c "sngl:x/c"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="sngl.h")
+
+// How many blocks the runtime keeps: what every holder holds.
+#[c.native("sngl_kept_blocks")]
+func keptBlocks() int
+
+component row(label string) ui.node {
+    var note = "row {label}"
+    var tags list[string] = ["a {label}", "b {label}"]
+
+    ui.text(value="{note} {tags.length()}")
+}
+
+component rows ui.node {
+    var round = 0
+    var labels list[string] = ["r0a", "r0b", "r0c"]
+
+    ui.vbox {
+        ui.button #next(text="next", @click {
+            round += 1
+            labels = ["r{round}a", "r{round}b", "r{round}c"]
+        })
+        for var l = labels {
+            row(label=l)
+        }
+    }
+}
+
+func testARebuiltListKeepsNoMore(t test.Test, r rows) {
+    r.next.click()
+    var before = keptBlocks()
+    r.next.click()
+    r.next.click()
+    t.assert(keptBlocks() == before)
+}
+
+ui.window(title="t") {
+    rows
+}
+-- anchor.sngl --
+import c "sngl:x/c"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="count.h", sources=["count.c", "count.h"])
+
+// How many labels GTK has made and not yet finalized (count.c).
+#[c.native("labels_alive")]
+func labelsAlive() int
+
+component row(label string) ui.node {
+    var open = true
+
+    ui.vbox {
+        if open {
+            ui.text(value="A {label}")
+        }
+        ui.text(value="B")
+    }
+}
+
+component rows ui.node {
+    var round = 0
+    var labels list[string] = ["r0a", "r0b", "r0c"]
+
+    ui.vbox {
+        ui.button #next(text="next", @click {
+            round += 1
+            labels = ["r{round}a", "r{round}b", "r{round}c"]
+        })
+        for var l = labels {
+            row(label=l)
+        }
+    }
+}
+
+func testARebuiltListKeepsNoMoreLabels(t test.Test, r rows) {
+    r.next.click()
+    var before = labelsAlive()
+    r.next.click()
+    r.next.click()
+    var after = labelsAlive()
+    t.assert(before > 0)
+    t.assert(after == before)
+}
+
+ui.window(title="t") {
+    rows
+}
+-- count.h --
+#include <stdint.h>
+
+/* labels_alive is how many labels GTK has made and not yet finalized, once
+ * the main loop has nothing waiting. */
+int64_t labels_alive(void);
+-- count.c --
+#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <string.h>
+#include <gtk/gtk.h>
+#include "count.h"
+
+static int64_t alive;
+
+static void gone(gpointer data, GObject *w) {
+    alive--;
+}
+
+/* The program's gtk_label_new is the one the runtime's calls resolve to: it
+ * makes the label GTK's does and counts it until it is finalized. */
+GtkWidget *gtk_label_new(const char *s) {
+    static GtkWidget *(*real)(const char *);
+    if (real == NULL) {
+        void *p = dlsym(RTLD_NEXT, "gtk_label_new");
+        memcpy(&real, &p, sizeof p);
+    }
+    GtkWidget *w = real(s);
+    alive++;
+    g_object_weak_ref(G_OBJECT(w), gone, NULL);
+    return w;
+}
+
+int64_t labels_alive(void) {
+    while (g_main_context_iteration(NULL, FALSE)) {
+    }
+    return alive;
+}
+-- closure.sngl --
+import c "sngl:x/c"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="sngl.h")
+
+// How many blocks the runtime keeps: what every holder holds.
+#[c.native("sngl_kept_blocks")]
+func keptBlocks() int
+
+var said = ""
+var greet = func() {}
+
+func setGreeting(name string) {
+    greet = func() {
+        said = "hello {name}"
+    }
+}
+
+component rows ui.node {
+    var round = 0
+    var labels list[string] = ["r0a", "r0b", "r0c"]
+    var picked = ""
+
+    ui.vbox {
+        ui.button #next(text="next", @click {
+            round += 1
+            labels = ["r{round}a", "r{round}b", "r{round}c"]
+        })
+        for var l = labels {
+            ui.button(text=l, @click {
+                picked = "{l} picked"
+            })
+        }
+    }
+}
+
+func testARebuiltListsHandlersKeepNoMore(t test.Test, r rows) {
+    r.next.click()
+    var before = keptBlocks()
+    r.next.click()
+    r.next.click()
+    t.assert(keptBlocks() == before)
+}
+
+func testAReplacedClosureGivesBackWhatItCaptured(t test.Test, r rows) {
+    setGreeting("a{r.round}")
+    var before = keptBlocks()
+    setGreeting("b{r.round}")
+    setGreeting("c{r.round}")
+    t.assert(keptBlocks() == before)
+    greet()
+    t.assert(said == "hello c0")
+}
+
+ui.window(title="t") {
+    rows
+}
+-- testrun/gtk4/c/anchor.sngl/rows/1 --
+sha256:f12e7368f89b54fb3610899d8347fa9a
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListKeepsNoMoreLabels",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/rows/1 --
+sha256:3470c76f874b816af52b3fac3e28fa7d
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListKeepsNoMore",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/closure.sngl/rows/1 --
+sha256:0c1d5ca92dfbac8def98e66bde801242
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListsHandlersKeepNoMore",
+      "Passed": true
+    },
+    {
+      "Desc": "AReplacedClosureGivesBackWhatItCaptured",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/rows/1 --
+sha256:7a9b6e6f66d523cdcdea8e2e96d36025
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListKeepsNoMore",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/closure.sngl/rows/1 --
+sha256:7dd98759f345589cbdbc667a32eaac5f
+{
+  "results": [
+    {
+      "Desc": "ARebuiltListsHandlersKeepNoMore",
+      "Passed": true
+    },
+    {
+      "Desc": "AReplacedClosureGivesBackWhatItCaptured",
+      "Passed": true
+    }
+  ]
+}

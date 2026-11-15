@@ -664,12 +664,18 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot6Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n1.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot0(c.__n16)
 }
 
 func (c *Frame__slot6Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n0.SetText(c.__prop_m)
 	for __inst0_live_ui, _ := range c.__inst0_live {
@@ -678,11 +684,17 @@ func (c *Frame__slot6Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot6Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot0(c.__n16)
 }
 
 func (c *Frame__slot6Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst0_live_ui, _ := range c.__inst0_live {
@@ -724,8 +736,8 @@ func (c *Frame__slot6Instance) __renderSlot0(__parent *fyne.Container) {
 							if len(c.__inst0_live) > __inst0_i {
 								c.__inst0_live[__inst0_i].Destroy()
 							}
-							__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n15 = __n15__new
+							__n15__made := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n15 = __n15__made
 						}
 						__inst0_next = append(__inst0_next, __n15)
 						__inst0_i = (__inst0_i + 1)
@@ -798,12 +810,18 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot5Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n3.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot1(c.__n18)
 }
 
 func (c *Frame__slot5Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n2.SetText(c.__prop_m)
 	for __inst1_live_ui, _ := range c.__inst1_live {
@@ -812,11 +830,17 @@ func (c *Frame__slot5Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot5Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot1(c.__n18)
 }
 
 func (c *Frame__slot5Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst1_live_ui, _ := range c.__inst1_live {
@@ -858,8 +882,8 @@ func (c *Frame__slot5Instance) __renderSlot1(__parent *fyne.Container) {
 							if len(c.__inst1_live) > __inst1_i {
 								c.__inst1_live[__inst1_i].Destroy()
 							}
-							__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n17 = __n17__new
+							__n17__made := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n17 = __n17__made
 						}
 						__inst1_next = append(__inst1_next, __n17)
 						__inst1_i = (__inst1_i + 1)
@@ -932,12 +956,18 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot4Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n5.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot2(c.__n20)
 }
 
 func (c *Frame__slot4Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n4.SetText(c.__prop_m)
 	for __inst2_live_ui, _ := range c.__inst2_live {
@@ -946,11 +976,17 @@ func (c *Frame__slot4Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot4Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot2(c.__n20)
 }
 
 func (c *Frame__slot4Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n5.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst2_live_ui, _ := range c.__inst2_live {
@@ -992,8 +1028,8 @@ func (c *Frame__slot4Instance) __renderSlot2(__parent *fyne.Container) {
 							if len(c.__inst2_live) > __inst2_i {
 								c.__inst2_live[__inst2_i].Destroy()
 							}
-							__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n19 = __n19__new
+							__n19__made := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n19 = __n19__made
 						}
 						__inst2_next = append(__inst2_next, __n19)
 						__inst2_i = (__inst2_i + 1)
@@ -1066,12 +1102,18 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot2Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n7.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot3(c.__n22)
 }
 
 func (c *Frame__slot2Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n6.SetText(c.__prop_m)
 	for __inst3_live_ui, _ := range c.__inst3_live {
@@ -1080,11 +1122,17 @@ func (c *Frame__slot2Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot3(c.__n22)
 }
 
 func (c *Frame__slot2Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n7.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst3_live_ui, _ := range c.__inst3_live {
@@ -1126,8 +1174,8 @@ func (c *Frame__slot2Instance) __renderSlot3(__parent *fyne.Container) {
 							if len(c.__inst3_live) > __inst3_i {
 								c.__inst3_live[__inst3_i].Destroy()
 							}
-							__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n21 = __n21__new
+							__n21__made := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n21 = __n21__made
 						}
 						__inst3_next = append(__inst3_next, __n21)
 						__inst3_i = (__inst3_i + 1)
@@ -1200,12 +1248,18 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot1Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n9.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot4(c.__n24)
 }
 
 func (c *Frame__slot1Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n8.SetText(c.__prop_m)
 	for __inst4_live_ui, _ := range c.__inst4_live {
@@ -1214,11 +1268,17 @@ func (c *Frame__slot1Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot1Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot4(c.__n24)
 }
 
 func (c *Frame__slot1Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n9.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst4_live_ui, _ := range c.__inst4_live {
@@ -1260,8 +1320,8 @@ func (c *Frame__slot1Instance) __renderSlot4(__parent *fyne.Container) {
 							if len(c.__inst4_live) > __inst4_i {
 								c.__inst4_live[__inst4_i].Destroy()
 							}
-							__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n23 = __n23__new
+							__n23__made := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n23 = __n23__made
 						}
 						__inst4_next = append(__inst4_next, __n23)
 						__inst4_i = (__inst4_i + 1)
@@ -1334,12 +1394,18 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot0Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n11.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot5(c.__n26)
 }
 
 func (c *Frame__slot0Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n10.SetText(c.__prop_m)
 	for __inst5_live_ui, _ := range c.__inst5_live {
@@ -1348,11 +1414,17 @@ func (c *Frame__slot0Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot5(c.__n26)
 }
 
 func (c *Frame__slot0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n11.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst5_live_ui, _ := range c.__inst5_live {
@@ -1394,8 +1466,8 @@ func (c *Frame__slot0Instance) __renderSlot5(__parent *fyne.Container) {
 							if len(c.__inst5_live) > __inst5_i {
 								c.__inst5_live[__inst5_i].Destroy()
 							}
-							__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n25 = __n25__new
+							__n25__made := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
+							__n25 = __n25__made
 						}
 						__inst5_next = append(__inst5_next, __n25)
 						__inst5_i = (__inst5_i + 1)
@@ -1460,27 +1532,27 @@ func mountTestComponent(m *Model, preset map[string]bool) *Model {
 	m.BuildUI()
 	return m
 }
--- out/go/gtk4/callbacks.go --
-// Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
-
-package main
-
-import "duckfam.us/sngl/pkg/go/gtk4rt"
-
-func main() {
-	gtk4rt.Run(func(app gtk4rt.Handle) gtk4rt.Handle {
-		return New().BuildUI(app)
-	})
-}
--- out/go/gtk4/model.go --
+-- out/go/gtk4/main.go --
 // Code generated by sngl (gtk4) from app.sngl; DO NOT EDIT.
 
 package main
 
 import (
-	"duckfam.us/sngl/pkg/go/gtk4rt"
+	"duckfam.us/sngl/lib/platform/gtk4/cgo"
 	"fmt"
+	"os"
+	"runtime"
+	"slices"
+	"unsafe"
 )
+
+func snglSome[T any](v T) *T {
+	return &v
+}
+
+func snglOptEq[T comparable](p *T, v T) bool {
+	return p != nil && *p == v
+}
 
 type ErrorEvent struct {
 	Message string
@@ -1490,971 +1562,930 @@ type ErrorEvent struct {
 type Test struct {
 }
 
-// Model holds the state and widget references for this SNGL UI.
-type Model struct {
-	depth  int
-	mark   string
-	__root gtk4rt.Handle
-}
-
-// New creates a Model with default values. Binds initialize
-// sequentially so later inits can reference earlier `m.<name>` fields.
-func New() *Model {
-	m := &Model{}
-	m.__init(nil)
-	return m
-}
-
-func (m *Model) __init(preset map[string]bool) {
-	if !preset["depth"] {
-		m.depth = 2
-	}
-	if !preset["mark"] {
-		m.mark = "*"
-	}
-	if !preset["__root"] {
-		m.__root = nil
-	}
-}
-
-// Frame__slot6Instance is one live instance of the frame__slot6 component.
-type Frame__slot6Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
+type Frame__slot6__inst struct {
 	__prop_result  int
 	__prop_m       string
 	__prop___depth int
 	__prop___p0    string
-	__root         gtk4rt.Handle
-	__slot0        []gtk4rt.Handle
-	__slot0_at     gtk4rt.Handle
-	__inst0_live   []*Frame__slot6Instance
+	__root         cgo.Widget
+	__slot0        []cgo.Widget
+	__anchor0      cgo.Widget
+	__inst1_live   []*Frame__slot6__inst
 	__rendering0   bool
 	__renderAgain0 bool
-	__n16          gtk4rt.Handle
-	__n0           gtk4rt.Handle
-	__n1           gtk4rt.Handle
+	__n16          cgo.Widget
+	__n0           cgo.Widget
+	__n1           cgo.Widget
 }
 
-func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot6Instance {
-	c := &Frame__slot6Instance{}
-	c.__model = __model
-	c.__prop_result = __a_result
-	c.__prop_m = __a_m
-	c.__prop___depth = __a___depth
-	c.__prop___p0 = __a___p0
-	c.__slot0 = nil
-	c.__inst0_live = []*Frame__slot6Instance{}
-	c.__rendering0 = false
-	c.__renderAgain0 = false
-	c.__n16 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n16, 1)
-	gtk4rt.SetLook(c.__n16, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.__n0 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
-	gtk4rt.LabelSetXAlign(c.__n0, 0.0)
-	gtk4rt.BoxAppend(c.__n16, c.__n0)
-	c.__n1 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n1, 0.0)
-	gtk4rt.BoxAppend(c.__n16, c.__n1)
-	c.__renderSlot0(c.__n16)
-	c.Root = c.__n16
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *Frame__slot6Instance) SetResult(__v int) {
-	c.__prop_result = __v
-	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot0(c.__n16)
-}
-
-func (c *Frame__slot6Instance) SetM(__v string) {
-	c.__prop_m = __v
-	gtk4rt.LabelSetLabel(c.__n0, c.__prop_m)
-	for __inst0_live_ui, _ := range c.__inst0_live {
-		c.__inst0_live[__inst0_live_ui].SetM(c.__prop_m)
-	}
-}
-
-func (c *Frame__slot6Instance) Set__depth(__v int) {
-	c.__prop___depth = __v
-	c.__renderSlot0(c.__n16)
-}
-
-func (c *Frame__slot6Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n1, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	for __inst0_live_ui, _ := range c.__inst0_live {
-		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___p0)
-	}
-}
-
-func (c *Frame__slot6Instance) __renderSlot0(parent gtk4rt.Handle) {
-	if c.__rendering0 {
-		c.__renderAgain0 = true
-	} else {
-		c.__rendering0 = true
-		c.__renderAgain0 = true
-		func() {
-			defer func() {
-				c.__rendering0 = false
-			}()
-			for c.__renderAgain0 {
-				c.__renderAgain0 = false
-				for _, __entry := range c.__slot0 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot0 = nil
-				c.__slot0_at = gtk4rt.SlotAnchor(parent, c.__slot0_at)
-				__inst0_next := []*Frame__slot6Instance{}
-				var __inst0_i int = 0
-				if c.__prop_result > 0 {
-					if c.__prop___depth >= 512 {
-						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-					} else {
-						var __n15 *Frame__slot6Instance
-						if len(c.__inst0_live) > __inst0_i {
-							__n15 = c.__inst0_live[__inst0_i]
-							__n15.SetResult((c.__prop_result - 1))
-							__n15.SetM(c.__prop_m)
-							__n15.Set__depth((c.__prop___depth + 1))
-							__n15.Set__p0(c.__prop___p0)
-						} else {
-							if len(c.__inst0_live) > __inst0_i {
-								c.__inst0_live[__inst0_i].Destroy()
-							}
-							__n15__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n15 = __n15__new
-						}
-						__inst0_next = append(__inst0_next, __n15)
-						__inst0_i = (__inst0_i + 1)
-						__n15__el := __n15.Root
-						gtk4rt.InsertBefore(parent, c.__slot0_at, __n15__el)
-						c.__slot0 = append(c.__slot0, __n15__el)
-					}
-				}
-				for __inst0_i_d, _ := range c.__inst0_live {
-					var __inst0_i_j int = ((len(c.__inst0_live) - 1) - __inst0_i_d)
-					if __inst0_i_j >= __inst0_i {
-						c.__inst0_live[__inst0_i_j].Destroy()
-					}
-				}
-				c.__inst0_live = __inst0_next
-			}
-		}()
-	}
-}
-
-func (c *Frame__slot6Instance) teardown() {
-	for __inst0_live_di, _ := range c.__inst0_live {
-		var __inst0_live_dj int = ((len(c.__inst0_live) - 1) - __inst0_live_di)
-		c.__inst0_live[__inst0_live_dj].Destroy()
-	}
-	c.__inst0_live = []*Frame__slot6Instance{}
-}
-
-func (c *Frame__slot6Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot0_at != nil {
-		gtk4rt.Release(c.__slot0_at)
-	}
-}
-
-// Frame__slot5Instance is one live instance of the frame__slot5 component.
-type Frame__slot5Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
+type Frame__slot5__inst struct {
 	__prop_result  int
 	__prop_m       string
 	__prop___depth int
 	__prop___p0    string
-	__root         gtk4rt.Handle
-	__slot1        []gtk4rt.Handle
-	__slot1_at     gtk4rt.Handle
-	__inst1_live   []*Frame__slot5Instance
+	__root         cgo.Widget
+	__slot1        []cgo.Widget
+	__anchor1      cgo.Widget
+	__inst3_live   []*Frame__slot5__inst
 	__rendering1   bool
 	__renderAgain1 bool
-	__n18          gtk4rt.Handle
-	__n2           gtk4rt.Handle
-	__n3           gtk4rt.Handle
+	__n18          cgo.Widget
+	__n2           cgo.Widget
+	__n3           cgo.Widget
 }
 
-func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot5Instance {
-	c := &Frame__slot5Instance{}
-	c.__model = __model
-	c.__prop_result = __a_result
-	c.__prop_m = __a_m
-	c.__prop___depth = __a___depth
-	c.__prop___p0 = __a___p0
-	c.__slot1 = nil
-	c.__inst1_live = []*Frame__slot5Instance{}
-	c.__rendering1 = false
-	c.__renderAgain1 = false
-	c.__n18 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n18, 1)
-	gtk4rt.SetLook(c.__n18, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.__n2 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
-	gtk4rt.LabelSetXAlign(c.__n2, 0.0)
-	gtk4rt.BoxAppend(c.__n18, c.__n2)
-	c.__n3 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n3, 0.0)
-	gtk4rt.BoxAppend(c.__n18, c.__n3)
-	c.__renderSlot1(c.__n18)
-	c.Root = c.__n18
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *Frame__slot5Instance) SetResult(__v int) {
-	c.__prop_result = __v
-	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot1(c.__n18)
-}
-
-func (c *Frame__slot5Instance) SetM(__v string) {
-	c.__prop_m = __v
-	gtk4rt.LabelSetLabel(c.__n2, c.__prop_m)
-	for __inst1_live_ui, _ := range c.__inst1_live {
-		c.__inst1_live[__inst1_live_ui].SetM(c.__prop_m)
-	}
-}
-
-func (c *Frame__slot5Instance) Set__depth(__v int) {
-	c.__prop___depth = __v
-	c.__renderSlot1(c.__n18)
-}
-
-func (c *Frame__slot5Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n3, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	for __inst1_live_ui, _ := range c.__inst1_live {
-		c.__inst1_live[__inst1_live_ui].Set__p0(c.__prop___p0)
-	}
-}
-
-func (c *Frame__slot5Instance) __renderSlot1(parent gtk4rt.Handle) {
-	if c.__rendering1 {
-		c.__renderAgain1 = true
-	} else {
-		c.__rendering1 = true
-		c.__renderAgain1 = true
-		func() {
-			defer func() {
-				c.__rendering1 = false
-			}()
-			for c.__renderAgain1 {
-				c.__renderAgain1 = false
-				for _, __entry := range c.__slot1 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot1 = nil
-				c.__slot1_at = gtk4rt.SlotAnchor(parent, c.__slot1_at)
-				__inst1_next := []*Frame__slot5Instance{}
-				var __inst1_i int = 0
-				if c.__prop_result > 0 {
-					if c.__prop___depth >= 512 {
-						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-					} else {
-						var __n17 *Frame__slot5Instance
-						if len(c.__inst1_live) > __inst1_i {
-							__n17 = c.__inst1_live[__inst1_i]
-							__n17.SetResult((c.__prop_result - 1))
-							__n17.SetM(c.__prop_m)
-							__n17.Set__depth((c.__prop___depth + 1))
-							__n17.Set__p0(c.__prop___p0)
-						} else {
-							if len(c.__inst1_live) > __inst1_i {
-								c.__inst1_live[__inst1_i].Destroy()
-							}
-							__n17__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n17 = __n17__new
-						}
-						__inst1_next = append(__inst1_next, __n17)
-						__inst1_i = (__inst1_i + 1)
-						__n17__el := __n17.Root
-						gtk4rt.InsertBefore(parent, c.__slot1_at, __n17__el)
-						c.__slot1 = append(c.__slot1, __n17__el)
-					}
-				}
-				for __inst1_i_d, _ := range c.__inst1_live {
-					var __inst1_i_j int = ((len(c.__inst1_live) - 1) - __inst1_i_d)
-					if __inst1_i_j >= __inst1_i {
-						c.__inst1_live[__inst1_i_j].Destroy()
-					}
-				}
-				c.__inst1_live = __inst1_next
-			}
-		}()
-	}
-}
-
-func (c *Frame__slot5Instance) teardown() {
-	for __inst1_live_di, _ := range c.__inst1_live {
-		var __inst1_live_dj int = ((len(c.__inst1_live) - 1) - __inst1_live_di)
-		c.__inst1_live[__inst1_live_dj].Destroy()
-	}
-	c.__inst1_live = []*Frame__slot5Instance{}
-}
-
-func (c *Frame__slot5Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot1_at != nil {
-		gtk4rt.Release(c.__slot1_at)
-	}
-}
-
-// Frame__slot4Instance is one live instance of the frame__slot4 component.
-type Frame__slot4Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
+type Frame__slot4__inst struct {
 	__prop_result  int
 	__prop_m       string
 	__prop___depth int
 	__prop___p0    string
-	__root         gtk4rt.Handle
-	__slot2        []gtk4rt.Handle
-	__slot2_at     gtk4rt.Handle
-	__inst2_live   []*Frame__slot4Instance
+	__root         cgo.Widget
+	__slot2        []cgo.Widget
+	__anchor2      cgo.Widget
+	__inst5_live   []*Frame__slot4__inst
 	__rendering2   bool
 	__renderAgain2 bool
-	__n20          gtk4rt.Handle
-	__n4           gtk4rt.Handle
-	__n5           gtk4rt.Handle
+	__n20          cgo.Widget
+	__n4           cgo.Widget
+	__n5           cgo.Widget
 }
 
-func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot4Instance {
-	c := &Frame__slot4Instance{}
-	c.__model = __model
-	c.__prop_result = __a_result
-	c.__prop_m = __a_m
-	c.__prop___depth = __a___depth
-	c.__prop___p0 = __a___p0
-	c.__slot2 = nil
-	c.__inst2_live = []*Frame__slot4Instance{}
-	c.__rendering2 = false
-	c.__renderAgain2 = false
-	c.__n20 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n20, 1)
-	gtk4rt.SetLook(c.__n20, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.__n4 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
-	gtk4rt.LabelSetXAlign(c.__n4, 0.0)
-	gtk4rt.BoxAppend(c.__n20, c.__n4)
-	c.__n5 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n5, 0.0)
-	gtk4rt.BoxAppend(c.__n20, c.__n5)
-	c.__renderSlot2(c.__n20)
-	c.Root = c.__n20
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *Frame__slot4Instance) SetResult(__v int) {
-	c.__prop_result = __v
-	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot2(c.__n20)
-}
-
-func (c *Frame__slot4Instance) SetM(__v string) {
-	c.__prop_m = __v
-	gtk4rt.LabelSetLabel(c.__n4, c.__prop_m)
-	for __inst2_live_ui, _ := range c.__inst2_live {
-		c.__inst2_live[__inst2_live_ui].SetM(c.__prop_m)
-	}
-}
-
-func (c *Frame__slot4Instance) Set__depth(__v int) {
-	c.__prop___depth = __v
-	c.__renderSlot2(c.__n20)
-}
-
-func (c *Frame__slot4Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n5, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	for __inst2_live_ui, _ := range c.__inst2_live {
-		c.__inst2_live[__inst2_live_ui].Set__p0(c.__prop___p0)
-	}
-}
-
-func (c *Frame__slot4Instance) __renderSlot2(parent gtk4rt.Handle) {
-	if c.__rendering2 {
-		c.__renderAgain2 = true
-	} else {
-		c.__rendering2 = true
-		c.__renderAgain2 = true
-		func() {
-			defer func() {
-				c.__rendering2 = false
-			}()
-			for c.__renderAgain2 {
-				c.__renderAgain2 = false
-				for _, __entry := range c.__slot2 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot2 = nil
-				c.__slot2_at = gtk4rt.SlotAnchor(parent, c.__slot2_at)
-				__inst2_next := []*Frame__slot4Instance{}
-				var __inst2_i int = 0
-				if c.__prop_result > 0 {
-					if c.__prop___depth >= 512 {
-						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-					} else {
-						var __n19 *Frame__slot4Instance
-						if len(c.__inst2_live) > __inst2_i {
-							__n19 = c.__inst2_live[__inst2_i]
-							__n19.SetResult((c.__prop_result - 1))
-							__n19.SetM(c.__prop_m)
-							__n19.Set__depth((c.__prop___depth + 1))
-							__n19.Set__p0(c.__prop___p0)
-						} else {
-							if len(c.__inst2_live) > __inst2_i {
-								c.__inst2_live[__inst2_i].Destroy()
-							}
-							__n19__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n19 = __n19__new
-						}
-						__inst2_next = append(__inst2_next, __n19)
-						__inst2_i = (__inst2_i + 1)
-						__n19__el := __n19.Root
-						gtk4rt.InsertBefore(parent, c.__slot2_at, __n19__el)
-						c.__slot2 = append(c.__slot2, __n19__el)
-					}
-				}
-				for __inst2_i_d, _ := range c.__inst2_live {
-					var __inst2_i_j int = ((len(c.__inst2_live) - 1) - __inst2_i_d)
-					if __inst2_i_j >= __inst2_i {
-						c.__inst2_live[__inst2_i_j].Destroy()
-					}
-				}
-				c.__inst2_live = __inst2_next
-			}
-		}()
-	}
-}
-
-func (c *Frame__slot4Instance) teardown() {
-	for __inst2_live_di, _ := range c.__inst2_live {
-		var __inst2_live_dj int = ((len(c.__inst2_live) - 1) - __inst2_live_di)
-		c.__inst2_live[__inst2_live_dj].Destroy()
-	}
-	c.__inst2_live = []*Frame__slot4Instance{}
-}
-
-func (c *Frame__slot4Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot2_at != nil {
-		gtk4rt.Release(c.__slot2_at)
-	}
-}
-
-// Frame__slot2Instance is one live instance of the frame__slot2 component.
-type Frame__slot2Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
+type Frame__slot2__inst struct {
 	__prop_result  int
 	__prop_m       string
 	__prop___depth int
 	__prop___p0    string
-	__root         gtk4rt.Handle
-	__slot3        []gtk4rt.Handle
-	__slot3_at     gtk4rt.Handle
-	__inst3_live   []*Frame__slot6Instance
+	__root         cgo.Widget
+	__slot3        []cgo.Widget
+	__anchor3      cgo.Widget
+	__inst7_live   []*Frame__slot6__inst
 	__rendering3   bool
 	__renderAgain3 bool
-	__n22          gtk4rt.Handle
-	__n6           gtk4rt.Handle
-	__n7           gtk4rt.Handle
+	__n22          cgo.Widget
+	__n6           cgo.Widget
+	__n7           cgo.Widget
 }
 
-func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot2Instance {
-	c := &Frame__slot2Instance{}
-	c.__model = __model
-	c.__prop_result = __a_result
-	c.__prop_m = __a_m
-	c.__prop___depth = __a___depth
-	c.__prop___p0 = __a___p0
-	c.__slot3 = nil
-	c.__inst3_live = []*Frame__slot6Instance{}
-	c.__rendering3 = false
-	c.__renderAgain3 = false
-	c.__n22 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n22, 1)
-	gtk4rt.SetLook(c.__n22, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.__n6 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
-	gtk4rt.LabelSetXAlign(c.__n6, 0.0)
-	gtk4rt.BoxAppend(c.__n22, c.__n6)
-	c.__n7 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n7, 0.0)
-	gtk4rt.BoxAppend(c.__n22, c.__n7)
-	c.__renderSlot3(c.__n22)
-	c.Root = c.__n22
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *Frame__slot2Instance) SetResult(__v int) {
-	c.__prop_result = __v
-	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot3(c.__n22)
-}
-
-func (c *Frame__slot2Instance) SetM(__v string) {
-	c.__prop_m = __v
-	gtk4rt.LabelSetLabel(c.__n6, c.__prop_m)
-	for __inst3_live_ui, _ := range c.__inst3_live {
-		c.__inst3_live[__inst3_live_ui].SetM(c.__prop_m)
-	}
-}
-
-func (c *Frame__slot2Instance) Set__depth(__v int) {
-	c.__prop___depth = __v
-	c.__renderSlot3(c.__n22)
-}
-
-func (c *Frame__slot2Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n7, ((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	for __inst3_live_ui, _ := range c.__inst3_live {
-		c.__inst3_live[__inst3_live_ui].Set__p0(c.__prop___p0)
-	}
-}
-
-func (c *Frame__slot2Instance) __renderSlot3(parent gtk4rt.Handle) {
-	if c.__rendering3 {
-		c.__renderAgain3 = true
-	} else {
-		c.__rendering3 = true
-		c.__renderAgain3 = true
-		func() {
-			defer func() {
-				c.__rendering3 = false
-			}()
-			for c.__renderAgain3 {
-				c.__renderAgain3 = false
-				for _, __entry := range c.__slot3 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot3 = nil
-				c.__slot3_at = gtk4rt.SlotAnchor(parent, c.__slot3_at)
-				__inst3_next := []*Frame__slot6Instance{}
-				var __inst3_i int = 0
-				if c.__prop_result > 0 {
-					if c.__prop___depth >= 512 {
-						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-					} else {
-						var __n21 *Frame__slot6Instance
-						if len(c.__inst3_live) > __inst3_i {
-							__n21 = c.__inst3_live[__inst3_i]
-							__n21.SetResult((c.__prop_result - 1))
-							__n21.SetM(c.__prop_m)
-							__n21.Set__depth((c.__prop___depth + 1))
-							__n21.Set__p0(c.__prop___p0)
-						} else {
-							if len(c.__inst3_live) > __inst3_i {
-								c.__inst3_live[__inst3_i].Destroy()
-							}
-							__n21__new := newFrame__slot6Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n21 = __n21__new
-						}
-						__inst3_next = append(__inst3_next, __n21)
-						__inst3_i = (__inst3_i + 1)
-						__n21__el := __n21.Root
-						gtk4rt.InsertBefore(parent, c.__slot3_at, __n21__el)
-						c.__slot3 = append(c.__slot3, __n21__el)
-					}
-				}
-				for __inst3_i_d, _ := range c.__inst3_live {
-					var __inst3_i_j int = ((len(c.__inst3_live) - 1) - __inst3_i_d)
-					if __inst3_i_j >= __inst3_i {
-						c.__inst3_live[__inst3_i_j].Destroy()
-					}
-				}
-				c.__inst3_live = __inst3_next
-			}
-		}()
-	}
-}
-
-func (c *Frame__slot2Instance) teardown() {
-	for __inst3_live_di, _ := range c.__inst3_live {
-		var __inst3_live_dj int = ((len(c.__inst3_live) - 1) - __inst3_live_di)
-		c.__inst3_live[__inst3_live_dj].Destroy()
-	}
-	c.__inst3_live = []*Frame__slot6Instance{}
-}
-
-func (c *Frame__slot2Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot3_at != nil {
-		gtk4rt.Release(c.__slot3_at)
-	}
-}
-
-// Frame__slot1Instance is one live instance of the frame__slot1 component.
-type Frame__slot1Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
+type Frame__slot1__inst struct {
 	__prop_result  int
 	__prop_m       string
 	__prop___depth int
 	__prop___p0    string
-	__root         gtk4rt.Handle
-	__slot4        []gtk4rt.Handle
-	__slot4_at     gtk4rt.Handle
-	__inst4_live   []*Frame__slot5Instance
+	__root         cgo.Widget
+	__slot4        []cgo.Widget
+	__anchor4      cgo.Widget
+	__inst9_live   []*Frame__slot5__inst
 	__rendering4   bool
 	__renderAgain4 bool
-	__n24          gtk4rt.Handle
-	__n8           gtk4rt.Handle
-	__n9           gtk4rt.Handle
+	__n24          cgo.Widget
+	__n8           cgo.Widget
+	__n9           cgo.Widget
 }
 
-func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot1Instance {
-	c := &Frame__slot1Instance{}
-	c.__model = __model
-	c.__prop_result = __a_result
-	c.__prop_m = __a_m
-	c.__prop___depth = __a___depth
-	c.__prop___p0 = __a___p0
-	c.__slot4 = nil
-	c.__inst4_live = []*Frame__slot5Instance{}
-	c.__rendering4 = false
-	c.__renderAgain4 = false
-	c.__n24 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n24, 1)
-	gtk4rt.SetLook(c.__n24, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.__n8 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
-	gtk4rt.LabelSetXAlign(c.__n8, 0.0)
-	gtk4rt.BoxAppend(c.__n24, c.__n8)
-	c.__n9 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n9, 0.0)
-	gtk4rt.BoxAppend(c.__n24, c.__n9)
-	c.__renderSlot4(c.__n24)
-	c.Root = c.__n24
-	gtk4rt.Retain(c.Root)
-	return c
-}
-
-func (c *Frame__slot1Instance) SetResult(__v int) {
-	c.__prop_result = __v
-	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot4(c.__n24)
-}
-
-func (c *Frame__slot1Instance) SetM(__v string) {
-	c.__prop_m = __v
-	gtk4rt.LabelSetLabel(c.__n8, c.__prop_m)
-	for __inst4_live_ui, _ := range c.__inst4_live {
-		c.__inst4_live[__inst4_live_ui].SetM(c.__prop_m)
-	}
-}
-
-func (c *Frame__slot1Instance) Set__depth(__v int) {
-	c.__prop___depth = __v
-	c.__renderSlot4(c.__n24)
-}
-
-func (c *Frame__slot1Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n9, ((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	for __inst4_live_ui, _ := range c.__inst4_live {
-		c.__inst4_live[__inst4_live_ui].Set__p0(c.__prop___p0)
-	}
-}
-
-func (c *Frame__slot1Instance) __renderSlot4(parent gtk4rt.Handle) {
-	if c.__rendering4 {
-		c.__renderAgain4 = true
-	} else {
-		c.__rendering4 = true
-		c.__renderAgain4 = true
-		func() {
-			defer func() {
-				c.__rendering4 = false
-			}()
-			for c.__renderAgain4 {
-				c.__renderAgain4 = false
-				for _, __entry := range c.__slot4 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot4 = nil
-				c.__slot4_at = gtk4rt.SlotAnchor(parent, c.__slot4_at)
-				__inst4_next := []*Frame__slot5Instance{}
-				var __inst4_i int = 0
-				if c.__prop_result > 0 {
-					if c.__prop___depth >= 512 {
-						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
-					} else {
-						var __n23 *Frame__slot5Instance
-						if len(c.__inst4_live) > __inst4_i {
-							__n23 = c.__inst4_live[__inst4_i]
-							__n23.SetResult((c.__prop_result - 1))
-							__n23.SetM(c.__prop_m)
-							__n23.Set__depth((c.__prop___depth + 1))
-							__n23.Set__p0(c.__prop___p0)
-						} else {
-							if len(c.__inst4_live) > __inst4_i {
-								c.__inst4_live[__inst4_i].Destroy()
-							}
-							__n23__new := newFrame__slot5Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n23 = __n23__new
-						}
-						__inst4_next = append(__inst4_next, __n23)
-						__inst4_i = (__inst4_i + 1)
-						__n23__el := __n23.Root
-						gtk4rt.InsertBefore(parent, c.__slot4_at, __n23__el)
-						c.__slot4 = append(c.__slot4, __n23__el)
-					}
-				}
-				for __inst4_i_d, _ := range c.__inst4_live {
-					var __inst4_i_j int = ((len(c.__inst4_live) - 1) - __inst4_i_d)
-					if __inst4_i_j >= __inst4_i {
-						c.__inst4_live[__inst4_i_j].Destroy()
-					}
-				}
-				c.__inst4_live = __inst4_next
-			}
-		}()
-	}
-}
-
-func (c *Frame__slot1Instance) teardown() {
-	for __inst4_live_di, _ := range c.__inst4_live {
-		var __inst4_live_dj int = ((len(c.__inst4_live) - 1) - __inst4_live_di)
-		c.__inst4_live[__inst4_live_dj].Destroy()
-	}
-	c.__inst4_live = []*Frame__slot5Instance{}
-}
-
-func (c *Frame__slot1Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot4_at != nil {
-		gtk4rt.Release(c.__slot4_at)
-	}
-}
-
-// Frame__slot0Instance is one live instance of the frame__slot0 component.
-type Frame__slot0Instance struct {
-	Root           gtk4rt.Handle
-	__model        *Model
+type Frame__slot0__inst struct {
 	__prop_result  int
 	__prop_m       string
 	__prop___depth int
 	__prop___p0    string
-	__root         gtk4rt.Handle
-	__slot5        []gtk4rt.Handle
-	__slot5_at     gtk4rt.Handle
-	__inst5_live   []*Frame__slot4Instance
+	__root         cgo.Widget
+	__slot5        []cgo.Widget
+	__anchor5      cgo.Widget
+	__inst11_live  []*Frame__slot4__inst
 	__rendering5   bool
 	__renderAgain5 bool
-	__n26          gtk4rt.Handle
-	__n10          gtk4rt.Handle
-	__n11          gtk4rt.Handle
+	__n26          cgo.Widget
+	__n10          cgo.Widget
+	__n11          cgo.Widget
 }
 
-func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a___depth int, __a___p0 string) *Frame__slot0Instance {
-	c := &Frame__slot0Instance{}
-	c.__model = __model
-	c.__prop_result = __a_result
-	c.__prop_m = __a_m
-	c.__prop___depth = __a___depth
-	c.__prop___p0 = __a___p0
-	c.__slot5 = nil
-	c.__inst5_live = []*Frame__slot4Instance{}
-	c.__rendering5 = false
-	c.__renderAgain5 = false
-	c.__n26 = gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(c.__n26, 1)
-	gtk4rt.SetLook(c.__n26, gtk4rt.Look{Spaced: true, Spacing: 6})
-	c.__n10 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
-	gtk4rt.LabelSetXAlign(c.__n10, 0.0)
-	gtk4rt.BoxAppend(c.__n26, c.__n10)
-	c.__n11 = gtk4rt.New("GtkLabel")
-	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	gtk4rt.LabelSetXAlign(c.__n11, 0.0)
-	gtk4rt.BoxAppend(c.__n26, c.__n11)
-	c.__renderSlot5(c.__n26)
-	c.Root = c.__n26
-	gtk4rt.Retain(c.Root)
-	return c
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
 }
 
-func (c *Frame__slot0Instance) SetResult(__v int) {
-	c.__prop_result = __v
-	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	c.__renderSlot5(c.__n26)
+type snglState struct {
+	depth     int
+	mark      string
+	__n27     cgo.Widget
+	__n12     *Frame__slot0__inst
+	__n12__el cgo.Widget
+	__n13     *Frame__slot1__inst
+	__n13__el cgo.Widget
+	__n14     *Frame__slot2__inst
+	__n14__el cgo.Widget
 }
 
-func (c *Frame__slot0Instance) SetM(__v string) {
-	c.__prop_m = __v
-	gtk4rt.LabelSetLabel(c.__n10, c.__prop_m)
-	for __inst5_live_ui, _ := range c.__inst5_live {
-		c.__inst5_live[__inst5_live_ui].SetM(c.__prop_m)
-	}
-}
+var m = &snglState{}
 
-func (c *Frame__slot0Instance) Set__depth(__v int) {
-	c.__prop___depth = __v
-	c.__renderSlot5(c.__n26)
-}
-
-func (c *Frame__slot0Instance) Set__p0(__v string) {
-	c.__prop___p0 = __v
-	gtk4rt.LabelSetLabel(c.__n11, ((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
-	for __inst5_live_ui, _ := range c.__inst5_live {
-		c.__inst5_live[__inst5_live_ui].Set__p0(c.__prop___p0)
-	}
-}
-
-func (c *Frame__slot0Instance) __renderSlot5(parent gtk4rt.Handle) {
-	if c.__rendering5 {
-		c.__renderAgain5 = true
+func _setLook(w cgo.Widget, l Look) {
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
 	} else {
-		c.__rendering5 = true
-		c.__renderAgain5 = true
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
+func Frame__slot6__new(result int, m__r3 string, __depth int, __p0 string) *Frame__slot6__inst {
+	__self := &Frame__slot6__inst{__prop_result: result, __prop_m: m__r3, __prop___depth: __depth, __prop___p0: __p0, __slot0: []cgo.Widget{}, __inst1_live: []*Frame__slot6__inst{}}
+	__self.__n16 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n16)), cgo.CGtkOrientation(1))
+	_setLook(__self.__n16, Look{Spaced: true, Spacing: 6})
+	__self.__n0 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n0, __self.__prop_m)
+	_setLook(__self.__n0, Look{})
+	cgo.SnglOnClick(__self.__n0, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n16)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
+	__self.__n1 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n1, ((("in " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	_setLook(__self.__n1, Look{})
+	cgo.SnglOnClick(__self.__n1, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n16)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)))
+	Frame__slot6__renderSlot0(__self, __self.__n16)
+	__self.__root = __self.__n16
+	return __self
+}
+
+func Frame__slot6__set_result(__self *Frame__slot6__inst, __v int) {
+	if __self.__prop_result == __v {
+		return
+	}
+	__self.__prop_result = __v
+	cgo.SnglTextSetValue(__self.__n1, ((("in " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	Frame__slot6__renderSlot0(__self, __self.__n16)
+}
+
+func Frame__slot6__set_m(__self *Frame__slot6__inst, __v string) {
+	if __self.__prop_m == __v {
+		return
+	}
+	__self.__prop_m = __v
+	cgo.SnglTextSetValue(__self.__n0, __self.__prop_m)
+	for __inst1_live_ui, _ := range __self.__inst1_live {
+		Frame__slot6__set_m(__self.__inst1_live[__inst1_live_ui], __self.__prop_m)
+	}
+}
+
+func Frame__slot6__set___depth(__self *Frame__slot6__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
+	__self.__prop___depth = __v
+	Frame__slot6__renderSlot0(__self, __self.__n16)
+}
+
+func Frame__slot6__set___p0(__self *Frame__slot6__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
+	__self.__prop___p0 = __v
+	cgo.SnglTextSetValue(__self.__n1, ((("in " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	for __inst1_live_ui, _ := range __self.__inst1_live {
+		Frame__slot6__set___p0(__self.__inst1_live[__inst1_live_ui], __self.__prop___p0)
+	}
+}
+
+func Frame__slot6__renderSlot0(__self *Frame__slot6__inst, parent cgo.Widget) {
+	if __self.__rendering0 {
+		__self.__renderAgain0 = true
+	} else {
+		__self.__rendering0 = true
+		__self.__renderAgain0 = true
 		func() {
 			defer func() {
-				c.__rendering5 = false
+				__self.__rendering0 = false
 			}()
-			for c.__renderAgain5 {
-				c.__renderAgain5 = false
-				for _, __entry := range c.__slot5 {
-					gtk4rt.BoxRemove(parent, __entry)
-				}
-				c.__slot5 = nil
-				c.__slot5_at = gtk4rt.SlotAnchor(parent, c.__slot5_at)
-				__inst5_next := []*Frame__slot4Instance{}
-				var __inst5_i int = 0
-				if c.__prop_result > 0 {
-					if c.__prop___depth >= 512 {
+			for __self.__renderAgain0 {
+				__self.__renderAgain0 = false
+				__self.__anchor0 = cgo.SnglSlotAnchor(parent, __self.__anchor0)
+				__place0_prev := __self.__slot0
+				var __place0_i int = 0
+				__self.__slot0 = []cgo.Widget{}
+				__inst1_next := []*Frame__slot6__inst{}
+				var __inst1_i int = 0
+				if __self.__prop_result > 0 {
+					if __self.__prop___depth >= 512 {
 						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
 					} else {
-						var __n25 *Frame__slot4Instance
-						if len(c.__inst5_live) > __inst5_i {
-							__n25 = c.__inst5_live[__inst5_i]
-							__n25.SetResult((c.__prop_result - 1))
-							__n25.SetM(c.__prop_m)
-							__n25.Set__depth((c.__prop___depth + 1))
-							__n25.Set__p0(c.__prop___p0)
+						var __n15 *Frame__slot6__inst
+						if len(__self.__inst1_live) > __inst1_i {
+							__n15 = __self.__inst1_live[__inst1_i]
+							Frame__slot6__set_result(__n15, (__self.__prop_result - 1))
+							Frame__slot6__set_m(__n15, __self.__prop_m)
+							Frame__slot6__set___depth(__n15, (__self.__prop___depth + 1))
+							Frame__slot6__set___p0(__n15, __self.__prop___p0)
 						} else {
-							if len(c.__inst5_live) > __inst5_i {
-								c.__inst5_live[__inst5_i].Destroy()
+							if len(__self.__inst1_live) > __inst1_i {
+								Frame__slot6__destroy(__self.__inst1_live[__inst1_i])
 							}
-							__n25__new := newFrame__slot4Instance(c.__model, (c.__prop_result - 1), c.__prop_m, (c.__prop___depth + 1), c.__prop___p0)
-							__n25 = __n25__new
+							__n15__made := Frame__slot6__new((__self.__prop_result - 1), __self.__prop_m, (__self.__prop___depth + 1), __self.__prop___p0)
+							__n15 = __n15__made
 						}
-						__inst5_next = append(__inst5_next, __n25)
-						__inst5_i = (__inst5_i + 1)
-						__n25__el := __n25.Root
-						gtk4rt.InsertBefore(parent, c.__slot5_at, __n25__el)
-						c.__slot5 = append(c.__slot5, __n25__el)
+						__inst1_next = append(__inst1_next, __n15)
+						__inst1_i = (__inst1_i + 1)
+						__n15__el := __n15.__root
+						__place0_i_ref0 := snglSome(__self.__anchor0)
+						if __place0_i < len(__place0_prev) {
+							__place0_i_ref0 = snglSome(__place0_prev[__place0_i])
+						}
+						if snglOptEq(__place0_i_ref0, __n15__el) {
+							__place0_i = (__place0_i + 1)
+						} else {
+							if __place0_i_ref0 == nil {
+								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__n15__el)))
+							} else {
+								cgo.SnglBoxInsertBefore((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer((*(__place0_i_ref0)))), (cgo.PGtkWidget)(unsafe.Pointer(__n15__el)))
+							}
+						}
+						__self.__slot0 = append(__self.__slot0, __n15__el)
 					}
 				}
-				for __inst5_i_d, _ := range c.__inst5_live {
-					var __inst5_i_j int = ((len(c.__inst5_live) - 1) - __inst5_i_d)
-					if __inst5_i_j >= __inst5_i {
-						c.__inst5_live[__inst5_i_j].Destroy()
+				for __inst1_i_d, _ := range __self.__inst1_live {
+					var __inst1_i_j int = ((len(__self.__inst1_live) - 1) - __inst1_i_d)
+					if __inst1_i_j >= __inst1_i {
+						Frame__slot6__destroy(__self.__inst1_live[__inst1_i_j])
 					}
 				}
-				c.__inst5_live = __inst5_next
+				__self.__inst1_live = __inst1_next
+				for _, __place0_prev_e := range __place0_prev {
+					if slices.Index(__self.__slot0, __place0_prev_e) < 0 {
+						cgo.GtkBoxRemove((cgo.PGtkBox)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__place0_prev_e)))
+					}
+				}
 			}
 		}()
 	}
 }
 
-func (c *Frame__slot0Instance) teardown() {
-	for __inst5_live_di, _ := range c.__inst5_live {
-		var __inst5_live_dj int = ((len(c.__inst5_live) - 1) - __inst5_live_di)
-		c.__inst5_live[__inst5_live_dj].Destroy()
+func Frame__slot6__snglTeardown(__self *Frame__slot6__inst) {
+	for __inst1_live_di, _ := range __self.__inst1_live {
+		var __inst1_live_dj int = ((len(__self.__inst1_live) - 1) - __inst1_live_di)
+		Frame__slot6__destroy(__self.__inst1_live[__inst1_live_dj])
 	}
-	c.__inst5_live = []*Frame__slot4Instance{}
+	__self.__inst1_live = []*Frame__slot6__inst{}
+	__self.__anchor0 = cgo.SnglSlotAnchor(nil, __self.__anchor0)
 }
 
-func (c *Frame__slot0Instance) Destroy() {
-	c.teardown()
-	if c.Root != nil {
-		gtk4rt.Release(c.Root)
-		c.Root = nil
-	}
-	if c.__slot5_at != nil {
-		gtk4rt.Release(c.__slot5_at)
-	}
+func Frame__slot6__destroy(__self *Frame__slot6__inst) {
+	Frame__slot6__snglTeardown(__self)
+	return
 }
 
-func (m *Model) Depth() int {
-	return m.depth
+func Frame__slot5__new(result int, m__r4 string, __depth int, __p0 string) *Frame__slot5__inst {
+	__self := &Frame__slot5__inst{__prop_result: result, __prop_m: m__r4, __prop___depth: __depth, __prop___p0: __p0, __slot1: []cgo.Widget{}, __inst3_live: []*Frame__slot5__inst{}}
+	__self.__n18 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n18)), cgo.CGtkOrientation(1))
+	_setLook(__self.__n18, Look{Spaced: true, Spacing: 6})
+	__self.__n2 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n2, __self.__prop_m)
+	_setLook(__self.__n2, Look{})
+	cgo.SnglOnClick(__self.__n2, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n18)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n2)))
+	__self.__n3 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n3, ((("r " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	_setLook(__self.__n3, Look{})
+	cgo.SnglOnClick(__self.__n3, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n18)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n3)))
+	Frame__slot5__renderSlot1(__self, __self.__n18)
+	__self.__root = __self.__n18
+	return __self
 }
 
-func (m *Model) SetDepth(v int) {
-	m.depth = v
-}
-
-func (m *Model) Mark() string {
-	return m.mark
-}
-
-func (m *Model) SetMark(v string) {
-	m.mark = v
-}
-
-func (m *Model) buildWidgetTree() {
-	if m.__root != nil {
+func Frame__slot5__set_result(__self *Frame__slot5__inst, __v int) {
+	if __self.__prop_result == __v {
 		return
 	}
-	m.__root = gtk4rt.BoxNew(gtk4rt.OrientationVertical, 6)
-	__n27 := gtk4rt.New("GtkBox")
-	gtk4rt.OrientableSetOrientation(__n27, 1)
-	gtk4rt.SetLook(__n27, gtk4rt.Look{Spaced: true, Spacing: 6})
-	__n12 := newFrame__slot0Instance(m, m.depth, "top", 0, m.mark)
-	__n12__el := __n12.Root
-	gtk4rt.BoxAppend(__n27, __n12__el)
-	__n13 := newFrame__slot1Instance(m, (m.depth - 1), "second", 0, m.mark)
-	__n13__el := __n13.Root
-	gtk4rt.BoxAppend(__n27, __n13__el)
-	__n14 := newFrame__slot2Instance(m, (m.depth - 2), "third", 0, m.mark)
-	__n14__el := __n14.Root
-	gtk4rt.BoxAppend(__n27, __n14__el)
-	gtk4rt.BoxAppend(m.__root, __n27)
+	__self.__prop_result = __v
+	cgo.SnglTextSetValue(__self.__n3, ((("r " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	Frame__slot5__renderSlot1(__self, __self.__n18)
 }
 
-// BuildUI constructs the widget tree and returns the top-level window.
-func (m *Model) BuildUI(app gtk4rt.Handle) gtk4rt.Handle {
-	m.buildWidgetTree()
-	win := gtk4rt.ApplicationWindowNew(app)
-	gtk4rt.WindowSetDefaultSize(win, 480, 640)
-	gtk4rt.WindowSetChild(win, m.__root)
-	return win
+func Frame__slot5__set_m(__self *Frame__slot5__inst, __v string) {
+	if __self.__prop_m == __v {
+		return
+	}
+	__self.__prop_m = __v
+	cgo.SnglTextSetValue(__self.__n2, __self.__prop_m)
+	for __inst3_live_ui, _ := range __self.__inst3_live {
+		Frame__slot5__set_m(__self.__inst3_live[__inst3_live_ui], __self.__prop_m)
+	}
 }
+
+func Frame__slot5__set___depth(__self *Frame__slot5__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
+	__self.__prop___depth = __v
+	Frame__slot5__renderSlot1(__self, __self.__n18)
+}
+
+func Frame__slot5__set___p0(__self *Frame__slot5__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
+	__self.__prop___p0 = __v
+	cgo.SnglTextSetValue(__self.__n3, ((("r " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	for __inst3_live_ui, _ := range __self.__inst3_live {
+		Frame__slot5__set___p0(__self.__inst3_live[__inst3_live_ui], __self.__prop___p0)
+	}
+}
+
+func Frame__slot5__renderSlot1(__self *Frame__slot5__inst, parent cgo.Widget) {
+	if __self.__rendering1 {
+		__self.__renderAgain1 = true
+	} else {
+		__self.__rendering1 = true
+		__self.__renderAgain1 = true
+		func() {
+			defer func() {
+				__self.__rendering1 = false
+			}()
+			for __self.__renderAgain1 {
+				__self.__renderAgain1 = false
+				__self.__anchor1 = cgo.SnglSlotAnchor(parent, __self.__anchor1)
+				__place2_prev := __self.__slot1
+				var __place2_i int = 0
+				__self.__slot1 = []cgo.Widget{}
+				__inst3_next := []*Frame__slot5__inst{}
+				var __inst3_i int = 0
+				if __self.__prop_result > 0 {
+					if __self.__prop___depth >= 512 {
+						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+					} else {
+						var __n17 *Frame__slot5__inst
+						if len(__self.__inst3_live) > __inst3_i {
+							__n17 = __self.__inst3_live[__inst3_i]
+							Frame__slot5__set_result(__n17, (__self.__prop_result - 1))
+							Frame__slot5__set_m(__n17, __self.__prop_m)
+							Frame__slot5__set___depth(__n17, (__self.__prop___depth + 1))
+							Frame__slot5__set___p0(__n17, __self.__prop___p0)
+						} else {
+							if len(__self.__inst3_live) > __inst3_i {
+								Frame__slot5__destroy(__self.__inst3_live[__inst3_i])
+							}
+							__n17__made := Frame__slot5__new((__self.__prop_result - 1), __self.__prop_m, (__self.__prop___depth + 1), __self.__prop___p0)
+							__n17 = __n17__made
+						}
+						__inst3_next = append(__inst3_next, __n17)
+						__inst3_i = (__inst3_i + 1)
+						__n17__el := __n17.__root
+						__place2_i_ref0 := snglSome(__self.__anchor1)
+						if __place2_i < len(__place2_prev) {
+							__place2_i_ref0 = snglSome(__place2_prev[__place2_i])
+						}
+						if snglOptEq(__place2_i_ref0, __n17__el) {
+							__place2_i = (__place2_i + 1)
+						} else {
+							if __place2_i_ref0 == nil {
+								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__n17__el)))
+							} else {
+								cgo.SnglBoxInsertBefore((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer((*(__place2_i_ref0)))), (cgo.PGtkWidget)(unsafe.Pointer(__n17__el)))
+							}
+						}
+						__self.__slot1 = append(__self.__slot1, __n17__el)
+					}
+				}
+				for __inst3_i_d, _ := range __self.__inst3_live {
+					var __inst3_i_j int = ((len(__self.__inst3_live) - 1) - __inst3_i_d)
+					if __inst3_i_j >= __inst3_i {
+						Frame__slot5__destroy(__self.__inst3_live[__inst3_i_j])
+					}
+				}
+				__self.__inst3_live = __inst3_next
+				for _, __place2_prev_e := range __place2_prev {
+					if slices.Index(__self.__slot1, __place2_prev_e) < 0 {
+						cgo.GtkBoxRemove((cgo.PGtkBox)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__place2_prev_e)))
+					}
+				}
+			}
+		}()
+	}
+}
+
+func Frame__slot5__snglTeardown(__self *Frame__slot5__inst) {
+	for __inst3_live_di, _ := range __self.__inst3_live {
+		var __inst3_live_dj int = ((len(__self.__inst3_live) - 1) - __inst3_live_di)
+		Frame__slot5__destroy(__self.__inst3_live[__inst3_live_dj])
+	}
+	__self.__inst3_live = []*Frame__slot5__inst{}
+	__self.__anchor1 = cgo.SnglSlotAnchor(nil, __self.__anchor1)
+}
+
+func Frame__slot5__destroy(__self *Frame__slot5__inst) {
+	Frame__slot5__snglTeardown(__self)
+	return
+}
+
+func Frame__slot4__new(result int, m__r5 string, __depth int, __p0 string) *Frame__slot4__inst {
+	__self := &Frame__slot4__inst{__prop_result: result, __prop_m: m__r5, __prop___depth: __depth, __prop___p0: __p0, __slot2: []cgo.Widget{}, __inst5_live: []*Frame__slot4__inst{}}
+	__self.__n20 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n20)), cgo.CGtkOrientation(1))
+	_setLook(__self.__n20, Look{Spaced: true, Spacing: 6})
+	__self.__n4 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n4, __self.__prop_m)
+	_setLook(__self.__n4, Look{})
+	cgo.SnglOnClick(__self.__n4, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n20)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)))
+	__self.__n5 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n5, ((("level " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	_setLook(__self.__n5, Look{})
+	cgo.SnglOnClick(__self.__n5, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n20)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n5)))
+	Frame__slot4__renderSlot2(__self, __self.__n20)
+	__self.__root = __self.__n20
+	return __self
+}
+
+func Frame__slot4__set_result(__self *Frame__slot4__inst, __v int) {
+	if __self.__prop_result == __v {
+		return
+	}
+	__self.__prop_result = __v
+	cgo.SnglTextSetValue(__self.__n5, ((("level " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	Frame__slot4__renderSlot2(__self, __self.__n20)
+}
+
+func Frame__slot4__set_m(__self *Frame__slot4__inst, __v string) {
+	if __self.__prop_m == __v {
+		return
+	}
+	__self.__prop_m = __v
+	cgo.SnglTextSetValue(__self.__n4, __self.__prop_m)
+	for __inst5_live_ui, _ := range __self.__inst5_live {
+		Frame__slot4__set_m(__self.__inst5_live[__inst5_live_ui], __self.__prop_m)
+	}
+}
+
+func Frame__slot4__set___depth(__self *Frame__slot4__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
+	__self.__prop___depth = __v
+	Frame__slot4__renderSlot2(__self, __self.__n20)
+}
+
+func Frame__slot4__set___p0(__self *Frame__slot4__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
+	__self.__prop___p0 = __v
+	cgo.SnglTextSetValue(__self.__n5, ((("level " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	for __inst5_live_ui, _ := range __self.__inst5_live {
+		Frame__slot4__set___p0(__self.__inst5_live[__inst5_live_ui], __self.__prop___p0)
+	}
+}
+
+func Frame__slot4__renderSlot2(__self *Frame__slot4__inst, parent cgo.Widget) {
+	if __self.__rendering2 {
+		__self.__renderAgain2 = true
+	} else {
+		__self.__rendering2 = true
+		__self.__renderAgain2 = true
+		func() {
+			defer func() {
+				__self.__rendering2 = false
+			}()
+			for __self.__renderAgain2 {
+				__self.__renderAgain2 = false
+				__self.__anchor2 = cgo.SnglSlotAnchor(parent, __self.__anchor2)
+				__place4_prev := __self.__slot2
+				var __place4_i int = 0
+				__self.__slot2 = []cgo.Widget{}
+				__inst5_next := []*Frame__slot4__inst{}
+				var __inst5_i int = 0
+				if __self.__prop_result > 0 {
+					if __self.__prop___depth >= 512 {
+						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+					} else {
+						var __n19 *Frame__slot4__inst
+						if len(__self.__inst5_live) > __inst5_i {
+							__n19 = __self.__inst5_live[__inst5_i]
+							Frame__slot4__set_result(__n19, (__self.__prop_result - 1))
+							Frame__slot4__set_m(__n19, __self.__prop_m)
+							Frame__slot4__set___depth(__n19, (__self.__prop___depth + 1))
+							Frame__slot4__set___p0(__n19, __self.__prop___p0)
+						} else {
+							if len(__self.__inst5_live) > __inst5_i {
+								Frame__slot4__destroy(__self.__inst5_live[__inst5_i])
+							}
+							__n19__made := Frame__slot4__new((__self.__prop_result - 1), __self.__prop_m, (__self.__prop___depth + 1), __self.__prop___p0)
+							__n19 = __n19__made
+						}
+						__inst5_next = append(__inst5_next, __n19)
+						__inst5_i = (__inst5_i + 1)
+						__n19__el := __n19.__root
+						__place4_i_ref0 := snglSome(__self.__anchor2)
+						if __place4_i < len(__place4_prev) {
+							__place4_i_ref0 = snglSome(__place4_prev[__place4_i])
+						}
+						if snglOptEq(__place4_i_ref0, __n19__el) {
+							__place4_i = (__place4_i + 1)
+						} else {
+							if __place4_i_ref0 == nil {
+								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__n19__el)))
+							} else {
+								cgo.SnglBoxInsertBefore((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer((*(__place4_i_ref0)))), (cgo.PGtkWidget)(unsafe.Pointer(__n19__el)))
+							}
+						}
+						__self.__slot2 = append(__self.__slot2, __n19__el)
+					}
+				}
+				for __inst5_i_d, _ := range __self.__inst5_live {
+					var __inst5_i_j int = ((len(__self.__inst5_live) - 1) - __inst5_i_d)
+					if __inst5_i_j >= __inst5_i {
+						Frame__slot4__destroy(__self.__inst5_live[__inst5_i_j])
+					}
+				}
+				__self.__inst5_live = __inst5_next
+				for _, __place4_prev_e := range __place4_prev {
+					if slices.Index(__self.__slot2, __place4_prev_e) < 0 {
+						cgo.GtkBoxRemove((cgo.PGtkBox)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__place4_prev_e)))
+					}
+				}
+			}
+		}()
+	}
+}
+
+func Frame__slot4__snglTeardown(__self *Frame__slot4__inst) {
+	for __inst5_live_di, _ := range __self.__inst5_live {
+		var __inst5_live_dj int = ((len(__self.__inst5_live) - 1) - __inst5_live_di)
+		Frame__slot4__destroy(__self.__inst5_live[__inst5_live_dj])
+	}
+	__self.__inst5_live = []*Frame__slot4__inst{}
+	__self.__anchor2 = cgo.SnglSlotAnchor(nil, __self.__anchor2)
+}
+
+func Frame__slot4__destroy(__self *Frame__slot4__inst) {
+	Frame__slot4__snglTeardown(__self)
+	return
+}
+
+func Frame__slot2__new(result int, m__r6 string, __depth int, __p0 string) *Frame__slot2__inst {
+	__self := &Frame__slot2__inst{__prop_result: result, __prop_m: m__r6, __prop___depth: __depth, __prop___p0: __p0, __slot3: []cgo.Widget{}, __inst7_live: []*Frame__slot6__inst{}}
+	__self.__n22 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n22)), cgo.CGtkOrientation(1))
+	_setLook(__self.__n22, Look{Spaced: true, Spacing: 6})
+	__self.__n6 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n6, __self.__prop_m)
+	_setLook(__self.__n6, Look{})
+	cgo.SnglOnClick(__self.__n6, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n22)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n6)))
+	__self.__n7 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n7, ((("in " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	_setLook(__self.__n7, Look{})
+	cgo.SnglOnClick(__self.__n7, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n22)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n7)))
+	Frame__slot2__renderSlot3(__self, __self.__n22)
+	__self.__root = __self.__n22
+	return __self
+}
+
+func Frame__slot2__renderSlot3(__self *Frame__slot2__inst, parent cgo.Widget) {
+	if __self.__rendering3 {
+		__self.__renderAgain3 = true
+	} else {
+		__self.__rendering3 = true
+		__self.__renderAgain3 = true
+		func() {
+			defer func() {
+				__self.__rendering3 = false
+			}()
+			for __self.__renderAgain3 {
+				__self.__renderAgain3 = false
+				__self.__anchor3 = cgo.SnglSlotAnchor(parent, __self.__anchor3)
+				__place6_prev := __self.__slot3
+				var __place6_i int = 0
+				__self.__slot3 = []cgo.Widget{}
+				__inst7_next := []*Frame__slot6__inst{}
+				var __inst7_i int = 0
+				if __self.__prop_result > 0 {
+					if __self.__prop___depth >= 512 {
+						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+					} else {
+						var __n21 *Frame__slot6__inst
+						if len(__self.__inst7_live) > __inst7_i {
+							__n21 = __self.__inst7_live[__inst7_i]
+							Frame__slot6__set_result(__n21, (__self.__prop_result - 1))
+							Frame__slot6__set_m(__n21, __self.__prop_m)
+							Frame__slot6__set___depth(__n21, (__self.__prop___depth + 1))
+							Frame__slot6__set___p0(__n21, __self.__prop___p0)
+						} else {
+							if len(__self.__inst7_live) > __inst7_i {
+								Frame__slot6__destroy(__self.__inst7_live[__inst7_i])
+							}
+							__n21__made := Frame__slot6__new((__self.__prop_result - 1), __self.__prop_m, (__self.__prop___depth + 1), __self.__prop___p0)
+							__n21 = __n21__made
+						}
+						__inst7_next = append(__inst7_next, __n21)
+						__inst7_i = (__inst7_i + 1)
+						__n21__el := __n21.__root
+						__place6_i_ref0 := snglSome(__self.__anchor3)
+						if __place6_i < len(__place6_prev) {
+							__place6_i_ref0 = snglSome(__place6_prev[__place6_i])
+						}
+						if snglOptEq(__place6_i_ref0, __n21__el) {
+							__place6_i = (__place6_i + 1)
+						} else {
+							if __place6_i_ref0 == nil {
+								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__n21__el)))
+							} else {
+								cgo.SnglBoxInsertBefore((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer((*(__place6_i_ref0)))), (cgo.PGtkWidget)(unsafe.Pointer(__n21__el)))
+							}
+						}
+						__self.__slot3 = append(__self.__slot3, __n21__el)
+					}
+				}
+				for __inst7_i_d, _ := range __self.__inst7_live {
+					var __inst7_i_j int = ((len(__self.__inst7_live) - 1) - __inst7_i_d)
+					if __inst7_i_j >= __inst7_i {
+						Frame__slot6__destroy(__self.__inst7_live[__inst7_i_j])
+					}
+				}
+				__self.__inst7_live = __inst7_next
+				for _, __place6_prev_e := range __place6_prev {
+					if slices.Index(__self.__slot3, __place6_prev_e) < 0 {
+						cgo.GtkBoxRemove((cgo.PGtkBox)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__place6_prev_e)))
+					}
+				}
+			}
+		}()
+	}
+}
+
+func Frame__slot1__new(result int, m__r7 string, __depth int, __p0 string) *Frame__slot1__inst {
+	__self := &Frame__slot1__inst{__prop_result: result, __prop_m: m__r7, __prop___depth: __depth, __prop___p0: __p0, __slot4: []cgo.Widget{}, __inst9_live: []*Frame__slot5__inst{}}
+	__self.__n24 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n24)), cgo.CGtkOrientation(1))
+	_setLook(__self.__n24, Look{Spaced: true, Spacing: 6})
+	__self.__n8 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n8, __self.__prop_m)
+	_setLook(__self.__n8, Look{})
+	cgo.SnglOnClick(__self.__n8, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n24)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n8)))
+	__self.__n9 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n9, ((("r " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	_setLook(__self.__n9, Look{})
+	cgo.SnglOnClick(__self.__n9, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n24)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n9)))
+	Frame__slot1__renderSlot4(__self, __self.__n24)
+	__self.__root = __self.__n24
+	return __self
+}
+
+func Frame__slot1__renderSlot4(__self *Frame__slot1__inst, parent cgo.Widget) {
+	if __self.__rendering4 {
+		__self.__renderAgain4 = true
+	} else {
+		__self.__rendering4 = true
+		__self.__renderAgain4 = true
+		func() {
+			defer func() {
+				__self.__rendering4 = false
+			}()
+			for __self.__renderAgain4 {
+				__self.__renderAgain4 = false
+				__self.__anchor4 = cgo.SnglSlotAnchor(parent, __self.__anchor4)
+				__place8_prev := __self.__slot4
+				var __place8_i int = 0
+				__self.__slot4 = []cgo.Widget{}
+				__inst9_next := []*Frame__slot5__inst{}
+				var __inst9_i int = 0
+				if __self.__prop_result > 0 {
+					if __self.__prop___depth >= 512 {
+						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+					} else {
+						var __n23 *Frame__slot5__inst
+						if len(__self.__inst9_live) > __inst9_i {
+							__n23 = __self.__inst9_live[__inst9_i]
+							Frame__slot5__set_result(__n23, (__self.__prop_result - 1))
+							Frame__slot5__set_m(__n23, __self.__prop_m)
+							Frame__slot5__set___depth(__n23, (__self.__prop___depth + 1))
+							Frame__slot5__set___p0(__n23, __self.__prop___p0)
+						} else {
+							if len(__self.__inst9_live) > __inst9_i {
+								Frame__slot5__destroy(__self.__inst9_live[__inst9_i])
+							}
+							__n23__made := Frame__slot5__new((__self.__prop_result - 1), __self.__prop_m, (__self.__prop___depth + 1), __self.__prop___p0)
+							__n23 = __n23__made
+						}
+						__inst9_next = append(__inst9_next, __n23)
+						__inst9_i = (__inst9_i + 1)
+						__n23__el := __n23.__root
+						__place8_i_ref0 := snglSome(__self.__anchor4)
+						if __place8_i < len(__place8_prev) {
+							__place8_i_ref0 = snglSome(__place8_prev[__place8_i])
+						}
+						if snglOptEq(__place8_i_ref0, __n23__el) {
+							__place8_i = (__place8_i + 1)
+						} else {
+							if __place8_i_ref0 == nil {
+								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__n23__el)))
+							} else {
+								cgo.SnglBoxInsertBefore((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer((*(__place8_i_ref0)))), (cgo.PGtkWidget)(unsafe.Pointer(__n23__el)))
+							}
+						}
+						__self.__slot4 = append(__self.__slot4, __n23__el)
+					}
+				}
+				for __inst9_i_d, _ := range __self.__inst9_live {
+					var __inst9_i_j int = ((len(__self.__inst9_live) - 1) - __inst9_i_d)
+					if __inst9_i_j >= __inst9_i {
+						Frame__slot5__destroy(__self.__inst9_live[__inst9_i_j])
+					}
+				}
+				__self.__inst9_live = __inst9_next
+				for _, __place8_prev_e := range __place8_prev {
+					if slices.Index(__self.__slot4, __place8_prev_e) < 0 {
+						cgo.GtkBoxRemove((cgo.PGtkBox)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__place8_prev_e)))
+					}
+				}
+			}
+		}()
+	}
+}
+
+func Frame__slot0__new(result int, m__r8 string, __depth int, __p0 string) *Frame__slot0__inst {
+	__self := &Frame__slot0__inst{__prop_result: result, __prop_m: m__r8, __prop___depth: __depth, __prop___p0: __p0, __slot5: []cgo.Widget{}, __inst11_live: []*Frame__slot4__inst{}}
+	__self.__n26 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n26)), cgo.CGtkOrientation(1))
+	_setLook(__self.__n26, Look{Spaced: true, Spacing: 6})
+	__self.__n10 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n10, __self.__prop_m)
+	_setLook(__self.__n10, Look{})
+	cgo.SnglOnClick(__self.__n10, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n26)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n10)))
+	__self.__n11 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(__self.__n11, ((("level " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
+	_setLook(__self.__n11, Look{})
+	cgo.SnglOnClick(__self.__n11, func() {
+	})
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n26)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n11)))
+	Frame__slot0__renderSlot5(__self, __self.__n26)
+	__self.__root = __self.__n26
+	return __self
+}
+
+func Frame__slot0__renderSlot5(__self *Frame__slot0__inst, parent cgo.Widget) {
+	if __self.__rendering5 {
+		__self.__renderAgain5 = true
+	} else {
+		__self.__rendering5 = true
+		__self.__renderAgain5 = true
+		func() {
+			defer func() {
+				__self.__rendering5 = false
+			}()
+			for __self.__renderAgain5 {
+				__self.__renderAgain5 = false
+				__self.__anchor5 = cgo.SnglSlotAnchor(parent, __self.__anchor5)
+				__place10_prev := __self.__slot5
+				var __place10_i int = 0
+				__self.__slot5 = []cgo.Widget{}
+				__inst11_next := []*Frame__slot4__inst{}
+				var __inst11_i int = 0
+				if __self.__prop_result > 0 {
+					if __self.__prop___depth >= 512 {
+						panic(ErrorEvent{Message: "frame: recursion exceeded 512 nested instances", Kind: "recursion"})
+					} else {
+						var __n25 *Frame__slot4__inst
+						if len(__self.__inst11_live) > __inst11_i {
+							__n25 = __self.__inst11_live[__inst11_i]
+							Frame__slot4__set_result(__n25, (__self.__prop_result - 1))
+							Frame__slot4__set_m(__n25, __self.__prop_m)
+							Frame__slot4__set___depth(__n25, (__self.__prop___depth + 1))
+							Frame__slot4__set___p0(__n25, __self.__prop___p0)
+						} else {
+							if len(__self.__inst11_live) > __inst11_i {
+								Frame__slot4__destroy(__self.__inst11_live[__inst11_i])
+							}
+							__n25__made := Frame__slot4__new((__self.__prop_result - 1), __self.__prop_m, (__self.__prop___depth + 1), __self.__prop___p0)
+							__n25 = __n25__made
+						}
+						__inst11_next = append(__inst11_next, __n25)
+						__inst11_i = (__inst11_i + 1)
+						__n25__el := __n25.__root
+						__place10_i_ref0 := snglSome(__self.__anchor5)
+						if __place10_i < len(__place10_prev) {
+							__place10_i_ref0 = snglSome(__place10_prev[__place10_i])
+						}
+						if snglOptEq(__place10_i_ref0, __n25__el) {
+							__place10_i = (__place10_i + 1)
+						} else {
+							if __place10_i_ref0 == nil {
+								cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__n25__el)))
+							} else {
+								cgo.SnglBoxInsertBefore((cgo.PGtkWidget)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer((*(__place10_i_ref0)))), (cgo.PGtkWidget)(unsafe.Pointer(__n25__el)))
+							}
+						}
+						__self.__slot5 = append(__self.__slot5, __n25__el)
+					}
+				}
+				for __inst11_i_d, _ := range __self.__inst11_live {
+					var __inst11_i_j int = ((len(__self.__inst11_live) - 1) - __inst11_i_d)
+					if __inst11_i_j >= __inst11_i {
+						Frame__slot4__destroy(__self.__inst11_live[__inst11_i_j])
+					}
+				}
+				__self.__inst11_live = __inst11_next
+				for _, __place10_prev_e := range __place10_prev {
+					if slices.Index(__self.__slot5, __place10_prev_e) < 0 {
+						cgo.GtkBoxRemove((cgo.PGtkBox)(unsafe.Pointer(parent)), (cgo.PGtkWidget)(unsafe.Pointer(__place10_prev_e)))
+					}
+				}
+			}
+		}()
+	}
+}
+
+func snglInit() {
+	m = &snglState{}
+	m.depth = 2
+	m.mark = "*"
+}
+
+func snglBuild() {
+	m.__n27 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n27)), cgo.CGtkOrientation(1))
+	_setLook(m.__n27, Look{Spaced: true, Spacing: 6})
+	m.__n12 = Frame__slot0__new(m.depth, "top", 0, m.mark)
+	m.__n12__el = m.__n12.__root
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n27)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n12__el)))
+	m.__n13 = Frame__slot1__new((m.depth - 1), "second", 0, m.mark)
+	m.__n13__el = m.__n13.__root
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n27)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n13__el)))
+	m.__n14 = Frame__slot2__new((m.depth - 2), "third", 0, m.mark)
+	m.__n14__el = m.__n14.__root
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n27)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n14__el)))
+	cgo.SnglAppAttach(m.__n27)
+}
+
+func snglTeardown() {
+}
+
+func main() {
+	runtime.LockOSThread()
+	status := snglGtkMain(func() {
+		snglInit()
+		snglBuild()
+	})
+	snglTeardown()
+	os.Exit(status)
+}
+-- out/go/gtk4/sngl_rt.go --
+// Code generated by sngl (gtk4). DO NOT EDIT.
+
+package main
+
+import "duckfam.us/sngl/lib/platform/gtk4/cgo"
+
+func snglGtkMain(build func()) int                   { return cgo.SnglGtkMain(build) }
+func snglGtkInit()                                   { cgo.SnglGtkInit() }
+func snglGtkHold()                                   { cgo.SnglGtkHold() }
+func snglGtkPresent()                                { cgo.SnglGtkPresent() }
+func snglGtkRun() int                                { return cgo.SnglGtkRun() }
+func snglGtkStep()                                   { cgo.SnglGtkStep() }
+func snglGtkReset()                                  { cgo.SnglGtkReset() }
+func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCaptureFile(path, w, h) }
+func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
+func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/MainScreen.kt --
 // Code generated by sngl (android) from app.sngl; DO NOT EDIT.
 
@@ -2763,11 +2794,17 @@ window.__sngl_boot = () => {
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n1.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       __renderSlot0(__slotAnchor_0);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n0.textContent = __prop_m;
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
@@ -2775,10 +2812,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
@@ -2814,8 +2857,8 @@ window.__sngl_boot = () => {
                   if (__inst1_live.length > __inst1_i) {
                     __inst1_live[__inst1_i].__destroy();
                   }
-                  let __n15__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n15 = __n15__new;
+                  let __n15__made = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n15 = __n15__made;
                 }
                 __inst1_next.push(__n15);
                 __inst1_i = __inst1_i + 1;
@@ -2897,11 +2940,17 @@ window.__sngl_boot = () => {
     let __rendering1 = false;
     let __renderAgain1 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n3.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       __renderSlot1(__slotAnchor_1);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n2.textContent = __prop_m;
       for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
@@ -2909,10 +2958,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot1(__slotAnchor_1);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n3.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
@@ -2948,8 +3003,8 @@ window.__sngl_boot = () => {
                   if (__inst3_live.length > __inst3_i) {
                     __inst3_live[__inst3_i].__destroy();
                   }
-                  let __n17__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n17 = __n17__new;
+                  let __n17__made = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n17 = __n17__made;
                 }
                 __inst3_next.push(__n17);
                 __inst3_i = __inst3_i + 1;
@@ -3031,11 +3086,17 @@ window.__sngl_boot = () => {
     let __rendering2 = false;
     let __renderAgain2 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n5.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       __renderSlot2(__slotAnchor_2);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n4.textContent = __prop_m;
       for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
@@ -3043,10 +3104,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot2(__slotAnchor_2);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n5.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
@@ -3082,8 +3149,8 @@ window.__sngl_boot = () => {
                   if (__inst5_live.length > __inst5_i) {
                     __inst5_live[__inst5_i].__destroy();
                   }
-                  let __n19__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n19 = __n19__new;
+                  let __n19__made = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n19 = __n19__made;
                 }
                 __inst5_next.push(__n19);
                 __inst5_i = __inst5_i + 1;
@@ -3165,11 +3232,17 @@ window.__sngl_boot = () => {
     let __rendering3 = false;
     let __renderAgain3 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n7.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       __renderSlot3(__slotAnchor_3);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n6.textContent = __prop_m;
       for (const [__inst7_live_ui, _] of __inst7_live.entries()) {
@@ -3177,10 +3250,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot3(__slotAnchor_3);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n7.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst7_live_ui, _] of __inst7_live.entries()) {
@@ -3216,8 +3295,8 @@ window.__sngl_boot = () => {
                   if (__inst7_live.length > __inst7_i) {
                     __inst7_live[__inst7_i].__destroy();
                   }
-                  let __n21__new = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n21 = __n21__new;
+                  let __n21__made = __cf_frame__slot6({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n21 = __n21__made;
                 }
                 __inst7_next.push(__n21);
                 __inst7_i = __inst7_i + 1;
@@ -3299,11 +3378,17 @@ window.__sngl_boot = () => {
     let __rendering4 = false;
     let __renderAgain4 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n9.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       __renderSlot4(__slotAnchor_4);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n8.textContent = __prop_m;
       for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
@@ -3311,10 +3396,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot4(__slotAnchor_4);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n9.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
@@ -3350,8 +3441,8 @@ window.__sngl_boot = () => {
                   if (__inst9_live.length > __inst9_i) {
                     __inst9_live[__inst9_i].__destroy();
                   }
-                  let __n23__new = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n23 = __n23__new;
+                  let __n23__made = __cf_frame__slot5({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n23 = __n23__made;
                 }
                 __inst9_next.push(__n23);
                 __inst9_i = __inst9_i + 1;
@@ -3433,11 +3524,17 @@ window.__sngl_boot = () => {
     let __rendering5 = false;
     let __renderAgain5 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n11.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       __renderSlot5(__slotAnchor_5);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n10.textContent = __prop_m;
       for (const [__inst11_live_ui, _] of __inst11_live.entries()) {
@@ -3445,10 +3542,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot5(__slotAnchor_5);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n11.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst11_live_ui, _] of __inst11_live.entries()) {
@@ -3484,8 +3587,8 @@ window.__sngl_boot = () => {
                   if (__inst11_live.length > __inst11_i) {
                     __inst11_live[__inst11_i].__destroy();
                   }
-                  let __n25__new = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
-                  __n25 = __n25__new;
+                  let __n25__made = __cf_frame__slot4({ result: __prop_result - 1, m: __prop_m, __depth: __prop___depth + 1, __p0: __prop___p0 });
+                  __n25 = __n25__made;
                 }
                 __inst11_next.push(__n25);
                 __inst11_i = __inst11_i + 1;
@@ -3570,10 +3673,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:c2ee3d88455eec99037351c6f6de8156
 -- run/go/fyne --
-pass sha256:52013fe79c71b41556726b249a521b15
+pass sha256:0348fc5e263276ffcc5edb42a0edabd8
 -- run/go/gtk4 --
-pass sha256:c873e0b06e81a755e1fc359a4bca8ca1
+pass sha256:5b886fef2f89c4457bfc04fbdf617727
 -- run/kotlin/android --
 pass sha256:67255b602693438bdaef79a5ddf7c0fe
 -- run/none/html --
-pass sha256:e03e16f1f6df223811edd61574725cf4
+pass sha256:207a067cece73fbf9d3deef7a94e1c1a

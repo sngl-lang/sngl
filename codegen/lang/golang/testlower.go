@@ -61,6 +61,9 @@ func testIRContext(irPkg *ir.Package, platform string, fn *ir.Func, methodFields
 // component state and methods.
 func lowerTestStmt(s ir.Stmt, gc *GoIRContext) []string {
 	if _, preset, ok := codegen.TestMount(s); ok {
+		if gc.placedTests {
+			return []string{"snglBuild()"}
+		}
 		return []string{mountLine(gc.Ctx.StateReceiver, preset)}
 	}
 	if call, ok := s.(*ir.CallStmt); ok {
