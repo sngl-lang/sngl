@@ -715,10 +715,16 @@ window.__sngl_boot = () => {
     let __prop_pick = pick;
     let seen = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = "pick " + __prop_label + ":" + String(seen);
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       btn.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -761,6 +767,9 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n1.textContent = "pick " + __prop_label + ":" + String(hits);
     }
@@ -768,6 +777,9 @@ window.__sngl_boot = () => {
       __prop_onpick = __v;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       pick.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -804,10 +816,16 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let n = __prop_start;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach6.textContent = "[" + __prop_label + ":" + String(n) + "]";
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       bump.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -846,10 +864,16 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_level(__v) {
+      if (__prop_level === __v) {
+        return;
+      }
       __prop_level = __v;
       _snglCanvasDraw(cv, 100, 100, "", _canvasDraw0);
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach6.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -896,11 +920,17 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach0.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __n2.textContent = "hit " + __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach0.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -939,11 +969,17 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach1.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __n3.textContent = "hit " + __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach1.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -982,11 +1018,17 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach2.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __n4.textContent = "hit " + __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach2.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -1025,11 +1067,17 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach3.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __n5.textContent = "hit " + __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach3.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -1068,11 +1116,17 @@ window.__sngl_boot = () => {
     let __prop___copy = __copy;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach4.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __n6.textContent = "hit " + __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach4.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -1109,6 +1163,9 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown__reach5.textContent = "[" + __prop_label + ":" + String(hits) + "]";
       __n7.textContent = "hit " + __prop_label;
@@ -1946,9 +2003,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a02061327a8670470b3c5587eae9fa27
+pass sha256:b3c823362f730c52c04378e404125a7a
 -- testrun/html/none/component_browser_runtime.sngl/branch/1 --
-sha256:c126d34fc24611f7590e73b71a239eed
+sha256:747c426adb1e8664d2c0c0547e2044a7
 {
   "results": [
     {
@@ -1958,7 +2015,7 @@ sha256:c126d34fc24611f7590e73b71a239eed
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/callback/1 --
-sha256:bb2537f3a269a75e2ec299f99443981d
+sha256:bfb39d84609d4d5c3607317f48801660
 {
   "results": [
     {
@@ -1968,7 +2025,7 @@ sha256:bb2537f3a269a75e2ec299f99443981d
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/duplicates/1 --
-sha256:d8446f36a7a5fec51ab32439c58c4e5c
+sha256:c7ba204be48d616484357558d02f6ab7
 {
   "results": [
     {
@@ -1978,7 +2035,7 @@ sha256:d8446f36a7a5fec51ab32439c58c4e5c
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/events/1 --
-sha256:5ca0b358e6d952a1e3e9dabc22baff0c
+sha256:d26cf6d0b42b4893b4f51cf63ab88fa6
 {
   "results": [
     {
@@ -1992,7 +2049,7 @@ sha256:5ca0b358e6d952a1e3e9dabc22baff0c
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/gauges/1 --
-sha256:ee7f60205a52df39002678f563a953e1
+sha256:464d3d6270c4dc896b49d765f28e0ecd
 {
   "results": [
     {
@@ -2002,7 +2059,7 @@ sha256:ee7f60205a52df39002678f563a953e1
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/growing/1 --
-sha256:dc3ab075537f4ab8a6692bd9ce52979b
+sha256:0a075cf8d3c3457d0e18ad77b4777d27
 {
   "results": [
     {
@@ -2012,7 +2069,7 @@ sha256:dc3ab075537f4ab8a6692bd9ce52979b
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/keyed/1 --
-sha256:f5bd5cc2327e9a753b3818c15eb7c979
+sha256:34465f7d90524d08f58595a79073302d
 {
   "results": [
     {
@@ -2022,7 +2079,7 @@ sha256:f5bd5cc2327e9a753b3818c15eb7c979
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/perElement/1 --
-sha256:e9e0ba7cce4990b32cfface485371769
+sha256:c8eb81ace9c2badf19211fa3b096c631
 {
   "results": [
     {
@@ -2032,7 +2089,7 @@ sha256:e9e0ba7cce4990b32cfface485371769
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/rebased/1 --
-sha256:48b949f08d50385221e517bc3a1f8d51
+sha256:587f3b5a630d82b44f34d2d2878e1c01
 {
   "results": [
     {
@@ -2046,7 +2103,7 @@ sha256:48b949f08d50385221e517bc3a1f8d51
   ]
 }
 -- testrun/html/none/component_browser_runtime.sngl/renamed/1 --
-sha256:c2cded72cc0209e7e30d1d9815a622c0
+sha256:317081eeac0ec75080393273c6b0dbef
 {
   "results": [
     {

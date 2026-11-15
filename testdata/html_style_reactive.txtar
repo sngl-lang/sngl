@@ -120,6 +120,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop_label = label;
     let on = false;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n1.textContent = __prop_label;
     }
@@ -247,4 +250,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f1e0ae468746e8e1d272e71ab11cff43
+pass sha256:842f00e0c1313b5b57f6036422b178eb

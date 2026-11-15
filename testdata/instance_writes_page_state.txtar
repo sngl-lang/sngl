@@ -1205,6 +1205,9 @@ func (c *RowInstance) Destroy() {
 }
 
 func (c *RowInstance) SetName(__v string) {
+	if c.__prop_name == __v {
+		return
+	}
 	c.__prop_name = __v
 	c.__effects0_settle()
 }
@@ -1545,6 +1548,9 @@ func Row__snglTeardown(__self *Row__inst) {
 }
 
 func Row__set_name(__self *Row__inst, __v string) {
+	if __self.__prop_name == __v {
+		return
+	}
 	__self.__prop_name = __v
 	Row__effects0_settle(__self)
 }
@@ -2002,6 +2008,9 @@ body { font-family: system-ui, sans-serif; }
       __effect0_teardown();
     }
     function __set_name(__v) {
+      if (__prop_name === __v) {
+        return;
+      }
       __prop_name = __v;
       __effects0_settle();
     }
@@ -2121,10 +2130,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:13ba112dd1e4b688e046169fdf930358
 -- run/go/fyne --
-pass sha256:2b7e58e866f5d2204a7c6e8fd2eb7924
+pass sha256:028e8b4f5b40a126d6b61a767d7d71e4
 -- run/go/gtk4 --
-pass sha256:f80051bebbd78bf1dfb686341b3ca8c4
+pass sha256:4928bf9c104a7d1250524cc464153188
 -- run/kotlin/android --
 pass sha256:d7d2ad53e5c06f31d37883d977443c2d
 -- run/none/html --
-pass sha256:46aef2594f57d5b963461ecf8539adce
+pass sha256:61d018f28e1ff0f3c864cd0d06006fda

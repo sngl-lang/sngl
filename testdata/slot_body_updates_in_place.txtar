@@ -927,6 +927,9 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v int) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(("up " + fmt.Sprint(c.__prop___p0)))
 }
@@ -956,11 +959,17 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child1Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(((c.__prop___p0.Elem + " at ") + fmt.Sprint(c.__prop___p1)))
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n1.SetText(((c.__prop___p0.Elem + " at ") + fmt.Sprint(c.__prop___p1)))
 }
@@ -1305,6 +1314,9 @@ func __child0__new(__p0 int) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, ("up " + fmt.Sprint(__self.__prop___p0)))
 }
@@ -1325,11 +1337,17 @@ func __child1__new(__p0 __anon_id_elem_c6a818, __p1 int) *__child1__inst {
 }
 
 func __child1__set___p0(__self *__child1__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n1, ((__self.__prop___p0.Elem + " at ") + fmt.Sprint(__self.__prop___p1)))
 }
 
 func __child1__set___p1(__self *__child1__inst, __v int) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	cgo.SnglTextSetValue(__self.__n1, ((__self.__prop___p0.Elem + " at ") + fmt.Sprint(__self.__prop___p1)))
 }
@@ -1690,6 +1708,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = "up " + String(__prop___p0);
     }
@@ -1717,10 +1738,16 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = __prop___p0.elem + " at " + String(__prop___p1);
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n1.textContent = __prop___p0.elem + " at " + String(__prop___p1);
     }
@@ -1897,10 +1924,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c62d8f70a86804036e382eeca0265486
 -- run/go/fyne --
-pass sha256:6a776eaecfe33a80bf0a17783737f162
+pass sha256:374e594e284aecb17d37c703913b8ef7
 -- run/go/gtk4 --
-pass sha256:b27473822e6521fb302b29c55568a98e
+pass sha256:2c5ad3b167b8d0b8eff3750745fd87f9
 -- run/kotlin/android --
 pass sha256:2da69b45a79e7ea0e7d91b1a3e0fcd38
 -- run/none/html --
-pass sha256:4b15a57c1e35c78c200688b3ac7e6583
+pass sha256:efa2fd338850f424ae16760cbefa5159

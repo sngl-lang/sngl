@@ -69,6 +69,13 @@ func snglSome[T any](v T) *T {
 	return &v
 }
 
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -526,18 +533,30 @@ func (c *__query_state1Instance) Destroy() {
 }
 
 func (c *__query_state1Instance) Set__start_value(__v *int) {
+	if snglOptEqual(c.__prop___start_value, __v) {
+		return
+	}
 	c.__prop___start_value = __v
 }
 
 func (c *__query_state1Instance) Set__start_pending(__v bool) {
+	if c.__prop___start_pending == __v {
+		return
+	}
 	c.__prop___start_pending = __v
 }
 
 func (c *__query_state1Instance) Set__start_failure(__v *Failure) {
+	if snglOptEqual(c.__prop___start_failure, __v) {
+		return
+	}
 	c.__prop___start_failure = __v
 }
 
 func (c *__query_state1Instance) SetOn(__v string) {
+	if c.__prop_on == __v {
+		return
+	}
 	c.__prop_on = __v
 	c.__effects0_settle()
 }
@@ -584,6 +603,13 @@ func snglSome[T any](v T) *T {
 
 func snglOptEq[T comparable](p *T, v T) bool {
 	return p != nil && *p == v
+}
+
+func snglOptEqual[T comparable](p, q *T) bool {
+	if p == nil || q == nil {
+		return p == q
+	}
+	return *p == *q
 }
 
 type ErrorEvent struct {
@@ -964,18 +990,30 @@ func __query_state1__snglTeardown(__self *__query_state1__inst) {
 }
 
 func __query_state1__set___start_value(__self *__query_state1__inst, __v *int) {
+	if snglOptEqual(__self.__prop___start_value, __v) {
+		return
+	}
 	__self.__prop___start_value = __v
 }
 
 func __query_state1__set___start_pending(__self *__query_state1__inst, __v bool) {
+	if __self.__prop___start_pending == __v {
+		return
+	}
 	__self.__prop___start_pending = __v
 }
 
 func __query_state1__set___start_failure(__self *__query_state1__inst, __v *Failure) {
+	if snglOptEqual(__self.__prop___start_failure, __v) {
+		return
+	}
 	__self.__prop___start_failure = __v
 }
 
 func __query_state1__set_on(__self *__query_state1__inst, __v string) {
+	if __self.__prop_on == __v {
+		return
+	}
 	__self.__prop_on = __v
 	__query_state1__effects0_settle(__self)
 }
@@ -1060,6 +1098,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:86c7b2029483bc740f4e7fa8f090cd99
+pass sha256:92de8e08692df86d49cccfc9d16e3816
 -- run/go/gtk4 --
-pass sha256:5ee02705803a22a5df1c1bc48baeb490
+pass sha256:89cfd4cfb9a2de8f3ff9ea307cbf7277

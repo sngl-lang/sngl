@@ -168,6 +168,9 @@ body { font-family: system-ui, sans-serif; }
       __effect0_teardown();
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = __prop_label + "[" + log.join(",") + "]";
       __effects0_settle();
@@ -258,4 +261,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:80964a00e5fc7f21b79718174c3c142b
+pass sha256:e7ac4e669234df009cb34627e117fb8c

@@ -2549,15 +2549,24 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 }
 
 func (c *__checkbox_state0Instance) Set__start_checked(__v bool) {
+	if c.__prop___start_checked == __v {
+		return
+	}
 	c.__prop___start_checked = __v
 }
 
 func (c *__checkbox_state0Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.mark.SetText(c.__prop_label)
 }
 
 func (c *__checkbox_state0Instance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	c.__model.__list_mark(c.__prop___copy, c.mark)
 }
@@ -2856,11 +2865,18 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 }
 
 func __checkbox_state0__set_label(__self *__checkbox_state0__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkCheckButtonSetLabel((cgo.PGtkCheckButton)(unsafe.Pointer(__self.Mark)), snglSome(__self.__prop_label))
 }
 
 func __checkbox_state0__set___copy(__self *__checkbox_state0__inst, __v string) {
+	if __self.__prop___copy == __v {
+		m.mark__copies[__self.__prop___copy] = __self.Mark
+		return
+	}
 	__self.__prop___copy = __v
 	m.mark__copies[__self.__prop___copy] = __self.Mark
 }
@@ -2907,11 +2923,18 @@ func __child0__new(__p0 int, __p1 int, __on0 func()) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Even)), fmt.Sprint(__self.__prop___p0))
 }
 
 func __child0__set___p1(__self *__child0__inst, __v int) {
+	if __self.__prop___p1 == __v {
+		m.even__copies[fmt.Sprint(__self.__prop___p1)] = __self.Even
+		return
+	}
 	__self.__prop___p1 = __v
 	m.even__copies[fmt.Sprint(__self.__prop___p1)] = __self.Even
 }
@@ -2958,6 +2981,10 @@ func __child1__new(__p0 int, __on0 func()) *__child1__inst {
 }
 
 func __child1__set___p0(__self *__child1__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		m.dot__copies[fmt.Sprint(__self.__prop___p0)] = __self.Dot
+		return
+	}
 	__self.__prop___p0 = __v
 	m.dot__copies[fmt.Sprint(__self.__prop___p0)] = __self.Dot
 }
@@ -4000,13 +4027,22 @@ window.__sngl_boot = () => {
     let __prop_change = change;
     let checked = __prop___start_checked;
     function __set___start_checked(__v) {
+      if (__prop___start_checked === __v) {
+        return;
+      }
       __prop___start_checked = __v;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n2.textContent = __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       mark.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -4053,10 +4089,16 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       even.setAttribute("data-sngl-copy", String(__prop___p0));
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n3.textContent = String(__prop___p1);
     }
@@ -4094,6 +4136,9 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       dot.setAttribute("data-sngl-copy", String(__prop___p0));
     }
@@ -4421,10 +4466,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
-pass sha256:429dd45c6197b2879661be1cb7f55e2c
+pass sha256:5377422dc1fa781c93a8a0edcb5243cf
 -- run/go/gtk4 --
-pass sha256:ec855a7ef5d285062fc6a8719ba97e21
+pass sha256:5fffece4f1e1ec65605da4ffc4a6f3cd
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --
-pass sha256:777cfc2f2f65cbe8628e64b9762ba23e
+pass sha256:3d80fb5348b7a26a97aa2a3a83dd6b8a

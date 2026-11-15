@@ -621,10 +621,16 @@ func new__window_state1__slot0Instance(__model *Model, __a___start_visible bool,
 }
 
 func (c *__window_state1__slot0Instance) Set__start_visible(__v bool) {
+	if c.__prop___start_visible == __v {
+		return
+	}
 	c.__prop___start_visible = __v
 }
 
 func (c *__window_state1__slot0Instance) SetTitle(__v string) {
+	if c.__prop_title == __v {
+		return
+	}
 	c.__prop_title = __v
 	c.__n1.SetTitle(c.__prop_title)
 }
@@ -1045,6 +1051,9 @@ func __window_state1__slot0__new(__start_visible bool, title string, closed func
 }
 
 func __window_state1__slot0__set_title(__self *__window_state1__slot0__inst, __v string) {
+	if __self.__prop_title == __v {
+		return
+	}
 	__self.__prop_title = __v
 	cgo.SnglToplevelSetTitle(__self.__n1, __self.__prop_title)
 }
@@ -1125,6 +1134,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:0f8cf121f287d9cee44dd1753d6e5f69
+pass sha256:593d39f1a0d89236390d2d3f1dbe719b
 -- run/go/gtk4 --
-pass sha256:b56461eb9ee6ec6040c18b3f9c2cd17a
+pass sha256:9a740df1d81cfd4f70d6aae83df3a37c

@@ -1447,15 +1447,24 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 }
 
 func (c *__checkbox_state0Instance) Set__start_checked(__v bool) {
+	if c.__prop___start_checked == __v {
+		return
+	}
 	c.__prop___start_checked = __v
 }
 
 func (c *__checkbox_state0Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.tick.SetText(c.__prop_label)
 }
 
 func (c *__checkbox_state0Instance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	c.__model.__list_tick(c.__prop___copy, c.tick)
 }
@@ -1688,11 +1697,18 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 }
 
 func __checkbox_state0__set_label(__self *__checkbox_state0__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkCheckButtonSetLabel((cgo.PGtkCheckButton)(unsafe.Pointer(__self.Tick)), snglSome(__self.__prop_label))
 }
 
 func __checkbox_state0__set___copy(__self *__checkbox_state0__inst, __v string) {
+	if __self.__prop___copy == __v {
+		m.tick__copies[__self.__prop___copy] = __self.Tick
+		return
+	}
 	__self.__prop___copy = __v
 	m.tick__copies[__self.__prop___copy] = __self.Tick
 }
@@ -2340,13 +2356,22 @@ window.__sngl_boot = () => {
     let __prop_change = change;
     let checked = __prop___start_checked;
     function __set___start_checked(__v) {
+      if (__prop___start_checked === __v) {
+        return;
+      }
       __prop___start_checked = __v;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n2.textContent = __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       tick.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -2504,10 +2529,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:3f4afb47dbddadb7bf892e2fa9b1024a
 -- run/go/fyne --
-pass sha256:359b2863aa544e563e708bf3f7465e06
+pass sha256:0a0a776544a9dbbc15cde234e5e13c69
 -- run/go/gtk4 --
-pass sha256:10b631e66a89e0e426ee775bd05ae1cb
+pass sha256:9b1da0d7c33e1d37eabde6c51dc81e26
 -- run/kotlin/android --
 pass sha256:a897c5c3dff5f58ce6216ac711315832
 -- run/none/html --
-pass sha256:a7c16dcea7b4b4e89eb13c458358a858
+pass sha256:1ac015ecf2025a6a4d736b5cebf7ae3c

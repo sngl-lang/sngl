@@ -664,12 +664,18 @@ func newFrame__slot6Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot6Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n1.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot0(c.__n16)
 }
 
 func (c *Frame__slot6Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n0.SetText(c.__prop_m)
 	for __inst0_live_ui, _ := range c.__inst0_live {
@@ -678,11 +684,17 @@ func (c *Frame__slot6Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot6Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot0(c.__n16)
 }
 
 func (c *Frame__slot6Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst0_live_ui, _ := range c.__inst0_live {
@@ -798,12 +810,18 @@ func newFrame__slot5Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot5Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n3.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot1(c.__n18)
 }
 
 func (c *Frame__slot5Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n2.SetText(c.__prop_m)
 	for __inst1_live_ui, _ := range c.__inst1_live {
@@ -812,11 +830,17 @@ func (c *Frame__slot5Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot5Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot1(c.__n18)
 }
 
 func (c *Frame__slot5Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst1_live_ui, _ := range c.__inst1_live {
@@ -932,12 +956,18 @@ func newFrame__slot4Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot4Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n5.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot2(c.__n20)
 }
 
 func (c *Frame__slot4Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n4.SetText(c.__prop_m)
 	for __inst2_live_ui, _ := range c.__inst2_live {
@@ -946,11 +976,17 @@ func (c *Frame__slot4Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot4Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot2(c.__n20)
 }
 
 func (c *Frame__slot4Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n5.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst2_live_ui, _ := range c.__inst2_live {
@@ -1066,12 +1102,18 @@ func newFrame__slot2Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot2Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n7.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot3(c.__n22)
 }
 
 func (c *Frame__slot2Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n6.SetText(c.__prop_m)
 	for __inst3_live_ui, _ := range c.__inst3_live {
@@ -1080,11 +1122,17 @@ func (c *Frame__slot2Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot3(c.__n22)
 }
 
 func (c *Frame__slot2Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n7.SetText(((("in " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst3_live_ui, _ := range c.__inst3_live {
@@ -1200,12 +1248,18 @@ func newFrame__slot1Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot1Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n9.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot4(c.__n24)
 }
 
 func (c *Frame__slot1Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n8.SetText(c.__prop_m)
 	for __inst4_live_ui, _ := range c.__inst4_live {
@@ -1214,11 +1268,17 @@ func (c *Frame__slot1Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot1Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot4(c.__n24)
 }
 
 func (c *Frame__slot1Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n9.SetText(((("r " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst4_live_ui, _ := range c.__inst4_live {
@@ -1334,12 +1394,18 @@ func newFrame__slot0Instance(__model *Model, __a_result int, __a_m string, __a__
 }
 
 func (c *Frame__slot0Instance) SetResult(__v int) {
+	if c.__prop_result == __v {
+		return
+	}
 	c.__prop_result = __v
 	c.__n11.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	c.__renderSlot5(c.__n26)
 }
 
 func (c *Frame__slot0Instance) SetM(__v string) {
+	if c.__prop_m == __v {
+		return
+	}
 	c.__prop_m = __v
 	c.__n10.SetText(c.__prop_m)
 	for __inst5_live_ui, _ := range c.__inst5_live {
@@ -1348,11 +1414,17 @@ func (c *Frame__slot0Instance) SetM(__v string) {
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot5(c.__n26)
 }
 
 func (c *Frame__slot0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n11.SetText(((("level " + fmt.Sprint(c.__prop_result)) + " ") + c.__prop___p0))
 	for __inst5_live_ui, _ := range c.__inst5_live {
@@ -1663,12 +1735,18 @@ func Frame__slot6__new(result int, m__r3 string, __depth int, __p0 string) *Fram
 }
 
 func Frame__slot6__set_result(__self *Frame__slot6__inst, __v int) {
+	if __self.__prop_result == __v {
+		return
+	}
 	__self.__prop_result = __v
 	cgo.SnglTextSetValue(__self.__n1, ((("in " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
 	Frame__slot6__renderSlot0(__self, __self.__n16)
 }
 
 func Frame__slot6__set_m(__self *Frame__slot6__inst, __v string) {
+	if __self.__prop_m == __v {
+		return
+	}
 	__self.__prop_m = __v
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop_m)
 	for __inst1_live_ui, _ := range __self.__inst1_live {
@@ -1677,11 +1755,17 @@ func Frame__slot6__set_m(__self *Frame__slot6__inst, __v string) {
 }
 
 func Frame__slot6__set___depth(__self *Frame__slot6__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
 	__self.__prop___depth = __v
 	Frame__slot6__renderSlot0(__self, __self.__n16)
 }
 
 func Frame__slot6__set___p0(__self *Frame__slot6__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n1, ((("in " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
 	for __inst1_live_ui, _ := range __self.__inst1_live {
@@ -1798,12 +1882,18 @@ func Frame__slot5__new(result int, m__r4 string, __depth int, __p0 string) *Fram
 }
 
 func Frame__slot5__set_result(__self *Frame__slot5__inst, __v int) {
+	if __self.__prop_result == __v {
+		return
+	}
 	__self.__prop_result = __v
 	cgo.SnglTextSetValue(__self.__n3, ((("r " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
 	Frame__slot5__renderSlot1(__self, __self.__n18)
 }
 
 func Frame__slot5__set_m(__self *Frame__slot5__inst, __v string) {
+	if __self.__prop_m == __v {
+		return
+	}
 	__self.__prop_m = __v
 	cgo.SnglTextSetValue(__self.__n2, __self.__prop_m)
 	for __inst3_live_ui, _ := range __self.__inst3_live {
@@ -1812,11 +1902,17 @@ func Frame__slot5__set_m(__self *Frame__slot5__inst, __v string) {
 }
 
 func Frame__slot5__set___depth(__self *Frame__slot5__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
 	__self.__prop___depth = __v
 	Frame__slot5__renderSlot1(__self, __self.__n18)
 }
 
 func Frame__slot5__set___p0(__self *Frame__slot5__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n3, ((("r " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
 	for __inst3_live_ui, _ := range __self.__inst3_live {
@@ -1933,12 +2029,18 @@ func Frame__slot4__new(result int, m__r5 string, __depth int, __p0 string) *Fram
 }
 
 func Frame__slot4__set_result(__self *Frame__slot4__inst, __v int) {
+	if __self.__prop_result == __v {
+		return
+	}
 	__self.__prop_result = __v
 	cgo.SnglTextSetValue(__self.__n5, ((("level " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
 	Frame__slot4__renderSlot2(__self, __self.__n20)
 }
 
 func Frame__slot4__set_m(__self *Frame__slot4__inst, __v string) {
+	if __self.__prop_m == __v {
+		return
+	}
 	__self.__prop_m = __v
 	cgo.SnglTextSetValue(__self.__n4, __self.__prop_m)
 	for __inst5_live_ui, _ := range __self.__inst5_live {
@@ -1947,11 +2049,17 @@ func Frame__slot4__set_m(__self *Frame__slot4__inst, __v string) {
 }
 
 func Frame__slot4__set___depth(__self *Frame__slot4__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
 	__self.__prop___depth = __v
 	Frame__slot4__renderSlot2(__self, __self.__n20)
 }
 
 func Frame__slot4__set___p0(__self *Frame__slot4__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n5, ((("level " + fmt.Sprint(__self.__prop_result)) + " ") + __self.__prop___p0))
 	for __inst5_live_ui, _ := range __self.__inst5_live {
@@ -2686,11 +2794,17 @@ window.__sngl_boot = () => {
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n1.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       __renderSlot0(__slotAnchor_0);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n0.textContent = __prop_m;
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
@@ -2698,10 +2812,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
@@ -2820,11 +2940,17 @@ window.__sngl_boot = () => {
     let __rendering1 = false;
     let __renderAgain1 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n3.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       __renderSlot1(__slotAnchor_1);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n2.textContent = __prop_m;
       for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
@@ -2832,10 +2958,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot1(__slotAnchor_1);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n3.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst3_live_ui, _] of __inst3_live.entries()) {
@@ -2954,11 +3086,17 @@ window.__sngl_boot = () => {
     let __rendering2 = false;
     let __renderAgain2 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n5.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       __renderSlot2(__slotAnchor_2);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n4.textContent = __prop_m;
       for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
@@ -2966,10 +3104,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot2(__slotAnchor_2);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n5.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
@@ -3088,11 +3232,17 @@ window.__sngl_boot = () => {
     let __rendering3 = false;
     let __renderAgain3 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n7.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       __renderSlot3(__slotAnchor_3);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n6.textContent = __prop_m;
       for (const [__inst7_live_ui, _] of __inst7_live.entries()) {
@@ -3100,10 +3250,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot3(__slotAnchor_3);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n7.textContent = "in " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst7_live_ui, _] of __inst7_live.entries()) {
@@ -3222,11 +3378,17 @@ window.__sngl_boot = () => {
     let __rendering4 = false;
     let __renderAgain4 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n9.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       __renderSlot4(__slotAnchor_4);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n8.textContent = __prop_m;
       for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
@@ -3234,10 +3396,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot4(__slotAnchor_4);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n9.textContent = "r " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
@@ -3356,11 +3524,17 @@ window.__sngl_boot = () => {
     let __rendering5 = false;
     let __renderAgain5 = false;
     function __set_result(__v) {
+      if (__prop_result === __v) {
+        return;
+      }
       __prop_result = __v;
       __n11.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       __renderSlot5(__slotAnchor_5);
     }
     function __set_m(__v) {
+      if (__prop_m === __v) {
+        return;
+      }
       __prop_m = __v;
       __n10.textContent = __prop_m;
       for (const [__inst11_live_ui, _] of __inst11_live.entries()) {
@@ -3368,10 +3542,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot5(__slotAnchor_5);
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n11.textContent = "level " + String(__prop_result) + " " + __prop___p0;
       for (const [__inst11_live_ui, _] of __inst11_live.entries()) {
@@ -3493,10 +3673,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:c2ee3d88455eec99037351c6f6de8156
 -- run/go/fyne --
-pass sha256:5e87eeebb57bdd44d94be7ec8aa717e0
+pass sha256:0348fc5e263276ffcc5edb42a0edabd8
 -- run/go/gtk4 --
-pass sha256:58ea3e455c567dd6ec004a434e1c1c8d
+pass sha256:5b886fef2f89c4457bfc04fbdf617727
 -- run/kotlin/android --
 pass sha256:67255b602693438bdaef79a5ddf7c0fe
 -- run/none/html --
-pass sha256:a527425f5fadd9da5d1d681f0660500b
+pass sha256:207a067cece73fbf9d3deef7a94e1c1a

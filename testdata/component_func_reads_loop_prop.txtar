@@ -811,6 +811,9 @@ func (c *RowInstance) shout() string {
 }
 
 func (c *RowInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 }
 
@@ -965,6 +968,9 @@ func Row__new(label string) *Row__inst {
 }
 
 func Row__set_label(__self *Row__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 }
 
@@ -1486,6 +1492,9 @@ window.__sngl_boot = () => {
       return out;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
     }
     let __n1 = document.createElement("span");
@@ -1586,15 +1595,15 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:0b0834dd6600e3ab03fd7f00aee9ab83
 -- run/go/fyne --
-pass sha256:b06928c139554f0715e152e7cba57243
+pass sha256:6a7ceeba4626f331ba69591b164920ed
 -- run/go/gtk4 --
-pass sha256:ee76b131ed19b8dfd17a9e22c5c5a092
+pass sha256:0a5308e5943608ec3ffbbca4c442359b
 -- run/kotlin/android --
 pass sha256:def9e3220d52cba240831df7c68cefb0
 -- run/none/html --
-pass sha256:dee236bfd1f9a65182473ac9408d5d30
+pass sha256:853414fe5355ff16a7d1c0cffecaa64d
 -- testrun/html/none/component_func_reads_loop_prop.sngl/main/1 --
-sha256:42531d334b32ea0e3f3f62c5e1994df0
+sha256:01b0ba653cde91c56e668d33c3a51601
 {
   "results": [
     {

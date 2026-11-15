@@ -300,10 +300,16 @@ func newCounterInstance(__model *Model, __a_n int, __a_label string, __a___on_n 
 }
 
 func (c *CounterInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 }
 
 func (c *CounterInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.__n0.SetText(((c.__prop_label + " ") + fmt.Sprint(c.clicks)))
 }
@@ -567,10 +573,16 @@ func Counter__new(n int, label string, __on_n func(int)) *Counter__inst {
 }
 
 func Counter__set_n(__self *Counter__inst, __v int) {
+	if __self.__prop_n == __v {
+		return
+	}
 	__self.__prop_n = __v
 }
 
 func Counter__set_label(__self *Counter__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((__self.__prop_label + " ") + fmt.Sprint(__self.Clicks)))
 }
@@ -712,9 +724,15 @@ body { font-family: system-ui, sans-serif; }
     let __prop___on_n = __on_n;
     let clicks = 0;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = __prop_label + " " + String(clicks);
     }
@@ -847,8 +865,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:30519949439d71f6194f8799faac8632
+pass sha256:ae852dc739dca53e50245941e0cd9f14
 -- run/go/gtk4 --
-pass sha256:6fffe8089a58acc6d9bf99b4962a2dd8
+pass sha256:50cf76556bd3f3972c40f627110fe8ba
 -- run/none/html --
-pass sha256:471540bdf0500d5df01b055287759250
+pass sha256:9c9c8f28eb5058b6f339db5f5d194b32

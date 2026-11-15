@@ -1122,6 +1122,9 @@ func (c *CounterInstance) __effects0_settle() {
 }
 
 func (c *CounterInstance) SetTag(__v string) {
+	if c.__prop_tag == __v {
+		return
+	}
 	c.__prop_tag = __v
 	c.__n0.SetText(((("counter " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	c.__effects0_settle()
@@ -1168,10 +1171,16 @@ func newCard__slot0Instance(__model *Model, __a_start int, __a___p0 __anon_id_el
 }
 
 func (c *Card__slot0Instance) SetStart(__v int) {
+	if c.__prop_start == __v {
+		return
+	}
 	c.__prop_start = __v
 }
 
 func (c *Card__slot0Instance) Set__p0(__v __anon_id_elem_cdfd47) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n2.SetTag(((fmt.Sprint(c.__prop___p0.Elem) + "/") + fmt.Sprint(c.k)))
 }
@@ -1421,6 +1430,9 @@ func Counter__effects0_settle(__self *Counter__inst) {
 }
 
 func Counter__set_tag(__self *Counter__inst, __v string) {
+	if __self.__prop_tag == __v {
+		return
+	}
 	__self.__prop_tag = __v
 	cgo.SnglTextSetValue(__self.__n0, ((("counter " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
 	Counter__effects0_settle(__self)
@@ -1452,10 +1464,16 @@ func Card__slot0__new(start int, __p0 __anon_id_elem_cdfd47, __on0 func(string))
 }
 
 func Card__slot0__set_start(__self *Card__slot0__inst, __v int) {
+	if __self.__prop_start == __v {
+		return
+	}
 	__self.__prop_start = __v
 }
 
 func Card__slot0__set___p0(__self *Card__slot0__inst, __v __anon_id_elem_cdfd47) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	Counter__set_tag(__self.__n2, ((fmt.Sprint(__self.__prop___p0.Elem) + "/") + fmt.Sprint(__self.K)))
 }
@@ -2029,6 +2047,9 @@ window.__sngl_boot = () => {
       }
     }
     function __set_tag(__v) {
+      if (__prop_tag === __v) {
+        return;
+      }
       __prop_tag = __v;
       __n0.textContent = "counter " + __prop_tag + " " + String(n);
       __effects0_settle();
@@ -2064,9 +2085,15 @@ window.__sngl_boot = () => {
     let __prop___on0 = __on0;
     let k = __prop_start * 2;
     function __set_start(__v) {
+      if (__prop_start === __v) {
+        return;
+      }
       __prop_start = __v;
     }
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.__set_tag(String(__prop___p0.elem) + "/" + String(k));
     }
@@ -2178,10 +2205,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:bc25d9bc0d9c7506976ebb6d2ea62d4d
 -- run/go/fyne --
-pass sha256:214c7a2495fb3cceb57a3c3469e479fc
+pass sha256:61b1527477928f5efea697c3bd845418
 -- run/go/gtk4 --
-pass sha256:14e4ab5be862e0bd739b68711bb5b2d0
+pass sha256:eaf980db631c2f8c33cffab3b4363c24
 -- run/kotlin/android --
 pass sha256:43176170a40a4642087c5a4ae005b84c
 -- run/none/html --
-pass sha256:404df0616f6a81d49ba33f913a689262
+pass sha256:85748878b98609f790de8ed6e4c31348

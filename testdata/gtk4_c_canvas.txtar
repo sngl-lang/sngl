@@ -428,6 +428,7 @@ static void s___lambda3_caps__env__visit(void *p, sngl_visit fn);
 static void s___lambda2(s___lambda2_caps state);
 static void s___lambda3(s___lambda3_caps state, cairo_t * ctx);
 static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4ccb28 __v);
+static bool s___anon_id_elem_4ccb28__eq(s___anon_id_elem_4ccb28 a, s___anon_id_elem_4ccb28 b);
 static void s___canvas0__set___p1(s___canvas0__inst * __self, int64_t __v);
 static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__void __v);
 static void s___canvas0__destroy(s___canvas0__inst * __self);
@@ -436,6 +437,7 @@ static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
 static void sngl_lambda7(void *env_);
 static void sngl_lambda8(void *env_, cairo_t * ctx);
+static void sngl_list_GtkWidget_p__unshare(sngl_list_GtkWidget_p *l);
 static void s___renderSlot1(GtkWidget * parent);
 static void sngl_lambda13(void *env_);
 static void sngl_lambda15(void *env_);
@@ -507,7 +509,8 @@ static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static void sngl_list___anon_id_elem_4ccb28_grow(sngl_list___anon_id_elem_4ccb28 *l, int64_t n) {
@@ -817,18 +820,27 @@ static void s___lambda3__fn(void *env, cairo_t * a0) {
 	s___lambda3(((s___lambda3_caps__env *)env)->caps, a0);
 }
 
+static bool s___anon_id_elem_4ccb28__eq(s___anon_id_elem_4ccb28 a, s___anon_id_elem_4ccb28 b) {
+	return sngl_string_eq(a.id, b.id) && (a.elem == b.elem);
+}
+
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v) {
-	GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(GtkWidget *) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(GtkWidget *) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i) {
@@ -836,6 +848,22 @@ static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i)
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static void sngl_list_GtkWidget_p__unshare(sngl_list_GtkWidget_p *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_GtkWidget_p v = *l;
+	sngl_let_go_shared(v.data);
+	GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(GtkWidget *) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
 }
 
 static void sngl_list_GtkWidget_p_grow_kept(sngl_list_GtkWidget_p *l, int64_t n) {
@@ -859,8 +887,10 @@ static void sngl_list_GtkWidget_p_grow_kept(sngl_list_GtkWidget_p *l, int64_t n)
 }
 
 static void sngl_list_GtkWidget_p_push_kept(sngl_list_GtkWidget_p *l, GtkWidget * v) {
+	sngl_list_GtkWidget_p__unshare(l);
 	sngl_list_GtkWidget_p_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t sngl_list_GtkWidget_p_index_of(sngl_list_GtkWidget_p l, GtkWidget * v) {
@@ -905,7 +935,8 @@ static s_dot__inst * *sngl_map_string__dot__inst_slot(sngl_map_string__dot__inst
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(s_dot__inst *));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static int64_t sngl_map_string____canvas0__inst_find(sngl_map_string____canvas0__inst m, sngl_string k) {
@@ -941,55 +972,72 @@ static s___canvas0__inst * *sngl_map_string____canvas0__inst_slot(sngl_map_strin
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(s___canvas0__inst *));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static sngl_map_string__dot__inst sngl_map_string__dot__inst__keep(sngl_map_string__dot__inst v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s_dot__inst * *vals = sngl_keep_alloc(sizeof(s_dot__inst *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s_dot__inst *) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s_dot__inst * *vals = sngl_keep_alloc(sizeof(s_dot__inst *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s_dot__inst *) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__dot__inst__drop(sngl_map_string__dot__inst v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_map_string____canvas0__inst sngl_map_string____canvas0__inst__keep(sngl_map_string____canvas0__inst v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s___canvas0__inst * *vals = sngl_keep_alloc(sizeof(s___canvas0__inst *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s___canvas0__inst *) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s___canvas0__inst * *vals = sngl_keep_alloc(sizeof(s___canvas0__inst *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s___canvas0__inst *) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string____canvas0__inst__drop(sngl_map_string____canvas0__inst v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static void s___ref_bool__release(void *p) {
@@ -1009,12 +1057,15 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 }
 
 static sngl_list_float sngl_list_float__keep(sngl_list_float v) {
-	double *data = sngl_keep_alloc(sizeof(double) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(double) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		double *data = sngl_keep_alloc(sizeof(double) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(double) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
@@ -1358,6 +1409,9 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void s_dot__set_r(s_dot__inst * __self, double __v) {
+	if (__self->__prop_r->value == __v) {
+		return;
+	}
 	__self->__prop_r->value = __v;
 	sngl_canvas_redraw(__self->__drawing0);
 }
@@ -1401,6 +1455,9 @@ static void s___lambda3(s___lambda3_caps state, cairo_t * ctx) {
 }
 
 static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4ccb28 __v) {
+	if (s___anon_id_elem_4ccb28__eq(__self->__prop___p0->value, __v)) {
+		return;
+	}
 	{
 	s___anon_id_elem_4ccb28 __kept4 = s___anon_id_elem_4ccb28__keep(__v);
 	s___anon_id_elem_4ccb28 *__slot4 = &(__self->__prop___p0->value);
@@ -1411,6 +1468,9 @@ static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4
 }
 
 static void s___canvas0__set___p1(s___canvas0__inst * __self, int64_t __v) {
+	if (__self->__prop___p1->value == __v) {
+		return;
+	}
 	__self->__prop___p1->value = __v;
 	sngl_canvas_redraw(__self->__drawing2);
 }
@@ -1784,6 +1844,7 @@ static void sngl_lambda15(void *env_) {
 -- out/c/gtk4/sngl.build --
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
+pkg-config libcurl
 flag -lm
 -- out/c/gtk4/sngl_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -1793,4 +1854,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:bb5def7f62289e27efe997c3235a445a
+pass sha256:126671e685d37a595b0885ff8afb78d4

@@ -580,12 +580,18 @@ func newFrame__slot2Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 }
 
 func (c *Frame__slot2Instance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n0.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__renderSlot0(c.__n5)
 }
 
 func (c *Frame__slot2Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot0(c.__n5)
 }
@@ -688,12 +694,18 @@ func newFrame__slot0Instance(__model *Model, __a_n int, __a___depth int) *Frame_
 }
 
 func (c *Frame__slot0Instance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n1.SetText(("level " + fmt.Sprint((c.__prop_n * 2))))
 	c.__renderSlot1(c.__n7)
 }
 
 func (c *Frame__slot0Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot1(c.__n7)
 }
@@ -893,12 +905,18 @@ func Frame__slot2__new(n int, __depth int) *Frame__slot2__inst {
 }
 
 func Frame__slot2__set_n(__self *Frame__slot2__inst, __v int) {
+	if __self.__prop_n == __v {
+		return
+	}
 	__self.__prop_n = __v
 	cgo.SnglTextSetValue(__self.__n0, ("level " + fmt.Sprint((__self.__prop_n * 2))))
 	Frame__slot2__renderSlot0(__self, __self.__n5)
 }
 
 func Frame__slot2__set___depth(__self *Frame__slot2__inst, __v int) {
+	if __self.__prop___depth == __v {
+		return
+	}
 	__self.__prop___depth = __v
 	Frame__slot2__renderSlot0(__self, __self.__n5)
 }
@@ -1369,11 +1387,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = "level " + String(__prop_n * 2);
       __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
@@ -1478,11 +1502,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering1 = false;
     let __renderAgain1 = false;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n1.textContent = "level " + String(__prop_n * 2);
       __renderSlot1(__slotAnchor_1);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot1(__slotAnchor_1);
     }
@@ -1587,10 +1617,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:57aa43d95d5e86b4a8af521a039911f3
 -- run/go/fyne --
-pass sha256:e9ddfbfa006b945ef0e629f1e2521397
+pass sha256:5c2f956b841adc1b9bc9df8185319bc5
 -- run/go/gtk4 --
-pass sha256:5c41aeecca060663e97c87c8aa6fc049
+pass sha256:5a2ff58ec929cec7aa8b7a19914a9d93
 -- run/kotlin/android --
 pass sha256:60725fb3074820afd43a5db6f5decc7d
 -- run/none/html --
-pass sha256:951ae6dfa594edbbbb6d96080d436ebd
+pass sha256:5abbfc49a5d909cdc0d3058cbffb7647

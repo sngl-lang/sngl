@@ -417,6 +417,9 @@ window.__sngl_boot = () => {
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.selected = __prop___p0.value === __prop___p1;
     }
@@ -439,6 +442,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "[" + String(__prop___p0 * 2) + "]";
     }
@@ -458,6 +464,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.textContent = "[" + String(__prop___p0 + 1) + "]";
     }
@@ -477,6 +486,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n3.textContent = "N=" + String(__prop___p0);
     }
@@ -1006,7 +1018,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:8a0383ac0b15b97691b2ca572217283d
+pass sha256:1b99335cb1eaf78aed3377e4a4b6cf95
 -- testrun/html/none/component_browser_patches.sngl/app/1 --
 sha256:5dcbcf9d144b8421aa259727771a523a
 {
@@ -1048,7 +1060,7 @@ sha256:72feb40224f0772807fc4de6c20e1b2f
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/narrowed/1 --
-sha256:b30882ee568e99832879e3520f7fb6ca
+sha256:84bec24ecc69429d778389e9a4738c9d
 {
   "results": [
     {
@@ -1058,7 +1070,7 @@ sha256:b30882ee568e99832879e3520f7fb6ca
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/picker/1 --
-sha256:5ee3ae4770af2c8b8671f0236f1f7bd5
+sha256:7ac8ba384c98b9512abc765d1bacb240
 {
   "results": [
     {
@@ -1068,7 +1080,7 @@ sha256:5ee3ae4770af2c8b8671f0236f1f7bd5
   ]
 }
 -- testrun/html/none/component_browser_patches.sngl/slots/1 --
-sha256:4cd87ef5e6a20ae4fe6d07d04c242ef2
+sha256:844619d884881efe0d8cb6202bd8343d
 {
   "results": [
     {

@@ -403,15 +403,24 @@ func (c *__window_state1__slot0Instance) __effects0_settle() {
 }
 
 func (c *__window_state1__slot0Instance) Set__start_visible(__v bool) {
+	if c.__prop___start_visible == __v {
+		return
+	}
 	c.__prop___start_visible = __v
 }
 
 func (c *__window_state1__slot0Instance) SetTitle(__v string) {
+	if c.__prop_title == __v {
+		return
+	}
 	c.__prop_title = __v
 	c.__n0.SetTitle(c.__prop_title)
 }
 
 func (c *__window_state1__slot0Instance) Set__p0(__v int) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(fmt.Sprint(c.__prop___p0))
 }
@@ -714,11 +723,17 @@ func __window_state1__slot0__effects0_settle(__self *__window_state1__slot0__ins
 }
 
 func __window_state1__slot0__set_title(__self *__window_state1__slot0__inst, __v string) {
+	if __self.__prop_title == __v {
+		return
+	}
 	__self.__prop_title = __v
 	cgo.SnglToplevelSetTitle(__self.__n0, __self.__prop_title)
 }
 
 func __window_state1__slot0__set___p0(__self *__window_state1__slot0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n1, fmt.Sprint(__self.__prop___p0))
 }
@@ -904,14 +919,23 @@ dialog { margin: auto; padding: 1em; }
       }
     }
     function __set___start_visible(__v) {
+      if (__prop___start_visible === __v) {
+        return;
+      }
       __prop___start_visible = __v;
     }
     function __set_title(__v) {
+      if (__prop_title === __v) {
+        return;
+      }
       __prop_title = __v;
       __n0.setAttribute("aria-label", __prop_title);
       __n0.querySelector("header > span").textContent = __prop_title;
     }
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = String(__prop___p0);
     }
@@ -1073,8 +1097,8 @@ dialog { margin: auto; padding: 1em; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:5209f4f1e195c1e1f6dddfb9570bd2fc
+pass sha256:a5a5e5c3b3e084b34671b57076ac5e26
 -- run/go/gtk4 --
-pass sha256:c41e979d2b0cb49b922f1180e91eeff2
+pass sha256:5b22956ceaf184183a90b2f39c3d4f8c
 -- run/none/html --
-pass sha256:f8e75a9cb755b5c6bffb9b7ff03f0232
+pass sha256:1e62224ca0ae515db3412b7a5d9dd6c4

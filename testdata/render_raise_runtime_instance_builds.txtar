@@ -271,6 +271,9 @@ func newRowInstance(__model *Model, __a_n int) *RowInstance {
 }
 
 func (c *RowInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n0.SetText(Label(c.__prop_n))
 }
@@ -345,6 +348,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop_n = n;
     let clicks = 0;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = label(__prop_n);
     }
@@ -445,6 +451,6 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:070eba5ed26c6a4a8b6f1320890c0672
+pass sha256:be1b4f8997d01e150323b95e68915edd
 -- run/none/html --
-pass sha256:667c55f89d200782997f2bacf0d944c1
+pass sha256:9f894f8e5b437e8ffde17ae401302995

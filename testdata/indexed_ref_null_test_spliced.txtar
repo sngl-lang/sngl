@@ -1769,12 +1769,18 @@ func newStepInstance(__model *Model, __a_n int, __a___depth int) *StepInstance {
 }
 
 func (c *StepInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n0.SetText(("s" + fmt.Sprint(c.__prop_n)))
 	c.__renderSlot0(c.__n5)
 }
 
 func (c *StepInstance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot0(c.__n5)
 }
@@ -1889,11 +1895,17 @@ func (c *__block_state0Instance) shout__inst1() string {
 }
 
 func (c *__block_state0Instance) SetN(__v string) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__renderSlot4(c.__root)
 }
 
 func (c *__block_state0Instance) SetSkip(__v string) {
+	if c.__prop_skip == __v {
+		return
+	}
 	c.__prop_skip = __v
 	c.__renderSlot4(c.__root)
 }
@@ -2070,6 +2082,9 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.one.SetText(c.__prop___p0)
 }
@@ -2105,11 +2120,17 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child1Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n2.SetN(c.__prop___p0.Elem)
 }
 
 func (c *__child1Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n2.SetSkip(c.__prop___p1)
 }
@@ -2143,6 +2164,9 @@ func new__child2Instance(__model *Model, __a___p0 string) *__child2Instance {
 }
 
 func (c *__child2Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3.SetText(c.__prop___p0)
 }
@@ -2172,11 +2196,17 @@ func new__child3Instance(__model *Model, __a___p0 string, __a___p1 __anon_id_ele
 }
 
 func (c *__child3Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.f.SetText((c.__prop___p0 + fmt.Sprint(c.__prop___p1.Elem)))
 }
 
 func (c *__child3Instance) Set__p1(__v __anon_id_elem_cdfd47) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.f.SetText((c.__prop___p0 + fmt.Sprint(c.__prop___p1.Elem)))
 }
@@ -2204,6 +2234,9 @@ func new__child4Instance(__model *Model, __a___p0 string) *__child4Instance {
 }
 
 func (c *__child4Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.e.SetText(c.__prop___p0)
 }
@@ -2819,11 +2852,17 @@ window.__sngl_boot = () => {
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = "s" + String(__prop_n);
       __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
@@ -2937,10 +2976,16 @@ window.__sngl_boot = () => {
       return __prop_n + "!";
     }
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __renderSlot4(__slotAnchor_4);
     }
     function __set_skip(__v) {
+      if (__prop_skip === __v) {
+        return;
+      }
       __prop_skip = __v;
       __renderSlot4(__slotAnchor_4);
     }
@@ -3132,6 +3177,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       one.textContent = __prop___p0;
     }
@@ -3157,10 +3205,16 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.__set_n(__prop___p0.elem);
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n2.__set_skip(__prop___p1);
     }
@@ -3190,6 +3244,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n3.textContent = __prop___p0;
     }
@@ -3211,10 +3268,16 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       f.textContent = __prop___p0 + String(__prop___p1.elem);
     }
     function __set___p1(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p1, __v)) {
+        return;
+      }
       __prop___p1 = __v;
       f.textContent = __prop___p0 + String(__prop___p1.elem);
     }
@@ -3236,6 +3299,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       e.textContent = __prop___p0;
     }
@@ -3256,6 +3322,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       p.textContent = __prop___p0.elem;
     }
@@ -3576,8 +3645,8 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:35c3b4c5752b5fab11b98862df7fbd31
 -- run/go/fyne --
-pass sha256:62b36ed9795e0563cc2bdcafbf3ec672
+pass sha256:7e1467ec69dc3f8a997862034182067b
 -- run/kotlin/android --
 pass sha256:e5d8964bf8010e82785daf34e846f546
 -- run/none/html --
-pass sha256:d578d0f45ebe47cf8d5842b0f017c616
+pass sha256:7f876d18de043a2f99b707f9e33f24f0

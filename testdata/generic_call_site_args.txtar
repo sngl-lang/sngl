@@ -602,13 +602,22 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { n: 1, names: ["z"], visible__inst0: true };
   function blank() {
+    if (__memoAt_blank === __memoEpoch) {
+      ;
+      return __memo_blank;
+    }
+    ;
     let out = [];
     if (state.n < 0) {
       ;
-      return out;
+      __memo_blank = out;
+      __memoAt_blank = __memoEpoch;
+      return __memo_blank;
     }
     ;
-    return out;
+    __memo_blank = out;
+    __memoAt_blank = __memoEpoch;
+    return __memo_blank;
   }
   function second(a, b) {
     if (state.n < 0) {
@@ -618,6 +627,9 @@ body { font-family: system-ui, sans-serif; }
     ;
     return b;
   }
+  var __memoEpoch = 0;
+  var __memo_blank = [];
+  var __memoAt_blank = -1;
   function String(v) {
     return "" + v;
   }
@@ -639,4 +651,4 @@ pass sha256:1e8ea0e9dfa3fcc1d58abde454d4489e
 -- run/kotlin/android --
 pass sha256:3097fad9a84b91ac5d3367f9a50b512e
 -- run/none/html --
-pass sha256:fa1fd244450610cf9fab211997311f5d
+pass sha256:80abbf41e2ca5464f310de00f72db7a6

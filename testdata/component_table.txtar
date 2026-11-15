@@ -723,6 +723,9 @@ func __child0__new(__p0 int, __p1 int, __p2 TableRow__record, __on0 func(cgo.Wid
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(func() int {
 		if __self.__prop___p0 == __self.__prop___p1 {
@@ -734,6 +737,9 @@ func __child0__set___p0(__self *__child0__inst, __v int) {
 }
 
 func __child0__set___p1(__self *__child0__inst, __v int) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(func() int {
 		if __self.__prop___p0 == __self.__prop___p1 {
@@ -1165,7 +1171,7 @@ pass sha256:5bfc00b7d2334179215bb6aea70b0eae
 -- run/go/fyne --
 pass sha256:b53d42ebc05e54d244e10ff88239ff71
 -- run/go/gtk4 --
-pass sha256:2644ba5ac16a8ea1198f9e9f01f9c8f1
+pass sha256:49a9d82d30d902e0e3b9d9593bbd35fe
 -- run/kotlin/android --
 pass sha256:6f0c6b92e9db9093c588d597be6a4660
 -- run/none/html --

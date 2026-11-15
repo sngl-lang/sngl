@@ -436,6 +436,9 @@ func new__canvas0Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28, __a___
 }
 
 func (c *__canvas0Instance) Set__p0(__v __anon_id_elem_4ccb28) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw0(c.__n3Ctx)
@@ -444,6 +447,9 @@ func (c *__canvas0Instance) Set__p0(__v __anon_id_elem_4ccb28) {
 }
 
 func (c *__canvas0Instance) Set__p1(__v float64) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n3Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw0(c.__n3Ctx)
@@ -489,6 +495,9 @@ func new__canvas1Instance(__model *Model, __a___p0 __anon_id_elem_4ccb28) *__can
 }
 
 func (c *__canvas1Instance) Set__p0(__v __anon_id_elem_4ccb28) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n4Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw1(c.__n4Ctx)
@@ -721,11 +730,17 @@ func __canvas0__new(__p0 __anon_id_elem_4ccb28, __p1 float64, __on0 func()) *__c
 }
 
 func __canvas0__set___p0(__self *__canvas0__inst, __v __anon_id_elem_4ccb28) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglCanvasRedraw(__self.__drawing0)
 }
 
 func __canvas0__set___p1(__self *__canvas0__inst, __v float64) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	cgo.SnglCanvasRedraw(__self.__drawing0)
 }
@@ -758,6 +773,9 @@ func __canvas1__new(__p0 __anon_id_elem_4ccb28) *__canvas1__inst {
 }
 
 func __canvas1__set___p0(__self *__canvas1__inst, __v __anon_id_elem_4ccb28) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglCanvasRedraw(__self.__drawing1)
 }
@@ -1122,10 +1140,16 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw0);
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw0);
     }
@@ -1162,6 +1186,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       _snglCanvasDraw(__n4, 40, 40, "", _canvasDraw1);
     }
@@ -1391,8 +1418,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:26d9f79a6fb5ec5104da8c27be16d81f
+pass sha256:e5d277f47430950b6ea29e07f632a3ac
 -- run/go/gtk4 --
-pass sha256:7381ba0aa6a86847ccc1efe0736bcc56
+pass sha256:f6487e228020cbe91d3ddaf3c8bf3800
 -- run/none/html --
-pass sha256:987d7a94e634af1cbed57dba23bae324
+pass sha256:b54614866a2ca6128a9d623f40e0dc7b

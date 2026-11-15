@@ -1373,9 +1373,10 @@ func (c *HolderInstance) Destroy() {
 }
 
 func (c *HolderInstance) SetN(__v int) {
-	if c.__prop_n != __v {
-		c.__effect1_dirty = true
+	if c.__prop_n == __v {
+		return
 	}
+	c.__effect1_dirty = true
 	c.__prop_n = __v
 	c.__effects0_settle()
 }
@@ -1639,9 +1640,10 @@ func Holder__snglTeardown(__self *Holder__inst) {
 }
 
 func Holder__set_n(__self *Holder__inst, __v int) {
-	if __self.__prop_n != __v {
-		__self.__effect1_dirty = true
+	if __self.__prop_n == __v {
+		return
 	}
+	__self.__effect1_dirty = true
 	__self.__prop_n = __v
 	Holder__effects0_settle(__self)
 }
@@ -2408,9 +2410,10 @@ window.__sngl_boot = () => {
       __effect0_teardown();
     }
     function __set_n(__v) {
-      if (__prop_n !== __v) {
-        __effect1_dirty = true;
+      if (__prop_n === __v) {
+        return;
       }
+      __effect1_dirty = true;
       __prop_n = __v;
       __effects0_settle();
     }
@@ -2572,10 +2575,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:0d9bb3181b4eac996292b76eac0499c6
 -- run/go/fyne --
-pass sha256:243415ac9bb5e7b59746fd27f44f41b9
+pass sha256:63082f74fa534f1dcaef82df75722e15
 -- run/go/gtk4 --
-pass sha256:f29b23cfa74ff69fb2c949a675bf3450
+pass sha256:f255e729ef2dc4052e12490609805efd
 -- run/kotlin/android --
 pass sha256:145419692410bf09fddfab4cd516f26d
 -- run/none/html --
-pass sha256:293cc1d07c7114e567454178c2dc5258
+pass sha256:3daf54719706951231e0de0c836f2f49

@@ -103,6 +103,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -193,4 +196,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ac19ad6a428119748eb717bceae80ff7
+pass sha256:14e3ad0117438730b62a026299b88de9

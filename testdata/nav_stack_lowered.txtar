@@ -1235,6 +1235,9 @@ func new__child0Instance(__model *Model, __a___p0 _page__value) *__child0Instanc
 }
 
 func (c *__child0Instance) Set__p0(__v _page__value) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(("at " + c.__prop___p0.Title))
 }
@@ -1262,6 +1265,9 @@ func new__child1Instance(__model *Model, __a___p0 Pkg) *__child1Instance {
 }
 
 func (c *__child1Instance) Set__p0(__v Pkg) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n2.SetText(c.__prop___p0.Name)
 }
@@ -1699,6 +1705,9 @@ func __child0__new(__p0 _page__value) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v _page__value) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n1, ("at " + __self.__prop___p0.Title))
 }
@@ -1719,6 +1728,9 @@ func __child1__new(__p0 Pkg) *__child1__inst {
 }
 
 func __child1__set___p0(__self *__child1__inst, __v Pkg) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n2, __self.__prop___p0.Name)
 }
@@ -1819,6 +1831,6 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/bubbletea --
 pass sha256:c0e6aa931f99bc4a55401503115f27f3
 -- run/go/fyne --
-pass sha256:aa7f714fba5eca5f19f1f0015a093858
+pass sha256:70290bee1720dd674b4705bf3d95318a
 -- run/go/gtk4 --
-pass sha256:0162e870cc6109c6d541f7496dc92e1e
+pass sha256:93dcf14d0fa63713eb390fc5f2b0db3b

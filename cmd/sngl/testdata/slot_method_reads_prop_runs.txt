@@ -142,7 +142,7 @@ sha256:8b0dd59cb6840918629e61313bfa44b8
   ]
 }
 -- testrun/fyne/go/app.sngl/pick/1 --
-sha256:7166d55826723ed1ff8d06d23033250a
+sha256:04d8f22b64810763ac23662fc17f6910
 {
   "results": [
     {
@@ -152,7 +152,7 @@ sha256:7166d55826723ed1ff8d06d23033250a
   ]
 }
 -- testrun/fyne/go/app.sngl/pickAgain/1 --
-sha256:3f87ef35004e10ca1ddda9d6fce1f356
+sha256:ac7c44afa2808dec5976ca1852577d06
 {
   "results": [
     {
@@ -162,7 +162,7 @@ sha256:3f87ef35004e10ca1ddda9d6fce1f356
   ]
 }
 -- testrun/gtk4/go/app.sngl/pick/1 --
-sha256:b02b9cf8fcf80026d50b94cc70502e6c
+sha256:3c93b2f040bf2253f5a4e417bd8d3faf
 {
   "results": [
     {
@@ -172,7 +172,7 @@ sha256:b02b9cf8fcf80026d50b94cc70502e6c
   ]
 }
 -- testrun/gtk4/go/app.sngl/pickAgain/1 --
-sha256:e69f8a23a48e38ca6babba64b879bc40
+sha256:263433e9962fb16509a8022a44514180
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:e69f8a23a48e38ca6babba64b879bc40
   ]
 }
 -- testrun/html/none/app.sngl/pick/1 --
-sha256:3ca23d6a219488caae4c92dcd086fe35
+sha256:144347c4e972dd762da9d1061511633f
 {
   "results": [
     {
@@ -192,7 +192,7 @@ sha256:3ca23d6a219488caae4c92dcd086fe35
   ]
 }
 -- testrun/html/none/app.sngl/pickAgain/1 --
-sha256:44a84a1563acb444eacbbe1179f9cb92
+sha256:e6f2892e89455996da84810bcb7617ce
 {
   "results": [
     {

@@ -278,9 +278,10 @@ func (c *ChildInstance) __effects0_settle() {
 }
 
 func (c *ChildInstance) SetN(__v int) {
-	if c.__prop_n != __v {
-		c.__effect0_dirty = true
+	if c.__prop_n == __v {
+		return
 	}
+	c.__effect0_dirty = true
 	c.__prop_n = __v
 	c.__effects0_settle()
 }
@@ -482,9 +483,10 @@ body { font-family: system-ui, sans-serif; }
       }
     }
     function __set_n(__v) {
-      if (__prop_n !== __v) {
-        __effect0_dirty = true;
+      if (__prop_n === __v) {
+        return;
       }
+      __effect0_dirty = true;
       __prop_n = __v;
       __effects0_settle();
     }
@@ -579,8 +581,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:9d25d696bc95ea4c1d49c0f24151c6db
+pass sha256:fe91655ca18371e58996d54d5af74847
 -- run/kotlin/android --
 pass sha256:6c137ad117451b122036e0347ac0c934
 -- run/none/html --
-pass sha256:cdc3af202e066626bf91c4c76204175a
+pass sha256:fad5c96b7ef43a5b43967ed0107ca838

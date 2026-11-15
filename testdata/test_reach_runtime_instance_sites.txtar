@@ -1885,6 +1885,9 @@ func newBadge__site0Instance(__model *Model, __a_label string) *Badge__site0Inst
 }
 
 func (c *Badge__site0Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
@@ -1977,11 +1980,17 @@ func newBadge__site1Instance(__model *Model, __a_label string, __a___copy string
 }
 
 func (c *Badge__site1Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
 
 func (c *Badge__site1Instance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	c.__model.__list_hit__reach1(c.__prop___copy, c.hit__reach1)
 	for __inst3_live_ui, _ := range c.__inst3_live {
@@ -2104,6 +2113,9 @@ func newBadge__site2Instance(__model *Model, __a_label string) *Badge__site2Inst
 }
 
 func (c *Badge__site2Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
@@ -2164,6 +2176,9 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__model.__list_done__reach0(c.__prop___p0, c.done__reach0)
 }
@@ -2455,6 +2470,9 @@ func Badge__site0__new(label string) *Badge__site0__inst {
 }
 
 func Badge__site0__set_label(__self *Badge__site0__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 }
@@ -2553,11 +2571,18 @@ func Badge__site1__new(label string, __copy string) *Badge__site1__inst {
 }
 
 func Badge__site1__set_label(__self *Badge__site1__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 }
 
 func Badge__site1__set___copy(__self *Badge__site1__inst, __v string) {
+	if __self.__prop___copy == __v {
+		m.hit__reach1__copies[__self.__prop___copy] = __self.Hit__reach1
+		return
+	}
 	__self.__prop___copy = __v
 	m.hit__reach1__copies[__self.__prop___copy] = __self.Hit__reach1
 	for __inst9_live_ui, _ := range __self.__inst9_live {
@@ -2687,6 +2712,9 @@ func Badge__site2__new(label string) *Badge__site2__inst {
 }
 
 func Badge__site2__set_label(__self *Badge__site2__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 }
@@ -2767,6 +2795,10 @@ func __child0__new(__p0 string) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		m.done__reach0__copies[__self.__prop___p0] = __self.Done__reach0
+		return
+	}
 	__self.__prop___p0 = __v
 	m.done__reach0__copies[__self.__prop___p0] = __self.Done__reach0
 }
@@ -3702,6 +3734,9 @@ window.__sngl_boot = () => {
     let __rendering4 = false;
     let __renderAgain4 = false;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
@@ -3788,10 +3823,16 @@ window.__sngl_boot = () => {
     let __rendering5 = false;
     let __renderAgain5 = false;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       hit__reach1.setAttribute("data-sngl-copy", __prop___copy);
       for (const [__inst9_live_ui, _] of __inst9_live.entries()) {
@@ -3908,6 +3949,9 @@ window.__sngl_boot = () => {
     let __rendering6 = false;
     let __renderAgain6 = false;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
@@ -3987,6 +4031,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       done__reach0.setAttribute("data-sngl-copy", __prop___p0);
     }
@@ -4268,10 +4315,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:f9f193db9f96e2bb52261d0f7b5d3b5e
 -- run/go/fyne --
-pass sha256:452a08693fd3f60750cf87bb003c4991
+pass sha256:e0c41a192c7bce973251bcc7255da4b5
 -- run/go/gtk4 --
-pass sha256:7b739d966fdc8bbdcfa974350d2926cd
+pass sha256:bfb4e8c6fe76b1e56ae3e8fe5239b857
 -- run/kotlin/android --
 pass sha256:7aa818aaa9b7d27103a0fecabb1f4ab4
 -- run/none/html --
-pass sha256:2990aef60283fab8ba28c9cc535bb354
+pass sha256:965b4987b584a26e599f4c538f709791

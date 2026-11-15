@@ -411,7 +411,10 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v);
 static void sngl_map_string__int__drop(sngl_map_string__int v);
+static void sngl_list___anon_drop_labels_0c7afa__unshare(sngl_list___anon_drop_labels_0c7afa *l);
 static sngl_string sngl_lambda7(void *env_, s_ui__choice__record__string o);
+static void sngl_map_string__int__unshare(sngl_map_string__int *l);
+static void sngl_list_string__unshare(sngl_list_string *l);
 static void s___effect0_up(void);
 static void s___effect1_mount(void);
 static sngl_string sngl_lambda14(void *env_, s_ui__choice__record__string o);
@@ -422,6 +425,8 @@ static void s___effects0_settle(void);
 static void s___renderSlot2(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
+static void sngl_list_moves__inst__unshare(sngl_list_moves__inst *l);
+static void sngl_list_GtkWidget_p__unshare(sngl_list_GtkWidget_p *l);
 static sngl_list_moves__inst sngl_list_moves__inst__keep(sngl_list_moves__inst v);
 static void sngl_list_moves__inst__drop(sngl_list_moves__inst v);
 static void s___snglTeardown(void);
@@ -429,6 +434,7 @@ static void s_x_c__free(char * s);
 static s_moves__inst * s_moves__new(void);
 static sngl_list___child0__inst sngl_list___child0__inst__keep(sngl_list___child0__inst v);
 static void s_moves__renderSlot0(s_moves__inst * __self, GtkWidget * parent);
+static void sngl_list___child0__inst__unshare(sngl_list___child0__inst *l);
 static void *sngl_lambda37_env__keep(const void *p);
 static void sngl_lambda37_env__release(void *p);
 static void sngl_lambda37_env__rekeep(void *p);
@@ -477,6 +483,7 @@ static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___lambda0(s___lambda0_caps state, GtkWidget * d);
 static void s___select_state2__effect2_mount(s___select_state2__inst * __self);
 static void s___select_state2__effect2_down(s___select_state2__inst * __self);
+static void sngl_list_choice__record__string__unshare(sngl_list_choice__record__string *l);
 static sngl_string sngl_lambda53(void *env_, s_ui__choice__record__string o);
 static void s___select_state2__effect2_up(s___select_state2__inst * __self);
 static void s___select_state2__effect3_mount(s___select_state2__inst * __self);
@@ -505,12 +512,14 @@ static void s___lambda1_caps__env__rekeep(void *p);
 static void s___lambda1_caps__env__visit(void *p, sngl_visit fn);
 static void s___lambda1(s___lambda1_caps state);
 static void s___child0__set___p0(s___child0__inst * __self, s_ui__tab__record __v);
+static bool s_ui__tab__record__eq(s_ui__tab__record a, s_ui__tab__record b);
 static void s_ui__tab__record__drop(s_ui__tab__record v);
 static void s___child0__set___p1(s___child0__inst * __self, sngl_string __v);
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v);
 static void s___child0__set___on1(s___child0__inst * __self, sngl_fn_string__void __v);
 static void s___child0__renderSlot1(s___child0__inst * __self, GtkWidget * parent);
 static void sngl_lambda74(void *env_);
+static void sngl_list___select_state2__inst__unshare(sngl_list___select_state2__inst *l);
 static void *sngl_lambda75_env__keep(const void *p);
 static void sngl_lambda75_env__release(void *p);
 static void sngl_lambda75_env__rekeep(void *p);
@@ -576,14 +585,17 @@ static s_platform_gtk4____anon_drop_labels_0c7afa s_platform_gtk4____anon_drop_l
 }
 
 static sngl_list___anon_drop_labels_0c7afa sngl_list___anon_drop_labels_0c7afa__keep(sngl_list___anon_drop_labels_0c7afa v) {
-	s_platform_gtk4____anon_drop_labels_0c7afa *data = sngl_keep_alloc(sizeof(s_platform_gtk4____anon_drop_labels_0c7afa) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s_platform_gtk4____anon_drop_labels_0c7afa) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = s_platform_gtk4____anon_drop_labels_0c7afa__keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		s_platform_gtk4____anon_drop_labels_0c7afa *data = sngl_keep_alloc(sizeof(s_platform_gtk4____anon_drop_labels_0c7afa) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_platform_gtk4____anon_drop_labels_0c7afa) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s_platform_gtk4____anon_drop_labels_0c7afa__keep(v.data[i]);
+		}
 	}
 	return v;
 }
@@ -593,60 +605,94 @@ static void s_platform_gtk4____anon_drop_labels_0c7afa__drop(s_platform_gtk4____
 }
 
 static void sngl_list___anon_drop_labels_0c7afa__drop(sngl_list___anon_drop_labels_0c7afa v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	s_platform_gtk4____anon_drop_labels_0c7afa__drop(v.data[i]);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s_platform_gtk4____anon_drop_labels_0c7afa__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
-	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = sngl_string_keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = sngl_string_keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list_string__drop(sngl_list_string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.data[i]).ptr);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.data[i]).ptr);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__int__drop(sngl_map_string__int v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_list_tab__record sngl_list_tab__record_of(int64_t n, s_ui__tab__record const *xs) {
 	sngl_list_tab__record l = {sngl_alloc(sizeof(s_ui__tab__record) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(s_ui__tab__record) * (size_t)n);
 	return l;
+}
+
+static void sngl_list___anon_drop_labels_0c7afa__unshare(sngl_list___anon_drop_labels_0c7afa *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list___anon_drop_labels_0c7afa v = *l;
+	sngl_let_go_shared(v.data);
+	s_platform_gtk4____anon_drop_labels_0c7afa *data = sngl_keep_alloc(sizeof(s_platform_gtk4____anon_drop_labels_0c7afa) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_platform_gtk4____anon_drop_labels_0c7afa) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s_platform_gtk4____anon_drop_labels_0c7afa__keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list___anon_drop_labels_0c7afa_grow_kept(sngl_list___anon_drop_labels_0c7afa *l, int64_t n) {
@@ -670,8 +716,10 @@ static void sngl_list___anon_drop_labels_0c7afa_grow_kept(sngl_list___anon_drop_
 }
 
 static void sngl_list___anon_drop_labels_0c7afa_push_kept(sngl_list___anon_drop_labels_0c7afa *l, s_platform_gtk4____anon_drop_labels_0c7afa v) {
+	sngl_list___anon_drop_labels_0c7afa__unshare(l);
 	sngl_list___anon_drop_labels_0c7afa_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static sngl_list_string sngl_list_choice__record__string_map_string(sngl_list_choice__record__string l, sngl_fn_choice__record__string__string f) {
@@ -702,7 +750,33 @@ static int64_t sngl_map_string__int_find(sngl_map_string__int m, sngl_string k) 
 	return -1;
 }
 
+static void sngl_map_string__int__unshare(sngl_map_string__int *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string__int v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+	}
+	*l = v;
+}
+
 static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_string k) {
+	sngl_map_string__int__unshare(m);
 	int64_t i = sngl_map_string__int_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -723,7 +797,29 @@ static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_str
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
+}
+
+static void sngl_list_string__unshare(sngl_list_string *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_string v = *l;
+	sngl_let_go_shared(v.data);
+	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = sngl_string_keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
@@ -747,8 +843,10 @@ static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
 }
 
 static void sngl_list_string_push_kept(sngl_list_string *l, sngl_string v) {
+	sngl_list_string__unshare(l);
 	sngl_list_string_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t sngl_map_string__int_get(sngl_map_string__int m, sngl_string k, int64_t otherwise) {
@@ -771,17 +869,38 @@ static s_platform_gtk4____anon_drop_labels_0c7afa *sngl_list___anon_drop_labels_
 }
 
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v) {
-	GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(GtkWidget *) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(GtkWidget *) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
+}
+
+static void sngl_list_moves__inst__unshare(sngl_list_moves__inst *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_moves__inst v = *l;
+	sngl_let_go_shared(v.data);
+	s_moves__inst * *data = sngl_keep_alloc(sizeof(s_moves__inst *) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_moves__inst *) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
 }
 
 static s_moves__inst * *sngl_list_moves__inst_at(sngl_list_moves__inst l, int64_t i) {
@@ -822,6 +941,22 @@ static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i)
 	return &l.data[i];
 }
 
+static void sngl_list_GtkWidget_p__unshare(sngl_list_GtkWidget_p *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_GtkWidget_p v = *l;
+	sngl_let_go_shared(v.data);
+	GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(GtkWidget *) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
+}
+
 static void sngl_list_GtkWidget_p_grow_kept(sngl_list_GtkWidget_p *l, int64_t n) {
 	if (l->len + n <= l->cap) {
 		return;
@@ -843,22 +978,29 @@ static void sngl_list_GtkWidget_p_grow_kept(sngl_list_GtkWidget_p *l, int64_t n)
 }
 
 static void sngl_list_GtkWidget_p_push_kept(sngl_list_GtkWidget_p *l, GtkWidget * v) {
+	sngl_list_GtkWidget_p__unshare(l);
 	sngl_list_GtkWidget_p_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static sngl_list_moves__inst sngl_list_moves__inst__keep(sngl_list_moves__inst v) {
-	s_moves__inst * *data = sngl_keep_alloc(sizeof(s_moves__inst *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s_moves__inst *) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		s_moves__inst * *data = sngl_keep_alloc(sizeof(s_moves__inst *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_moves__inst *) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static void sngl_list_moves__inst__drop(sngl_list_moves__inst v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static int64_t sngl_list_GtkWidget_p_index_of(sngl_list_GtkWidget_p l, GtkWidget * v) {
@@ -871,13 +1013,32 @@ static int64_t sngl_list_GtkWidget_p_index_of(sngl_list_GtkWidget_p l, GtkWidget
 }
 
 static sngl_list___child0__inst sngl_list___child0__inst__keep(sngl_list___child0__inst v) {
+	if (!sngl_share(v.data, v.len)) {
+		s___child0__inst * *data = sngl_keep_alloc(sizeof(s___child0__inst *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s___child0__inst *) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+	}
+	return v;
+}
+
+static void sngl_list___child0__inst__unshare(sngl_list___child0__inst *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list___child0__inst v = *l;
+	sngl_let_go_shared(v.data);
 	s___child0__inst * *data = sngl_keep_alloc(sizeof(s___child0__inst *) * (size_t)(v.len + 1));
 	if (v.len > 0) {
 		memcpy(data, v.data, sizeof(s___child0__inst *) * (size_t)v.len);
 	}
 	v.data = data;
+	sngl_kept_len(data, v.len);
 	v.cap = v.len;
-	return v;
+	*l = v;
 }
 
 static s___child0__inst * *sngl_list___child0__inst_at(sngl_list___child0__inst l, int64_t i) {
@@ -980,7 +1141,9 @@ static void sngl_list___child0__inst_push(sngl_list___child0__inst *l, s___child
 }
 
 static void sngl_list___child0__inst__drop(sngl_list___child0__inst v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static void s___ref_string__release(void *p) {
@@ -1002,14 +1165,17 @@ static s_ui__choice__record__string s_ui__choice__record__string__keep(s_ui__cho
 }
 
 static sngl_list_choice__record__string sngl_list_choice__record__string__keep(sngl_list_choice__record__string v) {
-	s_ui__choice__record__string *data = sngl_keep_alloc(sizeof(s_ui__choice__record__string) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s_ui__choice__record__string) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = s_ui__choice__record__string__keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		s_ui__choice__record__string *data = sngl_keep_alloc(sizeof(s_ui__choice__record__string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_ui__choice__record__string) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s_ui__choice__record__string__keep(v.data[i]);
+		}
 	}
 	return v;
 }
@@ -1020,10 +1186,12 @@ static void s_ui__choice__record__string__drop(s_ui__choice__record__string v) {
 }
 
 static void sngl_list_choice__record__string__drop(sngl_list_choice__record__string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	s_ui__choice__record__string__drop(v.data[i]);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s_ui__choice__record__string__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static void s___ref_list_choice__record__string__release(void *p) {
@@ -1159,6 +1327,25 @@ static s_ui__choice__record__string *sngl_list_choice__record__string_at(sngl_li
 	return &l.data[i];
 }
 
+static void sngl_list_choice__record__string__unshare(sngl_list_choice__record__string *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_choice__record__string v = *l;
+	sngl_let_go_shared(v.data);
+	s_ui__choice__record__string *data = sngl_keep_alloc(sizeof(s_ui__choice__record__string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_ui__choice__record__string) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s_ui__choice__record__string__keep(v.data[i]);
+	}
+	*l = v;
+}
+
 static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
 	sngl_env_drop(v.env);
 }
@@ -1187,12 +1374,15 @@ static s_ui__tab__record s_ui__tab__record__keep(s_ui__tab__record v) {
 }
 
 static sngl_list___select_state2__inst sngl_list___select_state2__inst__keep(sngl_list___select_state2__inst v) {
-	s___select_state2__inst * *data = sngl_keep_alloc(sizeof(s___select_state2__inst *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s___select_state2__inst *) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		s___select_state2__inst * *data = sngl_keep_alloc(sizeof(s___select_state2__inst *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s___select_state2__inst *) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
@@ -1240,6 +1430,10 @@ static void s___lambda1__fn(void *env) {
 	s___lambda1(((s___lambda1_caps__env *)env)->caps);
 }
 
+static bool s_ui__tab__record__eq(s_ui__tab__record a, s_ui__tab__record b) {
+	return sngl_string_eq(a.label, b.label) && (a.disabled == b.disabled) && (a.__id == b.__id);
+}
+
 static void s_ui__tab__record__drop(s_ui__tab__record v) {
 	sngl_drop((v.label).ptr);
 }
@@ -1249,6 +1443,22 @@ static s___select_state2__inst * *sngl_list___select_state2__inst_at(sngl_list__
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static void sngl_list___select_state2__inst__unshare(sngl_list___select_state2__inst *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list___select_state2__inst v = *l;
+	sngl_let_go_shared(v.data);
+	s___select_state2__inst * *data = sngl_keep_alloc(sizeof(s___select_state2__inst *) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s___select_state2__inst *) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
 }
 
 static void sngl_lambda75_env__release(void *p) {
@@ -1310,7 +1520,9 @@ static void sngl_list___select_state2__inst_push(sngl_list___select_state2__inst
 }
 
 static void sngl_list___select_state2__inst__drop(sngl_list___select_state2__inst v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static void s___ref_bool__release(void *p) {
@@ -2177,6 +2389,9 @@ static void s___select_state2__effects1_settle(s___select_state2__inst * __self)
 }
 
 static void s___select_state2__set_value(s___select_state2__inst * __self, sngl_string __v) {
+	if (sngl_string_eq(__self->__prop_value->value, __v)) {
+		return;
+	}
 	{
 	sngl_string __kept65 = sngl_string_keep(__v);
 	sngl_string *__slot65 = &(__self->__prop_value->value);
@@ -2236,6 +2451,9 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void s___child0__set___p0(s___child0__inst * __self, s_ui__tab__record __v) {
+	if (s_ui__tab__record__eq(__self->__prop___p0, __v)) {
+		return;
+	}
 	{
 	s_ui__tab__record __kept68 = s_ui__tab__record__keep(__v);
 	s_ui__tab__record *__slot68 = &(__self->__prop___p0);
@@ -2250,6 +2468,9 @@ static void s___child0__set___p0(s___child0__inst * __self, s_ui__tab__record __
 }
 
 static void s___child0__set___p1(s___child0__inst * __self, sngl_string __v) {
+	if (sngl_string_eq(__self->__prop___p1, __v)) {
+		return;
+	}
 	{
 	sngl_string __kept69 = sngl_string_keep(__v);
 	sngl_string *__slot69 = &(__self->__prop___p1);
@@ -2641,6 +2862,7 @@ static void sngl_lambda85(void *env_) {
 -- out/c/gtk4/sngl.build --
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
+pkg-config libcurl
 flag -lm
 -- out/c/gtk4/sngl_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -2679,7 +2901,6 @@ typedef struct s_builtin__color s_builtin__color;
 typedef struct sngl_opt_color sngl_opt_color;
 typedef struct s_platform_win32__Look s_platform_win32__Look;
 typedef struct sngl_list_float sngl_list_float;
-typedef struct sngl_list_int sngl_list_int;
 typedef struct s_ui__tab__record s_ui__tab__record;
 typedef struct sngl_list_tab__record sngl_list_tab__record;
 typedef struct sngl_fn_choice__record__string__string sngl_fn_choice__record__string__string;
@@ -2884,7 +3105,9 @@ typedef struct s_platform_win32__Look {
 	int64_t padBottom;
 	int64_t padLeft;
 	int64_t minWidth;
-	int64_t minHeight;
+	int64_t width;
+	int64_t height;
+	int64_t align;
 	int64_t color;
 	int64_t background;
 	int64_t fontPx;
@@ -2896,12 +3119,6 @@ typedef struct sngl_list_float {
 	int64_t len;
 	int64_t cap;
 } sngl_list_float;
-
-typedef struct sngl_list_int {
-	int64_t *data;
-	int64_t len;
-	int64_t cap;
-} sngl_list_int;
 
 typedef struct s_ui__tab__record {
 	sngl_string label;
@@ -3032,7 +3249,10 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v);
 static void sngl_map_string__int__drop(sngl_map_string__int v);
+static void sngl_list___anon_drop_labels_87008d__unshare(sngl_list___anon_drop_labels_87008d *l);
 static sngl_string sngl_lambda7(void *env_, s_ui__choice__record__string o);
+static void sngl_map_string__int__unshare(sngl_map_string__int *l);
+static void sngl_list_string__unshare(sngl_list_string *l);
 static void s___effect0_up(void);
 static void s___effect1_mount(void);
 static sngl_string sngl_lambda14(void *env_, s_ui__choice__record__string o);
@@ -3043,6 +3263,8 @@ static void s___effects0_settle(void);
 static void s___renderSlot0(HWND parent);
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v);
 static void sngl_list_HWND__drop(sngl_list_HWND v);
+static void sngl_list_moves__inst__unshare(sngl_list_moves__inst *l);
+static void sngl_list_HWND__unshare(sngl_list_HWND *l);
 static sngl_list_moves__inst sngl_list_moves__inst__keep(sngl_list_moves__inst v);
 static void sngl_list_moves__inst__drop(sngl_list_moves__inst v);
 static void s___snglTeardown(void);
@@ -3131,21 +3353,6 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	return l;
 }
 
-static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
-	for (int64_t i = 0; i < l.len; i++) {
-		if (l.data[i] > m) {
-			m = l.data[i];
-		}
-	}
-	return m;
-}
-
-static sngl_list_int sngl_list_int_of(int64_t n, int64_t const *xs) {
-	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
-	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
-	return l;
-}
-
 static sngl_list_choice__record__string sngl_list_choice__record__string_of(int64_t n, s_ui__choice__record__string const *xs) {
 	sngl_list_choice__record__string l = {sngl_alloc(sizeof(s_ui__choice__record__string) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(s_ui__choice__record__string) * (size_t)n);
@@ -3158,14 +3365,17 @@ static s_platform_win32____anon_drop_labels_87008d s_platform_win32____anon_drop
 }
 
 static sngl_list___anon_drop_labels_87008d sngl_list___anon_drop_labels_87008d__keep(sngl_list___anon_drop_labels_87008d v) {
-	s_platform_win32____anon_drop_labels_87008d *data = sngl_keep_alloc(sizeof(s_platform_win32____anon_drop_labels_87008d) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s_platform_win32____anon_drop_labels_87008d) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = s_platform_win32____anon_drop_labels_87008d__keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		s_platform_win32____anon_drop_labels_87008d *data = sngl_keep_alloc(sizeof(s_platform_win32____anon_drop_labels_87008d) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_platform_win32____anon_drop_labels_87008d) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s_platform_win32____anon_drop_labels_87008d__keep(v.data[i]);
+		}
 	}
 	return v;
 }
@@ -3175,60 +3385,94 @@ static void s_platform_win32____anon_drop_labels_87008d__drop(s_platform_win32__
 }
 
 static void sngl_list___anon_drop_labels_87008d__drop(sngl_list___anon_drop_labels_87008d v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	s_platform_win32____anon_drop_labels_87008d__drop(v.data[i]);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s_platform_win32____anon_drop_labels_87008d__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
-	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = sngl_string_keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = sngl_string_keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list_string__drop(sngl_list_string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.data[i]).ptr);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.data[i]).ptr);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__int__drop(sngl_map_string__int v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_list_tab__record sngl_list_tab__record_of(int64_t n, s_ui__tab__record const *xs) {
 	sngl_list_tab__record l = {sngl_alloc(sizeof(s_ui__tab__record) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(s_ui__tab__record) * (size_t)n);
 	return l;
+}
+
+static void sngl_list___anon_drop_labels_87008d__unshare(sngl_list___anon_drop_labels_87008d *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list___anon_drop_labels_87008d v = *l;
+	sngl_let_go_shared(v.data);
+	s_platform_win32____anon_drop_labels_87008d *data = sngl_keep_alloc(sizeof(s_platform_win32____anon_drop_labels_87008d) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_platform_win32____anon_drop_labels_87008d) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s_platform_win32____anon_drop_labels_87008d__keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list___anon_drop_labels_87008d_grow_kept(sngl_list___anon_drop_labels_87008d *l, int64_t n) {
@@ -3252,8 +3496,10 @@ static void sngl_list___anon_drop_labels_87008d_grow_kept(sngl_list___anon_drop_
 }
 
 static void sngl_list___anon_drop_labels_87008d_push_kept(sngl_list___anon_drop_labels_87008d *l, s_platform_win32____anon_drop_labels_87008d v) {
+	sngl_list___anon_drop_labels_87008d__unshare(l);
 	sngl_list___anon_drop_labels_87008d_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static sngl_list_string sngl_list_choice__record__string_map_string(sngl_list_choice__record__string l, sngl_fn_choice__record__string__string f) {
@@ -3284,7 +3530,33 @@ static int64_t sngl_map_string__int_find(sngl_map_string__int m, sngl_string k) 
 	return -1;
 }
 
+static void sngl_map_string__int__unshare(sngl_map_string__int *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string__int v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+	}
+	*l = v;
+}
+
 static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_string k) {
+	sngl_map_string__int__unshare(m);
 	int64_t i = sngl_map_string__int_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -3305,7 +3577,29 @@ static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_str
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
+}
+
+static void sngl_list_string__unshare(sngl_list_string *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_string v = *l;
+	sngl_let_go_shared(v.data);
+	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = sngl_string_keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
@@ -3329,8 +3623,10 @@ static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
 }
 
 static void sngl_list_string_push_kept(sngl_list_string *l, sngl_string v) {
+	sngl_list_string__unshare(l);
 	sngl_list_string_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t sngl_map_string__int_get(sngl_map_string__int m, sngl_string k, int64_t otherwise) {
@@ -3353,17 +3649,38 @@ static s_platform_win32____anon_drop_labels_87008d *sngl_list___anon_drop_labels
 }
 
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
-	HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(HWND) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(HWND) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static void sngl_list_HWND__drop(sngl_list_HWND v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
+}
+
+static void sngl_list_moves__inst__unshare(sngl_list_moves__inst *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_moves__inst v = *l;
+	sngl_let_go_shared(v.data);
+	s_moves__inst * *data = sngl_keep_alloc(sizeof(s_moves__inst *) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_moves__inst *) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
 }
 
 static s_moves__inst * *sngl_list_moves__inst_at(sngl_list_moves__inst l, int64_t i) {
@@ -3404,6 +3721,22 @@ static HWND *sngl_list_HWND_at(sngl_list_HWND l, int64_t i) {
 	return &l.data[i];
 }
 
+static void sngl_list_HWND__unshare(sngl_list_HWND *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_HWND v = *l;
+	sngl_let_go_shared(v.data);
+	HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(HWND) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
+}
+
 static void sngl_list_HWND_grow_kept(sngl_list_HWND *l, int64_t n) {
 	if (l->len + n <= l->cap) {
 		return;
@@ -3425,22 +3758,29 @@ static void sngl_list_HWND_grow_kept(sngl_list_HWND *l, int64_t n) {
 }
 
 static void sngl_list_HWND_push_kept(sngl_list_HWND *l, HWND v) {
+	sngl_list_HWND__unshare(l);
 	sngl_list_HWND_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static sngl_list_moves__inst sngl_list_moves__inst__keep(sngl_list_moves__inst v) {
-	s_moves__inst * *data = sngl_keep_alloc(sizeof(s_moves__inst *) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s_moves__inst *) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		s_moves__inst * *data = sngl_keep_alloc(sizeof(s_moves__inst *) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_moves__inst *) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static void sngl_list_moves__inst__drop(sngl_list_moves__inst v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static int64_t sngl_list_HWND_index_of(sngl_list_HWND l, HWND v) {
@@ -3475,7 +3815,7 @@ static void s___ref_string__rekeep(void *p) {
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
-	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
+	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .width = (int)v.width, .height = (int)v.height, .align = (int)v.align, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
 static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
@@ -3839,7 +4179,7 @@ static sngl_string s_ui__choiceLabel__string(sngl_list_choice__record__string op
 }
 
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
-	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = sngl_list_int_max((!(s.width).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.width).value.px + (16.0 * ((s.width).value.em + (s.width).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), sngl_list_int_of(1, (int64_t[]){(!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0}))))})), .minHeight = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
+	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = (!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .width = (!(s.width).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.width).value.px + (16.0 * ((s.width).value.em + (s.width).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .height = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .align = (((s.alignItems == 1) || (s.alignItems == 5)) ? 1 : ((s.alignItems == 2) ? 2 : ((s.alignItems == 3) ? 3 : 0))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
 	return look;
 }
 
@@ -4156,7 +4496,7 @@ static s_moves__inst * s_moves__new(void) {
 	s_moves__inst * __self = ((s_moves__inst *)sngl_keep_copy(&(s_moves__inst[]){(s_moves__inst){.tab = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL)))), .pick = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("a"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL)))), .__effect2_key = s_platform_win32____anon_drop_labels_87008d__keep((s_platform_win32____anon_drop_labels_87008d){.drop = (HWND)0, .labels = SNGL_STR("")}), .__effect2_live = sngl_list___anon_drop_labels_87008d__keep(((sngl_list___anon_drop_labels_87008d){0})), .__effect2_desired = sngl_list___anon_drop_labels_87008d__keep(((sngl_list___anon_drop_labels_87008d){0})), .__effect2_paths = sngl_list_string__keep(((sngl_list_string){0})), .__effect2_livePaths = sngl_list_string__keep(((sngl_list_string){0})), .__effect2_pathAt = sngl_map_string__int__keep(((sngl_map_string__int){0})), .__effect2_liveAt = sngl_map_string__int__keep(((sngl_map_string__int){0})), .__effect3_key = sngl_string_keep(SNGL_STR("")), .__effect3_live = sngl_list_string__keep(((sngl_list_string){0})), .__effect3_desired = sngl_list_string__keep(((sngl_list_string){0})), .__effect3_paths = sngl_list_string__keep(((sngl_list_string){0})), .__effect3_livePaths = sngl_list_string__keep(((sngl_list_string){0})), .__effect3_pathAt = sngl_map_string__int__keep(((sngl_map_string__int){0})), .__effect3_liveAt = sngl_map_string__int__keep(((sngl_map_string__int){0})), .__effects1_settling = false, .__effects1_pending = false, .__effects1_torn = false, .__effects1_steps = 0}}, sizeof(s_moves__inst)));
 	__self->__n0 = sngl_win32_tabs();
 	sngl_win32_set_selected(__self->__n0, (int)(__self->tab->value));
-	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	for (struct { sngl_list_tab__record l; int64_t i; } __loop35 = {sngl_list_tab__record_of(2, (s_ui__tab__record[]){(s_ui__tab__record){.label = SNGL_STR("One"), .disabled = false, .__id = 1}, (s_ui__tab__record){.label = SNGL_STR("Two"), .disabled = false, .__id = 2}}), 0}; __loop35.i < __loop35.l.len; __loop35.i++) { int64_t k = __loop35.i; s_ui__tab__record t = __loop35.l.data[__loop35.i];
 		HWND __n5 = sngl_win32_tab_page();
 		sngl_win32_set_text(__n5, (const unsigned short *)sngl_utf16(t.label));
@@ -4165,7 +4505,7 @@ static s_moves__inst * s_moves__new(void) {
 		if (t.__id == 1) {
 			HWND __n6 = sngl_win32_text();
 			sngl_win32_set_text(__n6, (const unsigned short *)sngl_utf16(SNGL_STR("one")));
-			sngl_win32_set_look(__n6, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+			sngl_win32_set_look(__n6, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 			sngl_win32_on_click(__n6, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda36, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 			sngl_win32_append(__n5, __n6);
 		} else {
@@ -4173,7 +4513,7 @@ static s_moves__inst * s_moves__new(void) {
 				HWND methodPick = sngl_win32_select();
 				__self->methodPick = methodPick;
 				sngl_win32_set_enabled(methodPick, (int)(1));
-				sngl_win32_set_look(methodPick, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+				sngl_win32_set_look(methodPick, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 				sngl_win32_on_change(methodPick, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.methodPick = methodPick, .pick = __self->pick, .__self = __self}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 				sngl_win32_append(__n5, methodPick);
 				s_moves__effect2_rebuilt(__self);
@@ -4494,7 +4834,7 @@ static void sngl_build(void) {
 	sngl_win32_set_look(s___n4, sngl_to_platform_win32__Look(s_platform_win32__boxLookOf((s_ui__Style){.padding = ((sngl_opt_measurement){0}), .paddingTop = ((sngl_opt_measurement){0}), .paddingRight = ((sngl_opt_measurement){0}), .paddingBottom = ((sngl_opt_measurement){0}), .paddingLeft = ((sngl_opt_measurement){0}), .paddingX = ((sngl_opt_measurement){0}), .paddingY = ((sngl_opt_measurement){0}), .margin = ((sngl_opt_measurement){0}), .marginTop = ((sngl_opt_measurement){0}), .marginRight = ((sngl_opt_measurement){0}), .marginBottom = ((sngl_opt_measurement){0}), .marginLeft = ((sngl_opt_measurement){0}), .marginX = ((sngl_opt_measurement){0}), .marginY = ((sngl_opt_measurement){0}), .gap = ((sngl_opt_measurement){0}), .width = ((sngl_opt_measurement){0}), .minWidth = ((sngl_opt_measurement){0}), .height = ((sngl_opt_measurement){0}), .maxWidth = ((sngl_opt_measurement){0}), .maxHeight = ((sngl_opt_measurement){0}), .flex = ((sngl_opt_float){0}), .flexDirection = 0, .alignItems = 0, .justifyContent = 0, .position = 0, .top = ((sngl_opt_measurement){0}), .bottom = ((sngl_opt_measurement){0}), .left = ((sngl_opt_measurement){0}), .right = ((sngl_opt_measurement){0}), .zIndex = ((sngl_opt_int){0}), .color = ((sngl_opt_color){0}), .fontSize = ((sngl_opt_measurement){0}), .fontFamily = SNGL_STR(""), .fontWeight = 0, .fontStyle = 0, .textAlign = 0, .maxLines = ((sngl_opt_int){0}), .whiteSpace = 0, .background = ((sngl_opt_color){0}), .borderRadius = ((sngl_opt_measurement){0}), .borderColor = ((sngl_opt_color){0}), .borderWidth = ((sngl_opt_measurement){0}), .border = SNGL_STR(""), .borderBottom = SNGL_STR(""), .borderLeft = SNGL_STR(""), .borderCollapse = SNGL_STR(""), .borderStyle = 0, .opacity = ((sngl_opt_float){0}), .cursor = SNGL_STR(""), .display = 0, .listStyleType = 0}, 6)));
 	s___n2 = sngl_win32_tabs();
 	sngl_win32_set_selected(s___n2, (int)(s_selected__inst0->value));
-	sngl_win32_set_look(s___n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s___n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	for (struct { sngl_list_tab__record l; int64_t i; } __loop64 = {sngl_list_tab__record_of(1, (s_ui__tab__record[]){(s_ui__tab__record){.label = SNGL_STR("Top"), .disabled = false, .__id = 0}}), 0}; __loop64.i < __loop64.l.len; __loop64.i++) { int64_t k = __loop64.i; s_ui__tab__record t = __loop64.l.data[__loop64.i];
 		HWND __n7 = sngl_win32_tab_page();
 		sngl_win32_set_text(__n7, (const unsigned short *)sngl_utf16(t.label));
@@ -4504,7 +4844,7 @@ static void sngl_build(void) {
 			HWND topPick__r0 = sngl_win32_select();
 			s_topPick = topPick__r0;
 			sngl_win32_set_enabled(topPick__r0, (int)(1));
-			sngl_win32_set_look(topPick__r0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+			sngl_win32_set_look(topPick__r0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 			sngl_win32_on_change(topPick__r0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda4__fn, sngl_alloc_copy(&(s___lambda4_caps__env[]){{{s___lambda4_caps__env__keep, false}, (s___lambda4_caps){.topPick = topPick__r0, .top = s_top}}}, sizeof(s___lambda4_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 			sngl_win32_append(__n7, topPick__r0);
 			s___effect0_rebuilt();
@@ -4514,7 +4854,7 @@ static void sngl_build(void) {
 	sngl_win32_append(s___n4, s___n2);
 	s___n8 = sngl_win32_button();
 	sngl_win32_set_text(s___n8, (const unsigned short *)sngl_utf16(SNGL_STR("toggle")));
-	sngl_win32_set_look(s___n8, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s___n8, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_on_click(s___n8, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda5__fn, sngl_alloc_copy(&(s___lambda5_caps__env[]){{{s___lambda5_caps__env__keep, false}, (s___lambda5_caps){.shown = s_shown}}}, sizeof(s___lambda5_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(s___n4, s___n8);
 	s___renderSlot0(s___n4);
@@ -4565,6 +4905,7 @@ flag -luuid
 flag -lwindowscodecs
 flag -lurlmon
 flag -lgdiplus
+flag -lwinhttp
 target windows/amd64
 -- out/c/win32/sngl_win32_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -5187,6 +5528,9 @@ func __select_state2__effects1_settle(__self *__select_state2__inst) {
 }
 
 func __select_state2__set_value(__self *__select_state2__inst, __v string) {
+	if __self.__prop_value == __v {
+		return
+	}
 	__self.__prop_value = __v
 	__select_state2__effects1_settle(__self)
 }
@@ -5218,6 +5562,9 @@ func __child0__new(__p0 Tab__record, __p1 string, __on0 func(), __on1 func(strin
 }
 
 func __child0__set___p0(__self *__child0__inst, __v Tab__record) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTabPageSetTitle(__self.__n1, __self.__prop___p0.Label)
 	cgo.SnglTabPageSetDisabled(__self.__n1, __self.__prop___p0.Disabled)
@@ -5225,6 +5572,9 @@ func __child0__set___p0(__self *__child0__inst, __v Tab__record) {
 }
 
 func __child0__set___p1(__self *__child0__inst, __v string) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	for __inst3_live_ui, _ := range __self.__inst3_live {
 		__select_state2__set_value(__self.__inst3_live[__inst3_live_ui], __self.__prop___p1)
@@ -5650,7 +6000,7 @@ func LookOf(s Style) cgo.Look {
 	} else {
 		__lt1 = 0
 	}
-	look := cgo.Look{Flex: __lt0, Gap: Inset(s.Gap), PadTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PadRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PadBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PadLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), MinWidth: max(Inset(s.Width), Inset(s.MinWidth)), MinHeight: Inset(s.Height), Color: Rgb(s.Color), Background: Rgb(s.Background), FontPx: Inset(s.FontSize), Hidden: __lt1}
+	look := cgo.Look{Flex: __lt0, Gap: Inset(s.Gap), PadTop: Side(s.Padding, s.PaddingY, s.PaddingTop), PadRight: Side(s.Padding, s.PaddingX, s.PaddingRight), PadBottom: Side(s.Padding, s.PaddingY, s.PaddingBottom), PadLeft: Side(s.Padding, s.PaddingX, s.PaddingLeft), MinWidth: Inset(s.MinWidth), Width: Inset(s.Width), Height: Inset(s.Height), Align: AlignOf(s.AlignItems), Color: Rgb(s.Color), Background: Rgb(s.Background), FontPx: Inset(s.FontSize), Hidden: __lt1}
 	return look
 }
 
@@ -5686,6 +6036,21 @@ func Side(all *Measurement, axis *Measurement, own *Measurement) int {
 		__lt4 = __lt3
 	}
 	return Inset(__lt4)
+}
+
+func AlignOf(a string) int {
+	var __lt5 int
+	switch a {
+	case "start", "baseline":
+		__lt5 = 1
+	case "center":
+		__lt5 = 2
+	case "end":
+		__lt5 = 3
+	default:
+		__lt5 = 0
+	}
+	return __lt5
 }
 
 func Rgb(c *snglcolor.Color) int {
@@ -6185,10 +6550,10 @@ func snglWin32Snapshot(path string, w, h int) int    { return cgo.SnglWin32Snaps
 func snglWin32CarryFile(name, data string, n int)    { cgo.SnglWin32CarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:6c17da9279d8bd89eebae47cccc30a29
+pass sha256:48b8af91393108d22aa204a2919bbdd3
 -- run/c/win32 --
-pass sha256:f23782bcc18f957198b654825489585b
+pass sha256:880a9b7a91cab3972c08c09bc3120744
 -- run/go/gtk4 --
-pass sha256:6afb867851a58f2b112d9ea06d536257
+pass sha256:978e28640480ebd991c3570a9e5343f3
 -- run/go/win32 --
-pass sha256:f015567768ac3f888eee5b9cd9f28207
+pass sha256:6cb31c8fbbad73fc1141b09da7b5a95f

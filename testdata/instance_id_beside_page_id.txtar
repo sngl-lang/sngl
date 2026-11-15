@@ -964,6 +964,9 @@ func new__sign_state0Instance(__model *Model, __a___start_msg string) *__sign_st
 }
 
 func (c *__sign_state0Instance) Set__start_msg(__v string) {
+	if c.__prop___start_msg == __v {
+		return
+	}
 	c.__prop___start_msg = __v
 }
 
@@ -1220,6 +1223,9 @@ func __sign_state0__new(__start_msg string) *__sign_state0__inst {
 }
 
 func __sign_state0__set___start_msg(__self *__sign_state0__inst, __v string) {
+	if __self.__prop___start_msg == __v {
+		return
+	}
 	__self.__prop___start_msg = __v
 }
 
@@ -1773,6 +1779,9 @@ window.__sngl_boot = () => {
     let __prop___start_msg = __start_msg;
     let msg = __prop___start_msg;
     function __set___start_msg(__v) {
+      if (__prop___start_msg === __v) {
+        return;
+      }
       __prop___start_msg = __v;
     }
     let failed = document.createElement("div");
@@ -1883,10 +1892,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:f5824ff11bf792868bec9a1eda5a0265
 -- run/go/fyne --
-pass sha256:e0015d90b5994bb812a7ce1c16a508ee
+pass sha256:dd4f06caf9fd38bd939f9b77c385074b
 -- run/go/gtk4 --
-pass sha256:693b9fea55e7f8127338ea43158314cb
+pass sha256:45669f417578e5c2334c7cb0c8769107
 -- run/kotlin/android --
 pass sha256:5fa77237af9f5038de2cc309219b3bc4
 -- run/none/html --
-pass sha256:911b97e98807b664686473c6aa4f91fc
+pass sha256:2898b776c96e9d2572386d5655a923a3

@@ -84,6 +84,9 @@ body { display: flex; flex-direction: column; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0);
     }
@@ -223,4 +226,4 @@ body { display: flex; flex-direction: column; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:a06d1ce67ec8415f736834fa5cd15cda
+pass sha256:2e5342422bbac68f85acce3a1616ff27

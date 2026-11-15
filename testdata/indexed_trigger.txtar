@@ -1847,15 +1847,24 @@ func new__checkbox_state0Instance(__model *Model, __a___start_checked bool, __a_
 }
 
 func (c *__checkbox_state0Instance) Set__start_checked(__v bool) {
+	if c.__prop___start_checked == __v {
+		return
+	}
 	c.__prop___start_checked = __v
 }
 
 func (c *__checkbox_state0Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.box.SetText(c.__prop_label)
 }
 
 func (c *__checkbox_state0Instance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	c.__model.__list_box(c.__prop___copy, c.box)
 }
@@ -1917,10 +1926,16 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 }
 
 func (c *__input_state1Instance) Set__start_value(__v string) {
+	if c.__prop___start_value == __v {
+		return
+	}
 	c.__prop___start_value = __v
 }
 
 func (c *__input_state1Instance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	c.__model.__list_field(c.__prop___copy, c.field)
 }
@@ -2186,11 +2201,18 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 }
 
 func __checkbox_state0__set_label(__self *__checkbox_state0__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkCheckButtonSetLabel((cgo.PGtkCheckButton)(unsafe.Pointer(__self.Box)), snglSome(__self.__prop_label))
 }
 
 func __checkbox_state0__set___copy(__self *__checkbox_state0__inst, __v string) {
+	if __self.__prop___copy == __v {
+		m.box__copies[__self.__prop___copy] = __self.Box
+		return
+	}
 	__self.__prop___copy = __v
 	m.box__copies[__self.__prop___copy] = __self.Box
 }
@@ -2299,10 +2321,17 @@ func __input_state1__effects0_settle(__self *__input_state1__inst) {
 }
 
 func __input_state1__set___start_value(__self *__input_state1__inst, __v string) {
+	if __self.__prop___start_value == __v {
+		return
+	}
 	__self.__prop___start_value = __v
 }
 
 func __input_state1__set___copy(__self *__input_state1__inst, __v string) {
+	if __self.__prop___copy == __v {
+		m.field__copies[__self.__prop___copy] = __self.Field
+		return
+	}
 	__self.__prop___copy = __v
 	m.field__copies[__self.__prop___copy] = __self.Field
 }
@@ -2349,11 +2378,18 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __p1 int, __on0 func()) *__child0
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Tap)), __self.__prop___p0.Elem)
 }
 
 func __child0__set___p1(__self *__child0__inst, __v int) {
+	if __self.__prop___p1 == __v {
+		m.tap__copies[fmt.Sprint(__self.__prop___p1)] = __self.Tap
+		return
+	}
 	__self.__prop___p1 = __v
 	m.tap__copies[fmt.Sprint(__self.__prop___p1)] = __self.Tap
 }
@@ -3155,13 +3191,22 @@ window.__sngl_boot = () => {
     let __prop_change = change;
     let checked = __prop___start_checked;
     function __set___start_checked(__v) {
+      if (__prop___start_checked === __v) {
+        return;
+      }
       __prop___start_checked = __v;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n2.textContent = __prop_label;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       box.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -3209,9 +3254,15 @@ window.__sngl_boot = () => {
     let __prop_change = change;
     let value = __prop___start_value;
     function __set___start_value(__v) {
+      if (__prop___start_value === __v) {
+        return;
+      }
       __prop___start_value = __v;
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       field.setAttribute("data-sngl-copy", __prop___copy);
     }
@@ -3257,10 +3308,16 @@ window.__sngl_boot = () => {
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       tap.setAttribute("data-sngl-copy", String(__prop___p0));
     }
     function __set___p1(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p1, __v)) {
+        return;
+      }
       __prop___p1 = __v;
       __n3.textContent = __prop___p1.elem;
     }
@@ -3478,10 +3535,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:e1a72c829c02188219eb833790b39cb7
 -- run/go/fyne --
-pass sha256:dd8d94adce29809b1e190b12dd9e5816
+pass sha256:c9f935673287d281a9c156184baaefee
 -- run/go/gtk4 --
-pass sha256:b13fd5afe58e1b0c2ec99de612e7f1c5
+pass sha256:304c660f7a12a50b3310e317e472857b
 -- run/kotlin/android --
 pass sha256:ea3887296929cf6f2aa99a0d3947bb7a
 -- run/none/html --
-pass sha256:c31e1e6b54c762c56b8308d656e7f338
+pass sha256:020f33d540d824c56dc4a1e0db8ed1bd

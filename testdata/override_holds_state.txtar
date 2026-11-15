@@ -1851,19 +1851,31 @@ func newAvatarInstance(__model *Model, __a_initials string, __a_size string, __a
 }
 
 func (c *AvatarInstance) SetInitials(__v string) {
+	if c.__prop_initials == __v {
+		return
+	}
 	c.__prop_initials = __v
 	c.__n0.SetText(((c.__prop_initials + " ") + fmt.Sprint(c.hits)))
 }
 
 func (c *AvatarInstance) SetSize(__v string) {
+	if c.__prop_size == __v {
+		return
+	}
 	c.__prop_size = __v
 }
 
 func (c *AvatarInstance) SetVariant(__v string) {
+	if c.__prop_variant == __v {
+		return
+	}
 	c.__prop_variant = __v
 }
 
 func (c *AvatarInstance) SetAlt(__v string) {
+	if c.__prop_alt == __v {
+		return
+	}
 	c.__prop_alt = __v
 }
 
@@ -2800,19 +2812,31 @@ func Avatar__new(initials string, size string, variant string, alt string, style
 }
 
 func Avatar__set_initials(__self *Avatar__inst, __v string) {
+	if __self.__prop_initials == __v {
+		return
+	}
 	__self.__prop_initials = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((__self.__prop_initials + " ") + fmt.Sprint(__self.Hits)))
 }
 
 func Avatar__set_size(__self *Avatar__inst, __v string) {
+	if __self.__prop_size == __v {
+		return
+	}
 	__self.__prop_size = __v
 }
 
 func Avatar__set_variant(__self *Avatar__inst, __v string) {
+	if __self.__prop_variant == __v {
+		return
+	}
 	__self.__prop_variant = __v
 }
 
 func Avatar__set_alt(__self *Avatar__inst, __v string) {
+	if __self.__prop_alt == __v {
+		return
+	}
 	__self.__prop_alt = __v
 }
 
@@ -3630,16 +3654,28 @@ body { font-family: system-ui, sans-serif; }
     let failed = false;
     let hits = 0;
     function __set_initials(__v) {
+      if (__prop_initials === __v) {
+        return;
+      }
       __prop_initials = __v;
       __n1.textContent = __prop_initials + " " + String(hits);
     }
     function __set_size(__v) {
+      if (__prop_size === __v) {
+        return;
+      }
       __prop_size = __v;
     }
     function __set_variant(__v) {
+      if (__prop_variant === __v) {
+        return;
+      }
       __prop_variant = __v;
     }
     function __set_alt(__v) {
+      if (__prop_alt === __v) {
+        return;
+      }
       __prop_alt = __v;
     }
     function __set_style(__v) {
@@ -3858,10 +3894,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4c20ce59a916ad615577afac63c41f22
 -- run/go/fyne --
-pass sha256:9f4183e010ca76259e7041be6a2105b9
+pass sha256:78bfcf12c5ebea579ac8d19af84c5c86
 -- run/go/gtk4 --
-pass sha256:e08b1642e4457a5812db8a5167e402b8
+pass sha256:e498d1ee8bdc5577b5d36a80fb816143
 -- run/kotlin/android --
 pass sha256:200bf45967b65b09fb943c19e15a8cbd
 -- run/none/html --
-pass sha256:0c833edc4c4f190b53efa328c9e2b1e9
+pass sha256:f5afb018e144d11af6f81dcb43b8ad6f

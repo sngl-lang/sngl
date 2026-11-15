@@ -106,6 +106,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -223,4 +226,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:71bd6ffe78620f6cb0cc74d61c909243
+pass sha256:87bda6fbace1b0bd099a2442ace12d70

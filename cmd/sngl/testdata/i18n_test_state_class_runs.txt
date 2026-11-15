@@ -26,6 +26,12 @@ stdout '^ok +2 tests, 0 failures$'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +2 tests, 0 failures$'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '^ok +2 tests, 0 failures$'
+
 -- app.sngl --
 import i18n "sngl:i18n"
 import test "sngl:test"
@@ -108,7 +114,7 @@ sha256:95255046d45cf2cb2018c487830b0ce5
   ]
 }
 -- testrun/fyne/go/app.sngl/greeting/1 --
-sha256:3c0de40f83f0d4c0e30c763aa4c0cfb9
+sha256:9f790f75fa7b0b1d570dc706ae09ab60
 {
   "results": [
     {
@@ -127,8 +133,28 @@ sha256:2f3718d0bbcc8719b6a9184b7f5fe109
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/greeting/1 --
+sha256:e754470e7a3f1d2d7d7ddc3642b2acc4
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/plain/1 --
+sha256:ccccde0dc82256cce82908a37b88d952
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/greeting/1 --
-sha256:af8250ac82cae9a35cc762fcd80529fd
+sha256:9efda51df2dcd2c6cafb0c8187a64033
 {
   "results": [
     {
@@ -148,7 +174,7 @@ sha256:3203079347efbb5d40d4e910d9beb65d
   ]
 }
 -- testrun/html/none/app.sngl/greeting/1 --
-sha256:3e9e98735c239d3f8c7d56fa77e93f50
+sha256:3128e4835d3cd4ea80f5ecc34ea16efa
 {
   "results": [
     {
@@ -159,6 +185,26 @@ sha256:3e9e98735c239d3f8c7d56fa77e93f50
 }
 -- testrun/html/none/app.sngl/plain/1 --
 sha256:284f19086d41de134caaa78af2c0af1b
+{
+  "results": [
+    {
+      "Desc": "Plain",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/greeting/1 --
+sha256:73530846d14a1f1279deb6eed899ec75
+{
+  "results": [
+    {
+      "Desc": "Greets",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/plain/1 --
+sha256:073eb70796f45226e5a76e4527d81b22
 {
   "results": [
     {

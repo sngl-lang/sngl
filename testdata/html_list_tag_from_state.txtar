@@ -93,6 +93,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       if (__prop___p1) {
         __n0.setAttribute("start", "4");
@@ -131,6 +134,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p1(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.ordered === b.ordered && a.start === b.start)(__prop___p1, __v)) {
+        return;
+      }
       __prop___p1 = __v;
       if (__prop___p1.ordered) {
         __n1.setAttribute("start", String(__prop___p1.start));
@@ -312,4 +318,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:12780711c88e8b47b193a50102c8f3f3
+pass sha256:12ec5f703d74684aa5cdc68fe845f767

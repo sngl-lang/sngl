@@ -100,9 +100,15 @@ body { font-family: system-ui, sans-serif; }
     let __prop_label = label;
     let checked = __prop___start_checked;
     function __set___start_checked(__v) {
+      if (__prop___start_checked === __v) {
+        return;
+      }
       __prop___start_checked = __v;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n1.textContent = __prop_label;
     }
@@ -206,4 +212,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:dd9bfc2e1d880d036917f19404c2c906
+pass sha256:cf5d0cba738db251bcadfa2a13108e00

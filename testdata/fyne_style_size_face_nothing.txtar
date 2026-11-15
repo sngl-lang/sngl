@@ -372,6 +372,9 @@ func (c *AskerInstance) __effects0_settle() {
 }
 
 func (c *AskerInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__effects0_settle()
 }
@@ -716,6 +719,9 @@ func Asker__effects1_settle(__self *Asker__inst) {
 }
 
 func Asker__set_n(__self *Asker__inst, __v int) {
+	if __self.__prop_n == __v {
+		return
+	}
 	__self.__prop_n = __v
 	Asker__effects1_settle(__self)
 }
@@ -810,6 +816,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:ed82c6b829e194f18224e0812308630b
+pass sha256:798663df66e1a3c4fff11d209cab3f15
 -- run/go/gtk4 --
-pass sha256:846bcc5bae5f237844c247240a283463
+pass sha256:6ca17648505cabfab7c590da30f779b1

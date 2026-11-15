@@ -55,7 +55,6 @@ typedef struct s_builtin__color s_builtin__color;
 typedef struct sngl_opt_color sngl_opt_color;
 typedef struct s_platform_win32__Look s_platform_win32__Look;
 typedef struct sngl_list_float sngl_list_float;
-typedef struct sngl_list_int sngl_list_int;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_lambda7_env sngl_lambda7_env;
 typedef struct sngl_opt_HWND sngl_opt_HWND;
@@ -190,7 +189,9 @@ typedef struct s_platform_win32__Look {
 	int64_t padBottom;
 	int64_t padLeft;
 	int64_t minWidth;
-	int64_t minHeight;
+	int64_t width;
+	int64_t height;
+	int64_t align;
 	int64_t color;
 	int64_t background;
 	int64_t fontPx;
@@ -202,12 +203,6 @@ typedef struct sngl_list_float {
 	int64_t len;
 	int64_t cap;
 } sngl_list_float;
-
-typedef struct sngl_list_int {
-	int64_t *data;
-	int64_t len;
-	int64_t cap;
-} sngl_list_int;
 
 typedef struct sngl_fn_void__void {
 	void (*fn)(void *env);
@@ -287,6 +282,7 @@ static void s___effect0_mount(void);
 static void s___effect0_down(void);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
+static void sngl_list_string__unshare(sngl_list_string *l);
 static void s___effect0_up(void);
 static void s___effects0_settle(void);
 static void s___renderSlot0(HWND parent);
@@ -294,6 +290,7 @@ static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v);
 static void sngl_list_HWND__drop(sngl_list_HWND v);
 static void sngl_lambda7(void *env_);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
+static void sngl_list_HWND__unshare(sngl_list_HWND *l);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
 static void s___lambda1(s___lambda1_caps state);
 static void s___lambda2(s___lambda2_caps state);
@@ -357,39 +354,48 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	return l;
 }
 
-static int64_t sngl_list_int_max(int64_t m, sngl_list_int l) {
-	for (int64_t i = 0; i < l.len; i++) {
-		if (l.data[i] > m) {
-			m = l.data[i];
-		}
-	}
-	return m;
-}
-
-static sngl_list_int sngl_list_int_of(int64_t n, int64_t const *xs) {
-	sngl_list_int l = {sngl_alloc(sizeof(int64_t) * (size_t)n), n, n};
-	memcpy(l.data, xs, sizeof(int64_t) * (size_t)n);
-	return l;
-}
-
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
-	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = sngl_string_keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = sngl_string_keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list_string__drop(sngl_list_string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.data[i]).ptr);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.data[i]).ptr);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
+}
+
+static void sngl_list_string__unshare(sngl_list_string *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_string v = *l;
+	sngl_let_go_shared(v.data);
+	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = sngl_string_keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
@@ -413,8 +419,10 @@ static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
 }
 
 static void sngl_list_string_push_kept(sngl_list_string *l, sngl_string v) {
+	sngl_list_string__unshare(l);
 	sngl_list_string_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
@@ -425,21 +433,26 @@ static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
 }
 
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
-	HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(HWND) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(HWND) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static void sngl_list_HWND__drop(sngl_list_HWND v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
-	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
+	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .width = (int)v.width, .height = (int)v.height, .align = (int)v.align, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
 static void sngl_dispatch_void__void(void *ctx) {
@@ -465,6 +478,22 @@ static HWND *sngl_list_HWND_at(sngl_list_HWND l, int64_t i) {
 	return &l.data[i];
 }
 
+static void sngl_list_HWND__unshare(sngl_list_HWND *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_HWND v = *l;
+	sngl_let_go_shared(v.data);
+	HWND *data = sngl_keep_alloc(sizeof(HWND) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(HWND) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	*l = v;
+}
+
 static void sngl_list_HWND_grow_kept(sngl_list_HWND *l, int64_t n) {
 	if (l->len + n <= l->cap) {
 		return;
@@ -486,8 +515,10 @@ static void sngl_list_HWND_grow_kept(sngl_list_HWND *l, int64_t n) {
 }
 
 static void sngl_list_HWND_push_kept(sngl_list_HWND *l, HWND v) {
+	sngl_list_HWND__unshare(l);
 	sngl_list_HWND_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t sngl_list_HWND_index_of(sngl_list_HWND l, HWND v) {
@@ -808,7 +839,7 @@ static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t
 }
 
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
-	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = sngl_list_int_max((!(s.width).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.width).value.px + (16.0 * ((s.width).value.em + (s.width).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), sngl_list_int_of(1, (int64_t[]){(!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0}))))})), .minHeight = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
+	s_platform_win32__Look look = (s_platform_win32__Look){.flex = (!(s.flex).ok ? 0.0 : (s.flex).value), .gap = (!(s.gap).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.gap).value.px + (16.0 * ((s.gap).value.em + (s.gap).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .padTop = s_platform_win32__inset(((s.paddingTop).ok ? s.paddingTop : ((s.paddingY).ok ? s.paddingY : s.padding))), .padRight = s_platform_win32__inset(((s.paddingRight).ok ? s.paddingRight : ((s.paddingX).ok ? s.paddingX : s.padding))), .padBottom = s_platform_win32__inset(((s.paddingBottom).ok ? s.paddingBottom : ((s.paddingY).ok ? s.paddingY : s.padding))), .padLeft = s_platform_win32__inset(((s.paddingLeft).ok ? s.paddingLeft : ((s.paddingX).ok ? s.paddingX : s.padding))), .minWidth = (!(s.minWidth).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.minWidth).value.px + (16.0 * ((s.minWidth).value.em + (s.minWidth).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .width = (!(s.width).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.width).value.px + (16.0 * ((s.width).value.em + (s.width).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .height = (!(s.height).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.height).value.px + (16.0 * ((s.height).value.em + (s.height).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .align = (((s.alignItems == 1) || (s.alignItems == 5)) ? 1 : ((s.alignItems == 2) ? 2 : ((s.alignItems == 3) ? 3 : 0))), .color = s_platform_win32__rgb(s.color), .background = s_platform_win32__rgb(s.background), .fontPx = (!(s.fontSize).ok ? 0 : sngl_float_int(sngl_list_float_max(((s.fontSize).value.px + (16.0 * ((s.fontSize).value.em + (s.fontSize).value.rem))), sngl_list_float_of(1, (double[]){0.0})))), .hidden = ((s.display == 6) ? 1 : 0)};
 	return look;
 }
 
@@ -913,7 +944,7 @@ static void s___renderSlot0(HWND parent) {
 					if (s_n__inst0->value > 2) {
 						HWND __n2 = sngl_win32_text();
 						sngl_win32_set_text(__n2, (const unsigned short *)sngl_utf16(SNGL_STR("Big")));
-						sngl_win32_set_look(__n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+						sngl_win32_set_look(__n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 						sngl_win32_on_click(__n2, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
 						if (__place0_i < (__place0_prev).len) {
@@ -1026,22 +1057,22 @@ static void sngl_build(void) {
 	sngl_win32_set_look(s___n3, sngl_to_platform_win32__Look(s_platform_win32__boxLookOf((s_ui__Style){.padding = ((sngl_opt_measurement){0}), .paddingTop = ((sngl_opt_measurement){0}), .paddingRight = ((sngl_opt_measurement){0}), .paddingBottom = ((sngl_opt_measurement){0}), .paddingLeft = ((sngl_opt_measurement){0}), .paddingX = ((sngl_opt_measurement){0}), .paddingY = ((sngl_opt_measurement){0}), .margin = ((sngl_opt_measurement){0}), .marginTop = ((sngl_opt_measurement){0}), .marginRight = ((sngl_opt_measurement){0}), .marginBottom = ((sngl_opt_measurement){0}), .marginLeft = ((sngl_opt_measurement){0}), .marginX = ((sngl_opt_measurement){0}), .marginY = ((sngl_opt_measurement){0}), .gap = ((sngl_opt_measurement){0}), .width = ((sngl_opt_measurement){0}), .minWidth = ((sngl_opt_measurement){0}), .height = ((sngl_opt_measurement){0}), .maxWidth = ((sngl_opt_measurement){0}), .maxHeight = ((sngl_opt_measurement){0}), .flex = ((sngl_opt_float){0}), .flexDirection = 0, .alignItems = 0, .justifyContent = 0, .position = 0, .top = ((sngl_opt_measurement){0}), .bottom = ((sngl_opt_measurement){0}), .left = ((sngl_opt_measurement){0}), .right = ((sngl_opt_measurement){0}), .zIndex = ((sngl_opt_int){0}), .color = ((sngl_opt_color){0}), .fontSize = ((sngl_opt_measurement){0}), .fontFamily = SNGL_STR(""), .fontWeight = 0, .fontStyle = 0, .textAlign = 0, .maxLines = ((sngl_opt_int){0}), .whiteSpace = 0, .background = ((sngl_opt_color){0}), .borderRadius = ((sngl_opt_measurement){0}), .borderColor = ((sngl_opt_color){0}), .borderWidth = ((sngl_opt_measurement){0}), .border = SNGL_STR(""), .borderBottom = SNGL_STR(""), .borderLeft = SNGL_STR(""), .borderCollapse = SNGL_STR(""), .borderStyle = 0, .opacity = ((sngl_opt_float){0}), .cursor = SNGL_STR(""), .display = 0, .listStyleType = 0}, 6)));
 	s___n1 = sngl_win32_text();
 	sngl_win32_set_text(s___n1, (const unsigned short *)sngl_utf16(sngl_concat(SNGL_STR("Count "), sngl_int_format((int64_t)(s_n__inst0->value)))));
-	sngl_win32_set_look(s___n1, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s___n1, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_append(s___n3, s___n1);
 	s_inc = sngl_win32_button();
 	sngl_win32_set_text(s_inc, (const unsigned short *)sngl_utf16(SNGL_STR("More")));
-	sngl_win32_set_look(s_inc, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s_inc, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_on_click(s_inc, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.n__inst0 = s_n__inst0}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(s___n3, s_inc);
 	s_who = sngl_win32_edit();
-	sngl_win32_set_look(s_who, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s_who, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_on_change(s_who, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda2__fn, sngl_alloc_copy(&(s___lambda2_caps__env[]){{{s___lambda2_caps__env__keep, false}, (s___lambda2_caps){.who = s_who, .value__inst0 = s_value__inst0}}}, sizeof(s___lambda2_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_on_activate(s_who, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda3__fn, sngl_alloc_copy(&(s___lambda3_caps__env[]){{{s___lambda3_caps__env__keep, false}, (s___lambda3_caps){.who = s_who, .value__inst0 = s_value__inst0, .name__inst0 = s_name__inst0}}}, sizeof(s___lambda3_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(s___n3, s_who);
 	s_flag = sngl_win32_checkbox();
 	sngl_win32_set_text(s_flag, (const unsigned short *)sngl_utf16(SNGL_STR("")));
 	sngl_win32_set_checked(s_flag, (int)((s_checked__inst0->value ? 1 : 0)));
-	sngl_win32_set_look(s_flag, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s_flag, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_on_click(s_flag, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda4__fn, sngl_alloc_copy(&(s___lambda4_caps__env[]){{{s___lambda4_caps__env__keep, false}, (s___lambda4_caps){.flag = s_flag, .checked__inst0 = s_checked__inst0, .on__inst0 = s_on__inst0}}}, sizeof(s___lambda4_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(s___n3, s_flag);
 	s___renderSlot0(s___n3);
@@ -1049,7 +1080,7 @@ static void sngl_build(void) {
 	sngl_win32_set_vertical(s___n4, (int)(0));
 	sngl_win32_set_look(s___n4, sngl_to_platform_win32__Look(s_platform_win32__boxLookOf((s_ui__Style){.padding = ((sngl_opt_measurement){0}), .paddingTop = ((sngl_opt_measurement){0}), .paddingRight = ((sngl_opt_measurement){0}), .paddingBottom = ((sngl_opt_measurement){0}), .paddingLeft = ((sngl_opt_measurement){0}), .paddingX = ((sngl_opt_measurement){0}), .paddingY = ((sngl_opt_measurement){0}), .margin = ((sngl_opt_measurement){0}), .marginTop = ((sngl_opt_measurement){0}), .marginRight = ((sngl_opt_measurement){0}), .marginBottom = ((sngl_opt_measurement){0}), .marginLeft = ((sngl_opt_measurement){0}), .marginX = ((sngl_opt_measurement){0}), .marginY = ((sngl_opt_measurement){0}), .gap = ((sngl_opt_measurement){0}), .width = ((sngl_opt_measurement){0}), .minWidth = ((sngl_opt_measurement){0}), .height = ((sngl_opt_measurement){0}), .maxWidth = ((sngl_opt_measurement){0}), .maxHeight = ((sngl_opt_measurement){0}), .flex = ((sngl_opt_float){0}), .flexDirection = 0, .alignItems = 0, .justifyContent = 0, .position = 0, .top = ((sngl_opt_measurement){0}), .bottom = ((sngl_opt_measurement){0}), .left = ((sngl_opt_measurement){0}), .right = ((sngl_opt_measurement){0}), .zIndex = ((sngl_opt_int){0}), .color = ((sngl_opt_color){0}), .fontSize = ((sngl_opt_measurement){0}), .fontFamily = SNGL_STR(""), .fontWeight = 0, .fontStyle = 0, .textAlign = 0, .maxLines = ((sngl_opt_int){0}), .whiteSpace = 0, .background = ((sngl_opt_color){0}), .borderRadius = ((sngl_opt_measurement){0}), .borderColor = ((sngl_opt_color){0}), .borderWidth = ((sngl_opt_measurement){0}), .border = SNGL_STR(""), .borderBottom = SNGL_STR(""), .borderLeft = SNGL_STR(""), .borderCollapse = SNGL_STR(""), .borderStyle = 0, .opacity = ((sngl_opt_float){0}), .cursor = SNGL_STR(""), .display = 0, .listStyleType = 0}, 6)));
 	s___n5 = sngl_win32_spacer();
-	sngl_win32_set_look(s___n5, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 1.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s___n5, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 1.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_append(s___n4, s___n5);
 	sngl_win32_append(s___n3, s___n4);
 	sngl_win32_append(s___n0, s___n3);
@@ -1082,6 +1113,7 @@ flag -luuid
 flag -lwindowscodecs
 flag -lurlmon
 flag -lgdiplus
+flag -lwinhttp
 target windows/386
 -- out/c/win32/sngl_win32_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -1091,4 +1123,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:1595c7d09609ef3a3b0fd60b3501cc43
+pass sha256:c7a95412b6d0106e44ccea521f274c6e

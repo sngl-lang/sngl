@@ -1348,17 +1348,26 @@ window.__sngl_boot = () => {
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.label === b.label && a.disabled === b.disabled && a.__id === b.__id)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.label;
       __n0.disabled = __prop___p0.disabled;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
       _snglSetStyles(__n0.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
       __n0.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     }
     function __set___p2(__v) {
+      if (__prop___p2 === __v) {
+        return;
+      }
       __prop___p2 = __v;
       __n0.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
       _snglSetStyles(__n0.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
@@ -1401,14 +1410,23 @@ window.__sngl_boot = () => {
     let __rendering2 = false;
     let __renderAgain2 = false;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.hidden = __prop___p0 !== __prop___p1;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n1.hidden = __prop___p0 !== __prop___p1;
     }
     function __set___p2(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.label === b.label && a.disabled === b.disabled && a.__id === b.__id)(__prop___p2, __v)) {
+        return;
+      }
       __prop___p2 = __v;
       __renderSlot2(__slotAnchor_2);
     }
@@ -1740,9 +1758,9 @@ pass sha256:029994dddd664c32e8375d9493725024
 -- run/kotlin/android --
 pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --
-pass sha256:1d3a785039445e3f1ecbdb4e84679b25
+pass sha256:bf3975935454827465bfffd3d9a80318
 -- testrun/html/none/component_tabs.sngl/main/1 --
-sha256:d03eefa9d6144cc30ffe45dc7597aeed
+sha256:cc7009916d08f5a6f74d6d9fb00e0f54
 {
   "results": [
     {

@@ -1133,6 +1133,9 @@ func (c *WatchInstance) __effects0_settle() {
 }
 
 func (c *WatchInstance) SetTag(__v string) {
+	if c.__prop_tag == __v {
+		return
+	}
 	c.__prop_tag = __v
 	c.__n0.SetText(((("watch " + c.__prop_tag) + " ") + fmt.Sprint(c.n)))
 	c.__effects0_settle()
@@ -1374,6 +1377,9 @@ func Watch__effects0_settle(__self *Watch__inst) {
 }
 
 func Watch__set_tag(__self *Watch__inst, __v string) {
+	if __self.__prop_tag == __v {
+		return
+	}
 	__self.__prop_tag = __v
 	cgo.SnglTextSetValue(__self.__n0, ((("watch " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
 	Watch__effects0_settle(__self)
@@ -1960,6 +1966,9 @@ window.__sngl_boot = () => {
       }
     }
     function __set_tag(__v) {
+      if (__prop_tag === __v) {
+        return;
+      }
       __prop_tag = __v;
       __n0.textContent = "watch " + __prop_tag + " " + String(n);
       __effects0_settle();
@@ -2072,10 +2081,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:e4b3b2b6cc9d8c7ed3dee1d2b1194d37
 -- run/go/fyne --
-pass sha256:8a50ecb35e520b458b235cb606b62239
+pass sha256:ac531b88ec3f3df569af18b6dfa44464
 -- run/go/gtk4 --
-pass sha256:656d074a14e7d8146260b0d4f7eb5dee
+pass sha256:c3b9c5c292660c9d50303e06cb684df5
 -- run/kotlin/android --
 pass sha256:7dc40eb26bf2ae2077de8149cfc9e63f
 -- run/none/html --
-pass sha256:b942209e95f3a3fe0802a7eac0fbc6db
+pass sha256:7d429f28c71c16f5a3d4b6abb53be621

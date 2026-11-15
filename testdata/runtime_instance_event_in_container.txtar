@@ -1002,6 +1002,9 @@ func (c *CardInstance) __effects0_settle() {
 }
 
 func (c *CardInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n0.SetText(((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.hits)))
 	c.__effects0_settle()
@@ -1239,6 +1242,9 @@ func Card__effects0_settle(__self *Card__inst) {
 }
 
 func Card__set_n(__self *Card__inst, __v int) {
+	if __self.__prop_n == __v {
+		return
+	}
 	__self.__prop_n = __v
 	cgo.SnglTextSetValue(__self.__n0, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(__self.Hits)))
 	Card__effects0_settle(__self)
@@ -1795,6 +1801,9 @@ window.__sngl_boot = () => {
       }
     }
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = String(__prop_n) + " " + String(hits);
       __effects0_settle();
@@ -1902,10 +1911,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:fc582bbcaa57d5537e632838a8b3ec54
 -- run/go/fyne --
-pass sha256:7c2838c2e5322a6f0b6111a82d1bf951
+pass sha256:bc5e1f41f8ae264c3148630cf95b42b8
 -- run/go/gtk4 --
-pass sha256:2e547f56e9c52056e8a80d02e5d90010
+pass sha256:c694e25b7ade0c7f2af633abf4e63b55
 -- run/kotlin/android --
 pass sha256:ed21ceef1a2f09f891974437af9dafe6
 -- run/none/html --
-pass sha256:9944d5a5ef020b3ebf9b9411226bf8a3
+pass sha256:6325a7aa72e6e8d309b0663fc4837082

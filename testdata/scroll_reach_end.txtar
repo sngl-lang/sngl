@@ -758,6 +758,9 @@ func __child0__new(__p0 int) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, ("row " + fmt.Sprint(__self.__prop___p0)))
 }
@@ -1534,6 +1537,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = "row " + String(__prop___p0);
     }
@@ -1683,8 +1689,8 @@ pass sha256:5a4034cb1163c2f3082b2aecd48bbcba
 -- run/go/fyne --
 pass sha256:0d9758631027613ea989befecc162950
 -- run/go/gtk4 --
-pass sha256:522337d55c418f8d2ae80db6bfbf077e
+pass sha256:8b01eee52a67821e43ddb7db8f176989
 -- run/kotlin/android --
 pass sha256:4bee11b91272d47ac6ea1f1709ef170c
 -- run/none/html --
-pass sha256:0cafac7519db6c3d98c4f427a91a3ea8
+pass sha256:deb3d4c5d744dd1a97bed61f96d57612

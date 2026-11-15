@@ -1294,12 +1294,18 @@ func new__block_state1Instance(__model *Model, __a_it string, __a_total int, __a
 }
 
 func (c *__block_state1Instance) SetIt(__v string) {
+	if c.__prop_it == __v {
+		return
+	}
 	c.__prop_it = __v
 	c.__n1.SetText(c.__prop_it)
 	c.__n2.SetText(((c.__prop_it + " ") + fmt.Sprint(c.n)))
 }
 
 func (c *__block_state1Instance) SetTotal(__v int) {
+	if c.__prop_total == __v {
+		return
+	}
 	c.__prop_total = __v
 }
 
@@ -1338,11 +1344,17 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3.SetIt(c.__prop___p0.Elem)
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n3.SetTotal(c.__prop___p1)
 }
@@ -1761,12 +1773,18 @@ func __block_state1__new(it string, total int, __on_total func(int)) *__block_st
 }
 
 func __block_state1__set_it(__self *__block_state1__inst, __v string) {
+	if __self.__prop_it == __v {
+		return
+	}
 	__self.__prop_it = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n1)), __self.__prop_it)
 	cgo.SnglTextSetValue(__self.__n2, ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
 }
 
 func __block_state1__set_total(__self *__block_state1__inst, __v int) {
+	if __self.__prop_total == __v {
+		return
+	}
 	__self.__prop_total = __v
 }
 
@@ -1789,11 +1807,17 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __p1 int, __on0 func(int)) *__chi
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	__block_state1__set_it(__self.__n3, __self.__prop___p0.Elem)
 }
 
 func __child0__set___p1(__self *__child0__inst, __v int) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	__block_state1__set_total(__self.__n3, __self.__prop___p1)
 }
@@ -2245,11 +2269,17 @@ body { font-family: system-ui, sans-serif; }
     let __prop___on_total = __on_total;
     let n = 0;
     function __set_it(__v) {
+      if (__prop_it === __v) {
+        return;
+      }
       __prop_it = __v;
       __n0.textContent = __prop_it;
       __n1.textContent = __prop_it + " " + String(n);
     }
     function __set_total(__v) {
+      if (__prop_total === __v) {
+        return;
+      }
       __prop_total = __v;
     }
     function __set___on_total(__v) {
@@ -2291,10 +2321,16 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.__set_it(__prop___p0.elem);
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n2.__set_total(__prop___p1);
     }
@@ -2484,11 +2520,17 @@ body { font-family: system-ui, sans-serif; }
     let __prop___on_total = __on_total;
     let n = 0;
     function __set_it(__v) {
+      if (__prop_it === __v) {
+        return;
+      }
       __prop_it = __v;
       __n0.textContent = __prop_it;
       __n1.textContent = __prop_it + " " + String(n);
     }
     function __set_total(__v) {
+      if (__prop_total === __v) {
+        return;
+      }
       __prop_total = __v;
     }
     function __set___on_total(__v) {
@@ -2530,10 +2572,16 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.__set_it(__prop___p0.elem);
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n2.__set_total(__prop___p1);
     }
@@ -2678,10 +2726,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:0ee50d6ae4f995d0657a08e5f29e8c37
 -- run/go/fyne --
-pass sha256:33a8765cc88db2f247ae904f098de3f4
+pass sha256:112d2b51f5a1f1d8b6355f9a3ef6a328
 -- run/go/gtk4 --
-pass sha256:76f86348902cb533403b22d6c91da803
+pass sha256:fe9a2153ed2b0297910729b0acf0f733
 -- run/kotlin/android --
 pass sha256:1ecc8767485daffba77a93fc0b51fc5f
 -- run/none/html --
-pass sha256:9f8dfc0814f6337c578222c984906666
+pass sha256:0ca0839471e778c0a3b02419f66d683c

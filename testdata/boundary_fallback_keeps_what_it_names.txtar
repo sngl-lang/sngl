@@ -734,6 +734,9 @@ func __child0__new(__p0 string) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0)
 }
@@ -830,6 +833,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0;
     }
@@ -955,6 +961,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9aaf23777b694691f27d526927868272
 -- run/go/gtk4 --
-pass sha256:6fbd676856d7b27a40f4c45cf4336e94
+pass sha256:3c5e51561bad51fde3e1df8e72db7cf3
 -- run/none/html --
-pass sha256:5e8abe2c30616206b2cea19d92489528
+pass sha256:1ab93164742a61797486678a3ef32659

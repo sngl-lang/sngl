@@ -558,6 +558,9 @@ func (c *Show__intInstance) SetXs(__v []int) {
 }
 
 func (c *Show__intInstance) SetW(__v __anon_v_853006) {
+	if c.__prop_w == __v {
+		return
+	}
 	c.__prop_w = __v
 }
 
@@ -611,6 +614,9 @@ func (c *Show__stringInstance) SetXs(__v []string) {
 }
 
 func (c *Show__stringInstance) SetW(__v __anon_v_ba918a) {
+	if c.__prop_w == __v {
+		return
+	}
 	c.__prop_w = __v
 }
 
@@ -652,10 +658,16 @@ func newHeld__intInstance(__model *Model, __a_value int, __a_next int, __a___on_
 }
 
 func (c *Held__intInstance) SetValue(__v int) {
+	if c.__prop_value == __v {
+		return
+	}
 	c.__prop_value = __v
 }
 
 func (c *Held__intInstance) SetNext(__v int) {
+	if c.__prop_next == __v {
+		return
+	}
 	c.__prop_next = __v
 }
 
@@ -1156,6 +1168,9 @@ func Show__int__set_xs(__self *Show__int__inst, __v []int) {
 }
 
 func Show__int__set_w(__self *Show__int__inst, __v __anon_v_853006) {
+	if __self.__prop_w == __v {
+		return
+	}
 	__self.__prop_w = __v
 }
 
@@ -1194,6 +1209,9 @@ func Show__string__set_xs(__self *Show__string__inst, __v []string) {
 }
 
 func Show__string__set_w(__self *Show__string__inst, __v __anon_v_ba918a) {
+	if __self.__prop_w == __v {
+		return
+	}
 	__self.__prop_w = __v
 }
 
@@ -1221,10 +1239,16 @@ func Held__int__new(value int, next int, __on_value func(int)) *Held__int__inst 
 }
 
 func Held__int__set_value(__self *Held__int__inst, __v int) {
+	if __self.__prop_value == __v {
+		return
+	}
 	__self.__prop_value = __v
 }
 
 func Held__int__set_next(__self *Held__int__inst, __v int) {
+	if __self.__prop_next == __v {
+		return
+	}
 	__self.__prop_next = __v
 }
 
@@ -1867,9 +1891,9 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:b977156d8fbaef4bd40ed14a8fed5acb
+pass sha256:c31f9ab180ee846f8c2d5fcadab4029d
 -- run/go/gtk4 --
-pass sha256:30230c8937ea2bc31c668de9ec024b25
+pass sha256:c05a7e43352475d79c4b5e8d3318ff4f
 -- run/kotlin/android --
 pass sha256:3a1906d14d5dffb89af453afa9f6386e
 -- run/none/html --

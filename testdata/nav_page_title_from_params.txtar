@@ -1022,6 +1022,9 @@ func new__child0Instance(__model *Model, __a___p0 Item) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v Item) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(c.__prop___p0.Name)
 }
@@ -1207,6 +1210,9 @@ func __child0__new(__p0 Item) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v Item) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Name)
 }
@@ -1637,8 +1643,8 @@ class MainScreenTest {
 -- run/go/bubbletea --
 pass sha256:eec83a9541a8242a81878432c54b6aae
 -- run/go/fyne --
-pass sha256:2f8d0a68f9872e0bd098df220c18d358
+pass sha256:cc92d1559a39dfe4ca349132c6d5aa77
 -- run/go/gtk4 --
-pass sha256:79b612b4b04ce96f3b0666b27616758c
+pass sha256:0124269df37169935e2110349cd8edb8
 -- run/kotlin/android --
 pass sha256:652ad206fad10e2c9cef43e02b5a0014

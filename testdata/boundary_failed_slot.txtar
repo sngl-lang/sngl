@@ -568,6 +568,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0;
     }
@@ -705,4 +708,4 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2e602c5e074da48a7665a5562fa24f2b
 -- run/none/html --
-pass sha256:58a12b9bc5cdca03c21c3644c6845b1f
+pass sha256:89f7b6b11100b5ee03437badd7bca278

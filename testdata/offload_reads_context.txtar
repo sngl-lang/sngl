@@ -508,11 +508,17 @@ func (c *AskerInstance) Destroy() {
 }
 
 func (c *AskerInstance) SetKey(__v string) {
+	if c.__prop_key == __v {
+		return
+	}
 	c.__prop_key = __v
 	c.__effects0_settle()
 }
 
 func (c *AskerInstance) Set__ctx_server(__v string) {
+	if c.__prop___ctx_server == __v {
+		return
+	}
 	c.__prop___ctx_server = __v
 	c.__effects0_settle()
 }
@@ -526,4 +532,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:a9efa2cd6509ca8cee9436a6ad819263
+pass sha256:139a282421a3d5cfb1e0166fadbecdec

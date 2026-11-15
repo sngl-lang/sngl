@@ -358,6 +358,9 @@ func new__canvas0Instance(__model *Model, __a___p0 __anon_id_elem_cdfd47, __a___
 }
 
 func (c *__canvas0Instance) Set__p0(__v __anon_id_elem_cdfd47) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3Ctx = snglcanvas.New(40, 40)
 	c._canvasDraw1(c.__n3Ctx)
@@ -585,6 +588,9 @@ func __canvas0__new(__p0 __anon_id_elem_cdfd47, __on0 func()) *__canvas0__inst {
 }
 
 func __canvas0__set___p0(__self *__canvas0__inst, __v __anon_id_elem_cdfd47) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglCanvasRedraw(__self.__drawing0)
 }
@@ -856,6 +862,9 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       _snglCanvasDraw(__n3, 40, 40, "", _canvasDraw1);
     }
@@ -1029,8 +1038,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:3614c76ab831a75b8fa168446efb1bc1
+pass sha256:ce8e14e5101c8c07c58e8282ff434864
 -- run/go/gtk4 --
-pass sha256:2c8bb89d67e1a8ba47400d1557d786f9
+pass sha256:f7b6278b82233cbf66f1c260845c6a45
 -- run/none/html --
-pass sha256:f53f4912fd2d4cd9c1776f0e61edf650
+pass sha256:0131fb39723a9584b8f7c1c6f99a9600

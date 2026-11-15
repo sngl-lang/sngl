@@ -26,6 +26,12 @@ stdout '^ok +3 tests, 0 failures$'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '^ok +3 tests, 0 failures$'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '^ok +3 tests, 0 failures$'
+
 -- app.sngl --
 import i18n "sngl:i18n"
 import test "sngl:test"
@@ -185,6 +191,36 @@ sha256:c83615ad7e55dfa6c20ce9447fa11b87
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/greeting/1 --
+sha256:6d4440d7e3a7d57ce4e1dcffea758905
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/outer/1 --
+sha256:b750acb5215eec0cef65b995f7e4536b
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/plain/1 --
+sha256:3cd7dfdee657cf32a0185601e1e5a651
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/greeting/1 --
 sha256:4ca7bae7784933e7414c6008da387c39
 {
@@ -237,6 +273,36 @@ sha256:4835e483dcc3df4081631ca2acc61b7c
 }
 -- testrun/html/none/app.sngl/plain/1 --
 sha256:142b58634c2e003ea67e4f52f1bf7bbb
+{
+  "results": [
+    {
+      "Desc": "AWordOfAnInstanceInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/greeting/1 --
+sha256:077e5d5f925af5195f8feea9502708ad
+{
+  "results": [
+    {
+      "Desc": "AWordInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/outer/1 --
+sha256:e5f9dd6d05ddae8a7bafa52f3320a3e9
+{
+  "results": [
+    {
+      "Desc": "AWordUnderAProviderInFrench",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/plain/1 --
+sha256:eb2f84869c893dcfbd43ee64bd36a28d
 {
   "results": [
     {

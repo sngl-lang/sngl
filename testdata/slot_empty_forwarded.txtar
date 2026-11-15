@@ -1434,6 +1434,9 @@ func newTreeInstance(__model *Model, __a_d int, __a___depth int, __a___empty_con
 }
 
 func (c *TreeInstance) SetD(__v int) {
+	if c.__prop_d == __v {
+		return
+	}
 	c.__prop_d = __v
 	var __lt10 string
 	if c.__prop___empty_content {
@@ -1446,11 +1449,17 @@ func (c *TreeInstance) SetD(__v int) {
 }
 
 func (c *TreeInstance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot0(c.__root)
 }
 
 func (c *TreeInstance) Set__empty_content(__v bool) {
+	if c.__prop___empty_content == __v {
+		return
+	}
 	c.__prop___empty_content = __v
 	var __lt11 string
 	if c.__prop___empty_content {
@@ -1558,6 +1567,9 @@ func newTree__slot5Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 }
 
 func (c *Tree__slot5Instance) SetD(__v int) {
+	if c.__prop_d == __v {
+		return
+	}
 	c.__prop_d = __v
 	__lt13 := ("empty " + fmt.Sprint(c.__prop_d))
 	c.__n1.SetText(__lt13)
@@ -1565,6 +1577,9 @@ func (c *Tree__slot5Instance) SetD(__v int) {
 }
 
 func (c *Tree__slot5Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot1(c.__root)
 }
@@ -1666,6 +1681,9 @@ func newTree__slot3Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 }
 
 func (c *Tree__slot3Instance) SetD(__v int) {
+	if c.__prop_d == __v {
+		return
+	}
 	c.__prop_d = __v
 	__lt15 := ("full " + fmt.Sprint(c.__prop_d))
 	c.__n2.SetText(__lt15)
@@ -1673,6 +1691,9 @@ func (c *Tree__slot3Instance) SetD(__v int) {
 }
 
 func (c *Tree__slot3Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot2(c.__root)
 }
@@ -1774,6 +1795,9 @@ func newTree__slot2Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 }
 
 func (c *Tree__slot2Instance) SetD(__v int) {
+	if c.__prop_d == __v {
+		return
+	}
 	c.__prop_d = __v
 	__lt17 := ("empty " + fmt.Sprint(c.__prop_d))
 	c.__n3.SetText(__lt17)
@@ -1781,6 +1805,9 @@ func (c *Tree__slot2Instance) SetD(__v int) {
 }
 
 func (c *Tree__slot2Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot3(c.__root)
 }
@@ -1882,6 +1909,9 @@ func newTree__slot0Instance(__model *Model, __a_d int, __a___depth int) *Tree__s
 }
 
 func (c *Tree__slot0Instance) SetD(__v int) {
+	if c.__prop_d == __v {
+		return
+	}
 	c.__prop_d = __v
 	__lt19 := ("full " + fmt.Sprint(c.__prop_d))
 	c.__n4.SetText(__lt19)
@@ -1889,6 +1919,9 @@ func (c *Tree__slot0Instance) SetD(__v int) {
 }
 
 func (c *Tree__slot0Instance) Set__depth(__v int) {
+	if c.__prop___depth == __v {
+		return
+	}
 	c.__prop___depth = __v
 	c.__renderSlot4(c.__root)
 }
@@ -1991,6 +2024,9 @@ func newInnerInstance(__model *Model, __a___empty_content bool) *InnerInstance {
 }
 
 func (c *InnerInstance) Set__empty_content(__v bool) {
+	if c.__prop___empty_content == __v {
+		return
+	}
 	c.__prop___empty_content = __v
 	var __lt21 string
 	if c.__prop___empty_content {
@@ -2036,6 +2072,9 @@ func newInner__slot4Instance(__model *Model, __a___p0 __anon_id_elem_cdfd47) *In
 }
 
 func (c *Inner__slot4Instance) Set__p0(__v __anon_id_elem_cdfd47) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n8.SetText(("a" + fmt.Sprint(c.__prop___p0.Elem)))
 }
@@ -2190,6 +2229,9 @@ func newOuter__slot1Instance(__model *Model, __a___p0 __anon_id_elem_cdfd47) *Ou
 }
 
 func (c *Outer__slot1Instance) Set__p0(__v __anon_id_elem_cdfd47) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	for _, __inst6_live_uv := range c.__inst6_live {
 		__inst6_live_uv.Set__p0(c.__prop___p0)
@@ -2476,15 +2518,24 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_d(__v) {
+      if (__prop_d === __v) {
+        return;
+      }
       __prop_d = __v;
       __n0.textContent = __prop___empty_content ? "empty " + String(__prop_d) : "full " + String(__prop_d);
       __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
     function __set___empty_content(__v) {
+      if (__prop___empty_content === __v) {
+        return;
+      }
       __prop___empty_content = __v;
       __n0.textContent = __prop___empty_content ? "empty " + String(__prop_d) : "full " + String(__prop_d);
     }
@@ -2587,11 +2638,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering1 = false;
     let __renderAgain1 = false;
     function __set_d(__v) {
+      if (__prop_d === __v) {
+        return;
+      }
       __prop_d = __v;
       __n1.textContent = "empty " + String(__prop_d);
       __renderSlot1(__slotAnchor_1);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot1(__slotAnchor_1);
     }
@@ -2693,11 +2750,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering2 = false;
     let __renderAgain2 = false;
     function __set_d(__v) {
+      if (__prop_d === __v) {
+        return;
+      }
       __prop_d = __v;
       __n2.textContent = "full " + String(__prop_d);
       __renderSlot2(__slotAnchor_2);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot2(__slotAnchor_2);
     }
@@ -2799,11 +2862,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering3 = false;
     let __renderAgain3 = false;
     function __set_d(__v) {
+      if (__prop_d === __v) {
+        return;
+      }
       __prop_d = __v;
       __n3.textContent = "empty " + String(__prop_d);
       __renderSlot3(__slotAnchor_3);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot3(__slotAnchor_3);
     }
@@ -2905,11 +2974,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering4 = false;
     let __renderAgain4 = false;
     function __set_d(__v) {
+      if (__prop_d === __v) {
+        return;
+      }
       __prop_d = __v;
       __n4.textContent = "full " + String(__prop_d);
       __renderSlot4(__slotAnchor_4);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot4(__slotAnchor_4);
     }
@@ -3006,6 +3081,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___empty_content = __empty_content;
     let n = 0;
     function __set___empty_content(__v) {
+      if (__prop___empty_content === __v) {
+        return;
+      }
       __prop___empty_content = __v;
       __n5.textContent = __prop___empty_content ? "empty" : "has";
     }
@@ -3038,6 +3116,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let n = 0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n8.textContent = "a" + String(__prop___p0.elem);
     }
@@ -3176,6 +3257,9 @@ body { font-family: system-ui, sans-serif; }
     let __rendering6 = false;
     let __renderAgain6 = false;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       for (const [__inst13_live_uk, __inst13_live_uv] of __inst13_live.entries()) {
         __inst13_live_uv.__set___p0(__prop___p0);
@@ -3394,8 +3478,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:7e5fd1459eb1627d7a4f0d016c9319be
 -- run/go/fyne --
-pass sha256:9b08c4e812945f8329388bd4786d177e
+pass sha256:e8ab1eff54bd1ab6fd582621df777cbf
 -- run/kotlin/android --
 pass sha256:a0c893e9cfb318528ac864f320c5a156
 -- run/none/html --
-pass sha256:86d9826320fafbbad4586a6fdaa44a4a
+pass sha256:c6e720e156ee17933cab6c14892d79c2

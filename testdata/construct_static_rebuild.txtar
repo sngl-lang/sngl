@@ -97,10 +97,16 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_more(__v) {
+      if (__prop_more === __v) {
+        return;
+      }
       __prop_more = __v;
       __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
@@ -226,4 +232,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:7588aa7161dd0e2acec70fca300d94fd
+pass sha256:3b9310340e1c2bd40d9c138afa5b3fd9

@@ -190,7 +190,7 @@ sha256:aa607bef905885175dbcb68dd9a08826
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:2cd2bcef318d7081f6bc955d0568b568
+sha256:753e4b1e89a07bc20685deacc54bc0e8
 {
   "results": [
     {
@@ -204,7 +204,7 @@ sha256:2cd2bcef318d7081f6bc955d0568b568
   ]
 }
 -- testrun/fyne/go/app.sngl/single/1 --
-sha256:669f70af0adb9e6b2742e2da843e2e73
+sha256:d1ce5149af7558ab042c56062ad6a9a3
 {
   "results": [
     {
@@ -214,7 +214,7 @@ sha256:669f70af0adb9e6b2742e2da843e2e73
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:fa4b20d8055f561374176462d251b638
+sha256:c12c036ce86cd64dd7e71e3b93f1fa51
 {
   "results": [
     {
@@ -228,7 +228,7 @@ sha256:fa4b20d8055f561374176462d251b638
   ]
 }
 -- testrun/gtk4/go/app.sngl/single/1 --
-sha256:2beb04e96d2624c6f92228b288a1fa70
+sha256:74c81fc3231b5adb7fc414cc11052de5
 {
   "results": [
     {
@@ -238,7 +238,7 @@ sha256:2beb04e96d2624c6f92228b288a1fa70
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:83ac8d22d419d0bb3c452a00daf6d39d
+sha256:f4ebc22d02ccd387eca8b89a02ca5d82
 {
   "results": [
     {
@@ -252,7 +252,7 @@ sha256:83ac8d22d419d0bb3c452a00daf6d39d
   ]
 }
 -- testrun/html/none/app.sngl/single/1 --
-sha256:642a219eb1bbb822477df513efefb2d6
+sha256:6a7a79d65de664695cebe933ae88cb83
 {
   "results": [
     {
@@ -262,7 +262,7 @@ sha256:642a219eb1bbb822477df513efefb2d6
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:1e7458bfbf5bf6742dfd9e8b9724a413
+sha256:6607167f11c41b4ff0c40bb66e1bf3f1
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:1e7458bfbf5bf6742dfd9e8b9724a413
   ]
 }
 -- testrun/win32/c/app.sngl/single/1 --
-sha256:68c3c6b59b03d3006ff31e0ae8f208f0
+sha256:b75f8d924f4e5311702a6757716ff520
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:68c3c6b59b03d3006ff31e0ae8f208f0
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:a62155a708bb0822d7dd3fe6579e3a1d
+sha256:9b66ad6df711e51f4646871824b87906
 {
   "results": [
     {
@@ -300,7 +300,7 @@ sha256:a62155a708bb0822d7dd3fe6579e3a1d
   ]
 }
 -- testrun/win32/go/app.sngl/single/1 --
-sha256:3056c1e06aec1098ef548c9442c0a63c
+sha256:1c103446d0c09ee5dc708d2355e2de8a
 {
   "results": [
     {

@@ -1659,6 +1659,9 @@ func (c *BadgeInstance) reset() {
 }
 
 func (c *BadgeInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.shown.SetText((((("[" + c.__prop_label) + ":") + fmt.Sprint(c.hits)) + "]"))
 }
@@ -1754,11 +1757,17 @@ func newTileInstance(__model *Model, __a_label string, __a___copy string, __a_ta
 }
 
 func (c *TileInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.face.SetText((((("<" + c.__prop_label) + ":") + fmt.Sprint(c.taps)) + ">"))
 }
 
 func (c *TileInstance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	c.__model.__list_tap(c.__prop___copy, c.tap)
 	for __inst0_live_ui, _ := range c.__inst0_live {
@@ -1864,6 +1873,9 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__model.__list_fin(c.__prop___p0, c.fin)
 }
@@ -2147,6 +2159,9 @@ func Badge__new(label string) *Badge__inst {
 }
 
 func Badge__set_label(__self *Badge__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 }
@@ -2246,11 +2261,18 @@ func Tile__new(label string, __copy string, tapped func(int)) *Tile__inst {
 }
 
 func Tile__set_label(__self *Tile__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.SnglTextSetValue(__self.Face, (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
 }
 
 func Tile__set___copy(__self *Tile__inst, __v string) {
+	if __self.__prop___copy == __v {
+		m.tap__copies[__self.__prop___copy] = __self.Tap
+		return
+	}
 	__self.__prop___copy = __v
 	m.tap__copies[__self.__prop___copy] = __self.Tap
 	for __inst2_live_ui, _ := range __self.__inst2_live {
@@ -2373,6 +2395,10 @@ func __child0__new(__p0 string) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		m.fin__copies[__self.__prop___p0] = __self.Fin
+		return
+	}
 	__self.__prop___p0 = __v
 	m.fin__copies[__self.__prop___p0] = __self.Fin
 }
@@ -3155,6 +3181,9 @@ window.__sngl_boot = () => {
       __renderSlot0(__slotAnchor_0);
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown.textContent = "[" + __prop_label + ":" + String(hits) + "]";
     }
@@ -3245,10 +3274,16 @@ window.__sngl_boot = () => {
     let __rendering1 = false;
     let __renderAgain1 = false;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       face.textContent = "<" + __prop_label + ":" + String(taps) + ">";
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       tap.setAttribute("data-sngl-copy", __prop___copy);
       for (const [__inst2_live_ui, _] of __inst2_live.entries()) {
@@ -3366,6 +3401,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       fin.setAttribute("data-sngl-copy", __prop___p0);
     }
@@ -3538,10 +3576,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:b16162b15de60306c9eba6ab14ef1852
 -- run/go/fyne --
-pass sha256:4e615a93f7b7fa0624931dfcd80ef245
+pass sha256:8cc1e52fad46a0645f60fc495c4d512c
 -- run/go/gtk4 --
-pass sha256:dabdf10e3eab24c16b445072f85adc50
+pass sha256:105bf063954578a12ae848b5d1c860d5
 -- run/kotlin/android --
 pass sha256:282c53c30ebf0f79bb1ad4e8f45cda84
 -- run/none/html --
-pass sha256:bd7334869955df22e865626c121d60ed
+pass sha256:9824df55ff1d1cbe1fb32bb68007ac8c

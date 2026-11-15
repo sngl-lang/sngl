@@ -127,25 +127,30 @@ type Entry struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	shown               bool
-	n                   int
-	ticks__inst0        int
-	visible__inst0      bool
-	visible__inst1      bool
-	__effect0_live      []bool
-	__effect0_desired   []bool
-	__effect1_key       string
-	__effect1_live      []string
-	__effect1_desired   []string
-	__effect2_live      []bool
-	__effect2_desired   []bool
-	__effect3_key       string
-	__effect3_live      []string
-	__effect3_desired   []string
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_torn     bool
-	__effects0_steps    int
+	shown                          bool
+	n                              int
+	ticks__inst0                   int
+	visible__inst0                 bool
+	visible__inst1                 bool
+	__effect0_live                 []bool
+	__effect0_desired              []bool
+	__effect1_key                  string
+	__effect1_live                 []string
+	__effect1_desired              []string
+	__effect2_live                 []bool
+	__effect2_desired              []bool
+	__effect3_key                  string
+	__effect3_live                 []string
+	__effect3_desired              []string
+	__effects0_settling            bool
+	__effects0_pending             bool
+	__effects0_torn                bool
+	__effects0_steps               int
+	__memoEpoch                    int
+	__memo___bar_members           []Entry
+	__memoAt___bar_members         int
+	__memo___bar_members1__inst0   []Entry
+	__memoAt___bar_members1__inst0 int
 
 	__n0    *fynelayout.Toplevel
 	__n2    *fynelayout.Button
@@ -177,6 +182,11 @@ func New() *Model {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
+	m.__memoEpoch = 0
+	m.__memo___bar_members = []Entry{}
+	m.__memoAt___bar_members = -1
+	m.__memo___bar_members1__inst0 = []Entry{}
+	m.__memoAt___bar_members1__inst0 = -1
 	return m
 }
 
@@ -189,15 +199,25 @@ func Encode(members []Entry) string {
 }
 
 func (m *Model) __bar_members() []Entry {
+	if m.__memoAt___bar_members == m.__memoEpoch {
+		return m.__memo___bar_members
+	}
 	__members := []Entry{}
 	__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n))})
-	return __members
+	m.__memo___bar_members = __members
+	m.__memoAt___bar_members = m.__memoEpoch
+	return m.__memo___bar_members
 }
 
 func (m *Model) __bar_members1__inst0() []Entry {
+	if m.__memoAt___bar_members1__inst0 == m.__memoEpoch {
+		return m.__memo___bar_members1__inst0
+	}
 	__members := []Entry{}
 	__members = append(__members, Entry{Full: ("t=" + fmt.Sprint(m.ticks__inst0))})
-	return __members
+	m.__memo___bar_members1__inst0 = __members
+	m.__memoAt___bar_members1__inst0 = m.__memoEpoch
+	return m.__memo___bar_members1__inst0
 }
 
 func __effect0_mount() {
@@ -334,6 +354,7 @@ func (m *Model) __n0_visible_handler(__visible bool) {
 
 func (m *Model) __n2_click_handler() {
 	m.ticks__inst0 += 1
+	m.__memoEpoch = (m.__memoEpoch + 1)
 	m.__effects0_settle()
 }
 
@@ -352,6 +373,7 @@ func (m *Model) __n3_click_handler() {
 
 func (m *Model) __n4_click_handler() {
 	m.n += 1
+	m.__memoEpoch = (m.__memoEpoch + 1)
 	m.__effects0_settle()
 }
 
@@ -478,30 +500,35 @@ type Look struct {
 }
 
 type snglState struct {
-	shown               bool
-	n                   int
-	ticks__inst0        int
-	visible__inst0      bool
-	visible__inst1      bool
-	__effect0_live      []bool
-	__effect0_desired   []bool
-	__effect1_key       string
-	__effect1_live      []string
-	__effect1_desired   []string
-	__effect2_live      []bool
-	__effect2_desired   []bool
-	__effect3_key       string
-	__effect3_live      []string
-	__effect3_desired   []string
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_torn     bool
-	__effects0_steps    int
-	__n0                cgo.Widget
-	__n2                cgo.Widget
-	__n1                cgo.Widget
-	__n3                cgo.Widget
-	__n4                cgo.Widget
+	shown                          bool
+	n                              int
+	ticks__inst0                   int
+	visible__inst0                 bool
+	visible__inst1                 bool
+	__effect0_live                 []bool
+	__effect0_desired              []bool
+	__effect1_key                  string
+	__effect1_live                 []string
+	__effect1_desired              []string
+	__effect2_live                 []bool
+	__effect2_desired              []bool
+	__effect3_key                  string
+	__effect3_live                 []string
+	__effect3_desired              []string
+	__effects0_settling            bool
+	__effects0_pending             bool
+	__effects0_torn                bool
+	__effects0_steps               int
+	__memoEpoch                    int
+	__memo___bar_members           []Entry
+	__memoAt___bar_members         int
+	__memo___bar_members1__inst0   []Entry
+	__memoAt___bar_members1__inst0 int
+	__n0                           cgo.Widget
+	__n2                           cgo.Widget
+	__n1                           cgo.Widget
+	__n3                           cgo.Widget
+	__n4                           cgo.Widget
 }
 
 var m = &snglState{}
@@ -515,15 +542,25 @@ func Encode(members []Entry) string {
 }
 
 func __bar_members() []Entry {
+	if m.__memoAt___bar_members == m.__memoEpoch {
+		return m.__memo___bar_members
+	}
 	__members := []Entry{}
 	__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n))})
-	return __members
+	m.__memo___bar_members = __members
+	m.__memoAt___bar_members = m.__memoEpoch
+	return m.__memo___bar_members
 }
 
 func __bar_members1__inst0() []Entry {
+	if m.__memoAt___bar_members1__inst0 == m.__memoEpoch {
+		return m.__memo___bar_members1__inst0
+	}
 	__members := []Entry{}
 	__members = append(__members, Entry{Full: ("t=" + fmt.Sprint(m.ticks__inst0))})
-	return __members
+	m.__memo___bar_members1__inst0 = __members
+	m.__memoAt___bar_members1__inst0 = m.__memoEpoch
+	return m.__memo___bar_members1__inst0
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -679,6 +716,7 @@ func __n0_visible_handler(__visible bool) {
 
 func __n2_clicked_handler() {
 	m.ticks__inst0 += 1
+	m.__memoEpoch = (m.__memoEpoch + 1)
 	__effects0_settle()
 }
 
@@ -694,6 +732,7 @@ func __n3_clicked_handler() {
 
 func __n4_clicked_handler() {
 	m.n += 1
+	m.__memoEpoch = (m.__memoEpoch + 1)
 	__effects0_settle()
 }
 
@@ -718,6 +757,11 @@ func snglInit() {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
+	m.__memoEpoch = 0
+	m.__memo___bar_members = []Entry{}
+	m.__memoAt___bar_members = -1
+	m.__memo___bar_members1__inst0 = []Entry{}
+	m.__memoAt___bar_members1__inst0 = -1
 }
 
 func snglBuild() {
@@ -782,6 +826,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:7559e966046a03694b3ffc43424c8aa7
+pass sha256:2a49b36100acc9c182ac8c75f4c2e4c4
 -- run/go/gtk4 --
-pass sha256:60ab2bbef2242bbc1fb97602ff49a2cb
+pass sha256:05ecba078c49f6930c35c68577e3c137

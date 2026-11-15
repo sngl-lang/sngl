@@ -89,11 +89,17 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = "[" + String(__prop_n) + "]";
       __renderSlot0(__slotAnchor_0);
     }
     function __set___depth(__v) {
+      if (__prop___depth === __v) {
+        return;
+      }
       __prop___depth = __v;
       __renderSlot0(__slotAnchor_0);
     }
@@ -198,4 +204,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:508487e1f19d88cbeef98e07cdf2f1aa
+pass sha256:c96e01de892d79e7ec35f80c0fbb0894

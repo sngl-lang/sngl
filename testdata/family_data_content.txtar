@@ -908,6 +908,9 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v int) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(fmt.Sprint(c.__prop___p0))
 }
@@ -1150,6 +1153,9 @@ func __child0__new(__p0 int) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.__prop___p0))
 }
@@ -1464,6 +1470,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0);
     }
@@ -1605,10 +1614,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9a29060591679d06d504c9f74152ca4a
 -- run/go/fyne --
-pass sha256:1844830da06f059b8d7a003cd76702f9
+pass sha256:41cb32470448bb6707b64136634913f9
 -- run/go/gtk4 --
-pass sha256:715cd5c742cdbadaf8157a81c364f47b
+pass sha256:9724a471728989e9a02b3944b72f604d
 -- run/kotlin/android --
 pass sha256:daf5ca92bfb8648aec9c730d0a02e28a
 -- run/none/html --
-pass sha256:39afa2fdfdb704092be6e6da6c774ffd
+pass sha256:5b7ebfadaa40e579c8db3bfb380f2712

@@ -448,6 +448,9 @@ func __child0__new(__p0 __anon_id_elem_c6a818) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Elem)
 }
@@ -679,4 +682,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:6096eb21f97e383f271d3b3cc8f2bb2a
 -- run/go/gtk4 --
-pass sha256:846a31be8f06e9b18ca85920f1ec57a3
+pass sha256:4f9275a2d97e690cd8db2583dd109a73

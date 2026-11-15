@@ -1516,13 +1516,17 @@ func (c *GaugeInstance) __effects0_settle() {
 }
 
 func (c *GaugeInstance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 }
 
 func (c *GaugeInstance) Set__on_level(__v int) {
-	if c.__prop___on_level != __v {
-		c.__effect0_dirty = true
+	if c.__prop___on_level == __v {
+		return
 	}
+	c.__effect0_dirty = true
 	c.__prop___on_level = __v
 	c.__effects0_settle()
 }
@@ -1799,13 +1803,17 @@ func Gauge__effects0_settle(__self *Gauge__inst) {
 }
 
 func Gauge__set___copy(__self *Gauge__inst, __v string) {
+	if __self.__prop___copy == __v {
+		return
+	}
 	__self.__prop___copy = __v
 }
 
 func Gauge__set___on_level(__self *Gauge__inst, __v int) {
-	if __self.__prop___on_level != __v {
-		__self.__effect0_dirty = true
+	if __self.__prop___on_level == __v {
+		return
 	}
+	__self.__effect0_dirty = true
 	__self.__prop___on_level = __v
 	Gauge__effects0_settle(__self)
 }
@@ -2567,12 +2575,16 @@ window.__sngl_boot = () => {
       }
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
     }
     function __set___on_level(__v) {
-      if (__prop___on_level !== __v) {
-        __effect0_dirty = true;
+      if (__prop___on_level === __v) {
+        return;
       }
+      __effect0_dirty = true;
       __prop___on_level = __v;
       __effects0_settle();
     }
@@ -2753,10 +2765,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:bbee16778ed4283e7335210fb5d68eb1
 -- run/go/fyne --
-pass sha256:60138447f4d462c69c88bc31ae90a990
+pass sha256:10069b9cf5390c0136a6df498ed9d831
 -- run/go/gtk4 --
-pass sha256:dfaf6be5f84fdd5ccbee4c8afe66cbc3
+pass sha256:6a908da6130436604a8187446f3d6b50
 -- run/kotlin/android --
 pass sha256:108e2f4516145e79408ad1c3eed71f34
 -- run/none/html --
-pass sha256:be96e66fe1f27fe58037548b554ca3d8
+pass sha256:c72af47cd69d5e47cf9c262699337ce8

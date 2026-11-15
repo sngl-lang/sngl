@@ -1212,6 +1212,9 @@ func __child0__new(__p0 int) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, ("column " + fmt.Sprint(__self.__prop___p0)))
 }
@@ -1232,6 +1235,9 @@ func __child1__new(__p0 int) *__child1__inst {
 }
 
 func __child1__set___p0(__self *__child1__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n1, ("row " + fmt.Sprint(__self.__prop___p0)))
 }
@@ -1992,6 +1998,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = "column " + String(__prop___p0);
     }
@@ -2012,6 +2021,9 @@ window.__sngl_boot = () => {
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "row " + String(__prop___p0);
     }
@@ -2238,8 +2250,8 @@ pass sha256:9acdbc41ec1fc0d21c56136e044b7f1d
 -- run/go/fyne --
 pass sha256:4749d73fe5fa467e53081de1f3c1008b
 -- run/go/gtk4 --
-pass sha256:881af77f442d959fa4f96d5ca11a1a31
+pass sha256:3354b8895f9e2f078fcdeaed55089192
 -- run/kotlin/android --
 pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --
-pass sha256:863e102a6a3e80414ce54e2da31c734b
+pass sha256:21d14e8ae3d931fc88e535c0cfe60ffc

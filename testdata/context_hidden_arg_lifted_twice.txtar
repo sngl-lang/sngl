@@ -1253,11 +1253,17 @@ func newShowInstance(__model *Model, __a_n int, __a___ctx_label string) *ShowIns
 }
 
 func (c *ShowInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.__n0.SetText(((((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)) + " ") + fmt.Sprint(c.k)))
 }
 
 func (c *ShowInstance) Set__ctx_label(__v string) {
+	if c.__prop___ctx_label == __v {
+		return
+	}
 	c.__prop___ctx_label = __v
 	c.__n0.SetText(((((c.__prop___ctx_label + " ") + fmt.Sprint(c.__prop_n)) + " ") + fmt.Sprint(c.k)))
 }
@@ -1305,6 +1311,9 @@ func newPageInstance(__model *Model, __a___ctx_label string) *PageInstance {
 }
 
 func (c *PageInstance) Set__ctx_label(__v string) {
+	if c.__prop___ctx_label == __v {
+		return
+	}
 	c.__prop___ctx_label = __v
 	for __inst0_live_ui, _ := range c.__inst0_live {
 		c.__inst0_live[__inst0_live_ui].Set__p0(c.__prop___ctx_label)
@@ -1424,6 +1433,9 @@ func new__child0Instance(__model *Model, __a___p0 string) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.Set__ctx_label(c.__prop___p0)
 }
@@ -1455,6 +1467,9 @@ func new__child1Instance(__model *Model, __a___p0 string) *__child1Instance {
 }
 
 func (c *__child1Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n2.Set__ctx_label(c.__prop___p0)
 }
@@ -1731,6 +1746,9 @@ func Show__new(n int, __ctx_label string) *Show__inst {
 }
 
 func Show__set___ctx_label(__self *Show__inst, __v string) {
+	if __self.__prop___ctx_label == __v {
+		return
+	}
 	__self.__prop___ctx_label = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((((__self.__prop___ctx_label + " ") + fmt.Sprint(__self.__prop_n)) + " ") + fmt.Sprint(__self.K)))
 }
@@ -1759,6 +1777,9 @@ func Page__new(__ctx_label string) *Page__inst {
 }
 
 func Page__set___ctx_label(__self *Page__inst, __v string) {
+	if __self.__prop___ctx_label == __v {
+		return
+	}
 	__self.__prop___ctx_label = __v
 	for __inst1_live_ui, _ := range __self.__inst1_live {
 		__child0__set___p0(__self.__inst1_live[__inst1_live_ui], __self.__prop___ctx_label)
@@ -1902,6 +1923,9 @@ func __child0__new(__p0 string) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	Show__set___ctx_label(__self.__n1, __self.__prop___p0)
 }
@@ -1928,6 +1952,9 @@ func __child1__new(__p0 string) *__child1__inst {
 }
 
 func __child1__set___p0(__self *__child1__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	Show__set___ctx_label(__self.__n2, __self.__prop___p0)
 }
@@ -2061,10 +2088,16 @@ body { font-family: system-ui, sans-serif; }
     let __prop___ctx_label = __ctx_label;
     let k = 0;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       __n0.textContent = __prop___ctx_label + " " + String(__prop_n) + " " + String(k);
     }
     function __set___ctx_label(__v) {
+      if (__prop___ctx_label === __v) {
+        return;
+      }
       __prop___ctx_label = __v;
       __n0.textContent = __prop___ctx_label + " " + String(__prop_n) + " " + String(k);
     }
@@ -2100,6 +2133,9 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set___ctx_label(__v) {
+      if (__prop___ctx_label === __v) {
+        return;
+      }
       __prop___ctx_label = __v;
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
         __inst1_live[__inst1_live_ui].__set___p0(__prop___ctx_label);
@@ -2244,6 +2280,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.__set___ctx_label(__prop___p0);
     }
@@ -2266,6 +2305,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.__set___ctx_label(__prop___p0);
     }
@@ -2369,8 +2411,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:42687eac7013e390cfc0d4a2ef3fb2cf
 -- run/go/fyne --
-pass sha256:35ec395dee8bf5785d13ad2e06598ccd
+pass sha256:c05939891c7a18d4292afa1a15a7a3f1
 -- run/go/gtk4 --
-pass sha256:9ed5a8a3030c4d4c87c825c0c179381f
+pass sha256:2627df3ba090b51c3de504793a06351b
 -- run/none/html --
-pass sha256:500954e11540027f6cc4044aae3b6c2a
+pass sha256:4d28f2214940ece28953efc2efedad15

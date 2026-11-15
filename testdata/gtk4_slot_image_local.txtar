@@ -301,9 +301,10 @@ func __file_state0__snglTeardown(__self *__file_state0__inst) {
 }
 
 func __file_state0__set_path(__self *__file_state0__inst, __v string) {
-	if __self.__prop_path != __v {
-		__self.__effect1_dirty = true
+	if __self.__prop_path == __v {
+		return
 	}
+	__self.__effect1_dirty = true
 	__self.__prop_path = __v
 	cgo.SnglImageSourceSetUrl(__self.__n0, __self.__prop_path)
 	__file_state0__effects0_settle(__self)
@@ -375,4 +376,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:86c950317e65333d12f8d38d788aefda
+pass sha256:7affb72e882037cc4eafd3e51904d10c

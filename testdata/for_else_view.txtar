@@ -1137,6 +1137,9 @@ func __child0__new(__p0 __anon_id_elem_c6a818) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Elem)
 }
@@ -1501,6 +1504,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -1706,8 +1712,8 @@ pass sha256:089165762b80e79175c326b53e551468
 -- run/go/fyne --
 pass sha256:6dccbb07f477c54c4f7a91ec5c787e24
 -- run/go/gtk4 --
-pass sha256:ed01e37e96fddfbcc27f8ff5feec3eb2
+pass sha256:af13c3938e4a9215b3d198ce6131ba91
 -- run/kotlin/android --
 pass sha256:02680c4c6116a331c68016a1f36e57ce
 -- run/none/html --
-pass sha256:ed8fc74940aba7afd8723a0e7f9e0d7b
+pass sha256:5995377bccc11da5eb19bf575e0caec3

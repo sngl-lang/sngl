@@ -1133,6 +1133,9 @@ func newCounterInstance(__model *Model, __a_start int) *CounterInstance {
 }
 
 func (c *CounterInstance) SetStart(__v int) {
+	if c.__prop_start == __v {
+		return
+	}
 	c.__prop_start = __v
 }
 
@@ -1320,6 +1323,9 @@ func Counter__new(start int) *Counter__inst {
 }
 
 func Counter__set_start(__self *Counter__inst, __v int) {
+	if __self.__prop_start == __v {
+		return
+	}
 	__self.__prop_start = __v
 }
 
@@ -1484,6 +1490,6 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/bubbletea --
 pass sha256:0ab01b4d5e903431d33225d442513bbf
 -- run/go/fyne --
-pass sha256:68b09a17e814e01ede5495879281bf6a
+pass sha256:7cf6b6be2d8edde8d831e9f9cd48841b
 -- run/go/gtk4 --
-pass sha256:9e1801ee6c162c5ddd2876ecdebcd773
+pass sha256:699343e21e653fc82724cb2129fe70c9

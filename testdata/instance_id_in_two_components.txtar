@@ -1216,6 +1216,9 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 }
 
 func (c *BadgeInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.hit.SetText((c.__prop_label + fmt.Sprint(c.hits)))
 }
@@ -1475,6 +1478,9 @@ func Badge__new(label string) *Badge__inst {
 }
 
 func Badge__set_label(__self *Badge__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), (__self.__prop_label + fmt.Sprint(__self.Hits)))
 }
@@ -2167,6 +2173,9 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = __prop_label + String(hits);
     }
@@ -2440,10 +2449,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:6eb92ffc7287aae4398bba394b974443
 -- run/go/fyne --
-pass sha256:fd181a5294fcc2f64aa3ff02a172a9fd
+pass sha256:c8b3359b93e70b50e67b568bd9af9704
 -- run/go/gtk4 --
-pass sha256:f48e8ad02c94be8d9f1c3ee38f687682
+pass sha256:43e2db95ec151280723dc5e004d177fd
 -- run/kotlin/android --
 pass sha256:4781f3bd0ce030025d422bcec487fbb0
 -- run/none/html --
-pass sha256:159ef45e516665a12e33044758796827
+pass sha256:7f21935815ba26e30029b3b0bafd1bde

@@ -495,10 +495,16 @@ func (c *Row__slot0Instance) __effects1_settle() {
 }
 
 func (c *Row__slot0Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 }
 
 func (c *Row__slot0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(((("foot " + c.__prop___p0.Elem) + " ") + fmt.Sprint(c.marks)))
 }
@@ -876,10 +882,16 @@ func Row__slot0__effects1_settle(__self *Row__slot0__inst) {
 }
 
 func Row__slot0__set_label(__self *Row__slot0__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 }
 
 func Row__slot0__set___p0(__self *Row__slot0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n1, ((("foot " + __self.__prop___p0.Elem) + " ") + fmt.Sprint(__self.Marks)))
 }
@@ -1084,9 +1096,15 @@ body { font-family: system-ui, sans-serif; }
       }
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
     }
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "foot " + __prop___p0.elem + " " + String(marks);
     }
@@ -1234,8 +1252,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:99c09a0f4b808a6b15a463eb27c3cde7
+pass sha256:8f5e4319178cae89223a6e22fc0af936
 -- run/go/gtk4 --
-pass sha256:6a79b6f808b8d5d6d12539f629983a31
+pass sha256:e72299a95f04185758f7e93b60ccef0b
 -- run/none/html --
-pass sha256:e724eeb685a0877f6ce6a5ba60801871
+pass sha256:911c76a2b508d0be195cfaca1a4947c0

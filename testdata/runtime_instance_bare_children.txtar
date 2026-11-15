@@ -1371,6 +1371,9 @@ func newCard__slot0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a_
 }
 
 func (c *Card__slot0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n2.SetText(("item " + c.__prop___p0.Elem))
 }
@@ -1795,6 +1798,9 @@ func Card__slot0__new(__p0 __anon_id_elem_c6a818, __on0 func()) *Card__slot0__in
 }
 
 func Card__slot0__set___p0(__self *Card__slot0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n2, ("item " + __self.__prop___p0.Elem))
 }
@@ -2263,6 +2269,9 @@ body { font-family: system-ui, sans-serif; }
     let __prop___on0 = __on0;
     let hits = 0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.textContent = "item " + __prop___p0.elem;
     }
@@ -2469,10 +2478,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:4e263e02d9cf87f46c35ab83d086fcbe
 -- run/go/fyne --
-pass sha256:ff1cc8888dd60db2d9d60182a8c6897a
+pass sha256:cf7a2bd7587c31acabf70735329a5948
 -- run/go/gtk4 --
-pass sha256:44fb64f2e618b28d0c693ba2fe904bb7
+pass sha256:34d27d525662f9108296cf6c3ef22cf4
 -- run/kotlin/android --
 pass sha256:3fae323ffc3d01b77959bccd2db95710
 -- run/none/html --
-pass sha256:015c9d56b68dc6bb39d5babe4a086873
+pass sha256:d60196622926f5c54bcac240c8198783

@@ -581,6 +581,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0 * 2);
     }
@@ -718,4 +721,4 @@ pass sha256:99b3764eb8886e7ca4d2b04547d2dfd7
 -- run/kotlin/android --
 pass sha256:aaea1c4ae9ed3548c2933ddf937102b6
 -- run/none/html --
-pass sha256:7ea85d535dd69d721b8ee3d64315494e
+pass sha256:549b8ed39e6157df77d6be64a80d78d9

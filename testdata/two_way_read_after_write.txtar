@@ -264,6 +264,9 @@ func newPickerInstance(__model *Model, __a_value string, __a_change func(string)
 }
 
 func (c *PickerInstance) SetValue(__v string) {
+	if c.__prop_value == __v {
+		return
+	}
 	c.__prop_value = __v
 }
 
@@ -495,6 +498,9 @@ window.__sngl_boot = () => {
     let __prop___on_value = __on_value;
     let taps = 0;
     function __set_value(__v) {
+      if (__prop_value === __v) {
+        return;
+      }
       __prop_value = __v;
     }
     function __set_change(__v) {
@@ -618,8 +624,8 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:ed779f4e16e4d5c0b622c0474e274b28
+pass sha256:1dafe5cf31855d6b3e77a1117131bc6e
 -- run/kotlin/android --
 pass sha256:5083069c61f9aa7c22ac1eebdae46602
 -- run/none/html --
-pass sha256:6fe2a36d34c53c3601dc76f68abf3544
+pass sha256:ef1fcfd38cd60f13e4f0f6292991b963

@@ -1260,6 +1260,9 @@ func (c *CounterInstance) add(a int, by int) {
 }
 
 func (c *CounterInstance) SetInc(__v int) {
+	if c.__prop_inc == __v {
+		return
+	}
 	c.__prop_inc = __v
 }
 
@@ -1541,6 +1544,9 @@ func Counter__new(inc int) *Counter__inst {
 }
 
 func Counter__set_inc(__self *Counter__inst, __v int) {
+	if __self.__prop_inc == __v {
+		return
+	}
 	__self.__prop_inc = __v
 }
 
@@ -1843,6 +1849,9 @@ body { font-family: system-ui, sans-serif; }
       __n0.textContent = String(total);
     }
     function __set_inc(__v) {
+      if (__prop_inc === __v) {
+        return;
+      }
       __prop_inc = __v;
     }
     let __n6 = document.createElement("button");
@@ -1963,10 +1972,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b32b91492226e2f8555de88956ddc70c
 -- run/go/fyne --
-pass sha256:b4f5853c97ef81edec748b89607a2bce
+pass sha256:a43769ad48c573f48868350fd1fc5423
 -- run/go/gtk4 --
-pass sha256:213e632851d6f4ac23fe492e129bde13
+pass sha256:7999a076f4fd3877d2893d657acaf269
 -- run/kotlin/android --
 pass sha256:020664f96f0fbc9b18c22e760fc06da3
 -- run/none/html --
-pass sha256:0eb8176a76a26bd93462136b749aacdb
+pass sha256:35b0a581ec80e3a23e6cb29eb71dfdff

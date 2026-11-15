@@ -55,7 +55,7 @@ ticked 3
 package main
 
 /*
-#cgo pkg-config: gtk4
+#cgo pkg-config: gtk4 libcurl
 #cgo LDFLAGS: -lm
 #include "sngl_gtk.h"
 #include <stdlib.h>
@@ -325,7 +325,7 @@ func main() {
 package main
 
 /*
-#cgo pkg-config: gtk4
+#cgo pkg-config: gtk4 libcurl
 #cgo LDFLAGS: -lm
 #include "sngl_gtk.h"
 #include <stdint.h>
@@ -473,4 +473,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:a552b606b7efc9b23e108fb425ec61e8
+pass sha256:2c6d4eb4541163110212690c436d7353

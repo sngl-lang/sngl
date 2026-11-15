@@ -268,6 +268,9 @@ func newFlipInstance(__model *Model, __a_n int) *FlipInstance {
 }
 
 func (c *FlipInstance) SetN(__v int) {
+	if c.__prop_n == __v {
+		return
+	}
 	c.__prop_n = __v
 	c.line.SetText(((fmt.Sprint(c.__prop_n) + " ") + fmt.Sprint(c.__model.shown)))
 	for __inst0_live_ui, _ := range c.__inst0_live {
@@ -358,6 +361,9 @@ func new__child0Instance(__model *Model, __a___p0 int) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v int) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText((fmt.Sprint(c.__prop___p0) + " extra"))
 }
@@ -604,6 +610,9 @@ func Flip__new(n int) *Flip__inst {
 }
 
 func Flip__set_n(__self *Flip__inst, __v int) {
+	if __self.__prop_n == __v {
+		return
+	}
 	__self.__prop_n = __v
 	cgo.SnglTextSetValue(__self.Line, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
 	for __inst1_live_ui, _ := range __self.__inst1_live {
@@ -707,6 +716,9 @@ func __child0__new(__p0 int) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, (fmt.Sprint(__self.__prop___p0) + " extra"))
 }
@@ -814,6 +826,9 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set_n(__v) {
+      if (__prop_n === __v) {
+        return;
+      }
       __prop_n = __v;
       line.textContent = String(__prop_n) + " " + String(state.shown);
       for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
@@ -930,6 +945,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0) + " extra";
     }
@@ -1029,8 +1047,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/fyne --
-pass sha256:777b8828e8b149389ba6283c14c26657
+pass sha256:c6057287c0a68f1d68bfc28304c49039
 -- run/go/gtk4 --
-pass sha256:39308433b059d6e1d35862632f41427e
+pass sha256:e0a2d9afb7f6f5a072e294d735346897
 -- run/none/html --
-pass sha256:9f0bd7ddb6a7b470bacec53bc94a80be
+pass sha256:77e90db56d2fac7d03adb3ee9c8d2ac2

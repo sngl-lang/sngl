@@ -579,6 +579,9 @@ func new__child0Instance(__model *Model, __a___p0 float64) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v float64) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(fmt.Sprint(c.__prop___p0))
 }
@@ -764,6 +767,9 @@ func __child0__new(__p0 float64) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v float64) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkProgressBarSetFraction((cgo.PGtkProgressBar)(unsafe.Pointer(__self.__n0)), (__self.__prop___p0 / 1.0))
 }
@@ -1036,6 +1042,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.value = String(__prop___p0);
     }
@@ -1127,10 +1136,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:b8028d4c617082459f293c647af1ff7d
 -- run/go/fyne --
-pass sha256:69f310cdd0a6150e3475f0af33b97ac6
+pass sha256:be80dff2ac2f5d0e5f0b711b7da208eb
 -- run/go/gtk4 --
-pass sha256:0233bf38f0ff5a401277e2613ae67eaa
+pass sha256:b382bff69eef7f8a3fa2c5025b1662a8
 -- run/kotlin/android --
 pass sha256:07cb1ed97f4a9c906c0f5ba671658cb9
 -- run/none/html --
-pass sha256:b8085e7b705e4f161679f966cfb0bb14
+pass sha256:5fa9e8111f432ba8ffa0a0fb077b5154

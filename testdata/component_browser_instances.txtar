@@ -352,6 +352,9 @@ window.__sngl_boot = () => {
       __effect0_teardown();
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       shown.textContent = __prop_label + "[" + log.join(",") + "]";
       __effects0_settle();
@@ -379,6 +382,9 @@ window.__sngl_boot = () => {
     let __prop_onpick = onpick;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = "pick " + __prop_label + ":" + String(hits);
     }
@@ -412,10 +418,16 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "<" + __prop___p0.elem + __prop___p1 + ">";
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n1.textContent = "<" + __prop___p0.elem + __prop___p1 + ">";
     }
@@ -673,9 +685,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:b0dbd8f02df4661e2982dc64480dec59
+pass sha256:1e3d1dc335dda80c9052c53b3b9fecc2
 -- testrun/html/none/component_browser_instances.sngl/decorated/1 --
-sha256:284be2345f62be1ad2e0a085cee3a610
+sha256:0d3044e5839dd06307ea1dc8d3ca00b8
 {
   "results": [
     {
@@ -685,7 +697,7 @@ sha256:284be2345f62be1ad2e0a085cee3a610
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/factory/1 --
-sha256:676f656057d1b5e9d6f3588197e6376c
+sha256:64df499d20895fb4d4273f4437274086
 {
   "results": [
     {
@@ -695,7 +707,7 @@ sha256:676f656057d1b5e9d6f3588197e6376c
   ]
 }
 -- testrun/html/none/component_browser_instances.sngl/funcProp/1 --
-sha256:9606df82134a985c4e8cf6556b5b5323
+sha256:51ac89c55ccc4d3c756ce5dfb172e883
 {
   "results": [
     {

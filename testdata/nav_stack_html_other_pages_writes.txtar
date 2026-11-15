@@ -120,6 +120,9 @@ body { font-family: system-ui, sans-serif; }
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.selected = __prop___p0.value === __prop___p1;
     }
@@ -290,6 +293,9 @@ body { font-family: system-ui, sans-serif; }
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.selected = __prop___p0.value === __prop___p1;
     }
@@ -385,4 +391,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:928ffee4635435ba12bcabbaac74e639
+pass sha256:90c15018af4ea122efec2d212392514a

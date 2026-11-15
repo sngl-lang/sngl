@@ -12,6 +12,12 @@ stdout 'ok   4 tests, 0 failures'
 sngl test --platform html app.sngl
 stdout 'ok   4 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok   4 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   4 tests, 0 failures'
+
 -- app.sngl --
 import . "sngl:ui"
 import . "sngl:test"
@@ -86,6 +92,28 @@ sha256:7e064cfcdeb50014c09c5573ec58db57
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/Greeter/1 --
+sha256:77b7eb97f49d319241239004ab6e34a4
+{
+  "results": [
+    {
+      "Desc": "Literal",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedStruct",
+      "Passed": true
+    },
+    {
+      "Desc": "ComputedOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "Translated",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/Greeter/1 --
 sha256:c73cf209e52f1910488e29af90694620
 {
@@ -100,6 +128,28 @@ sha256:c73cf209e52f1910488e29af90694620
     },
     {
       "Desc": "NamedStruct",
+      "Passed": true
+    },
+    {
+      "Desc": "Translated",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/Greeter/1 --
+sha256:01e046094db0c0281c9f4c65f243163a
+{
+  "results": [
+    {
+      "Desc": "Literal",
+      "Passed": true
+    },
+    {
+      "Desc": "NamedStruct",
+      "Passed": true
+    },
+    {
+      "Desc": "ComputedOnce",
       "Passed": true
     },
     {

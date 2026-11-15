@@ -310,6 +310,9 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 }
 
 func (c *RowInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.__n3.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
 }
@@ -625,6 +628,9 @@ func Row__effects0_settle(__self *Row__inst) {
 }
 
 func Row__set_label(__self *Row__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.SnglTextSetValue(__self.__n2, ((((__self.__prop_label + " ") + fmt.Sprint(__self.On)) + " ") + __self.Typed))
 }
@@ -772,6 +778,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:5967620f7749466696573ab916db7283
+pass sha256:0746e6044180c7a4a3afe84ce415da29
 -- run/go/gtk4 --
-pass sha256:6abec71ab20a6b644716cb54caa69660
+pass sha256:803c08351a2946cb7da262c289791294

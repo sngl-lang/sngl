@@ -542,25 +542,28 @@ type Look struct {
 }
 
 type snglState struct {
-	shown               bool
-	n                   int
-	ticks               int
-	handle__inst0       cgo.Schedule
-	visible__inst0      bool
-	__effect0_key       time.Duration
-	__effect0_live      []time.Duration
-	__effect0_desired   []time.Duration
-	__effect1_live      []bool
-	__effect1_desired   []bool
-	__effect2_key       string
-	__effect2_live      []string
-	__effect2_desired   []string
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_torn     bool
-	__effects0_steps    int
-	__n0                cgo.Widget
-	__n1                cgo.Widget
+	shown                  bool
+	n                      int
+	ticks                  int
+	handle__inst0          cgo.Schedule
+	visible__inst0         bool
+	__effect0_key          time.Duration
+	__effect0_live         []time.Duration
+	__effect0_desired      []time.Duration
+	__effect1_live         []bool
+	__effect1_desired      []bool
+	__effect2_key          string
+	__effect2_live         []string
+	__effect2_desired      []string
+	__effects0_settling    bool
+	__effects0_pending     bool
+	__effects0_torn        bool
+	__effects0_steps       int
+	__memoEpoch            int
+	__memo___bar_members   []Entry
+	__memoAt___bar_members int
+	__n0                   cgo.Widget
+	__n1                   cgo.Widget
 }
 
 var m = &snglState{}
@@ -574,9 +577,14 @@ func Encode(members []Entry) string {
 }
 
 func __bar_members() []Entry {
+	if m.__memoAt___bar_members == m.__memoEpoch {
+		return m.__memo___bar_members
+	}
 	__members := []Entry{}
 	__members = append(__members, Entry{Full: ("n=" + fmt.Sprint(m.n))})
-	return __members
+	m.__memo___bar_members = __members
+	m.__memoAt___bar_members = m.__memoEpoch
+	return m.__memo___bar_members
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -615,10 +623,12 @@ func __effect0_mount() {
 		}
 		if m.ticks < 4 {
 			m.n += 1
+			m.__memoEpoch = (m.__memoEpoch + 1)
 			cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 		}
 		if m.ticks == 4 {
 			m.n += 1
+			m.__memoEpoch = (m.__memoEpoch + 1)
 			cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
 		}
 		__effects0_settle()
@@ -773,6 +783,9 @@ func snglInit() {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
+	m.__memoEpoch = 0
+	m.__memo___bar_members = []Entry{}
+	m.__memoAt___bar_members = -1
 }
 
 func snglBuild() {
@@ -821,4 +834,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:139a5aacbd0aa0a6b5456875662cccdd
 -- run/go/gtk4 --
-pass sha256:2c2669024e0090836673d18da4e9809e
+pass sha256:6c37d310f24381316bf02e68f9514345

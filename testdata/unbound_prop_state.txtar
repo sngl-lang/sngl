@@ -1080,10 +1080,16 @@ func new__checkbox_state3Instance(__model *Model, __a___start_checked bool, __a_
 }
 
 func (c *__checkbox_state3Instance) Set__start_checked(__v bool) {
+	if c.__prop___start_checked == __v {
+		return
+	}
 	c.__prop___start_checked = __v
 }
 
 func (c *__checkbox_state3Instance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.__n0.SetText(c.__prop_label)
 }
@@ -1375,6 +1381,9 @@ func __checkbox_state3__new(__start_checked bool, label string) *__checkbox_stat
 }
 
 func __checkbox_state3__set_label(__self *__checkbox_state3__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkCheckButtonSetLabel((cgo.PGtkCheckButton)(unsafe.Pointer(__self.__n0)), snglSome(__self.__prop_label))
 }
@@ -1793,9 +1802,15 @@ body { font-family: system-ui, sans-serif; }
     let __prop_label = label;
     let checked = __prop___start_checked;
     function __set___start_checked(__v) {
+      if (__prop___start_checked === __v) {
+        return;
+      }
       __prop___start_checked = __v;
     }
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n1.textContent = __prop_label;
     }
@@ -1918,10 +1933,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:fedfa288766d32c24583714d19235189
 -- run/go/fyne --
-pass sha256:a6bdbd4959459991a2d7ac228dedaede
+pass sha256:9eb331b83b6dbbad029f3990126e6867
 -- run/go/gtk4 --
-pass sha256:abe05c0e35dd50fe03c9cfe5e9e0eb9d
+pass sha256:0936b3dc37213c8830c121e978cb6e26
 -- run/kotlin/android --
 pass sha256:ddc65caf1c45c088c67db687554f5fb4
 -- run/none/html --
-pass sha256:e1307f2289e979309fdea4bd54268566
+pass sha256:6aebdde2e667a8917b41078386424894

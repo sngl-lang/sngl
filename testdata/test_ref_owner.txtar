@@ -1400,6 +1400,9 @@ func newBadgeInstance(__model *Model, __a_label string) *BadgeInstance {
 }
 
 func (c *BadgeInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.hit.SetText((c.__prop_label + fmt.Sprint(c.hits)))
 }
@@ -1563,6 +1566,9 @@ func new__child0Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 }
 
 func (c *__child0Instance) Set__p0(__v int) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.k__own0.SetText(("pk" + fmt.Sprint(c.__prop___p0)))
 }
@@ -1600,6 +1606,9 @@ func new__child1Instance(__model *Model, __a___p0 int, __a___on0 func()) *__chil
 }
 
 func (c *__child1Instance) Set__p0(__v int) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.k.SetText(("mk" + fmt.Sprint(c.__prop___p0)))
 }
@@ -1796,6 +1805,9 @@ func Badge__new(label string) *Badge__inst {
 }
 
 func Badge__set_label(__self *Badge__inst, __v string) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), (__self.__prop_label + fmt.Sprint(__self.Hits)))
 }
@@ -1960,6 +1972,9 @@ func __child0__new(__p0 int, __on0 func()) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.K__own0)), ("pk" + fmt.Sprint(__self.__prop___p0)))
 }
@@ -1987,6 +2002,9 @@ func __child1__new(__p0 int, __on0 func()) *__child1__inst {
 }
 
 func __child1__set___p0(__self *__child1__inst, __v int) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.K)), ("mk" + fmt.Sprint(__self.__prop___p0)))
 }
@@ -2680,6 +2698,9 @@ window.__sngl_boot = () => {
     let __prop_label = label;
     let hits = 0;
     function __set_label(__v) {
+      if (__prop_label === __v) {
+        return;
+      }
       __prop_label = __v;
       __n0.textContent = __prop_label + String(hits);
     }
@@ -2855,6 +2876,9 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n1.textContent = "pk" + String(__prop___p0);
     }
@@ -2890,6 +2914,9 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.textContent = "mk" + String(__prop___p0);
     }
@@ -3114,10 +3141,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:e0efb4c501799b8d30410fe24ca03379
 -- run/go/fyne --
-pass sha256:fbd7cd3f456da9036f5e4e7bfb4de52e
+pass sha256:65cf794624d619021069b792f7569c76
 -- run/go/gtk4 --
-pass sha256:07433174a4a5d71e88a6a66a03569aae
+pass sha256:ca3cb0ba6df4f691f2fc3c6567bb3036
 -- run/kotlin/android --
 pass sha256:63425cdbfc34bf9fb90e62ac2e364a39
 -- run/none/html --
-pass sha256:7ee5d681144c194189d540194990f676
+pass sha256:75cdac70ab39124dddcae7208ce3ee2e

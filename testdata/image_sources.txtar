@@ -1105,11 +1105,17 @@ func new__child0Instance(__model *Model, __a___p0 bool, __a___p1 string, __a___o
 }
 
 func (c *__child0Instance) Set__p0(__v bool) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__renderSlot0(c.__n3.Box)
 }
 
 func (c *__child0Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__renderSlot0(c.__n3.Box)
 }
@@ -1665,9 +1671,10 @@ func __remote_state1__snglTeardown(__self *__remote_state1__inst) {
 }
 
 func __remote_state1__set_url(__self *__remote_state1__inst, __v string) {
-	if __self.__prop_url != __v {
-		__self.__effect5_dirty = true
+	if __self.__prop_url == __v {
+		return
 	}
+	__self.__effect5_dirty = true
 	__self.__prop_url = __v
 	cgo.SnglImageSourceSetUrl(__self.__n0, __self.__prop_url)
 	__remote_state1__effects1_settle(__self)
@@ -1696,11 +1703,17 @@ func __child0__new(__p0 bool, __p1 string, __on0 func()) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v bool) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	__child0__renderSlot0(__self, __self.Frame__3)
 }
 
 func __child0__set___p1(__self *__child0__inst, __v string) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	for __inst1_live_ui, _ := range __self.__inst1_live {
 		__remote_state1__set_url(__self.__inst1_live[__inst1_live_ui], __self.__prop___p1)
@@ -2657,10 +2670,16 @@ body { font-family: system-ui, sans-serif; }
     let __rendering0 = false;
     let __renderAgain0 = false;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __renderSlot0(__slotAnchor_0);
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __renderSlot0(__slotAnchor_0);
     }
@@ -2938,10 +2957,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:de50de046fa35ea9a2c763a8fbea5b84
 -- run/go/fyne --
-pass sha256:589f2bb9edde32d1acd05a31b6651f89
+pass sha256:c0ce8b5d6eeb32a74db74f654b9fecbb
 -- run/go/gtk4 --
-pass sha256:a792d190194c70bb6badfc12ab6e53e2
+pass sha256:2372cf4fed1532c04d569c3a480fdc04
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --
-pass sha256:b4f809651576a44a9f69dda4f562a089
+pass sha256:18f288defad192beea52e410e05fa7f5

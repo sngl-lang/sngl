@@ -647,6 +647,9 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 }
 
 func (c *RowInstance) SetLabel(__v string) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.__n0.SetText(c.__prop_label)
 }
@@ -685,11 +688,17 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(c.__prop___p0.Elem)
 }
 
 func (c *__child0Instance) Set__p1(__v int) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	var __lt14 snglcolor.Color
 	if c.__prop___p1 == 0 {
@@ -711,4 +720,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:23e1d88aed21448875f099ed61f0a400
+pass sha256:0549fdc4a241088caadf434adcb8ec90

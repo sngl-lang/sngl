@@ -806,6 +806,9 @@ func (c *CardInstance) Destroy() {
 }
 
 func (c *CardInstance) SetName(__v string) {
+	if c.__prop_name == __v {
+		return
+	}
 	c.__prop_name = __v
 	var __lt15 string
 	if c.length != nil {
@@ -1400,6 +1403,9 @@ func Card__snglTeardown(__self *Card__inst) {
 }
 
 func Card__set_name(__self *Card__inst, __v string) {
+	if __self.__prop_name == __v {
+		return
+	}
 	__self.__prop_name = __v
 	var __lt25 string
 	if __self.Length != nil {
@@ -1524,6 +1530,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:1c148b6aa5d8292198e90775cee346f3
+pass sha256:2621a4492fb706768f9612243d70105c
 -- run/go/gtk4 --
-pass sha256:32535fcdcdf20d9fbd5839e994a13944
+pass sha256:06b0026438fb6e01870c91962c04ee15

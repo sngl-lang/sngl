@@ -954,12 +954,18 @@ func new__child0Instance(__model *Model, __a___p0 Choice__record__string, __a___
 }
 
 func (c *__child0Instance) Set__p0(__v Choice__record__string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(c.__prop___p0.Label)
 	c.__n0.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
 
 func (c *__child0Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n0.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
@@ -999,12 +1005,18 @@ func new__child1Instance(__model *Model, __a___p0 Choice__record__string, __a___
 }
 
 func (c *__child1Instance) Set__p0(__v Choice__record__string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n1.SetText(c.__prop___p0.Label)
 	c.__n1.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
 
 func (c *__child1Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n1.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
@@ -1044,12 +1056,18 @@ func new__child2Instance(__model *Model, __a___p0 Choice__record__string, __a___
 }
 
 func (c *__child2Instance) Set__p0(__v Choice__record__string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n2.SetText(c.__prop___p0.Label)
 	c.__n2.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
 
 func (c *__child2Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n2.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
@@ -1089,12 +1107,18 @@ func new__child3Instance(__model *Model, __a___p0 Choice__record__string, __a___
 }
 
 func (c *__child3Instance) Set__p0(__v Choice__record__string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n3.SetText(c.__prop___p0.Label)
 	c.__n3.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
 
 func (c *__child3Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.__n3.SetChecked((c.__prop___p0.Value == c.__prop___p1))
 }
@@ -1344,6 +1368,9 @@ window.__sngl_boot = () => {
       __n1.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.checked = __prop___p0.value === __prop___p1;
     }
@@ -1470,13 +1497,13 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:049398543ec2396c6d286d4c100ea761
 -- run/go/fyne --
-pass sha256:008321b725cb97a1823d8cbe7ed42aab
+pass sha256:09ddfd461723067ea7c434695a788c50
 -- run/kotlin/android --
 pass sha256:c4024c3e85dfc9b32beb0251c0affb02
 -- run/none/html --
-pass sha256:268d8891bdcd132a179bf2bf897a3f0e
+pass sha256:2e6e7099bb667ed52d55090c46931d41
 -- testrun/html/none/component_radio.sngl/main/1 --
-sha256:43bcf41b22da0e0db52d663982af0da2
+sha256:63572b27ec965e77e9a0874cb93a2de3
 {
   "results": [
     {

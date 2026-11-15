@@ -1404,22 +1404,27 @@ func (c *PrefsInstance) __effects0_settle() {
 }
 
 func (c *PrefsInstance) Set__ctx_store(__v Store) {
+	if func(_a1, _b2 Store) bool { return snglOptEqual(_a1.Scope, _b2.Scope) && (_a1.Place == _b2.Place) }(c.__prop___ctx_store, __v) {
+		return
+	}
 	c.__prop___ctx_store = __v
 	c.__effects0_settle()
 }
 
 func (c *PrefsInstance) Set__on_language(__v *string) {
-	if !snglOptEqual(c.__prop___on_language, __v) {
-		c.__effect1_dirty = true
+	if snglOptEqual(c.__prop___on_language, __v) {
+		return
 	}
+	c.__effect1_dirty = true
 	c.__prop___on_language = __v
 	c.__effects0_settle()
 }
 
 func (c *PrefsInstance) Set__on_count(__v *int) {
-	if !snglOptEqual(c.__prop___on_count, __v) {
-		c.__effect3_dirty = true
+	if snglOptEqual(c.__prop___on_count, __v) {
+		return
 	}
+	c.__effect3_dirty = true
 	c.__prop___on_count = __v
 	c.__effects0_settle()
 }
@@ -3291,7 +3296,7 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:90500e10b2d9498976150f932322dd09
 -- run/go/fyne --
-pass sha256:e1028181e40d69803ac6b3cac168815e
+pass sha256:28fa15432e4ff45e4c7be2165f35d421
 -- run/go/gtk4 --
 pass sha256:38c542452203910c0a58dd48f9f07d98
 -- run/kotlin/android --

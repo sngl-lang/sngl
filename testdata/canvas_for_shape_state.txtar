@@ -238,12 +238,17 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v);
 static void sngl_map_string__int__drop(sngl_map_string__int v);
+static void sngl_map_string__int__unshare(sngl_map_string__int *l);
+static void sngl_list_string__unshare(sngl_list_string *l);
+static void sngl_map_string__pic__unshare(sngl_map_string__pic *l);
 static void s___effect1_mount(void);
+static void sngl_map_string____anon_copy_v0_2d5b73__unshare(sngl_map_string____anon_copy_v0_2d5b73 *l);
 static s___anon_copy_v0_2d5b73 s___anon_copy_v0_2d5b73__keep(s___anon_copy_v0_2d5b73 v);
 static void s___anon_copy_v0_2d5b73__drop(s___anon_copy_v0_2d5b73 v);
 static void s___effect1_down(void);
 static sngl_list___anon_copy_v0_2d5b73 sngl_list___anon_copy_v0_2d5b73__keep(sngl_list___anon_copy_v0_2d5b73 v);
 static void sngl_list___anon_copy_v0_2d5b73__drop(sngl_list___anon_copy_v0_2d5b73 v);
+static void sngl_list___anon_copy_v0_2d5b73__unshare(sngl_list___anon_copy_v0_2d5b73 *l);
 static void s___effect1_up(void);
 static void s___effect2_unmount(void);
 static void s___effect2_down(void);
@@ -307,7 +312,8 @@ static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static void sngl_list___anon_id_elem_4ccb28_grow(sngl_list___anon_id_elem_4ccb28 *l, int64_t n) {
@@ -335,47 +341,60 @@ static void sngl_list___anon_id_elem_4ccb28_push(sngl_list___anon_id_elem_4ccb28
 }
 
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
-	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = sngl_string_keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = sngl_string_keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list_string__drop(sngl_list_string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.data[i]).ptr);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.data[i]).ptr);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__int__drop(sngl_map_string__int v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
@@ -385,7 +404,33 @@ static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
 	return &l.data[i];
 }
 
+static void sngl_map_string__int__unshare(sngl_map_string__int *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string__int v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+	}
+	*l = v;
+}
+
 static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_string k) {
+	sngl_map_string__int__unshare(m);
 	int64_t i = sngl_map_string__int_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -406,7 +451,29 @@ static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_str
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
+}
+
+static void sngl_list_string__unshare(sngl_list_string *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_string v = *l;
+	sngl_let_go_shared(v.data);
+	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = sngl_string_keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
@@ -430,8 +497,10 @@ static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
 }
 
 static void sngl_list_string_push_kept(sngl_list_string *l, sngl_string v) {
+	sngl_list_string__unshare(l);
 	sngl_list_string_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t sngl_map_string__pic_find(sngl_map_string__pic m, sngl_string k) {
@@ -448,7 +517,33 @@ static s_pic sngl_map_string__pic_get(sngl_map_string__pic m, sngl_string k, s_p
 	return i < 0 ? otherwise : m.vals[i];
 }
 
+static void sngl_map_string__pic__unshare(sngl_map_string__pic *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string__pic v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	s_pic *vals = sngl_keep_alloc(sizeof(s_pic) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(s_pic) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+	}
+	*l = v;
+}
+
 static s_pic *sngl_map_string__pic_slot_kept(sngl_map_string__pic *m, sngl_string k) {
+	sngl_map_string__pic__unshare(m);
 	int64_t i = sngl_map_string__pic_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -469,7 +564,10 @@ static s_pic *sngl_map_string__pic_slot_kept(sngl_map_string__pic *m, sngl_strin
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(s_pic));
-	return &m->vals[m->len++];
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
 }
 
 static int64_t sngl_map_string____anon_copy_v0_2d5b73_find(sngl_map_string____anon_copy_v0_2d5b73 m, sngl_string k) {
@@ -481,7 +579,40 @@ static int64_t sngl_map_string____anon_copy_v0_2d5b73_find(sngl_map_string____an
 	return -1;
 }
 
+static s___anon_copy_v0_2d5b73 s___anon_copy_v0_2d5b73__keep(s___anon_copy_v0_2d5b73 v) {
+	v.copy = sngl_string_keep(v.copy);
+	v.v0 = sngl_string_keep(v.v0);
+	return v;
+}
+
+static void sngl_map_string____anon_copy_v0_2d5b73__unshare(sngl_map_string____anon_copy_v0_2d5b73 *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string____anon_copy_v0_2d5b73 v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	s___anon_copy_v0_2d5b73 *vals = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+		v.vals[i] = s___anon_copy_v0_2d5b73__keep(v.vals[i]);
+	}
+	*l = v;
+}
+
 static s___anon_copy_v0_2d5b73 *sngl_map_string____anon_copy_v0_2d5b73_slot_kept(sngl_map_string____anon_copy_v0_2d5b73 *m, sngl_string k) {
+	sngl_map_string____anon_copy_v0_2d5b73__unshare(m);
 	int64_t i = sngl_map_string____anon_copy_v0_2d5b73_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -502,13 +633,10 @@ static s___anon_copy_v0_2d5b73 *sngl_map_string____anon_copy_v0_2d5b73_slot_kept
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(s___anon_copy_v0_2d5b73));
-	return &m->vals[m->len++];
-}
-
-static s___anon_copy_v0_2d5b73 s___anon_copy_v0_2d5b73__keep(s___anon_copy_v0_2d5b73 v) {
-	v.copy = sngl_string_keep(v.copy);
-	v.v0 = sngl_string_keep(v.v0);
-	return v;
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
 }
 
 static void s___anon_copy_v0_2d5b73__drop(s___anon_copy_v0_2d5b73 v) {
@@ -517,23 +645,47 @@ static void s___anon_copy_v0_2d5b73__drop(s___anon_copy_v0_2d5b73 v) {
 }
 
 static sngl_list___anon_copy_v0_2d5b73 sngl_list___anon_copy_v0_2d5b73__keep(sngl_list___anon_copy_v0_2d5b73 v) {
-	s___anon_copy_v0_2d5b73 *data = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = s___anon_copy_v0_2d5b73__keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		s___anon_copy_v0_2d5b73 *data = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s___anon_copy_v0_2d5b73__keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list___anon_copy_v0_2d5b73__drop(sngl_list___anon_copy_v0_2d5b73 v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	s___anon_copy_v0_2d5b73__drop(v.data[i]);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s___anon_copy_v0_2d5b73__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
+}
+
+static void sngl_list___anon_copy_v0_2d5b73__unshare(sngl_list___anon_copy_v0_2d5b73 *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list___anon_copy_v0_2d5b73 v = *l;
+	sngl_let_go_shared(v.data);
+	s___anon_copy_v0_2d5b73 *data = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s___anon_copy_v0_2d5b73__keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list___anon_copy_v0_2d5b73_grow_kept(sngl_list___anon_copy_v0_2d5b73 *l, int64_t n) {
@@ -557,8 +709,10 @@ static void sngl_list___anon_copy_v0_2d5b73_grow_kept(sngl_list___anon_copy_v0_2
 }
 
 static void sngl_list___anon_copy_v0_2d5b73_push_kept(sngl_list___anon_copy_v0_2d5b73 *l, s___anon_copy_v0_2d5b73 v) {
+	sngl_list___anon_copy_v0_2d5b73__unshare(l);
 	sngl_list___anon_copy_v0_2d5b73_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static s___anon_copy_v0_2d5b73 *sngl_list___anon_copy_v0_2d5b73_at(sngl_list___anon_copy_v0_2d5b73 l, int64_t i) {
@@ -615,33 +769,42 @@ static s___anon_copy_on_5fc366 *sngl_map_string____anon_copy_on_5fc366_slot(sngl
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(s___anon_copy_on_5fc366));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static sngl_map_string____anon_copy_on_5fc366 sngl_map_string____anon_copy_on_5fc366__keep(sngl_map_string____anon_copy_on_5fc366 v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s___anon_copy_on_5fc366 *vals = sngl_keep_alloc(sizeof(s___anon_copy_on_5fc366) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s___anon_copy_on_5fc366) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
-	v.vals[i] = s___anon_copy_on_5fc366__keep(v.vals[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s___anon_copy_on_5fc366 *vals = sngl_keep_alloc(sizeof(s___anon_copy_on_5fc366) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s___anon_copy_on_5fc366) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+			v.vals[i] = s___anon_copy_on_5fc366__keep(v.vals[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string____anon_copy_on_5fc366__drop(sngl_map_string____anon_copy_on_5fc366 v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
-	s___anon_copy_on_5fc366__drop(v.vals[i]);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+			s___anon_copy_on_5fc366__drop(v.vals[i]);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
@@ -651,37 +814,48 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 }
 
 static sngl_list_float sngl_list_float__keep(sngl_list_float v) {
-	double *data = sngl_keep_alloc(sizeof(double) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(double) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		double *data = sngl_keep_alloc(sizeof(double) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(double) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static sngl_map_string__pic sngl_map_string__pic__keep(sngl_map_string__pic v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s_pic *vals = sngl_keep_alloc(sizeof(s_pic) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s_pic) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s_pic *vals = sngl_keep_alloc(sizeof(s_pic) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s_pic) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__pic__drop(sngl_map_string__pic v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static void s___ref_map_string_pic__release(void *p) {
@@ -697,18 +871,24 @@ static void s___ref_map_string_pic__rekeep(void *p) {
 }
 
 static sngl_map_string____anon_copy_v0_2d5b73 sngl_map_string____anon_copy_v0_2d5b73__keep(sngl_map_string____anon_copy_v0_2d5b73 v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s___anon_copy_v0_2d5b73 *vals = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
-	v.vals[i] = s___anon_copy_v0_2d5b73__keep(v.vals[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s___anon_copy_v0_2d5b73 *vals = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+			v.vals[i] = s___anon_copy_v0_2d5b73__keep(v.vals[i]);
+		}
 	}
 	return v;
 }
@@ -720,7 +900,9 @@ static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
 }
 
 static void sngl_list_float__drop(sngl_list_float v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static void s___lambda0_caps__drop(s___lambda0_caps v) {
@@ -1247,6 +1429,7 @@ int main(void) {
 -- out/c/gtk4/sngl.build --
 # What this program links, which `sngl build` reads.
 pkg-config gtk4
+pkg-config libcurl
 flag -lm
 -- out/c/gtk4/sngl_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -1401,12 +1584,17 @@ static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v);
 static void sngl_map_string__int__drop(sngl_map_string__int v);
+static void sngl_map_string__int__unshare(sngl_map_string__int *l);
+static void sngl_list_string__unshare(sngl_list_string *l);
+static void sngl_map_string__pic__unshare(sngl_map_string__pic *l);
 static void s___effect1_mount(void);
+static void sngl_map_string____anon_copy_v0_2d5b73__unshare(sngl_map_string____anon_copy_v0_2d5b73 *l);
 static s___anon_copy_v0_2d5b73 s___anon_copy_v0_2d5b73__keep(s___anon_copy_v0_2d5b73 v);
 static void s___anon_copy_v0_2d5b73__drop(s___anon_copy_v0_2d5b73 v);
 static void s___effect1_down(void);
 static sngl_list___anon_copy_v0_2d5b73 sngl_list___anon_copy_v0_2d5b73__keep(sngl_list___anon_copy_v0_2d5b73 v);
 static void sngl_list___anon_copy_v0_2d5b73__drop(sngl_list___anon_copy_v0_2d5b73 v);
+static void sngl_list___anon_copy_v0_2d5b73__unshare(sngl_list___anon_copy_v0_2d5b73 *l);
 static void s___effect1_up(void);
 static void s___effect2_unmount(void);
 static void s___effect2_down(void);
@@ -1470,7 +1658,8 @@ static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static void sngl_list___anon_id_elem_4ccb28_grow(sngl_list___anon_id_elem_4ccb28 *l, int64_t n) {
@@ -1498,47 +1687,60 @@ static void sngl_list___anon_id_elem_4ccb28_push(sngl_list___anon_id_elem_4ccb28
 }
 
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
-	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = sngl_string_keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = sngl_string_keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list_string__drop(sngl_list_string v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.data[i]).ptr);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.data[i]).ptr);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
 }
 
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__int__drop(sngl_map_string__int v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
@@ -1548,7 +1750,33 @@ static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
 	return &l.data[i];
 }
 
+static void sngl_map_string__int__unshare(sngl_map_string__int *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string__int v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(int64_t) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+	}
+	*l = v;
+}
+
 static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_string k) {
+	sngl_map_string__int__unshare(m);
 	int64_t i = sngl_map_string__int_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -1569,7 +1797,29 @@ static int64_t *sngl_map_string__int_slot_kept(sngl_map_string__int *m, sngl_str
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
-	return &m->vals[m->len++];
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
+}
+
+static void sngl_list_string__unshare(sngl_list_string *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_string v = *l;
+	sngl_let_go_shared(v.data);
+	sngl_string *data = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = sngl_string_keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
@@ -1593,8 +1843,10 @@ static void sngl_list_string_grow_kept(sngl_list_string *l, int64_t n) {
 }
 
 static void sngl_list_string_push_kept(sngl_list_string *l, sngl_string v) {
+	sngl_list_string__unshare(l);
 	sngl_list_string_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t sngl_map_string__pic_find(sngl_map_string__pic m, sngl_string k) {
@@ -1611,7 +1863,33 @@ static s_pic sngl_map_string__pic_get(sngl_map_string__pic m, sngl_string k, s_p
 	return i < 0 ? otherwise : m.vals[i];
 }
 
+static void sngl_map_string__pic__unshare(sngl_map_string__pic *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string__pic v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	s_pic *vals = sngl_keep_alloc(sizeof(s_pic) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(s_pic) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+	}
+	*l = v;
+}
+
 static s_pic *sngl_map_string__pic_slot_kept(sngl_map_string__pic *m, sngl_string k) {
+	sngl_map_string__pic__unshare(m);
 	int64_t i = sngl_map_string__pic_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -1632,7 +1910,10 @@ static s_pic *sngl_map_string__pic_slot_kept(sngl_map_string__pic *m, sngl_strin
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(s_pic));
-	return &m->vals[m->len++];
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
 }
 
 static int64_t sngl_map_string____anon_copy_v0_2d5b73_find(sngl_map_string____anon_copy_v0_2d5b73 m, sngl_string k) {
@@ -1644,7 +1925,40 @@ static int64_t sngl_map_string____anon_copy_v0_2d5b73_find(sngl_map_string____an
 	return -1;
 }
 
+static s___anon_copy_v0_2d5b73 s___anon_copy_v0_2d5b73__keep(s___anon_copy_v0_2d5b73 v) {
+	v.copy = sngl_string_keep(v.copy);
+	v.v0 = sngl_string_keep(v.v0);
+	return v;
+}
+
+static void sngl_map_string____anon_copy_v0_2d5b73__unshare(sngl_map_string____anon_copy_v0_2d5b73 *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_string____anon_copy_v0_2d5b73 v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	s___anon_copy_v0_2d5b73 *vals = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.keys[i] = sngl_string_keep(v.keys[i]);
+		v.vals[i] = s___anon_copy_v0_2d5b73__keep(v.vals[i]);
+	}
+	*l = v;
+}
+
 static s___anon_copy_v0_2d5b73 *sngl_map_string____anon_copy_v0_2d5b73_slot_kept(sngl_map_string____anon_copy_v0_2d5b73 *m, sngl_string k) {
+	sngl_map_string____anon_copy_v0_2d5b73__unshare(m);
 	int64_t i = sngl_map_string____anon_copy_v0_2d5b73_find(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
@@ -1665,13 +1979,10 @@ static s___anon_copy_v0_2d5b73 *sngl_map_string____anon_copy_v0_2d5b73_slot_kept
 	}
 	m->keys[m->len] = sngl_string_keep(k);
 	memset(&m->vals[m->len], 0, sizeof(s___anon_copy_v0_2d5b73));
-	return &m->vals[m->len++];
-}
-
-static s___anon_copy_v0_2d5b73 s___anon_copy_v0_2d5b73__keep(s___anon_copy_v0_2d5b73 v) {
-	v.copy = sngl_string_keep(v.copy);
-	v.v0 = sngl_string_keep(v.v0);
-	return v;
+	m->len++;
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
+	return &m->vals[m->len - 1];
 }
 
 static void s___anon_copy_v0_2d5b73__drop(s___anon_copy_v0_2d5b73 v) {
@@ -1680,23 +1991,47 @@ static void s___anon_copy_v0_2d5b73__drop(s___anon_copy_v0_2d5b73 v) {
 }
 
 static sngl_list___anon_copy_v0_2d5b73 sngl_list___anon_copy_v0_2d5b73__keep(sngl_list___anon_copy_v0_2d5b73 v) {
-	s___anon_copy_v0_2d5b73 *data = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
-	}
-	v.data = data;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.data[i] = s___anon_copy_v0_2d5b73__keep(v.data[i]);
+	if (!sngl_share(v.data, v.len)) {
+		s___anon_copy_v0_2d5b73 *data = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s___anon_copy_v0_2d5b73__keep(v.data[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_list___anon_copy_v0_2d5b73__drop(sngl_list___anon_copy_v0_2d5b73 v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	s___anon_copy_v0_2d5b73__drop(v.data[i]);
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s___anon_copy_v0_2d5b73__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
 	}
-	sngl_drop(v.data);
+}
+
+static void sngl_list___anon_copy_v0_2d5b73__unshare(sngl_list___anon_copy_v0_2d5b73 *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list___anon_copy_v0_2d5b73 v = *l;
+	sngl_let_go_shared(v.data);
+	s___anon_copy_v0_2d5b73 *data = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s___anon_copy_v0_2d5b73__keep(v.data[i]);
+	}
+	*l = v;
 }
 
 static void sngl_list___anon_copy_v0_2d5b73_grow_kept(sngl_list___anon_copy_v0_2d5b73 *l, int64_t n) {
@@ -1720,8 +2055,10 @@ static void sngl_list___anon_copy_v0_2d5b73_grow_kept(sngl_list___anon_copy_v0_2
 }
 
 static void sngl_list___anon_copy_v0_2d5b73_push_kept(sngl_list___anon_copy_v0_2d5b73 *l, s___anon_copy_v0_2d5b73 v) {
+	sngl_list___anon_copy_v0_2d5b73__unshare(l);
 	sngl_list___anon_copy_v0_2d5b73_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static s___anon_copy_v0_2d5b73 *sngl_list___anon_copy_v0_2d5b73_at(sngl_list___anon_copy_v0_2d5b73 l, int64_t i) {
@@ -1778,33 +2115,42 @@ static s___anon_copy_on_5fc366 *sngl_map_string____anon_copy_on_5fc366_slot(sngl
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(s___anon_copy_on_5fc366));
-	return &m->vals[m->len++];
+	m->len++;
+	return &m->vals[m->len - 1];
 }
 
 static sngl_map_string____anon_copy_on_5fc366 sngl_map_string____anon_copy_on_5fc366__keep(sngl_map_string____anon_copy_on_5fc366 v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s___anon_copy_on_5fc366 *vals = sngl_keep_alloc(sizeof(s___anon_copy_on_5fc366) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s___anon_copy_on_5fc366) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
-	v.vals[i] = s___anon_copy_on_5fc366__keep(v.vals[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s___anon_copy_on_5fc366 *vals = sngl_keep_alloc(sizeof(s___anon_copy_on_5fc366) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s___anon_copy_on_5fc366) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+			v.vals[i] = s___anon_copy_on_5fc366__keep(v.vals[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string____anon_copy_on_5fc366__drop(sngl_map_string____anon_copy_on_5fc366 v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
-	s___anon_copy_on_5fc366__drop(v.vals[i]);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+			s___anon_copy_on_5fc366__drop(v.vals[i]);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
@@ -1814,37 +2160,48 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 }
 
 static sngl_list_float sngl_list_float__keep(sngl_list_float v) {
-	double *data = sngl_keep_alloc(sizeof(double) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(data, v.data, sizeof(double) * (size_t)v.len);
+	if (!sngl_share(v.data, v.len)) {
+		double *data = sngl_keep_alloc(sizeof(double) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(double) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
 	}
-	v.data = data;
-	v.cap = v.len;
 	return v;
 }
 
 static sngl_map_string__pic sngl_map_string__pic__keep(sngl_map_string__pic v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s_pic *vals = sngl_keep_alloc(sizeof(s_pic) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s_pic) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s_pic *vals = sngl_keep_alloc(sizeof(s_pic) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s_pic) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+		}
 	}
 	return v;
 }
 
 static void sngl_map_string__pic__drop(sngl_map_string__pic v) {
-	for (int64_t i = 0; i < v.len; i++) {
-	sngl_drop((v.keys[i]).ptr);
+	if (!sngl_let_go_shared_map(v.keys, v.vals)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			sngl_drop((v.keys[i]).ptr);
+		}
+		sngl_drop(v.keys);
+		sngl_drop(v.vals);
 	}
-	sngl_drop(v.keys);
-	sngl_drop(v.vals);
 }
 
 static void s___ref_map_string_pic__release(void *p) {
@@ -1860,18 +2217,24 @@ static void s___ref_map_string_pic__rekeep(void *p) {
 }
 
 static sngl_map_string____anon_copy_v0_2d5b73 sngl_map_string____anon_copy_v0_2d5b73__keep(sngl_map_string____anon_copy_v0_2d5b73 v) {
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
-	s___anon_copy_v0_2d5b73 *vals = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
-	if (v.len > 0) {
-		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
-		memcpy(vals, v.vals, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
-	}
-	v.keys = keys;
-	v.vals = vals;
-	v.cap = v.len;
-	for (int64_t i = 0; i < v.len; i++) {
-	v.keys[i] = sngl_string_keep(v.keys[i]);
-	v.vals[i] = s___anon_copy_v0_2d5b73__keep(v.vals[i]);
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		s___anon_copy_v0_2d5b73 *vals = sngl_keep_alloc(sizeof(s___anon_copy_v0_2d5b73) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(s___anon_copy_v0_2d5b73) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.keys[i] = sngl_string_keep(v.keys[i]);
+			v.vals[i] = s___anon_copy_v0_2d5b73__keep(v.vals[i]);
+		}
 	}
 	return v;
 }
@@ -1883,7 +2246,9 @@ static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
 }
 
 static void sngl_list_float__drop(sngl_list_float v) {
-	sngl_drop(v.data);
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
 }
 
 static void s___lambda0_caps__drop(s___lambda0_caps v) {
@@ -2413,6 +2778,7 @@ flag -luuid
 flag -lwindowscodecs
 flag -lurlmon
 flag -lgdiplus
+flag -lwinhttp
 target windows/amd64
 -- out/c/win32/sngl_win32_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -4890,9 +5256,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:66c55c1c8499ff13ab71607765004c88
+pass sha256:4f3537d547f4e6016bded04295ec85d1
 -- run/c/win32 --
-pass sha256:c30e3521a19c8b1d85081cc555a61f70
+pass sha256:c584d1248824ac217a663c744dd238ec
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --

@@ -1190,6 +1190,9 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(c.__prop___p0.Elem)
 }
@@ -1733,6 +1736,9 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __p1 Style) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Elem)
 }
@@ -2292,6 +2298,9 @@ body { display: flex; flex-direction: column; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
@@ -2592,10 +2601,10 @@ body { display: flex; flex-direction: column; }
 -- run/go/bubbletea --
 pass sha256:aa6af4182a68958e8229de1875a31091
 -- run/go/fyne --
-pass sha256:98b8d936dbba86d2831ba1b895fed845
+pass sha256:c61e669a06f5b9ad4accd954cb7670ab
 -- run/go/gtk4 --
-pass sha256:8a65fde6af171b96661dd19de5ef9a91
+pass sha256:30b93961b3d3e63cc8b1adf348eba631
 -- run/kotlin/android --
 pass sha256:b76f92b388604f774a86191396c56aad
 -- run/none/html --
-pass sha256:2df5e265e91b0009821ee2c29bf4db1c
+pass sha256:ce58c26103d5da316768171212f6ad6b

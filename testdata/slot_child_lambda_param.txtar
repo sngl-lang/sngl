@@ -282,6 +282,9 @@ func new__child0Instance(__model *Model, __a___p0 string, __a___on0 func(string)
 }
 
 func (c *__child0Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	if c.__n0.Selected != ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0) {
 		c.__n0.SetSelected(ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "a", Value: "a"}}, c.__prop___p0))
@@ -303,4 +306,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:4c9d886ca3c7c62c98f9831cf78ba5c6
+pass sha256:942ec45e82f05b26223b69483f636fed

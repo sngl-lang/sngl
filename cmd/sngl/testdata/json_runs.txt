@@ -20,6 +20,12 @@ stdout '5 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout '5 tests, 0 failures'
 
+sngl test --platform=gtk4 --language=c app.sngl
+stdout '5 tests, 0 failures'
+
+sngl test --platform=win32 --language=c app.sngl
+stdout '5 tests, 0 failures'
+
 -- app.sngl --
 // sngl:json reads text as a declared type and writes a value back: a field
 // named on the wire by its mark, an option a key that may be missing or null,
@@ -249,6 +255,38 @@ sha256:f2ce958f46dd51490644fbf70ea153df
     }
   ]
 }
+-- testrun/gtk4/c/app.sngl/_/1 --
+sha256:79e440112d160293492e5acd0b0ea787
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/panel/1 --
+sha256:6f2108484846d21fe646ecf2c1a5339f
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/gtk4/go/app.sngl/_/1 --
 sha256:1fa0033d1f5690bdc62a6bb4b9e63a67
 {
@@ -305,6 +343,38 @@ sha256:89db6126a1b138b5870981f00ebdb9f0
 }
 -- testrun/html/none/app.sngl/panel/1 --
 sha256:15e7e9b337e424569df004064d23d4d8
+{
+  "results": [
+    {
+      "Desc": "InAHandler",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/_/1 --
+sha256:24872f4a9d6d63b43090489db7921178
+{
+  "results": [
+    {
+      "Desc": "Decode",
+      "Passed": true
+    },
+    {
+      "Desc": "Encode",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Failures",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panel/1 --
+sha256:ab89c805d62ac21968183f2be858e66a
 {
   "results": [
     {

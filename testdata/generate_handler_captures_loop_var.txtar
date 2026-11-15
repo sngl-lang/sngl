@@ -430,6 +430,9 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __on0 func()) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), __self.__prop___p0.Elem)
 }
@@ -503,4 +506,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:a191199ae9b3da206bba637c03f9e80c
 -- run/go/gtk4 --
-pass sha256:6b5fd76c6332b431fc1876d7d26b5c63
+pass sha256:68e2e2ece9a9930f8de04c73b4ba0b7e

@@ -836,9 +836,10 @@ func (c *TickerInstance) Destroy() {
 }
 
 func (c *TickerInstance) SetPeriod(__v time.Duration) {
-	if c.__prop_period != __v {
-		c.__effect1_dirty = true
+	if c.__prop_period == __v {
+		return
 	}
+	c.__effect1_dirty = true
 	c.__prop_period = __v
 	c.__n0.SetText(((snglStrDuration(c.__prop_period) + ": ") + fmt.Sprint(c.ticks)))
 	c.__effects0_settle()
@@ -1142,6 +1143,9 @@ func Ticker__snglTeardown(__self *Ticker__inst) {
 }
 
 func Ticker__set_period(__self *Ticker__inst, __v time.Duration) {
+	if __self.__prop_period == __v {
+		return
+	}
 	__self.__prop_period = __v
 	cgo.SnglTextSetValue(__self.__n0, ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
 	Ticker__effects0_settle(__self)
@@ -1314,6 +1318,9 @@ body { font-family: system-ui, sans-serif; }
       __effect0_teardown();
     }
     function __set_period(__v) {
+      if (__prop_period === __v) {
+        return;
+      }
       __prop_period = __v;
       __n0.textContent = String(__prop_period) + "ms: " + String(ticks);
       __effects0_settle();
@@ -1408,8 +1415,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:c4ff801327ad0079021152036a5543d5
 -- run/go/fyne --
-pass sha256:3de47e5a130681563de01ff992160e5c
+pass sha256:10ace80ec14bb42ae17a9d7a24976b2e
 -- run/go/gtk4 --
-pass sha256:347ce59b877918783aae2d93875ac21f
+pass sha256:38a20df1b759cb70803bd4e92dcc9aa3
 -- run/none/html --
-pass sha256:794f6664817b0d702b02dc3eb273230e
+pass sha256:e43f6e18e58c49f6e8ea08afc2c97f4e

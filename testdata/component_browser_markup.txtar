@@ -368,6 +368,9 @@ window.__sngl_boot = () => {
       __n1.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n1.selected = __prop___p0.value === __prop___p1;
     }
@@ -401,6 +404,9 @@ window.__sngl_boot = () => {
       __n3.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n2.checked = __prop___p0.value === __prop___p1;
     }
@@ -444,17 +450,26 @@ window.__sngl_boot = () => {
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.label === b.label && a.disabled === b.disabled && a.__id === b.__id)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n4.textContent = __prop___p0.label;
       __n4.disabled = __prop___p0.disabled;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n4.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
       _snglSetStyles(__n4.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
       __n4.style.setProperty("font-weight", (__prop___p1 === __prop___p2 ? "bold" : "normal") === "normal" ? "normal" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bold" ? "bold" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "lighter" ? "lighter" : (__prop___p1 === __prop___p2 ? "bold" : "normal") === "bolder" ? "bolder" : "");
     }
     function __set___p2(__v) {
+      if (__prop___p2 === __v) {
+        return;
+      }
       __prop___p2 = __v;
       __n4.setAttribute("style", "padding-top:8px;padding-right:16px;padding-bottom:8px;padding-left:16px;background-color:#00000000;cursor:pointer");
       _snglSetStyles(__n4.style, [{ property: "border", value: "none" }, { property: "border-radius", value: "0px" }, { property: "border-bottom", value: __prop___p1 === __prop___p2 ? "2px solid currentColor" : "2px solid transparent" }]);
@@ -497,14 +512,23 @@ window.__sngl_boot = () => {
     let __rendering4 = false;
     let __renderAgain4 = false;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n5.hidden = __prop___p0 !== __prop___p1;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n5.hidden = __prop___p0 !== __prop___p1;
     }
     function __set___p2(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.label === b.label && a.disabled === b.disabled && a.__id === b.__id)(__prop___p2, __v)) {
+        return;
+      }
       __prop___p2 = __v;
       __renderSlot4(__slotAnchor_4);
     }
@@ -984,9 +1008,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:5d3d3782b11ef3978a1d9a8e1a8adb0b
+pass sha256:164f1eeebb79dfb4e843e8fc389dfeaf
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:d03802fef4ea51b1250cb9796ee5f283
+sha256:b5aed809b94c164a032b2fe2f2f0d8d6
 {
   "results": [
     {

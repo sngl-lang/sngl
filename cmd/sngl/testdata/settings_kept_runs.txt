@@ -21,6 +21,13 @@ stdout '^count 0$'
 sngl run --lang go --platform fyne app.sngl
 stdout '^count 1$'
 
+# C keeps them as Go does, in settings.json under $XDG_CONFIG_HOME/KeptC.
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+sngl run --lang c --platform gtk4 c.sngl
+stdout '^count 0$'
+sngl run --lang c --platform gtk4 c.sngl
+stdout '^count 1$'
+
 -- app.sngl --
 import go "sngl:language/go"
 import settings "sngl:settings"
@@ -62,6 +69,51 @@ ui.window {
     settings.kept(name="count", default=0, :value=count)
     ui.text(value=count != null ? "{count}" : "")
 }
+-- c.sngl --
+import c "sngl:x/c"
+import settings "sngl:settings"
+import time "sngl:time"
+import ui "sngl:ui"
+
+c.link(include="stdio.h")
+c.link(include="stdlib.h")
+
+#[c.native("puts")]
+func puts(s string) int
+
+#[c.native("exit")]
+func exit(code int)
+
+output(name="KeptC") {
+    c {
+        gtk4
+        win32
+    }
+}
+
+var count option[int] = null
+var ticks = 0
+
+// The first tick reports the count the window mounted with and keeps one
+// more; the second, after that write was kept, ends the run.
+time.timer(interval=200ms, @tick {
+    ticks += 1
+    if ticks == 1 {
+        var n = count
+        if n != null {
+            puts("count {n}")
+            count = n + 1
+        }
+    } else {
+        exit(0)
+    }
+})
+
+ui.window {
+    settings.kept(name="count", default=0, :value=count)
+    ui.text(value=count != null ? "{count}" : "")
+}
+
 -- testrun/run/fyne/go/app.sngl/1 --
 sha256:02dca1fb1aa5ecdcea7245f3f02ac43b
 {
@@ -69,6 +121,16 @@ sha256:02dca1fb1aa5ecdcea7245f3f02ac43b
 }
 -- testrun/run/fyne/go/app.sngl/2 --
 sha256:02dca1fb1aa5ecdcea7245f3f02ac43b
+{
+  "stdout": "count 1\n"
+}
+-- testrun/run/gtk4/c/c.sngl/1 --
+sha256:232886dcfbd5dca793eda1e8f8122722
+{
+  "stdout": "count 0\n"
+}
+-- testrun/run/gtk4/c/c.sngl/2 --
+sha256:232886dcfbd5dca793eda1e8f8122722
 {
   "stdout": "count 1\n"
 }

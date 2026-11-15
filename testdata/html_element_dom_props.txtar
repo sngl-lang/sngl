@@ -97,10 +97,16 @@ body { font-family: system-ui, sans-serif; }
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = __prop___p0.elem;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.hidden = __prop___p1;
     }
@@ -200,4 +206,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:bbc6703926b7efd4eb773cba046d5a6c
+pass sha256:dcc4a800377c4bcdaff1018bed425090

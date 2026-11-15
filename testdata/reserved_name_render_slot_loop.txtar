@@ -924,6 +924,9 @@ func newRowInstance(__model *Model, __a_label int) *RowInstance {
 }
 
 func (c *RowInstance) SetLabel(__v int) {
+	if c.__prop_label == __v {
+		return
+	}
 	c.__prop_label = __v
 	c.__n0.SetText(((fmt.Sprint(c.__prop_label) + " ") + fmt.Sprint(c.hits)))
 }
@@ -1164,6 +1167,9 @@ func Row__new(label int) *Row__inst {
 }
 
 func Row__set_label(__self *Row__inst, __v int) {
+	if __self.__prop_label == __v {
+		return
+	}
 	__self.__prop_label = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((fmt.Sprint(__self.__prop_label) + " ") + fmt.Sprint(__self.Hits)))
 }
@@ -1234,6 +1240,6 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/bubbletea --
 pass sha256:e2228e955cf00bdb83c8c73b65ae0332
 -- run/go/fyne --
-pass sha256:ff0b31535ab5605ddd8cc7008b39b3db
+pass sha256:d126523af05259143c5c2a274092213b
 -- run/go/gtk4 --
-pass sha256:80dc0e73b44c3c238e0ea4e091345d74
+pass sha256:876eae89053071d167d04eaa74661aef

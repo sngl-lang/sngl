@@ -1352,6 +1352,9 @@ func new__child0Instance(__model *Model, __a___p0 *Failure) *__child0Instance {
 }
 
 func (c *__child0Instance) Set__p0(__v *Failure) {
+	if snglOptEqual(c.__prop___p0, __v) {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(("Could not load rex: " + (*(c.__prop___p0)).Message))
 }
@@ -2391,6 +2394,9 @@ func __child0__new(__p0 *Failure) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v *Failure) {
+	if snglOptEqual(__self.__prop___p0, __v) {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, ("Could not load rex: " + (*(__self.__prop___p0)).Message))
 }
@@ -2431,6 +2437,9 @@ func __child2__new(__p0 PetSummary) *__child2__inst {
 }
 
 func __child2__set___p0(__self *__child2__inst, __v PetSummary) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n2, __self.__prop___p0.Name)
 }
@@ -2451,6 +2460,9 @@ func __child3__new(__p0 PetTag) *__child3__inst {
 }
 
 func __child3__set___p0(__self *__child3__inst, __v PetTag) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n3, __self.__prop___p0.Type.Name)
 }
@@ -3644,6 +3656,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.kind === b.kind && a.message === b.message && a.code === b.code)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = "Could not load rex: " + __prop___p0.message;
     }
@@ -3682,6 +3697,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.name === b.name && a.url === b.url)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n2.textContent = __prop___p0.name;
     }
@@ -3701,6 +3719,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.slot === b.slot && (a.type.name === b.type.name && a.type.url === b.type.url))(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n3.textContent = __prop___p0.type.name;
     }
@@ -4542,10 +4563,10 @@ component petBreedRetrieve[F any](
     )
 }
 -- run/go/fyne --
-pass sha256:edd937f71ff3249cfd0450f58c340b03
+pass sha256:b5f3baeae86193fe834d670cec639e7f
 -- run/go/gtk4 --
-pass sha256:4d06be21bfec15f4fb6a7c6ea7461276
+pass sha256:eef520cf824ae0a80b633672bf5b1ac4
 -- run/kotlin/android --
 pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --
-pass sha256:4ae868963acf2771dc2a243e167cce20
+pass sha256:bdb97b163df5fb4d1cb79b702d64db4e

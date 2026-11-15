@@ -683,6 +683,9 @@ func __child0__new(__p0 __anon_id_elem_cdfd47) *__child0__inst {
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_cdfd47) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.__prop___p0.Elem))
 }
@@ -797,6 +800,9 @@ body { font-family: system-ui, sans-serif; }
     let __p0 = props.__p0;
     let __prop___p0 = __p0;
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = String(__prop___p0.elem);
     }
@@ -903,6 +909,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2560d451920ee7647ae95dbb846ab958
 -- run/go/gtk4 --
-pass sha256:b04dea9bcb04ef9811cd40bf32722eb4
+pass sha256:a98c3cc0f7a8824d8763256caec1448e
 -- run/none/html --
-pass sha256:556f7f6b770936e568c5418a154ce759
+pass sha256:86df68ad37dadfd4655aec3013872c9c

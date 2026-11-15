@@ -1679,6 +1679,9 @@ body { font-family: system-ui, sans-serif; }
       __n0.textContent = __prop___p0.label;
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       __n0.selected = __prop___p0.value === __prop___p1;
     }
@@ -1782,4 +1785,4 @@ pass sha256:a682ae3580f791ca1979808a35b398f3
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --
-pass sha256:d4ddd46fdc66d1ebc8925f860c915634
+pass sha256:45c3e90eca087edcb0b3c04b8a2bdc0b

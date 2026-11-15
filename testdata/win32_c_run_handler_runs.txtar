@@ -144,7 +144,9 @@ typedef struct s_platform_win32__Look {
 	int64_t padBottom;
 	int64_t padLeft;
 	int64_t minWidth;
-	int64_t minHeight;
+	int64_t width;
+	int64_t height;
+	int64_t align;
 	int64_t color;
 	int64_t background;
 	int64_t fontPx;
@@ -161,12 +163,14 @@ static void s___effect0_unmount(void);
 static void s___effect0_down(void);
 static sngl_list_int sngl_list_int__keep(sngl_list_int v);
 static void sngl_list_int__drop(sngl_list_int v);
+static void sngl_list_int__unshare(sngl_list_int *l);
 static void s___effect0_up(void);
 static void s___effect0_teardown(void);
 static void s___effect1_unmount(void);
 static void s___effect1_down(void);
 static sngl_list_bool sngl_list_bool__keep(sngl_list_bool v);
 static void sngl_list_bool__drop(sngl_list_bool v);
+static void sngl_list_bool__unshare(sngl_list_bool *l);
 static void s___effect1_up(void);
 static void s___effect1_teardown(void);
 static void s___effects0_settle(void);
@@ -210,17 +214,38 @@ static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
 }
 
 static sngl_list_int sngl_list_int__keep(sngl_list_int v) {
+	if (!sngl_share(v.data, v.len)) {
+		int64_t *data = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(int64_t) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+	}
+	return v;
+}
+
+static void sngl_list_int__drop(sngl_list_int v) {
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
+}
+
+static void sngl_list_int__unshare(sngl_list_int *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_int v = *l;
+	sngl_let_go_shared(v.data);
 	int64_t *data = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
 	if (v.len > 0) {
 		memcpy(data, v.data, sizeof(int64_t) * (size_t)v.len);
 	}
 	v.data = data;
+	sngl_kept_len(data, v.len);
 	v.cap = v.len;
-	return v;
-}
-
-static void sngl_list_int__drop(sngl_list_int v) {
-	sngl_drop(v.data);
+	*l = v;
 }
 
 static void sngl_list_int_grow_kept(sngl_list_int *l, int64_t n) {
@@ -244,8 +269,10 @@ static void sngl_list_int_grow_kept(sngl_list_int *l, int64_t n) {
 }
 
 static void sngl_list_int_push_kept(sngl_list_int *l, int64_t v) {
+	sngl_list_int__unshare(l);
 	sngl_list_int_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
@@ -256,17 +283,38 @@ static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
 }
 
 static sngl_list_bool sngl_list_bool__keep(sngl_list_bool v) {
+	if (!sngl_share(v.data, v.len)) {
+		bool *data = sngl_keep_alloc(sizeof(bool) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(bool) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+	}
+	return v;
+}
+
+static void sngl_list_bool__drop(sngl_list_bool v) {
+	if (!sngl_let_go_shared(v.data)) {
+		sngl_drop(v.data);
+	}
+}
+
+static void sngl_list_bool__unshare(sngl_list_bool *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list_bool v = *l;
+	sngl_let_go_shared(v.data);
 	bool *data = sngl_keep_alloc(sizeof(bool) * (size_t)(v.len + 1));
 	if (v.len > 0) {
 		memcpy(data, v.data, sizeof(bool) * (size_t)v.len);
 	}
 	v.data = data;
+	sngl_kept_len(data, v.len);
 	v.cap = v.len;
-	return v;
-}
-
-static void sngl_list_bool__drop(sngl_list_bool v) {
-	sngl_drop(v.data);
+	*l = v;
 }
 
 static void sngl_list_bool_grow_kept(sngl_list_bool *l, int64_t n) {
@@ -290,8 +338,10 @@ static void sngl_list_bool_grow_kept(sngl_list_bool *l, int64_t n) {
 }
 
 static void sngl_list_bool_push_kept(sngl_list_bool *l, bool v) {
+	sngl_list_bool__unshare(l);
 	sngl_list_bool_grow_kept(l, 1);
 	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
 }
 
 static bool *sngl_list_bool_at(sngl_list_bool l, int64_t i) {
@@ -368,7 +418,7 @@ static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 }
 
 static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
-	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .minHeight = (int)v.minHeight, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
+	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .width = (int)v.width, .height = (int)v.height, .align = (int)v.align, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
 static int64_t s_n;
@@ -578,7 +628,7 @@ static void sngl_build(void) {
 	sngl_win32_on_visible(s___n0, (sngl_win32_bool_fn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	s___n1 = sngl_win32_text();
 	sngl_win32_set_text(s___n1, (const unsigned short *)sngl_utf16(sngl_int_format((int64_t)(s_n))));
-	sngl_win32_set_look(s___n1, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .minHeight = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
+	sngl_win32_set_look(s___n1, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	sngl_win32_append(s___n0, s___n1);
 	sngl_win32_attach(s___n0);
 	s___effects0_settle();
@@ -645,6 +695,7 @@ flag -luuid
 flag -lwindowscodecs
 flag -lurlmon
 flag -lgdiplus
+flag -lwinhttp
 target windows/amd64
 -- out/c/win32/sngl_win32_assets.c --
 /* Code generated by sngl. DO NOT EDIT. */
@@ -654,4 +705,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:f40752eb04bfd82df847f28774b410e1
+pass sha256:ad6f57f5b8b91a10ea8bdd47a419aa37

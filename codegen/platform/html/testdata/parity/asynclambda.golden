@@ -24,15 +24,34 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { xs: [1, 2, 3, 4, 5], visible__inst0: true };
-  function evens() {
-    return state.xs.filter((x) => x % 2 === 0);
-  }
-  function doubled() {
-    return state.xs.map((x) => x * 2);
-  }
   function total() {
     return state.xs.length;
   }
+  function evens() {
+    if (__memoAt_evens === __memoEpoch) {
+      ;
+      return __memo_evens;
+    }
+    ;
+    __memo_evens = state.xs.filter((x) => x % 2 === 0);
+    __memoAt_evens = __memoEpoch;
+    return __memo_evens;
+  }
+  function doubled() {
+    if (__memoAt_doubled === __memoEpoch) {
+      ;
+      return __memo_doubled;
+    }
+    ;
+    __memo_doubled = state.xs.map((x) => x * 2);
+    __memoAt_doubled = __memoEpoch;
+    return __memo_doubled;
+  }
+  var __memoEpoch = 0;
+  var __memo_evens = [];
+  var __memoAt_evens = -1;
+  var __memo_doubled = [];
+  var __memoAt_doubled = -1;
   function String(v) {
     return "" + v;
   }
@@ -42,6 +61,7 @@ body { font-family: system-ui, sans-serif; }
   var __n3 = document.querySelector('[data-sngl-id="__n3"]');
   $1.addEventListener("click", function() {
     state.xs.push(state.xs.length + 1);
+    __memoEpoch = __memoEpoch + 1;
     __n1.textContent = "count: " + String(total());
     __n2.textContent = "evens: " + String(evens().length);
     __n3.textContent = "first doubled: " + String(doubled()[0]);

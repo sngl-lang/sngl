@@ -1228,11 +1228,17 @@ func (c *__child0Instance) Set__p0(__v Row) {
 }
 
 func (c *__child0Instance) Set__p1(__v __anon_id_elem_c6a818) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	c.line.SetText(((((c.__prop___p0.Name + " ") + c.__prop___p1.Elem) + " picked ") + c.__prop___p2.Pick))
 }
 
 func (c *__child0Instance) Set__p2(__v Sel) {
+	if c.__prop___p2 == __v {
+		return
+	}
 	c.__prop___p2 = __v
 	c.line.SetText(((((c.__prop___p0.Name + " ") + c.__prop___p1.Elem) + " picked ") + c.__prop___p2.Pick))
 }
@@ -1281,6 +1287,9 @@ func (c *__child1Instance) Set__p0(__v _page__value) {
 }
 
 func (c *__child1Instance) Set__p1(__v int) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	var __lt15 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
@@ -1292,6 +1301,9 @@ func (c *__child1Instance) Set__p1(__v int) {
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
+	if c.__prop___p2 == __v {
+		return
+	}
 	c.__prop___p2 = __v
 	var __lt16 string
 	if (c.__prop___p0.Id == 0) && (((len(c.__prop___p0.Copy) == 2) && (c.__prop___p0.Copy[0] == c.__prop___p1)) && (c.__prop___p0.Copy[1] == c.__prop___p2)) {
@@ -1753,11 +1765,17 @@ func __child0__set___p0(__self *__child0__inst, __v Row) {
 }
 
 func __child0__set___p1(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	cgo.SnglTextSetValue(__self.Line, ((((__self.__prop___p0.Name + " ") + __self.__prop___p1.Elem) + " picked ") + __self.__prop___p2.Pick))
 }
 
 func __child0__set___p2(__self *__child0__inst, __v Sel) {
+	if __self.__prop___p2 == __v {
+		return
+	}
 	__self.__prop___p2 = __v
 	cgo.SnglTextSetValue(__self.Line, ((((__self.__prop___p0.Name + " ") + __self.__prop___p1.Elem) + " picked ") + __self.__prop___p2.Pick))
 }
@@ -1795,6 +1813,9 @@ func __child1__set___p0(__self *__child1__inst, __v _page__value) {
 }
 
 func __child1__set___p1(__self *__child1__inst, __v int) {
+	if __self.__prop___p1 == __v {
+		return
+	}
 	__self.__prop___p1 = __v
 	var __lt25 string
 	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
@@ -1806,6 +1827,9 @@ func __child1__set___p1(__self *__child1__inst, __v int) {
 }
 
 func __child1__set___p2(__self *__child1__inst, __v int) {
+	if __self.__prop___p2 == __v {
+		return
+	}
 	__self.__prop___p2 = __v
 	var __lt26 string
 	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
@@ -2084,8 +2108,8 @@ fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
 -- run/go/bubbletea --
 pass sha256:eab7b5528cfe54f143b93d19110ece88
 -- run/go/fyne --
-pass sha256:065c2e572ef6ace03657ce5cfa56c33a
+pass sha256:e7baa3669c56763fe01c4409cc487c7f
 -- run/go/gtk4 --
-pass sha256:4fcda4da72d4bd1eeb025dbce31c01ef
+pass sha256:0f7a931bb6a87e76a8d154d0fa91424a
 -- run/kotlin/android --
 pass sha256:809fe68da24f4f90ae5a726a36919015

@@ -1626,6 +1626,9 @@ func (c *Card__slot0Instance) Set__p0(__v []string) {
 }
 
 func (c *Card__slot0Instance) Set__copy(__v string) {
+	if c.__prop___copy == __v {
+		return
+	}
 	c.__prop___copy = __v
 	for _, __inst0_live_uv := range c.__inst0_live {
 		__inst0_live_uv.Set__p1(c.__prop___copy)
@@ -1818,11 +1821,17 @@ func new__child0Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child0Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.cell.SetText(c.__prop___p0.Elem)
 }
 
 func (c *__child0Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	var __lt10 string
 	if c.__prop___p1 == "" {
@@ -1834,6 +1843,9 @@ func (c *__child0Instance) Set__p1(__v string) {
 }
 
 func (c *__child0Instance) Set__p2(__v int) {
+	if c.__prop___p2 == __v {
+		return
+	}
 	c.__prop___p2 = __v
 	var __lt11 string
 	if c.__prop___p1 == "" {
@@ -1898,11 +1910,17 @@ func new__child1Instance(__model *Model, __a___p0 __anon_id_elem_c6a818, __a___p
 }
 
 func (c *__child1Instance) Set__p0(__v __anon_id_elem_c6a818) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.mark.SetText(c.__prop___p0.Elem)
 }
 
 func (c *__child1Instance) Set__p1(__v string) {
+	if c.__prop___p1 == __v {
+		return
+	}
 	c.__prop___p1 = __v
 	var __lt13 string
 	if c.__prop___p1 == "" {
@@ -1914,6 +1932,9 @@ func (c *__child1Instance) Set__p1(__v string) {
 }
 
 func (c *__child1Instance) Set__p2(__v int) {
+	if c.__prop___p2 == __v {
+		return
+	}
 	c.__prop___p2 = __v
 	var __lt14 string
 	if c.__prop___p1 == "" {
@@ -1967,6 +1988,9 @@ func new__child2Instance(__model *Model, __a___p0 string, __a___on0 func()) *__c
 }
 
 func (c *__child2Instance) Set__p0(__v string) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.tag.SetText(("x" + c.__prop___p0))
 }
@@ -2214,6 +2238,9 @@ func Card__slot0__set___p0(__self *Card__slot0__inst, __v []string) {
 }
 
 func Card__slot0__set___copy(__self *Card__slot0__inst, __v string) {
+	if __self.__prop___copy == __v {
+		return
+	}
 	__self.__prop___copy = __v
 	for _, __inst1_live_uv := range __self.__inst1_live {
 		__child0__set___p1(__inst1_live_uv, __self.__prop___copy)
@@ -2424,11 +2451,24 @@ func __child0__new(__p0 __anon_id_elem_c6a818, __p1 string, __p2 int, __on0 func
 }
 
 func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Cell)), __self.__prop___p0.Elem)
 }
 
 func __child0__set___p1(__self *__child0__inst, __v string) {
+	if __self.__prop___p1 == __v {
+		var __lt21 string
+		if __self.__prop___p1 == "" {
+			__lt21 = fmt.Sprint(__self.__prop___p2)
+		} else {
+			__lt21 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		}
+		m.cell__copies[__lt21] = __self.Cell
+		return
+	}
 	__self.__prop___p1 = __v
 	var __lt21 string
 	if __self.__prop___p1 == "" {
@@ -2440,6 +2480,16 @@ func __child0__set___p1(__self *__child0__inst, __v string) {
 }
 
 func __child0__set___p2(__self *__child0__inst, __v int) {
+	if __self.__prop___p2 == __v {
+		var __lt22 string
+		if __self.__prop___p1 == "" {
+			__lt22 = fmt.Sprint(__self.__prop___p2)
+		} else {
+			__lt22 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		}
+		m.cell__copies[__lt22] = __self.Cell
+		return
+	}
 	__self.__prop___p2 = __v
 	var __lt22 string
 	if __self.__prop___p1 == "" {
@@ -2483,11 +2533,24 @@ func __child1__new(__p0 __anon_id_elem_c6a818, __p1 string, __p2 int, __on0 func
 }
 
 func __child1__set___p0(__self *__child1__inst, __v __anon_id_elem_c6a818) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Mark)), __self.__prop___p0.Elem)
 }
 
 func __child1__set___p1(__self *__child1__inst, __v string) {
+	if __self.__prop___p1 == __v {
+		var __lt24 string
+		if __self.__prop___p1 == "" {
+			__lt24 = fmt.Sprint(__self.__prop___p2)
+		} else {
+			__lt24 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		}
+		m.mark__copies[__lt24] = __self.Mark
+		return
+	}
 	__self.__prop___p1 = __v
 	var __lt24 string
 	if __self.__prop___p1 == "" {
@@ -2499,6 +2562,16 @@ func __child1__set___p1(__self *__child1__inst, __v string) {
 }
 
 func __child1__set___p2(__self *__child1__inst, __v int) {
+	if __self.__prop___p2 == __v {
+		var __lt25 string
+		if __self.__prop___p1 == "" {
+			__lt25 = fmt.Sprint(__self.__prop___p2)
+		} else {
+			__lt25 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		}
+		m.mark__copies[__lt25] = __self.Mark
+		return
+	}
 	__self.__prop___p2 = __v
 	var __lt25 string
 	if __self.__prop___p1 == "" {
@@ -2535,6 +2608,9 @@ func __child2__new(__p0 string, __on0 func()) *__child2__inst {
 }
 
 func __child2__set___p0(__self *__child2__inst, __v string) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Tag)), ("x" + __self.__prop___p0))
 }
@@ -3280,6 +3356,9 @@ window.__sngl_boot = () => {
       __renderSlot0(__slotAnchor_0);
     }
     function __set___copy(__v) {
+      if (__prop___copy === __v) {
+        return;
+      }
       __prop___copy = __v;
       for (const [__inst1_live_uk, __inst1_live_uv] of __inst1_live.entries()) {
         __inst1_live_uv.__set___p0(__prop___copy);
@@ -3460,14 +3539,23 @@ window.__sngl_boot = () => {
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       cell.setAttribute("data-sngl-copy", __prop___p0 === "" ? String(__prop___p1) : __prop___p0 + "/" + String(__prop___p1));
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       cell.setAttribute("data-sngl-copy", __prop___p0 === "" ? String(__prop___p1) : __prop___p0 + "/" + String(__prop___p1));
     }
     function __set___p2(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p2, __v)) {
+        return;
+      }
       __prop___p2 = __v;
       __n2.textContent = __prop___p2.elem;
     }
@@ -3510,14 +3598,23 @@ window.__sngl_boot = () => {
     let __prop___p2 = __p2;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       mark.setAttribute("data-sngl-copy", __prop___p0 === "" ? String(__prop___p1) : __prop___p0 + "/" + String(__prop___p1));
     }
     function __set___p1(__v) {
+      if (__prop___p1 === __v) {
+        return;
+      }
       __prop___p1 = __v;
       mark.setAttribute("data-sngl-copy", __prop___p0 === "" ? String(__prop___p1) : __prop___p0 + "/" + String(__prop___p1));
     }
     function __set___p2(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p2, __v)) {
+        return;
+      }
       __prop___p2 = __v;
       __n3.textContent = __prop___p2.elem;
     }
@@ -3556,6 +3653,9 @@ window.__sngl_boot = () => {
     let __prop___p0 = __p0;
     let __prop___on0 = __on0;
     function __set___p0(__v) {
+      if (__prop___p0 === __v) {
+        return;
+      }
       __prop___p0 = __v;
       __n4.textContent = "x" + __prop___p0;
     }
@@ -3787,10 +3887,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:dbea6c1ed1b1bff6bebbc2915671d3e6
 -- run/go/fyne --
-pass sha256:2e10dd0c1abfed6ab38f18c28322b3f0
+pass sha256:96abfb5ec0a0dd8c2718d6808e3e58fe
 -- run/go/gtk4 --
-pass sha256:30e86fb2af9c103a363545d6a4ee5af4
+pass sha256:c6f6fd9032531693b937a94405298ca9
 -- run/kotlin/android --
 pass sha256:e80981dd088c9496f4b801f6ee3d7973
 -- run/none/html --
-pass sha256:4988aa1eafde9130cc501b4b6eb819d2
+pass sha256:6ed70b6653cbb61edbf10ec4a6037662

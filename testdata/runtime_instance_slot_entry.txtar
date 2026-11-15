@@ -1288,10 +1288,16 @@ func (c *Card__slot0Instance) __effects0_settle() {
 }
 
 func (c *Card__slot0Instance) SetStart(__v int) {
+	if c.__prop_start == __v {
+		return
+	}
 	c.__prop_start = __v
 }
 
 func (c *Card__slot0Instance) Set__p0(__v __anon_id_elem_cdfd47) {
+	if c.__prop___p0 == __v {
+		return
+	}
 	c.__prop___p0 = __v
 	c.__n0.SetText(((("head " + fmt.Sprint(c.__prop___p0.Elem)) + " ") + fmt.Sprint(c.k)))
 	c.__effects0_settle()
@@ -1584,10 +1590,16 @@ func Card__slot0__effects0_settle(__self *Card__slot0__inst) {
 }
 
 func Card__slot0__set_start(__self *Card__slot0__inst, __v int) {
+	if __self.__prop_start == __v {
+		return
+	}
 	__self.__prop_start = __v
 }
 
 func Card__slot0__set___p0(__self *Card__slot0__inst, __v __anon_id_elem_cdfd47) {
+	if __self.__prop___p0 == __v {
+		return
+	}
 	__self.__prop___p0 = __v
 	cgo.SnglTextSetValue(__self.__n0, ((("head " + fmt.Sprint(__self.__prop___p0.Elem)) + " ") + fmt.Sprint(__self.K)))
 	Card__slot0__effects0_settle(__self)
@@ -2235,9 +2247,15 @@ window.__sngl_boot = () => {
       }
     }
     function __set_start(__v) {
+      if (__prop_start === __v) {
+        return;
+      }
       __prop_start = __v;
     }
     function __set___p0(__v) {
+      if (((a, b) => a == null || b == null ? a === b : a.id === b.id && a.elem === b.elem)(__prop___p0, __v)) {
+        return;
+      }
       __prop___p0 = __v;
       __n0.textContent = "head " + String(__prop___p0.elem) + " " + String(k);
       __effects0_settle();
@@ -2368,10 +2386,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:51748a2e8b3ff5bf1e07159d9f1c3470
 -- run/go/fyne --
-pass sha256:103f4dca62c912b027049b11fa537a10
+pass sha256:3f65075964d03bd2fa5f757035f84f7a
 -- run/go/gtk4 --
-pass sha256:fb3dd5938d6ba99bb62aac1e3c8a41ab
+pass sha256:b747721fce6bbda4e967ba52d0a74446
 -- run/kotlin/android --
 pass sha256:ec6bbf19a98d7048ec8d024da5629a20
 -- run/none/html --
-pass sha256:b5ec63564ffbe5c2791cff1c8f3cb895
+pass sha256:ea61389edcb612f3c6387ca3a924350f
