@@ -26,6 +26,7 @@ import (
 	"maps"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -103,7 +104,10 @@ type gen struct {
 	// package's declaration, which another importing it reached as a
 	// declaration of its own copy of the package.
 	types map[string]*ir.StructDef
-	links []*ir.CLink
+	// results are the records a wrapper taking a `ref` hands back, by Go
+	// name: the result and each out, as lower.RefParams declares a call's.
+	results map[string]*ir.StructDef
+	links   []*ir.CLink
 	sigs  []*ir.FuncSig
 	// held says a wrapper takes or answers a value C holds (sngl:x/c's
 	// held), which the package registers as it does a callback's closure.
@@ -173,23 +177,9 @@ func (g *gen) collect(p *ir.Package) {
 			if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
 				continue
 			}
-			if why := g.unwrappable(fn); why != "" {
-				g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): %s", fn.Name, fn.Foreign.Name, why))
-				continue
-			}
 			g.add(fn)
 		}
 	}
-}
-
-// unwrappable is why fn gets no wrapper, or "".
-func (g *gen) unwrappable(fn *ir.Func) string {
-	for _, p := range fn.Params {
-		if p.Type != nil && p.Type.Kind == ir.TypeRef {
-			return "a ref parameter, which crosses as a record of the results only lowering declares"
-		}
-	}
-	return ""
 }
 
 // add wraps fn, once per C name: a second declaration of one C function
@@ -248,11 +238,19 @@ func (g *gen) wrapperFunc(fn *ir.Func, name string) *ir.Func {
 		w.Params = append(w.Params, recv)
 		args = append(args, &ir.Ident{Name: recv.Name, Sym: recv, Type: recv.Type})
 	}
-	for _, p := range fn.Params {
+	var outs []int
+	for i, p := range fn.Params {
 		if p.CompilerPassed() {
 			continue
 		}
 		np := &ir.Param{Name: goLocal(p.Name), Type: g.retype(p.Type)}
+		// What a `ref` C fills is copy-in, copy-out, as every call of one is
+		// after lower.RefParams: the wrapper takes its value and hands it
+		// back.
+		if p.Type != nil && p.Type.Kind == ir.TypeRef {
+			np.Type = g.retype(p.Type.Elems[0])
+			outs = append(outs, i)
+		}
 		if p.CAlias.IsCHeld() {
 			np.Type, g.held = ir.TypAny, true
 		}
@@ -265,21 +263,50 @@ func (g *gen) wrapperFunc(fn *ir.Func, name string) *ir.Func {
 			g.sigs = append(g.sigs, p.Type.Sig)
 		}
 	}
-	w.Block = callBranches(fn, args, opts)
+	ret := fn.Return
+	if len(outs) > 0 {
+		ret = g.refResult(fn, name, outs)
+		w.Return = ret
+	}
+	w.Block = callBranches(fn, ret, args, opts)
 	return w
+}
+
+// refResult is what a wrapper of fn, which takes a `ref` at each of outs,
+// hands back: the one out where fn answers nothing else, and otherwise a
+// record of the result and each out, field for field the one
+// lower.RefParams declares in the program calling it, which converts it.
+func (g *gen) refResult(fn *ir.Func, name string, outs []int) *ir.Type {
+	void := fn.Return == nil || fn.Return.Kind == ir.TypeVoid
+	if void && len(outs) == 1 {
+		return g.retype(fn.Params[outs[0]].Type.Elems[0])
+	}
+	def := &ir.StructDef{}
+	def.Name = name + "Result"
+	if !void {
+		def.Fields = append(def.Fields, &ir.StructField{Name: "result", Type: g.retype(fn.Return)})
+	}
+	for _, k := range outs {
+		def.Fields = append(def.Fields, &ir.StructField{Name: "out" + strconv.Itoa(k), Type: g.retype(fn.Params[k].Type.Elems[0])})
+	}
+	if g.results == nil {
+		g.results = map[string]*ir.StructDef{}
+	}
+	g.results[def.Name] = def
+	return &ir.Type{Kind: ir.TypeStruct, Decl: def}
 }
 
 // callBranches calls fn with args, split on null for each option argument
 // opts indexes: C takes NULL where a call writes null and the value's own
 // conversion where it hands a value, and a value that may be either has no
 // conversion one call can be written with (lower.CMarshal).
-func callBranches(fn *ir.Func, args []ir.Expr, opts []int) []ir.Stmt {
+func callBranches(fn *ir.Func, ret *ir.Type, args []ir.Expr, opts []int) []ir.Stmt {
 	if len(opts) == 0 {
-		call := &ir.Call{Func: fn, Type: fn.Return}
+		call := &ir.Call{Func: fn, Type: ret}
 		for _, a := range args {
 			call.Args = append(call.Args, ir.CallArg{Value: a})
 		}
-		if fn.Return == nil || fn.Return.Kind == ir.TypeVoid {
+		if ret == nil || ret.Kind == ir.TypeVoid {
 			return []ir.Stmt{&ir.CallStmt{Call: call}}
 		}
 		return []ir.Stmt{&ir.Return{Value: call}}
@@ -292,8 +319,8 @@ func callBranches(fn *ir.Func, args []ir.Expr, opts []int) []ir.Stmt {
 	some[i] = &ir.Conversion{Operand: opt, Type: opt.ExprType().Elems[0]}
 	return []ir.Stmt{&ir.If{
 		Cond: &ir.Binary{Op: ast.BinEq, Left: opt, Right: &ir.Literal{Type: ir.TypNull, Value: "null"}, Type: ir.TypBool},
-		Body: callBranches(fn, null, opts[1:]),
-		Else: callBranches(fn, some, opts[1:]),
+		Body: callBranches(fn, ret, null, opts[1:]),
+		Else: callBranches(fn, ret, some, opts[1:]),
 	}}
 }
 
@@ -330,6 +357,9 @@ func goLocal(name string) string {
 func (g *gen) goType(t *ir.Type) string {
 	if t == nil || t.Kind == ir.TypeVoid {
 		return ""
+	}
+	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && g.results[sd.Name] == sd {
+		return sd.Name
 	}
 	if sd, ok := t.Decl.(*ir.StructDef); ok && t.Kind == ir.TypeStruct && sd.Foreign.Path == ir.CPath && sd.Foreign.C != nil {
 		ct := golang.CTypeToGo(sd.Foreign.C)
@@ -459,6 +489,13 @@ func (g *gen) write() error {
 		}
 		fmt.Fprintf(&types, "\n// %s is C's %s, field by field.\ntype %s struct {\n", name, sd.Foreign.Name, name)
 		for _, f := range sd.Fields {
+			fmt.Fprintf(&types, "\t%s %s\n", golang.ExportName(f.Name), g.goType(f.Type))
+		}
+		types.WriteString("}\n")
+	}
+	for _, name := range slices.Sorted(maps.Keys(g.results)) {
+		fmt.Fprintf(&types, "\n// %s is what %s hands back.\ntype %s struct {\n", name, strings.TrimSuffix(name, "Result"), name)
+		for _, f := range g.results[name].Fields {
 			fmt.Fprintf(&types, "\t%s %s\n", golang.ExportName(f.Name), g.goType(f.Type))
 		}
 		types.WriteString("}\n")

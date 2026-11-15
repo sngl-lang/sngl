@@ -107,17 +107,18 @@ as they do in direct mode, a string copied for C is freed after the call as
 `passReleaseTemps` frees it (`c.free` is written beside the wrappers), and
 the callbacks' dispatchers are written into the wrapper package
 (`callbacks.go`). A wrapper taking an `option` branches on null, since C takes
-NULL only where a call writes null. A declaration with a `ref` parameter has
-no wrapper yet: a call of one hands back a record of its results that the
-program's package declares, which the wrapper package cannot name. The file
-lists each, with why, and a Go program calls one directly: it includes the
+NULL only where a call writes null. A wrapper of a declaration taking a `ref`
+is copy-in, copy-out, as `lower.RefParams` lowers every call of one: it takes
+the value and hands back the one out, or a record of the result and each out
+(`GetClientRectResult`), field for field the one the program declares, which
+the program converts (`nativeCall`; `c_win32_test_runs.txt`'s `ref.sngl`). A
+declaration a program reaches with no wrapper -- a `gir:` class gtk4's
+wrappers do not cover -- is called directly: the program includes the
 package's headers, and the headers its link ships, and none of its C, which
 is the wrapper package's (`golang.CLinks`); a handle it holds as the wrapper
 package's type crosses through `unsafe.Pointer` to its own cgo's, since
 `C.HWND` in two packages is two types, and one C answers crosses back the
-same way. A `gir:` class gtk4's wrappers do not cover is called so too
-(`cmd/sngl/testdata/gir_scheme.txt`, `c_win32_test_runs.txt`'s
-`refrun.sngl`). Before, it was refused at generate.
+same way (`cmd/sngl/testdata/gir_scheme.txt`).
 
 **A change to the runtime's C builds the wrappers again.** The package
 compiles `rt/sngl_win32.c` through a stub including it, and Go's build cache
@@ -174,9 +175,8 @@ symbol a second time. The program declares each library C struct it reaches
 (`libraryCStructs`), as the wrapper package declares it, and discards a C
 call's converted result where the call is a statement. Nothing rewrites a
 declaration here either: a protocol function a splice reaches is the frozen
-library's. A function no wrapper is written for -- one taking a `ref` -- is
-callable this way (`c_win32_test_runs.txt`'s `refrun.sngl`), and a gtk4
-program runs whole (`testdata/gtk4_go_direct_runs.txtar`).
+library's. A function taking a `ref` is called this way too
+(`c_win32_test_runs.txt`'s `refrun.sngl`), and a gtk4 program runs whole (`testdata/gtk4_go_direct_runs.txtar`).
 
 **Or through purego, with no cgo.** Under `"purego"` lowering marshals for a
 language that takes Go's own values (`cPurego`): no call is converted and a

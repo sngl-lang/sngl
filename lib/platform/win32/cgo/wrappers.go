@@ -76,6 +76,18 @@ type SIZE struct {
 	Cy int
 }
 
+// GetClientRectResult is what GetClientRect hands back.
+type GetClientRectResult struct {
+	Result int
+	Out1   RECT
+}
+
+// GetWindowRectResult is what GetWindowRect hands back.
+type GetWindowRectResult struct {
+	Result int
+	Out1   RECT
+}
+
 // CreateSolidBrush calls CreateSolidBrush.
 func CreateSolidBrush(color int) HBRUSH {
 	return C.CreateSolidBrush(C.COLORREF(color))
@@ -100,6 +112,19 @@ func EnableWindow(hWnd HWND, bEnable bool) int {
 		__lt0 = 0
 	}
 	return int(C.EnableWindow(hWnd, C.int(__lt0)))
+}
+
+// GetClientRect calls GetClientRect.
+func GetClientRect(hWnd HWND, lpRect RECT) GetClientRectResult {
+	return func() GetClientRectResult {
+		__snglOut1 := func(v RECT) C.RECT {
+			return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+		}(lpRect)
+		__snglResult := int(C.GetClientRect(hWnd, &__snglOut1))
+		return GetClientRectResult{Result: __snglResult, Out1: func(c C.RECT) RECT {
+			return RECT{Left: int(c.left), Top: int(c.top), Right: int(c.right), Bottom: int(c.bottom)}
+		}(__snglOut1)}
+	}()
 }
 
 // GetFocus calls GetFocus.
@@ -129,6 +154,19 @@ func GetSysColor(nIndex int) int {
 // GetSystemMetrics calls GetSystemMetrics.
 func GetSystemMetrics(nIndex int) int {
 	return int(C.GetSystemMetrics(C.int(nIndex)))
+}
+
+// GetWindowRect calls GetWindowRect.
+func GetWindowRect(hWnd HWND, lpRect RECT) GetWindowRectResult {
+	return func() GetWindowRectResult {
+		__snglOut1 := func(v RECT) C.RECT {
+			return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+		}(lpRect)
+		__snglResult := int(C.GetWindowRect(hWnd, &__snglOut1))
+		return GetWindowRectResult{Result: __snglResult, Out1: func(c C.RECT) RECT {
+			return RECT{Left: int(c.left), Top: int(c.top), Right: int(c.right), Bottom: int(c.bottom)}
+		}(__snglOut1)}
+	}()
 }
 
 // GetWindowTextLengthW calls GetWindowTextLengthW.
@@ -1038,8 +1076,3 @@ func UpdateWindow(hWnd HWND) int {
 func free(s *C.char) {
 	C.free(unsafe.Pointer(s))
 }
-
-// Not wrapped, which a Go program cannot call:
-//
-//   - GetClientRect (GetClientRect): a ref parameter, which crosses as a record of the results only lowering declares
-//   - GetWindowRect (GetWindowRect): a ref parameter, which crosses as a record of the results only lowering declares

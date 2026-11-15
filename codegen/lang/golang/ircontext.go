@@ -1276,6 +1276,13 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if n.Func.Foreign.Path == ir.CPath && n.Func.ReturnCAlias.IsCHeld() && n.Func.Return != nil && n.Func.Return.Kind == ir.TypeOption {
 		call = gc.heldOut(n.Func.Return, call)
 	}
+	// The record a call taking a `ref` hands back is lower.RefParams's, and
+	// the wrapper's own is field for field the same, which Go converts.
+	if n.Func.Foreign.Path == ir.CPath && n.Type != nil && n.Type.Kind == ir.TypeStruct && n.Type != n.Func.Return && slices.ContainsFunc(n.Func.Params, func(p *ir.Param) bool { return p.Type != nil && p.Type.Kind == ir.TypeRef }) {
+		if sd, ok := n.Type.Decl.(*ir.StructDef); ok && !sd.IsCStruct() && sd.Foreign.Path == "" {
+			call = gc.goType(n.Type) + "(" + call + ")"
+		}
+	}
 	return call, true
 }
 

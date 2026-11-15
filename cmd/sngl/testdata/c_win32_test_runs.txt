@@ -66,14 +66,14 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=win32 --language=go rect.sngl
 stdout 'ok +1 tests, 0 failures'
 
-# A function cgogen writes no wrapper for -- one taking a ref -- is called
-# directly from a Go program otherwise calling api's C through its wrappers:
-# the program includes api's headers and none of its C, which the wrapper
-# package compiles, and hands C the handles it holds as the wrapper's
-# (golang.CLinks). It was refused.
+# A function taking a ref is wrapped as every call of one is lowered, copy
+# in and copy out: the wrapper takes the value and hands back the record of
+# the result and each out, field for field the one the program declares,
+# which converts it. It had no wrapper, and was called directly.
 
 sngl generate --platform=win32 --lang=go -o out ref.sngl
-grep 'C\.GetClientRect' out/main.go
+grep 'GetClientRect__result\(cgo\.GetClientRect\(' out/main.go
+! grep 'C\.GetClientRect' out/main.go
 sngl test --platform=win32 --language=go refrun.sngl
 stdout 'ok +1 tests, 0 failures'
 
@@ -270,7 +270,10 @@ import ui "sngl:ui"
 
 func width() int {
     var r = api.RECT{right=-1}
-    api.GetClientRect(api.GetFocus(), r)
+    var ok = api.GetClientRect(api.GetFocus(), r)
+    if ok == 0 {
+        return -2
+    }
     return r.right
 }
 
@@ -612,7 +615,7 @@ sha256:40813ffc0dc142c7c6eb4582ce7aa113
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/1 --
-sha256:8b130ea88c2263d0d01faad637249591
+sha256:1390fb41e4d5c7976328b64eefa6f77e
 {
   "results": [
     {
@@ -622,7 +625,7 @@ sha256:8b130ea88c2263d0d01faad637249591
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/2 --
-sha256:f6183243a9c2df18d256ab327ff83047
+sha256:06fcce415678d58bd9717073d76c312f
 {
   "results": [
     {

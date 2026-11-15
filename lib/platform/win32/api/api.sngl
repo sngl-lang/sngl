@@ -792,6 +792,7 @@ func DestroyWindow(hWnd HWND) WINBOOL
 func EnableWindow(hWnd HWND, bEnable bool) WINBOOL
 
 #[c.native("GetClientRect")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetClientRect")]
 func GetClientRect(hWnd HWND, lpRect ref[RECT]) WINBOOL
 
 #[c.native("GetFocus")]
@@ -815,6 +816,7 @@ func GetSysColor(nIndex int) DWORD
 func GetSystemMetrics(nIndex int) int
 
 #[c.native("GetWindowRect")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetWindowRect")]
 func GetWindowRect(hWnd HWND, lpRect ref[RECT]) WINBOOL
 
 #[c.native("GetWindowTextLengthW")]
