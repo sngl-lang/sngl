@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"duckfam.us/sngl/internal/buildhost"
 )
 
 // WorkerEnv names an explicit worker binary, which is how a developer points a
@@ -24,7 +26,7 @@ const WorkerPkg = "duckfam.us/sngl/cmd/sngl-fyne-worker"
 // directories beginning with "." or "_", so a stale or broken worker can never
 // break the project's own build or its CI, while an explicit path still builds
 // it.
-const WorkerDir = ".tmp/sngl/worker"
+const WorkerDir = buildhost.ScratchDir + "/worker"
 
 // Locate finds the worker to render with: one named explicitly, then one built
 // for this project.
@@ -58,10 +60,10 @@ func EnsureWorker(dir string) (string, error) {
 	if _, err := os.Stat(out); err == nil {
 		return out, nil
 	}
-	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+	if _, err := buildhost.Scratch(dir); err != nil {
 		return "", err
 	}
-	if err := selfIgnore(filepath.Join(dir, ".tmp", "sngl")); err != nil {
+	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 		return "", err
 	}
 
@@ -124,20 +126,6 @@ var workerSources = []string{
 	"pkg/go/snglcolor",
 	"pkg/go/snglhost",
 	"internal/testrpc",
-}
-
-// selfIgnore makes the generated directory invisible to git without the user
-// editing anything. A .gitignore of "*" hides the directory including itself,
-// so `git status` stays clean and nothing here can be committed by accident.
-func selfIgnore(dir string) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	p := filepath.Join(dir, ".gitignore")
-	if _, err := os.Stat(p); err == nil {
-		return nil
-	}
-	return os.WriteFile(p, []byte("*\n"), 0o644)
 }
 
 // collectOldWorkers removes the binaries of previous builds. They are named by

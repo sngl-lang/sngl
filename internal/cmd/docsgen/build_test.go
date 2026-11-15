@@ -6,7 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
+
+// recordWebsiteInputs tells go test what building website.sngl reads, all of
+// it through `go tool sngl`: the compiler, the two Go packages the site
+// evaluates, and the files it imports.
+func recordWebsiteInputs(t *testing.T, repoRoot string) {
+	t.Helper()
+	testinputs.Packages(t, repoRoot, "./cmd/sngl", "./docs", "./docs/lookup")
+	testinputs.Tree(t, "website.sngl", "public", "internal/playground/assets", "lib/snapshots", "internal/docui", "docs")
+}
 
 // TestWebsiteProducesContent is a sanity check that compiling website.sngl
 // emits real page content — not just the nav sidebar. The site's body is
@@ -26,6 +37,7 @@ func TestWebsiteProducesContent(t *testing.T) {
 	out := t.TempDir()
 	cmd := exec.Command("go", generateArgs("website.sngl", out)...)
 	cmd.Dir = repoRoot
+	recordWebsiteInputs(t, repoRoot)
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("building website.sngl failed: %v\n%s", err, combined)
 	}
@@ -82,6 +94,7 @@ func TestWebsiteTypeChecks(t *testing.T) {
 	cmd := exec.Command("go", "tool", "sngl", "dump", "--stage", "checked",
 		"--platform", "html", "--lang", "none", "website.sngl")
 	cmd.Dir = repoRoot
+	recordWebsiteInputs(t, repoRoot)
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("website.sngl does not type-check against the html platform: %v\n%s", err, combined)
 	}

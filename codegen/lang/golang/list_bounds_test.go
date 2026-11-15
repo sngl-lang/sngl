@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -47,6 +48,7 @@ func runGo(t *testing.T, imports []string, body string) string {
 	}
 	cmd := exec.Command("go", "run", ".")
 	cmd.Dir = dir
+	testinputs.Packages(t, dir, ".")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("go run: %v\n--- program ---\n%s\n--- output ---\n%s", err, src, out)

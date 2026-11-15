@@ -11,6 +11,7 @@ import (
 
 	"duckfam.us/sngl/internal/gencache"
 	_ "duckfam.us/sngl/internal/optimize/testdata/storeprobe"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -79,11 +80,7 @@ func TestSourceEditInvalidates(t *testing.T) {
 	if dir == "" {
 		t.Skip("could not find project root")
 	}
-	pkgDir, err := os.MkdirTemp("testdata", "srcedit-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(pkgDir) })
+	pkgDir := testinputs.Beside(t, "testdata", "srcedit-")
 	write := func(v string) {
 		t.Helper()
 		path := filepath.Join(pkgDir, "v.go")

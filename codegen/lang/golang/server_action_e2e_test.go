@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // TestServerActionE2E generates the server_action fixture's server.go, then
@@ -44,6 +46,7 @@ func TestServerActionE2E(t *testing.T) {
 	// Build the CLI.
 	build := exec.Command("go", "build", "-o", bin, "./cmd/sngl")
 	build.Dir = repoRoot
+	testinputs.Packages(t, repoRoot, "./cmd/sngl")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, out)
 	}
@@ -96,6 +99,7 @@ func main() {
 	serveBin := filepath.Join(tmp, "serveBin")
 	hbuild := exec.Command("go", "build", "-o", serveBin, "./cmd/serve")
 	hbuild.Dir = work
+	testinputs.Packages(t, work, "./cmd/serve")
 	if combined, err := hbuild.CombinedOutput(); err != nil {
 		t.Fatalf("build harness: %v\n%s", err, combined)
 	}
@@ -222,6 +226,7 @@ func TestServerActionConcurrentSession(t *testing.T) {
 	bin := filepath.Join(tmp, "snglbin")
 	build := exec.Command("go", "build", "-o", bin, "./cmd/sngl")
 	build.Dir = repoRoot
+	testinputs.Packages(t, repoRoot, "./cmd/sngl")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, out)
 	}
@@ -269,6 +274,7 @@ func main() {
 	serveBin := filepath.Join(tmp, "serveBin")
 	hbuild := exec.Command("go", "build", "-race", "-o", serveBin, "./cmd/serve")
 	hbuild.Dir = work
+	testinputs.Packages(t, work, "./cmd/serve")
 	if combined, err := hbuild.CombinedOutput(); err != nil {
 		t.Fatalf("build harness: %v\n%s", err, combined)
 	}

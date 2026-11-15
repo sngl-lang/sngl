@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // effectRunSrc is testdata/effect_on_recreates.sngl with the test funcs
@@ -113,13 +114,9 @@ func TestTeardownEndsTheRunningBracket(t *testing.T) {
 func TestEffectMountsAndRekeysInTheEmittedProgram(t *testing.T) {
 	modelSrc := []byte(generateBubbleteaModel(t, effectRunSrc))
 
-	// Under the main module, so charm.land/bubbletea resolves through the
-	// project's own go.mod.
-	tmp, err := os.MkdirTemp(".", "_bt-effect-run-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	// In this package's tree, as emitted code may import its internal
+	// packages; charm.land/bubbletea resolves through the project's go.mod.
+	tmp := testinputs.Beside(t, scratchDir, "_bt-effect-run-")
 
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), modelSrc, 0o644); err != nil {
 		t.Fatal(err)
@@ -130,6 +127,7 @@ func TestEffectMountsAndRekeysInTheEmittedProgram(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

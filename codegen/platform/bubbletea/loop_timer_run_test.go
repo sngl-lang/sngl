@@ -11,6 +11,7 @@ import (
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -153,11 +154,7 @@ func runEmittedProgram(t *testing.T, src, driver string, goFlags ...string) {
 	if !ok {
 		t.Fatalf("model.go not among generated files %v", mem.Files())
 	}
-	tmp, err := os.MkdirTemp(".", "_bt-run-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Beside(t, scratchDir, "_bt-run-")
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), modelSrc, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -166,6 +163,7 @@ func runEmittedProgram(t *testing.T, src, driver string, goFlags ...string) {
 	}
 	cmd := exec.Command("go", append(append([]string{"test", "-count=1"}, goFlags...), ".")...)
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s", err, out, modelSrc)
 	}

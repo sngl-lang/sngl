@@ -80,7 +80,8 @@ paragraph here per change: this file is loaded into every session.
 ```bash
 go install ./cmd/sngl          # build CLI (preferred over go build)
 go build ./...                 # verify all packages compile
-go tool verify                 # full test suite with coverage
+go tool verify                 # full suite; unchanged packages replay from cache
+go tool verify -cover          # rerun every package, measuring coverage
 go tool verify -update         # rerecord every package's goldens and recorded runs
 go test ./path/to/pkg/...      # test a single package tree
 go test -run TestName ./pkg/   # run a single test
@@ -141,6 +142,10 @@ SNGL is a UI language that compiles to multiple platforms. The pipeline:
   change, `go tool verify -update` rerecords all of them (scripts' android runs
   want `ANDROID_HOME` set); `-verify` on one package reruns it whatever its
   records say.
+- **A test that reads the checkout through a subprocess says so** with
+  `internal/testinputs` (`Packages` for a `go build`, `Tree` for other
+  files): CI replays cached results, and go test cannot see what a
+  subprocess read (`design/testing.md`).
 - **Confirm a new fixture fails when the behavior is reverted.** The `sngl`
   on `PATH` resolves `./cmd/sngl` against the current directory, so run an
   out-of-tree binary out of tree.

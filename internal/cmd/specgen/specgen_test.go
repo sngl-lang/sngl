@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // Pins the committed generated regions to the grammar: nothing else notices
@@ -19,11 +21,7 @@ func TestSpecificationIsGenerated(t *testing.T) {
 	// Not t.TempDir(): mdox refuses a file outside its anchor (the repo root),
 	// and not under docs/ either — TestDocSNGLBlocks enumerates that tree and
 	// raced with the transient file.
-	dir, err := os.MkdirTemp(root, ".specgen-check-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	dir := testinputs.Beside(t, "scratch", "specgen-check-")
 	tmp := filepath.Join(dir, "specification.md")
 	if err := os.WriteFile(tmp, want, 0o644); err != nil {
 		t.Fatal(err)

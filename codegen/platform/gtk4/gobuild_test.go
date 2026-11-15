@@ -165,8 +165,8 @@ func fixtureSource(t *testing.T, name string) string {
 // than runs: constructing a widget needs a display, and what these tests are
 // about is the types.
 //
-// The temp dir is created UNDER this package so gtk4rt resolves through the
-// repo's own go.mod; a dir in os.TempDir() has no module above it. The
+// It runs in a module resolving as the checkout does (testinputs.Module), so
+// gtk4rt resolves. The
 // emission is `package main` without a main(), which links only under `sngl
 // run`'s own scaffold, so one is supplied here.
 func buildGeneratedGo(t *testing.T, prefix, model string) {

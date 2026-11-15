@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // The corpus is the grammar's own account of SNGL, and it went on passing
@@ -24,6 +26,8 @@ func treeSitter(t *testing.T) string {
 	if err != nil {
 		t.Skip("tree-sitter binary not on PATH")
 	}
+	// It reads the grammar, its queries and what it parses itself.
+	testinputs.Tree(t, append([]string{"editors/tree-sitter-sngl"}, sourceRoots...)...)
 	return bin
 }
 

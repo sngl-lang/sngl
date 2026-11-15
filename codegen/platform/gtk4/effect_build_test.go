@@ -67,8 +67,8 @@ func TestAnEffectCompiles(t *testing.T) {
 	}
 }
 
-// buildGTK4Model compiles model as a package under the main module, so gtk4rt
-// resolves through the project's go.mod.
+// buildGTK4Model compiles model as a package in a module resolving as the
+// checkout does, so gtk4rt resolves.
 func buildGTK4Model(t *testing.T, prefix, model string) {
 	t.Helper()
 	// The emission is `package main` without a main(), which links only under
