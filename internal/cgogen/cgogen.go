@@ -108,7 +108,7 @@ type gen struct {
 	// name: the result and each out, as lower.RefParams declares a call's.
 	results map[string]*ir.StructDef
 	links   []*ir.CLink
-	sigs  []*ir.FuncSig
+	sigs    []*ir.FuncSig
 	// held says a wrapper takes or answers a value C holds (sngl:x/c's
 	// held), which the package registers as it does a callback's closure.
 	held bool
