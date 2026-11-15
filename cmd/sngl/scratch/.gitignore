@@ -1,0 +1,4 @@
+# testinputs.Beside makes what this package's tests write inside the
+# checkout here.
+*
+!.gitignore

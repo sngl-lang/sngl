@@ -16,6 +16,7 @@ import (
 	"sync"
 	"testing"
 
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/internal/toolchain"
 )
 
@@ -31,8 +32,8 @@ var (
 	goRunsPerTest = map[*testing.T]int{}
 )
 
-// runGo runs `go args...` over files in a fresh directory under this package,
-// so the checkout's runtime packages resolve -- unless a record says these
+// runGo runs `go args...` over files in a fresh module resolving as the
+// checkout does (testinputs.Module), so the checkout's runtime packages resolve -- unless a record says these
 // files, run this way, already succeeded, in which case nothing is written or
 // run and the answer is ("", true).
 //
@@ -82,15 +83,11 @@ func runGo(t *testing.T, prefix string, files map[string]string, display bool, a
 	return out, ok
 }
 
-// execGo runs `go args...` over files in a fresh directory under this package,
-// recording nothing.
+// execGo runs `go args...` over files in a fresh module resolving as the
+// checkout does, recording nothing.
 func execGo(t *testing.T, prefix string, files map[string]string, args ...string) (string, bool) {
 	t.Helper()
-	dir, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := testinputs.Module(t)
 	for name, src := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
 			t.Fatal(err)
@@ -98,6 +95,7 @@ func execGo(t *testing.T, prefix string, files map[string]string, args ...string
 	}
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
+	testinputs.Packages(t, dir, ".")
 	out, err := cmd.CombinedOutput()
 	return string(out), err == nil
 }

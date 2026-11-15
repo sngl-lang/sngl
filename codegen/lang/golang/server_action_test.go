@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // TestServerAction drives the FULL CLI generate path (with the Go toolchain
@@ -35,6 +37,7 @@ func TestServerAction(t *testing.T) {
 	// Build the CLI.
 	build := exec.Command("go", "build", "-o", bin, "./cmd/sngl")
 	build.Dir = repoRoot
+	testinputs.Packages(t, repoRoot, "./cmd/sngl")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build CLI: %v\n%s", err, out)
 	}
@@ -104,6 +107,7 @@ func TestServerAction(t *testing.T) {
 	// --- the key assertion: the emitted package must compile ---
 	gobuild := exec.Command("go", "build", "./out/...")
 	gobuild.Dir = work
+	testinputs.Packages(t, work, "./out/...")
 	if combined, err := gobuild.CombinedOutput(); err != nil {
 		t.Fatalf("emitted server package failed to compile: %v\n%s\n--- server.go ---\n%s", err, combined, src)
 	}

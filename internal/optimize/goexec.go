@@ -507,14 +507,20 @@ var evaluatorImports = []string{
 // returns the results document it wrote.
 func runConstEvalBatch(dir string, reqs []*nativeRequest) ([]byte, error) {
 
-	// The source must sit inside the project so the module resolves; the
-	// binary must not, or `go build ./...` in the project would pick it up.
+	// The source must sit inside the project so the module resolves -- in
+	// its scratch directory, which no pattern reaches and which a build does
+	// not change the time of the project for; the binary must not, or `go
+	// build ./...` in the project would pick it up.
 	src := constEvalSource(reqs)
-	srcDir, canonical, err := constEvalSrcDir(dir, src)
+	scratch, err := buildhost.Scratch(moduleRoot(dir))
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(srcDir)
+	srcDir, canonical, err := constEvalSrcDir(scratch, "consteval", src)
+	if err != nil {
+		return nil, err
+	}
+	defer removeProgram(srcDir, "main.go")
 	if err := os.WriteFile(filepath.Join(srcDir, "main.go"), []byte(src), 0o644); err != nil {
 		return nil, fmt.Errorf("writing evaluator source: %w", err)
 	}
@@ -543,7 +549,7 @@ func runConstEvalBatch(dir string, reqs []*nativeRequest) ([]byte, error) {
 	// build over a reclaimed cache entry. (binGrace makes the window very
 	// unlikely; this makes it harmless.)
 	for attempt := range 2 {
-		if err := buildConstEval(dir, srcDir, binPath); err != nil {
+		if err := buildConstEval(srcDir, binPath); err != nil {
 			return nil, err
 		}
 		err := runConstEval(dir, binPath, resultPath)
@@ -564,11 +570,14 @@ func runConstEvalBatch(dir string, reqs []*nativeRequest) ([]byte, error) {
 	return results, nil
 }
 
-func buildConstEval(dir, srcDir, binPath string) error {
+func buildConstEval(srcDir, binPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), evalTimeout)
 	defer cancel()
-	build := exec.CommandContext(ctx, "go", "build", "-o", binPath, "./"+filepath.Base(srcDir))
-	build.Dir = dir
+	// From the program's directory, whose name is the same on every run:
+	// exec looks at the directory a command runs in, and go test counts that
+	// as an input of a test compiling a const.
+	build := exec.CommandContext(ctx, "go", "build", "-o", binPath, ".")
+	build.Dir = srcDir
 	start := time.Now()
 	if out, err := build.CombinedOutput(); err != nil {
 		return fmt.Errorf("building const evaluator: %w: %s", err, out)
@@ -610,10 +619,18 @@ func runConstEval(dir, binPath, resultPath string) error {
 // a dependency like docs/ changes. A cache of our own keyed on this hash would
 // not: it cannot see that docs.Highlight was edited.
 //
-// The dot prefix keeps the package out of `./...`.
-func constEvalSrcDir(dir, src string) (path string, canonical bool, err error) {
+// The name carries the program running the compile too, so that two at once
+// -- an editor's language server and a build, or two packages' tests --
+// each have one rather than one of them falling back to a unique name.
+//
+// dir is the project's scratch directory (buildhost.Scratch), whose dot
+// keeps the package out of `./...`. The name is also what keeps a test that
+// compiles a const replayable: go test hashes a path the test opened by its
+// name, so a random one would differ on every run, and a directory another
+// test binary held when this one finished would read as changed.
+func constEvalSrcDir(dir, prefix, src string) (path string, canonical bool, err error) {
 	sum := sha256.Sum256([]byte(src))
-	name := fmt.Sprintf(".sngl-consteval-%x", sum[:8])
+	name := fmt.Sprintf("%s-%s-%x", prefix, runner, sum[:8])
 	path = filepath.Join(dir, name)
 
 	// Mkdir is the lock: whoever creates the directory owns it until it is
@@ -642,6 +659,62 @@ func constEvalSrcDir(dir, src string) (path string, canonical bool, err error) {
 		return "", false, fmt.Errorf("creating evaluator dir: %w", err)
 	}
 	return unique, false, nil
+}
+
+// runner names the program running the compile in a const evaluator's
+// directory: its executable's name, which a test binary takes from its
+// package, in the characters a Go import path allows.
+var runner = func() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return "sngl"
+	}
+	name := strings.TrimSuffix(filepath.Base(exe), ".exe")
+	return strings.Map(func(r rune) rune {
+		if r == '-' || r == '_' || r == '.' || 'a' <= r && r <= 'z' || 'A' <= r && r <= 'Z' || '0' <= r && r <= '9' {
+			return r
+		}
+		return '_'
+	}, name)
+}()
+
+// removeProgram removes a program's directory by the files written into it,
+// each by name, which looks at nothing else: os.RemoveAll opens the directory
+// holding it, the project's scratch directory, whose time changes with every
+// program made there, and go test counts what a test opened as an input of
+// its result. Anything else in it falls back to os.RemoveAll.
+func removeProgram(dir string, files ...string) {
+	for _, f := range files {
+		if err := os.Remove(filepath.Join(dir, f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("removing const evaluator file", "err", err)
+		}
+	}
+	if err := os.Remove(dir); err == nil {
+		return
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		slog.Warn("removing const evaluator", "dir", dir, "err", err)
+	}
+}
+
+// moduleRoot is the directory of the go.mod nearest above dir, or dir when
+// there is none. A program in its scratch directory resolves as one beside
+// dir would, and every directory of a module shares the one.
+func moduleRoot(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return dir
+	}
+	for d := abs; ; {
+		if _, err := os.Stat(filepath.Join(d, "go.mod")); err == nil {
+			return d
+		}
+		parent := filepath.Dir(d)
+		if parent == d {
+			return dir
+		}
+		d = parent
+	}
 }
 
 // constEvalBinPath returns the path to build the evaluator binary at, named

@@ -11,6 +11,7 @@ import (
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -77,23 +78,26 @@ func fixtureSource(t *testing.T, name string) string {
 	return string(b)
 }
 
+// scratchDir is where an emitted program is built: in this package's tree,
+// so it may import the package's internal packages, and in a directory of
+// its own, which ignores what is made in it, so the package's directory
+// does not change under another test that lists it.
+const scratchDir = "internal/scratch"
+
 // buildGeneratedGo type-checks generated Go by compiling it.
 //
-// The temp dir is created UNDER this package so charm.land/bubbletea and the
-// sngl runtime packages resolve through the repo's own go.mod; a dir in
-// os.TempDir() has no module above it.
+// The temp dir is created in this package's scratchDir, as emitted code may
+// import its internal packages; charm.land/bubbletea and the sngl
+// runtime packages resolve through the repo's own go.mod.
 func buildGeneratedGo(t *testing.T, prefix, model string) {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Beside(t, scratchDir, "_"+prefix)
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("go", "build", "-gcflags=-e", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Errorf("generated Go does not compile: %v\n--- go build ---\n%s\n--- model.go ---\n%s", err, out, model)

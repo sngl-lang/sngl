@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 const reactiveStyleRunSrc = `
@@ -85,11 +87,7 @@ func TestStyleFieldsFollowState(t *testing.T) {
 func TestReactiveStyleRunsInTheEmittedProgram(t *testing.T) {
 	model := generateBubbleteaModel(t, reactiveStyleRunSrc)
 
-	tmp, err := os.MkdirTemp(".", "_bt-reactive-style-run-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Beside(t, scratchDir, "_bt-reactive-style-run-")
 
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
 		t.Fatal(err)
@@ -100,6 +98,7 @@ func TestReactiveStyleRunsInTheEmittedProgram(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

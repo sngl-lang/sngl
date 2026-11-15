@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // nameCollisionSrc is testdata/func_nested_name_taken.txtar's program: a func
@@ -53,19 +54,16 @@ window {
 func TestGeneratedGoWithACollidingNestedFuncCompiles(t *testing.T) {
 	modelSrc := []byte(generateBubbleteaModel(t, nameCollisionSrc))
 
-	// Under the main module, so charm.land/bubbletea resolves through the
-	// project's own go.mod.
-	tmp, err := os.MkdirTemp(".", "_bt-name-collision-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	// In this package's tree, as emitted code may import its internal
+	// packages; charm.land/bubbletea resolves through the project's go.mod.
+	tmp := testinputs.Beside(t, scratchDir, "_bt-name-collision-")
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), modelSrc, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	cmd := exec.Command("go", "build", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	out, buildErr := cmd.CombinedOutput()
 	if buildErr != nil {
 		t.Errorf("the emitted program does not compile: %v\n--- output ---\n%s\n--- model.go ---\n%s",

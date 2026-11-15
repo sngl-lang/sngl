@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // constructComponentSrc is loopComponentSrc with a #[construct] prop the row's
@@ -92,13 +93,9 @@ func TestAConstructPropRebuildsTheRowItBuilt(t *testing.T) {
 func TestConstructPropRebuildsTheInstance(t *testing.T) {
 	modelSrc := generateForFyne(t, constructComponentSrc)
 
-	// Under the main module, so the fyne imports resolve through the project's
-	// own go.mod.
-	tmp, err := os.MkdirTemp(".", "_fyne-construct-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	// A module resolving as the checkout does, so the fyne imports resolve at
+	// the project's versions.
+	tmp := testinputs.Module(t)
 
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), modelSrc, 0o644); err != nil {
 		t.Fatal(err)
@@ -109,6 +106,7 @@ func TestConstructPropRebuildsTheInstance(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

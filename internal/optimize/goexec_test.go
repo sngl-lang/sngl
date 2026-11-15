@@ -382,7 +382,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 	dir := t.TempDir()
 	const src = "package main\n"
 
-	first, canonical, err := constEvalSrcDir(dir, src)
+	first, canonical, err := constEvalSrcDir(dir, "consteval", src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +391,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 	}
 	// While the directory is held, a second caller must not use it: it would
 	// be building into someone else's package, and the owner deletes it.
-	held, canonical, err := constEvalSrcDir(dir, src)
+	held, canonical, err := constEvalSrcDir(dir, "consteval", src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,7 +404,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 	os.RemoveAll(held)
 	os.RemoveAll(first) // the owner removes it when the round is done
 
-	again, _, err := constEvalSrcDir(dir, src)
+	again, _, err := constEvalSrcDir(dir, "consteval", src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 	}
 	os.RemoveAll(again)
 
-	other, _, err := constEvalSrcDir(dir, src+"// different\n")
+	other, _, err := constEvalSrcDir(dir, "consteval", src+"// different\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +428,7 @@ func TestConstEvalSrcDirIsStableAndOwned(t *testing.T) {
 func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	dir := t.TempDir()
 	const src = "package main\n"
-	stale, _, err := constEvalSrcDir(dir, src)
+	stale, _, err := constEvalSrcDir(dir, "consteval", src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	if err := os.Chtimes(stale, old, old); err != nil {
 		t.Fatal(err)
 	}
-	got, _, err := constEvalSrcDir(dir, src)
+	got, _, err := constEvalSrcDir(dir, "consteval", src)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -447,7 +447,7 @@ func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	// The other half of the bound: an owner that has spent one evalTimeout in
 	// its build and is now in its run still holds this directory, and deleting
 	// it takes the source out from under a live compile.
-	live, _, err := constEvalSrcDir(dir, src+"// live\n")
+	live, _, err := constEvalSrcDir(dir, "consteval", src+"// live\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +455,7 @@ func TestConstEvalSrcDirReclaimsStale(t *testing.T) {
 	if err := os.Chtimes(live, when, when); err != nil {
 		t.Fatal(err)
 	}
-	if got, _, err := constEvalSrcDir(dir, src+"// live\n"); err != nil {
+	if got, _, err := constEvalSrcDir(dir, "consteval", src+"// live\n"); err != nil {
 		t.Fatal(err)
 	} else if got == live {
 		t.Error("a directory a live owner may still hold was reclaimed")

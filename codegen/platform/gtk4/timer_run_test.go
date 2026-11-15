@@ -98,8 +98,8 @@ func TestTimersTick(t *testing.T) {
 `)
 }
 
-// runGTK4Model writes the model plus a test beside it, under the main module so
-// gtk4rt resolves through the project's go.mod, and runs `go test` there.
+// runGTK4Model writes the model plus a test beside it, in a module resolving as
+// the checkout does so gtk4rt resolves, and runs `go test` there.
 func runGTK4Model(t *testing.T, prefix, model, testSrc string) {
 	t.Helper()
 	files := map[string]string{
