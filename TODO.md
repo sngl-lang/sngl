@@ -728,9 +728,8 @@ what someone wrapped, and win32's Go path would need the same again.
    `Foreign.In(scheme)` finds either. The C spelling stays the primary,
    whichever mark comes first, since every C pass reads it there.
 2. **The tool: `internal/cgogen`, run as `sngl tool cgogen`.** Done
-   (`design/win32.md`), for a library package; a user's package of
-   `c.native` declarations is still to come, and so is a wrapper for a `ref`
-   parameter.
+   (`design/win32.md`), for a library package and a program's own
+   (`cgogen_user_package_runs.txt`), a declaration taking a `ref` included.
    - It loads a package, and wraps each `#[c.native]` function that is no
      cast, once per C name, in a Go function named for it
      (`sngl_win32_append` → `SnglWin32Append`). Each handle type and C

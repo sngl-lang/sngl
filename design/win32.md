@@ -99,6 +99,15 @@ literal of it names the wrapper package's. Both SNGL
 packages go into one Go package, because a handle is a type of the cgo
 package declaring it, and `C.HWND` in two packages is two types.
 
+**A program's own package is wrapped by the same tool.** `sngl tool cgogen
+<dir>` checks the directory as a package a program imports and writes its
+wrappers into `<dir>/cgo`, in the program's Go module, and its marks into
+the directory's files, which a `//go:generate sngl tool cgogen .` beside them
+keeps in step (`cgogen.Dir`). A program reaches the wrapper package through
+the temporary module it builds in, which replaces the host module with its
+root as it replaced sngl's checkout (`codegen.WriteGoMod`;
+`cmd/sngl/testdata/cgogen_user_package_runs.txt`).
+
 **A wrapper's body is the call a direct one makes.** The tool builds a SNGL
 function per wrapper whose body calls the declaration, lowers it with
 `lower.CWrappers` (`passCMarshal`'s conversions, and no ternary), and writes it

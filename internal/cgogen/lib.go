@@ -76,7 +76,63 @@ func Lib(root, name, dir, goos string) (*Plan, error) {
 		}
 		sources[p] = filepath.ToSlash(rel)
 	}
-	res, err := Generate(Options{Pkgs: pkgs, ImportPath: importPath, GOOS: goos, Sources: sources})
+	files := map[*ir.Package][]string{}
+	for _, p := range pkgs {
+		names, err := fs.Glob(lib.FS, strings.TrimPrefix(p.Path, "sngl:")+"/*.sngl")
+		if err != nil {
+			return nil, err
+		}
+		files[p] = names
+	}
+	return plan(Options{Pkgs: pkgs, ImportPath: importPath, GOOS: goos, Sources: sources}, dir, files, func(name string) string {
+		return filepath.Join(root, "lib", filepath.FromSlash(name))
+	}, func(name string) string { return name })
+}
+
+// Dir plans the wrapper package of pkg, a package of the program's own
+// whose files are the .sngl files in pkgDir. dir is where the wrapper
+// package goes, empty for cgo/ in pkgDir, and its import path is read from
+// the nearest go.mod: a Go program reaches it through its own module
+// (codegen.WriteGoMod).
+func Dir(pkg *ir.Package, pkgDir, dir, goos string) (*Plan, error) {
+	pkgDir, err := filepath.Abs(pkgDir)
+	if err != nil {
+		return nil, err
+	}
+	if dir == "" {
+		dir = filepath.Join(pkgDir, "cgo")
+	}
+	if dir, err = filepath.Abs(dir); err != nil {
+		return nil, err
+	}
+	importPath, err := goImportPath(dir)
+	if err != nil {
+		return nil, err
+	}
+	rel, err := filepath.Rel(dir, pkgDir)
+	if err != nil {
+		return nil, err
+	}
+	names, err := filepath.Glob(filepath.Join(pkgDir, "*.sngl"))
+	if err != nil {
+		return nil, err
+	}
+	opts := Options{Pkgs: []*ir.Package{pkg}, ImportPath: importPath, GOOS: goos, Sources: map[*ir.Package]string{pkg: filepath.ToSlash(rel)}}
+	// A position names its file as the command was given it, which is
+	// relative to the working directory.
+	abs := func(name string) string {
+		if a, err := filepath.Abs(name); err == nil {
+			return a
+		}
+		return name
+	}
+	return plan(opts, dir, map[*ir.Package][]string{pkg: names}, func(name string) string { return name }, abs)
+}
+
+// plan generates opts's package into dir, and rewrites each of files at the
+// path disk names it by, with the marks whose position's file key names it.
+func plan(opts Options, dir string, files map[*ir.Package][]string, disk, key func(string) string) (*Plan, error) {
+	res, err := Generate(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -85,24 +141,20 @@ func Lib(root, name, dir, goos string) (*Plan, error) {
 	// included, so a mark nothing wraps any longer is taken out.
 	byFile := map[string][]Mark{}
 	for _, m := range res.Marks {
-		byFile[m.Pos.File] = append(byFile[m.Pos.File], m)
+		byFile[key(m.Pos.File)] = append(byFile[key(m.Pos.File)], m)
 	}
-	for _, p := range pkgs {
-		files, err := fs.Glob(lib.FS, strings.TrimPrefix(p.Path, "sngl:")+"/*.sngl")
-		if err != nil {
-			return nil, err
-		}
-		for _, file := range files {
-			disk := filepath.Join(root, "lib", filepath.FromSlash(file))
-			src, err := os.ReadFile(disk)
+	for _, p := range opts.Pkgs {
+		for _, file := range files[p] {
+			path := disk(file)
+			src, err := os.ReadFile(path)
 			if err != nil {
 				return nil, err
 			}
 			out, err := Rewrite(src, byFile[file])
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", disk, err)
+				return nil, fmt.Errorf("%s: %w", path, err)
 			}
-			plan.Sources[disk] = out
+			plan.Sources[path] = out
 		}
 	}
 	entries, err := os.ReadDir(dir)
