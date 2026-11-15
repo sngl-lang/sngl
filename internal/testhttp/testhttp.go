@@ -1,11 +1,13 @@
 // Package testhttp is the server the programs `sngl test` runs make their
-// requests of: the script harness's (cmd/sngl/script_test.go) and `go tool
-// verify`'s, each at Addr.
+// requests of: the script harness's (cmd/sngl/script_test.go), which they
+// find at Addr.
 package testhttp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -23,13 +25,54 @@ import (
 	"time"
 )
 
-// Addr is fixed, since the address is in the program and a recorded run's
-// digest covers the program, so a port picked per run would ask for every
-// record again. A program writes it as http://127.0.0.1:47819.
+// Addr is the address a program asks for the server at, fixed, since the
+// address is in the program and a recorded run's digest covers the program,
+// so a port picked per run would ask for every record again. A program
+// writes it as http://127.0.0.1:47819.
 const Addr = "127.0.0.1:47819"
 
-// Start serves the routes for the life of the process, reading each
-// example's recorded answers from the repository at root.
+// Start serves the routes for the life of the process at a port the system
+// picks, and has http.DefaultTransport dial that port for Addr: a program
+// this process runs itself -- on the interpreter -- reaches the server at
+// the address it writes, and two test processes at once, each with a server
+// of its own, do not contend for one port.
+//
+// A program another process runs -- a generated target's, launched for real
+// -- dials Addr itself, and only StartAt serves it.
+func Start(root string) error {
+	t, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return fmt.Errorf("http.DefaultTransport is a %T, not an *http.Transport", http.DefaultTransport)
+	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return err
+	}
+	dial, actual := t.DialContext, l.Addr().String()
+	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		if addr == Addr {
+			addr = actual
+		}
+		return dial(ctx, network, addr)
+	}
+	serveOn(l, root)
+	return nil
+}
+
+// StartAt serves the routes for the life of the process at Addr, where a
+// program in any process finds them; it fails if another process has the
+// port.
+func StartAt(root string) error {
+	l, err := net.Listen("tcp", Addr)
+	if err != nil {
+		return err
+	}
+	serveOn(l, root)
+	return nil
+}
+
+// serveOn serves the routes on l, reading each example's recorded answers
+// from the repository at root.
 //
 //	/books/{title}          a book from testBooks, or a 404
 //	/echo                   what the request was: method, query, body, X-Sngl header
@@ -44,16 +87,11 @@ const Addr = "127.0.0.1:47819"
 //
 // Every answer carries the CORS headers a page served from elsewhere needs
 // to read it, and a preflight is answered for any method and header.
-func Start(root string) error {
-	l, err := net.Listen("tcp", Addr)
-	if err != nil {
-		return err
-	}
+func serveOn(l net.Listener, root string) {
 	examples := os.DirFS(filepath.Join(root, "examples"))
 	go func() {
 		_ = http.Serve(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { serve(examples, w, r) }))
 	}()
-	return nil
 }
 
 func serve(examples fs.FS, w http.ResponseWriter, r *http.Request) {

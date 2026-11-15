@@ -57,9 +57,7 @@ func renderJSArgs(f *ir.Func, args []any) ([]string, error) {
 // values keyed by request key and the keys whose value did not check.
 //
 // The build step is in-process and costs about a millisecond, so none of the Go
-// path's binary-cache machinery has anything worth caching. That also means the
-// generated directory needs no stable name — its only job is to hold the
-// program until it has run.
+// path's binary-cache machinery has anything worth caching.
 func execJSConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (map[string]ir.Expr, map[string]error, error) {
 	if dir == "" {
 		return nil, nil, fmt.Errorf("no project directory")
@@ -74,35 +72,20 @@ func execJSConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (m
 		return nil, nil, err
 	}
 
-	// The program lives inside the project so that node resolves bare
-	// specifiers against the project's node_modules; the dot prefix keeps it
-	// out of the tool globs that scan the tree.
-	srcDir, err := os.MkdirTemp(dir, ".sngl-consteval-js-*")
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating evaluator dir: %w", err)
-	}
-	defer os.RemoveAll(srcDir)
-	// The runtime is written beside the program rather than inlined into it, so
-	// that esbuild resolves it as an ordinary module and the bundle ends up
-	// holding one copy — which is what a module registering an encoder through
-	// globalThis needs.
-	if err := os.WriteFile(filepath.Join(srcDir, consteval.RuntimeFile), consteval.Runtime, 0o644); err != nil {
-		return nil, nil, fmt.Errorf("writing evaluator runtime: %w", err)
-	}
-	mainPath := filepath.Join(srcDir, "main.mjs")
-	if err := os.WriteFile(mainPath, []byte(src), 0o644); err != nil {
-		return nil, nil, fmt.Errorf("writing evaluator source: %w", err)
-	}
-	bundlePath := filepath.Join(srcDir, "bundle.mjs")
-	if err := bundleJSConstEval(dir, mainPath, bundlePath); err != nil {
-		return nil, nil, err
-	}
-
+	// The program is bundled from memory, resolved as if it sat in the
+	// project, so bare specifiers resolve against the project's
+	// node_modules, and the bundle is written outside it: nothing is made in
+	// the project, whose directories go test lists when it decides whether a
+	// test that compiles a const can be replayed.
 	runDir, err := os.MkdirTemp("", "sngl-consteval-js-*")
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating output dir: %w", err)
 	}
 	defer os.RemoveAll(runDir)
+	bundlePath := filepath.Join(runDir, "bundle.mjs")
+	if err := bundleJSConstEval(dir, src, bundlePath); err != nil {
+		return nil, nil, err
+	}
 	resultPath := filepath.Join(runDir, "results.sngl")
 
 	slog.Info("exec", "cmd", nodeBin+" (const evaluator)", "dir", dir, "calls", len(reqs))
@@ -125,7 +108,7 @@ func execJSConstEval(dir string, types ir.NativeDecls, reqs []*nativeRequest) (m
 // changes nothing, and the import it leaves behind hands the .ts back to node —
 // which strips types and refuses an enum, because an enum is not a type. It
 // also drops the unstated requirement that node be new enough to strip types.
-func bundleJSConstEval(dir, mainPath, bundlePath string) error {
+func bundleJSConstEval(dir, src, bundlePath string) error {
 	// esbuild rejects a relative working directory, and dir is whatever the
 	// caller passed the compiler — "." for a build run from the project root.
 	absDir, err := filepath.Abs(dir)
@@ -134,7 +117,13 @@ func bundleJSConstEval(dir, mainPath, bundlePath string) error {
 	}
 	start := time.Now()
 	res := api.Build(api.BuildOptions{
-		EntryPoints:   []string{mainPath},
+		Stdin: &api.StdinOptions{
+			Contents:   src,
+			ResolveDir: absDir,
+			Sourcefile: "sngl-consteval.mjs",
+			Loader:     api.LoaderJS,
+		},
+		Plugins:       []api.Plugin{runtimePlugin},
 		Outfile:       bundlePath,
 		AbsWorkingDir: absDir,
 		Bundle:        true,
@@ -149,6 +138,28 @@ func bundleJSConstEval(dir, mainPath, bundlePath string) error {
 	})
 	slog.Debug("consteval bundle", "lang", "js", "duration", time.Since(start))
 	return jsbundle.Err(res.Errors)
+}
+
+// runtimeSpec is how the program imports the runtime, which runtimePlugin
+// serves from memory. It is a module of its own rather than inlined into the
+// program, so that the bundle holds one copy of it -- which is what a module
+// registering an encoder through globalThis needs.
+const runtimeSpec = "sngl-consteval-runtime"
+
+var runtimePlugin = api.Plugin{
+	Name: "sngl-consteval-runtime",
+	Setup: func(pb api.PluginBuild) {
+		const namespace = "sngl-consteval"
+		pb.OnResolve(api.OnResolveOptions{Filter: "^" + runtimeSpec + "$"},
+			func(api.OnResolveArgs) (api.OnResolveResult, error) {
+				return api.OnResolveResult{Path: consteval.RuntimeFile, Namespace: namespace}, nil
+			})
+		pb.OnLoad(api.OnLoadOptions{Filter: ".*", Namespace: namespace},
+			func(api.OnLoadArgs) (api.OnLoadResult, error) {
+				contents := string(consteval.Runtime)
+				return api.OnLoadResult{Contents: &contents, Loader: api.LoaderJS}, nil
+			})
+	},
 }
 
 func runJSConstEval(node, dir, mainPath, resultPath string) error {
@@ -184,7 +195,7 @@ func jsConstEvalSource(dir string, reqs []*nativeRequest) (string, error) {
 
 	var b strings.Builder
 	b.WriteString("// Code generated by sngl. DO NOT EDIT.\n\n")
-	fmt.Fprintf(&b, "import * as consteval from %q;\n", "./"+consteval.RuntimeFile)
+	fmt.Fprintf(&b, "import * as consteval from %q;\n", runtimeSpec)
 	for _, spec := range specs {
 		mod, err := jsRunSpecifier(dir, spec)
 		if err != nil {
@@ -245,7 +256,7 @@ func jsRunSpecifier(dir, spec string) (string, error) {
 		}
 		rel = runnable
 	}
-	return "../" + rel, nil
+	return "./" + rel, nil
 }
 
 // jsRuntimeSibling finds the implementation a .d.ts describes, by the

@@ -18,6 +18,7 @@ import (
 	"duckfam.us/sngl/internal/gencache"
 	"duckfam.us/sngl/internal/headless"
 	"duckfam.us/sngl/internal/jdk"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/internal/testlaunch"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -45,6 +46,13 @@ func TestScript(t *testing.T) {
 	}
 	startTestHTTP(t, root)
 	defer removeSnglBin()
+	// A script reaches the checkout through subprocesses go test cannot see:
+	// `serve` builds sngl, a go: const evaluates by building a module that
+	// replaces duckfam.us/sngl with it, and a script copies what it needs with
+	// `exec cp`. Its binary links most of the module already, so the rest is
+	// recorded whole.
+	testinputs.Packages(t, root, "./...")
+	testinputs.Tree(t, "example")
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so a
 	// program can be compiled against them.
@@ -114,7 +122,10 @@ func TestScript(t *testing.T) {
 			// The user's trust config is never a script's: each reads and
 			// records its own. GOENV is pinned first, since the go command
 			// finds its own config under the same directory.
-			work := t.TempDir()
+			// A name that is the same on every run: the in-process sngl
+			// runs in it, and go test hashes the directories a test changed
+			// into by their paths.
+			work := testinputs.TempDir(t)
 			// The go command counts its own runs under the config
 			// directory, and a script's `gobuild` record names the
 			// script's tree, so its telemetry is off.
@@ -179,6 +190,11 @@ func scriptKeeps(name string) bool {
 		"http_proxy": true, "https_proxy": true, "no_proxy": true,
 		"SSL_CERT_FILE": true, "SSL_CERT_DIR": true,
 		"CC": true, "CXX": true, "PKG_CONFIG_PATH": true, "LD_LIBRARY_PATH": true,
+		// The git status behind go build's revision stamp would otherwise
+		// take the index lock and change .git's time, which CI sets this to
+		// keep still (.gitlab-ci.yml). Not GIT_ as a prefix: a GIT_DIR would
+		// point a script's own git at the checkout.
+		"GIT_OPTIONAL_LOCKS": true,
 	}
 	prefixes := []string{"LC_", "GO", "CGO_", "SNGL_", "ANDROID_", "GRADLE_", "XDG_", "GTK_", "GDK_", "GSK_", "WLR_"}
 	return names[name] || slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(name, p) })
@@ -301,6 +317,12 @@ func snglCmd() script.Cmd {
 			// In-process sngl reads the process environment, so a var set
 			// with `env VAR=value` has to be applied to it — only the keys
 			// that differ, with the originals kept for the restore below.
+			//
+			// What the process has is read from os.Environ, which go test
+			// does not count as reading any one variable: os.LookupEnv
+			// would make every variable the script carries an input of the
+			// result, among them the D-Bus address and runtime dir a
+			// headless session (go tool verify's) picks afresh each run.
 			origEnv := map[string]string{}
 			origUnset := map[string]bool{}
 			scriptEnv := map[string]string{}
@@ -309,8 +331,14 @@ func snglCmd() script.Cmd {
 					scriptEnv[before] = after
 				}
 			}
+			procEnv := map[string]string{}
+			for _, kv := range os.Environ() {
+				if before, after, ok := strings.Cut(kv, "="); ok {
+					procEnv[before] = after
+				}
+			}
 			for k, v := range scriptEnv {
-				if cur, ok := os.LookupEnv(k); ok {
+				if cur, ok := procEnv[k]; ok {
 					if cur == v {
 						continue
 					}

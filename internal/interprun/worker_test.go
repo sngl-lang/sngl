@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/buildhost"
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // TestTheWorkerIsBuiltInTheProject is the property the whole layout exists for:
@@ -40,10 +43,11 @@ replace duckfam.us/sngl => ./nowhere
 // user's `git status`, and they should not have to add anything for that.
 func TestTheWorkerDirectoryHidesItself(t *testing.T) {
 	dir := t.TempDir()
-	if err := selfIgnore(filepath.Join(dir, ".tmp", "sngl")); err != nil {
-		t.Fatalf("selfIgnore: %v", err)
+	scratch, err := buildhost.Scratch(dir)
+	if err != nil {
+		t.Fatalf("Scratch: %v", err)
 	}
-	b, err := os.ReadFile(filepath.Join(dir, ".tmp", "sngl", ".gitignore"))
+	b, err := os.ReadFile(filepath.Join(scratch, ".gitignore"))
 	if err != nil {
 		t.Fatalf("reading the ignore file: %v", err)
 	}
@@ -126,6 +130,7 @@ func TestTheWorkerSourceListIsComplete(t *testing.T) {
 	if err != nil {
 		t.Skipf("go list unavailable: %v", err)
 	}
+	testinputs.Packages(t, ".", WorkerPkg)
 	const mod = "duckfam.us/sngl/"
 	listed := map[string]bool{}
 	for _, d := range workerSources {

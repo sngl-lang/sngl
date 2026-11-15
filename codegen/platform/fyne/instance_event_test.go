@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	_ "duckfam.us/sngl/codegen/lang"
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // A row that reports upward, under a dynamic `for` so the build cannot inline
@@ -76,11 +77,7 @@ func TestTheParentHandlerRepaintsTheModelsWidget(t *testing.T) {
 func TestInstanceEventReachesTheModelsWidget(t *testing.T) {
 	modelSrc := generateForFyne(t, instanceEventSrc)
 
-	tmp, err := os.MkdirTemp(".", "_fyne-event-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Module(t)
 
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), modelSrc, 0o644); err != nil {
 		t.Fatal(err)
@@ -91,6 +88,7 @@ func TestInstanceEventReachesTheModelsWidget(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

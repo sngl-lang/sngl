@@ -134,6 +134,48 @@ again. `go vet` still reads the C a cgo package compiles (gtk4's
 `lib/platform/gtk4/cgo`), which preprocesses it with the host's headers but
 links nothing.
 
+**go test replays what CI ran before, so a test says what it read through
+a subprocess.** A branch pipeline runs the suite without `-count=1` and
+without coverage (verify's default; `-coverpkg` builds every package
+into every binary, so any edit changed them all), and a package whose inputs
+stand still is answered from the build cache. go test sees the package's
+sources and what its binary opened; it does not see what a `go build` of a
+generated program, `go tool sngl generate`, or an `exec cp` read. A test that
+runs one calls `internal/testinputs` beside it: `Packages` lists what a build
+compiles from the checkout, `Tree` records files that are not Go. A missing
+call is a stale pass, not a failure, so add it with the subprocess.
+`internal/cmd/stamp` sets each tracked file's time from its content before
+the tests run, because a file a test opened is compared by size and time,
+and a fresh clone gives every file the time it was checked out; testinputs
+records only what git tracks for the same reason, which also keeps the
+random name of a generated program's temporary package out of the record.
+Inside the checkout, go test hashes a path a test opened by its name, even
+once it is gone, and a directory by its time and its listing, which making
+anything in it changes; outside, it hashes nothing. So what a test or the
+compiler writes goes outside -- a generated program in `testinputs.Module`,
+the JS const evaluator's bundle, made from memory -- or has a name that is the
+same on every run, in a directory no other test reads: `testinputs.Beside` in
+a package's own tracked `scratch` directory, whose time it puts back
+(bubbletea's is under `internal/`, as its emitted code may import that
+package's internal packages), and the Go const evaluator's program, named by
+its source and the program compiling it, in the project's `.tmp/sngl`
+(`buildhost.Scratch`), removed file by file because `os.RemoveAll` opens the
+directory holding what it removes. A directory a test changes into is hashed by its path wherever it is, so a
+script's work directory is `testinputs.TempDir`, named from the test. Git
+counts too: stamp refreshes the index
+its new times made stale, and CI sets `GIT_OPTIONAL_LOCKS=0`, or the
+`git status` behind go build's revision stamp would change `.git`'s time
+mid-run. So does the environment: a variable a test reads with `os.Getenv` or
+`os.LookupEnv` is hashed by its value, and the headless session `go tool verify` runs the suite in picks a new D-Bus address and runtime directory each
+run, so code that only compares or copies the environment reads `os.Environ`,
+which go test does not count -- as the script harness does before an
+in-process `sngl`. And the build cache: a test type-checking with go/packages
+opens export data in it, so CI's test job reaches the `.tmp/gocache` GitLab
+keeps through a link outside the checkout, where go test hashes nothing, since
+restoring the cache's archive does not keep file times. Each was found by a
+package that would not replay. The
+CI cache's key covers the Dockerfile, the toolchains under every test.
+
 **So is a component fixture's run in Chromium.** `TestComponentFixtures` in
 `codegen/platform/html` runs every `testdata/component_*.txtar` declaring a
 `func test…` through the same launcher (`internal/testlaunch`, in process),

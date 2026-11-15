@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // styleValueRunSrc hands nodes a whole Style held in state: a var replaced by
@@ -78,11 +80,7 @@ func TestStyleValue(t *testing.T) {
 func TestStyleValueRunsInTheEmittedProgram(t *testing.T) {
 	model := generateBubbleteaModel(t, styleValueRunSrc)
 
-	tmp, err := os.MkdirTemp(".", "_bt-style-value-run-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Beside(t, scratchDir, "_bt-style-value-run-")
 
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
 		t.Fatal(err)
@@ -93,6 +91,7 @@ func TestStyleValueRunsInTheEmittedProgram(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

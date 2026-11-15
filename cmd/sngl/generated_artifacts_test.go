@@ -131,7 +131,11 @@ func findSNGLGenerateDirectives(t *testing.T, root string) []directive {
 			// .claude and .worktrees hold git worktrees -- a second checkout
 			// of this repo each -- so walking one re-runs every directive
 			// against another branch's in-progress artifacts.
-			case ".git", ".claude", ".worktrees", "_site", "node_modules", "tmp", "testdata":
+			//
+			// .tmp and scratch hold what the compiler and other packages'
+			// tests make while this runs, which is no source of directives
+			// and, read, an input that differs on every run.
+			case ".git", ".claude", ".worktrees", "_site", "node_modules", "tmp", ".tmp", "scratch", "testdata":
 				return filepath.SkipDir
 			}
 			return nil

@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // TestTreesitterCorpus shells out to `tree-sitter test` and fails if any
@@ -16,6 +18,7 @@ func TestTreesitterCorpus(t *testing.T) {
 	}
 	cmd := exec.Command("tree-sitter", "test")
 	cmd.Dir = "."
+	testinputs.Tree(t, "editors/tree-sitter-sngl")
 	out, err := cmd.CombinedOutput()
 	clean := strings.ReplaceAll(string(out), "\x1b", "\\e")
 	if err != nil {

@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 // optionWrapRunSrc exercises both halves of the option conversion pair in one
@@ -100,13 +102,9 @@ func TestAValueFromACallReachesTheOption(t *testing.T) {
 func TestOptionWrapAndUnwrapRunInTheEmittedProgram(t *testing.T) {
 	model := generateBubbleteaModel(t, optionWrapRunSrc)
 
-	// Under the main module, so charm.land/bubbletea resolves through the
-	// project's own go.mod.
-	tmp, err := os.MkdirTemp(".", "_bt-option-wrap-run-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	// In this package's tree, as emitted code may import its internal
+	// packages; charm.land/bubbletea resolves through the project's go.mod.
+	tmp := testinputs.Beside(t, scratchDir, "_bt-option-wrap-run-")
 
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
 		t.Fatal(err)
@@ -117,6 +115,7 @@ func TestOptionWrapAndUnwrapRunInTheEmittedProgram(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

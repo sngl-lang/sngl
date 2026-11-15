@@ -1,4 +1,5 @@
-// Command verify runs project checks and tests, reporting per-package coverage.
+// Command verify runs project checks and tests, and with -cover reports
+// per-package coverage.
 //
 // Steps:
 //  1. go generate <packages>
@@ -7,16 +8,20 @@
 //  4. go tool mdox fmt --soft-wraps <markdown files>
 //  5. go fix <packages>
 //  6. go vet <packages>
-//  7. go test -coverpkg=<packages> -coverprofile=... <packages>
+//  7. go test <packages>, with -coverpkg=<packages> -coverprofile=... under -cover
 //
 // <packages> is ./... less what git ignores (goPackages): the go command
 // reads no .gitignore, so ./... built, vetted and counted the scratch packages
 // under the ignored tmp/.
 //
-// Step 5 collects cross-package coverage so packages exercised by integration
-// tests (e.g. codegen/lang/* through codegen/platform/*) are credited for the
-// statements they execute, not just statements covered by their own package's
-// tests.
+// Step 7 runs without coverage unless -cover is given, so a package whose
+// inputs stand still is answered from the build cache. -cover collects
+// cross-package coverage, so packages exercised by integration tests (e.g.
+// codegen/lang/* through codegen/platform/*) are credited for the statements
+// they execute, not just statements covered by their own package's tests; but
+// -coverpkg instruments every package into every test binary, so an edit to
+// any package changes every binary and go test can replay no result. CI's
+// branch pipelines run without it and main's measure coverage.
 //
 // The -dry flag skips file-mutating steps: generate is skipped entirely,
 // mod tidy, fmt, mdox fmt, and fix run in check-only mode (reporting
@@ -46,7 +51,7 @@
 // tests link what CI lacks, as the host's GTK -- and writes it again; step 7
 // leaves such a package out while its digest stands (testrun.go).
 //
-// Usage: go tool verify [-v] [-dry] [-full] [-only lint|test] [-update]
+// Usage: go tool verify [-v] [-dry] [-full] [-cover] [-only lint|test] [-update]
 package main
 
 import (
@@ -125,6 +130,7 @@ func main() {
 	full := flag.Bool("full", false, "run the slow/heavy tests too (android fixtures, Robolectric); default skips them")
 	only := flag.String("only", "", "run only the `lint` steps (1-6) or the `test` step (7); both when empty")
 	update := flag.Bool("update", false, "rerecord every package's recorded runs and goldens instead of verifying")
+	cover := flag.Bool("cover", false, "measure cross-package coverage in the test step, which reruns every package")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -172,7 +178,7 @@ func main() {
 		log.Print(err)
 		exit(1)
 	}
-	if !runTests(*verbose, !*dry, *full, tested) {
+	if !runTests(*verbose, !*dry, *full, *cover, tested) {
 		reportTreeChange(".", before)
 		exit(1)
 	}
@@ -223,15 +229,19 @@ func runCheckStep(name string, command string, args ...string) bool {
 }
 
 // runTests is step 7, and reports whether it passed.
-func runTests(verbose, fmtDocs, full bool, pkgs []string) bool {
-	profile, err := os.CreateTemp("", "sngl-verify-cover-*.out")
-	if err != nil {
-		log.Fatalf("create coverprofile: %v", err)
+func runTests(verbose, fmtDocs, full, cover bool, pkgs []string) bool {
+	args := []string{"test"}
+	var profile string
+	if cover {
+		f, err := os.CreateTemp("", "sngl-verify-cover-*.out")
+		if err != nil {
+			log.Fatalf("create coverprofile: %v", err)
+		}
+		f.Close()
+		profile = f.Name()
+		cleanups = append(cleanups, func() { os.Remove(profile) })
+		args = append(args, "-coverpkg="+strings.Join(pkgs, ","), "-coverprofile="+profile)
 	}
-	profile.Close()
-	cleanups = append(cleanups, func() { os.Remove(profile.Name()) })
-
-	args := []string{"test", "-coverpkg=" + strings.Join(pkgs, ","), "-coverprofile=" + profile.Name()}
 	// Default to -short so the routine run (and background sessions) skips the
 	// slow/heavy tests (android fixtures, Robolectric). `-full` opts into the
 	// complete suite. testing.Short() / the `[short]` scripttest cond do the
@@ -301,8 +311,12 @@ func runTests(verbose, fmtDocs, full bool, pkgs []string) bool {
 	}
 
 	cmdErr := cmd.Wait()
+	if !cover {
+		// go test has already named every package that failed.
+		return cmdErr == nil
+	}
 
-	results, err := readProfile(profile.Name())
+	results, err := readProfile(profile)
 	if err != nil {
 		log.Printf("coverage profile: %v", err)
 	}

@@ -14,6 +14,7 @@ import (
 	_ "duckfam.us/sngl/codegen/lang"
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -81,17 +82,15 @@ window {
 		}
 	}
 
-	// Compile-check under the main module so fyne + gg imports resolve.
-	tmp, err := os.MkdirTemp(".", "_fyne-canvas-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	// Compile-check in a module resolving as the checkout does, so fyne + gg
+	// imports resolve.
+	tmp := testinputs.Module(t)
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("go", "build", "./...")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, "./...")
 	combined, buildErr := cmd.CombinedOutput()
 	if buildErr != nil {
 		t.Errorf("emitted Go failed to compile: %v\n--- output ---\n%s\n--- source ---\n%s", buildErr, combined, out)

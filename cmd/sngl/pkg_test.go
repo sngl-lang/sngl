@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"duckfam.us/sngl/internal/testinputs"
 )
 
 func buildTarGz(t *testing.T, files map[string]string) []byte {
@@ -47,7 +49,7 @@ func TestPkgDownloadPopulatesCache(t *testing.T) {
 	cacheRoot := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", cacheRoot)
 
-	workDir := t.TempDir()
+	workDir := testinputs.TempDir(t) // changed into: a name the same on every run
 	host := strings.TrimPrefix(srv.URL, "http://")
 	mainSrc := fmt.Sprintf(`import "widgets" => "http://%s/widgets.tar.gz#%s"
 import ui "sngl:ui"

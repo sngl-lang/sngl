@@ -8,20 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-)
 
-func repoRoot(t *testing.T) string {
-	t.Helper()
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	mod := findGoModAncestor(cwd)
-	if mod == "" {
-		t.Skip("no enclosing module")
-	}
-	return filepath.Dir(mod)
-}
+	"duckfam.us/sngl/internal/testinputs"
+)
 
 const purepkgPath = "duckfam.us/sngl/internal/optimize/testdata/purepkg"
 
@@ -44,12 +33,8 @@ window #app(title="t") {
     }
 }
 `
-	root := repoRoot(t)
-	dir, err := os.MkdirTemp(root, ".sngl-folded-imports-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	// Inside the module, for the go: import to resolve.
+	dir := testinputs.Beside(t, "scratch", "folded-imports-")
 	if err := os.MkdirAll(filepath.Join(dir, "public"), 0o755); err != nil {
 		t.Fatal(err)
 	}

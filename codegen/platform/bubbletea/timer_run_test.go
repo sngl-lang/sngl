@@ -11,6 +11,7 @@ import (
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
 	"duckfam.us/sngl/internal/parser"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -151,11 +152,7 @@ func TestATimerTicksInTheEmittedProgram(t *testing.T) {
 		t.Fatalf("model.go not among generated files %v", mem.Files())
 	}
 
-	tmp, err := os.MkdirTemp(".", "_bt-timer-run-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Beside(t, scratchDir, "_bt-timer-run-")
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), modelSrc, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -165,6 +162,7 @@ func TestATimerTicksInTheEmittedProgram(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-count=1", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	combined, runErr := cmd.CombinedOutput()
 	if runErr != nil {
 		t.Errorf("running the emitted program failed: %v\n--- output ---\n%s\n--- model.go ---\n%s",

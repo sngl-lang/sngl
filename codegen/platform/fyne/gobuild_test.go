@@ -9,6 +9,7 @@ import (
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/internal/lower"
 	"duckfam.us/sngl/internal/optimize"
+	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/ir"
 )
 
@@ -59,9 +60,9 @@ func fixtureSource(t *testing.T, name string) string {
 
 // buildGeneratedGo type-checks generated Go by compiling it.
 //
-// The temp dir is created UNDER this package so fyne.io/fyne/v2 and the sngl
-// runtime packages resolve through the repo's own go.mod; a dir in
-// os.TempDir() has no module above it.
+// It is built in a module resolving as the checkout does
+// (testinputs.Module), so fyne.io/fyne/v2 and the sngl runtime packages
+// resolve at the project's versions.
 func buildGeneratedGo(t *testing.T, prefix, model string) {
 	t.Helper()
 	if out := compileErrors(t, prefix, model); out != "" {
@@ -78,16 +79,13 @@ func buildGeneratedGo(t *testing.T, prefix, model string) {
 // unrelated defect keeps failing.
 func compileErrors(t *testing.T, prefix, model string) string {
 	t.Helper()
-	tmp, err := os.MkdirTemp(".", "_"+prefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := testinputs.Module(t)
 	if err := os.WriteFile(filepath.Join(tmp, "model.go"), []byte(model), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("go", "build", "-gcflags=-e", ".")
 	cmd.Dir = tmp
+	testinputs.Packages(t, tmp, ".")
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		return ""

@@ -1,0 +1,4 @@
+# testinputs.Beside builds bubbletea's emitted programs here: in the
+# package's tree, so they may import its internal packages.
+*
+!.gitignore
