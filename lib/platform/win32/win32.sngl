@@ -13,7 +13,7 @@ import go "sngl:language/go"
 // The runtime every win32 program links: the window procedure, the layout of
 // a box's children and the message loop, in C, which each language compiles
 // into the program.
-c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32", "-lmsimg32", "-lole32", "-luuid", "-lwindowscodecs", "-lurlmon", "-lgdiplus"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h"])
+c.link(include="sngl_win32.h", library="user32", ldflags=["-mwindows", "-luser32", "-lgdi32", "-lcomctl32", "-lshell32", "-lmsimg32", "-lole32", "-luuid", "-lwindowscodecs", "-lurlmon", "-lgdiplus", "-lwinhttp"], sources=["rt/sngl_win32.c", "rt/sngl_win32.h", "rt/http.c", "sngl:language/c/rt/sngl_http.h"])
 
 // The source annotations MinGW's sal.h, specstrings.h and driverspecs.h
 // define as macros, which windows.h includes: a local lowering names
@@ -242,7 +242,9 @@ struct Look {
     padBottom  int
     padLeft    int
     minWidth   int
-    minHeight  int
+    width      int
+    height     int
+    align      int
     color      int
     background int
     fontPx     int
@@ -430,11 +432,16 @@ func _create_Box() Box {
     return _rtBox(true)
 }
 
+#[c.native("sngl_win32_contents")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Contents")]
+func _rtContents() Box
+
 // What a component renders several nodes, or a slot, at its top into: a box
-// down the page, as a window lays out what it holds.
+// down the page, as a window lays out what it holds, growing by the most any
+// node in it grows.
 #[gen.protocol(contents)]
 func _contents() Box {
-    return _rtBox(true)
+    return _rtContents()
 }
 
 #[gen.protocol(append)]

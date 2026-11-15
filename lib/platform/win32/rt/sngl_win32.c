@@ -15,7 +15,6 @@
 
 #define SNGL_BOX_CLASS L"SnglBox"
 #define SNGL_TOP_CLASS L"SnglToplevel"
-#define SNGL_PROP L"sngl.ctl"
 /* A toplevel's layout, asked for by each change in it and run once. */
 #define SNGL_WM_LAYOUT (WM_APP + 1)
 /* Work sngl_post queued, its handler the message's lParam. */
@@ -30,6 +29,9 @@
 #define SNGL_WM_FETCHED (WM_APP + 6)
 
 enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE, K_CANVAS, K_FLOW, K_SPAN };
+
+/* Where a line box places a child across it, as CSS's align-items. */
+enum { A_STRETCH, A_START, A_CENTER, A_END };
 
 /* How a box lays its children out (sngl_win32_set_mode). */
 enum { M_LINE, M_GRID, M_FLOW, M_STACK, M_EQUAL };
@@ -53,7 +55,9 @@ typedef struct {
 	double flex;
 	int gap;
 	int pad[4]; /* top, right, bottom, left */
-	int min_w, min_h;
+	/* Its least size, and the size its style gives it, or 0; and how a
+	 * line box places its children across it (A_STRETCH and on). */
+	int min_w, exact_w, exact_h, align;
 	int color, background, font_px;
 	/* dpi is what its font is made for. Every length above is a SNGL px,
 	 * a 96th of an inch, scaled to the window's DPI where it is used. */
@@ -77,13 +81,16 @@ typedef struct {
 	/* A box's mode, its columns as a grid, and the height a flow wrapped
 	 * to at the width it was last laid out at, which it measures as next. */
 	int mode, columns, flow_h;
-	/* framed is a box drawn with an etched edge inside its bounds. */
-	int framed;
+	/* framed is a box drawn with an etched edge inside its bounds;
+	 * contents is the box a component's several top nodes are held in. */
+	int framed, contents;
 	/* off_prop and off_look hide a node, by its visible prop and by its
 	 * style's display, and either takes it out of its box's layout. */
 	int off_prop, off_look;
 	/* href is a link's, opened as the user clicks it. */
 	WCHAR *href;
+	/* text is what sngl_win32_set_text last set. */
+	WCHAR *text;
 	/* tip is what a box's children show as the pointer rests on them. */
 	WCHAR *tip;
 	/* selected is a tabs' page shown. */
@@ -91,6 +98,17 @@ typedef struct {
 	/* A scroll's axes, where it is along each, and whether its end was
 	 * reported and has not been left since; reach is its handler. */
 	int scroll_v, scroll_h, pos_x, pos_y, at_end;
+	/* How far a scroll can move along each axis, and its room inside,
+	 * as its last layout found them. */
+	int max_x, max_y, page_x, page_y;
+	/* size is what the node last measured, while measured is set: until
+	 * something changes it, which calls relayout. */
+	SIZE size;
+	int measured;
+	/* placed is where its box's layout last put it, in its box, and
+	 * laid_w and laid_h the room it last laid out what it holds in. */
+	RECT placed;
+	int laid_w, laid_h;
 	/* wheel is the wheel's turn not yet a whole line. */
 	int wheel;
 	handler reach;
@@ -109,12 +127,13 @@ typedef struct {
 	int selectable, sortable, sort_col;
 	WCHAR *chosen;
 	/* An image's fit (sngl_win32_set_fit), its handlers, and why its
-	 * picture failed; a picture's bitmap, its size, and what it shows. */
+	 * picture failed; a picture's bitmap, its size, and what it shows,
+	 * and the bitmap scaled to the size it was last painted at. */
 	int fit;
 	handler load, failed;
 	char *why;
-	HBITMAP bmp;
-	int bw, bh;
+	HBITMAP bmp, scaled;
+	int bw, bh, sw, sh;
 	WCHAR *url;
 	/* A canvas's drawing space, how it is mapped onto the canvas, and what
 	 * paints it, a sngl_win32_paint_fn. */
@@ -157,7 +176,76 @@ static HWND *held;
 static int nheld;
 static HWND shown_last; /* the toplevel shown last */
 
-static ctl *ctl_of(HWND w) { return w ? (ctl *)GetPropW(w, SNGL_PROP) : NULL; }
+/* Every window's record, by its handle: a window property is a trip to
+ * Wine's server each time it is read, and a layout reads thousands. Open
+ * addressing, a power of two slots, at most half of them full. */
+static struct ctl_slot {
+	HWND w;
+	ctl *c;
+} *ctls;
+static size_t nctls, capctls;
+
+static size_t ctl_hash(HWND w) { return (size_t)(((uintptr_t)w * 0x9E3779B97F4A7C15ull) >> 16) & (capctls - 1); }
+
+static ctl *ctl_of(HWND w) {
+	if (!w || !capctls) {
+		return NULL;
+	}
+	for (size_t i = ctl_hash(w); ctls[i].w; i = (i + 1) & (capctls - 1)) {
+		if (ctls[i].w == w) {
+			return ctls[i].c;
+		}
+	}
+	return NULL;
+}
+
+static void ctl_put(HWND w, ctl *c) {
+	if ((nctls + 1) * 2 > capctls) {
+		struct ctl_slot *old = ctls;
+		size_t was = capctls;
+		capctls = capctls ? capctls * 2 : 256;
+		ctls = calloc(capctls, sizeof *ctls);
+		nctls = 0;
+		for (size_t i = 0; i < was; i++) {
+			if (old[i].w) {
+				ctl_put(old[i].w, old[i].c);
+			}
+		}
+		free(old);
+	}
+	size_t i = ctl_hash(w);
+	while (ctls[i].w && ctls[i].w != w) {
+		i = (i + 1) & (capctls - 1);
+	}
+	nctls += ctls[i].w == NULL;
+	ctls[i].w = w;
+	ctls[i].c = c;
+}
+
+/* ctl_drop takes w's record out, moving each record after it that probed
+ * past its slot back into the gap, so no lookup stops short at it. */
+static void ctl_drop(HWND w) {
+	if (!w || !capctls) {
+		return;
+	}
+	size_t mask = capctls - 1, i = ctl_hash(w);
+	while (ctls[i].w != w) {
+		if (!ctls[i].w) {
+			return;
+		}
+		i = (i + 1) & mask;
+	}
+	for (size_t j = (i + 1) & mask; ctls[j].w; j = (j + 1) & mask) {
+		size_t home = ctl_hash(ctls[j].w);
+		if (((j - home) & mask) >= ((j - i) & mask)) {
+			ctls[i] = ctls[j];
+			i = j;
+		}
+	}
+	ctls[i].w = NULL;
+	ctls[i].c = NULL;
+	nctls--;
+}
 
 static int dpi_of(HWND w) {
 	if (dpi_for_window && w) {
@@ -236,6 +324,29 @@ static void fire(handler *h) {
 	}
 }
 
+/* press fires w's click and then each of the boxes' holding it, as a
+ * browser bubbles one: every override connects a node's @click whether the
+ * program wrote one or not, so a text or a picture in a clickable card holds
+ * an empty one. Each is found before any fires, and fired only while its
+ * window stands, since a handler may close the page it is on. */
+static void press(HWND w) {
+	HWND chain[64];
+	int n = 0;
+	for (HWND p = w; p && n < 64; p = GetParent(p)) {
+		ctl *c = ctl_of(p);
+		if (!c || c->kind == K_TOP) {
+			break;
+		}
+		chain[n++] = p;
+	}
+	for (int i = 0; i < n; i++) {
+		ctl *c = IsWindow(chain[i]) ? ctl_of(chain[i]) : NULL;
+		if (c) {
+			fire(&c->click);
+		}
+	}
+}
+
 static void drop_handler(handler *h) {
 	if (h->release) {
 		h->release(h->ctx);
@@ -279,7 +390,7 @@ static void forget(HWND w) {
 	if (c->kind == K_ENTRY && c->id >= SNGL_ENTRY_FIRST && c->id <= 0xffff) {
 		entry_ids[c->id / 8] &= (unsigned char)~(1u << (c->id % 8));
 	}
-	RemovePropW(w, SNGL_PROP);
+	ctl_drop(w);
 	drop_handler(&c->click);
 	drop_handler(&c->change);
 	drop_handler(&c->activate);
@@ -295,8 +406,12 @@ static void forget(HWND w) {
 	if (c->bmp) {
 		DeleteObject(c->bmp);
 	}
+	if (c->scaled) {
+		DeleteObject(c->scaled);
+	}
 	free(c->why);
 	free(c->url);
+	free(c->text);
 	if (c->dialog) {
 		HWND owner = GetWindow(c->dialog, GW_OWNER);
 		if (c->open && owner) {
@@ -328,6 +443,7 @@ static void relayout(HWND w);
 static const char *utf8(const WCHAR *wide);
 static void refresh(HWND w, int dpi);
 static void lay_out_top(HWND top);
+static void paint_button(DRAWITEMSTRUCT *di, ctl *c);
 static void touched(HWND w);
 
 /* text_size is w's text as its font draws it. */
@@ -424,6 +540,50 @@ typedef struct {
 	double flex;
 } kid;
 
+/* inherited is the nearest background among w and the boxes holding it,
+ * as a node with none of its own shows its box's in a browser, or NULL
+ * where none of them has one. */
+static ctl *inherited(HWND w) {
+	for (HWND p = w; p; p = GetParent(p)) {
+		ctl *c = ctl_of(p);
+		if (!c) {
+			break;
+		}
+		if (c->brush) {
+			return c;
+		}
+		if (c->kind == K_TOP) {
+			break;
+		}
+	}
+	return NULL;
+}
+
+/* backdrop is the brush w shows where it draws nothing: the inherited
+ * background, or the class's. */
+static HBRUSH backdrop(HWND w) {
+	ctl *c = inherited(w);
+	return c ? c->brush : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND);
+}
+
+/* flex_of is how much w grows by: its look's, or for a component's
+ * contents the most any child grows by, as CSS's display: contents makes
+ * them the items of the box holding it. */
+static double flex_of(HWND w) {
+	ctl *c = ctl_of(w);
+	if (!c->contents) {
+		return c->flex;
+	}
+	double most = 0;
+	for (int i = 0; i < c->nkids; i++) {
+		if (laid(c->kids[i])) {
+			double f = flex_of(c->kids[i]);
+			most = f > most ? f : most;
+		}
+	}
+	return most;
+}
+
 /* laid_kids is c's children it lays out, which the caller frees, and how
  * many there are. */
 static kid *laid_kids(ctl *c, int *n) {
@@ -436,7 +596,7 @@ static kid *laid_kids(ctl *c, int *n) {
 		kid *k = &ks[(*n)++];
 		k->w = c->kids[i];
 		measure(k->w, &k->s);
-		k->flex = ctl_of(k->w)->flex;
+		k->flex = flex_of(k->w);
 	}
 	return ks;
 }
@@ -536,7 +696,7 @@ static SIZE tree_size(HWND w, ctl *c) {
 	}
 	SelectObject(dc, old);
 	ReleaseDC(w, dc);
-	s.cy = c->min_h > 0 ? 0 : rows * (int)SendMessageW(w, TVM_GETITEMHEIGHT, 0, 0) + px(4, c->dpi);
+	s.cy = c->exact_h > 0 ? 0 : rows * (int)SendMessageW(w, TVM_GETITEMHEIGHT, 0, 0) + px(4, c->dpi);
 	if (s.cx < px(120, c->dpi)) {
 		s.cx = px(120, c->dpi);
 	}
@@ -855,6 +1015,10 @@ static void measure(HWND w, SIZE *out) {
 		*out = s;
 		return;
 	}
+	if (c->measured) {
+		*out = c->size;
+		return;
+	}
 	switch (c->kind) {
 	case K_TOP:
 	case K_BOX:
@@ -930,12 +1094,12 @@ static void measure(HWND w, SIZE *out) {
 		s = box_measure(c);
 		int most = px(200, c->dpi);
 		if (c->scroll_v) {
-			int cap = c->min_h > 0 ? 0 : most;
+			int cap = c->exact_h > 0 ? 0 : most;
 			s.cy = s.cy < cap ? s.cy : cap;
 			s.cx += GetSystemMetrics(SM_CXVSCROLL);
 		}
 		if (c->scroll_h) {
-			int cap = c->min_w > 0 ? 0 : most;
+			int cap = c->min_w > 0 || c->exact_w > 0 ? 0 : most;
 			s.cx = s.cx < cap ? s.cx : cap;
 			s.cy += GetSystemMetrics(SM_CYHSCROLL);
 		}
@@ -961,7 +1125,7 @@ static void measure(HWND w, SIZE *out) {
 			row = ir.bottom - ir.top;
 		}
 		s.cx += 2 * GetSystemMetrics(SM_CXEDGE) + GetSystemMetrics(SM_CXVSCROLL);
-		s.cy = c->min_h > 0 ? 0 : head + rows * row + 2 * GetSystemMetrics(SM_CYEDGE) + px(2, c->dpi);
+		s.cy = c->exact_h > 0 ? 0 : head + rows * row + 2 * GetSystemMetrics(SM_CYEDGE) + px(2, c->dpi);
 		break;
 	}
 	case K_TREE:
@@ -1024,9 +1188,14 @@ static void measure(HWND w, SIZE *out) {
 	if (s.cx < px(c->min_w, c->dpi)) {
 		s.cx = px(c->min_w, c->dpi);
 	}
-	if (s.cy < px(c->min_h, c->dpi)) {
-		s.cy = px(c->min_h, c->dpi);
+	if (c->exact_w > 0) {
+		s.cx = px(c->exact_w, c->dpi);
 	}
+	if (c->exact_h > 0) {
+		s.cy = px(c->exact_h, c->dpi);
+	}
+	c->size = s;
+	c->measured = 1;
 	*out = s;
 }
 
@@ -1062,10 +1231,21 @@ static void line(ctl *c, kid *ks, int n, RECT *at, int x0, int y0, int iw, int i
 		/* What rounding left goes to the last to flex. */
 		size[last] += spare - given;
 	}
-	int pos = c->vertical ? y0 : x0;
+	int pos = c->vertical ? y0 : x0, room = c->vertical ? iw : ih;
 	for (int i = 0; i < n; i++) {
-		int x = c->vertical ? x0 : pos, y = c->vertical ? pos : y0;
-		SetRect(&at[i], x, y, x + (c->vertical ? iw : size[i]), y + (c->vertical ? size[i] : ih));
+		/* Across the line, the whole box, unless the box aligns its
+		 * children or the child's style sizes it that way, as CSS
+		 * stretches only a child with no size of its own. */
+		ctl *kc = ctl_of(ks[i].w);
+		int sized = c->vertical ? kc->exact_w > 0 : kc->exact_h > 0;
+		int across = room, off = 0;
+		if (c->align != A_STRETCH || sized) {
+			int want = c->vertical ? ks[i].s.cx : ks[i].s.cy;
+			across = want < room ? want : room;
+			off = c->align == A_CENTER ? (room - across) / 2 : c->align == A_END ? room - across : 0;
+		}
+		int x = c->vertical ? x0 + off : pos, y = c->vertical ? pos : y0 + off;
+		SetRect(&at[i], x, y, x + (c->vertical ? across : size[i]), y + (c->vertical ? size[i] : across));
 		pos += size[i] + gap;
 	}
 	free(size);
@@ -1107,6 +1287,7 @@ static int flow(kid *ks, int n, RECT *at, int x0, int y0, int iw, int gap) {
 }
 
 static void place(HWND w, int cw, int ch);
+static void reach(HWND box, ctl *c);
 
 /* scroll_area is the room a scroll lays what it holds out in, inside its
  * vw by vh client area: as large as what it holds along each axis it
@@ -1140,7 +1321,17 @@ static void scroll_area(HWND box, ctl *c, int vw, int vh, int *x0, int *y0, int 
 	}
 	*x0 -= c->pos_x;
 	*y0 -= c->pos_y;
-	int ending = c->scroll_v ? c->pos_y + ph >= *ih - ph / 2 : c->pos_x + pw >= *iw - pw / 2;
+	c->max_x = max_x;
+	c->max_y = max_y;
+	c->page_x = pw;
+	c->page_y = ph;
+	reach(box, c);
+}
+
+/* reach reports a scroll's end coming within half a page of showing, once
+ * each time it arrives there. */
+static void reach(HWND box, ctl *c) {
+	int ending = c->scroll_v ? c->pos_y >= c->max_y - c->page_y / 2 : c->pos_x >= c->max_x - c->page_x / 2;
 	if (ending && !c->at_end) {
 		c->at_end = 1;
 		PostMessageW(box, SNGL_WM_REACHED, 0, 0);
@@ -1170,8 +1361,19 @@ static void lay_out_tabs(HWND tabs, int w, int h) {
  * area, as its mode does, and each box among them its own. */
 static void lay_out(HWND box, int w, int h) {
 	ctl *c = ctl_of(box);
-	if (!c || c->nkids == 0) {
-		InvalidateRect(box, NULL, TRUE);
+	if (!c) {
+		return;
+	}
+	/* It paints again only where something in it moved or it changed
+	 * size: what changes otherwise repaints itself, and repainting every
+	 * box of the window on each layout redrew every picture in it. */
+	int moved = w != c->laid_w || h != c->laid_h;
+	c->laid_w = w;
+	c->laid_h = h;
+	if (c->nkids == 0) {
+		if (moved) {
+			InvalidateRect(box, NULL, TRUE);
+		}
 		return;
 	}
 	int pad[4], gap = px(c->gap, c->dpi), e = edge(c);
@@ -1224,7 +1426,12 @@ static void lay_out(HWND box, int w, int h) {
 			/* A drop-down's height is its list's too, dropped. */
 			ch += px(200, kc->dpi);
 		}
-		if (dwp) {
+		/* A move to where it is is still a trip to Wine's server, and a
+		 * layout moves every node of the window. */
+		RECT to = {at[i].left, at[i].top, at[i].right, at[i].top + ch};
+		if (dwp && !EqualRect(&kc->placed, &to)) {
+			kc->placed = to;
+			moved = 1;
 			dwp = DeferWindowPos(dwp, ks[i].w, NULL, at[i].left, at[i].top, at[i].right - at[i].left, ch, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
 	}
@@ -1242,7 +1449,9 @@ static void lay_out(HWND box, int w, int h) {
 	}
 	free(at);
 	free(ks);
-	InvalidateRect(box, NULL, TRUE);
+	if (moved) {
+		InvalidateRect(box, NULL, TRUE);
+	}
 }
 
 /* place lays out what w holds in its cw by ch bounds, where it holds any. */
@@ -1274,8 +1483,13 @@ static void place(HWND w, int cw, int ch) {
 	case K_IMAGE:
 		/* Its picture fills it, and paints itself fitted. */
 		for (int i = 0; i < c->nkids; i++) {
-			SetWindowPos(c->kids[i], NULL, 0, 0, cw, ch, SWP_NOZORDER | SWP_NOACTIVATE);
-			InvalidateRect(c->kids[i], NULL, TRUE);
+			ctl *kc = ctl_of(c->kids[i]);
+			RECT to = {0, 0, cw, ch};
+			if (kc && !EqualRect(&kc->placed, &to)) {
+				kc->placed = to;
+				SetWindowPos(c->kids[i], NULL, 0, 0, cw, ch, SWP_NOZORDER | SWP_NOACTIVATE);
+				InvalidateRect(c->kids[i], NULL, FALSE);
+			}
 		}
 		break;
 	default:
@@ -1307,6 +1521,7 @@ static void refresh(HWND w, int dpi) {
 	}
 	if (c->dpi != dpi) {
 		c->dpi = dpi;
+		c->measured = 0;
 		own_font(c);
 		if (c->kind != K_TOP && c->kind != K_BOX) {
 			SendMessageW(w, WM_SETFONT, (WPARAM)font_of(c), FALSE);
@@ -1338,6 +1553,20 @@ static void fit(HWND top, int min_w, int min_h) {
 /* relayout asks for the layout of the toplevel w is in, once whatever is
  * changing it has. A node not yet under one waits for its append. */
 static void relayout(HWND w) {
+	/* What changed measures again, and so does everything holding it;
+	 * the rest keeps what it measured, since a layout asks each box for
+	 * its children's sizes once for itself and again for each box above
+	 * it, and measuring text is a call into GDI. */
+	for (HWND p = w; p; p = GetParent(p)) {
+		ctl *pc = ctl_of(p);
+		if (!pc) {
+			break;
+		}
+		pc->measured = 0;
+		if (pc->kind == K_TOP) {
+			break;
+		}
+	}
 	HWND top = GetAncestor(w, GA_ROOT);
 	ctl *c = ctl_of(top);
 	if (!c || c->kind != K_TOP || c->laying) {
@@ -1441,12 +1670,26 @@ static void scrolled(HWND w, ctl *c, int bar, int request) {
 	default:
 		return;
 	}
-	if (bar == SB_VERT) {
-		c->pos_y = pos;
-	} else {
-		c->pos_x = pos;
+	int most = bar == SB_VERT ? c->max_y : c->max_x;
+	pos = pos > most ? most : pos < 0 ? 0 : pos;
+	int *at = bar == SB_VERT ? &c->pos_y : &c->pos_x;
+	if (pos == *at) {
+		return;
 	}
-	lay_out_now(w);
+	/* What it holds is moved, not laid out again: nothing in it changed
+	 * size, and laying out every card of a long grid on each line the
+	 * wheel turns was a fifth of a second a line under Wine. */
+	int by = *at - pos;
+	*at = pos;
+	SetScrollPos(w, bar, pos, TRUE);
+	for (int i = 0; i < c->nkids; i++) {
+		ctl *kc = ctl_of(c->kids[i]);
+		if (kc) {
+			OffsetRect(&kc->placed, bar == SB_HORZ ? by : 0, bar == SB_VERT ? by : 0);
+		}
+	}
+	ScrollWindowEx(w, bar == SB_HORZ ? by : 0, bar == SB_VERT ? by : 0, NULL, NULL, NULL, NULL, SW_SCROLLCHILDREN | SW_INVALIDATE | SW_ERASE);
+	reach(w, c);
 }
 
 /* show_modal shows a modal's window over the window the modal is in,
@@ -1683,12 +1926,16 @@ static void shown_as(HWND w, ctl *c, HBITMAP bmp, int bw, int bh, const char *wh
 	if (c->bmp) {
 		DeleteObject(c->bmp);
 	}
+	if (c->scaled) {
+		DeleteObject(c->scaled);
+		c->scaled = NULL;
+	}
 	c->bmp = bmp;
 	c->bw = bw;
 	c->bh = bh;
 	free(c->why);
 	c->why = why ? _strdup(why) : NULL;
-	InvalidateRect(w, NULL, TRUE);
+	InvalidateRect(w, NULL, FALSE);
 	PostMessageW(w, SNGL_WM_LOADED, 0, 0);
 }
 
@@ -1788,43 +2035,79 @@ static void load(HWND w, ctl *c) {
  * image's fit says: whole and centered, covering it, stretched over it, at
  * its own size, or whole and no larger than its own. */
 static void paint_picture(HWND w, ctl *c, HDC dc) {
-	if (!c->bmp) {
-		return;
-	}
 	RECT r;
 	GetClientRect(w, &r);
 	int aw = r.right, ah = r.bottom;
-	ctl *frame = ctl_of(GetParent(w));
-	int fit = frame ? frame->fit : 0;
-	double sx = (double)aw / c->bw, sy = (double)ah / c->bh, sc;
-	switch (fit) {
-	case 1: /* cover */
-		sc = sx > sy ? sx : sy;
-		break;
-	case 3: /* none */
-		sc = 1;
-		break;
-	case 4: /* scaleDown */
-		sc = sx < sy ? sx : sy;
-		sc = sc < 1 ? sc : 1;
-		break;
-	default: /* contain, and fill below */
-		sc = sx < sy ? sx : sy;
+	if (aw <= 0 || ah <= 0) {
+		return;
 	}
-	int dw = (int)(c->bw * sc + 0.5), dh = (int)(c->bh * sc + 0.5);
-	if (fit == 2) {
-		dw = aw;
-		dh = ah;
+	/* Painted whole off screen over what shows through it, since erasing
+	 * first showed the window behind for a frame each time it was laid
+	 * out. */
+	HDC buf = CreateCompatibleDC(dc);
+	HBITMAP frame_bmp = CreateCompatibleBitmap(dc, aw, ah);
+	HGDIOBJ old_frame = SelectObject(buf, frame_bmp);
+	FillRect(buf, &r, backdrop(w));
+	if (c->bmp) {
+		ctl *frame = ctl_of(GetParent(w));
+		int fit = frame ? frame->fit : 0;
+		double sx = (double)aw / c->bw, sy = (double)ah / c->bh, sc;
+		switch (fit) {
+		case 1: /* cover */
+			sc = sx > sy ? sx : sy;
+			break;
+		case 3: /* none */
+			sc = 1;
+			break;
+		case 4: /* scaleDown */
+			sc = sx < sy ? sx : sy;
+			sc = sc < 1 ? sc : 1;
+			break;
+		default: /* contain, and fill below */
+			sc = sx < sy ? sx : sy;
+		}
+		int dw = (int)(c->bw * sc + 0.5), dh = (int)(c->bh * sc + 0.5);
+		if (fit == 2) {
+			dw = aw;
+			dh = ah;
+		}
+		if (dw > 0 && dh > 0) {
+			HDC mem = CreateCompatibleDC(dc);
+			BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+			if (!c->scaled || c->sw != dw || c->sh != dh) {
+				/* Scaling a large picture is the slow part of painting
+				 * it, so it is done once a size. */
+				if (c->scaled) {
+					DeleteObject(c->scaled);
+				}
+				BITMAPINFO bi = {{sizeof(BITMAPINFOHEADER), dw, -dh, 1, 32, BI_RGB, 0, 0, 0, 0, 0}, {{0, 0, 0, 0}}};
+				void *bits;
+				c->scaled = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+				c->sw = dw;
+				c->sh = dh;
+				if (c->scaled) {
+					memset(bits, 0, (size_t)dw * (size_t)dh * 4);
+					HDC to = CreateCompatibleDC(dc);
+					HGDIOBJ old_to = SelectObject(to, c->scaled);
+					HGDIOBJ old_mem = SelectObject(mem, c->bmp);
+					AlphaBlend(to, 0, 0, dw, dh, mem, 0, 0, c->bw, c->bh, bf);
+					SelectObject(mem, old_mem);
+					SelectObject(to, old_to);
+					DeleteDC(to);
+				}
+			}
+			if (c->scaled) {
+				HGDIOBJ old = SelectObject(mem, c->scaled);
+				AlphaBlend(buf, (aw - dw) / 2, (ah - dh) / 2, dw, dh, mem, 0, 0, dw, dh, bf);
+				SelectObject(mem, old);
+			}
+			DeleteDC(mem);
+		}
 	}
-	HDC mem = CreateCompatibleDC(dc);
-	HGDIOBJ old = SelectObject(mem, c->bmp);
-	int saved = SaveDC(dc);
-	IntersectClipRect(dc, 0, 0, aw, ah);
-	BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
-	AlphaBlend(dc, (aw - dw) / 2, (ah - dh) / 2, dw, dh, mem, 0, 0, c->bw, c->bh, bf);
-	RestoreDC(dc, saved);
-	SelectObject(mem, old);
-	DeleteDC(mem);
+	BitBlt(dc, 0, 0, aw, ah, buf, 0, 0, SRCCOPY);
+	SelectObject(buf, old_frame);
+	DeleteObject(frame_bmp);
+	DeleteDC(buf);
 }
 
 /* --- Drawing --- */
@@ -2164,7 +2447,11 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			if (src->kind == K_LINK && src->href && src->href[0] && !firing) {
 				ShellExecuteW(NULL, L"open", src->href, NULL, NULL, SW_SHOWNORMAL);
 			}
-			fire(&src->click);
+			if (src->kind == K_TEXT && !firing) {
+				press((HWND)lp);
+			} else {
+				fire(&src->click);
+			}
 			return 0;
 		case EN_CHANGE:
 			if (!src->quiet) {
@@ -2194,27 +2481,37 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 	case WM_CTLCOLOREDIT: {
 		LRESULT otherwise = DefWindowProcW(w, msg, wp, lp);
 		ctl *src = ctl_of((HWND)lp);
-		if (src && !src->brush && c && c->brush && msg != WM_CTLCOLOREDIT) {
+		ctl *under = src && !src->brush && msg != WM_CTLCOLOREDIT ? inherited((HWND)lp) : NULL;
+		if (under) {
 			/* A control with no background of its own shows its box's. */
 			SetBkMode((HDC)wp, TRANSPARENT);
 			color(src, (HDC)wp, 0);
-			return (LRESULT)c->brush;
+			return (LRESULT)under->brush;
 		}
 		return color(src, (HDC)wp, otherwise);
 	}
 	case WM_ERASEBKGND:
-		if (c && c->kind == K_CANVAS) {
+		if (c && (c->kind == K_CANVAS || c->kind == K_PICTURE)) {
 			/* Its paint fills what it draws over, off screen, so it does
 			 * not flicker. */
 			return 1;
 		}
-		if (c && c->brush) {
+		if (c && inherited(w)) {
 			RECT r;
 			GetClientRect(w, &r);
-			FillRect((HDC)wp, &r, c->brush);
+			FillRect((HDC)wp, &r, backdrop(w));
 			return 1;
 		}
 		break;
+	case WM_DRAWITEM: {
+		DRAWITEMSTRUCT *di = (DRAWITEMSTRUCT *)lp;
+		ctl *src = ctl_of(di->hwndItem);
+		if (src && src->kind == K_BUTTON) {
+			paint_button(di, src);
+			return TRUE;
+		}
+		break;
+	}
 	case WM_NCHITTEST:
 		if (c && c->kind == K_PICTURE) {
 			/* Its image takes the click. */
@@ -2278,9 +2575,6 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		if (c && c->kind == K_PICTURE) {
 			PAINTSTRUCT ps;
 			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
-			if (msg == WM_PRINTCLIENT) {
-				SendMessageW(w, WM_ERASEBKGND, wp, 0);
-			}
 			paint_picture(w, c, dc);
 			if (msg != WM_PRINTCLIENT) {
 				EndPaint(w, &ps);
@@ -2313,9 +2607,10 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 			return 0;
 		}
 		/* A box with a click handler, a clickable card, is pressed as a
-		 * button is. */
-		if (c && c->click.fn) {
-			fire(&c->click);
+		 * button is, wherever in it the click lands: on a box it holds,
+		 * or a picture, which lets the click through to its image. */
+		if (c && c->kind != K_TOP) {
+			press(w);
 			return 0;
 		}
 		break;
@@ -2483,6 +2778,49 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 		break;
 	}
 	return DefWindowProcW(w, msg, wp, lp);
+}
+
+/* shade is rgb, 0xRRGGBB, darkened by a share of 256. */
+static COLORREF shade(int rgb, int by) {
+	int r = (rgb >> 16) & 0xff, g = (rgb >> 8) & 0xff, b = rgb & 0xff;
+	return RGB(r * (256 - by) / 256, g * (256 - by) / 256, b * (256 - by) / 256);
+}
+
+/* paint_button draws a button given a background, which a push button's
+ * theme paints over: flat in its background, darker while pressed, as
+ * gtk4's shades one under :active, and its text centered in its color. */
+static void paint_button(DRAWITEMSTRUCT *di, ctl *c) {
+	HDC dc = di->hDC;
+	RECT r = di->rcItem;
+	int pressed = (di->itemState & ODS_SELECTED) != 0;
+	HBRUSH fill = pressed ? CreateSolidBrush(shade(c->background, 48)) : NULL;
+	FillRect(dc, &r, fill ? fill : c->brush);
+	if (fill) {
+		DeleteObject(fill);
+	}
+	WCHAR stack[256];
+	int n = GetWindowTextLengthW(di->hwndItem);
+	WCHAR *buf = n < 256 ? stack : malloc(sizeof(WCHAR) * (size_t)(n + 1));
+	GetWindowTextW(di->hwndItem, buf, n + 1);
+	HGDIOBJ old = SelectObject(dc, font_of(c));
+	SetBkMode(dc, TRANSPARENT);
+	if (di->itemState & ODS_DISABLED) {
+		SetTextColor(dc, GetSysColor(COLOR_GRAYTEXT));
+	} else if (c->color >= 0) {
+		SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
+	} else {
+		SetTextColor(dc, GetSysColor(COLOR_BTNTEXT));
+	}
+	DrawTextW(dc, buf, n, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	SelectObject(dc, old);
+	if (buf != stack) {
+		free(buf);
+	}
+	if ((di->itemState & ODS_FOCUS) && !(di->itemState & ODS_NOFOCUSRECT)) {
+		RECT f = r;
+		InflateRect(&f, -px(3, c->dpi), -px(3, c->dpi));
+		DrawFocusRect(dc, &f);
+	}
 }
 
 /* control_proc subclasses each control the runtime makes: Enter in an edit
@@ -2676,7 +3014,7 @@ static ctl *new_ctl(HWND w, enum sngl_kind kind) {
 	c->dpi = dpi_of(w);
 	c->color = c->background = -1;
 	c->self = w;
-	SetPropW(w, SNGL_PROP, c);
+	ctl_put(w, c);
 	return c;
 }
 
@@ -2708,6 +3046,15 @@ HWND sngl_win32_box(int vertical) {
 	ctl *c = ctl_of(w);
 	if (c) {
 		c->vertical = vertical;
+	}
+	return w;
+}
+
+HWND sngl_win32_contents(void) {
+	HWND w = sngl_win32_box(1);
+	ctl *c = ctl_of(w);
+	if (c) {
+		c->contents = 1;
 	}
 	return w;
 }
@@ -3645,6 +3992,7 @@ static void adopt(HWND parent, HWND child, int at) {
 		return;
 	}
 	SetParent(child, parent);
+	SetRectEmpty(&ctl_of(child)->placed);
 	kids_insert(c, child, at);
 	if (c->kind == K_TABS) {
 		tabs_sync(parent);
@@ -3801,6 +4149,16 @@ void sngl_win32_detach(HWND top) {
 
 void sngl_win32_set_text(HWND w, const unsigned short *text) {
 	ctl *c = ctl_of(w);
+	/* A render sets every prop it writes, changed or not, and a text set
+	 * is measured again with everything holding it: a page of cards each
+	 * set its name again as any one name arrived. */
+	if (c && c->text && wcscmp(c->text, (const WCHAR *)text) == 0) {
+		return;
+	}
+	if (c) {
+		free(c->text);
+		c->text = _wcsdup((const WCHAR *)text);
+	}
 	if (c && c->kind == K_MODAL) {
 		/* A modal's is its window's title. */
 		SetWindowTextW(c->dialog, (LPCWSTR)text);
@@ -4032,7 +4390,9 @@ void sngl_win32_set_look(HWND w, sngl_win32_look look) {
 	c->pad[2] = look.padBottom;
 	c->pad[3] = look.padLeft;
 	c->min_w = look.minWidth;
-	c->min_h = look.minHeight;
+	c->exact_w = look.width;
+	c->exact_h = look.height;
+	c->align = look.align;
 	if (c->off_look != (look.hidden != 0)) {
 		c->off_look = look.hidden != 0;
 		show(w, c);
@@ -4046,12 +4406,19 @@ void sngl_win32_set_look(HWND w, sngl_win32_look look) {
 	if (background >= 0) {
 		c->brush = CreateSolidBrush(RGB((background >> 16) & 0xff, (background >> 8) & 0xff, background & 0xff));
 	}
+	if (c->kind == K_BUTTON) {
+		/* Its theme paints a push button whatever WM_CTLCOLORBTN
+		 * answers, so one given a background is drawn by the runtime. */
+		LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE) & ~(LONG_PTR)BS_TYPEMASK;
+		SetWindowLongPtrW(w, GWL_STYLE, style | (c->brush ? BS_OWNERDRAW : BS_PUSHBUTTON));
+	}
 	if (font_px != c->font_px) {
 		c->font_px = font_px;
 		own_font(c);
 		SendMessageW(w, WM_SETFONT, (WPARAM)font_of(c), TRUE);
 	}
-	InvalidateRect(w, NULL, TRUE);
+	/* What has no background of its own shows this one's. */
+	RedrawWindow(w, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
 	relayout(w);
 }
 
@@ -4244,6 +4611,17 @@ void sngl_win32_step(void) {
 		MsgWaitForMultipleObjects(0, NULL, FALSE, 1, QS_ALLINPUT);
 	}
 	sngl_win32_pump();
+}
+
+/* sngl_loop_wait (sngl_http.h) handles what the loop has, waiting for a
+ * message where it has none: a request's answer is posted as one. */
+bool sngl_loop_wait(void) {
+	sngl_win32_init();
+	if (!quitting) {
+		MsgWaitForMultipleObjectsEx(0, NULL, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+		sngl_win32_pump();
+	}
+	return !quitting;
 }
 
 void sngl_win32_pump(void) {

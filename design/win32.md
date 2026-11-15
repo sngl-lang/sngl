@@ -283,13 +283,16 @@ they include.
 **Win32 has no layout manager.** A child window sits at the pixel position it
 was given, and nothing moves it when its parent is resized. So
 `lib/platform/win32/rt/sngl_win32.c` keeps a record beside every window it
-makes. The record is a `ctl` reached by `GetPropW(w, "sngl.ctl")`, and holds:
+makes. The record is a `ctl` the runtime's own table finds by the window's
+handle (`ctl_of`). It was a window property, which under Wine is a trip to
+its server on each read, and a layout reads thousands. It holds:
 
 - the node's kind;
 - its children in order, since `GetWindow(GW_CHILD)`'s order is z-order;
 - what its look asks for (`sngl_win32_set_look`, from `style.sngl`'s
-  `lookOf`): flex, gap, padding, least width and height, hidden, color,
-  background and font size;
+  `lookOf`): flex, gap, padding, least width, the width and height its
+  style gives, how a line box aligns its children, hidden, color, background
+  and font size;
 - for a box, how it lays its children out: its mode and direction
   (`sngl_win32_set_mode`, `sngl_win32_set_vertical`).
 
@@ -299,8 +302,11 @@ allocate. The code is win32's own, because its modes and its controls'
 metrics are its own.
 
 **Measure.** `measure` is a node's natural size in device pixels. It sums the
-following, then adds the node's padding and raises the result to its least
-size:
+following, then adds the node's padding, raises the result to its least
+width, and takes the width and height its style gives in place of its own.
+A size had been the least a node was, so the Pokédex's 96 px artwork grew
+to the picture's 475 px as each arrived, moving every card in the grid
+(`TestSnapshotSized`):
 
 - text, a button, a check box and a link are their text in their font
   (`DrawTextW` with `DT_CALCRECT`) plus fixed margins. A button is at least
@@ -322,9 +328,12 @@ A hidden node, by its prop or by its look, takes no room.
 **Allocate.** `lay_out` places a box's laid children inside its client area,
 less padding and a framed box's edge, as its mode says.
 
-- A line gives each child its measured length along the axis and the whole
-  box across it. Spare room is shared by `flex`, and what rounding leaves goes
-  to the last child that flexes.
+- A line gives each child its measured length along the axis. Across it, a
+  child takes the whole box, unless the box's `alignItems` places it at its
+  start, center or end at its measured size, or the child's style sizes it
+  across, which places it at the start, as CSS stretches only a child with no
+  size of its own. Spare room is shared by `flex`, and what rounding leaves
+  goes to the last child that flexes.
 - A grid makes columns of equal width, each row as tall as its tallest
   child.
 - A flow wraps its children into rows.
@@ -341,6 +350,43 @@ given:
 
 A scroll lays its children out at the size they measure along each axis it
 scrolls, offset by its position, and sets its bars from that.
+
+**A component's contents box grows by what it holds.** A component that
+renders a slot, or several nodes, at its top renders them into the box
+`#[gen.protocol(contents)]` makes (`sngl_win32_contents`). That box flexes by
+the most any child in it flexes (`flex_of`), as gtk4's `sngl_contents_new`
+grows, and as CSS's `display: contents` makes its children the items of the
+box holding it. It had no flex of its own, so the Pokédex's home, a `for`
+over its lookups beside a `flex=1` vbox, kept its measured height in the
+window, and its grid kept the 200 px a scroll measures at
+(`TestSnapshotContents`).
+
+**A node with no background shows the nearest one around it.** Each box
+erases in the background of the nearest box holding it that has one
+(`inherited`), and answers a control's `WM_CTLCOLOR*` with it, as a browser
+shows a box's background through what it holds. It had painted the class's
+face color, so a calculator's dark vbox showed only where nothing covered it.
+A look set redraws what it holds for the same reason.
+
+**A button given a background is drawn by the runtime.** A push button's
+theme paints over whatever `WM_CTLCOLORBTN` answers, so a look with a
+background makes the button `BS_OWNERDRAW`, and its box draws it on
+`WM_DRAWITEM` (`paint_button`): flat in its background, darker while
+pressed, its text centered in its color.
+
+**A click bubbles.** Every override connects a node's `@click` whether the
+program bound one or not, so a text or an image in a clickable card holds an
+empty handler of its own, and took the click from the card. A press on a box,
+on text (its `STN_CLICKED`) or on a picture, which lets the click through to
+its image, fires its own handler and then every one of the boxes holding it
+up to the toplevel (`press`), as a browser bubbles one. A button, a check box
+and a link fire only their own. A test's trigger fires only the node's.
+
+**A picture paints once off screen.** It erases nothing and paints its
+backdrop and its image into a buffer it then copies, and keeps its bitmap
+scaled to the size it was last painted at (`scaled`). Erasing first and
+scaling the whole picture on each paint showed the window behind it for a
+frame on every layout, which a resize makes many of.
 
 **When it runs.** Anything that changes a measurement calls `relayout`:
 
@@ -362,6 +408,28 @@ The message then does three things:
 
 `WM_SIZE` on a toplevel lays it out directly, and `WM_DPICHANGED` refreshes
 its fonts and takes the size Windows suggests.
+
+**A layout does only what changed.** Measured on a Pokédex-sized page under
+Wine (90 cards, November 2026), a layout took 295 ms and a line of scrolling
+190 ms. It now takes 3 ms, and a line of scrolling 0.3 ms:
+
+- A node keeps what it measured (`measured`, `size`) until `relayout` is
+  called on it or on something it holds, which clears it from there to the
+  toplevel; a DPI change clears it in `refresh`. A box asks for its
+  children's sizes for itself and again for each box above it, and each
+  text's was a `DrawTextW`.
+- A window is moved only where its box's layout puts it somewhere else
+  (`placed`), and a box repaints only where something in it moved or it
+  changed size, since what changes otherwise repaints itself.
+- A text set to what it shows already is not set again
+  (`sngl_win32_set_text`): a render writes every prop it binds, changed or
+  not, and each set measured the text and everything holding it again. The
+  Pokédex re-renders its grid as each species' name arrives, so a page of
+  names arriving measured every card once a name, which held the window for
+  seconds after a page more was shown.
+- A scroll moves what it holds with `ScrollWindowEx` rather than laying it
+  out at the new position (`scrolled`), from the extent its last layout
+  found (`max_y`, `page_y`), and reports its end from that too (`reach`).
 
 A flow, as either a box's mode or rich text, learns its height only by
 wrapping at the width it is given. When that height changes it records it
@@ -385,3 +453,15 @@ scales them to the window's DPI wherever layout reads them, so a record holds
 the px it was given and not device pixels. The `dpi` a record holds is its
 toplevel's, set by `refresh`. A control created in the parked window takes
 its toplevel's DPI when it is put in one.
+
+## Requests
+
+**win32 answers sngl:http with WinHTTP rather than C's libcurl**
+(`rt/http.c`): Windows carries it, so `app.exe` ships no curl. Its link
+ships C's `sngl_http.h` alone, named `sngl:language/c/rt/sngl_http.h`, the
+way a library `c.link` names another package's source, and defines its
+client: each request runs on a thread of its own and its answer is posted
+back to the loop (`sngl_post`), as libcurl's are, and C's own wait
+(`sngl_fetch.c`) waits on it. A wait off a work's stack runs the loop
+through `sngl_loop_wait`, which a quit ends: the wait then gives up as
+cancelled.

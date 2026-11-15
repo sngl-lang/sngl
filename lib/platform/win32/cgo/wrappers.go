@@ -2,13 +2,13 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 231c4847eea763c3e364db6e
+// The C sources, as a change to them builds this package again: 0526b80bdb5a26f0c5e08413
 
 package cgo
 
 /*
-#cgo CFLAGS: -I${SRCDIR}/../rt
-#cgo LDFLAGS: -mwindows -luser32 -lgdi32 -lcomctl32 -lshell32 -lmsimg32 -lole32 -luuid -lwindowscodecs -lurlmon -lgdiplus
+#cgo CFLAGS: -I${SRCDIR}/../rt -I${SRCDIR}/../../../language/c/rt
+#cgo LDFLAGS: -mwindows -luser32 -lgdi32 -lcomctl32 -lshell32 -lmsimg32 -lole32 -luuid -lwindowscodecs -lurlmon -lgdiplus -lwinhttp
 #include "sngl_win32.h"
 #include <windows.h>
 #include <stdlib.h>
@@ -47,7 +47,9 @@ type Look struct {
 	PadBottom  int
 	PadLeft    int
 	MinWidth   int
-	MinHeight  int
+	Width      int
+	Height     int
+	Align      int
 	Color      int
 	Background int
 	FontPx     int
@@ -272,6 +274,11 @@ func SnglWin32Chosen(t HWND) string {
 // SnglWin32ClickColumn calls sngl_win32_click_column.
 func SnglWin32ClickColumn(n HWND, column int) bool {
 	return (C.sngl_win32_click_column(n, C.int(column)) != 0)
+}
+
+// SnglWin32Contents calls sngl_win32_contents.
+func SnglWin32Contents() HWND {
+	return C.sngl_win32_contents()
 }
 
 // SnglWin32Date calls sngl_win32_date.
@@ -755,7 +762,7 @@ func SnglWin32SetHref(l HWND, href string) {
 // SnglWin32SetLook calls sngl_win32_set_look.
 func SnglWin32SetLook(w HWND, look Look) {
 	C.sngl_win32_set_look(w, func(v Look) C.sngl_win32_look {
-		return C.sngl_win32_look{flex: C.double(v.Flex), gap: C.int(v.Gap), padTop: C.int(v.PadTop), padRight: C.int(v.PadRight), padBottom: C.int(v.PadBottom), padLeft: C.int(v.PadLeft), minWidth: C.int(v.MinWidth), minHeight: C.int(v.MinHeight), color: C.int(v.Color), background: C.int(v.Background), fontPx: C.int(v.FontPx), hidden: C.int(v.Hidden)}
+		return C.sngl_win32_look{flex: C.double(v.Flex), gap: C.int(v.Gap), padTop: C.int(v.PadTop), padRight: C.int(v.PadRight), padBottom: C.int(v.PadBottom), padLeft: C.int(v.PadLeft), minWidth: C.int(v.MinWidth), width: C.int(v.Width), height: C.int(v.Height), align: C.int(v.Align), color: C.int(v.Color), background: C.int(v.Background), fontPx: C.int(v.FontPx), hidden: C.int(v.Hidden)}
 	}(look))
 }
 

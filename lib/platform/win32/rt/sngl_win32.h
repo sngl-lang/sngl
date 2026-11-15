@@ -16,6 +16,8 @@
 
 #include <windows.h>
 
+#include "sngl_http.h"
+
 typedef void (*sngl_win32_fn)(void *ctx);
 typedef void (*sngl_win32_bool_fn)(int value, void *ctx);
 typedef void (*sngl_win32_release)(void *ctx);
@@ -55,6 +57,7 @@ void sngl_win32_step(void);
 
 HWND sngl_win32_toplevel(void);
 HWND sngl_win32_box(int vertical);
+HWND sngl_win32_contents(void);
 /* sngl_win32_set_vertical is a box's axis, or a divider's. */
 void sngl_win32_set_vertical(HWND box, int vertical);
 /* sngl_win32_set_mode is how a box lays its children out: 0 along its axis,
@@ -332,15 +335,18 @@ int sngl_win32_snapshot(const char *path, int width, int height);
 
 /* sngl_win32_look is what a node's style asks of the layout and the paint:
  * how much of a box's spare room it takes (flex), the gap a box leaves
- * between its children, the room inside its edges, its least size, and its
- * colors and font size, and whether its style's display hides it. A color
+ * between its children, the room inside its edges, its least size and the
+ * size its style gives it, where a line box places its children across it,
+ * its colors and font size, and whether its style's display hides it. A color
  * is 0xRRGGBB, or -1 for the system's; a size of 0 is the system's. Its
  * fields are named as sngl:platform/win32's Look, which crosses as one. */
 typedef struct sngl_win32_look {
 	double flex;
 	int gap;
 	int padTop, padRight, padBottom, padLeft;
-	int minWidth, minHeight;
+	int minWidth;
+	int width, height;
+	int align;
 	int color, background;
 	int fontPx;
 	int hidden;
@@ -399,5 +405,6 @@ void sngl_win32_fire_reach_end(HWND w);
  * sngl_win32_cancel is given the id it returns, which releases ctx. */
 int sngl_win32_every(int ms, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 void sngl_win32_cancel(int id);
+
 
 #endif

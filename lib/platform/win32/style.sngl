@@ -14,10 +14,11 @@ import ui "sngl:ui"
 //   - margin and its sides: the runtime's box gives each child the room it
 //     measures and no more; a padding on the box is the room around them.
 //   - maxWidth, maxHeight: a node is its measured size or larger, never
-//     capped; a width or a height is the least it is, as a minWidth is.
+//     capped.
 //   - flexDirection: vbox and hbox are the axis.
-//   - alignItems, justifyContent: a box stretches each child across it and
-//     starts at its own start.
+//   - justifyContent: a box starts its children at its own start. A grid,
+//     a flow and a stack also stretch each child across it, whatever its
+//     alignItems; a line aligns them, a baseline as its start.
 //   - position, top, bottom, left, right, zIndex: the runtime lays children
 //     out itself, with no flow to take one out of and no offsets.
 //   - textAlign, maxLines, whiteSpace: a STATIC control draws its text from
@@ -39,7 +40,6 @@ const unstyled list[string] = [
     "maxWidth",
     "maxHeight",
     "flexDirection",
-    "alignItems",
     "justifyContent",
     "position",
     "top",
@@ -86,6 +86,17 @@ const func rgb(c option[color]) int {
     return -1
 }
 
+// Where a line box places its children across it: the runtime's A_STRETCH,
+// A_START, A_CENTER or A_END.
+const func alignOf(a ui.Alignment) int {
+    return match a {
+        start, baseline => 1
+        center => 2
+        end => 3
+        unset, stretch => 0
+    }
+}
+
 // A block rather than an expression, so the optimizer calls it instead of
 // splicing a computed Style into each of the fields that read it.
 const func lookOf(s ui.Style) Look {
@@ -96,8 +107,10 @@ const func lookOf(s ui.Style) Look {
         padRight = side(s.padding, s.paddingX, s.paddingRight),
         padBottom = side(s.padding, s.paddingY, s.paddingBottom),
         padLeft = side(s.padding, s.paddingX, s.paddingLeft),
-        minWidth = int.max(inset(s.width), inset(s.minWidth)),
-        minHeight = inset(s.height),
+        minWidth = inset(s.minWidth),
+        width = inset(s.width),
+        height = inset(s.height),
+        align = alignOf(s.alignItems),
         color = rgb(s.color),
         background = rgb(s.background),
         fontPx = inset(s.fontSize),

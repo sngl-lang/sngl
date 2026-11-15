@@ -143,12 +143,24 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		// at the size asked for into the file its first argument names.
 		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tsngl_win32_carry(sngl_win32_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_win32_snapshot(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
 	} else {
-		io.WriteString(fe, appMain(fe.Context(), pkg))
+		io.WriteString(fe, clang.WithOpenSettings(appMain(fe.Context(), pkg), clang.OpenSettings(pkg, golang.SettingsApp(codegen.OptionString(req.Options, "name")))))
 	}
 	if err := fe.Close(); err != nil {
 		return fmt.Errorf("win32: %w", err)
 	}
-	manifest := clang.Manifest(links)
+	curl, err := clang.HTTPRuntime(fe.Context(), sources)
+	if err != nil {
+		return fmt.Errorf("win32: %w", err)
+	}
+	manifest := clang.Manifest(links, curl...)
+	words, err := clang.LoadManifest(req.ProjectFS, "")
+	if err != nil {
+		return fmt.Errorf("win32: i18n manifest: %w", err)
+	}
+	// Windows carries ICU as icu.dll, which MinGW links by name.
+	if clang.I18nRuntime(fe.Context(), sources, words) {
+		manifest = append(manifest, "flag -licu\n"...)
+	}
 	if agent {
 		manifest = append(manifest, "flag -lws2_32\n"...)
 	}

@@ -2,12 +2,12 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 231c4847eea763c3e364db6e
+// The C sources, as a change to them builds this package again: 0526b80bdb5a26f0c5e08413
 
 package cgo
 
 /*
-#cgo LDFLAGS: -mwindows -luser32 -lgdi32 -lcomctl32 -lshell32 -lmsimg32 -lole32 -luuid -lwindowscodecs -lurlmon -lgdiplus
+#cgo LDFLAGS: -mwindows -luser32 -lgdi32 -lcomctl32 -lshell32 -lmsimg32 -lole32 -luuid -lwindowscodecs -lurlmon -lgdiplus -lwinhttp
 #include "sngl_win32.h"
 #include <windows.h>
 #include <stdlib.h>

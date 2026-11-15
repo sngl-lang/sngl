@@ -192,6 +192,117 @@ ui.window(title="Markup") {
 	}
 }
 
+// TestSnapshotContents is a component rendering a slot and a box at its top,
+// which placement holds in the platform's contents box, drawn larger than it
+// measures. The contents box grows by its box's flex, as gtk4's does, so the
+// key reaches the window's foot: it had no flex of its own, and the box in it
+// kept its measured height, as the Pokédex's grid kept a scroll's 200 px. The
+// hbox, with no background of its own, shows the vbox's around the key, where
+// it had painted the system's face color; and the key is painted in its own
+// background, which a push button's theme paints over.
+func TestSnapshotContents(t *testing.T) {
+	const src = `import ui "sngl:ui"
+
+output {
+    c {
+        win32
+    }
+}
+
+component page ui.node {
+    var more = false
+    if more {
+        ui.text(value="More")
+    }
+    ui.vbox(style={flex=1, background=#15171c}) {
+        ui.hbox(style={flex=1, padding=20px}) {
+            ui.button(text="7", style={flex=1, background=#f59e0b, color=#000000})
+        }
+    }
+}
+
+ui.window(title="Contents") {
+    page()
+}
+`
+	img := snapshot(t, src, 300, 400)
+	if img == nil {
+		return
+	}
+	is := func(x, y int, want uint32) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		return r>>8<<16|g>>8<<8|b>>8 == want
+	}
+	for _, at := range []struct {
+		what string
+		x, y int
+		want uint32
+	}{
+		{"the hbox's padding, in the vbox's background", 8, 200, 0x15171c},
+		{"the hbox's padding at the window's foot", 150, 392, 0x15171c},
+		{"the key, in its background, at the window's foot", 30, 370, 0xf59e0b},
+	} {
+		if !is(at.x, at.y, at.want) {
+			r, g, b, _ := img.At(at.x, at.y).RGBA()
+			t.Errorf("%s: %d, %d is #%02x%02x%02x, not #%06x", at.what, at.x, at.y, r>>8, g>>8, b>>8, at.want)
+		}
+	}
+}
+
+// TestSnapshotSized is a width and a height a style gives, which are the
+// node's size, and a line box's alignItems. A size had been the least a node
+// was, so the Pokédex's 96 px artwork grew to the picture's own 475 px as
+// each arrived, and every card in the grid moved; and a box stretched each
+// child across it whatever it asked. The first key is centered, the second,
+// sized in a box that stretches, starts at the box's start, as CSS stretches
+// only a child with no size of its own.
+func TestSnapshotSized(t *testing.T) {
+	const src = `import ui "sngl:ui"
+
+output {
+    c {
+        win32
+    }
+}
+
+ui.window(title="Sized") {
+    ui.vbox(style={flex=1, gap=0, background=#15171c}) {
+        ui.vbox(style={alignItems=center}) {
+            ui.button(text="", style={width=100px, height=40px, background=#f59e0b})
+        }
+        ui.vbox {
+            ui.button(text="", style={width=100px, height=40px, background=#2c2f36})
+        }
+    }
+}
+`
+	img := snapshot(t, src, 300, 200)
+	if img == nil {
+		return
+	}
+	is := func(x, y int, want uint32) bool {
+		r, g, b, _ := img.At(x, y).RGBA()
+		return r>>8<<16|g>>8<<8|b>>8 == want
+	}
+	for _, at := range []struct {
+		what string
+		x, y int
+		want uint32
+	}{
+		{"the centered key", 150, 20, 0xf59e0b},
+		{"left of the centered key", 40, 20, 0x15171c},
+		{"right of the centered key", 260, 20, 0x15171c},
+		{"the key at its box's start", 50, 60, 0x2c2f36},
+		{"right of the key at its box's start", 200, 60, 0x15171c},
+		{"under both keys, which are 40 px tall", 150, 150, 0x15171c},
+	} {
+		if !is(at.x, at.y, at.want) {
+			r, g, b, _ := img.At(at.x, at.y).RGBA()
+			t.Errorf("%s: %d, %d is #%02x%02x%02x, not #%06x", at.what, at.x, at.y, r>>8, g>>8, b>>8, at.want)
+		}
+	}
+}
+
 // snapshot is src's window as `sngl snapshot` draws it, width by height,
 // under Wine, built in C and in Go, which must draw it alike, pixel for
 // pixel; nil where its record says the program has not changed since it
