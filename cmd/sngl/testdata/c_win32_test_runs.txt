@@ -378,7 +378,7 @@ void sngl_keep_int(int_cb f, void *data) { kept = f; kept_data = data; }
 void sngl_fire(void) { if (kept) kept(5, kept_data); }
 
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:5ca363fb0a9de46875ae3863e2e7b749
+sha256:81995db7c810545d17f9d4a08afe171e
 {
   "results": [
     {
@@ -388,7 +388,7 @@ sha256:5ca363fb0a9de46875ae3863e2e7b749
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:09f724dff3ff65e81d499b230fe2523b
+sha256:141b221e88eb7d5ade9e35738cfb5e29
 {
   "results": [
     {
@@ -398,7 +398,7 @@ sha256:09f724dff3ff65e81d499b230fe2523b
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:800dd1c572a45c9c5d584ff5871b1c7b
+sha256:0f012e4f9a7a72ab8863075c6ddbf87c
 {
   "results": [
     {
@@ -420,7 +420,7 @@ sha256:800dd1c572a45c9c5d584ff5871b1c7b
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:9387af4855967e38267439e7bb5f8755
+sha256:3fceae66eead9d515f72c0cfaae290c5
 {
   "results": [
     {
@@ -438,7 +438,7 @@ sha256:9387af4855967e38267439e7bb5f8755
   ]
 }
 -- testrun/win32/c/async.sngl/main/1 --
-sha256:273895a19f4f1a972a44cdfc2071f9da
+sha256:de404f0d9dbc1434a2a2e3d026049707
 {
   "results": [
     {
@@ -448,7 +448,7 @@ sha256:273895a19f4f1a972a44cdfc2071f9da
   ]
 }
 -- testrun/win32/c/callback.sngl/_/1 --
-sha256:128ae408fc2f372bd273a56c0c5b33e2
+sha256:3579fb0138d4e152ef710241411f8cf1
 {
   "results": [
     {
@@ -458,7 +458,7 @@ sha256:128ae408fc2f372bd273a56c0c5b33e2
   ]
 }
 -- testrun/win32/c/empty.sngl/main/1 --
-sha256:f36c45c74a5de26417e2bd50af7732a7
+sha256:0ae0cdcba917f39225d8ed54629fab63
 {
   "results": [
     {
@@ -468,7 +468,7 @@ sha256:f36c45c74a5de26417e2bd50af7732a7
   ]
 }
 -- testrun/win32/c/rect.sngl/main/1 --
-sha256:e3856d2f9b39db311adb9704dbe7f4d2
+sha256:16e77075f2a4f797798a38bfd1f4556d
 {
   "results": [
     {
@@ -478,7 +478,7 @@ sha256:e3856d2f9b39db311adb9704dbe7f4d2
   ]
 }
 -- testrun/win32/c/retained.sngl/_/1 --
-sha256:97e925a7de0b61216a73e23289e47fe9
+sha256:31b69b5e9942f3ed972fd78dc23d62f6
 {
   "results": [
     {
@@ -488,7 +488,7 @@ sha256:97e925a7de0b61216a73e23289e47fe9
   ]
 }
 -- testrun/win32/c/store.sngl/_/1 --
-sha256:189beb9a64a635d8e8943b400321829b
+sha256:900e2e317284d02ede78895e7a9d189f
 {
   "results": [
     {

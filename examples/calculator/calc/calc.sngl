@@ -28,14 +28,9 @@ struct Calc {
     repeatOp  Op = Op.none
     repeatArg float = 0
 
-    // `entry` as a number. A trailing point is dropped rather than handed to
-    // the platform's string-to-float, which is where the three targets stop
-    // agreeing.
+    // `entry` as a number: a trailing point, `1.`, is the number before it.
     func value() float {
-        if string.endsWith(this.entry, ".") {
-            return float(string.substring(this.entry, 0, string.length(this.entry) - 1))
-        }
-        return float(this.entry)
+        return float.parse(this.entry).or(0.0)
     }
 
     // Digits count; the point and the minus sign do not, so "-3.5" is three

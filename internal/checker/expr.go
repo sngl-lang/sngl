@@ -1500,12 +1500,28 @@ func (c *checker) inferBuiltinConversion(x *ast.CallExpr, target *ir.Type, name 
 		if ud := multiBaseUnitCast(from, target); ud != nil {
 			c.error(x.Pos, "%s(): %s carries a magnitude per base, so it has no single number; read one with %s",
 				name, from, baseNameList(ud))
+		} else if from != nil && from.Kind == ir.TypeString && target.Kind != ir.TypeString && !ir.StringReprStruct(target) {
+			c.error(x.Pos, "%s(): a string is parsed, not converted: %s", name, stringParse(target))
 		} else if from != nil && !from.Equal(target) && !primitiveConvertible(from, target) {
 			c.error(x.Pos, "%s(): cannot convert %s", name, from)
 		}
 		return &ir.Conversion{AST: x, Type: target, Operand: argExpr}
 	}
 	return &ir.Conversion{AST: x, Type: target}
+}
+
+// stringParse is what reads a string as target: a number's parse, which
+// answers null where the string writes none, and a bool's comparison.
+func stringParse(target *ir.Type) string {
+	switch target.Kind {
+	case ir.TypeInt:
+		return "int.parse(s), or int.parse(s).or(0) for a default"
+	case ir.TypeFloat:
+		return "float.parse(s), or float.parse(s).or(0.0) for a default"
+	case ir.TypeBool:
+		return `compare it, s == "true"`
+	}
+	return "it has no conversion from string"
 }
 
 // staticReceiverSym is the declaration a method call's operand names, when it

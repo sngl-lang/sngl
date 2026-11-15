@@ -49,8 +49,8 @@ stdout 'ok +2 tests, 0 failures'
 # A window's @key hears a key a test presses through rt's toplevel, as the
 # program's handler takes it: the name a string, and rt's stop a closure the
 # handler calls. The test's stop writes a local of the test's, which the
-# lambda C lifts reaches through its address. int(s) and float(s) read the
-# whole of s, and are 0 where it is no number.
+# lambda C lifts reaches through its address. int.parse and float.parse read
+# the whole of s, and answer none where it is no number.
 
 sngl test --platform=gtk4 --language=c keys.sngl
 stdout 'ok +1 tests, 0 failures'
@@ -397,8 +397,8 @@ component app root {
             return
         }
         typed = typed + e.key
-        total += float(e.key)
-        count += int(e.key)
+        total += float.parse(e.key).or(0.0)
+        count += int.parse(e.key).or(0)
         if e.key == "x" {
             stop()
         }
@@ -1106,7 +1106,7 @@ ui.window {
     main()
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:2272c5bc3695de925e941defef033b76
+sha256:e487e0ab8bf7b7b9bc95b4b2b13c800c
 {
   "results": [
     {
@@ -1116,7 +1116,7 @@ sha256:2272c5bc3695de925e941defef033b76
   ]
 }
 -- testrun/gtk4/c/async.sngl/main/1 --
-sha256:c034401162e8f40e7893faeec2fb0674
+sha256:4f0e4a3d9bb94f50c1e4f97de4fac3fb
 {
   "results": [
     {
@@ -1126,7 +1126,7 @@ sha256:c034401162e8f40e7893faeec2fb0674
   ]
 }
 -- testrun/gtk4/c/bare.sngl/main/1 --
-sha256:24306fe27796709d3e8aecebf1f7e0fd
+sha256:c704d72640e94e77127207d98ac5dc37
 {
   "results": [
     {
@@ -1136,7 +1136,7 @@ sha256:24306fe27796709d3e8aecebf1f7e0fd
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:f8ffda62c697277b90539fb1000b1e02
+sha256:3d8049728eb47b473b9b5f05424462b1
 {
   "results": [
     {
@@ -1146,7 +1146,7 @@ sha256:f8ffda62c697277b90539fb1000b1e02
   ]
 }
 -- testrun/gtk4/c/choose.sngl/strip/1 --
-sha256:12e883447d14a844d33a0b3dbeb89b89
+sha256:0fad372545115fbf89cf778a10079f6e
 {
   "results": [
     {
@@ -1164,7 +1164,7 @@ sha256:12e883447d14a844d33a0b3dbeb89b89
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:437c5f97f76c2f796d23f3eac44d40bc
+sha256:31af245e678d599b6d134817b985f69c
 {
   "results": [
     {
@@ -1174,7 +1174,7 @@ sha256:437c5f97f76c2f796d23f3eac44d40bc
   ]
 }
 -- testrun/gtk4/c/flow.sngl/main/1 --
-sha256:221ccc1b224b42f639d999db23bccab6
+sha256:9e97a695b914e3198eb40006a0fe8e77
 {
   "results": [
     {
@@ -1188,7 +1188,7 @@ sha256:221ccc1b224b42f639d999db23bccab6
   ]
 }
 -- testrun/gtk4/c/holders.sngl/dial/1 --
-sha256:1490066162bfca291ffb53089fc9457d
+sha256:afdc3cab2b7c9e49f2a914d860cb03cb
 {
   "results": [
     {
@@ -1198,7 +1198,7 @@ sha256:1490066162bfca291ffb53089fc9457d
   ]
 }
 -- testrun/gtk4/c/holders.sngl/framed/1 --
-sha256:719a1273c079cea792826f3f84ec65df
+sha256:8c08ed291336cf15bf27c829b38de897
 {
   "results": [
     {
@@ -1208,7 +1208,7 @@ sha256:719a1273c079cea792826f3f84ec65df
   ]
 }
 -- testrun/gtk4/c/holders.sngl/picks/1 --
-sha256:4812884890774dae5ca4182eb53cc60f
+sha256:db37ba5f36dc31a5c9d4b84dc2952ac7
 {
   "results": [
     {
@@ -1218,7 +1218,7 @@ sha256:4812884890774dae5ca4182eb53cc60f
   ]
 }
 -- testrun/gtk4/c/holders.sngl/strip/1 --
-sha256:fa59f87b79cbb142fe0aedf652d1613f
+sha256:61b5363289d82b8f22d4d7127473e6b0
 {
   "results": [
     {
@@ -1228,7 +1228,7 @@ sha256:fa59f87b79cbb142fe0aedf652d1613f
   ]
 }
 -- testrun/gtk4/c/keep.sngl/ticker/1 --
-sha256:ff56a780cd365e6bbe9a7c7cfd6ea24f
+sha256:2cec7564dae2e9c4369801056c870477
 {
   "results": [
     {
@@ -1238,7 +1238,7 @@ sha256:ff56a780cd365e6bbe9a7c7cfd6ea24f
   ]
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:f3551e65c0804cc934749b8cad7a6050
+sha256:2af2764214ff87bdb6eced1445cf8b1f
 {
   "results": [
     {
@@ -1248,7 +1248,7 @@ sha256:f3551e65c0804cc934749b8cad7a6050
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:ad6c40eefb073fb57c52991e162b693f
+sha256:464448a467173bacba7d030242e308c5
 {
   "results": [
     {
@@ -1262,7 +1262,7 @@ sha256:ad6c40eefb073fb57c52991e162b693f
   ]
 }
 -- testrun/gtk4/c/records.sngl/page/1 --
-sha256:415e2ade1137741d0ecf630982d1006d
+sha256:a5c1d68622709b6261e80928c80c88ef
 {
   "results": [
     {
@@ -1272,7 +1272,7 @@ sha256:415e2ade1137741d0ecf630982d1006d
   ]
 }
 -- testrun/gtk4/c/records.sngl/population/1 --
-sha256:81e83ff47c87cde695a39adf7622d4b6
+sha256:a57229a09e9a265edf0ec87a4194eba2
 {
   "results": [
     {
@@ -1282,7 +1282,7 @@ sha256:81e83ff47c87cde695a39adf7622d4b6
   ]
 }
 -- testrun/gtk4/c/records.sngl/rows/1 --
-sha256:1ed08e7fa28186d53aac1f1ef2da3454
+sha256:28a2d49b398396ec275b550ad4a607e1
 {
   "results": [
     {
@@ -1292,7 +1292,7 @@ sha256:1ed08e7fa28186d53aac1f1ef2da3454
   ]
 }
 -- testrun/gtk4/c/rows.sngl/main/1 --
-sha256:8ad939fe983ef3e34368377332cc9550
+sha256:947b4ed2a15a3744520403cd2f938f3e
 {
   "results": [
     {
@@ -1302,7 +1302,7 @@ sha256:8ad939fe983ef3e34368377332cc9550
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:27d98286976d45dff9fb0de713fbab63
+sha256:c28a8e7fbc24c3f92dfd95b53ee499ea
 {
   "results": [
     {
@@ -1316,7 +1316,7 @@ sha256:27d98286976d45dff9fb0de713fbab63
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:ff86f2152c68164dc394e115f7723152
+sha256:9b83549e34516b5f59183acb204dd3e0
 {
   "results": [
     {
@@ -1326,7 +1326,7 @@ sha256:ff86f2152c68164dc394e115f7723152
   ]
 }
 -- testrun/gtk4/c/snap.sngl/_/1 --
-sha256:cd8428610758dea3a118b023eeaa04eb
+sha256:40ffd4698f3c26fb34bbfa47cf0c4883
 {
   "results": [
     {
@@ -1339,7 +1339,7 @@ sha256:cd8428610758dea3a118b023eeaa04eb
   }
 }
 -- testrun/gtk4/c/snap.sngl/main/1 --
-sha256:7783fe1160cecbfc6e51a72c2d47d9a8
+sha256:3a6a8f8bcb618a795aa58ec4a98a127b
 {
   "results": [
     {
@@ -1353,7 +1353,7 @@ sha256:7783fe1160cecbfc6e51a72c2d47d9a8
   }
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:2c935ac6aeb8f8ba79268b3e9815a06c
+sha256:612e75a8f698369d2815651f3839b3d7
 {
   "results": [
     {
@@ -1367,7 +1367,7 @@ sha256:2c935ac6aeb8f8ba79268b3e9815a06c
   ]
 }
 -- testrun/gtk4/c/units.sngl/app/1 --
-sha256:46d1e5afb515ca99374d2229017491f9
+sha256:d573928607763ed7514b0b0372a2ab98
 {
   "results": [
     {

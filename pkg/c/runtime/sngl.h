@@ -212,7 +212,10 @@ sngl_string sngl_string_upper(sngl_string s);
 sngl_string sngl_string_lower(sngl_string s);
 sngl_string sngl_string_trim(sngl_string s);
 sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_);
-int64_t sngl_int_parse(sngl_string s, int64_t base);
+/* sngl_int_parse and sngl_float_parse write the number s writes to out, as
+ * int.parse and float.parse read one, and say whether it writes one. */
+bool sngl_int_parse(sngl_string s, int64_t base, int64_t *out);
+bool sngl_float_parse(sngl_string s, double *out);
 
 /* sngl_string_find is the byte offset of the first sub in s at or after
  * from, or -1. */

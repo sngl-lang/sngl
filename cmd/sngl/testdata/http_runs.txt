@@ -447,7 +447,7 @@ sha256:d6160fcd6bf1346aae45f71064e91b04
   ]
 }
 -- testrun/gtk4/c/app.sngl/_/1 --
-sha256:1072db065d1480466081cef2ae22bac3
+sha256:dc42cebee8018fc21eea3e5402115615
 {
   "results": [
     {
@@ -481,7 +481,7 @@ sha256:1072db065d1480466081cef2ae22bac3
   ]
 }
 -- testrun/gtk4/c/app.sngl/adapter/1 --
-sha256:dde25e4310d2006fb45a1aa4dcfbd704
+sha256:5ee08523e4b08cf0ee0b512e8ffac7e4
 {
   "results": [
     {
@@ -491,7 +491,7 @@ sha256:dde25e4310d2006fb45a1aa4dcfbd704
   ]
 }
 -- testrun/gtk4/c/app.sngl/panel/1 --
-sha256:40d972b8a2dcc3f3f7bf7839c3558f45
+sha256:cce761d43a3d02959aee8945bc4cdc52
 {
   "results": [
     {
@@ -621,7 +621,7 @@ sha256:e4e0bc7505e6b32c78d8f0747914f0a3
   ]
 }
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:4eb31d83596a508610294b2bc9ca231c
+sha256:665136c838d3084ec81a483262fb81dd
 {
   "results": [
     {
@@ -655,7 +655,7 @@ sha256:4eb31d83596a508610294b2bc9ca231c
   ]
 }
 -- testrun/win32/c/app.sngl/adapter/1 --
-sha256:0385edd1d018e5ba06918ddc210c2a11
+sha256:f141b0d612b66d4cae59f7569872ba37
 {
   "results": [
     {
@@ -665,7 +665,7 @@ sha256:0385edd1d018e5ba06918ddc210c2a11
   ]
 }
 -- testrun/win32/c/app.sngl/panel/1 --
-sha256:ff64b67a6d2b2edeea586593547b6c59
+sha256:8edab242b1b20d66dfe84e09c9357269
 {
   "results": [
     {

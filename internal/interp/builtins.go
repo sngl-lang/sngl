@@ -1,9 +1,9 @@
 package interp
 
 import (
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -42,13 +42,28 @@ var intrinsics = map[string]nativeFunc{
 	},
 	// --- int ---
 	"int.parse": func(args []any) (any, error) {
-		s := fmt.Sprintf("%v", args[0])
-		base := ToInt(args[1])
-		v, err := strconv.ParseInt(s, base, 64)
-		if err != nil {
-			return nil, fmt.Errorf("int.parse(%q, %d): %w", s, base, err)
+		base := 10
+		if len(args) > 1 {
+			base = ToInt(args[1])
 		}
-		return int(v), nil
+		if v := snglparse.Int(fmt.Sprintf("%v", args[0]), base); v != nil {
+			return *v, nil
+		}
+		return nil, nil
+	},
+	// option.or is an intrinsic so a language writes its own; the folder
+	// reads its answer here.
+	"option.or": func(args []any) (any, error) {
+		if args[0] != nil {
+			return args[0], nil
+		}
+		return args[1], nil
+	},
+	"float.parse": func(args []any) (any, error) {
+		if v := snglparse.Float(fmt.Sprintf("%v", args[0])); v != nil {
+			return *v, nil
+		}
+		return nil, nil
 	},
 	// --- float math (accurate native implementations) ---
 	"float.floor": func(args []any) (any, error) {

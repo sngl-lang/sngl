@@ -38,7 +38,7 @@ sngl test --platform=android --language=kotlin ./examples/...
 stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
-sha256:0705d6def39280361d1daf6fe6084ea8
+sha256:5cd7c61b9088d3d07a192ec6e17cb514
 {
   "results": [
     {
@@ -70,7 +70,7 @@ sha256:be069187825dd02525907fe9971a6e6b
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:c414d5f912cbb11da8ffaeb3dc1a76e4
+sha256:c1f1e760e87315751c39de7ea0a33086
 {
   "results": [
     {
@@ -512,7 +512,7 @@ sha256:f5ad0741ec77177b2a9bc5f4bc8b011c
   ]
 }
 -- testrun/bubbletea/go/app.sngl/Calculator/1 --
-sha256:65ccd1827e081ac2d3dba4f34c0ef9c5
+sha256:0d2160725a544c895cb718b8935e56c2
 {
   "results": [
     {
@@ -544,7 +544,7 @@ sha256:f3d46626c7b4a0b461c9c3346dd505f6
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:11b35dacae1800e32ce8183eaa9b66e1
+sha256:23512994ebdd948fc490f956af56823b
 {
   "results": [
     {
@@ -986,7 +986,7 @@ sha256:d0211ddfdb2b164224671c3c7decb765
   ]
 }
 -- testrun/fyne/go/app.sngl/Calculator/1 --
-sha256:1ab2788cf5621b45a8bff7be97eb4825
+sha256:cc088e3550555037a2a9b945806efe04
 {
   "results": [
     {
@@ -1018,7 +1018,7 @@ sha256:cb6420604ac647996257743bf68badf4
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:e13fdc9abc545a56f87492f03a7aac3e
+sha256:c88b7d21db283a09de1a6cbe453c88e5
 {
   "results": [
     {
@@ -1460,7 +1460,7 @@ sha256:8d1c10948b7f35857dbc46811c676154
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:d9831067339b12db4b3136898ba940d2
+sha256:bba32fa620a0063565c829c115de0e9a
 {
   "results": [
     {
@@ -1478,7 +1478,7 @@ sha256:d9831067339b12db4b3136898ba940d2
   ]
 }
 -- testrun/gtk4/go/app.sngl/Tour/1 --
-sha256:e9999fe7f6891c95b24dc80ae581d614
+sha256:36532c0d0be9136292f167a0a2d11c48
 {
   "results": [
     {
@@ -1492,7 +1492,7 @@ sha256:e9999fe7f6891c95b24dc80ae581d614
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:701382e22ed08804dbebb01125d35288
+sha256:942d67c135c677efee4ec49ff4b70008
 {
   "results": [
     {
@@ -1934,7 +1934,7 @@ sha256:3077de37659fbeda7646461ac760c9dc
   ]
 }
 -- testrun/html/none/app.sngl/Calculator/1 --
-sha256:e7e6ab322e71a102e8b14419011ce7ba
+sha256:7dced5938253b8a1f9bd253332595c68
 {
   "results": [
     {
@@ -1966,7 +1966,7 @@ sha256:0da1f002208cca5aea4993a61c8e55f8
   ]
 }
 -- testrun/html/none/app.sngl/_/1 --
-sha256:e9919d09082f8ee9c894b3ba04f4ab65
+sha256:812728858976e112b77d49672dfc175e
 {
   "results": [
     {

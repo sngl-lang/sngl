@@ -22,7 +22,7 @@ func requireAge(s string) int {
     if s.length == 0 {
         error.raise("an age is required", "validation")
     }
-    return int(s)
+    return int.parse(s).or(0)
 }
 
 var problem = "none"
@@ -66,17 +66,13 @@ package main
 
 import (
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
-	"strconv"
 )
-
-func snglParseInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
-}
 
 type ErrorEvent struct {
 	Message string
@@ -111,7 +107,7 @@ func RequireAge(s string) int {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "an age is required", Kind: "validation"})
 	}
-	return snglParseInt(s)
+	return snglopt.Or(snglparse.Int(s, 10), 0)
 }
 
 func (m *Model) home_closed_handler() {
@@ -269,16 +265,12 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"os"
 	"runtime"
-	"strconv"
 	"unsafe"
 )
-
-func snglParseInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
-}
 
 type ErrorEvent struct {
 	Message string
@@ -321,7 +313,7 @@ func RequireAge(s string) int {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "an age is required", Kind: "validation"})
 	}
-	return snglParseInt(s)
+	return snglopt.Or(snglparse.Int(s, 10), 0)
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -483,6 +475,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:476d641187788a842ec3aaa085a99776
+pass sha256:1ae9c17e056fdf9086a8d9dc2f3033ea
 -- run/go/gtk4 --
-pass sha256:a2547975f3bac81fd940edac380eec3e
+pass sha256:1eaf4ef11d8229d43eb7be0092e36cb0

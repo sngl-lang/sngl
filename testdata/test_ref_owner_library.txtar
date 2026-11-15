@@ -44,10 +44,11 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"os"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -148,9 +149,9 @@ func ParseDate(s string) *time.Time {
 	if !_digits(((string([]rune(s)[0:4]) + string([]rune(s)[5:7])) + string([]rune(s)[8:10]))) {
 		return unset
 	}
-	var y int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[0:4]), 10, 64); return int(__v) }()
-	var m__r4 int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[5:7]), 10, 64); return int(__v) }()
-	var d int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[8:10]), 10, 64); return int(__v) }()
+	var y int = snglopt.Or(snglparse.Int(string([]rune(s)[0:4]), 10), 0)
+	var m__r4 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
+	var d int = snglopt.Or(snglparse.Int(string([]rune(s)[8:10]), 10), 0)
 	if (((m__r4 < 1) || (m__r4 > 12)) || (d < 1)) || (d > _daysIn(y, m__r4)) {
 		return unset
 	}
@@ -179,16 +180,7 @@ func _daysIn(y int, m__r1 int) int {
 
 func __effect0_mount() {
 	if m.__effect0_key != nil {
-		cgo.SnglCalendarSelect(m.cal__own0, func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}())
+		cgo.SnglCalendarSelect(m.cal__own0, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -361,4 +353,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:6821ddd68a554203b77d07920dbd4e33
+pass sha256:bbd39a27bd74fe9572c9298ab951f2fd

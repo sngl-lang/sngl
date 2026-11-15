@@ -232,7 +232,7 @@ ui.window(title="t") {
     rows
 }
 -- testrun/gtk4/c/anchor.sngl/rows/1 --
-sha256:afdc8b1cdc3cf8057de56b78d3e452dc
+sha256:f12e7368f89b54fb3610899d8347fa9a
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:afdc8b1cdc3cf8057de56b78d3e452dc
   ]
 }
 -- testrun/gtk4/c/app.sngl/rows/1 --
-sha256:62c78466528ae8205ac5e3377b682e29
+sha256:3470c76f874b816af52b3fac3e28fa7d
 {
   "results": [
     {
@@ -252,7 +252,7 @@ sha256:62c78466528ae8205ac5e3377b682e29
   ]
 }
 -- testrun/gtk4/c/closure.sngl/rows/1 --
-sha256:9d6436e1636070bce55ab1a3eb99cfd1
+sha256:0c1d5ca92dfbac8def98e66bde801242
 {
   "results": [
     {
@@ -266,7 +266,7 @@ sha256:9d6436e1636070bce55ab1a3eb99cfd1
   ]
 }
 -- testrun/win32/c/app.sngl/rows/1 --
-sha256:d9253b7ec51400a1e4e13ed4d7d67551
+sha256:b70b327da572d14728f90f0b2df9216a
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:d9253b7ec51400a1e4e13ed4d7d67551
   ]
 }
 -- testrun/win32/c/closure.sngl/rows/1 --
-sha256:fc0cd07a73d2ba9ff5c47a8efe723e82
+sha256:8455d524d8e86b0c2a5d0bac28606884
 {
   "results": [
     {

@@ -947,6 +947,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:0fc359fdbdce9e2560c080a296ee0129
+pass sha256:70708f404fba9120641ecadfe96451ff
 -- run/go/gtk4 --
 pass sha256:5cba9e5c0c136fb2a95a955577415b6f

@@ -87,10 +87,13 @@ const func _fill(text string, width int, pad string) string {
     return sign + fill + digits
 }
 
-// Parse s in the given base (2, 8, 10, 16). No target other than the headless
-// interpreter implements this yet.
+// The int s writes in base, 2 to 36, or null where s is not one: an optional
+// sign and the digits, and nothing else -- no spaces, no separator, no `0x`.
+// A number out of int's range is not one either. `int(s)` is no conversion of
+// a string; a string is parsed, and `int.parse(s).or(0)` reads it with a
+// default.
 #[_intrinsic("int.parse")]
-const func int.parse(s string, base int) int
+const func int.parse(s string, base int = 10) option[int]
 
 // 64-bit floating-point number. Use the `0.0` / `1.5` literal form (a
 // trailing `.0` distinguishes it from `int`). Methods on the `float`
@@ -98,6 +101,12 @@ const func int.parse(s string, base int) int
 // trigonometric functions, etc.).
 #[_builtin(float)]
 struct float {}
+
+// The float s writes, or null where s is not one: an optional sign, digits
+// with an optional point and exponent (`1.5`, `-2e3`, `.5`), `inf` or
+// `infinity`, or `nan`, in any case, and nothing else -- no spaces.
+#[_intrinsic("float.parse")]
+const func float.parse(s string) option[float]
 
 // Returns the smallest of its arguments, of which there is at least one.
 // NaN handling is platform-defined — prefer explicit NaN checks when an

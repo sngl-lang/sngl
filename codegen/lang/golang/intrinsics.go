@@ -35,11 +35,18 @@ func init() {
 	regImp("string.length", []string{"unicode/utf8"}, func(a []string) string { return "utf8.RuneCountInString(" + a[0] + ")" })
 	regImp("string.indexOf", []string{"strings"}, func(a []string) string { return "strings.Index(" + a[0] + ", " + a[1] + ")" })
 	reg("string.substring", func(a []string) string { return "string([]rune(" + a[0] + ")[" + a[1] + ":" + a[2] + "])" })
-	// strconv.ParseInt returns (int64, error) and int.parse returns an int, so
-	// there is no expression form without a func literal to drop the error.
-	regImp("int.parse", []string{"strconv"}, func(a []string) string {
-		return "func() int { __v, _ := strconv.ParseInt(" + a[0] + ", " + a[1] + ", 64); return int(__v) }()"
+	// An option is a pointer, which snglparse answers; the interpreter reads
+	// the same grammar there. A base left out is 10: an intrinsic with no body
+	// is called as written.
+	regImp("int.parse", []string{"duckfam.us/sngl/pkg/go/snglparse"}, func(a []string) string {
+		base := "10"
+		if len(a) > 1 {
+			base = a[1]
+		}
+		return "snglparse.Int(" + a[0] + ", " + base + ")"
 	})
+	regImp("option.or", []string{"duckfam.us/sngl/pkg/go/snglopt"}, func(a []string) string { return "snglopt.Or(" + a[0] + ", " + a[1] + ")" })
+	regImp("float.parse", []string{"duckfam.us/sngl/pkg/go/snglparse"}, func(a []string) string { return "snglparse.Float(" + a[0] + ")" })
 	regImp("string.upper", []string{"strings"}, func(a []string) string { return "strings.ToUpper(" + a[0] + ")" })
 	regImp("string.lower", []string{"strings"}, func(a []string) string { return "strings.ToLower(" + a[0] + ")" })
 	regImp("string.trim", []string{"strings"}, func(a []string) string { return "strings.TrimSpace(" + a[0] + ")" })

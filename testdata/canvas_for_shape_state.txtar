@@ -5256,9 +5256,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:4f3537d547f4e6016bded04295ec85d1
+pass sha256:32176720ff13a61139bf50524ef323fc
 -- run/c/win32 --
-pass sha256:c584d1248824ac217a663c744dd238ec
+pass sha256:055beee25f8e35cf319afdb27e7b9f99
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --

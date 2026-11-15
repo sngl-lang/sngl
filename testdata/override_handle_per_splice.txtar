@@ -48,9 +48,10 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -155,9 +156,9 @@ func ParseDate(s string) *time.Time {
 	if !_digits(((string([]rune(s)[0:4]) + string([]rune(s)[5:7])) + string([]rune(s)[8:10]))) {
 		return unset
 	}
-	var y int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[0:4]), 10, 64); return int(__v) }()
-	var m__r4 int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[5:7]), 10, 64); return int(__v) }()
-	var d__r0 int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[8:10]), 10, 64); return int(__v) }()
+	var y int = snglopt.Or(snglparse.Int(string([]rune(s)[0:4]), 10), 0)
+	var m__r4 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
+	var d__r0 int = snglopt.Or(snglparse.Int(string([]rune(s)[8:10]), 10), 0)
 	if (((m__r4 < 1) || (m__r4 > 12)) || (d__r0 < 1)) || (d__r0 > _daysIn(y, m__r4)) {
 		return unset
 	}
@@ -238,16 +239,7 @@ func __effect1_up() {
 
 func __effect2_mount() {
 	if m.__effect2_key != nil {
-		cgo.SnglCalendarSelect(m.cal, func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect2_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect2_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect2_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}())
+		cgo.SnglCalendarSelect(m.cal, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect2_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect2_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect2_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -273,16 +265,7 @@ func __effect2_up() {
 
 func __effect3_mount() {
 	if m.__effect3_key != nil {
-		cgo.SnglCalendarSelect(m.cal__1, func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect3_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect3_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect3_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}())
+		cgo.SnglCalendarSelect(m.cal__1, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect3_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect3_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect3_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -464,4 +447,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:38ec1ac28d393520b231bf3d994f67a3
+pass sha256:9f3e642bb7d82e206632ecaee3d6ef47

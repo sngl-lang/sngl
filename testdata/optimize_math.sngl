@@ -13,9 +13,9 @@ component mathfold node {
     var fatan2 = math.atan2(0.0, 1.0) // FOLD 0.0
     var fpow = math.pow(2.0, 3.0)     // FOLD 8.0
 
-    // String-to-number conversions
-    var si = int("42")    // FOLD 42
-    var sf = float("3.5") // FOLD 3.5
+    // A number parsed from a constant string
+    var si = int.parse("42").or(0)      // FOLD 42
+    var sf = float.parse("3.5").or(0.0) // FOLD 3.5
 
     // Float division
     var fmod = 10.0 / 3.0 // FOLD 3.3333333333333335

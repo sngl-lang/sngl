@@ -904,6 +904,75 @@ double sngl_float_of(sngl_string s) {
 	return whole ? v : 0;
 }
 
+/* sngl_float_syntax says s is what float.parse reads: an optional sign, then
+ * digits with an optional point and exponent, or inf, infinity or nan in any
+ * case (pkg/go/snglparse). */
+static bool sngl_float_syntax(sngl_string s) {
+	size_t i = 0, n = s.len;
+	if (i < n && (s.ptr[i] == '+' || s.ptr[i] == '-')) {
+		i++;
+	}
+	const char *words[] = {"inf", "infinity", "nan"};
+	for (size_t w = 0; w < 3; w++) {
+		size_t len = strlen(words[w]);
+		if (n - i == len) {
+			size_t k = 0;
+			while (k < len && (s.ptr[i + k] | 0x20) == words[w][k]) {
+				k++;
+			}
+			if (k == len) {
+				return true;
+			}
+		}
+	}
+	size_t digits = 0;
+	while (i < n && s.ptr[i] >= '0' && s.ptr[i] <= '9') {
+		i++, digits++;
+	}
+	if (i < n && s.ptr[i] == '.') {
+		i++;
+		while (i < n && s.ptr[i] >= '0' && s.ptr[i] <= '9') {
+			i++, digits++;
+		}
+	}
+	if (digits == 0) {
+		return false;
+	}
+	if (i < n && (s.ptr[i] == 'e' || s.ptr[i] == 'E')) {
+		i++;
+		if (i < n && (s.ptr[i] == '+' || s.ptr[i] == '-')) {
+			i++;
+		}
+		size_t exp = 0;
+		while (i < n && s.ptr[i] >= '0' && s.ptr[i] <= '9') {
+			i++, exp++;
+		}
+		if (exp == 0) {
+			return false;
+		}
+	}
+	return i == n;
+}
+
+bool sngl_float_parse(sngl_string s, double *out) {
+	if (!sngl_float_syntax(s)) {
+		return false;
+	}
+	char *c = sngl_number(s);
+	if (c == NULL) {
+		return false;
+	}
+	double v = strtod(c, NULL);
+	free(c);
+	/* Past float's range is none, as strconv.ParseFloat answers it; inf
+	 * written as a word is not past it. */
+	if (isinf(v) && (s.ptr[s.len - 1] | 0x20) != 'f' && (s.ptr[s.len - 1] | 0x20) != 'y') {
+		return false;
+	}
+	*out = v;
+	return true;
+}
+
 int64_t sngl_int_of(sngl_string s) {
 	char *c = sngl_number(s);
 	if (c == NULL || strchr(c, sngl_point()) != NULL) {
@@ -1170,9 +1239,37 @@ sngl_string sngl_string_replace(sngl_string s, sngl_string old, sngl_string new_
 	return sngl_concat(out, sngl_string_bytes(s.ptr + from, s.len - (size_t)from));
 }
 
-int64_t sngl_int_parse(sngl_string s, int64_t base) {
-	char *c = sngl_cstring(s);
-	int64_t v = (int64_t)strtoll(c, NULL, (int)base);
-	free(c);
-	return v;
+bool sngl_int_parse(sngl_string s, int64_t base, int64_t *out) {
+	if (base < 2 || base > 36 || s.len == 0) {
+		return false;
+	}
+	size_t i = 0;
+	bool neg = s.ptr[0] == '-';
+	if (neg || s.ptr[0] == '+') {
+		i = 1;
+	}
+	if (i == s.len) {
+		return false;
+	}
+	uint64_t limit = neg ? (uint64_t)INT64_MAX + 1 : (uint64_t)INT64_MAX;
+	uint64_t v = 0;
+	for (; i < s.len; i++) {
+		unsigned char ch = (unsigned char)s.ptr[i];
+		uint64_t d;
+		if (ch >= '0' && ch <= '9') {
+			d = ch - '0';
+		} else if (ch >= 'a' && ch <= 'z') {
+			d = ch - 'a' + 10;
+		} else if (ch >= 'A' && ch <= 'Z') {
+			d = ch - 'A' + 10;
+		} else {
+			return false;
+		}
+		if (d >= (uint64_t)base || v > (limit - d) / (uint64_t)base) {
+			return false;
+		}
+		v = v * (uint64_t)base + d;
+	}
+	*out = !neg ? (int64_t)v : v == limit ? INT64_MIN : -(int64_t)v;
+	return true;
 }

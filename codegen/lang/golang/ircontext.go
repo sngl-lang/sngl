@@ -1852,11 +1852,6 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	if expr := gc.durationToNumber(n, goType, operand); expr != "" {
 		return expr
 	}
-	// And the other direction is not a cast at all: see StringToNumberHelper.
-	if helper := StringToNumberHelper(n); helper != "" {
-		gc.RequireImport("strconv")
-		return helper + "(" + operand + ")"
-	}
 	// `*T(x)` is invalid; `(*T)(x)` is the valid form.
 	gc.requireTypeImports(n.Type)
 	if strings.HasPrefix(goType, "*") || strings.HasPrefix(goType, "[") || strings.HasPrefix(goType, "map[") {

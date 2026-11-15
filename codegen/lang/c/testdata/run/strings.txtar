@@ -1,15 +1,15 @@
 Strings whose bytes are no valid UTF-8, and a number past an int's range,
 answered as Go answers them: each byte no valid sequence starts or finishes
 is one U+FFFD, an overlong form included, so a cut-short sequence counts a
-code point per byte and upper writes U+FFFD for each; and int of a number
-out of range is the nearer end, as strconv.Atoi answers it.
+code point per byte and upper writes U+FFFD for each; and int.parse of a
+number out of range is none, as strconv.ParseInt refuses it.
 
 -- app.sngl --
 func runes(s string) => s.length()
 
 func shout(s string) => s.upper()
 
-func parse(s string) => int(s)
+func parse(s string) => int.parse(s).or(0)
 -- main.c --
 #include "program.c"
 #include <stdio.h>
@@ -34,5 +34,5 @@ int main(void) {
 3
 2
 A�B
-9223372036854775807
+0
 -9223372036854775808

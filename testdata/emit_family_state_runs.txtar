@@ -82,9 +82,9 @@ func readClicks(members func() list[Entry]) {
         var fields = in.text().trim().split(" ")
         async.do(func() {
             var ms = members()
-            var i = int.parse(fields[0], 10)
+            var i = int.parse(fields[0]).or(-1)
             if i < ms.length {
-                ms[i].click(int.parse(fields[1], 10))
+                ms[i].click(int.parse(fields[1]).or(0))
             }
         })
     }
@@ -145,13 +145,14 @@ package main
 import (
 	"bufio"
 	"duckfam.us/sngl/pkg/go/fynelayout"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/widget"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -236,9 +237,9 @@ func ReadClicks(members func() []Entry) {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
 		__snglDo(func() {
 			ms := slices.Clone(members())
-			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
+			var i int = snglopt.Or(snglparse.Int(fields[0], 10), -1)
 			if i < len(ms) {
-				ms[i].Click(func() int { __v, _ := strconv.ParseInt(fields[1], 10, 64); return int(__v) }())
+				ms[i].Click(snglopt.Or(snglparse.Int(fields[1], 10), 0))
 			}
 		})
 	}
@@ -409,11 +410,12 @@ package main
 import (
 	"bufio"
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fmt"
 	"os"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -485,9 +487,9 @@ func ReadClicks(members func() []Entry) {
 		fields := strings.Split(strings.TrimSpace(in.Text()), " ")
 		snglPost(func() {
 			ms := slices.Clone(members())
-			var i int = func() int { __v, _ := strconv.ParseInt(fields[0], 10, 64); return int(__v) }()
+			var i int = snglopt.Or(snglparse.Int(fields[0], 10), -1)
 			if i < len(ms) {
-				ms[i].Click(func() int { __v, _ := strconv.ParseInt(fields[1], 10, 64); return int(__v) }())
+				ms[i].Click(snglopt.Or(snglparse.Int(fields[1], 10), 0))
 			}
 		})
 	}
@@ -679,6 +681,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:82a7f09cdd59497752ac385a91e41d6d
+pass sha256:9b6f8a1325cf7d57c1e2d92cd2f90b24
 -- run/go/gtk4 --
-pass sha256:b1495b5dce54fd66b9c9862af9a1c076
+pass sha256:22af04d179eb7bfe25129ccabfbe88d9

@@ -670,6 +670,9 @@ func (c *Context) Call(n *ir.Call) string {
 	if out, ok := c.enumIntrinsic(n); ok {
 		return out
 	}
+	if out, ok := c.optionIntrinsic(n); ok {
+		return out
+	}
 	switch n.Func.Intrinsic {
 	case lower.AsyncStartIntrinsic, lower.AsyncDoIntrinsic:
 		// C has no thread of its own to start work on: the work runs on the
@@ -816,12 +819,6 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 			if !multiBase(from) {
 				return fromDouble(operand)
 			}
-		case ir.TypeString:
-			parse := "sngl_int_of"
-			if to.Kind == ir.TypeFloat {
-				parse = "sngl_float_of"
-			}
-			return "(" + c.typeName(to) + ")(" + parse + "(" + operand + "))"
 		}
 	case ir.TypeBool:
 		if from.Kind == ir.TypeBool {

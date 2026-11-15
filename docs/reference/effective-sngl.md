@@ -343,19 +343,21 @@ var callback func(string) int = null
 func _a() => string(42)
 func _b() => string(3.14)
 func _c() => string(true)
-func _d() => int("42")
+func _d() => int.parse("42").or(0)
 func _e() => int(3.14)
 func _f() => float(42)
-func _g() => float("3.14")
+func _g() => float.parse("3.14").or(0.0)
 ```
 
 Allow-lists per target:
 
-| Target  | Accepts                                                      |
-|---------|--------------------------------------------------------------|
-| `int`   | `int`, `float`, `string`, `bool`, `enum`, single-base `unit` |
-| `float` | `int`, `float`, `string`, `bool`, `enum`, single-base `unit` |
-| `bool`  | `bool`, `string`                                             |
+| Target  | Accepts                                            |
+|---------|----------------------------------------------------|
+| `int`   | `int`, `float`, `bool`, `enum`, single-base `unit` |
+| `float` | `int`, `float`, `bool`, `enum`, single-base `unit` |
+| `bool`  | `bool`                                             |
+
+A string is parsed, not cast: `int.parse(s)` and `float.parse(s)` answer `null` where `s` writes no number, and `.or(0)` gives the default. Text a user typed is read this way, since no cast can say what `"abc"` is as a number.
 
 A cast of a unit reads its magnitude in the unit's base: `int(1500ms)` is `1500`. A multi-base unit such as `measurement` has no single number, so `int(m)` is refused; read one base with `m.px` instead.
 

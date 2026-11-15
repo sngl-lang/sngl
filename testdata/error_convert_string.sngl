@@ -1,0 +1,15 @@
+// A string is parsed, not converted: `int(s)` and `float(s)` would have to say
+// what a string writing no number is, which int.parse and float.parse answer
+// as null. A bool reads a string by comparing it. A date, time or color still
+// converts from its string form.
+import time "sngl:time"
+
+func n(s string) => int(s) // ERROR(check) "int(): a string is parsed, not converted: int.parse(s)"
+
+func f(s string) => float(s) // ERROR(check) "float(): a string is parsed, not converted: float.parse(s)"
+
+func b(s string) => bool(s) // ERROR(check) "bool(): a string is parsed, not converted: compare it"
+
+func parsed(s string) => int.parse(s).or(0) + int(float.parse(s).or(0.0))
+
+func day(s string) => time.date(s)

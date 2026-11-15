@@ -755,7 +755,6 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		"string.lower":     "sngl_string_lower",
 		"string.trim":      "sngl_string_trim",
 		"string.replace":   "sngl_string_replace",
-		"int.parse":        "sngl_int_parse",
 	}
 	if n.Func.Intrinsic == "color.hex" && len(n.Args) == 1 {
 		// The color is the program's struct, which the runtime does not
@@ -862,6 +861,21 @@ func (c *Context) numberIntrinsic(n *ir.Call) (string, bool) {
 	return m;
 `)
 		return fn + "(" + arg(0) + ", " + arg(1) + ")", true
+	case "int.parse", "float.parse":
+		opt := c.typeName(n.Type)
+		name := opt + "_" + strings.ReplaceAll(id, ".", "_")
+		params, args := "sngl_string s", "s, &o.value"
+		call := name + "(" + arg(0)
+		if id == "int.parse" {
+			params, args = params+", int64_t base", "s, base, &o.value"
+			base := "10"
+			if len(n.Args) > 1 {
+				base = arg(1)
+			}
+			call += ", " + base
+		}
+		c.file.helper(name, "static "+opt+" "+name+"("+params+") {\n\t"+opt+" o = {0};\n\to.ok = sngl_"+strings.ReplaceAll(id, ".", "_")+"("+args+");\n\treturn o;\n}\n")
+		return call + ")", true
 	case "int.clamp", "float.clamp":
 		t := c.typeName(n.Type)
 		name := "sngl_" + strings.ReplaceAll(id, ".", "_")
@@ -869,6 +883,23 @@ func (c *Context) numberIntrinsic(n *ir.Call) (string, bool) {
 		return name + "(" + arg(0) + ", " + arg(1) + ", " + arg(2) + ")", true
 	}
 	return "", false
+}
+
+// optionIntrinsic is n, a call of option[T].or, as C answers it: through a
+// function of the option's type.
+func (c *Context) optionIntrinsic(n *ir.Call) (string, bool) {
+	if n.Func.Intrinsic != "option.or" || len(n.Args) != 2 {
+		return "", false
+	}
+	ot := n.Args[0].Value.ExprType()
+	opt, t := c.typeName(ot), c.typeName(n.Type)
+	name := "sngl_opt_or_" + typeToken(n.Type)
+	if c.ptrOption(ot) {
+		c.file.helper(name, "static "+t+" "+name+"("+opt+" o, "+t+" otherwise) {\n\treturn o != NULL ? o : otherwise;\n}\n")
+	} else {
+		c.file.helper(name, "static "+t+" "+name+"("+opt+" o, "+t+" otherwise) {\n\treturn o.ok ? o.value : otherwise;\n}\n")
+	}
+	return name + "(" + c.EvalExpr(n.Args[0].Value) + ", " + c.EvalExpr(n.Args[1].Value) + ")", true
 }
 
 // ptrOption reports whether t is an option C holds as the pointer it is

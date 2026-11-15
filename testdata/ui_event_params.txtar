@@ -1281,10 +1281,11 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1392,9 +1393,9 @@ func ParseDate(s string) *time.Time {
 	if !_digits(((string([]rune(s)[0:4]) + string([]rune(s)[5:7])) + string([]rune(s)[8:10]))) {
 		return unset
 	}
-	var y int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[0:4]), 10, 64); return int(__v) }()
-	var m__r4 int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[5:7]), 10, 64); return int(__v) }()
-	var d int = func() int { __v, _ := strconv.ParseInt(string([]rune(s)[8:10]), 10, 64); return int(__v) }()
+	var y int = snglopt.Or(snglparse.Int(string([]rune(s)[0:4]), 10), 0)
+	var m__r4 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
+	var d int = snglopt.Or(snglparse.Int(string([]rune(s)[8:10]), 10), 0)
 	if (((m__r4 < 1) || (m__r4 > 12)) || (d < 1)) || (d > _daysIn(y, m__r4)) {
 		return unset
 	}
@@ -1449,16 +1450,7 @@ func __effect0_up() {
 
 func __effect1_mount() {
 	if m.__effect1_key != nil {
-		cgo.SnglCalendarSelect(m.day, func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[0:4]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[5:7]), 10, 64)
-			return int(__v)
-		}(), func() int {
-			__v, _ := strconv.ParseInt(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[8:10]), 10, 64)
-			return int(__v)
-		}())
+		cgo.SnglCalendarSelect(m.day, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect1_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -2222,7 +2214,7 @@ pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
 pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:2a91ec0866abee5895402bba43acbb21
+pass sha256:e1282cf05a85deaa9d74fee54a69d3bf
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

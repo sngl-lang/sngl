@@ -39,12 +39,24 @@ func init() {
 	reg := func(id string, fn func(a []string) string) { regImp(id, nil, fn) }
 
 	// --- string ---
-	// toIntOrNull keeps a bad string from throwing; int.parse has no error result.
 	// sngl:settings, over SnglSettings beside the screen (android).
 	reg("settings._persistent", func(a []string) string { return "SnglSettings.persistent()" })
 	reg("settings._read", func(a []string) string { return "SnglSettings.read(" + a[0] + ", " + a[1] + ")" })
 	reg("settings._write", func(a []string) string { return "SnglSettings.write(" + a[0] + ", " + a[1] + ", " + a[2] + ")" })
-	reg("int.parse", func(a []string) string { return "(" + a[0] + ".toIntOrNull(" + a[1] + ") ?: 0)" })
+	// int.parse and float.parse read the grammar snglparse (Go) and the
+	// interpreter read: toIntOrNull takes any script's digits, and
+	// toDoubleOrNull spaces, hex and a type suffix.
+	reg("int.parse", func(a []string) string {
+		base := "10"
+		if len(a) > 1 {
+			base = a[1]
+		}
+		return "run { val __ps = " + a[0] + "; val __pb = " + base + "; if (__pb !in 2..36 || !Regex(\"^[+-]?[0-9A-Za-z]+$\").matches(__ps)) null else __ps.toIntOrNull(__pb) }"
+	})
+	reg("option.or", func(a []string) string { return "(" + a[0] + " ?: " + a[1] + ")" })
+	reg("float.parse", func(a []string) string {
+		return "run { val __ps = " + a[0] + "; if (!Regex(\"^[+-]?(([0-9]+\\\\.?[0-9]*|\\\\.[0-9]+)([eE][+-]?[0-9]+)?|(?i:inf|infinity|nan))$\").matches(__ps)) null else when (__ps.lowercase().trimStart('+', '-')) { \"nan\" -> Double.NaN; \"inf\", \"infinity\" -> if (__ps.startsWith(\"-\")) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY; else -> __ps.toDouble().takeIf { it.isFinite() } } }"
+	})
 
 	reg("string.length", func(a []string) string { return a[0] + ".length" })
 	reg("string.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })

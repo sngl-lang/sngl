@@ -1997,7 +1997,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:924b5fa2bedb0482d4042eb871d47e8a
+pass sha256:98078cff0a74123db4accbc35889cd55
 -- run/go/gtk4 --
 pass sha256:e745396a217f2196094a24ee518d9e5a
 -- run/none/html --

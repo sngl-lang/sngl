@@ -27,7 +27,7 @@ func requireAge(s string) int {
     if s.length == 0 {
         error.raise("an age is required", "validation")
     }
-    return int(s)
+    return int.parse(s).or(0)
 }
 
 func parseTwice(s string) int {
@@ -86,10 +86,11 @@ import (
 	"charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"duckfam.us/sngl/pkg/go/snglopt"
+	"duckfam.us/sngl/pkg/go/snglparse"
 	"duckfam.us/sngl/pkg/go/tui"
 	"fmt"
 	"os"
-	"strconv"
 )
 
 func snglOptEqual[T comparable](p, q *T) bool {
@@ -97,11 +98,6 @@ func snglOptEqual[T comparable](p, q *T) bool {
 		return p == q
 	}
 	return *p == *q
-}
-
-func snglParseInt(s string) int {
-	n, _ := strconv.Atoi(s)
-	return n
 }
 
 type Measurement struct {
@@ -213,7 +209,7 @@ func RequireAge(s string) int {
 	if len(s) == 0 {
 		panic(ErrorEvent{Message: "an age is required", Kind: "validation"})
 	}
-	return snglParseInt(s)
+	return snglopt.Or(snglparse.Int(s, 10), 0)
 }
 
 func ParseTwice(s string) int {
@@ -739,7 +735,7 @@ fun requireAge(s: String): Int {
     if ((s.length == 0)) {
     	throw SnglRaise(ErrorEvent("an age is required", "validation"))
     }
-    return s.toInt()
+    return (run { val __ps = s; val __pb = 10; if (__pb !in 2..36 || !Regex("^[+-]?[0-9A-Za-z]+$").matches(__ps)) null else __ps.toIntOrNull(__pb) } ?: 0)
 }
 
 fun parseTwice(s: String): Int {
@@ -903,7 +899,11 @@ body { font-family: system-ui, sans-serif; }
       throw Object.assign(new Error("an age is required"), { kind: "validation" });
     }
     ;
-    return Math.trunc(s);
+    return ((s2, b) => {
+      if (!(b >= 2 && b <= 36) || !/^[+-]?[0-9a-z]+$/i.test(s2) || [...s2.replace(/^[+-]/, "").toLowerCase()].some((c) => parseInt(c, 36) >= b)) return null;
+      const n = parseInt(s2, b);
+      return Math.abs(n) <= 9223372036854776e3 ? n : null;
+    })(s, 10) ?? 0;
   }
   function parseTwice(s) {
     let n = requireAge(s);
@@ -985,8 +985,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:a847d0a1ffedea0408607b37ea3c4121
+pass sha256:235d0b423c4a43fbb953e1afccff720f
 -- run/kotlin/android --
-pass sha256:8ea338c0b4c58a811564c070208d5a46
+pass sha256:d71ad4c2b76de56eb08bdb6a56209727
 -- run/none/html --
-pass sha256:77220ab0c5ff68b9db3f7f34f26491a7
+pass sha256:26ba82932d5c28c63c62cc47662846a8
