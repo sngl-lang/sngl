@@ -1,0 +1,36 @@
+Lists compare by their elements, as a struct does by its fields: equal where
+they are as long and each element is equal, a string's by its bytes and a
+struct's or a nested list's in turn, through a function the file defines per
+list type. C compares neither a struct nor a list itself.
+
+-- app.sngl --
+struct P {
+    name string
+    tags list[string]
+}
+
+func same(a list[int], b list[int]) => a == b
+
+func compared() string {
+    var xs list[string] = ["a", "b"]
+    var ys list[string] = ["a"]
+    ys.push("b")
+    var grid list[list[int]] = [[1], [2, 3]]
+    var other list[list[int]] = [[1], [2, 3]]
+    var ps = [P{name="p", tags=["x"]}]
+    var qs = [P{name="p", tags=["y"]}]
+    return "{xs == ys} {xs != ys} {grid == other} {same([1, 2], [1])} {same([], [])} {ps == qs} {ps[0].tags == ["x"]}"
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+int main(void) {
+	sngl_turn_enter();
+	sngl_string s = s_compared();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	sngl_turn_leave();
+	return 0;
+}
+-- want --
+true false true false true false true

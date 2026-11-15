@@ -182,6 +182,11 @@ func translate(t *testing.T, src []byte) []byte {
 	// what it reaches from, and is itself never written.
 	keep := &ir.Func{Name: "testKeep", IsTest: true, Synthesized: true}
 	for _, fn := range pkg.Funcs {
+		// A generic function is written for the types its callers name,
+		// and a type parameter has no zero to call it with here.
+		if len(fn.TypeParams) > 0 {
+			continue
+		}
 		args := make([]ir.CallArg, len(fn.Params))
 		for i, p := range fn.Params {
 			args[i] = ir.CallArg{Value: ir.ZeroExpr(p.Type)}

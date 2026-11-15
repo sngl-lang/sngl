@@ -154,12 +154,23 @@ func generateC(req *codegen.Request, sink codegen.Sink) error {
 		io.WriteString(fe, "\nint main(int argc, char **argv) {\n\tif (argc < 4) {\n\t\treturn 2;\n\t}\n\tgtk_init();\n\tsngl_gtk_carry(sngl_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n\treturn sngl_gtk_capture_file(argv[1], atoi(argv[2]), atoi(argv[3]));\n}\n")
 		fe.Context().Include("stdlib.h", true)
 	} else {
-		io.WriteString(fe, appMain(fe.Context(), pkg))
+		io.WriteString(fe, clang.WithOpenSettings(appMain(fe.Context(), pkg), clang.OpenSettings(pkg, golang.SettingsApp(codegen.OptionString(req.Options, "name")))))
 	}
 	if err := fe.Close(); err != nil {
 		return fmt.Errorf("%s: %w", platformName, err)
 	}
-	if err := writeFile(sink, clang.BuildFile, clang.Manifest(links)); err != nil {
+	curl, err := clang.HTTPRuntime(fe.Context(), sources)
+	if err != nil {
+		return fmt.Errorf("%s: %w", platformName, err)
+	}
+	words, err := clang.LoadManifest(req.ProjectFS, "")
+	if err != nil {
+		return fmt.Errorf("%s: i18n manifest: %w", platformName, err)
+	}
+	if clang.I18nRuntime(fe.Context(), sources, words) {
+		curl = append(curl, "icu-i18n")
+	}
+	if err := writeFile(sink, clang.BuildFile, clang.Manifest(links, curl...)); err != nil {
 		return err
 	}
 	// The files the program carries, which the runtime's images show.

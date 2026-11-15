@@ -49,8 +49,8 @@ static void sngl_send(void) {
 	sngl_out_len = 0;
 }
 
-/* sngl_json writes s into the message as a JSON string. */
-static void sngl_json(const char *s, size_t n) {
+/* sngl_json_put writes s into the message as a JSON string. */
+static void sngl_json_put(const char *s, size_t n) {
 	sngl_putc('"');
 	for (size_t i = 0; i < n; i++) {
 		unsigned char c = (unsigned char)s[i];
@@ -81,22 +81,22 @@ static void sngl_json(const char *s, size_t n) {
 	sngl_putc('"');
 }
 
-static void sngl_json_str(const char *s) { sngl_json(s, strlen(s)); }
+static void sngl_json_put_str(const char *s) { sngl_json_put(s, strlen(s)); }
 
 /* sngl_notify sends a notification naming test, with what rest writes after
  * its "test" member. */
 static void sngl_notify_test(const char *method, const char *test, const char *rest) {
 	sngl_printf("{\"jsonrpc\":\"2.0\",\"method\":\"%s\",\"params\":{\"test\":", method);
-	sngl_json_str(test);
+	sngl_json_put_str(test);
 	sngl_printf("%s}}\n", rest);
 	sngl_send();
 }
 
 void sngl_test_log(sngl_t *t, sngl_string msg) {
 	sngl_printf("{\"jsonrpc\":\"2.0\",\"method\":\"log\",\"params\":{\"test\":");
-	sngl_json_str(t->name);
+	sngl_json_put_str(t->name);
 	sngl_puts(",\"msg\":");
-	sngl_json(msg.ptr, msg.len);
+	sngl_json_put(msg.ptr, msg.len);
 	sngl_puts("}}\n");
 	sngl_send();
 }
@@ -268,9 +268,9 @@ void sngl_test_snapshot(sngl_t *t, sngl_string name) {
 	 * (testlaunch.RawPixelsMime). */
 	long long id = ++sngl_request_id;
 	sngl_printf("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"method\":\"snapshotAssert\",\"params\":{\"test\":", id);
-	sngl_json_str(t->name);
+	sngl_json_put_str(t->name);
 	sngl_puts(",\"name\":");
-	sngl_json(name.ptr, name.len);
+	sngl_json_put(name.ptr, name.len);
 	sngl_printf(",\"mime\":\"image/x-sngl-rgba\",\"width\":%d,\"height\":%d,\"bytes\":\"", w, h);
 	sngl_base64(rgba, (size_t)w * (size_t)h * 4);
 	sngl_puts("\"}}\n");
@@ -340,7 +340,7 @@ int sngl_test_serve(const sngl_test *tests, size_t n, const sngl_test_io *io) {
 				if (i > 0) {
 					sngl_putc(',');
 				}
-				sngl_json_str(tests[i].name);
+				sngl_json_put_str(tests[i].name);
 			}
 			sngl_puts("]}}\n");
 			sngl_send();

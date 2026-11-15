@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -496,7 +497,26 @@ func (c *checker) checkCLinks() {
 // imports are read from, or a library package's, from the library. It is
 // kept by its own name, since a language compiles every one into one
 // directory, where a header among them is included by that name.
+//
+// A library package may name another's as `sngl:<path>`, which it then
+// ships as its own: a runtime file two targets share, which only one of
+// them owns. Its Path is where it is from the naming file.
 func (c *checker) readCSource(pos ast.Pos, name string) (ir.CSource, error) {
+	if other, ok := strings.CutPrefix(name, "sngl:"); ok && c.inLibSource() {
+		full := path.Clean(other)
+		if ext := path.Ext(full); ext != ".c" && ext != ".h" {
+			return ir.CSource{}, fmt.Errorf("a source is a C file or a header, .c or .h")
+		}
+		data, err := fs.ReadFile(lib.FS, full)
+		if err != nil {
+			return ir.CSource{}, err
+		}
+		rel, err := filepath.Rel(path.Dir(pos.File), full)
+		if err != nil {
+			return ir.CSource{}, err
+		}
+		return ir.CSource{Name: path.Base(full), Path: filepath.ToSlash(rel), Text: string(data)}, nil
+	}
 	clean := path.Clean(name)
 	if path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
 		return ir.CSource{}, fmt.Errorf("a source sits beside the file naming it, or below it")

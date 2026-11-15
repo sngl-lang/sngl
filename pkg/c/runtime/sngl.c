@@ -59,10 +59,17 @@ void *sngl_alloc(size_t n) {
 	return p;
 }
 
-/* The kept blocks, an open-addressed set of their addresses, and those
- * dropped this turn, freed as it ends. live counts the blocks in the set,
- * used the slots a probe cannot stop at: the blocks and the tombs. */
-static uintptr_t *sngl_kept;
+/* The kept blocks, an open-addressed table of their addresses, and those
+ * dropped this turn, freed as it ends. live counts the blocks in the table,
+ * used the slots a probe cannot stop at: the blocks and the tombs. Each
+ * block counts its holders, and a list's, a map's or a string's carries the
+ * length its holders last wrote it at (sngl_share). */
+typedef struct sngl_kept_block {
+	uintptr_t p;
+	int64_t holders;
+	int64_t len;
+} sngl_kept_block;
+static sngl_kept_block *sngl_kept;
 static size_t sngl_kept_cap, sngl_kept_live, sngl_kept_used;
 static void **sngl_dropped;
 static size_t sngl_dropped_len, sngl_dropped_cap;
@@ -78,25 +85,25 @@ static size_t sngl_slot(uintptr_t p) {
 	return (size_t)h & (sngl_kept_cap - 1);
 }
 
-/* sngl_insert puts p in a set with room for it. */
-static void sngl_insert(uintptr_t p) {
-	size_t i = sngl_slot(p);
-	while (sngl_kept[i] != 0 && sngl_kept[i] != SNGL_TOMB) {
+/* sngl_insert puts b in a table with room for it. */
+static void sngl_insert(sngl_kept_block b) {
+	size_t i = sngl_slot(b.p);
+	while (sngl_kept[i].p != 0 && sngl_kept[i].p != SNGL_TOMB) {
 		i = (i + 1) & (sngl_kept_cap - 1);
 	}
-	if (sngl_kept[i] == 0) {
+	if (sngl_kept[i].p == 0) {
 		sngl_kept_used++;
 	}
-	sngl_kept[i] = p;
+	sngl_kept[i] = b;
 	sngl_kept_live++;
 }
 
 static void sngl_track(uintptr_t p) {
 	if ((sngl_kept_used + 1) * 2 > sngl_kept_cap) {
 		/* Rebuilt without its tombs, and twice the size only where the
-		 * blocks themselves fill a quarter of it: a set whose blocks are
+		 * blocks themselves fill a quarter of it: a table whose blocks are
 		 * dropped as fast as kept stays the size it is. */
-		uintptr_t *old = sngl_kept;
+		sngl_kept_block *old = sngl_kept;
 		size_t old_cap = sngl_kept_cap;
 		sngl_kept_cap = old_cap == 0 ? 64 : (sngl_kept_live + 1) * 4 > old_cap ? old_cap * 2 : old_cap;
 		sngl_kept = calloc(sngl_kept_cap, sizeof *sngl_kept);
@@ -106,28 +113,87 @@ static void sngl_track(uintptr_t p) {
 		sngl_kept_live = 0;
 		sngl_kept_used = 0;
 		for (size_t i = 0; i < old_cap; i++) {
-			if (old[i] != 0 && old[i] != SNGL_TOMB) {
+			if (old[i].p != 0 && old[i].p != SNGL_TOMB) {
 				sngl_insert(old[i]);
 			}
 		}
 		free(old);
 	}
-	sngl_insert(p);
+	sngl_insert((sngl_kept_block){p, 1, -1});
 }
 
-/* sngl_untrack takes p out of the kept set, and is whether it was there. */
-static bool sngl_untrack(uintptr_t p) {
+/* sngl_find is p's entry in the kept table, NULL where p is not kept. */
+static sngl_kept_block *sngl_find(uintptr_t p) {
 	if (sngl_kept_cap == 0 || p == 0) {
-		return false;
+		return NULL;
 	}
-	for (size_t i = sngl_slot(p); sngl_kept[i] != 0; i = (i + 1) & (sngl_kept_cap - 1)) {
-		if (sngl_kept[i] == p) {
-			sngl_kept[i] = SNGL_TOMB;
-			sngl_kept_live--;
-			return true;
+	for (size_t i = sngl_slot(p); sngl_kept[i].p != 0; i = (i + 1) & (sngl_kept_cap - 1)) {
+		if (sngl_kept[i].p == p) {
+			return &sngl_kept[i];
 		}
 	}
-	return false;
+	return NULL;
+}
+
+/* sngl_untrack takes p out of the kept table, and is whether it was there. */
+static bool sngl_untrack(uintptr_t p) {
+	sngl_kept_block *b = sngl_find(p);
+	if (b == NULL) {
+		return false;
+	}
+	b->p = SNGL_TOMB;
+	sngl_kept_live--;
+	return true;
+}
+
+bool sngl_share(const void *p, int64_t len) {
+	sngl_kept_block *b = sngl_find((uintptr_t)p);
+	if (b == NULL || b->len != len) {
+		return false;
+	}
+	b->holders++;
+	return true;
+}
+
+bool sngl_shared(const void *p) {
+	sngl_kept_block *b = sngl_find((uintptr_t)p);
+	return b != NULL && b->holders > 1;
+}
+
+bool sngl_let_go_shared(const void *p) {
+	sngl_kept_block *b = sngl_find((uintptr_t)p);
+	if (b == NULL || b->holders < 2) {
+		return false;
+	}
+	b->holders--;
+	return true;
+}
+
+bool sngl_share_map(const void *keys, const void *vals, int64_t len) {
+	sngl_kept_block *k = sngl_find((uintptr_t)keys), *v = sngl_find((uintptr_t)vals);
+	if (k == NULL || v == NULL || k->len != len || v->len != len) {
+		return false;
+	}
+	k->holders++;
+	v->holders++;
+	return true;
+}
+
+bool sngl_let_go_shared_map(const void *keys, const void *vals) {
+	sngl_kept_block *k = sngl_find((uintptr_t)keys), *v = sngl_find((uintptr_t)vals);
+	if (k == NULL || v == NULL || k->holders < 2 || v->holders < 2) {
+		return false;
+	}
+	k->holders--;
+	v->holders--;
+	return true;
+}
+
+void sngl_kept_len(const void *p, int64_t len) {
+	sngl_kept_block *b = sngl_find((uintptr_t)p);
+	if (b != NULL) {
+		b->len = len;
+	}
 }
 
 void *sngl_keep_alloc(size_t n) {
@@ -154,14 +220,18 @@ sngl_string sngl_string_keep(sngl_string s) {
 	if (s.len == 0) {
 		return SNGL_STR("");
 	}
+	if (sngl_share(s.ptr, (int64_t)s.len)) {
+		return s;
+	}
 	char *p = sngl_keep_alloc(s.len + 1);
 	memcpy(p, s.ptr, s.len);
 	p[s.len] = '\0';
+	sngl_kept_len(p, (int64_t)s.len);
 	return (sngl_string){p, s.len};
 }
 
 void sngl_drop(const void *p) {
-	if (!sngl_untrack((uintptr_t)p)) {
+	if (sngl_let_go_shared(p) || !sngl_untrack((uintptr_t)p)) {
 		return;
 	}
 	if (sngl_dropped_len == sngl_dropped_cap) {
@@ -492,6 +562,24 @@ static void sngl_collect_cycles(void) {
 	sngl_let_go();
 }
 
+void sngl_stack_swap(void **arena, sngl_catch **catching) {
+	sngl_chunk *a = sngl_arena;
+	sngl_arena = *arena;
+	*arena = a;
+	sngl_catch *c = sngl_catching;
+	sngl_catching = *catching;
+	*catching = c;
+}
+
+void sngl_arena_free(void *arena) {
+	for (sngl_chunk *c = arena; c != NULL;) {
+		sngl_chunk *next = c->next;
+		sngl_unpoison(c->data, c->size);
+		free(c);
+		c = next;
+	}
+}
+
 void sngl_turn_end(void) {
 	sngl_depth = 0;
 	sngl_depth_in_value = 0;
@@ -541,15 +629,7 @@ void *sngl_alloc_copy(const void *p, size_t n) {
 
 /* sngl_tracked reports whether p is a kept block. */
 static bool sngl_tracked(uintptr_t p) {
-	if (sngl_kept_cap == 0 || p == 0) {
-		return false;
-	}
-	for (size_t i = sngl_slot(p); sngl_kept[i] != 0; i = (i + 1) & (sngl_kept_cap - 1)) {
-		if (sngl_kept[i] == p) {
-			return true;
-		}
-	}
-	return false;
+	return sngl_find(p) != NULL;
 }
 
 void sngl_deeper(void) {

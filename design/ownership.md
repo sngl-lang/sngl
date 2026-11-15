@@ -970,6 +970,27 @@ A holder's own list or map grows in kept memory and drops the buffer it
 outgrew (`grow_kept`, `slot_kept`, chosen by `holder` as an element's keep
 is), and its `remove` and `clear` drop what they take out.
 
+**Holders share a kept buffer rather than each copying it.** A string's
+bytes, a list's buffer and a map's keys and values are kept blocks that
+count their holders: a holder keeping one already kept counts once more
+(`sngl_share`), and a drop lets go of one hold, the last giving back the
+block and what is in it. A holder writing its list or map in place -- a
+push, an insert, a remove, a clear, a sort, an element or a key -- first
+copies a buffer another holds (`unshare`), each list or map on the way to
+it included, since `EvalMutTarget` reaches the receiver as a write. A
+block records the length its holders last wrote it at, and a value saying
+another -- a list read before its holder's `clear` -- is copied rather
+than shared, since its elements past the holder's length were given back.
+A buffer whose elements may hold a counted box is never shared: the
+collector of cycles visits a box once for each holder reaching it, and a
+shared buffer is one box's holder however many hold the buffer. So a
+holder's store no longer copies the value first (`value.copy`), since its
+keep copies or shares. Before, every keep was a deep copy, and the
+Pokédex's Moves tab, each row a prop holding the names it has looked up,
+copied that map into each of 237 rows for each answer: two minutes of the
+CPU for one page. `codegen/lang/c/testdata/run/shares.txtar` holds each
+write through a shared buffer, and the clear.
+
 **A record gives back its box and what its fields kept as it is
 destroyed.** A component built at run time -- a row a keyed `for` keeps -- is
 a record (`internal/lower/placerecords.go`), a box whose fields the

@@ -14,7 +14,7 @@ import markup "sngl:ui/markup"
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //

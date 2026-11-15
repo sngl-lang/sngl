@@ -8,7 +8,7 @@ const RuntimeHeader = crt.HeaderFile
 // Runtime is the C runtime's files, by the name each is written under beside
 // the program.
 func Runtime() map[string][]byte {
-	return map[string][]byte{crt.HeaderFile: crt.Header, crt.SourceFile: crt.Source}
+	return map[string][]byte{crt.HeaderFile: crt.Header, crt.SourceFile: crt.Source, crt.CodecFile: crt.CodecSource}
 }
 
 // TestRuntime is the test agent's files, by name, which a program built for

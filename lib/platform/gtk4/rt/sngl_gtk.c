@@ -520,6 +520,13 @@ static void sngl_idle_free(gpointer data) {
     g_free(h);
 }
 
+/* sngl_loop_wait (sngl_http.h) runs what the main loop has, waiting for
+ * something where it has nothing: a request's answer is posted to it. */
+bool sngl_loop_wait(void) {
+    g_main_context_iteration(NULL, TRUE);
+    return true;
+}
+
 /* sngl_post (sngl.h) runs from the main loop when it is next idle. */
 void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx)) {
     SnglHandler *h = g_new0(SnglHandler, 1);

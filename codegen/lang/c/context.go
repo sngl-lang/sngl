@@ -349,7 +349,7 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 			return "(sngl_string_cmp(" + left + ", " + right + ") " + n.Op.String() + " 0)"
 		}
 	}
-	if lt != nil && (lt.Kind == ir.TypeStruct || ir.PayloadEnum(lt) != nil) && (n.Op == ast.BinEq || n.Op == ast.BinNeq) {
+	if lt != nil && (lt.Kind == ir.TypeStruct || lt.Kind == ir.TypeList || ir.PayloadEnum(lt) != nil) && (n.Op == ast.BinEq || n.Op == ast.BinNeq) {
 		eq := c.equal(lt, left, right)
 		if n.Op == ast.BinNeq {
 			return "!" + eq
@@ -372,8 +372,9 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 }
 
 // equal is whether a and b, two values of type t, are equal: a struct's
-// fields each, and an option's presence and then its value, through a
-// function the file defines for it, since C compares no struct.
+// fields each, a list's length and elements, and an option's presence and
+// then its value, through a function the file defines for it, since C
+// compares no struct.
 func (c *Context) equal(t *ir.Type, a, b string) string {
 	if textual(t) {
 		return "sngl_string_eq(" + a + ", " + b + ")"
@@ -391,29 +392,49 @@ func (c *Context) equal(t *ir.Type, a, b string) string {
 			break
 		}
 		sd := t.Decl.(*ir.StructDef)
-		name := c.typeName(t)
-		fn := name + "__eq"
-		var parts []string
-		for _, f := range sd.Fields {
-			parts = append(parts, c.equal(f.Type, "a."+Local(f.Name), "b."+Local(f.Name)))
-		}
-		if len(parts) == 0 {
-			parts = []string{"true"}
-		}
-		c.file.helper(fn, "static bool "+fn+"("+name+" a, "+name+" b) {\n\treturn "+strings.Join(parts, " && ")+";\n}\n")
-		return fn + "(" + a + ", " + b + ")"
+		return c.eqHelper(t, a, b, func() string {
+			var parts []string
+			for _, f := range sd.Fields {
+				parts = append(parts, c.equal(f.Type, "a."+Local(f.Name), "b."+Local(f.Name)))
+			}
+			if len(parts) == 0 {
+				parts = []string{"true"}
+			}
+			return "\treturn " + strings.Join(parts, " && ") + ";\n"
+		})
+	case ir.TypeList:
+		return c.eqHelper(t, a, b, func() string {
+			return "\tif (a.len != b.len) {\n\t\treturn false;\n\t}\n\tfor (int64_t i = 0; i < a.len; i++) {\n\t\tif (!" +
+				c.equal(t.Elems[0], "a.data[i]", "b.data[i]") + ") {\n\t\t\treturn false;\n\t\t}\n\t}\n\treturn true;\n"
+		})
 	case ir.TypeOption:
 		// Held by its pointer, an option is NULL or the value's; otherwise
 		// it is a struct of whether it holds one and the one it holds.
 		if c.ptrOption(t) {
 			break
 		}
-		name := c.typeName(t)
-		fn := name + "__eq"
-		c.file.helper(fn, "static bool "+fn+"("+name+" a, "+name+" b) {\n\treturn a.ok == b.ok && (!a.ok || "+c.equal(t.Elems[0], "a.value", "b.value")+");\n}\n")
-		return fn + "(" + a + ", " + b + ")"
+		return c.eqHelper(t, a, b, func() string {
+			return "\treturn a.ok == b.ok && (!a.ok || " + c.equal(t.Elems[0], "a.value", "b.value") + ");\n"
+		})
 	}
 	return "(" + a + " == " + b + ")"
+}
+
+// eqHelper is a call of the function the file defines to compare two values
+// of t, whose body is written once. It is declared ahead, since a recursive
+// type's -- a struct holding a list of itself -- reaches it again.
+func (c *Context) eqHelper(t *ir.Type, a, b string, body func() string) string {
+	name := c.typeName(t)
+	fn := name + "__eq"
+	call := fn + "(" + a + ", " + b + ")"
+	if c.file.helperNames[fn] {
+		return call
+	}
+	sig := "static bool " + fn + "(" + name + " a, " + name + " b)"
+	c.file.helper(fn, "")
+	c.file.protos = append(c.file.protos, sig+";")
+	c.file.setHelper(fn, sig+" {\n"+body()+"}\n")
+	return call
 }
 
 func (c *Context) Unary(n *ir.Unary, operand string) string {
@@ -523,6 +544,9 @@ func (c *Context) StructLit(n *ir.StructLit, fields []string) string {
 func (c *Context) structLit(n *ir.StructLit, fields []string) string {
 	sd := n.Type.Decl.(*ir.StructDef)
 	name := Decl(&sd.DeclInfo)
+	// A literal may be the only place its type is named: an anonymous
+	// struct handed straight to a parameter.
+	c.defineStruct(sd)
 	var parts []string
 	for i, f := range n.Fields {
 		if f.Spread || f.Name == "" {
@@ -628,6 +652,12 @@ func (c *Context) Call(n *ir.Call) string {
 	if out, ok := c.listIntrinsic(n); ok {
 		return out
 	}
+	if out, ok := c.codecIntrinsic(n); ok {
+		return out
+	}
+	if out, ok := c.i18nIntrinsic(n); ok {
+		return out
+	}
 	if out, ok := c.seqIntrinsic(n); ok {
 		return out
 	}
@@ -643,13 +673,19 @@ func (c *Context) Call(n *ir.Call) string {
 	switch n.Func.Intrinsic {
 	case lower.AsyncStartIntrinsic, lower.AsyncDoIntrinsic:
 		// C has no thread of its own to start work on: the work runs on the
-		// loop's, once the turn that started it is done, and its `do` the
-		// same way, through what the platform's runtime defines sngl_post as.
+		// loop's, once the turn that started it is done, on a stack of its
+		// own (sngl_work_start), and its `do` through what the platform's
+		// runtime defines sngl_post as.
 		if len(n.Args) != 1 {
 			return c.fail("%s of %d arguments", n.Func.Intrinsic, len(n.Args))
 		}
 		fn, ctx := c.Callback(ir.FuncOf(nil, ir.TypVoid).Sig, n.Args[0].Value)
-		return "sngl_post((void (*)(void *))" + fn + ", " + ctx + ", sngl_release)"
+		post := "sngl_post"
+		if n.Func.Intrinsic == lower.AsyncStartIntrinsic {
+			post = "sngl_work_start"
+			c.file.works = true
+		}
+		return post + "((void (*)(void *))" + fn + ", " + ctx + ", sngl_release)"
 	case "async.begin":
 		return "sngl_async_begin()"
 	case "async.end", "async.ended":
@@ -671,6 +707,10 @@ func (c *Context) Call(n *ir.Call) string {
 	args := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		args[i] = c.EvalExpr(a.Value)
+		// A C function's null is its NULL, a program's the zero of the type.
+		if p := paramFor(n.Func, a, i); p != nil && n.Func.Foreign.Path == "" {
+			args[i] = c.nullAs(p.Type, a.Value, args[i])
+		}
 	}
 	if n.Func.Foreign.Path == ir.CPath && !n.Func.Foreign.Marked {
 		return c.CCall(n, args)
@@ -796,9 +836,21 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 func (c *Context) AssignText(n *ir.Assign, target, value string) string {
 	t := n.Target.ExprType()
 	op := n.Op
+	// A value read only so it is used, as passAsyncOffload reads a binding
+	// whose call it moved.
+	if id, ok := n.Target.(*ir.Ident); ok && id.Name == "_" && op == ast.AssignSet {
+		return "(void)(" + value + ");"
+	}
 	if op == ast.AssignSet {
 		value = c.nullAs(t, n.Value, value)
 		if c.holder(n.Target) && owns(t) {
+			// A holder's keep is a copy already where it shares nothing,
+			// and one sharing a buffer copies it before writing it in place
+			// (unshare), so the value's own copy would be made to be thrown
+			// away.
+			if call, ok := n.Value.(*ir.Call); ok && call.Func != nil && call.Func.Intrinsic == ir.ValueCopyIntrinsic && len(call.Args) == 1 {
+				value = c.nullAs(t, call.Args[0].Value, c.EvalExpr(call.Args[0].Value))
+			}
 			return c.store(t, target, value)
 		}
 		if c.throughRef(n.Target) && owns(t) {
@@ -964,6 +1016,20 @@ func (c *Context) ReturnText(n *ir.Return, value string) string {
 // nullAs is v, the rendering of e, where a value of t is wanted: a null
 // literal is t's zero, which is a struct on C for an option, a list, a map
 // and a function.
+// paramFor is the parameter of fn the call's argument a, the i'th, is
+// handed to, or nil.
+func paramFor(fn *ir.Func, a ir.CallArg, i int) *ir.Param {
+	for _, p := range fn.Params {
+		if a.Name != "" && p.Name == a.Name {
+			return p
+		}
+	}
+	if a.Name == "" && i < len(fn.Params) {
+		return fn.Params[i]
+	}
+	return nil
+}
+
 func (c *Context) nullAs(t *ir.Type, e ir.Expr, v string) string {
 	if t != nil && ir.IsNullLiteral(e) {
 		if c.ptrOption(t) {

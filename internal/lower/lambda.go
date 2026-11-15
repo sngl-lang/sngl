@@ -304,6 +304,12 @@ func liftLambdas(e ir.Expr, l *lifter) ir.Expr {
 		if emits(x.Func) {
 			return x
 		}
+		// One whose types name a type parameter is in a generic component's
+		// body, which the inliner splices at each binding: lifted now, its
+		// state would hold the parameter itself, which no target writes.
+		if namesTypeParam(x.Func) {
+			return x
+		}
 		// Lift directly. l.Lift pushes its frame and rewrites the body via
 		// rewriteStmts/rewriteExpr — those encounter nested *ir.Lambda nodes
 		// and lift them inline (with the outer frame on the stack), so that
@@ -453,7 +459,7 @@ func assertNoLambdaSurvives(pkg *ir.Package) error {
 	var found bool
 	walkPackage(pkg, walkFuncs{
 		expr: func(e ir.Expr) ir.Expr {
-			if _, ok := e.(*ir.Lambda); ok {
+			if x, ok := e.(*ir.Lambda); ok && !emits(x.Func) && !namesTypeParam(x.Func) {
 				found = true
 			}
 			return e
@@ -859,6 +865,26 @@ func cloneExpr(e ir.Expr) ir.Expr {
 // emits reports whether f's body emits an event, in a lambda nested in it
 // included: the component it is written in answers that emit only where the
 // inliner splices it.
+// namesTypeParam reports whether f's signature or anything its body reads
+// is of a type that names a type parameter.
+func namesTypeParam(f *ir.Func) bool {
+	open := func(t *ir.Type) bool { return t != nil && t.HasTypeParam() }
+	if open(f.Return) || slices.ContainsFunc(f.Params, func(p *ir.Param) bool { return open(p.Type) }) {
+		return true
+	}
+	found := false
+	for _, s := range f.Block {
+		_ = ir.Walk(s, func(n ir.Node) error {
+			if e, ok := n.(ir.Expr); ok && open(e.ExprType()) {
+				found = true
+				return ir.SkipAll
+			}
+			return nil
+		})
+	}
+	return found
+}
+
 func emits(f *ir.Func) bool {
 	found := false
 	for _, s := range f.Block {

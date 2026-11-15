@@ -55,6 +55,26 @@ void *sngl_keep_alloc(size_t n);
 sngl_string sngl_string_keep(sngl_string s);
 void sngl_drop(const void *p);
 
+/* A kept string's bytes, or a kept list's or map's buffer, is shared by
+ * every holder keeping it rather than copied for each: sngl_share is a
+ * holder taking p, kept, and is whether it could. It cannot where p is not
+ * kept or its holders last wrote it at another length than len, which a
+ * value read before a holder's push, remove or clear still says. A holder
+ * writing a buffer in place copies it first where sngl_shared says another
+ * holds it, and records the length it leaves (sngl_kept_len). sngl_drop is
+ * one holder letting go, and gives the block back with the last;
+ * sngl_let_go_shared is that where another still holds p, which leaves
+ * what p holds to the others, and is whether one did. A buffer whose
+ * elements may hold a counted block is never shared, since the collector of
+ * cycles visits it once for each holder. */
+bool sngl_share(const void *p, int64_t len);
+bool sngl_shared(const void *p);
+bool sngl_let_go_shared(const void *p);
+void sngl_kept_len(const void *p, int64_t len);
+/* A map's keys and values are shared and let go of together. */
+bool sngl_share_map(const void *keys, const void *vals, int64_t len);
+bool sngl_let_go_shared_map(const void *keys, const void *vals);
+
 /* sngl_keep_copy is a kept copy of the n bytes at p: a box, which the
  * record it is gives back as it is destroyed. sngl_kept_blocks is how many
  * blocks are kept, which a test of what a program holds reads. */
@@ -229,15 +249,109 @@ void sngl_async_end(int64_t id);
 bool sngl_async_ended(int64_t id);
 
 /* sngl_post runs fn with ctx once, from the platform's loop after the turn
- * that posted it, and releases ctx after: what async.start and async.do are
- * on a program in C, whose work all runs on the loop's thread. The
- * platform's runtime defines it. */
+ * that posted it, and releases ctx after: what async.do is on a program in
+ * C, whose work all runs on the loop's thread. The platform's runtime
+ * defines it. */
 void sngl_post(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx));
+
+/* sngl_work_start is async.start: fn runs as sngl_post would run it, but on
+ * a stack of its own (sngl_work.c), so where it waits -- a request -- it
+ * gives the loop back rather than run it inside the wait. Waits begun one
+ * inside another's then end in whatever order their answers arrive, where a
+ * nested loop would finish each only after those begun inside it.
+ * sngl_work_self is the work running, NULL on the loop's own stack;
+ * sngl_work_wait gives the loop back until sngl_work_wake, which the loop
+ * calls, resumes the work there. The turn stays open while a work waits, as
+ * it did while a wait ran the loop inside it, since what the work read
+ * before is read after. */
+void sngl_work_start(void (*fn)(void *ctx), void *ctx, void (*release)(void *ctx));
+void *sngl_work_self(void);
+void sngl_work_wait(void);
+void sngl_work_wake(void *work);
+
+/* A work runs with an arena and catch points of its own: sngl_stack_swap
+ * exchanges the running ones for *arena and *catching, and sngl_arena_free
+ * gives back an arena a work finished with. */
+void sngl_stack_swap(void **arena, sngl_catch **catching);
+void sngl_arena_free(void *arena);
 
 /* Integer division and remainder, stopping the program on a zero divisor
  * (sngl_panic) as every target does, rather than C's undefined behavior: no
  * handler or boundary catches it. */
 int64_t sngl_div(int64_t a, int64_t b);
 int64_t sngl_mod(int64_t a, int64_t b);
+
+/* sngl_codec.c: what sngl:json, sngl:http's query and sngl:settings need,
+ * read and written as Go's sngljson and snglsettings do, in the same words.
+ *
+ * A buffer of the turn's, its text NUL-terminated as it grows. */
+typedef struct sngl_buf {
+	char *data;
+	size_t len, cap;
+} sngl_buf;
+void sngl_buf_put(sngl_buf *b, const char *s, size_t n);
+void sngl_buf_str(sngl_buf *b, sngl_string s);
+sngl_string sngl_buf_string(sngl_buf *b);
+
+/* JSON text read into a tree of the turn's, which the program's decoders
+ * walk: a number keeps its text, a string its value, an object its keys in
+ * the order written, and every value its raw text. */
+enum { SNGL_JSON_NULL, SNGL_JSON_BOOL, SNGL_JSON_NUMBER, SNGL_JSON_STRING, SNGL_JSON_ARRAY, SNGL_JSON_OBJECT };
+typedef struct sngl_json {
+	int kind;
+	bool b;
+	sngl_string text;
+	struct sngl_json *items;
+	sngl_string *keys;
+	int64_t len;
+	sngl_string raw;
+} sngl_json;
+/* sngl_json_parse is NULL for text that is not one JSON value. */
+sngl_json *sngl_json_parse(sngl_string text);
+/* sngl_json_field is the value under key, the last where it is written
+ * twice, or NULL. */
+const sngl_json *sngl_json_field(const sngl_json *obj, sngl_string key);
+/* sngl_string_order is the index of each of the n keys, in the order
+ * they sort, a key written twice in the order written. */
+int64_t *sngl_string_order(const sngl_string *keys, int64_t n);
+/* sngl_json_sorted hands back the index of each key of obj once, sorted,
+ * and how many there are. */
+int64_t sngl_json_sorted(const sngl_json *obj, int64_t **order);
+/* Where a decoder is, for a failure: NULL is the root, `$`; index is an
+ * element's, or -1 for key's. */
+typedef struct sngl_json_path {
+	const struct sngl_json_path *up;
+	sngl_string key;
+	int64_t index;
+} sngl_json_path;
+/* What failed to decode, which each decoder answers false after setting. */
+extern sngl_string sngl_json_failure;
+bool sngl_json_want(const sngl_json_path *p, const char *what);
+bool sngl_json_missing(const sngl_json_path *p, sngl_string wire);
+bool sngl_json_bool(const sngl_json *v, const sngl_json_path *p, bool *out);
+bool sngl_json_int(const sngl_json *v, const sngl_json_path *p, int64_t lo, int64_t hi, int64_t *out);
+bool sngl_json_float(const sngl_json *v, const sngl_json_path *p, double *out);
+bool sngl_json_string(const sngl_json *v, const sngl_json_path *p, sngl_string *out);
+bool sngl_json_date(const sngl_json *v, const sngl_json_path *p, sngl_string *out);
+bool sngl_json_datetime(const sngl_json *v, const sngl_json_path *p, sngl_string *out);
+void sngl_json_quote(sngl_buf *b, sngl_string s);
+void sngl_json_int64(sngl_buf *b, int64_t v);
+void sngl_json_uint64(sngl_buf *b, uint64_t v);
+void sngl_json_number(sngl_buf *b, double v);
+void sngl_json_datetime_put(sngl_buf *b, sngl_string t);
+
+/* sngl_path_escape percent-encodes every byte but the unreserved ones;
+ * sngl_query_put adds `wire=value`, both escaped so, and sngl_with_query
+ * adds a query to a url after a `?`, or an `&` where it has one. */
+sngl_string sngl_path_escape(sngl_string s);
+void sngl_query_put(sngl_buf *b, sngl_string wire, sngl_string value);
+sngl_string sngl_with_query(sngl_string url, sngl_string query);
+
+/* Only a program's own main opens its settings' place, under app's name, so
+ * a test keeps them in sngl:settings' memory. */
+void sngl_settings_open(const char *app);
+bool sngl_settings_persistent(void);
+sngl_string sngl_settings_read(sngl_string scope, sngl_string name);
+void sngl_settings_write(sngl_string scope, sngl_string name, sngl_string text);
 
 #endif

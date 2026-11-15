@@ -267,7 +267,9 @@ void sngl_menu_apply(GtkWidget *box) {
         g_object_unref(sub);
     }
     gtk_widget_insert_action_group(GTK_WIDGET(win), "sngl", G_ACTION_GROUP(group));
-    gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(b->menu_button), G_MENU_MODEL(menu));
+    /* A popover of its own each time: one handed a new model keeps each
+     * submenu's page of the last and adds another of the same name. */
+    gtk_menu_button_set_popover(GTK_MENU_BUTTON(b->menu_button), gtk_popover_menu_new_from_model(G_MENU_MODEL(menu)));
     g_object_unref(group);
     g_object_unref(menu);
 }

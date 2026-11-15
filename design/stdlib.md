@@ -416,7 +416,7 @@ the type a macro returns, and the flag enums the marks take.
 
 Notable stdlib packages:
 
-- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`. Go imports the runtime where an emitted spelling names it, as it does every package: `ir.Package.UsesI18n` counts a method of a component a test build rooted elsewhere never emits, and the import it raised was unused (`cmd/sngl/testdata/i18n_test_build_runs.txt`). Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
+- **`i18n`** — translatable strings via `$"..."` syntax, lowered to `i18n.trInline(key, template, args)`. Supports ICU MessageFormat: plurals (`{n, plural, =0{...} one{...} other{...}}`), selects (`{x, select, key{...} other{...}}`). Manifest-backed translation; runtime locale from `LC_ALL`/`LC_MESSAGES`/`LANG`. Runtimes live in `pkg/{go,js,kotlin}/i18n/`, and C's in `pkg/c/runtime/sngl_i18n.c`: Go's template walk ported, so a placeholder, a quote and a plural's `#` read as Go reads them, over ICU for a plural's category, a number and a date -- ICU4C through pkg-config, and on Windows the `icu.dll` it has carried since 10 1903, whose C API MinGW links with no header (Jonathan's call over gettext, which formats no number). It ships with the manifest as an array of its bytes only where a program translates (`clang.I18nRuntime`); the `i18n_*_runs.txt` scripts run both C platforms. Go imports the runtime where an emitted spelling names it, as it does every package: `ir.Package.UsesI18n` counts a method of a component a test build rooted elsewhere never emits, and the import it raised was unused (`cmd/sngl/testdata/i18n_test_build_runs.txt`). Direct formatters: `i18n.numberInt`, `i18n.numberFloat`, `i18n.date`, `i18n.time`, `i18n.datetime`, `i18n.select`.
 
   **A translation's arguments are a struct**, a field per placeholder:
   `i18n.format(t, {name=n})`. `tr`, `trInline` and `format`
@@ -563,6 +563,36 @@ no cast: it was `a[i] as List<T>`, unchecked, and a pokedex build warned
 about it ninety times. Each integer width is its own factory, since a `Byte`
 or `UInt` field decoded as an `Int` failed its cast; the
 interpreter walks the plan over its own values (`internal/interp/codec.go`).
+**C has no reflection to hand a descriptor to, so the plan is functions of
+the file** (`codegen/lang/c/codec.go`): a decoder, an encoder and a query
+writer per type, keyed by its type token and declared ahead, so a type
+holding itself calls its own. They walk a tree `pkg/c/runtime/sngl_codec.c`
+parses and write into its buffer, which word a failure as every target does
+and write a float as Go's encoding/json does, and what they make is the
+turn's. A request is a function of the file per call, its arguments its
+parameters, so the IR built around the call (the hook, the Result) reads
+them by name. It calls `sngl_http_fetch` (`lib/language/c/rt/sngl_fetch.c`),
+which waits for the answer over whichever client answers
+`sngl_http_start`. C has no thread to wait on, and its arena and kept
+blocks are no thread's to share, so what `async.start` begins runs on the
+loop's thread on a stack of its own (`sngl_work_start`,
+`pkg/c/runtime/sngl_work.c`: ucontext, or a fiber on Windows), with its
+own arena and catch points; a wait there gives the loop back until the
+answer wakes it. The waits first nested instead, each running the loop
+inside it, so a page asking for a request a row finished each only after
+those begun inside it: the Pokédex's Moves tab, 237 moves of Mew's, saw
+none until the last arrived. A wait off a work's stack -- a test, a
+handler calling the request itself -- still runs the loop inside it. The
+turn stays open while a work waits, as it did while a nested wait ran, so
+what the work read before its wait is there after. C's own client is
+libcurl's (`sngl_http.c`, every request on one thread driving one multi
+handle, its answer posted back), which `clang.HTTPRuntime` ships where no
+platform link ships the header; gtk4's link ships it, so its pictures are
+fetched by it in either language, and win32 ships the header with its own
+WinHTTP client (`design/win32.md`). A Go program links `sngl_http.c` for
+its pictures and never the wait, which is why the wait is a file of its
+own. `json_runs.txt`, `http_runs.txt` and
+`http_answer_runs.txt` run both C platforms.
 The `Result` the call answers is built by translating IR around the names
 the runtime handed back (`codegen.ResultOK`, `ResultFailed`, `HostValue`), so
 each language's own spelling names the Result, Failure and Response.
@@ -630,8 +660,10 @@ MainActivity calls `SnglSettings.init`, and a Go test, the test agent's
 `main` and a Robolectric test on a plain `ComponentActivity` run none of
 them. html has no entry point of its own, so a test page says
 `__snglSettingsInMemory`. The interpreter opens nothing (see `design/trust.md`).
-`codegen.UsesSettings` gates each of these, so a program keeping no settings
-emits what it did. `settings_kept.sngl` and `settings_kept.txtar` are the
+A C `main` calls `sngl_settings_open` (`clang.OpenSettings`), whose file is
+Go's: settings.json in the same directory, so a program built in either
+language reads what the other kept. `codegen.UsesSettings` gates each of
+these, so a program keeping no settings emits what it did. `settings_kept.sngl` and `settings_kept.txtar` are the
 memory side, `cmd/sngl/testdata/settings_kept_runs.txt` runs gtk4 and fyne
 twice, `TestSettings_AKeptValueOutlivesAReload` reloads a page in Chromium,
 and `pkg/go/snglsettings`' tests hold the file. Nothing yet relaunches an

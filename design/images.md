@@ -51,9 +51,10 @@ does with it is each target's:
   (`imageFailure`), as win32's does. A drawn source is painted through its
   protocol as a canvas is (`design/nodes.md`): its shapes are the handler of
   its `@paint`, which paints a texture of its size, and a write to what they
-  read is its redraw. A URL is fetched over a `GSocketClient` rather than
-  GIO's `GFile`, whose http is GVfs's, which a test's session bus does not
-  run (`image_remote_runs.txt`). A window takes a source appended to it as
+  read is its redraw. A URL is fetched by C's libcurl client, which the
+  platform's link ships for either language (`design/stdlib.md`), rather
+  than GIO's `GFile`, whose http is GVfs's, which a test's session bus does
+  not run (`image_remote_runs.txt`). A window takes a source appended to it as
   its icon (`sngl_image_adopt`), from a root component's window too; GTK 4
   sets a window's icon by name only, so the picture is written into a private
   icon-theme directory (`cmd/sngl/testdata/gtk4_test_runs.txt`'s

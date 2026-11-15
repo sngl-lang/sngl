@@ -7,6 +7,8 @@
 #include <gtk/gtk.h>
 #include <stdbool.h>
 
+#include "sngl_http.h"
+
 /* The function types a callback crosses as: the closure's dispatcher, which
  * finds it through ctx. */
 typedef void (*SnglFn)(void *ctx);
@@ -338,5 +340,6 @@ void sngl_editable_set_text_quiet(GtkWidget *e, const char *t);
  * toplevels attached, once GTK is up, and the windows of the visible ones
  * are put on screen. The status is the application's. */
 int sngl_app_run(void (*build)(void));
+
 
 #endif

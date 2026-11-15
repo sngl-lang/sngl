@@ -64,6 +64,7 @@ struct SnglPicture {
      * it, which frees it on arriving after the last holder let go. */
     int refs;
     bool released, pending;
+    sngl_http_request *req;
 };
 
 static SnglImage *sngl_image_of(GtkWidget *w) {
@@ -376,158 +377,24 @@ static void sngl_picture_arrive(SnglPicture *pic, const guchar *data, gsize len,
     sngl_picture_unref(pic);
 }
 
-/* A fetch is an HTTP/1.0 GET over a GSocketClient, TLS for https, read to
- * the connection's close: GIO's own http is GVfs's, which a host -- or a
- * test's session bus -- may not run. A redirect is followed five deep. */
-typedef struct {
-    SnglPicture *pic;
-    char *url;
-    int redirects;
-    GSocketConnection *conn;
-    GByteArray *got;
-    char *request;
-} SnglFetch;
-
-static void sngl_fetch_start(SnglFetch *f);
-
-static void sngl_fetch_free(SnglFetch *f) {
-    if (f->conn) g_object_unref(f->conn);
-    if (f->got) g_byte_array_unref(f->got);
-    g_free(f->request);
-    g_free(f->url);
-    g_free(f);
-}
-
-/* done hands the picture what arrived, or why nothing did. */
-static void sngl_fetch_done(SnglFetch *f, const guchar *data, gsize len, const char *err) {
-    SnglPicture *pic = f->pic;
+/* A picture fetched arrives through the runtime's request (sngl_http.h) on
+ * the main loop: one whose status is no success failed, by its status. */
+static void sngl_picture_fetched(sngl_http_answer *a, void *data) {
+    SnglPicture *pic = data;
     pic->pending = false;
+    sngl_http_cancel(pic->req);
+    pic->req = NULL;
     if (pic->released) {
         sngl_picture_free(pic);
-    } else {
-        sngl_picture_arrive(pic, data, len, err);
-    }
-    sngl_fetch_free(f);
-}
-
-static void sngl_fetch_answered(SnglFetch *f) {
-    const guchar *d = f->got->data;
-    gsize n = f->got->len;
-    const guchar *end = NULL;
-    for (gsize i = 0; i + 3 < n; i++) {
-        if (d[i] == '\r' && d[i + 1] == '\n' && d[i + 2] == '\r' && d[i + 3] == '\n') {
-            end = d + i;
-            break;
-        }
-    }
-    if (!end) {
-        sngl_fetch_done(f, NULL, 0, "no HTTP response");
-        return;
-    }
-    char *head = g_strndup((const char *)d, end - d);
-    const guchar *body = end + 4;
-    gsize blen = n - (body - d);
-    char **lines = g_strsplit(head, "\r\n", -1);
-    int status = 0;
-    if (lines[0]) sscanf(lines[0], "HTTP/%*s %d", &status);
-    if (status >= 300 && status < 400 && f->redirects < 5) {
-        for (int i = 1; lines[i]; i++) {
-            if (g_ascii_strncasecmp(lines[i], "location:", 9) == 0) {
-                char *to = g_uri_resolve_relative(f->url, g_strstrip(lines[i] + 9), G_URI_FLAGS_NONE, NULL);
-                g_strfreev(lines);
-                g_free(head);
-                if (to) {
-                    g_free(f->url);
-                    f->url = to;
-                    f->redirects++;
-                    g_clear_object(&f->conn);
-                    g_byte_array_set_size(f->got, 0);
-                    sngl_fetch_start(f);
-                    return;
-                }
-                sngl_fetch_done(f, NULL, 0, "a redirect to nowhere");
-                return;
-            }
-        }
-    }
-    g_strfreev(lines);
-    g_free(head);
-    if (status < 200 || status >= 300) {
-        char *why = g_strdup_printf("HTTP %d", status);
-        sngl_fetch_done(f, NULL, 0, why);
+    } else if (a->failure != SNGL_HTTP_ANSWERED) {
+        sngl_picture_arrive(pic, NULL, 0, a->message);
+    } else if (a->status < 200 || a->status >= 300) {
+        char *why = g_strdup_printf("HTTP %d", a->status);
+        sngl_picture_arrive(pic, NULL, 0, why);
         g_free(why);
-        return;
+    } else {
+        sngl_picture_arrive(pic, (const guchar *)a->body, a->body_len, NULL);
     }
-    sngl_fetch_done(f, body, blen, NULL);
-}
-
-static void sngl_fetch_read(GObject *o, GAsyncResult *res, gpointer data) {
-    SnglFetch *f = data;
-    GError *err = NULL;
-    GBytes *b = g_input_stream_read_bytes_finish(G_INPUT_STREAM(o), res, &err);
-    if (!b) {
-        sngl_fetch_done(f, NULL, 0, err->message);
-        g_error_free(err);
-        return;
-    }
-    gsize n = 0;
-    const guchar *p = g_bytes_get_data(b, &n);
-    if (n == 0) {
-        g_bytes_unref(b);
-        sngl_fetch_answered(f);
-        return;
-    }
-    g_byte_array_append(f->got, p, n);
-    g_bytes_unref(b);
-    g_input_stream_read_bytes_async(G_INPUT_STREAM(o), 65536, G_PRIORITY_DEFAULT, NULL, sngl_fetch_read, f);
-}
-
-static void sngl_fetch_sent(GObject *o, GAsyncResult *res, gpointer data) {
-    SnglFetch *f = data;
-    GError *err = NULL;
-    if (!g_output_stream_write_all_finish(G_OUTPUT_STREAM(o), res, NULL, &err)) {
-        sngl_fetch_done(f, NULL, 0, err->message);
-        g_error_free(err);
-        return;
-    }
-    GInputStream *in = g_io_stream_get_input_stream(G_IO_STREAM(f->conn));
-    g_input_stream_read_bytes_async(in, 65536, G_PRIORITY_DEFAULT, NULL, sngl_fetch_read, f);
-}
-
-static void sngl_fetch_connected(GObject *o, GAsyncResult *res, gpointer data) {
-    SnglFetch *f = data;
-    GError *err = NULL;
-    f->conn = g_socket_client_connect_to_uri_finish(G_SOCKET_CLIENT(o), res, &err);
-    g_object_unref(o);
-    if (!f->conn) {
-        sngl_fetch_done(f, NULL, 0, err->message);
-        g_error_free(err);
-        return;
-    }
-    GOutputStream *out = g_io_stream_get_output_stream(G_IO_STREAM(f->conn));
-    g_output_stream_write_all_async(out, f->request, strlen(f->request), G_PRIORITY_DEFAULT, NULL, sngl_fetch_sent, f);
-}
-
-static void sngl_fetch_start(SnglFetch *f) {
-    GUri *uri = g_uri_parse(f->url, G_URI_FLAGS_NONE, NULL);
-    if (!uri || !g_uri_get_host(uri)) {
-        if (uri) g_uri_unref(uri);
-        sngl_fetch_done(f, NULL, 0, "not a URL");
-        return;
-    }
-    bool tls = g_ascii_strcasecmp(g_uri_get_scheme(uri), "https") == 0;
-    const char *path = g_uri_get_path(uri);
-    const char *query = g_uri_get_query(uri);
-    int port = g_uri_get_port(uri);
-    char *host = port > 0 ? g_strdup_printf("%s:%d", g_uri_get_host(uri), port) : g_strdup(g_uri_get_host(uri));
-    g_free(f->request);
-    f->request = g_strdup_printf("GET %s%s%s HTTP/1.0\r\nHost: %s\r\nUser-Agent: sngl\r\nConnection: close\r\n\r\n",
-                                 path && *path ? path : "/", query ? "?" : "", query ? query : "", host);
-    g_free(host);
-    g_uri_unref(uri);
-    GSocketClient *c = g_socket_client_new();
-    g_socket_client_set_tls(c, tls);
-    g_socket_client_connect_to_uri_async(c, f->url, tls ? 443 : 80, NULL, sngl_fetch_connected, f);
 }
 
 /* The files the program carries: its entry's table, and each Go hands. */
@@ -557,11 +424,11 @@ SnglPicture *sngl_picture_load(const char *url) {
     pic->refs = 1;
     if (g_str_has_prefix(url, "http://") || g_str_has_prefix(url, "https://")) {
         pic->pending = true;
-        SnglFetch *f = g_new0(SnglFetch, 1);
-        f->pic = pic;
-        f->url = g_strdup(url);
-        f->got = g_byte_array_new();
-        sngl_fetch_start(f);
+        pic->req = sngl_http_start("GET", url, 0, NULL, NULL, NULL, 0, sngl_picture_fetched, pic);
+        if (pic->req == NULL) {
+            pic->pending = false;
+            sngl_picture_arrive(pic, NULL, 0, "out of memory");
+        }
         return pic;
     }
     const char *name = url[0] == '/' ? url + 1 : url;

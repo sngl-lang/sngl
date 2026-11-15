@@ -45,6 +45,10 @@ typedef struct {
     // row, or flowing where it is zero.
     gboolean grid;
     int columns;
+    // The arguments sngl_set_look was last given: a row a list sets again
+    // with what it already has, as every row is each time the list's
+    // value changes, then costs a comparison rather than a relayout.
+    char *given;
 } SnglLook;
 
 static void sngl_unpin(SnglLook *l, int axis);
@@ -56,6 +60,7 @@ static void sngl_look_free(gpointer data) {
     sngl_unpin(l, l->grow_axis);
     if (l->css) g_object_unref(l->css);
     if (l->box_layout) g_object_unref(l->box_layout);
+    g_free(l->given);
     if (l->kids) {
         g_signal_handler_disconnect(l->kids, l->kids_id);
         g_object_unref(l->kids);
@@ -780,9 +785,41 @@ static void sngl_look_size_label(GtkWidget *w, SnglLook *l, int wrap) {
     gtk_widget_queue_resize(w);
 }
 
+// A contents is shown only while a child of it is: one holding nothing a
+// reader sees is no item of the box it sits in, as CSS's display: contents
+// adds none, and takes no gap there. A component whose body asks and shows
+// nothing -- a query per row -- put a gap per row above what came after.
+static void sngl_contents_shown(GtkWidget *box) {
+    SnglLook *l = sngl_look_of(box);
+    if (!l || l->hidden) return;
+    gboolean any = FALSE;
+    for (GtkWidget *c = gtk_widget_get_first_child(box); c && !any; c = gtk_widget_get_next_sibling(c))
+        any = gtk_widget_get_visible(c);
+    if (gtk_widget_get_visible(box) != any) gtk_widget_set_visible(box, any);
+}
+
+static void sngl_contents_child_shown(GObject *c, GParamSpec *ps, gpointer box) {
+    (void)c; (void)ps;
+    sngl_contents_shown(GTK_WIDGET(box));
+}
+
+static void sngl_contents_kids(GListModel *m, guint pos, guint removed, guint added, gpointer box) {
+    (void)removed;
+    for (guint i = pos; i < pos + added; i++) {
+        GObject *c = g_list_model_get_item(m, i);
+        g_signal_connect_object(c, "notify::visible", G_CALLBACK(sngl_contents_child_shown), box, 0);
+        g_object_unref(c);
+    }
+    sngl_contents_shown(GTK_WIDGET(box));
+}
+
 GtkWidget *sngl_contents_new(void) {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
     sngl_look_ensure(box)->contents = 1;
+    GListModel *kids = gtk_widget_observe_children(box);
+    g_signal_connect_object(kids, "items-changed", G_CALLBACK(sngl_contents_kids), box, 0);
+    g_object_set_data_full(G_OBJECT(box), "sngl-contents-kids", kids, g_object_unref);
+    gtk_widget_set_visible(box, FALSE);
     return box;
 }
 
@@ -795,6 +832,14 @@ void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double 
         return;
     }
     l = sngl_look_ensure(w);
+    char *given = g_strdup_printf("%s\x1f%d %d %.17g %d %d %d %d %d %d %d %d %d %d\x1f%s", css, width, height, grow, cross, align, lines, wrap,
+                                  hidden, justify, spaced, spacing, grid, columns, cursor);
+    if (g_strcmp0(l->given, given) == 0) {
+        g_free(given);
+        return;
+    }
+    g_free(l->given);
+    l->given = given;
     sngl_look_set_css(w, l, css);
     if ((width || height) && !l->sized) {
         l->sized = TRUE;

@@ -1,0 +1,94 @@
+Holders share what they keep (sngl_share): a list's, a map's or a
+string's buffer kept already is counted once more rather than copied, so
+`b = a` keeps no new block, where a copy kept the buffer and each string
+again. A holder writing a shared buffer in place -- a push, an element, a
+key, through a list in a list or a map -- copies it first, so the others
+read what they held. A view read before its holder cleared the list says
+a longer length than the holder's buffer now does, so keeping it copies
+what it reads, which the sanitized build reads no freed block of.
+
+-- app.sngl --
+func rows(l list[list[string]]) string {
+    var out = ""
+    for var r = l {
+        out += "[{r._join(",")}]"
+    }
+    return out
+}
+
+func keyed(m map[string, list[string]]) string {
+    var out = ""
+    for var k, v = m {
+        out += "{k}:{v._join(",")} "
+    }
+    return out
+}
+
+// The steps main takes, a turn each, over vars the closure holds.
+func steps() func(int) string {
+    var a list[string] = []
+    var b list[string] = []
+    var grid list[list[string]] = []
+    var other list[list[string]] = []
+    var names map[string, list[string]] = {}
+    var seen map[string, list[string]] = {}
+    return func(step int) string {
+        if step == 0 {
+            a = ["x", "y"]
+            b = ["q"]
+        } else if step == 1 {
+            b = a
+        } else if step == 2 {
+            b.push("z")
+            a[0] = "w"
+            grid = [["1"], ["2"]]
+            other = grid
+            other[0].push("3")
+            other[1][0] = "4"
+            names["k"] = ["n"]
+            seen = names
+            seen["k"].push("m")
+            seen["k"][0] = "p"
+            names["j"] = ["o"]
+        } else if step == 3 {
+            var view = a
+            a.clear()
+            b = view
+        }
+        return "{a._join(",")} / {b._join(",")} / {rows(grid)} {rows(other)} / {keyed(names)}/ {keyed(seen)}"
+    }
+}
+-- main.c --
+#include "program.c"
+#include <stdio.h>
+
+static sngl_fn_int__string step;
+
+static void take(int n, int show) {
+	sngl_turn_enter();
+	sngl_string s = step.fn(step.env, n);
+	if (show) {
+		printf("%.*s\n", (int)s.len, s.ptr);
+	}
+	sngl_turn_leave();
+}
+
+int main(void) {
+	sngl_turn_enter();
+	step = s_steps();
+	step.env = sngl_env_keep(step.env);
+	sngl_turn_leave();
+	take(0, 0);
+	int64_t before = sngl_kept_blocks();
+	take(1, 0);
+	printf("aliasing kept %lld more\n", (long long)(sngl_kept_blocks() - before));
+	take(-1, 1);
+	take(2, 1);
+	take(3, 1);
+	return 0;
+}
+-- want --
+aliasing kept -2 more
+x,y / x,y /   / / 
+w,y / x,y,z / [1][2] [1,3][4] / k:n j:o / k:p,m 
+ / w,y / [1][2] [1,3][4] / k:n j:o / k:p,m 

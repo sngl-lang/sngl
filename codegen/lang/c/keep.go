@@ -182,33 +182,26 @@ func (c *Context) ownHelper(t *ir.Type, op string) string {
 		default:
 			b.WriteString("\tsngl_env_visit(v.env, fn);\n")
 		}
-	case t.Kind == ir.TypeList:
-		el := c.typeName(t.Elems[0])
-		if op == "keep" {
-			fmt.Fprintf(&b, "\t%s *data = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\tif (v.len > 0) {\n\t\tmemcpy(data, v.data, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.data = data;\n\tv.cap = v.len;\n", el, el, el)
+	case t.Kind == ir.TypeList, t.Kind == ir.TypeMap:
+		var body string
+		switch op {
+		case "keep":
+			body = c.copyBody(t)
+			if shares(t) {
+				body = "\tif (!" + shareCall(t, "v") + ") {\n" + indent(body) + "\t}\n"
+			}
+		case "drop":
+			body = c.elemsBody(t, op)
+			for _, buf := range buffers(t) {
+				body += "\tsngl_drop(v." + buf + ");\n"
+			}
+			if shares(t) {
+				body = "\tif (!" + letGoCall(t, "v") + ") {\n" + indent(body) + "\t}\n"
+			}
+		default:
+			body = c.elemsBody(t, op)
 		}
-		if holds(t.Elems[0]) {
-			b.WriteString("\tfor (int64_t i = 0; i < v.len; i++) {\n")
-			each(t.Elems[0], "v.data[i]")
-			b.WriteString("\t}\n")
-		}
-		if op == "drop" {
-			b.WriteString("\tsngl_drop(v.data);\n")
-		}
-	case t.Kind == ir.TypeMap:
-		kt, vt := c.typeName(t.Elems[0]), c.typeName(t.Elems[1])
-		if op == "keep" {
-			fmt.Fprintf(&b, "\t%s *keys = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\t%s *vals = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\tif (v.len > 0) {\n\t\tmemcpy(keys, v.keys, sizeof(%s) * (size_t)v.len);\n\t\tmemcpy(vals, v.vals, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.keys = keys;\n\tv.vals = vals;\n\tv.cap = v.len;\n", kt, kt, vt, vt, kt, vt)
-		}
-		if holds(t.Elems[0]) || holds(t.Elems[1]) {
-			b.WriteString("\tfor (int64_t i = 0; i < v.len; i++) {\n")
-			each(t.Elems[0], "v.keys[i]")
-			each(t.Elems[1], "v.vals[i]")
-			b.WriteString("\t}\n")
-		}
-		if op == "drop" {
-			b.WriteString("\tsngl_drop(v.keys);\n\tsngl_drop(v.vals);\n")
-		}
+		b.WriteString(body)
 	case t.Kind == ir.TypeOption:
 		b.WriteString("\tif (v.ok) {\n")
 		each(t.Elems[0], "v.value")
@@ -319,4 +312,105 @@ func isCounted(t *ir.Type) bool {
 	}
 	sd, ok := t.Decl.(*ir.StructDef)
 	return ok && sd.Counted
+}
+
+// shares reports whether every holder of a list or a map of t shares its
+// buffer rather than copying it (sngl_share): one whose elements may hold a
+// counted block is copied, since the collector of cycles would visit it
+// once for each holder.
+func shares(t *ir.Type) bool {
+	t = listed(t)
+	return t != nil && (t.Kind == ir.TypeList || t.Kind == ir.TypeMap) && !visits(t)
+}
+
+// buffers is the fields of a list's or a map's value holding its elements.
+func buffers(t *ir.Type) []string {
+	if listed(t).Kind == ir.TypeMap {
+		return []string{"keys", "vals"}
+	}
+	return []string{"data"}
+}
+
+// shareCall is whether a holder took v's buffers as they are, counting one
+// more holder of each.
+func shareCall(t *ir.Type, v string) string {
+	if listed(t).Kind == ir.TypeMap {
+		return "sngl_share_map(" + v + ".keys, " + v + ".vals, " + v + ".len)"
+	}
+	return "sngl_share(" + v + ".data, " + v + ".len)"
+}
+
+// letGoCall is whether a holder let go of v's buffers while another still
+// holds them, leaving their elements to it.
+func letGoCall(t *ir.Type, v string) string {
+	if listed(t).Kind == ir.TypeMap {
+		return "sngl_let_go_shared_map(" + v + ".keys, " + v + ".vals)"
+	}
+	return "sngl_let_go_shared(" + v + ".data)"
+}
+
+// elemsBody is the loop keeping, dropping or visiting each element of v, a
+// list or a map of t: nothing where its elements hold nothing.
+func (c *Context) elemsBody(t *ir.Type, op string) string {
+	t = listed(t)
+	holds := owns
+	if op == "visit" {
+		holds = visits
+	}
+	fields := []string{"v.data[i]"}
+	if t.Kind == ir.TypeMap {
+		fields = []string{"v.keys[i]", "v.vals[i]"}
+	}
+	var b strings.Builder
+	for k, f := range fields {
+		et := t.Elems[k]
+		if !holds(et) {
+			continue
+		}
+		switch op {
+		case "keep":
+			fmt.Fprintf(&b, "\t\t%s = %s;\n", f, c.keep(et, f))
+		case "drop":
+			fmt.Fprintf(&b, "\t\t%s\n", c.drop(et, f))
+		default:
+			fmt.Fprintf(&b, "\t\t%s\n", c.visit(et, f, "fn"))
+		}
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return "\tfor (int64_t i = 0; i < v.len; i++) {\n" + b.String() + "\t}\n"
+}
+
+// copyBody is v, a list or a map of t, copied into buffers of its own,
+// kept, each element kept, its length recorded.
+func (c *Context) copyBody(t *ir.Type) string {
+	t = listed(t)
+	var b strings.Builder
+	for k, buf := range buffers(t) {
+		et := c.typeName(t.Elems[k])
+		fmt.Fprintf(&b, "\t%s *%s = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\tif (v.len > 0) {\n\t\tmemcpy(%s, v.%s, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.%s = %s;\n\tsngl_kept_len(%s, v.len);\n", et, buf, et, buf, buf, et, buf, buf, buf)
+	}
+	b.WriteString("\tv.cap = v.len;\n")
+	b.WriteString(c.elemsBody(t, "keep"))
+	return b.String()
+}
+
+// unshare is the function a holder's list or map of t is written through
+// in place by: copied first where another holder shares its buffer, so the
+// write is its own. Nothing where t is never shared.
+func (c *Context) unshare(t *ir.Type) string {
+	if !shares(t) {
+		return ""
+	}
+	t = listed(t)
+	tn := c.typeName(t)
+	name := tn + "__unshare"
+	if !c.file.helperNames[name] {
+		c.file.helper(name, "")
+		c.file.protos = append(c.file.protos, "static void "+name+"("+tn+" *l);")
+		c.file.include("string.h", true)
+		c.file.setHelper(name, "static void "+name+"("+tn+" *l) {\n\tif (!sngl_shared(l->"+buffers(t)[0]+")) {\n\t\treturn;\n\t}\n\t"+tn+" v = *l;\n\t"+letGoCall(t, "v")+";\n"+c.copyBody(t)+"\t*l = v;\n}\n")
+	}
+	return name
 }

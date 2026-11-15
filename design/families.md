@@ -138,6 +138,14 @@ not injected into, since the handler it holds is the one the node's prop
 holds (`testdata/record_handler_prop.txtar`,
 `cmd/sngl/testdata/record_handler_prop_runs.txt`).
 
+A lambda whose types name a type parameter is not lifted: in a generic
+component's body its state would hold the parameter itself, so it is left
+for the inliner to splice at each binding and the target lifts it then
+(`namesTypeParam`, the Pokédex's `cached`). A context a lifted lambda reads
+is bound into its state where the closure is made (`closureUnder`), as
+`funcValueUnder` binds a function taken as a value, since its thunk hands
+it only the lambda's own arguments.
+
 On C the handler is a function `passLambda` lifted, which reads what it
 captured through its state, so the update there is a package function taking
 that state (`liftedSetter`). `holdsWriter` follows a `Closure` into its

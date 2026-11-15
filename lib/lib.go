@@ -41,7 +41,7 @@ import (
 	"strings"
 )
 
-//go:embed */*.sngl */*/*.sngl */*/*/*.sngl platform/gtk4/rt platform/win32/rt
+//go:embed */*.sngl */*/*.sngl */*/*/*.sngl platform/gtk4/rt platform/win32/rt language/c/rt
 var FS embed.FS
 
 // The Go package wrapping win32's C declarations, platform/win32/cgo, and the

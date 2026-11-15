@@ -1,6 +1,7 @@
 package c
 
 import (
+	"duckfam.us/sngl/codegen/irwalk"
 	"fmt"
 	"regexp"
 	"strings"
@@ -204,6 +205,12 @@ func (c *Context) MutTargetIndex(n *ir.Index, operand, idx string) string {
 		}
 		return "(*" + c.mapSlot(t) + "(&(" + operand + "), " + idx + "))"
 	}
+	if t := n.Operand.ExprType(); t != nil && t.Kind == ir.TypeList && c.holder(n.Operand) {
+		if u := c.unshare(t); u != "" {
+			at := c.listOp(t, "at_kept", "T *NAME(L *l, int64_t i)", "\t"+u+"(l);\n\tif (i < 0 || i >= l->len) {\n\t\tsngl_panic(\"index out of range\");\n\t}\n\treturn &l->data[i];\n")
+			return "(*" + at + "(&(" + operand + "), " + idx + "))"
+		}
+	}
 	return c.Index(n, operand, idx)
 }
 
@@ -258,18 +265,33 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 	}
 	xs := c.EvalExpr(recv)
 	arg := func(i int) string { return c.EvalExpr(n.Args[i].Value) }
+	// A holder's list written in place is reached as a write is, so each
+	// list it is in is its own first (unshare), and copies its buffer where
+	// another holder shares it, recording the length it leaves.
+	_, held := c.kept(recv)
+	before, after := "", ""
+	if held {
+		xs = irwalk.EvalMutTarget(c, recv)
+		if u := c.unshare(t); u != "" {
+			before, after = "\t"+u+"(l);\n", "\tsngl_kept_len(l->data, l->len);\n"
+		}
+	}
 	switch id {
 	case "list.length":
 		return "(" + xs + ").len", true
 	case "list.push":
 		suffix, held := c.kept(recv)
 		grow := c.listGrow(t, held)
-		push := c.listOp(t, "push"+suffix, "void NAME(L *l, T v)", "\t"+grow+"(l, 1);\n\tl->data[l->len++] = v;\n")
+		push := c.listOp(t, "push"+suffix, "void NAME(L *l, T v)", before+"\t"+grow+"(l, 1);\n\tl->data[l->len++] = v;\n"+after)
 		return push + "(&(" + xs + "), " + c.keptArg(t, recv, arg(1)) + ")", true
 	case "list.clear":
 		// What a holder's list held, it gives back.
-		if _, held := c.kept(recv); held && owns(t.Elems[0]) {
-			clear := c.listOp(t, "clear_kept", "void NAME(L *l)", "\tfor (int64_t i = 0; i < l->len; i++) {\n\t\t"+c.drop(t.Elems[0], "l->data[i]")+"\n\t}\n\tl->len = 0;\n")
+		if held {
+			drop := ""
+			if owns(t.Elems[0]) {
+				drop = "\tfor (int64_t i = 0; i < l->len; i++) {\n\t\t" + c.drop(t.Elems[0], "l->data[i]") + "\n\t}\n"
+			}
+			clear := c.listOp(t, "clear_kept", "void NAME(L *l)", before+drop+"\tl->len = 0;\n"+after)
 			return clear + "(&(" + xs + "))", true
 		}
 		return "((" + xs + ").len = 0)", true
@@ -282,9 +304,9 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 		rm := c.listOp(t, "remove"+suffix, "void NAME(L *l, int64_t i)", `	if (i < 0 || i >= l->len) {
 		return;
 	}
-`+drop+`	memmove(&l->data[i], &l->data[i + 1], sizeof(T) * (size_t)(l->len - i - 1));
+`+before+drop+`	memmove(&l->data[i], &l->data[i + 1], sizeof(T) * (size_t)(l->len - i - 1));
 	l->len--;
-`)
+`+after)
 		return rm + "(&(" + xs + "), " + arg(1) + ")", true
 	case "list.insert":
 		suffix, held := c.kept(recv)
@@ -298,11 +320,11 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 		ins := c.listOp(t, "insert"+suffix, "void NAME(L *l, int64_t i, T v)", `	if (i < 0 || i > l->len) {
 `+drop+`		return;
 	}
-	`+grow+`(l, 1);
+`+before+`	`+grow+`(l, 1);
 	memmove(&l->data[i + 1], &l->data[i], sizeof(T) * (size_t)(l->len - i));
 	l->data[i] = v;
 	l->len++;
-`)
+`+after)
 		return ins + "(&(" + xs + "), " + arg(1) + ", " + c.keptArg(t, recv, arg(2)) + ")", true
 	case "list.reverse":
 		rev := c.listOp(t, "reverse", "L NAME(L l)", `	L out = {sngl_alloc(sizeof(T) * (size_t)(l.len + 1)), l.len, l.len};
@@ -386,7 +408,11 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 			call = ", " + arg(1) + ")"
 		}
 		// An insertion sort: stable, as both promise.
-		sort := c.listOp(t, strings.TrimPrefix(id, "list."), sig, `	T *out = l->data;
+		name := strings.TrimPrefix(id, "list.")
+		if before != "" {
+			name += "_kept"
+		}
+		sort := c.listOp(t, name, sig, before+`	T *out = l->data;
 	for (int64_t i = 1; i < l->len; i++) {
 		T x = out[i];
 		int64_t j = i;
@@ -493,6 +519,12 @@ func (c *Context) optionCompare(n *ir.Binary, left, right string) (string, bool)
 		return eq, true
 	case lt != nil && lt.Kind == ir.TypeOption && rt != nil && rt.Kind != ir.TypeOption:
 		eq := "((" + left + ").ok && " + c.equal(lt.Elems[0], "("+left+").value", right) + ")"
+		if n.Op == ast.BinNeq {
+			return "!" + eq, true
+		}
+		return eq, true
+	case rt != nil && rt.Kind == ir.TypeOption && lt != nil && lt.Kind != ir.TypeOption:
+		eq := "((" + right + ").ok && " + c.equal(rt.Elems[0], left, "("+right+").value") + ")"
 		if n.Op == ast.BinNeq {
 			return "!" + eq, true
 		}
@@ -616,11 +648,14 @@ func (c *Context) mapSlotKept(t *ir.Type) string {
 
 func (c *Context) mapSlotAs(t *ir.Type, op, key string) string {
 	find := c.mapFind(t)
-	alloc, drop := "sngl_alloc", ""
+	alloc, drop, before, after := "sngl_alloc", "", "", ""
 	if op == "slot_kept" {
 		alloc, drop = "sngl_keep_alloc", "\t\tsngl_drop(m->keys);\n\t\tsngl_drop(m->vals);\n"
+		if u := c.unshare(t); u != "" {
+			before, after = "\t"+u+"(m);\n", "\tsngl_kept_len(m->keys, m->len);\n\tsngl_kept_len(m->vals, m->len);\n"
+		}
 	}
-	return c.mapOp(t, op, "V *NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
+	return c.mapOp(t, op, "V *NAME(M *m, K k)", before+`	int64_t i = `+find+`(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
 	}
@@ -638,7 +673,8 @@ func (c *Context) mapSlotAs(t *ir.Type, op, key string) string {
 	}
 	m->keys[m->len] = `+key+`;
 	memset(&m->vals[m->len], 0, sizeof(V));
-	return &m->vals[m->len++];
+	m->len++;
+`+after+`	return &m->vals[m->len - 1];
 `)
 }
 

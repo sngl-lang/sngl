@@ -36,7 +36,11 @@ type file struct {
 	// localVars are the vars the program's `var` statements declare
 	// (isLocalVar).
 	localVars map[*ir.Var]bool
-	err       error
+	// requests and translates say the code calls sngl:http's client and
+	// sngl:i18n's runtime, and works that it starts work (async.start),
+	// each shipped only for a program that does.
+	requests, translates, works bool
+	err                         error
 }
 
 // typeDef is one type definition: its name, the text that defines it, and
