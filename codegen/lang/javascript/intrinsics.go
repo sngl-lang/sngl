@@ -92,6 +92,11 @@ func init() {
 	reg("string.length", func(a []string) string { return a[0] + ".length" })
 	reg("string.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
 	reg("string.substring", func(a []string) string { return a[0] + ".substring(" + a[1] + ", " + a[2] + ")" })
+	// String.fromCodePoint throws past U+10FFFF and answers a lone surrogate
+	// half as it is: both are U+FFFD.
+	reg("string.fromCodePoint", func(a []string) string {
+		return "((c) => c >= 0 && c <= 0x10FFFF && (c < 0xD800 || c > 0xDFFF) ? String.fromCodePoint(c) : \"\\uFFFD\")(" + a[0] + ")"
+	})
 	reg("string.upper", func(a []string) string { return a[0] + ".toUpperCase()" })
 	reg("string.lower", func(a []string) string { return a[0] + ".toLowerCase()" })
 	reg("string.trim", func(a []string) string { return a[0] + ".trim()" })

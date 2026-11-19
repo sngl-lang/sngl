@@ -47,6 +47,12 @@ func init() {
 	})
 	regImp("option.or", []string{"duckfam.us/sngl/pkg/go/snglopt"}, func(a []string) string { return "snglopt.Or(" + a[0] + ", " + a[1] + ")" })
 	regImp("float.parse", []string{"duckfam.us/sngl/pkg/go/snglparse"}, func(a []string) string { return "snglparse.Float(" + a[0] + ")" })
+	// A number no character is is U+FFFD, which Go's conversion answers for
+	// a surrogate half, and for one out of range once it is out of the way:
+	// rune(n) of a wider int keeps its low 32 bits.
+	regImp("string.fromCodePoint", []string{"unicode/utf8"}, func(a []string) string {
+		return "func(c int) string { if c < 0 || c > utf8.MaxRune { return string(utf8.RuneError) }; return string(rune(c)) }(" + a[0] + ")"
+	})
 	regImp("string.upper", []string{"strings"}, func(a []string) string { return "strings.ToUpper(" + a[0] + ")" })
 	regImp("string.lower", []string{"strings"}, func(a []string) string { return "strings.ToLower(" + a[0] + ")" })
 	regImp("string.trim", []string{"strings"}, func(a []string) string { return "strings.TrimSpace(" + a[0] + ")" })

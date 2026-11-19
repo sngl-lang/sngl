@@ -61,6 +61,11 @@ func init() {
 	reg("string.length", func(a []string) string { return a[0] + ".length" })
 	reg("string.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
 	reg("string.substring", func(a []string) string { return a[0] + ".substring(" + a[1] + ", " + a[2] + ")" })
+	// Character.toChars throws past U+10FFFF and answers a lone surrogate
+	// half as it is: both are U+FFFD.
+	reg("string.fromCodePoint", func(a []string) string {
+		return "run { val __cp = " + a[0] + "; if (__cp >= 0 && __cp <= 0x10FFFF && (__cp < 0xD800 || __cp > 0xDFFF)) String(Character.toChars(__cp)) else \"\\uFFFD\" }"
+	})
 	reg("string.upper", func(a []string) string { return a[0] + ".uppercase()" })
 	reg("string.lower", func(a []string) string { return a[0] + ".lowercase()" })
 	reg("string.trim", func(a []string) string { return a[0] + ".trim()" })

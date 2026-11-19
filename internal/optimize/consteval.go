@@ -1164,6 +1164,10 @@ func evalQualifiedMethod(qualName string, args []any) (any, bool) {
 		if l, ok := args[0].([]any); ok {
 			return len(l), true
 		}
+	case "string.fromCodePoint":
+		if c, ok := toInt(args[0]); ok {
+			return interp.FromCodePoint(c), true
+		}
 	case "string.upper":
 		if s, ok := args[0].(string); ok {
 			return strings.ToUpper(s), true

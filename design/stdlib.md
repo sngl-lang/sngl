@@ -32,6 +32,18 @@ The tiers, and the split between them is the whole point of the system:
   `+=` as a rope (`testdata/builder.sngl`, `builder.txtar`,
   `error_builder_state.sngl`). The optimizer does not rewrite a `s = s + x`
   loop into one.
+
+  **`string.fromCodePoint(c)` answers U+FFFD for a number no character
+  is** -- negative, past U+10FFFF, a surrogate half -- because the hosts
+  disagree on it: Go's `string(rune(n))` replaces a half but keeps a wide
+  int's low 32 bits, JavaScript's `String.fromCodePoint` throws past the
+  range and answers a lone half, and Kotlin's `Character.toChars` does the
+  same. Each language's intrinsic guards what its host gets wrong, C's is
+  a function of the file writing the bytes, and the interpreter and the
+  folder share `interp.FromCodePoint`. It is an `#[_intrinsic]` beside
+  `int.parse`, found by that mark as every string method is
+  (`testdata/string_from_code_point.sngl`, its FOLD lines and tests;
+  `string_from_code_point_runs.txtar` in C, Go, Kotlin and JavaScript).
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums and `measurement`. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialized surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialized surface; see **Markup and the `md:` scheme** below.

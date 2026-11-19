@@ -775,6 +775,9 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		c.file.helper(name, "static sngl_string "+name+"("+t+" c) {\n\treturn sngl_color_hex(c.r, c.g, c.b, c.a);\n}\n")
 		return name + "(" + c.EvalExpr(n.Args[0].Value) + ")", true
 	}
+	if n.Func.Intrinsic == "string.fromCodePoint" && len(n.Args) == 1 {
+		return c.fromCodePoint() + "(" + c.EvalExpr(n.Args[0].Value) + ")", true
+	}
 	fn, ok := runtime[n.Func.Intrinsic]
 	if !ok && n.Func.Intrinsic != "string.split" {
 		return "", false
@@ -926,4 +929,40 @@ func (c *Context) keptArg(t *ir.Type, recv ir.Expr, v string) string {
 		return c.keep(t.Elems[0], v)
 	}
 	return v
+}
+
+// fromCodePoint is the function of the file answering string.fromCodePoint:
+// the UTF-8 of one code point, and U+FFFD for a number no character is --
+// negative, past U+10FFFF, or a surrogate half.
+func (c *Context) fromCodePoint() string {
+	name := "sngl_from_code_point"
+	c.file.helper(name, `static sngl_string sngl_from_code_point(int64_t c) {
+	if (c < 0 || c > 0x10FFFF || (c >= 0xD800 && c <= 0xDFFF)) {
+		c = 0xFFFD;
+	}
+	char b[4];
+	size_t n;
+	if (c < 0x80) {
+		b[0] = (char)c;
+		n = 1;
+	} else if (c < 0x800) {
+		b[0] = (char)(0xC0 | (c >> 6));
+		b[1] = (char)(0x80 | (c & 0x3F));
+		n = 2;
+	} else if (c < 0x10000) {
+		b[0] = (char)(0xE0 | (c >> 12));
+		b[1] = (char)(0x80 | ((c >> 6) & 0x3F));
+		b[2] = (char)(0x80 | (c & 0x3F));
+		n = 3;
+	} else {
+		b[0] = (char)(0xF0 | (c >> 18));
+		b[1] = (char)(0x80 | ((c >> 12) & 0x3F));
+		b[2] = (char)(0x80 | ((c >> 6) & 0x3F));
+		b[3] = (char)(0x80 | (c & 0x3F));
+		n = 4;
+	}
+	return sngl_string_bytes(b, n);
+}
+`)
+	return name
 }
