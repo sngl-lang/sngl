@@ -98,6 +98,9 @@ func testBranch(t test.Test, c main) {
 #include <string.h>
 #include <math.h>
 
+typedef struct s_platform_win32___Pen s_platform_win32___Pen;
+typedef struct s_platform_win32___Saved s_platform_win32___Saved;
+typedef struct sngl_list__Saved sngl_list__Saved;
 typedef struct s___ref_int s___ref_int;
 typedef struct s___ref_bool s___ref_bool;
 typedef struct sngl_list_float sngl_list_float;
@@ -123,10 +126,23 @@ typedef struct sngl_opt_int sngl_opt_int;
 typedef struct s_builtin__color s_builtin__color;
 typedef struct sngl_opt_color sngl_opt_color;
 typedef struct s_platform_win32__Look s_platform_win32__Look;
+typedef struct s__gdipSaveGraphics__result s__gdipSaveGraphics__result;
 typedef struct s_ui_draw__Style__draw s_ui_draw__Style__draw;
+typedef struct s__gdipCreatePen1__result s__gdipCreatePen1__result;
 typedef struct s_ui_draw__Point s_ui_draw__Point;
 typedef struct s_ui_draw__Arc s_ui_draw__Arc;
-typedef struct sngl_lambda2_env sngl_lambda2_env;
+typedef struct s__gdipGetCellAscent__result s__gdipGetCellAscent__result;
+typedef struct s__gdipGetEmHeight__result s__gdipGetEmHeight__result;
+typedef struct s__gdipCreateFont__result s__gdipCreateFont__result;
+typedef struct s__gdipCreateSolidFill__result s__gdipCreateSolidFill__result;
+typedef struct s__gdipStringFormatGetGenericTypographic__result s__gdipStringFormatGetGenericTypographic__result;
+typedef struct s_platform_win32___GpRectF s_platform_win32___GpRectF;
+typedef struct s__gdipDrawString__result s__gdipDrawString__result;
+typedef struct s__gdipGetGenericFontFamilySerif__result s__gdipGetGenericFontFamilySerif__result;
+typedef struct s__gdipGetGenericFontFamilyMonospace__result s__gdipGetGenericFontFamilyMonospace__result;
+typedef struct s__gdipCreateFontFamilyFromName__result s__gdipCreateFontFamilyFromName__result;
+typedef struct s__gdipGetGenericFontFamilySansSerif__result s__gdipGetGenericFontFamilySansSerif__result;
+typedef struct sngl_lambda6_env sngl_lambda6_env;
 typedef struct sngl_fn_sngl_win32_gfx_p__void sngl_fn_sngl_win32_gfx_p__void;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
@@ -136,10 +152,10 @@ typedef struct s___lambda2_caps s___lambda2_caps;
 typedef struct s___lambda2_caps__env s___lambda2_caps__env;
 typedef struct s___lambda3_caps s___lambda3_caps;
 typedef struct s___lambda3_caps__env s___lambda3_caps__env;
-typedef struct sngl_lambda6_env sngl_lambda6_env;
-typedef struct sngl_lambda7_env sngl_lambda7_env;
-typedef struct sngl_lambda12_env sngl_lambda12_env;
-typedef struct sngl_lambda14_env sngl_lambda14_env;
+typedef struct sngl_lambda10_env sngl_lambda10_env;
+typedef struct sngl_lambda11_env sngl_lambda11_env;
+typedef struct sngl_lambda16_env sngl_lambda16_env;
+typedef struct sngl_lambda18_env sngl_lambda18_env;
 typedef struct s_ui_draw___step__record s_ui_draw___step__record;
 typedef struct sngl_list__step__record sngl_list__step__record;
 typedef struct s___lambda4_caps s___lambda4_caps;
@@ -148,6 +164,29 @@ typedef struct s___lambda6_caps s___lambda6_caps;
 typedef struct s___lambda4_caps__env s___lambda4_caps__env;
 typedef struct s___lambda5_caps__env s___lambda5_caps__env;
 typedef struct s___lambda6_caps__env s___lambda6_caps__env;
+
+typedef struct s_platform_win32___Pen {
+	int64_t r;
+	int64_t g;
+	int64_t b;
+	int64_t a;
+	double width;
+	int64_t cap;
+	int64_t join;
+	double fontPx;
+	sngl_string family;
+} s_platform_win32___Pen;
+
+typedef struct s_platform_win32___Saved {
+	s_platform_win32___Pen pen;
+	int64_t state;
+} s_platform_win32___Saved;
+
+typedef struct sngl_list__Saved {
+	s_platform_win32___Saved *data;
+	int64_t len;
+	int64_t cap;
+} sngl_list__Saved;
 
 typedef struct s___ref_int {
 	int64_t value;
@@ -348,6 +387,11 @@ typedef struct s_platform_win32__Look {
 	int64_t hidden;
 } s_platform_win32__Look;
 
+typedef struct s__gdipSaveGraphics__result {
+	int64_t result;
+	int64_t out1;
+} s__gdipSaveGraphics__result;
+
 typedef struct s_ui_draw__Style__draw {
 	s_builtin__color fill;
 	s_builtin__color stroke;
@@ -357,6 +401,11 @@ typedef struct s_ui_draw__Style__draw {
 	double fontSize;
 	sngl_string fontFamily;
 } s_ui_draw__Style__draw;
+
+typedef struct s__gdipCreatePen1__result {
+	int64_t result;
+	void * out3;
+} s__gdipCreatePen1__result;
 
 typedef struct s_ui_draw__Point {
 	double x;
@@ -372,9 +421,66 @@ typedef struct s_ui_draw__Arc {
 	double sweep;
 } s_ui_draw__Arc;
 
-typedef struct sngl_lambda2_env {
+typedef struct s__gdipGetCellAscent__result {
+	int64_t result;
+	int64_t out2;
+} s__gdipGetCellAscent__result;
+
+typedef struct s__gdipGetEmHeight__result {
+	int64_t result;
+	int64_t out2;
+} s__gdipGetEmHeight__result;
+
+typedef struct s__gdipCreateFont__result {
+	int64_t result;
+	void * out4;
+} s__gdipCreateFont__result;
+
+typedef struct s__gdipCreateSolidFill__result {
+	int64_t result;
+	void * out1;
+} s__gdipCreateSolidFill__result;
+
+typedef struct s__gdipStringFormatGetGenericTypographic__result {
+	int64_t result;
+	void * out0;
+} s__gdipStringFormatGetGenericTypographic__result;
+
+typedef struct s_platform_win32___GpRectF {
+	double X;
+	double Y;
+	double Width;
+	double Height;
+} s_platform_win32___GpRectF;
+
+typedef struct s__gdipDrawString__result {
+	int64_t result;
+	s_platform_win32___GpRectF out4;
+} s__gdipDrawString__result;
+
+typedef struct s__gdipGetGenericFontFamilySerif__result {
+	int64_t result;
+	void * out0;
+} s__gdipGetGenericFontFamilySerif__result;
+
+typedef struct s__gdipGetGenericFontFamilyMonospace__result {
+	int64_t result;
+	void * out0;
+} s__gdipGetGenericFontFamilyMonospace__result;
+
+typedef struct s__gdipCreateFontFamilyFromName__result {
+	int64_t result;
+	void * out2;
+} s__gdipCreateFontFamilyFromName__result;
+
+typedef struct s__gdipGetGenericFontFamilySansSerif__result {
+	int64_t result;
+	void * out0;
+} s__gdipGetGenericFontFamilySansSerif__result;
+
+typedef struct sngl_lambda6_env {
 	sngl_env hdr;
-} sngl_lambda2_env;
+} sngl_lambda6_env;
 
 typedef struct sngl_fn_sngl_win32_gfx_p__void {
 	void (*fn)(void *env, sngl_win32_gfx *);
@@ -420,21 +526,21 @@ typedef struct s___lambda3_caps__env {
 	s___lambda3_caps caps;
 } s___lambda3_caps__env;
 
-typedef struct sngl_lambda6_env {
+typedef struct sngl_lambda10_env {
 	sngl_env hdr;
-} sngl_lambda6_env;
+} sngl_lambda10_env;
 
-typedef struct sngl_lambda7_env {
+typedef struct sngl_lambda11_env {
 	sngl_env hdr;
-} sngl_lambda7_env;
+} sngl_lambda11_env;
 
-typedef struct sngl_lambda12_env {
+typedef struct sngl_lambda16_env {
 	sngl_env hdr;
-} sngl_lambda12_env;
+} sngl_lambda16_env;
 
-typedef struct sngl_lambda14_env {
+typedef struct sngl_lambda18_env {
 	sngl_env hdr;
-} sngl_lambda14_env;
+} sngl_lambda18_env;
 
 typedef struct s_ui_draw___step__record {
 	int64_t op;
@@ -484,20 +590,49 @@ typedef struct s___lambda6_caps__env {
 
 static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs);
 static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t otherwise);
+static void s_platform_win32__Gfx_save(sngl_win32_gfx * g);
+static void sngl_list__Saved__unshare(sngl_list__Saved *l);
+static s_platform_win32___Saved s_platform_win32___Saved__keep(s_platform_win32___Saved v);
+static s_platform_win32___Pen s_platform_win32___Pen__keep(s_platform_win32___Pen v);
+static void s_platform_win32__Gfx_newSubPath(sngl_win32_gfx * g);
+static void s_platform_win32__Gfx_arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double end);
 static void s_platform_win32__paint(sngl_win32_gfx * ctx, s_ui_draw__Style__draw style);
+static void s_platform_win32__Gfx_restore(sngl_win32_gfx * g);
+static void s_platform_win32___Pen__drop(s_platform_win32___Pen v);
+static void s_platform_win32___Saved__drop(s_platform_win32___Saved v);
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s);
+static void s_platform_win32__Gfx_rectangle(sngl_win32_gfx * g, double x, double y, double w, double h);
+static void s_platform_win32__Gfx_moveTo(sngl_win32_gfx * g, double x, double y);
+static void s_platform_win32__Gfx_lineTo(sngl_win32_gfx * g, double x, double y);
+static void s_platform_win32__Gfx_lineWidth(sngl_win32_gfx * g, double w);
+static void s_platform_win32__Gfx_lineCap(sngl_win32_gfx * g, int64_t cap);
+static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join);
 static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c);
+static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g);
+static void s_platform_win32__Gfx_curveTo(sngl_win32_gfx * g, double x1, double y1, double x2, double y2, double x3, double y3);
 static s_ui_draw__Point s_platform_win32__arcTo(sngl_win32_gfx * ctx, s_ui_draw__Point from, s_ui_draw__Point corner, s_ui_draw__Point to, double r);
+static void s_platform_win32__Gfx_closePath(sngl_win32_gfx * g);
+static void s_platform_win32__Gfx_font(sngl_win32_gfx * g, sngl_string family, double size);
+static void s_platform_win32__Gfx_showText(sngl_win32_gfx * g, sngl_string content);
+static void s_platform_win32___paintOf(sngl_win32_gfx * g);
+static sngl_list__Saved sngl_list__Saved__keep(sngl_list__Saved v);
+static void sngl_list__Saved__drop(sngl_list__Saved v);
+static void s_platform_win32___arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double sweep);
+static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve);
 static int64_t s_platform_win32__inset(sngl_opt_measurement m);
 static int64_t s_platform_win32__rgb(sngl_opt_color c);
+static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a);
+static void s_platform_win32___newPath(sngl_win32_gfx * g);
 static s_ui_draw__Arc s_ui_draw__tangentArc(s_ui_draw__Point from, s_ui_draw__Point corner, s_ui_draw__Point to, double r);
+static void s_platform_win32__Gfx_arcNegative(sngl_win32_gfx * g, double cx, double cy, double r, double start, double end);
+static void * s_platform_win32___fontFamily(sngl_string name);
 static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double radius, double angle);
 static s_dot__inst * s_dot__new(double r);
 static void s___ref_float__release(void *p);
 static void s___ref_float__rekeep(void *p);
 static void s___ref_int__release(void *p);
 static void s___ref_int__rekeep(void *p);
-static void sngl_lambda2(void *env_);
+static void sngl_lambda6(void *env_);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
 static void s___lambda0_caps__drop(s___lambda0_caps v);
@@ -551,12 +686,12 @@ static void s___canvas0__destroy(s___canvas0__inst * __self);
 static void s___renderSlot0(HWND parent);
 static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v);
 static void sngl_list_HWND__drop(sngl_list_HWND v);
-static void sngl_lambda6(void *env_);
-static void sngl_lambda7(void *env_, sngl_win32_gfx * ctx);
+static void sngl_lambda10(void *env_);
+static void sngl_lambda11(void *env_, sngl_win32_gfx * ctx);
 static void sngl_list_HWND__unshare(sngl_list_HWND *l);
 static void s___renderSlot1(HWND parent);
-static void sngl_lambda12(void *env_);
-static void sngl_lambda14(void *env_);
+static void sngl_lambda16(void *env_);
+static void sngl_lambda18(void *env_);
 static sngl_map_string__dot__inst sngl_map_string__dot__inst__keep(sngl_map_string__dot__inst v);
 static void sngl_map_string__dot__inst__drop(sngl_map_string__dot__inst v);
 static sngl_map_string____canvas0__inst sngl_map_string____canvas0__inst__keep(sngl_map_string____canvas0__inst v);
@@ -654,6 +789,96 @@ static void sngl_list___anon_id_elem_4ccb28_push(sngl_list___anon_id_elem_4ccb28
 	l->data[l->len++] = v;
 }
 
+static s__gdipSaveGraphics__result sngl_ccall_GdipSaveGraphics__gdipSaveGraphics(void * a0, int64_t a1) {
+	GraphicsState t1 = (GraphicsState)a1;
+	s__gdipSaveGraphics__result r;
+	r.result = (int64_t)GdipSaveGraphics(a0, &t1);
+	r.out1 = (int64_t)t1;
+	return r;
+}
+
+static s_platform_win32___Pen s_platform_win32___Pen__keep(s_platform_win32___Pen v) {
+	v.family = sngl_string_keep(v.family);
+	return v;
+}
+
+static s_platform_win32___Saved s_platform_win32___Saved__keep(s_platform_win32___Saved v) {
+	v.pen = s_platform_win32___Pen__keep(v.pen);
+	return v;
+}
+
+static void sngl_list__Saved__unshare(sngl_list__Saved *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list__Saved v = *l;
+	sngl_let_go_shared(v.data);
+	s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_platform_win32___Saved) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s_platform_win32___Saved__keep(v.data[i]);
+	}
+	*l = v;
+}
+
+static void sngl_list__Saved_grow_kept(sngl_list__Saved *l, int64_t n) {
+	if (l->len + n <= l->cap) {
+		return;
+	}
+	int64_t cap = l->cap * 2;
+	if (cap < l->len + n) {
+		cap = l->len + n;
+	}
+	if (cap < 4) {
+		cap = 4;
+	}
+	s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)cap);
+	if (l->len > 0) {
+		memcpy(data, l->data, sizeof(s_platform_win32___Saved) * (size_t)l->len);
+	}
+	sngl_drop(l->data);
+	l->data = data;
+	l->cap = cap;
+}
+
+static void sngl_list__Saved_push_kept(sngl_list__Saved *l, s_platform_win32___Saved v) {
+	sngl_list__Saved__unshare(l);
+	sngl_list__Saved_grow_kept(l, 1);
+	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
+}
+
+static s_platform_win32___Saved *sngl_list__Saved_at(sngl_list__Saved l, int64_t i) {
+	if (i < 0 || i >= l.len) {
+		sngl_panic("index out of range");
+	}
+	return &l.data[i];
+}
+
+static void s_platform_win32___Pen__drop(s_platform_win32___Pen v) {
+	sngl_drop((v.family).ptr);
+}
+
+static void s_platform_win32___Saved__drop(s_platform_win32___Saved v) {
+	s_platform_win32___Pen__drop(v.pen);
+}
+
+static void sngl_list__Saved_remove_kept(sngl_list__Saved *l, int64_t i) {
+	if (i < 0 || i >= l->len) {
+		return;
+	}
+	sngl_list__Saved__unshare(l);
+	s_platform_win32___Saved__drop(l->data[i]);
+	memmove(&l->data[i], &l->data[i + 1], sizeof(s_platform_win32___Saved) * (size_t)(l->len - i - 1));
+	l->len--;
+	sngl_kept_len(l->data, l->len);
+}
+
 static double sngl_list_float_max(double m, sngl_list_float l) {
 	for (int64_t i = 0; i < l.len; i++) {
 		if (l.data[i] > m) {
@@ -667,6 +892,135 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
+}
+
+static s__gdipCreatePen1__result sngl_ccall_GdipCreatePen1__gdipCreatePen1(ARGB a0, REAL a1, GpUnit a2, void * a3) {
+	void * t3 = NULL;
+	(void)a3;
+	s__gdipCreatePen1__result r;
+	r.result = (int64_t)GdipCreatePen1(a0, a1, a2, &t3);
+	r.out3 = (void *)t3;
+	return r;
+}
+
+static s__gdipGetCellAscent__result sngl_ccall_GdipGetCellAscent__gdipGetCellAscent(void * a0, int a1, int64_t a2) {
+	UINT16 t2 = (UINT16)a2;
+	s__gdipGetCellAscent__result r;
+	r.result = (int64_t)GdipGetCellAscent(a0, a1, &t2);
+	r.out2 = (int64_t)t2;
+	return r;
+}
+
+static s__gdipGetEmHeight__result sngl_ccall_GdipGetEmHeight__gdipGetEmHeight(void * a0, int a1, int64_t a2) {
+	UINT16 t2 = (UINT16)a2;
+	s__gdipGetEmHeight__result r;
+	r.result = (int64_t)GdipGetEmHeight(a0, a1, &t2);
+	r.out2 = (int64_t)t2;
+	return r;
+}
+
+static s__gdipCreateFont__result sngl_ccall_GdipCreateFont__gdipCreateFont(void * a0, REAL a1, int a2, Unit a3, void * a4) {
+	void * t4 = NULL;
+	(void)a4;
+	s__gdipCreateFont__result r;
+	r.result = (int64_t)GdipCreateFont(a0, a1, a2, a3, &t4);
+	r.out4 = (void *)t4;
+	return r;
+}
+
+static s__gdipCreateSolidFill__result sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill(ARGB a0, void * a1) {
+	void * t1 = NULL;
+	(void)a1;
+	s__gdipCreateSolidFill__result r;
+	r.result = (int64_t)GdipCreateSolidFill(a0, &t1);
+	r.out1 = (void *)t1;
+	return r;
+}
+
+static s__gdipStringFormatGetGenericTypographic__result sngl_ccall_GdipStringFormatGetGenericTypographic__gdipStringFormatGetGenericTypographic(void * a0) {
+	void * t0 = NULL;
+	(void)a0;
+	s__gdipStringFormatGetGenericTypographic__result r;
+	r.result = (int64_t)GdipStringFormatGetGenericTypographic(&t0);
+	r.out0 = (void *)t0;
+	return r;
+}
+
+static RectF sngl_to_platform_win32___GpRectF(s_platform_win32___GpRectF v) {
+	return (RectF){.X = (REAL)v.X, .Y = (REAL)v.Y, .Width = (REAL)v.Width, .Height = (REAL)v.Height};
+}
+
+static s_platform_win32___GpRectF sngl_from_platform_win32___GpRectF(RectF v) {
+	return (s_platform_win32___GpRectF){.X = (double)v.X, .Y = (double)v.Y, .Width = (double)v.Width, .Height = (double)v.Height};
+}
+
+static s__gdipDrawString__result sngl_ccall_GdipDrawString__gdipDrawString(void * a0, const unsigned short * a1, int a2, void * a3, s_platform_win32___GpRectF a4, void * a5, void * a6) {
+	RectF t4 = sngl_to_platform_win32___GpRectF(a4);
+	s__gdipDrawString__result r;
+	r.result = (int64_t)GdipDrawString(a0, a1, a2, a3, &t4, a5, a6);
+	r.out4 = sngl_from_platform_win32___GpRectF(t4);
+	return r;
+}
+
+static sngl_list__Saved sngl_list__Saved__keep(sngl_list__Saved v) {
+	if (!sngl_share(v.data, v.len)) {
+		s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_platform_win32___Saved) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s_platform_win32___Saved__keep(v.data[i]);
+		}
+	}
+	return v;
+}
+
+static void sngl_list__Saved__drop(sngl_list__Saved v) {
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s_platform_win32___Saved__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
+	}
+}
+
+static s__gdipGetGenericFontFamilySerif__result sngl_ccall_GdipGetGenericFontFamilySerif__gdipGetGenericFontFamilySerif(void * a0) {
+	void * t0 = NULL;
+	(void)a0;
+	s__gdipGetGenericFontFamilySerif__result r;
+	r.result = (int64_t)GdipGetGenericFontFamilySerif(&t0);
+	r.out0 = (void *)t0;
+	return r;
+}
+
+static s__gdipGetGenericFontFamilyMonospace__result sngl_ccall_GdipGetGenericFontFamilyMonospace__gdipGetGenericFontFamilyMonospace(void * a0) {
+	void * t0 = NULL;
+	(void)a0;
+	s__gdipGetGenericFontFamilyMonospace__result r;
+	r.result = (int64_t)GdipGetGenericFontFamilyMonospace(&t0);
+	r.out0 = (void *)t0;
+	return r;
+}
+
+static s__gdipCreateFontFamilyFromName__result sngl_ccall_GdipCreateFontFamilyFromName__gdipCreateFontFamilyFromName(const unsigned short * a0, void * a1, void * a2) {
+	void * t2 = NULL;
+	(void)a2;
+	s__gdipCreateFontFamilyFromName__result r;
+	r.result = (int64_t)GdipCreateFontFamilyFromName(a0, a1, &t2);
+	r.out2 = (void *)t2;
+	return r;
+}
+
+static s__gdipGetGenericFontFamilySansSerif__result sngl_ccall_GdipGetGenericFontFamilySansSerif__gdipGetGenericFontFamilySansSerif(void * a0) {
+	void * t0 = NULL;
+	(void)a0;
+	s__gdipGetGenericFontFamilySansSerif__result r;
+	r.result = (int64_t)GdipGetGenericFontFamilySansSerif(&t0);
+	r.out0 = (void *)t0;
+	return r;
 }
 
 static void s___ref_float__release(void *p) {
@@ -1352,6 +1706,16 @@ static void s_platform_win32____drawing1_paint_handler__fn(void *env, sngl_win32
 	s_platform_win32____drawing1_paint_handler(a0);
 }
 
+static bool s_platform_win32___at;
+static bool s_platform_win32___begun;
+static int64_t s_platform_win32___depth;
+static double s_platform_win32___fx;
+static double s_platform_win32___fy;
+static int64_t s_platform_win32___paintSerial;
+static s_platform_win32___Pen s_platform_win32___pen;
+static sngl_list__Saved s_platform_win32___saved;
+static double s_platform_win32___x;
+static double s_platform_win32___y;
 static s___ref_int * s_hits;
 static s___ref_bool * s_on;
 static sngl_list_float s_rs;
@@ -1395,17 +1759,62 @@ static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t
 	return look;
 }
 
+static void s_platform_win32__Gfx_save(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	if (s_platform_win32___depth < 16) {
+		int64_t state = 0;
+		s__gdipSaveGraphics__result __ref0 = sngl_ccall_GdipSaveGraphics__gdipSaveGraphics((g)->g, state);
+		state = __ref0.out1;
+		sngl_list__Saved_push_kept(&(s_platform_win32___saved), s_platform_win32___Saved__keep((s_platform_win32___Saved){.pen = s_platform_win32___pen, .state = state}));
+	}
+	s_platform_win32___depth += 1;
+}
+
+static void s_platform_win32__Gfx_newSubPath(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	(void)(int64_t)GdipStartPathFigure((g)->path);
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
+}
+
+static void s_platform_win32__Gfx_arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double end) {
+	s_platform_win32___paintOf(g);
+	double to = end;
+	while (to < start) {
+		to += 6.283185307179586;
+	}
+	s_platform_win32___arc(g, cx, cy, r, start, (to - start));
+}
+
 static void s_platform_win32__paint(sngl_win32_gfx * ctx, s_ui_draw__Style__draw style) {
 	if (style.fill.a > 0) {
 		s_platform_win32__source(ctx, style.fill);
-		sngl_win32_gfx_fill(ctx, (int)(((style.stroke.a > 0) ? 1 : 0)));
+		s_platform_win32__Gfx_fill(ctx, (style.stroke.a > 0));
 	}
 	if (style.stroke.a > 0) {
-		sngl_win32_gfx_line_width(ctx, (double)(style.strokeWidth));
-		sngl_win32_gfx_line_cap(ctx, (int)((int64_t)(style.lineCap)));
-		sngl_win32_gfx_line_join(ctx, (int)((int64_t)(style.lineJoin)));
+		s_platform_win32__Gfx_lineWidth(ctx, style.strokeWidth);
+		s_platform_win32__Gfx_lineCap(ctx, (int64_t)(style.lineCap));
+		s_platform_win32__Gfx_lineJoin(ctx, (int64_t)(style.lineJoin));
 		s_platform_win32__source(ctx, style.stroke);
-		sngl_win32_gfx_stroke(ctx);
+		s_platform_win32__Gfx_stroke(ctx);
+	}
+}
+
+static void s_platform_win32__Gfx_restore(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	if (s_platform_win32___depth > 0) {
+		s_platform_win32___depth -= 1;
+		if (s_platform_win32___depth < 16) {
+			s_platform_win32___Saved kept = (*sngl_list__Saved_at(s_platform_win32___saved, s_platform_win32___depth));
+			(void)(int64_t)GdipRestoreGraphics((g)->g, (GraphicsState)(kept.state));
+			{
+	s_platform_win32___Pen __kept2 = s_platform_win32___Pen__keep(kept.pen);
+	s_platform_win32___Pen *__slot2 = &(s_platform_win32___pen);
+	s_platform_win32___Pen__drop(*__slot2);
+	*__slot2 = __kept2;
+}
+			sngl_list__Saved_remove_kept(&(s_platform_win32___saved), s_platform_win32___depth);
+		}
 	}
 }
 
@@ -1414,23 +1823,238 @@ static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
 	return look;
 }
 
+static void s_platform_win32__Gfx_rectangle(sngl_win32_gfx * g, double x, double y, double w, double h) {
+	s_platform_win32___paintOf(g);
+	(void)(int64_t)GdipAddPathRectangle((g)->path, (REAL)(x), (REAL)(y), (REAL)(w), (REAL)(h));
+	s_platform_win32___x = x;
+	s_platform_win32___fx = x;
+	s_platform_win32___y = y;
+	s_platform_win32___fy = y;
+	s_platform_win32___at = true;
+	s_platform_win32___begun = false;
+}
+
+static void s_platform_win32__Gfx_moveTo(sngl_win32_gfx * g, double x, double y) {
+	s_platform_win32___paintOf(g);
+	(void)(int64_t)GdipStartPathFigure((g)->path);
+	s_platform_win32___x = x;
+	s_platform_win32___fx = x;
+	s_platform_win32___y = y;
+	s_platform_win32___fy = y;
+	s_platform_win32___at = true;
+	s_platform_win32___begun = false;
+}
+
+static void s_platform_win32__Gfx_lineTo(sngl_win32_gfx * g, double x, double y) {
+	s_platform_win32___paintOf(g);
+	if (!s_platform_win32___at) {
+		s_platform_win32__Gfx_moveTo(g, x, y);
+	} else {
+		(void)(int64_t)GdipAddPathLine((g)->path, (REAL)(s_platform_win32___x), (REAL)(s_platform_win32___y), (REAL)(x), (REAL)(y));
+		s_platform_win32___x = x;
+		s_platform_win32___y = y;
+		s_platform_win32___begun = true;
+	}
+}
+
+static void s_platform_win32__Gfx_lineWidth(sngl_win32_gfx * g, double w) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.width = w;
+}
+
+static void s_platform_win32__Gfx_lineCap(sngl_win32_gfx * g, int64_t cap) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.cap = cap;
+}
+
+static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.join = join;
+}
+
 static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c) {
-	sngl_win32_gfx_color(ctx, (int)((int64_t)(c.r)), (int)((int64_t)(c.g)), (int)((int64_t)(c.b)), (int)((int64_t)(c.a)));
+	s_platform_win32__Gfx_color(ctx, (int64_t)(c.r), (int64_t)(c.g), (int64_t)(c.b), (int64_t)(c.a));
+}
+
+static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	int64_t cap = (((s_platform_win32___pen.cap >= 0) && (s_platform_win32___pen.cap < 3)) ? s_platform_win32___pen.cap : 0);
+	int64_t join = (((s_platform_win32___pen.join >= 0) && (s_platform_win32___pen.join < 3)) ? s_platform_win32___pen.join : 0);
+	void * pen = NULL;
+	s__gdipCreatePen1__result __ref1 = sngl_ccall_GdipCreatePen1__gdipCreatePen1((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), (REAL)(s_platform_win32___pen.width), (GpUnit)(2), pen);
+	pen = __ref1.out3;
+	if ((__ref1.result == 0) && (pen != NULL)) {
+		int64_t line = ((cap == 1) ? 2 : ((cap == 2) ? 1 : 0));
+		(void)(int64_t)GdipSetPenLineCap197819(pen, (GpLineCap)(line), (GpLineCap)(line), (GpDashCap)(((cap == 1) ? 2 : 0)));
+		(void)(int64_t)GdipSetPenLineJoin(pen, (GpLineJoin)(((join == 1) ? 2 : ((join == 2) ? 1 : 0))));
+		(void)(int64_t)GdipDrawPath((g)->g, pen, (g)->path);
+		(void)(int64_t)GdipDeletePen(pen);
+	}
+	s_platform_win32___newPath(g);
+}
+
+static void s_platform_win32__Gfx_curveTo(sngl_win32_gfx * g, double x1, double y1, double x2, double y2, double x3, double y3) {
+	s_platform_win32___paintOf(g);
+	if (!s_platform_win32___at) {
+		s_platform_win32__Gfx_moveTo(g, x1, y1);
+	}
+	(void)(int64_t)GdipAddPathBezier((g)->path, (REAL)(s_platform_win32___x), (REAL)(s_platform_win32___y), (REAL)(x1), (REAL)(y1), (REAL)(x2), (REAL)(y2), (REAL)(x3), (REAL)(y3));
+	s_platform_win32___x = x3;
+	s_platform_win32___y = y3;
+	s_platform_win32___begun = true;
 }
 
 static s_ui_draw__Point s_platform_win32__arcTo(sngl_win32_gfx * ctx, s_ui_draw__Point from, s_ui_draw__Point corner, s_ui_draw__Point to, double r) {
 	s_ui_draw__Arc a = s_ui_draw__tangentArc(from, corner, to, r);
 	if (a.degenerate) {
-		sngl_win32_gfx_line_to(ctx, (double)(corner.x), (double)(corner.y));
+		s_platform_win32__Gfx_lineTo(ctx, corner.x, corner.y);
 		return corner;
 	}
-	sngl_win32_gfx_line_to(ctx, (double)(a.tangent1.x), (double)(a.tangent1.y));
+	s_platform_win32__Gfx_lineTo(ctx, a.tangent1.x, a.tangent1.y);
 	if (a.sweep < 0.0) {
-		sngl_win32_gfx_arc_negative(ctx, (double)(a.center.x), (double)(a.center.y), (double)(r), (double)(a.start), (double)((a.start + a.sweep)));
+		s_platform_win32__Gfx_arcNegative(ctx, a.center.x, a.center.y, r, a.start, (a.start + a.sweep));
 	} else {
-		sngl_win32_gfx_arc(ctx, (double)(a.center.x), (double)(a.center.y), (double)(r), (double)(a.start), (double)((a.start + a.sweep)));
+		s_platform_win32__Gfx_arc(ctx, a.center.x, a.center.y, r, a.start, (a.start + a.sweep));
 	}
 	return a.tangent2;
+}
+
+static void s_platform_win32__Gfx_closePath(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	(void)(int64_t)GdipClosePathFigure((g)->path);
+	s_platform_win32___x = s_platform_win32___fx;
+	s_platform_win32___y = s_platform_win32___fy;
+	s_platform_win32___begun = false;
+}
+
+static void s_platform_win32__Gfx_font(sngl_win32_gfx * g, sngl_string family, double size) {
+	s_platform_win32___paintOf(g);
+	{
+	sngl_string __kept3 = sngl_string_keep(family);
+	sngl_string *__slot3 = &(s_platform_win32___pen.family);
+	sngl_drop((*__slot3).ptr);
+	*__slot3 = __kept3;
+}
+	s_platform_win32___pen.fontPx = size;
+}
+
+static void s_platform_win32__Gfx_showText(sngl_win32_gfx * g, sngl_string content) {
+	s_platform_win32___paintOf(g);
+	void * family = s_platform_win32___fontFamily(s_platform_win32___pen.family);
+	if (family != NULL) {
+		int64_t ascent = 0;
+		int64_t em = 0;
+		s__gdipGetCellAscent__result __ref2 = sngl_ccall_GdipGetCellAscent__gdipGetCellAscent(family, (int)(0), ascent);
+		ascent = __ref2.out2;
+		s__gdipGetEmHeight__result __ref3 = sngl_ccall_GdipGetEmHeight__gdipGetEmHeight(family, (int)(0), em);
+		em = __ref3.out2;
+		void * font = NULL;
+		void * brush = NULL;
+		void * format = NULL;
+		s__gdipCreateFont__result __ref4 = sngl_ccall_GdipCreateFont__gdipCreateFont(family, (REAL)(s_platform_win32___pen.fontPx), (int)(0), (Unit)(2), font);
+		font = __ref4.out4;
+		bool made = (__ref4.result == 0);
+		if (made) {
+			s__gdipCreateSolidFill__result __ref5 = sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), brush);
+			brush = __ref5.out1;
+			made = (__ref5.result == 0);
+		}
+		if (made) {
+			s__gdipStringFormatGetGenericTypographic__result __ref6 = sngl_ccall_GdipStringFormatGetGenericTypographic__gdipStringFormatGetGenericTypographic(format);
+			format = __ref6.out0;
+			made = (__ref6.result == 0);
+		}
+		if (((made && (font != NULL)) && (brush != NULL)) && (format != NULL)) {
+			double top = (s_platform_win32___y - ((em != 0) ? ((s_platform_win32___pen.fontPx * (double)(ascent)) / (double)(em)) : s_platform_win32___pen.fontPx));
+			s_platform_win32___GpRectF at = (s_platform_win32___GpRectF){.X = s_platform_win32___x, .Y = top, .Width = 0.0, .Height = 0.0};
+			s__gdipDrawString__result __ref7 = sngl_ccall_GdipDrawString__gdipDrawString((g)->g, (const unsigned short *)sngl_utf16(content), (int)(-1), font, at, format, (void *)(brush));
+			at = __ref7.out4;
+		}
+		if (format != NULL) {
+			(void)(int64_t)GdipDeleteStringFormat(format);
+		}
+		if (brush != NULL) {
+			(void)(int64_t)GdipDeleteBrush((void *)(brush));
+		}
+		if (font != NULL) {
+			(void)(int64_t)GdipDeleteFont(font);
+		}
+		(void)(int64_t)GdipDeleteFontFamily(family);
+	}
+}
+
+static void s_platform_win32___paintOf(sngl_win32_gfx * g) {
+	int64_t serial = (int64_t)(g)->serial;
+	if (serial != s_platform_win32___paintSerial) {
+		s_platform_win32___paintSerial = serial;
+		s_platform_win32___x = 0.0;
+		s_platform_win32___y = 0.0;
+		s_platform_win32___fx = 0.0;
+		s_platform_win32___fy = 0.0;
+		s_platform_win32___at = false;
+		s_platform_win32___begun = false;
+		{
+	s_platform_win32___Pen __kept4 = s_platform_win32___Pen__keep((s_platform_win32___Pen){.r = 0, .g = 0, .b = 0, .a = 255, .width = 1.0, .cap = 0, .join = 0, .fontPx = 16.0, .family = SNGL_STR("sans-serif")});
+	s_platform_win32___Pen *__slot4 = &(s_platform_win32___pen);
+	s_platform_win32___Pen__drop(*__slot4);
+	*__slot4 = __kept4;
+}
+		{
+	sngl_list__Saved __kept5 = sngl_list__Saved__keep(((sngl_list__Saved){0}));
+	sngl_list__Saved *__slot5 = &(s_platform_win32___saved);
+	sngl_list__Saved__drop(*__slot5);
+	*__slot5 = __kept5;
+}
+		s_platform_win32___depth = 0;
+	}
+}
+
+static void s_platform_win32___arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double sweep) {
+	double tau = 6.283185307179586;
+	double turn = ((sweep > tau) ? tau : ((sweep < (-tau)) ? (-tau) : sweep));
+	double sx = (cx + (r * cos(start)));
+	double sy = (cy + (r * sin(start)));
+	if (s_platform_win32___at && !s_platform_win32___begun) {
+		(void)(int64_t)GdipAddPathLine((g)->path, (REAL)(s_platform_win32___x), (REAL)(s_platform_win32___y), (REAL)(sx), (REAL)(sy));
+	} else {
+		if (!s_platform_win32___at) {
+			s_platform_win32___fx = sx;
+			s_platform_win32___fy = sy;
+		}
+	}
+	int64_t n = sngl_float_int(ceil(((fabs(turn) / (tau / 4.0)) - 1e-09)));
+	double step = ((n > 0) ? (turn / (double)(n)) : 0.0);
+	double k = (1.3333333333333333 * tan((step / 4.0)));
+	double a = start;
+	int64_t i = 0;
+	while ((r > 0.0) && (i < n)) {
+		double b = (a + step);
+		double x0 = (cx + (r * cos(a)));
+		double y0 = (cy + (r * sin(a)));
+		double x3 = (cx + (r * cos(b)));
+		double y3 = (cy + (r * sin(b)));
+		(void)(int64_t)GdipAddPathBezier((g)->path, (REAL)(x0), (REAL)(y0), (REAL)((x0 - ((k * r) * sin(a)))), (REAL)((y0 + ((k * r) * cos(a)))), (REAL)((x3 + ((k * r) * sin(b)))), (REAL)((y3 - ((k * r) * cos(b)))), (REAL)(x3), (REAL)(y3));
+		i += 1;
+		a += step;
+	}
+	s_platform_win32___x = (cx + (r * cos((start + turn))));
+	s_platform_win32___y = (cy + (r * sin((start + turn))));
+	s_platform_win32___at = true;
+	s_platform_win32___begun = true;
+}
+
+static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve) {
+	s_platform_win32___paintOf(g);
+	void * brush = NULL;
+	s__gdipCreateSolidFill__result __ref8 = sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), brush);
+	brush = __ref8.out1;
+	if ((__ref8.result == 0) && (brush != NULL)) {
+		(void)(int64_t)GdipFillPath((g)->g, (void *)(brush), (g)->path);
+		(void)(int64_t)GdipDeleteBrush((void *)(brush));
+	}
+	if (!preserve) {
+		s_platform_win32___newPath(g);
+	}
 }
 
 static int64_t s_platform_win32__inset(sngl_opt_measurement m) {
@@ -1442,6 +2066,21 @@ static int64_t s_platform_win32__rgb(sngl_opt_color c) {
 		return ((((int64_t)((c).value.r) * 65536) + ((int64_t)((c).value.g) * 256)) + (int64_t)((c).value.b));
 	}
 	return -1;
+}
+
+static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.r = ((r < 0) ? 0 : ((r > 255) ? 255 : r));
+	s_platform_win32___pen.g = ((gr < 0) ? 0 : ((gr > 255) ? 255 : gr));
+	s_platform_win32___pen.b = ((b < 0) ? 0 : ((b > 255) ? 255 : b));
+	s_platform_win32___pen.a = ((a < 0) ? 0 : ((a > 255) ? 255 : a));
+}
+
+static void s_platform_win32___newPath(sngl_win32_gfx * g) {
+	(void)(int64_t)GdipResetPath((g)->path);
+	(void)(int64_t)GdipSetPathFillMode((g)->path, (GpFillMode)(1));
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
 }
 
 static s_ui_draw__Arc s_ui_draw__tangentArc(s_ui_draw__Point from, s_ui_draw__Point corner, s_ui_draw__Point to, double r) {
@@ -1469,6 +2108,38 @@ static s_ui_draw__Arc s_ui_draw__tangentArc(s_ui_draw__Point from, s_ui_draw__Po
 	return (s_ui_draw__Arc){.degenerate = false, .tangent1 = t1, .tangent2 = t2, .center = c, .start = atan2((t1.y - c.y), (t1.x - c.x)), .sweep = sweep};
 }
 
+static void s_platform_win32__Gfx_arcNegative(sngl_win32_gfx * g, double cx, double cy, double r, double start, double end) {
+	s_platform_win32___paintOf(g);
+	double to = end;
+	while (to > start) {
+		to -= 6.283185307179586;
+	}
+	s_platform_win32___arc(g, cx, cy, r, start, (to - start));
+}
+
+static void * s_platform_win32___fontFamily(sngl_string name) {
+	void * f = NULL;
+	if (sngl_string_eq(name, SNGL_STR("serif"))) {
+		s__gdipGetGenericFontFamilySerif__result __ref9 = sngl_ccall_GdipGetGenericFontFamilySerif__gdipGetGenericFontFamilySerif(f);
+		f = __ref9.out0;
+	} else {
+		if (sngl_string_eq(name, SNGL_STR("monospace"))) {
+			s__gdipGetGenericFontFamilyMonospace__result __ref10 = sngl_ccall_GdipGetGenericFontFamilyMonospace__gdipGetGenericFontFamilyMonospace(f);
+			f = __ref10.out0;
+		} else {
+			if (!sngl_string_eq(name, SNGL_STR("sans-serif")) && !sngl_string_eq(name, SNGL_STR(""))) {
+				s__gdipCreateFontFamilyFromName__result __ref11 = sngl_ccall_GdipCreateFontFamilyFromName__gdipCreateFontFamilyFromName((const unsigned short *)sngl_utf16(name), NULL, f);
+				f = __ref11.out2;
+			}
+		}
+	}
+	if (f == NULL) {
+		s__gdipGetGenericFontFamilySansSerif__result __ref12 = sngl_ccall_GdipGetGenericFontFamilySansSerif__gdipGetGenericFontFamilySansSerif(f);
+		f = __ref12.out0;
+	}
+	return f;
+}
+
 static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double radius, double angle) {
 	return (s_ui_draw__Point){.x = (center.x + (radius * cos(angle))), .y = (center.y + (radius * sin(angle)))};
 }
@@ -1482,7 +2153,7 @@ static s_dot__inst * s_dot__new(double r) {
 	sngl_win32_set_canvas_width(__self->__drawing0, (int)(40));
 	sngl_win32_set_canvas_height(__self->__drawing0, (int)(40));
 	sngl_win32_set_scaling(__self->__drawing0, (int)(0));
-	sngl_win32_on_click(__self->__drawing0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda2, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	sngl_win32_on_click(__self->__drawing0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda6, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_on_paint(__self->__drawing0, (sngl_win32_paint_fn)(void (*)(void))sngl_dispatch_sngl_win32_gfx_p__void, (void *)sngl_heap_copy(&(sngl_fn_sngl_win32_gfx_p__void[]){sngl_fn_sngl_win32_gfx_p__void__keep(((sngl_fn_sngl_win32_gfx_p__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.__prop_r = __self->__prop_r, .n = __self->n}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_sngl_win32_gfx_p__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 	sngl_win32_append(__self->__n3, __self->__drawing0);
 	__self->__n4 = sngl_win32_button();
@@ -1495,11 +2166,11 @@ static s_dot__inst * s_dot__new(double r) {
 }
 
 static void s___lambda0(s___lambda0_caps state, sngl_win32_gfx * ctx) {
-	sngl_win32_gfx_save(ctx);
-	sngl_win32_gfx_new_sub_path(ctx);
-	sngl_win32_gfx_arc(ctx, (double)(20.0), (double)(20.0), (double)((state.__prop_r->value + (double)(state.n->value))), (double)(0.0), (double)(6.283185307179586));
+	s_platform_win32__Gfx_save(ctx);
+	s_platform_win32__Gfx_newSubPath(ctx);
+	s_platform_win32__Gfx_arc(ctx, 20.0, 20.0, (state.__prop_r->value + (double)(state.n->value)), 0.0, 6.283185307179586);
 	s_platform_win32__paint(ctx, (s_ui_draw__Style__draw){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 0, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
-	sngl_win32_gfx_restore(ctx);
+	s_platform_win32__Gfx_restore(ctx);
 }
 
 static void s___lambda1(s___lambda1_caps state) {
@@ -1541,16 +2212,16 @@ static void s___lambda3(s___lambda3_caps state, sngl_win32_gfx * ctx) {
 	double k = 0.5522847498307936;
 	double ox = (state.__prop___p0->value.elem * k);
 	double oy = ((double)(state.__prop___p1->value) * k);
-	sngl_win32_gfx_save(ctx);
-	sngl_win32_gfx_new_sub_path(ctx);
-	sngl_win32_gfx_move_to(ctx, (double)(10.0), (double)((10.0 - (double)(state.__prop___p1->value))));
-	sngl_win32_gfx_curve_to(ctx, (double)((10.0 + ox)), (double)((10.0 - (double)(state.__prop___p1->value))), (double)((10.0 + state.__prop___p0->value.elem)), (double)((10.0 - oy)), (double)((10.0 + state.__prop___p0->value.elem)), (double)(10.0));
-	sngl_win32_gfx_curve_to(ctx, (double)((10.0 + state.__prop___p0->value.elem)), (double)((10.0 + oy)), (double)((10.0 + ox)), (double)((10.0 + (double)(state.__prop___p1->value))), (double)(10.0), (double)((10.0 + (double)(state.__prop___p1->value))));
-	sngl_win32_gfx_curve_to(ctx, (double)((10.0 - ox)), (double)((10.0 + (double)(state.__prop___p1->value))), (double)((10.0 - state.__prop___p0->value.elem)), (double)((10.0 + oy)), (double)((10.0 - state.__prop___p0->value.elem)), (double)(10.0));
-	sngl_win32_gfx_curve_to(ctx, (double)((10.0 - state.__prop___p0->value.elem)), (double)((10.0 - oy)), (double)((10.0 - ox)), (double)((10.0 - (double)(state.__prop___p1->value))), (double)(10.0), (double)((10.0 - (double)(state.__prop___p1->value))));
-	sngl_win32_gfx_close_path(ctx);
+	s_platform_win32__Gfx_save(ctx);
+	s_platform_win32__Gfx_newSubPath(ctx);
+	s_platform_win32__Gfx_moveTo(ctx, 10.0, (10.0 - (double)(state.__prop___p1->value)));
+	s_platform_win32__Gfx_curveTo(ctx, (10.0 + ox), (10.0 - (double)(state.__prop___p1->value)), (10.0 + state.__prop___p0->value.elem), (10.0 - oy), (10.0 + state.__prop___p0->value.elem), 10.0);
+	s_platform_win32__Gfx_curveTo(ctx, (10.0 + state.__prop___p0->value.elem), (10.0 + oy), (10.0 + ox), (10.0 + (double)(state.__prop___p1->value)), 10.0, (10.0 + (double)(state.__prop___p1->value)));
+	s_platform_win32__Gfx_curveTo(ctx, (10.0 - ox), (10.0 + (double)(state.__prop___p1->value)), (10.0 - state.__prop___p0->value.elem), (10.0 + oy), (10.0 - state.__prop___p0->value.elem), 10.0);
+	s_platform_win32__Gfx_curveTo(ctx, (10.0 - state.__prop___p0->value.elem), (10.0 - oy), (10.0 - ox), (10.0 - (double)(state.__prop___p1->value)), 10.0, (10.0 - (double)(state.__prop___p1->value)));
+	s_platform_win32__Gfx_closePath(ctx);
 	s_platform_win32__paint(ctx, (s_ui_draw__Style__draw){.fill = (s_builtin__color){.r = 255, .g = 0, .b = 0, .a = 255}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 0, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
-	sngl_win32_gfx_restore(ctx);
+	s_platform_win32__Gfx_restore(ctx);
 }
 
 static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4ccb28 __v) {
@@ -1558,10 +2229,10 @@ static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4
 		return;
 	}
 	{
-	s___anon_id_elem_4ccb28 __kept3 = s___anon_id_elem_4ccb28__keep(__v);
-	s___anon_id_elem_4ccb28 *__slot3 = &(__self->__prop___p0->value);
-	s___anon_id_elem_4ccb28__drop(*__slot3);
-	*__slot3 = __kept3;
+	s___anon_id_elem_4ccb28 __kept7 = s___anon_id_elem_4ccb28__keep(__v);
+	s___anon_id_elem_4ccb28 *__slot7 = &(__self->__prop___p0->value);
+	s___anon_id_elem_4ccb28__drop(*__slot7);
+	*__slot7 = __kept7;
 }
 	sngl_win32_redraw(__self->__drawing2);
 }
@@ -1576,10 +2247,10 @@ static void s___canvas0__set___p1(s___canvas0__inst * __self, int64_t __v) {
 
 static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__void __v) {
 	{
-	sngl_fn_void__void __kept4 = sngl_fn_void__void__keep(__v);
-	sngl_fn_void__void *__slot4 = &(__self->__prop___on0->value);
-	sngl_fn_void__void__drop(*__slot4);
-	*__slot4 = __kept4;
+	sngl_fn_void__void __kept8 = sngl_fn_void__void__keep(__v);
+	sngl_fn_void__void *__slot8 = &(__self->__prop___on0->value);
+	sngl_fn_void__void__drop(*__slot8);
+	*__slot8 = __kept8;
 }
 }
 
@@ -1598,19 +2269,19 @@ static void s___renderSlot0(HWND parent) {
 		s___rendering0 = true;
 		s___renderAgain0 = true;
 		{
-			sngl_catch __finally9 = {.up = sngl_catching};
-			sngl_catching = &__finally9;
-			if (setjmp(__finally9.at) == 0) {
+			sngl_catch __finally13 = {.up = sngl_catching};
+			sngl_catching = &__finally13;
+			if (setjmp(__finally13.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
 					s___anchor0 = sngl_win32_slot_anchor(parent, s___anchor0);
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
-	sngl_list_HWND __kept5 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
-	sngl_list_HWND *__slot5 = &(s___slot0);
-	sngl_list_HWND__drop(*__slot5);
-	*__slot5 = __kept5;
+	sngl_list_HWND __kept9 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
+	sngl_list_HWND *__slot9 = &(s___slot0);
+	sngl_list_HWND__drop(*__slot9);
+	*__slot9 = __kept9;
 }
 					if (s_on->value) {
 						HWND pic__r0 = sngl_win32_canvas();
@@ -1619,8 +2290,8 @@ static void s___renderSlot0(HWND parent) {
 						sngl_win32_set_canvas_width(pic__r0, (int)(60));
 						sngl_win32_set_canvas_height(pic__r0, (int)(20));
 						sngl_win32_set_scaling(pic__r0, (int)(0));
-						sngl_win32_on_click(pic__r0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda6, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
-						sngl_win32_on_paint(pic__r0, (sngl_win32_paint_fn)(void (*)(void))sngl_dispatch_sngl_win32_gfx_p__void, (void *)sngl_heap_copy(&(sngl_fn_sngl_win32_gfx_p__void[]){sngl_fn_sngl_win32_gfx_p__void__keep(((sngl_fn_sngl_win32_gfx_p__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_sngl_win32_gfx_p__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+						sngl_win32_on_click(pic__r0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda10, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+						sngl_win32_on_paint(pic__r0, (sngl_win32_paint_fn)(void (*)(void))sngl_dispatch_sngl_win32_gfx_p__void, (void *)sngl_heap_copy(&(sngl_fn_sngl_win32_gfx_p__void[]){sngl_fn_sngl_win32_gfx_p__void__keep(((sngl_fn_sngl_win32_gfx_p__void){sngl_lambda11, NULL}))}, sizeof(sngl_fn_sngl_win32_gfx_p__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
 						if (__place0_i < (__place0_prev).len) {
 							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
@@ -1636,19 +2307,19 @@ static void s___renderSlot0(HWND parent) {
 						}
 						sngl_list_HWND_push_kept(&(s___slot0), pic__r0);
 					}
-					for (struct { sngl_list_HWND l; int64_t i; } __loop8 = {__place0_prev, 0}; __loop8.i < __loop8.l.len; __loop8.i++) { HWND __place0_prev_e = __loop8.l.data[__loop8.i];
+					for (struct { sngl_list_HWND l; int64_t i; } __loop12 = {__place0_prev, 0}; __loop12.i < __loop12.l.len; __loop12.i++) { HWND __place0_prev_e = __loop12.l.data[__loop12.i];
 						if (sngl_list_HWND_index_of(s___slot0, __place0_prev_e) < 0) {
 							sngl_win32_remove(parent, __place0_prev_e);
 						}
 					}
 				}
-				sngl_catching = __finally9.up;
+				sngl_catching = __finally13.up;
 				s___rendering0 = false;
 			} else {
-				__finally9.message = sngl_raised.message;
-				__finally9.kind = sngl_raised.kind;
+				__finally13.message = sngl_raised.message;
+				__finally13.kind = sngl_raised.kind;
 				s___rendering0 = false;
-				sngl_raise(__finally9.message, __finally9.kind);
+				sngl_raise(__finally13.message, __finally13.kind);
 			}
 		}
 	}
@@ -1661,25 +2332,25 @@ static void s___renderSlot1(HWND parent) {
 		s___rendering1 = true;
 		s___renderAgain1 = true;
 		{
-			sngl_catch __finally21 = {.up = sngl_catching};
-			sngl_catching = &__finally21;
-			if (setjmp(__finally21.at) == 0) {
+			sngl_catch __finally25 = {.up = sngl_catching};
+			sngl_catching = &__finally25;
+			if (setjmp(__finally25.at) == 0) {
 				while (s___renderAgain1) {
 					s___renderAgain1 = false;
 					s___anchor1 = sngl_win32_slot_anchor(parent, s___anchor1);
 					sngl_list_HWND __place1_prev = s___slot1;
 					int64_t __place1_i = 0;
 					{
-	sngl_list_HWND __kept10 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
-	sngl_list_HWND *__slot10 = &(s___slot1);
-	sngl_list_HWND__drop(*__slot10);
-	*__slot10 = __kept10;
+	sngl_list_HWND __kept14 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
+	sngl_list_HWND *__slot14 = &(s___slot1);
+	sngl_list_HWND__drop(*__slot14);
+	*__slot14 = __kept14;
 }
 					sngl_map_string__dot__inst __inst2_next = ((sngl_map_string__dot__inst){0});
 					sngl_map_string__int __inst2_seen = ((sngl_map_string__int){0});
 					sngl_map_string____canvas0__inst __inst3_next = ((sngl_map_string____canvas0__inst){0});
 					sngl_map_string__int __inst3_seen = ((sngl_map_string__int){0});
-					for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop11 = {s___identified0(s_rs), 0}; __loop11.i < __loop11.l.len; __loop11.i++) { s___anon_id_elem_4ccb28 r = __loop11.l.data[__loop11.i];
+					for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop15 = {s___identified0(s_rs), 0}; __loop15.i < __loop15.l.len; __loop15.i++) { s___anon_id_elem_4ccb28 r = __loop15.l.data[__loop15.i];
 						s_dot__inst * __n0 = NULL;
 						sngl_string __key3 = r.id;
 						int64_t __key3_n = sngl_map_string__int_get(__inst2_seen, __key3, 0);
@@ -1722,14 +2393,14 @@ static void s___renderSlot1(HWND parent) {
 						}
 						if (sngl_map_string____canvas0__inst_find(s___inst3_live->value, __key4) >= 0) {
 							__n1 = sngl_map_string____canvas0__inst_get(s___inst3_live->value, __key4, NULL);
-							s___canvas0__set___on0(__n1, ((sngl_fn_void__void){sngl_lambda12, NULL}));
+							s___canvas0__set___on0(__n1, ((sngl_fn_void__void){sngl_lambda16, NULL}));
 							s___canvas0__set___p0(__n1, r);
 							s___canvas0__set___p1(__n1, s_hits->value);
 						} else {
 							if (sngl_map_string____canvas0__inst_find(s___inst3_live->value, __key4) >= 0) {
 								s___canvas0__destroy(sngl_map_string____canvas0__inst_get(s___inst3_live->value, __key4, NULL));
 							}
-							s___canvas0__inst * __n1__made = s___canvas0__new(r, s_hits->value, ((sngl_fn_void__void){sngl_lambda14, NULL}));
+							s___canvas0__inst * __n1__made = s___canvas0__new(r, s_hits->value, ((sngl_fn_void__void){sngl_lambda18, NULL}));
 							__n1 = __n1__made;
 						}
 						(*sngl_map_string____canvas0__inst_slot(&(__inst3_next), __key4)) = __n1;
@@ -1749,103 +2420,103 @@ static void s___renderSlot1(HWND parent) {
 						}
 						sngl_list_HWND_push_kept(&(s___slot1), __n1__el);
 					}
-					for (struct { sngl_map_string__dot__inst m; int64_t i; } __loop16 = {s___inst2_live, 0}; __loop16.i < __loop16.m.len; __loop16.i++) { sngl_string __inst2_live_k = __loop16.m.keys[__loop16.i]; s_dot__inst * __inst2_live_v = __loop16.m.vals[__loop16.i];
+					for (struct { sngl_map_string__dot__inst m; int64_t i; } __loop20 = {s___inst2_live, 0}; __loop20.i < __loop20.m.len; __loop20.i++) { sngl_string __inst2_live_k = __loop20.m.keys[__loop20.i]; s_dot__inst * __inst2_live_v = __loop20.m.vals[__loop20.i];
 						if (!(sngl_map_string__dot__inst_find(__inst2_next, __inst2_live_k) >= 0)) {
 							s_dot__destroy(__inst2_live_v);
 						}
 					}
 					{
-	sngl_map_string__dot__inst __kept17 = sngl_map_string__dot__inst__keep(__inst2_next);
-	sngl_map_string__dot__inst *__slot17 = &(s___inst2_live);
-	sngl_map_string__dot__inst__drop(*__slot17);
-	*__slot17 = __kept17;
+	sngl_map_string__dot__inst __kept21 = sngl_map_string__dot__inst__keep(__inst2_next);
+	sngl_map_string__dot__inst *__slot21 = &(s___inst2_live);
+	sngl_map_string__dot__inst__drop(*__slot21);
+	*__slot21 = __kept21;
 }
-					for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop18 = {s___inst3_live->value, 0}; __loop18.i < __loop18.m.len; __loop18.i++) { sngl_string __inst3_live_k = __loop18.m.keys[__loop18.i]; s___canvas0__inst * __inst3_live_v = __loop18.m.vals[__loop18.i];
+					for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop22 = {s___inst3_live->value, 0}; __loop22.i < __loop22.m.len; __loop22.i++) { sngl_string __inst3_live_k = __loop22.m.keys[__loop22.i]; s___canvas0__inst * __inst3_live_v = __loop22.m.vals[__loop22.i];
 						if (!(sngl_map_string____canvas0__inst_find(__inst3_next, __inst3_live_k) >= 0)) {
 							s___canvas0__destroy(__inst3_live_v);
 						}
 					}
 					{
-	sngl_map_string____canvas0__inst __kept19 = sngl_map_string____canvas0__inst__keep(__inst3_next);
-	sngl_map_string____canvas0__inst *__slot19 = &(s___inst3_live->value);
-	sngl_map_string____canvas0__inst__drop(*__slot19);
-	*__slot19 = __kept19;
+	sngl_map_string____canvas0__inst __kept23 = sngl_map_string____canvas0__inst__keep(__inst3_next);
+	sngl_map_string____canvas0__inst *__slot23 = &(s___inst3_live->value);
+	sngl_map_string____canvas0__inst__drop(*__slot23);
+	*__slot23 = __kept23;
 }
-					for (struct { sngl_list_HWND l; int64_t i; } __loop20 = {__place1_prev, 0}; __loop20.i < __loop20.l.len; __loop20.i++) { HWND __place1_prev_e = __loop20.l.data[__loop20.i];
+					for (struct { sngl_list_HWND l; int64_t i; } __loop24 = {__place1_prev, 0}; __loop24.i < __loop24.l.len; __loop24.i++) { HWND __place1_prev_e = __loop24.l.data[__loop24.i];
 						if (sngl_list_HWND_index_of(s___slot1, __place1_prev_e) < 0) {
 							sngl_win32_remove(parent, __place1_prev_e);
 						}
 					}
 				}
-				sngl_catching = __finally21.up;
+				sngl_catching = __finally25.up;
 				s___rendering1 = false;
 			} else {
-				__finally21.message = sngl_raised.message;
-				__finally21.kind = sngl_raised.kind;
+				__finally25.message = sngl_raised.message;
+				__finally25.kind = sngl_raised.kind;
 				s___rendering1 = false;
-				sngl_raise(__finally21.message, __finally21.kind);
+				sngl_raise(__finally25.message, __finally25.kind);
 			}
 		}
 	}
 }
 
 static void s___snglTeardown(void) {
-	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop22 = {s___inst3_live->value, 0}; __loop22.i < __loop22.m.len; __loop22.i++) { sngl_string __inst3_live_dk = __loop22.m.keys[__loop22.i]; s___canvas0__inst * __inst3_live_dv = __loop22.m.vals[__loop22.i];
+	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop26 = {s___inst3_live->value, 0}; __loop26.i < __loop26.m.len; __loop26.i++) { sngl_string __inst3_live_dk = __loop26.m.keys[__loop26.i]; s___canvas0__inst * __inst3_live_dv = __loop26.m.vals[__loop26.i];
 		s___canvas0__destroy(__inst3_live_dv);
 	}
 	{
-	sngl_map_string____canvas0__inst __kept23 = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}));
-	sngl_map_string____canvas0__inst *__slot23 = &(s___inst3_live->value);
-	sngl_map_string____canvas0__inst__drop(*__slot23);
-	*__slot23 = __kept23;
+	sngl_map_string____canvas0__inst __kept27 = sngl_map_string____canvas0__inst__keep(((sngl_map_string____canvas0__inst){0}));
+	sngl_map_string____canvas0__inst *__slot27 = &(s___inst3_live->value);
+	sngl_map_string____canvas0__inst__drop(*__slot27);
+	*__slot27 = __kept27;
 }
-	for (struct { sngl_map_string__dot__inst m; int64_t i; } __loop24 = {s___inst2_live, 0}; __loop24.i < __loop24.m.len; __loop24.i++) { sngl_string __inst2_live_dk = __loop24.m.keys[__loop24.i]; s_dot__inst * __inst2_live_dv = __loop24.m.vals[__loop24.i];
+	for (struct { sngl_map_string__dot__inst m; int64_t i; } __loop28 = {s___inst2_live, 0}; __loop28.i < __loop28.m.len; __loop28.i++) { sngl_string __inst2_live_dk = __loop28.m.keys[__loop28.i]; s_dot__inst * __inst2_live_dv = __loop28.m.vals[__loop28.i];
 		s_dot__destroy(__inst2_live_dv);
 	}
 	{
-	sngl_map_string__dot__inst __kept25 = sngl_map_string__dot__inst__keep(((sngl_map_string__dot__inst){0}));
-	sngl_map_string__dot__inst *__slot25 = &(s___inst2_live);
-	sngl_map_string__dot__inst__drop(*__slot25);
-	*__slot25 = __kept25;
+	sngl_map_string__dot__inst __kept29 = sngl_map_string__dot__inst__keep(((sngl_map_string__dot__inst){0}));
+	sngl_map_string__dot__inst *__slot29 = &(s___inst2_live);
+	sngl_map_string__dot__inst__drop(*__slot29);
+	*__slot29 = __kept29;
 }
 }
 
 static void s_platform_win32____drawing1_paint_handler(sngl_win32_gfx * ctx) {
 	s_ui_draw__Point at = (s_ui_draw__Point){.x = 0.0, .y = 0.0};
-	sngl_win32_gfx_save(ctx);
-	for (struct { sngl_list__step__record l; int64_t i; } __loop26 = {sngl_list__step__record_of(5, (s_ui_draw___step__record[]){(s_ui_draw___step__record){.op = 0, .x = 0.0, .y = 40.0, .cx1 = 0.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 0.0}, (s_ui_draw___step__record){.op = 1, .x = 0.0, .y = 0.0, .cx1 = 0.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 0.0}, (s_ui_draw___step__record){.op = 3, .x = 60.0, .y = 40.0, .cx1 = 60.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 10.0}, (s_ui_draw___step__record){.op = 2, .x = 90.0, .y = 20.0, .cx1 = 70.0, .cy1 = 0.0, .cx2 = 80.0, .cy2 = 40.0, .r = 0.0}, (s_ui_draw___step__record){.op = 4, .x = 0.0, .y = 0.0, .cx1 = 0.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 0.0}}), 0}; __loop26.i < __loop26.l.len; __loop26.i++) { s_ui_draw___step__record c = __loop26.l.data[__loop26.i];
+	s_platform_win32__Gfx_save(ctx);
+	for (struct { sngl_list__step__record l; int64_t i; } __loop30 = {sngl_list__step__record_of(5, (s_ui_draw___step__record[]){(s_ui_draw___step__record){.op = 0, .x = 0.0, .y = 40.0, .cx1 = 0.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 0.0}, (s_ui_draw___step__record){.op = 1, .x = 0.0, .y = 0.0, .cx1 = 0.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 0.0}, (s_ui_draw___step__record){.op = 3, .x = 60.0, .y = 40.0, .cx1 = 60.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 10.0}, (s_ui_draw___step__record){.op = 2, .x = 90.0, .y = 20.0, .cx1 = 70.0, .cy1 = 0.0, .cx2 = 80.0, .cy2 = 40.0, .r = 0.0}, (s_ui_draw___step__record){.op = 4, .x = 0.0, .y = 0.0, .cx1 = 0.0, .cy1 = 0.0, .cx2 = 0.0, .cy2 = 0.0, .r = 0.0}}), 0}; __loop30.i < __loop30.l.len; __loop30.i++) { s_ui_draw___step__record c = __loop30.l.data[__loop30.i];
 		if (c.op == 0) {
-			sngl_win32_gfx_move_to(ctx, (double)(c.x), (double)(c.y));
+			s_platform_win32__Gfx_moveTo(ctx, c.x, c.y);
 			at = (s_ui_draw__Point){.x = c.x, .y = c.y};
 		}
 		if (c.op == 1) {
-			sngl_win32_gfx_line_to(ctx, (double)(c.x), (double)(c.y));
+			s_platform_win32__Gfx_lineTo(ctx, c.x, c.y);
 			at = (s_ui_draw__Point){.x = c.x, .y = c.y};
 		}
 		if (c.op == 2) {
-			sngl_win32_gfx_curve_to(ctx, (double)(c.cx1), (double)(c.cy1), (double)(c.cx2), (double)(c.cy2), (double)(c.x), (double)(c.y));
+			s_platform_win32__Gfx_curveTo(ctx, c.cx1, c.cy1, c.cx2, c.cy2, c.x, c.y);
 			at = (s_ui_draw__Point){.x = c.x, .y = c.y};
 		}
 		if (c.op == 3) {
 			at = s_platform_win32__arcTo(ctx, at, (s_ui_draw__Point){.x = c.cx1, .y = c.cy1}, (s_ui_draw__Point){.x = c.x, .y = c.y}, c.r);
 		}
 		if (c.op == 4) {
-			sngl_win32_gfx_close_path(ctx);
+			s_platform_win32__Gfx_closePath(ctx);
 		}
 	}
 	s_platform_win32__paint(ctx, (s_ui_draw__Style__draw){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 255}, .strokeWidth = 2.0, .lineCap = 0, .lineJoin = 1, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
-	sngl_win32_gfx_restore(ctx);
-	sngl_win32_gfx_save(ctx);
-	sngl_win32_gfx_font(ctx, (const unsigned short *)sngl_utf16(SNGL_STR("serif")), (double)(12.0));
+	s_platform_win32__Gfx_restore(ctx);
+	s_platform_win32__Gfx_save(ctx);
+	s_platform_win32__Gfx_font(ctx, SNGL_STR("serif"), 12.0);
 	s_platform_win32__source(ctx, (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 255});
-	sngl_win32_gfx_move_to(ctx, (double)(4.0), (double)(30.0));
-	sngl_win32_gfx_text(ctx, (const unsigned short *)sngl_utf16(SNGL_STR("hi")));
-	sngl_win32_gfx_restore(ctx);
+	s_platform_win32__Gfx_moveTo(ctx, 4.0, 30.0);
+	s_platform_win32__Gfx_showText(ctx, SNGL_STR("hi"));
+	s_platform_win32__Gfx_restore(ctx);
 }
 
 static void s___lambda4(s___lambda4_caps state) {
 	state.hits->value += 1;
-	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop27 = {state.__inst3_live->value, 0}; __loop27.i < __loop27.m.len; __loop27.i++) { sngl_string __inst3_live_uk = __loop27.m.keys[__loop27.i]; s___canvas0__inst * __inst3_live_uv = __loop27.m.vals[__loop27.i];
+	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop31 = {state.__inst3_live->value, 0}; __loop31.i < __loop31.m.len; __loop31.i++) { sngl_string __inst3_live_uk = __loop31.m.keys[__loop31.i]; s___canvas0__inst * __inst3_live_uv = __loop31.m.vals[__loop31.i];
 		s___canvas0__set___p1(__inst3_live_uv, state.hits->value);
 	}
 	sngl_win32_redraw(s_board);
@@ -1853,10 +2524,10 @@ static void s___lambda4(s___lambda4_caps state) {
 }
 
 static void s___lambda5(s___lambda5_caps state, sngl_win32_gfx * ctx) {
-	sngl_win32_gfx_save(ctx);
-	sngl_win32_gfx_rect(ctx, (double)(0.0), (double)(0.0), (double)((double)(state.hits->value)), (double)(10.0));
+	s_platform_win32__Gfx_save(ctx);
+	s_platform_win32__Gfx_rectangle(ctx, 0.0, 0.0, (double)(state.hits->value), 10.0);
 	s_platform_win32__paint(ctx, (s_ui_draw__Style__draw){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 1, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
-	sngl_win32_gfx_restore(ctx);
+	s_platform_win32__Gfx_restore(ctx);
 }
 
 static void s___lambda6(s___lambda6_caps state) {
@@ -1865,6 +2536,16 @@ static void s___lambda6(s___lambda6_caps state) {
 }
 
 static void sngl_init(void) {
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
+	s_platform_win32___depth = 0;
+	s_platform_win32___fx = 0.0;
+	s_platform_win32___fy = 0.0;
+	s_platform_win32___paintSerial = 0;
+	s_platform_win32___pen = s_platform_win32___Pen__keep((s_platform_win32___Pen){.r = 0, .g = 0, .b = 0, .a = 255, .width = 1.0, .cap = 0, .join = 0, .fontPx = 16.0, .family = SNGL_STR("sans-serif")});
+	s_platform_win32___saved = sngl_list__Saved__keep(((sngl_list__Saved){0}));
+	s_platform_win32___x = 0.0;
+	s_platform_win32___y = 0.0;
 	s_hits = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
 	s_on = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
 	s_rs = sngl_list_float__keep(sngl_list_float_of(2, (double[]){4.0, 8.0}));
@@ -1916,36 +2597,36 @@ int main(void) {
 	return 0;
 }
 
-static void sngl_lambda2(void *env_) {
-}
-
 static void sngl_lambda6(void *env_) {
 }
 
-static void sngl_lambda7(void *env_, sngl_win32_gfx * ctx) {
-	sngl_win32_gfx_save(ctx);
-	sngl_win32_gfx_move_to(ctx, (double)(0.0), (double)(0.0));
-	sngl_win32_gfx_line_to(ctx, (double)((double)(s_hits->value)), (double)(20.0));
-	sngl_win32_gfx_line_width(ctx, (double)(1.0));
-	sngl_win32_gfx_line_cap(ctx, (int)(0));
-	sngl_win32_gfx_line_join(ctx, (int)(0));
-	s_platform_win32__source(ctx, (s_builtin__color){.r = 51, .g = 102, .b = 153, .a = 255});
-	sngl_win32_gfx_stroke(ctx);
-	sngl_win32_gfx_restore(ctx);
+static void sngl_lambda10(void *env_) {
 }
 
-static void sngl_lambda12(void *env_) {
+static void sngl_lambda11(void *env_, sngl_win32_gfx * ctx) {
+	s_platform_win32__Gfx_save(ctx);
+	s_platform_win32__Gfx_moveTo(ctx, 0.0, 0.0);
+	s_platform_win32__Gfx_lineTo(ctx, (double)(s_hits->value), 20.0);
+	s_platform_win32__Gfx_lineWidth(ctx, 1.0);
+	s_platform_win32__Gfx_lineCap(ctx, 0);
+	s_platform_win32__Gfx_lineJoin(ctx, 0);
+	s_platform_win32__source(ctx, (s_builtin__color){.r = 51, .g = 102, .b = 153, .a = 255});
+	s_platform_win32__Gfx_stroke(ctx);
+	s_platform_win32__Gfx_restore(ctx);
+}
+
+static void sngl_lambda16(void *env_) {
 	s_hits->value += 1;
-	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop13 = {s___inst3_live->value, 0}; __loop13.i < __loop13.m.len; __loop13.i++) { sngl_string __inst3_live_uk = __loop13.m.keys[__loop13.i]; s___canvas0__inst * __inst3_live_uv = __loop13.m.vals[__loop13.i];
+	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop17 = {s___inst3_live->value, 0}; __loop17.i < __loop17.m.len; __loop17.i++) { sngl_string __inst3_live_uk = __loop17.m.keys[__loop17.i]; s___canvas0__inst * __inst3_live_uv = __loop17.m.vals[__loop17.i];
 		s___canvas0__set___p1(__inst3_live_uv, s_hits->value);
 	}
 	sngl_win32_redraw(s_board);
 	sngl_win32_redraw(s_pic);
 }
 
-static void sngl_lambda14(void *env_) {
+static void sngl_lambda18(void *env_) {
 	s_hits->value += 1;
-	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop15 = {s___inst3_live->value, 0}; __loop15.i < __loop15.m.len; __loop15.i++) { sngl_string __inst3_live_uk = __loop15.m.keys[__loop15.i]; s___canvas0__inst * __inst3_live_uv = __loop15.m.vals[__loop15.i];
+	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop19 = {s___inst3_live->value, 0}; __loop19.i < __loop19.m.len; __loop19.i++) { sngl_string __inst3_live_uk = __loop19.m.keys[__loop19.i]; s___canvas0__inst * __inst3_live_uv = __loop19.m.vals[__loop19.i];
 		s___canvas0__set___p1(__inst3_live_uv, s_hits->value);
 	}
 	sngl_win32_redraw(s_board);
@@ -1974,4 +2655,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:0fb54cc7d2e6805c795f53e4b8ed7e45
+pass sha256:8be8dc9c2a931ecd0b193ad6be0124bb

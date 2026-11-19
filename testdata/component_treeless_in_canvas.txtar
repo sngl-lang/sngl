@@ -4433,11 +4433,15 @@ const SnglAsset sngl_assets[] = {
 #include "sngl.h"
 #include "sngl_win32.h"
 #include <windows.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <math.h>
 
 typedef struct s___ref_int s___ref_int;
 typedef struct s___ref_bool s___ref_bool;
+typedef struct s_platform_win32___Pen s_platform_win32___Pen;
+typedef struct s_platform_win32___Saved s_platform_win32___Saved;
+typedef struct sngl_list__Saved sngl_list__Saved;
 typedef struct sngl_list_bool sngl_list_bool;
 typedef struct sngl_list_int sngl_list_int;
 typedef struct s_ui__Style s_ui__Style;
@@ -4448,10 +4452,13 @@ typedef struct sngl_opt_int sngl_opt_int;
 typedef struct s_builtin__color s_builtin__color;
 typedef struct sngl_opt_color sngl_opt_color;
 typedef struct s_platform_win32__Look s_platform_win32__Look;
+typedef struct s__gdipSaveGraphics__result s__gdipSaveGraphics__result;
 typedef struct s_ui_draw__Style__draw s_ui_draw__Style__draw;
 typedef struct sngl_list_float sngl_list_float;
+typedef struct s__gdipCreateSolidFill__result s__gdipCreateSolidFill__result;
+typedef struct s__gdipCreatePen1__result s__gdipCreatePen1__result;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
-typedef struct sngl_lambda4_env sngl_lambda4_env;
+typedef struct sngl_lambda7_env sngl_lambda7_env;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
@@ -4466,6 +4473,29 @@ typedef struct s___ref_int {
 typedef struct s___ref_bool {
 	bool value;
 } s___ref_bool;
+
+typedef struct s_platform_win32___Pen {
+	int64_t r;
+	int64_t g;
+	int64_t b;
+	int64_t a;
+	double width;
+	int64_t cap;
+	int64_t join;
+	double fontPx;
+	sngl_string family;
+} s_platform_win32___Pen;
+
+typedef struct s_platform_win32___Saved {
+	s_platform_win32___Pen pen;
+	int64_t state;
+} s_platform_win32___Saved;
+
+typedef struct sngl_list__Saved {
+	s_platform_win32___Saved *data;
+	int64_t len;
+	int64_t cap;
+} sngl_list__Saved;
 
 typedef struct sngl_list_bool {
 	bool *data;
@@ -4583,6 +4613,11 @@ typedef struct s_platform_win32__Look {
 	int64_t hidden;
 } s_platform_win32__Look;
 
+typedef struct s__gdipSaveGraphics__result {
+	int64_t result;
+	int64_t out1;
+} s__gdipSaveGraphics__result;
+
 typedef struct s_ui_draw__Style__draw {
 	s_builtin__color fill;
 	s_builtin__color stroke;
@@ -4599,14 +4634,24 @@ typedef struct sngl_list_float {
 	int64_t cap;
 } sngl_list_float;
 
+typedef struct s__gdipCreateSolidFill__result {
+	int64_t result;
+	void * out1;
+} s__gdipCreateSolidFill__result;
+
+typedef struct s__gdipCreatePen1__result {
+	int64_t result;
+	void * out3;
+} s__gdipCreatePen1__result;
+
 typedef struct sngl_fn_void__void {
 	void (*fn)(void *env);
 	void *env;
 } sngl_fn_void__void;
 
-typedef struct sngl_lambda4_env {
+typedef struct sngl_lambda7_env {
 	sngl_env hdr;
-} sngl_lambda4_env;
+} sngl_lambda7_env;
 
 typedef struct s___lambda0_caps {
 	s___ref_bool * visible__inst0;
@@ -4638,11 +4683,31 @@ typedef struct s___lambda1_caps__env {
 
 
 static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t otherwise);
+static void s_platform_win32__Gfx_save(sngl_win32_gfx * g);
+static void sngl_list__Saved__unshare(sngl_list__Saved *l);
+static s_platform_win32___Saved s_platform_win32___Saved__keep(s_platform_win32___Saved v);
+static s_platform_win32___Pen s_platform_win32___Pen__keep(s_platform_win32___Pen v);
+static void s_platform_win32__Gfx_newSubPath(sngl_win32_gfx * g);
+static void s_platform_win32__Gfx_arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double end);
 static void s_platform_win32__paint(sngl_win32_gfx * ctx, s_ui_draw__Style__draw style);
+static void s_platform_win32__Gfx_restore(sngl_win32_gfx * g);
+static void s_platform_win32___Pen__drop(s_platform_win32___Pen v);
+static void s_platform_win32___Saved__drop(s_platform_win32___Saved v);
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s);
+static void s_platform_win32___paintOf(sngl_win32_gfx * g);
+static sngl_list__Saved sngl_list__Saved__keep(sngl_list__Saved v);
+static void sngl_list__Saved__drop(sngl_list__Saved v);
+static void s_platform_win32___arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double sweep);
 static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c);
+static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve);
+static void s_platform_win32__Gfx_lineWidth(sngl_win32_gfx * g, double w);
+static void s_platform_win32__Gfx_lineCap(sngl_win32_gfx * g, int64_t cap);
+static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join);
+static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g);
 static int64_t s_platform_win32__inset(sngl_opt_measurement m);
 static int64_t s_platform_win32__rgb(sngl_opt_color c);
+static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a);
+static void s_platform_win32___newPath(sngl_win32_gfx * g);
 static void s___effect0_mount(void);
 static void s___effect0_down(void);
 static sngl_list_bool sngl_list_bool__keep(sngl_list_bool v);
@@ -4650,7 +4715,7 @@ static void sngl_list_bool__drop(sngl_list_bool v);
 static void sngl_list_bool__unshare(sngl_list_bool *l);
 static void s___effect0_up(void);
 static void s___effect1_mount(void);
-static void sngl_lambda4(void *env_);
+static void sngl_lambda7(void *env_);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___effect1_unmount(void);
 static void s___effect1_down(void);
@@ -4684,6 +4749,96 @@ static void s___lambda1_caps__env__rekeep(void *p);
 static void s___lambda1_caps__env__visit(void *p, sngl_visit fn);
 static sngl_fn_sngl_win32_gfx_p__void sngl_fn_sngl_win32_gfx_p__void__keep(sngl_fn_sngl_win32_gfx_p__void v);
 
+static s__gdipSaveGraphics__result sngl_ccall_GdipSaveGraphics__gdipSaveGraphics(void * a0, int64_t a1) {
+	GraphicsState t1 = (GraphicsState)a1;
+	s__gdipSaveGraphics__result r;
+	r.result = (int64_t)GdipSaveGraphics(a0, &t1);
+	r.out1 = (int64_t)t1;
+	return r;
+}
+
+static s_platform_win32___Pen s_platform_win32___Pen__keep(s_platform_win32___Pen v) {
+	v.family = sngl_string_keep(v.family);
+	return v;
+}
+
+static s_platform_win32___Saved s_platform_win32___Saved__keep(s_platform_win32___Saved v) {
+	v.pen = s_platform_win32___Pen__keep(v.pen);
+	return v;
+}
+
+static void sngl_list__Saved__unshare(sngl_list__Saved *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list__Saved v = *l;
+	sngl_let_go_shared(v.data);
+	s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_platform_win32___Saved) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s_platform_win32___Saved__keep(v.data[i]);
+	}
+	*l = v;
+}
+
+static void sngl_list__Saved_grow_kept(sngl_list__Saved *l, int64_t n) {
+	if (l->len + n <= l->cap) {
+		return;
+	}
+	int64_t cap = l->cap * 2;
+	if (cap < l->len + n) {
+		cap = l->len + n;
+	}
+	if (cap < 4) {
+		cap = 4;
+	}
+	s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)cap);
+	if (l->len > 0) {
+		memcpy(data, l->data, sizeof(s_platform_win32___Saved) * (size_t)l->len);
+	}
+	sngl_drop(l->data);
+	l->data = data;
+	l->cap = cap;
+}
+
+static void sngl_list__Saved_push_kept(sngl_list__Saved *l, s_platform_win32___Saved v) {
+	sngl_list__Saved__unshare(l);
+	sngl_list__Saved_grow_kept(l, 1);
+	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
+}
+
+static s_platform_win32___Saved *sngl_list__Saved_at(sngl_list__Saved l, int64_t i) {
+	if (i < 0 || i >= l.len) {
+		sngl_panic("index out of range");
+	}
+	return &l.data[i];
+}
+
+static void s_platform_win32___Pen__drop(s_platform_win32___Pen v) {
+	sngl_drop((v.family).ptr);
+}
+
+static void s_platform_win32___Saved__drop(s_platform_win32___Saved v) {
+	s_platform_win32___Pen__drop(v.pen);
+}
+
+static void sngl_list__Saved_remove_kept(sngl_list__Saved *l, int64_t i) {
+	if (i < 0 || i >= l->len) {
+		return;
+	}
+	sngl_list__Saved__unshare(l);
+	s_platform_win32___Saved__drop(l->data[i]);
+	memmove(&l->data[i], &l->data[i + 1], sizeof(s_platform_win32___Saved) * (size_t)(l->len - i - 1));
+	l->len--;
+	sngl_kept_len(l->data, l->len);
+}
+
 static double sngl_list_float_max(double m, sngl_list_float l) {
 	for (int64_t i = 0; i < l.len; i++) {
 		if (l.data[i] > m) {
@@ -4697,6 +4852,49 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
+}
+
+static sngl_list__Saved sngl_list__Saved__keep(sngl_list__Saved v) {
+	if (!sngl_share(v.data, v.len)) {
+		s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_platform_win32___Saved) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s_platform_win32___Saved__keep(v.data[i]);
+		}
+	}
+	return v;
+}
+
+static void sngl_list__Saved__drop(sngl_list__Saved v) {
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s_platform_win32___Saved__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
+	}
+}
+
+static s__gdipCreateSolidFill__result sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill(ARGB a0, void * a1) {
+	void * t1 = NULL;
+	(void)a1;
+	s__gdipCreateSolidFill__result r;
+	r.result = (int64_t)GdipCreateSolidFill(a0, &t1);
+	r.out1 = (void *)t1;
+	return r;
+}
+
+static s__gdipCreatePen1__result sngl_ccall_GdipCreatePen1__gdipCreatePen1(ARGB a0, REAL a1, GpUnit a2, void * a3) {
+	void * t3 = NULL;
+	(void)a3;
+	s__gdipCreatePen1__result r;
+	r.result = (int64_t)GdipCreatePen1(a0, a1, a2, &t3);
+	r.out3 = (void *)t3;
+	return r;
 }
 
 static sngl_list_bool sngl_list_bool__keep(sngl_list_bool v) {
@@ -4992,6 +5190,16 @@ static sngl_fn_sngl_win32_gfx_p__void sngl_fn_sngl_win32_gfx_p__void__keep(sngl_
 static s___ref_int * s_frame;
 static int64_t s_handle__inst0;
 static s___ref_bool * s_visible__inst0;
+static bool s_platform_win32___at;
+static bool s_platform_win32___begun;
+static int64_t s_platform_win32___depth;
+static double s_platform_win32___fx;
+static double s_platform_win32___fy;
+static int64_t s_platform_win32___paintSerial;
+static s_platform_win32___Pen s_platform_win32___pen;
+static sngl_list__Saved s_platform_win32___saved;
+static double s_platform_win32___x;
+static double s_platform_win32___y;
 static sngl_list_bool s___effect0_live;
 static sngl_list_bool s___effect0_desired;
 static int64_t s___effect1_key;
@@ -5013,17 +5221,62 @@ static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t
 	return look;
 }
 
+static void s_platform_win32__Gfx_save(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	if (s_platform_win32___depth < 16) {
+		int64_t state = 0;
+		s__gdipSaveGraphics__result __ref0 = sngl_ccall_GdipSaveGraphics__gdipSaveGraphics((g)->g, state);
+		state = __ref0.out1;
+		sngl_list__Saved_push_kept(&(s_platform_win32___saved), s_platform_win32___Saved__keep((s_platform_win32___Saved){.pen = s_platform_win32___pen, .state = state}));
+	}
+	s_platform_win32___depth += 1;
+}
+
+static void s_platform_win32__Gfx_newSubPath(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	(void)(int64_t)GdipStartPathFigure((g)->path);
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
+}
+
+static void s_platform_win32__Gfx_arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double end) {
+	s_platform_win32___paintOf(g);
+	double to = end;
+	while (to < start) {
+		to += 6.283185307179586;
+	}
+	s_platform_win32___arc(g, cx, cy, r, start, (to - start));
+}
+
 static void s_platform_win32__paint(sngl_win32_gfx * ctx, s_ui_draw__Style__draw style) {
 	if (style.fill.a > 0) {
 		s_platform_win32__source(ctx, style.fill);
-		sngl_win32_gfx_fill(ctx, (int)(((style.stroke.a > 0) ? 1 : 0)));
+		s_platform_win32__Gfx_fill(ctx, (style.stroke.a > 0));
 	}
 	if (style.stroke.a > 0) {
-		sngl_win32_gfx_line_width(ctx, (double)(style.strokeWidth));
-		sngl_win32_gfx_line_cap(ctx, (int)((int64_t)(style.lineCap)));
-		sngl_win32_gfx_line_join(ctx, (int)((int64_t)(style.lineJoin)));
+		s_platform_win32__Gfx_lineWidth(ctx, style.strokeWidth);
+		s_platform_win32__Gfx_lineCap(ctx, (int64_t)(style.lineCap));
+		s_platform_win32__Gfx_lineJoin(ctx, (int64_t)(style.lineJoin));
 		s_platform_win32__source(ctx, style.stroke);
-		sngl_win32_gfx_stroke(ctx);
+		s_platform_win32__Gfx_stroke(ctx);
+	}
+}
+
+static void s_platform_win32__Gfx_restore(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	if (s_platform_win32___depth > 0) {
+		s_platform_win32___depth -= 1;
+		if (s_platform_win32___depth < 16) {
+			s_platform_win32___Saved kept = (*sngl_list__Saved_at(s_platform_win32___saved, s_platform_win32___depth));
+			(void)(int64_t)GdipRestoreGraphics((g)->g, (GraphicsState)(kept.state));
+			{
+	s_platform_win32___Pen __kept1 = s_platform_win32___Pen__keep(kept.pen);
+	s_platform_win32___Pen *__slot1 = &(s_platform_win32___pen);
+	s_platform_win32___Pen__drop(*__slot1);
+	*__slot1 = __kept1;
+}
+			sngl_list__Saved_remove_kept(&(s_platform_win32___saved), s_platform_win32___depth);
+		}
 	}
 }
 
@@ -5032,8 +5285,114 @@ static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
 	return look;
 }
 
+static void s_platform_win32___paintOf(sngl_win32_gfx * g) {
+	int64_t serial = (int64_t)(g)->serial;
+	if (serial != s_platform_win32___paintSerial) {
+		s_platform_win32___paintSerial = serial;
+		s_platform_win32___x = 0.0;
+		s_platform_win32___y = 0.0;
+		s_platform_win32___fx = 0.0;
+		s_platform_win32___fy = 0.0;
+		s_platform_win32___at = false;
+		s_platform_win32___begun = false;
+		{
+	s_platform_win32___Pen __kept2 = s_platform_win32___Pen__keep((s_platform_win32___Pen){.r = 0, .g = 0, .b = 0, .a = 255, .width = 1.0, .cap = 0, .join = 0, .fontPx = 16.0, .family = SNGL_STR("sans-serif")});
+	s_platform_win32___Pen *__slot2 = &(s_platform_win32___pen);
+	s_platform_win32___Pen__drop(*__slot2);
+	*__slot2 = __kept2;
+}
+		{
+	sngl_list__Saved __kept3 = sngl_list__Saved__keep(((sngl_list__Saved){0}));
+	sngl_list__Saved *__slot3 = &(s_platform_win32___saved);
+	sngl_list__Saved__drop(*__slot3);
+	*__slot3 = __kept3;
+}
+		s_platform_win32___depth = 0;
+	}
+}
+
+static void s_platform_win32___arc(sngl_win32_gfx * g, double cx, double cy, double r, double start, double sweep) {
+	double tau = 6.283185307179586;
+	double turn = ((sweep > tau) ? tau : ((sweep < (-tau)) ? (-tau) : sweep));
+	double sx = (cx + (r * cos(start)));
+	double sy = (cy + (r * sin(start)));
+	if (s_platform_win32___at && !s_platform_win32___begun) {
+		(void)(int64_t)GdipAddPathLine((g)->path, (REAL)(s_platform_win32___x), (REAL)(s_platform_win32___y), (REAL)(sx), (REAL)(sy));
+	} else {
+		if (!s_platform_win32___at) {
+			s_platform_win32___fx = sx;
+			s_platform_win32___fy = sy;
+		}
+	}
+	int64_t n = sngl_float_int(ceil(((fabs(turn) / (tau / 4.0)) - 1e-09)));
+	double step = ((n > 0) ? (turn / (double)(n)) : 0.0);
+	double k = (1.3333333333333333 * tan((step / 4.0)));
+	double a = start;
+	int64_t i = 0;
+	while ((r > 0.0) && (i < n)) {
+		double b = (a + step);
+		double x0 = (cx + (r * cos(a)));
+		double y0 = (cy + (r * sin(a)));
+		double x3 = (cx + (r * cos(b)));
+		double y3 = (cy + (r * sin(b)));
+		(void)(int64_t)GdipAddPathBezier((g)->path, (REAL)(x0), (REAL)(y0), (REAL)((x0 - ((k * r) * sin(a)))), (REAL)((y0 + ((k * r) * cos(a)))), (REAL)((x3 + ((k * r) * sin(b)))), (REAL)((y3 - ((k * r) * cos(b)))), (REAL)(x3), (REAL)(y3));
+		i += 1;
+		a += step;
+	}
+	s_platform_win32___x = (cx + (r * cos((start + turn))));
+	s_platform_win32___y = (cy + (r * sin((start + turn))));
+	s_platform_win32___at = true;
+	s_platform_win32___begun = true;
+}
+
 static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c) {
-	sngl_win32_gfx_color(ctx, (int)((int64_t)(c.r)), (int)((int64_t)(c.g)), (int)((int64_t)(c.b)), (int)((int64_t)(c.a)));
+	s_platform_win32__Gfx_color(ctx, (int64_t)(c.r), (int64_t)(c.g), (int64_t)(c.b), (int64_t)(c.a));
+}
+
+static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve) {
+	s_platform_win32___paintOf(g);
+	void * brush = NULL;
+	s__gdipCreateSolidFill__result __ref1 = sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), brush);
+	brush = __ref1.out1;
+	if ((__ref1.result == 0) && (brush != NULL)) {
+		(void)(int64_t)GdipFillPath((g)->g, (void *)(brush), (g)->path);
+		(void)(int64_t)GdipDeleteBrush((void *)(brush));
+	}
+	if (!preserve) {
+		s_platform_win32___newPath(g);
+	}
+}
+
+static void s_platform_win32__Gfx_lineWidth(sngl_win32_gfx * g, double w) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.width = w;
+}
+
+static void s_platform_win32__Gfx_lineCap(sngl_win32_gfx * g, int64_t cap) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.cap = cap;
+}
+
+static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.join = join;
+}
+
+static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	int64_t cap = (((s_platform_win32___pen.cap >= 0) && (s_platform_win32___pen.cap < 3)) ? s_platform_win32___pen.cap : 0);
+	int64_t join = (((s_platform_win32___pen.join >= 0) && (s_platform_win32___pen.join < 3)) ? s_platform_win32___pen.join : 0);
+	void * pen = NULL;
+	s__gdipCreatePen1__result __ref2 = sngl_ccall_GdipCreatePen1__gdipCreatePen1((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), (REAL)(s_platform_win32___pen.width), (GpUnit)(2), pen);
+	pen = __ref2.out3;
+	if ((__ref2.result == 0) && (pen != NULL)) {
+		int64_t line = ((cap == 1) ? 2 : ((cap == 2) ? 1 : 0));
+		(void)(int64_t)GdipSetPenLineCap197819(pen, (GpLineCap)(line), (GpLineCap)(line), (GpDashCap)(((cap == 1) ? 2 : 0)));
+		(void)(int64_t)GdipSetPenLineJoin(pen, (GpLineJoin)(((join == 1) ? 2 : ((join == 2) ? 1 : 0))));
+		(void)(int64_t)GdipDrawPath((g)->g, pen, (g)->path);
+		(void)(int64_t)GdipDeletePen(pen);
+	}
+	s_platform_win32___newPath(g);
 }
 
 static int64_t s_platform_win32__inset(sngl_opt_measurement m) {
@@ -5047,6 +5406,21 @@ static int64_t s_platform_win32__rgb(sngl_opt_color c) {
 	return -1;
 }
 
+static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.r = ((r < 0) ? 0 : ((r > 255) ? 255 : r));
+	s_platform_win32___pen.g = ((gr < 0) ? 0 : ((gr > 255) ? 255 : gr));
+	s_platform_win32___pen.b = ((b < 0) ? 0 : ((b > 255) ? 255 : b));
+	s_platform_win32___pen.a = ((a < 0) ? 0 : ((a > 255) ? 255 : a));
+}
+
+static void s_platform_win32___newPath(sngl_win32_gfx * g) {
+	(void)(int64_t)GdipResetPath((g)->path);
+	(void)(int64_t)GdipSetPathFillMode((g)->path, (GpFillMode)(1));
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
+}
+
 static void s___effect0_mount(void) {
 	s_frame->value = 4;
 	sngl_win32_redraw(s___drawing0);
@@ -5054,16 +5428,16 @@ static void s___effect0_mount(void) {
 
 static void s___effect0_down(void) {
 	{
-	sngl_list_bool __kept1 = sngl_list_bool__keep(((sngl_list_bool){0}));
-	sngl_list_bool *__slot1 = &(s___effect0_desired);
-	sngl_list_bool__drop(*__slot1);
-	*__slot1 = __kept1;
+	sngl_list_bool __kept4 = sngl_list_bool__keep(((sngl_list_bool){0}));
+	sngl_list_bool *__slot4 = &(s___effect0_desired);
+	sngl_list_bool__drop(*__slot4);
+	*__slot4 = __kept4;
 }
 	sngl_list_bool_push_kept(&(s___effect0_desired), true);
 }
 
 static void s___effect0_up(void) {
-	for (struct { sngl_list_bool l; int64_t i; } __loop2 = {s___effect0_desired, 0}; __loop2.i < __loop2.l.len; __loop2.i++) { int64_t __effect0_i = __loop2.i; bool __effect0_k = __loop2.l.data[__loop2.i];
+	for (struct { sngl_list_bool l; int64_t i; } __loop5 = {s___effect0_desired, 0}; __loop5.i < __loop5.l.len; __loop5.i++) { int64_t __effect0_i = __loop5.i; bool __effect0_k = __loop5.l.data[__loop5.i];
 		if (__effect0_i >= (s___effect0_live).len) {
 			s___effect0_mount();
 		} else {
@@ -5073,15 +5447,15 @@ static void s___effect0_up(void) {
 		}
 	}
 	{
-	sngl_list_bool __kept3 = sngl_list_bool__keep(s___effect0_desired);
-	sngl_list_bool *__slot3 = &(s___effect0_live);
-	sngl_list_bool__drop(*__slot3);
-	*__slot3 = __kept3;
+	sngl_list_bool __kept6 = sngl_list_bool__keep(s___effect0_desired);
+	sngl_list_bool *__slot6 = &(s___effect0_live);
+	sngl_list_bool__drop(*__slot6);
+	*__slot6 = __kept6;
 }
 }
 
 static void s___effect1_mount(void) {
-	s_handle__inst0 = (int64_t)sngl_win32_every((int)(s___effect1_key), (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda4, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
+	s_handle__inst0 = (int64_t)sngl_win32_every((int)(s___effect1_key), (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 }
 
 static void s___effect1_unmount(void) {
@@ -5090,13 +5464,13 @@ static void s___effect1_unmount(void) {
 
 static void s___effect1_down(void) {
 	{
-	sngl_list_int __kept5 = sngl_list_int__keep(((sngl_list_int){0}));
-	sngl_list_int *__slot5 = &(s___effect1_desired);
-	sngl_list_int__drop(*__slot5);
-	*__slot5 = __kept5;
+	sngl_list_int __kept8 = sngl_list_int__keep(((sngl_list_int){0}));
+	sngl_list_int *__slot8 = &(s___effect1_desired);
+	sngl_list_int__drop(*__slot8);
+	*__slot8 = __kept8;
 }
 	sngl_list_int_push_kept(&(s___effect1_desired), 100);
-	for (struct { sngl_list_int l; int64_t i; } __loop6 = {s___effect1_live, 0}; __loop6.i < __loop6.l.len; __loop6.i++) { int64_t __effect1_i = __loop6.i; int64_t _ = __loop6.l.data[__loop6.i];
+	for (struct { sngl_list_int l; int64_t i; } __loop9 = {s___effect1_live, 0}; __loop9.i < __loop9.l.len; __loop9.i++) { int64_t __effect1_i = __loop9.i; int64_t _ = __loop9.l.data[__loop9.i];
 		int64_t __effect1_j = (((s___effect1_live).len - 1) - __effect1_i);
 		if (__effect1_j >= (s___effect1_desired).len) {
 			s___effect1_key = (*sngl_list_int_at(s___effect1_live, __effect1_j));
@@ -5111,7 +5485,7 @@ static void s___effect1_down(void) {
 }
 
 static void s___effect1_up(void) {
-	for (struct { sngl_list_int l; int64_t i; } __loop7 = {s___effect1_desired, 0}; __loop7.i < __loop7.l.len; __loop7.i++) { int64_t __effect1_i = __loop7.i; int64_t __effect1_k = __loop7.l.data[__loop7.i];
+	for (struct { sngl_list_int l; int64_t i; } __loop10 = {s___effect1_desired, 0}; __loop10.i < __loop10.l.len; __loop10.i++) { int64_t __effect1_i = __loop10.i; int64_t __effect1_k = __loop10.l.data[__loop10.i];
 		if (__effect1_i >= (s___effect1_live).len) {
 			s___effect1_key = __effect1_k;
 			s___effect1_mount();
@@ -5123,23 +5497,23 @@ static void s___effect1_up(void) {
 		}
 	}
 	{
-	sngl_list_int __kept8 = sngl_list_int__keep(s___effect1_desired);
-	sngl_list_int *__slot8 = &(s___effect1_live);
-	sngl_list_int__drop(*__slot8);
-	*__slot8 = __kept8;
+	sngl_list_int __kept11 = sngl_list_int__keep(s___effect1_desired);
+	sngl_list_int *__slot11 = &(s___effect1_live);
+	sngl_list_int__drop(*__slot11);
+	*__slot11 = __kept11;
 }
 }
 
 static void s___effect1_teardown(void) {
-	for (struct { sngl_list_int l; int64_t i; } __loop9 = {s___effect1_live, 0}; __loop9.i < __loop9.l.len; __loop9.i++) { int64_t __effect1_ti = __loop9.i; int64_t _ = __loop9.l.data[__loop9.i];
+	for (struct { sngl_list_int l; int64_t i; } __loop12 = {s___effect1_live, 0}; __loop12.i < __loop12.l.len; __loop12.i++) { int64_t __effect1_ti = __loop12.i; int64_t _ = __loop12.l.data[__loop12.i];
 		s___effect1_key = (*sngl_list_int_at(s___effect1_live, (((s___effect1_live).len - 1) - __effect1_ti)));
 		s___effect1_unmount();
 	}
 	{
-	sngl_list_int __kept10 = sngl_list_int__keep(((sngl_list_int){0}));
-	sngl_list_int *__slot10 = &(s___effect1_live);
-	sngl_list_int__drop(*__slot10);
-	*__slot10 = __kept10;
+	sngl_list_int __kept13 = sngl_list_int__keep(((sngl_list_int){0}));
+	sngl_list_int *__slot13 = &(s___effect1_live);
+	sngl_list_int__drop(*__slot13);
+	*__slot13 = __kept13;
 }
 }
 
@@ -5178,17 +5552,27 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 }
 
 static void s___lambda1(s___lambda1_caps state, sngl_win32_gfx * ctx) {
-	sngl_win32_gfx_save(ctx);
-	sngl_win32_gfx_new_sub_path(ctx);
-	sngl_win32_gfx_arc(ctx, (double)(20.0), (double)(20.0), (double)((double)(state.frame->value)), (double)(0.0), (double)(6.283185307179586));
+	s_platform_win32__Gfx_save(ctx);
+	s_platform_win32__Gfx_newSubPath(ctx);
+	s_platform_win32__Gfx_arc(ctx, 20.0, 20.0, (double)(state.frame->value), 0.0, 6.283185307179586);
 	s_platform_win32__paint(ctx, (s_ui_draw__Style__draw){.fill = (s_builtin__color){.r = 51, .g = 102, .b = 255, .a = 255}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 0, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
-	sngl_win32_gfx_restore(ctx);
+	s_platform_win32__Gfx_restore(ctx);
 }
 
 static void sngl_init(void) {
 	s_frame = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
 	s_handle__inst0 = 0;
 	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
+	s_platform_win32___depth = 0;
+	s_platform_win32___fx = 0.0;
+	s_platform_win32___fy = 0.0;
+	s_platform_win32___paintSerial = 0;
+	s_platform_win32___pen = s_platform_win32___Pen__keep((s_platform_win32___Pen){.r = 0, .g = 0, .b = 0, .a = 255, .width = 1.0, .cap = 0, .join = 0, .fontPx = 16.0, .family = SNGL_STR("sans-serif")});
+	s_platform_win32___saved = sngl_list__Saved__keep(((sngl_list__Saved){0}));
+	s_platform_win32___x = 0.0;
+	s_platform_win32___y = 0.0;
 	s___effect0_live = sngl_list_bool__keep(((sngl_list_bool){0}));
 	s___effect0_desired = sngl_list_bool__keep(((sngl_list_bool){0}));
 	s___effect1_key = 0;
@@ -5230,7 +5614,7 @@ int main(void) {
 	return 0;
 }
 
-static void sngl_lambda4(void *env_) {
+static void sngl_lambda7(void *env_) {
 	s_frame->value = (s_frame->value + 1);
 	sngl_win32_redraw(s___drawing0);
 }
@@ -9085,9 +9469,11 @@ package main
 import (
 	"duckfam.us/sngl/lib/platform/win32/cgo"
 	"duckfam.us/sngl/pkg/go/snglcolor"
+	"math"
 	"runtime"
 	"slices"
 	"time"
+	"unsafe"
 )
 
 func snglSome[T any](v T) *T {
@@ -9103,6 +9489,21 @@ type Measurement struct {
 	Px  float64
 	Em  float64
 	Rem float64
+}
+
+type _gdipSaveGraphics__result struct {
+	Result int
+	Out1   int
+}
+
+type _gdipCreateSolidFill__result struct {
+	Result int
+	Out1   *unsafe.Pointer
+}
+
+type _gdipCreatePen1__result struct {
+	Result int
+	Out3   *unsafe.Pointer
 }
 
 type Style struct {
@@ -9169,10 +9570,37 @@ type Style__draw struct {
 	FontFamily  string
 }
 
+type _Pen struct {
+	R      int
+	G      int
+	B      int
+	A      int
+	Width  float64
+	Cap    int
+	Join   int
+	FontPx float64
+	Family string
+}
+
+type _Saved struct {
+	Pen   _Pen
+	State int
+}
+
 type snglState struct {
 	frame               int
 	handle__inst0       int
 	visible__inst0      bool
+	_at                 bool
+	_begun              bool
+	_depth              int
+	_fx                 float64
+	_fy                 float64
+	_paintSerial        int
+	_pen                _Pen
+	_saved              []_Saved
+	_x                  float64
+	_y                  float64
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_key       time.Duration
@@ -9197,17 +9625,59 @@ func BoxLookOf(s Style, otherwise int) cgo.Look {
 	return look
 }
 
+func GfxSave(g cgo.Gfx) {
+	_paintOf(g)
+	if m._depth < 16 {
+		var state int = 0
+		__ref0 := _gdipSaveGraphics__result(cgo.GdipSaveGraphics(cgo.SnglWin32GfxG(g), state))
+		state = __ref0.Out1
+		m._saved = append(m._saved, _Saved{Pen: m._pen, State: int(state)})
+	}
+	m._depth += 1
+}
+
+func GfxNewSubPath(g cgo.Gfx) {
+	_paintOf(g)
+	cgo.GdipStartPathFigure(cgo.SnglWin32GfxPath(g))
+	m._at = false
+	m._begun = false
+}
+
+func GfxArc(g cgo.Gfx, cx float64, cy float64, r float64, start float64, end float64) {
+	_paintOf(g)
+	var to float64 = end
+	for to < start {
+		to += 6.283185307179586
+	}
+	_arc(g, cx, cy, r, start, (to - start))
+}
+
 func Paint(ctx cgo.Gfx, style Style__draw) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
-		cgo.SnglWin32GfxFill(ctx, (style.Stroke.A > 0))
+		GfxFill(ctx, (style.Stroke.A > 0))
 	}
 	if style.Stroke.A > 0 {
-		cgo.SnglWin32GfxLineWidth(ctx, style.StrokeWidth)
-		cgo.SnglWin32GfxLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
-		cgo.SnglWin32GfxLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
+		GfxLineWidth(ctx, style.StrokeWidth)
+		GfxLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
+		GfxLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
 		Source(ctx, style.Stroke)
-		cgo.SnglWin32GfxStroke(ctx)
+		GfxStroke(ctx)
+	}
+}
+
+func GfxRestore(g cgo.Gfx) {
+	_paintOf(g)
+	if m._depth > 0 {
+		m._depth -= 1
+		if m._depth < 16 {
+			kept := m._saved[m._depth]
+			cgo.GdipRestoreGraphics(cgo.SnglWin32GfxG(g), int(kept.State))
+			m._pen = kept.Pen
+			if __i := m._depth; __i >= 0 && __i < len(m._saved) {
+				m._saved = append(m._saved[:__i], m._saved[__i+1:]...)
+			}
+		}
 	}
 }
 
@@ -9228,49 +9698,205 @@ func LookOf(s Style) cgo.Look {
 	return look
 }
 
+func _paintOf(g cgo.Gfx) {
+	var serial int = cgo.SnglWin32GfxSerial(g)
+	if serial != m._paintSerial {
+		m._paintSerial = serial
+		m._x = 0.0
+		m._y = 0.0
+		m._fx = 0.0
+		m._fy = 0.0
+		m._at = false
+		m._begun = false
+		m._pen = _Pen{A: 255, Width: 1.0, FontPx: 16.0, Family: "sans-serif"}
+		m._saved = []_Saved{}
+		m._depth = 0
+	}
+}
+
+func _arc(g cgo.Gfx, cx float64, cy float64, r float64, start float64, sweep float64) {
+	var tau float64 = 6.283185307179586
+	var __lt3 float64
+	if sweep > tau {
+		__lt3 = tau
+	} else {
+		var __lt2 float64
+		if sweep < -tau {
+			__lt2 = -tau
+		} else {
+			__lt2 = sweep
+		}
+		__lt3 = __lt2
+	}
+	var turn float64 = __lt3
+	var sx float64 = (cx + (r * math.Cos(start)))
+	var sy float64 = (cy + (r * math.Sin(start)))
+	if m._at && !m._begun {
+		cgo.GdipAddPathLine(cgo.SnglWin32GfxPath(g), m._x, m._y, sx, sy)
+	} else {
+		if !m._at {
+			m._fx = sx
+			m._fy = sy
+		}
+	}
+	var n int = int(math.Ceil(((math.Abs(turn) / (tau / 4.0)) - 1e-09)))
+	var __lt4 float64
+	if n > 0 {
+		__lt4 = (turn / float64(n))
+	} else {
+		__lt4 = 0.0
+	}
+	var step float64 = __lt4
+	var k float64 = (1.3333333333333333 * math.Tan((step / 4.0)))
+	var a float64 = start
+	var i int = 0
+	for (r > 0.0) && (i < n) {
+		var b float64 = (a + step)
+		var x0 float64 = (cx + (r * math.Cos(a)))
+		var y0 float64 = (cy + (r * math.Sin(a)))
+		var x3 float64 = (cx + (r * math.Cos(b)))
+		var y3 float64 = (cy + (r * math.Sin(b)))
+		cgo.GdipAddPathBezier(cgo.SnglWin32GfxPath(g), x0, y0, (x0 - ((k * r) * math.Sin(a))), (y0 + ((k * r) * math.Cos(a))), (x3 + ((k * r) * math.Sin(b))), (y3 - ((k * r) * math.Cos(b))), x3, y3)
+		i += 1
+		a += step
+	}
+	m._x = (cx + (r * math.Cos((start + turn))))
+	m._y = (cy + (r * math.Sin((start + turn))))
+	m._at = true
+	m._begun = true
+}
+
 func Source(ctx cgo.Gfx, c snglcolor.Color) {
-	cgo.SnglWin32GfxColor(ctx, int(c.R), int(c.G), int(c.B), int(c.A))
+	GfxColor(ctx, int(c.R), int(c.G), int(c.B), int(c.A))
+}
+
+func GfxFill(g cgo.Gfx, preserve bool) {
+	_paintOf(g)
+	var brush *unsafe.Pointer
+	__ref1 := _gdipCreateSolidFill__result(cgo.GdipCreateSolidFill(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), brush))
+	brush = __ref1.Out1
+	if (__ref1.Result == 0) && (brush != nil) {
+		cgo.GdipFillPath(cgo.SnglWin32GfxG(g), unsafe.Pointer((*(brush))), cgo.SnglWin32GfxPath(g))
+		cgo.GdipDeleteBrush(unsafe.Pointer((*(brush))))
+	}
+	if !preserve {
+		_newPath(g)
+	}
+}
+
+func GfxLineWidth(g cgo.Gfx, w float64) {
+	_paintOf(g)
+	m._pen.Width = w
+}
+
+func GfxLineCap(g cgo.Gfx, cap__r0 int) {
+	_paintOf(g)
+	m._pen.Cap = cap__r0
+}
+
+func GfxLineJoin(g cgo.Gfx, join int) {
+	_paintOf(g)
+	m._pen.Join = join
+}
+
+func GfxStroke(g cgo.Gfx) {
+	_paintOf(g)
+	var __lt5 int
+	if (m._pen.Cap >= 0) && (m._pen.Cap < 3) {
+		__lt5 = m._pen.Cap
+	} else {
+		__lt5 = 0
+	}
+	var cap__r1 int = __lt5
+	var __lt6 int
+	if (m._pen.Join >= 0) && (m._pen.Join < 3) {
+		__lt6 = m._pen.Join
+	} else {
+		__lt6 = 0
+	}
+	var join int = __lt6
+	var pen *unsafe.Pointer
+	__ref2 := _gdipCreatePen1__result(cgo.GdipCreatePen1(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), m._pen.Width, 2, pen))
+	pen = __ref2.Out3
+	if (__ref2.Result == 0) && (pen != nil) {
+		var __lt8 int
+		if cap__r1 == 1 {
+			__lt8 = 2
+		} else {
+			var __lt7 int
+			if cap__r1 == 2 {
+				__lt7 = 1
+			} else {
+				__lt7 = 0
+			}
+			__lt8 = __lt7
+		}
+		var line int = __lt8
+		var __lt9 int
+		if cap__r1 == 1 {
+			__lt9 = 2
+		} else {
+			__lt9 = 0
+		}
+		cgo.GdipSetPenLineCap197819((*(pen)), line, line, __lt9)
+		var __lt11 int
+		if join == 1 {
+			__lt11 = 2
+		} else {
+			var __lt10 int
+			if join == 2 {
+				__lt10 = 1
+			} else {
+				__lt10 = 0
+			}
+			__lt11 = __lt10
+		}
+		cgo.GdipSetPenLineJoin((*(pen)), __lt11)
+		cgo.GdipDrawPath(cgo.SnglWin32GfxG(g), (*(pen)), cgo.SnglWin32GfxPath(g))
+		cgo.GdipDeletePen((*(pen)))
+	}
+	_newPath(g)
 }
 
 func Inset(m__r1 *Measurement) int {
-	var __lt2 int
+	var __lt12 int
 	if m__r1 == nil {
-		__lt2 = 0
+		__lt12 = 0
 	} else {
-		__lt2 = int(max(((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem))), 0.0))
+		__lt12 = int(max(((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem))), 0.0))
 	}
-	return __lt2
+	return __lt12
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) int {
-	var __lt4 *Measurement
+	var __lt14 *Measurement
 	if own != nil {
-		__lt4 = own
+		__lt14 = own
 	} else {
-		var __lt3 *Measurement
+		var __lt13 *Measurement
 		if axis != nil {
-			__lt3 = axis
+			__lt13 = axis
 		} else {
-			__lt3 = all
+			__lt13 = all
 		}
-		__lt4 = __lt3
+		__lt14 = __lt13
 	}
-	return Inset(__lt4)
+	return Inset(__lt14)
 }
 
 func AlignOf(a string) int {
-	var __lt5 int
+	var __lt15 int
 	switch a {
 	case "start", "baseline":
-		__lt5 = 1
+		__lt15 = 1
 	case "center":
-		__lt5 = 2
+		__lt15 = 2
 	case "end":
-		__lt5 = 3
+		__lt15 = 3
 	default:
-		__lt5 = 0
+		__lt15 = 0
 	}
-	return __lt5
+	return __lt15
 }
 
 func Rgb(c *snglcolor.Color) int {
@@ -9278,6 +9904,37 @@ func Rgb(c *snglcolor.Color) int {
 		return (((int((*(c)).R) * 65536) + (int((*(c)).G) * 256)) + int((*(c)).B))
 	}
 	return -1
+}
+
+func GfxColor(g cgo.Gfx, r int, gr int, b int, a int) {
+	_paintOf(g)
+	m._pen.R = _channel(r)
+	m._pen.G = _channel(gr)
+	m._pen.B = _channel(b)
+	m._pen.A = _channel(a)
+}
+
+func _newPath(g cgo.Gfx) {
+	cgo.GdipResetPath(cgo.SnglWin32GfxPath(g))
+	cgo.GdipSetPathFillMode(cgo.SnglWin32GfxPath(g), 1)
+	m._at = false
+	m._begun = false
+}
+
+func _channel(v int) int {
+	var __lt17 int
+	if v < 0 {
+		__lt17 = 0
+	} else {
+		var __lt16 int
+		if v > 255 {
+			__lt16 = 255
+		} else {
+			__lt16 = v
+		}
+		__lt17 = __lt16
+	}
+	return __lt17
 }
 
 func __effect0_mount() {
@@ -9389,11 +10046,11 @@ func __n0_visible_handler(__visible bool) {
 }
 
 func __drawing0_paint_handler(ctx cgo.Gfx) {
-	cgo.SnglWin32GfxSave(ctx)
-	cgo.SnglWin32GfxNewSubPath(ctx)
-	cgo.SnglWin32GfxArc(ctx, 20.0, 20.0, float64(m.frame), 0.0, 6.283185307179586)
+	GfxSave(ctx)
+	GfxNewSubPath(ctx)
+	GfxArc(ctx, 20.0, 20.0, float64(m.frame), 0.0, 6.283185307179586)
 	Paint(ctx, Style__draw{Fill: snglcolor.Color{R: 51, G: 102, B: 255, A: 255}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-	cgo.SnglWin32GfxRestore(ctx)
+	GfxRestore(ctx)
 }
 
 func snglInit() {
@@ -9401,6 +10058,16 @@ func snglInit() {
 	m.frame = 0
 	m.handle__inst0 = 0
 	m.visible__inst0 = true
+	m._at = false
+	m._begun = false
+	m._depth = 0
+	m._fx = 0.0
+	m._fy = 0.0
+	m._paintSerial = 0
+	m._pen = _Pen{A: 255, Width: 1.0, FontPx: 16.0, Family: "sans-serif"}
+	m._saved = []_Saved{}
+	m._x = 0.0
+	m._y = 0.0
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_key = (time.Duration(0) * time.Millisecond)
@@ -10042,7 +10709,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/c/gtk4 --
 pass sha256:348f611255760e5766302d57cf0cb1c4
 -- run/c/win32 --
-pass sha256:2c9f54aac0b2b6a8b7393785c25b0cb9
+pass sha256:30b0da10585fcb4204dfb942ee3fcf4b
 -- run/go/bubbletea --
 pass sha256:4050baaf343b3789637964efbf3dbf2e
 -- run/go/fyne --
@@ -10050,7 +10717,7 @@ pass sha256:4a19961ae5f2c22c86eb5adb5bdb5ae8
 -- run/go/gtk4 --
 pass sha256:cba47e00521da661b807aa9c0b13e3ae
 -- run/go/win32 --
-pass sha256:2dcbe1d2a62d33c81be0f1ed00f5bd8d
+pass sha256:551d1c66a9afb0e0f249d47de7a98b47
 -- run/kotlin/android --
 pass sha256:82b9eaaea22806d0fd821929fc92067a
 -- run/none/html --

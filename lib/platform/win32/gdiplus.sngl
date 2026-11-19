@@ -1,0 +1,395 @@
+import c "sngl:x/c"
+import math "sngl:math"
+import go "sngl:language/go"
+
+// --- GDI+ ---
+//
+// The flat API of GDI+ a canvas's context paints through, as <gdiplus.h>
+// declares it, which sngl_win32.h includes. win32gen reads no GDI+, so the
+// platform declares what it calls here, as it does user32's few that
+// win32gen skips. Each of GDI+'s objects is a `void` to C
+// (gdiplusgpstubs.h), so a handle to one is a `void *`, which is what cgo
+// takes for it: spelled `GpPath *`, Go's wrappers held a type cgo would not
+// pass.
+
+#[c.native("void *")]
+struct _GpGraphics {}
+
+#[c.native("void *")]
+struct _GpPath {}
+
+#[c.native("void *")]
+struct _GpSolidFill {}
+
+#[c.native("void *")]
+struct _GpBrush {}
+
+#[c.native("void *")]
+struct _GpPen {}
+
+#[c.native("void *")]
+struct _GpFontFamily {}
+
+#[c.native("void *")]
+struct _GpFontCollection {}
+
+#[c.native("void *")]
+struct _GpFont {}
+
+#[c.native("void *")]
+struct _GpStringFormat {}
+
+#[c.native("REAL")]
+struct _GpReal = float
+
+#[c.native("ARGB")]
+struct _GpArgb = int
+
+#[c.native("GraphicsState")]
+struct _GpGraphicsState = int
+
+#[c.native("UINT16")]
+struct _GpUint16 = int
+
+#[c.native("GpStatus")]
+struct _GpStatus = int
+
+#[c.native("GpFillMode")]
+struct _GpFillMode = int
+
+#[c.native("GpUnit")]
+struct _GpUnit = int
+
+#[c.native("Unit")]
+struct _GpFontUnit = int
+
+#[c.native("GpLineCap")]
+struct _GpLineCap = int
+
+#[c.native("GpDashCap")]
+struct _GpDashCap = int
+
+#[c.native("GpLineJoin")]
+struct _GpLineJoin = int
+
+#[c.native("GpMatrixOrder")]
+struct _GpMatrixOrder = int
+
+#[c.native("CombineMode")]
+struct _GpCombineMode = int
+
+#[c.native("RectF")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GpRectF")]
+struct _GpRectF {
+    X      _GpReal
+    Y      _GpReal
+    Width  _GpReal
+    Height _GpReal
+}
+
+// GDI+'s Ok, and the members of its enums the context names.
+const _gpOk = 0
+const _gpFillModeWinding = 1
+const _gpUnitPixel = 2
+const _gpLineCapFlat = 0
+const _gpLineCapSquare = 1
+const _gpLineCapRound = 2
+const _gpDashCapFlat = 0
+const _gpDashCapRound = 2
+const _gpLineJoinMiter = 0
+const _gpLineJoinBevel = 1
+const _gpLineJoinRound = 2
+const _gpMatrixOrderPrepend = 0
+const _gpCombineModeIntersect = 1
+const _gpFontStyleRegular = 0
+
+#[c.native("void *", cast)]
+func _gpSolidBrush(f _GpSolidFill) _GpBrush
+
+#[c.native("GdipSaveGraphics")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipSaveGraphics")]
+func _gdipSaveGraphics(g _GpGraphics, state ref[_GpGraphicsState]) _GpStatus
+
+#[c.native("GdipRestoreGraphics")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipRestoreGraphics")]
+func _gdipRestoreGraphics(g _GpGraphics, state _GpGraphicsState) _GpStatus
+
+#[c.native("GdipAddPathRectangle")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipAddPathRectangle")]
+func _gdipAddPathRectangle(p _GpPath, x _GpReal, y _GpReal, w _GpReal, h _GpReal) _GpStatus
+
+#[c.native("GdipStartPathFigure")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipStartPathFigure")]
+func _gdipStartPathFigure(p _GpPath) _GpStatus
+
+#[c.native("GdipAddPathLine")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipAddPathLine")]
+func _gdipAddPathLine(p _GpPath, x1 _GpReal, y1 _GpReal, x2 _GpReal, y2 _GpReal) _GpStatus
+
+#[c.native("GdipAddPathBezier")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipAddPathBezier")]
+func _gdipAddPathBezier(
+    p  _GpPath,
+    x1 _GpReal,
+    y1 _GpReal,
+    x2 _GpReal,
+    y2 _GpReal,
+    x3 _GpReal,
+    y3 _GpReal,
+    x4 _GpReal,
+    y4 _GpReal,
+) _GpStatus
+
+#[c.native("GdipClosePathFigure")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipClosePathFigure")]
+func _gdipClosePathFigure(p _GpPath) _GpStatus
+
+#[c.native("GdipResetPath")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipResetPath")]
+func _gdipResetPath(p _GpPath) _GpStatus
+
+#[c.native("GdipSetPathFillMode")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipSetPathFillMode")]
+func _gdipSetPathFillMode(p _GpPath, mode _GpFillMode) _GpStatus
+
+#[c.native("GdipCreateSolidFill")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipCreateSolidFill")]
+func _gdipCreateSolidFill(color _GpArgb, brush ref[option[_GpSolidFill]]) _GpStatus
+
+#[c.native("GdipFillPath")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipFillPath")]
+func _gdipFillPath(g _GpGraphics, brush _GpBrush, p _GpPath) _GpStatus
+
+#[c.native("GdipDeleteBrush")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDeleteBrush")]
+func _gdipDeleteBrush(brush _GpBrush) _GpStatus
+
+#[c.native("GdipCreatePen1")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipCreatePen1")]
+func _gdipCreatePen1(color _GpArgb, width _GpReal, units _GpUnit, pen ref[option[_GpPen]]) _GpStatus
+
+#[c.native("GdipSetPenLineCap197819")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipSetPenLineCap197819")]
+func _gdipSetPenLineCap197819(pen _GpPen, start _GpLineCap, end _GpLineCap, dash _GpDashCap) _GpStatus
+
+#[c.native("GdipSetPenLineJoin")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipSetPenLineJoin")]
+func _gdipSetPenLineJoin(pen _GpPen, join _GpLineJoin) _GpStatus
+
+#[c.native("GdipDrawPath")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDrawPath")]
+func _gdipDrawPath(g _GpGraphics, pen _GpPen, p _GpPath) _GpStatus
+
+#[c.native("GdipDeletePen")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDeletePen")]
+func _gdipDeletePen(pen _GpPen) _GpStatus
+
+#[c.native("GdipTranslateWorldTransform")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipTranslateWorldTransform")]
+func _gdipTranslateWorldTransform(g _GpGraphics, x _GpReal, y _GpReal, order _GpMatrixOrder) _GpStatus
+
+#[c.native("GdipScaleWorldTransform")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipScaleWorldTransform")]
+func _gdipScaleWorldTransform(g _GpGraphics, x _GpReal, y _GpReal, order _GpMatrixOrder) _GpStatus
+
+#[c.native("GdipSetClipPath")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipSetClipPath")]
+func _gdipSetClipPath(g _GpGraphics, p _GpPath, mode _GpCombineMode) _GpStatus
+
+#[c.native("GdipGetGenericFontFamilySerif")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipGetGenericFontFamilySerif")]
+func _gdipGetGenericFontFamilySerif(family ref[option[_GpFontFamily]]) _GpStatus
+
+#[c.native("GdipGetGenericFontFamilyMonospace")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipGetGenericFontFamilyMonospace")]
+func _gdipGetGenericFontFamilyMonospace(family ref[option[_GpFontFamily]]) _GpStatus
+
+#[c.native("GdipGetGenericFontFamilySansSerif")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipGetGenericFontFamilySansSerif")]
+func _gdipGetGenericFontFamilySansSerif(family ref[option[_GpFontFamily]]) _GpStatus
+
+#[c.native("GdipCreateFontFamilyFromName")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipCreateFontFamilyFromName")]
+func _gdipCreateFontFamilyFromName(name c.utf16, collection option[_GpFontCollection], family ref[option[_GpFontFamily]]) _GpStatus
+
+#[c.native("GdipDeleteFontFamily")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDeleteFontFamily")]
+func _gdipDeleteFontFamily(family _GpFontFamily) _GpStatus
+
+#[c.native("GdipGetCellAscent")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipGetCellAscent")]
+func _gdipGetCellAscent(family _GpFontFamily, style int, ascent ref[_GpUint16]) _GpStatus
+
+#[c.native("GdipGetEmHeight")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipGetEmHeight")]
+func _gdipGetEmHeight(family _GpFontFamily, style int, em ref[_GpUint16]) _GpStatus
+
+#[c.native("GdipCreateFont")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipCreateFont")]
+func _gdipCreateFont(family _GpFontFamily, size _GpReal, style int, units _GpFontUnit, font ref[option[_GpFont]]) _GpStatus
+
+#[c.native("GdipDeleteFont")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDeleteFont")]
+func _gdipDeleteFont(font _GpFont) _GpStatus
+
+#[c.native("GdipStringFormatGetGenericTypographic")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipStringFormatGetGenericTypographic")]
+func _gdipStringFormatGetGenericTypographic(format ref[option[_GpStringFormat]]) _GpStatus
+
+#[c.native("GdipDeleteStringFormat")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDeleteStringFormat")]
+func _gdipDeleteStringFormat(format _GpStringFormat) _GpStatus
+
+#[c.native("GdipDrawString")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GdipDrawString")]
+func _gdipDrawString(
+    g      _GpGraphics,
+    text   c.utf16,
+    length int,
+    font   _GpFont,
+    at     ref[_GpRectF],
+    format _GpStringFormat,
+    brush  _GpBrush,
+) _GpStatus
+
+// --- A context's state ---
+
+// What a context draws in beside GDI+'s own state, which save and restore
+// keep with it: its color, a channel each, 0 to 255; its line's width, and
+// its cap and join in `LineCap`'s and `LineJoin`'s order; its font's size in
+// pixels and its family.
+struct _Pen {
+    r      int
+    g      int
+    b      int
+    a      int
+    width  float
+    cap    int
+    join   int
+    fontPx float
+    family string
+}
+
+// What a save kept: the pen, and GDI+'s state of the graphics.
+struct _Saved {
+    pen   _Pen
+    state int
+}
+
+// The state of the paint whose serial `_paintSerial` is (sngl_win32_gfx's
+// `serial`, which the runtime counts up as each paint begins): the current
+// point, where the figure being built started, whether there is a current
+// point, and whether the figure has a point of its own yet, since a move
+// only says where the next segment starts; the pen; and what each save
+// kept, the first 16 of them, and how deep the saves go, which counts past
+// them as cairo's does.
+var _paintSerial = 0
+var _x = 0.0
+var _y = 0.0
+var _fx = 0.0
+var _fy = 0.0
+var _at = false
+var _begun = false
+var _pen = _Pen{r=0, g=0, b=0, a=255, width=1.0, cap=0, join=0, fontPx=16.0, family="sans-serif"}
+var _saved list[_Saved] = []
+var _depth = 0
+
+#[c.native("sngl_win32_gfx.g", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxG")]
+func _gfxGraphics(g Gfx) _GpGraphics
+
+#[c.native("sngl_win32_gfx.path", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxPath")]
+func _gfxPath(g Gfx) _GpPath
+
+#[c.native("sngl_win32_gfx.serial", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxSerial")]
+func _gfxSerial(g Gfx) int
+
+// The state of g's paint, made afresh as a paint begins, as cairo's starts:
+// black, a line one wide, and the default font.
+func _paintOf(g Gfx) {
+    var serial = _gfxSerial(g)
+    if serial != _paintSerial {
+        _paintSerial = serial
+        _x = 0.0
+        _y = 0.0
+        _fx = 0.0
+        _fy = 0.0
+        _at = false
+        _begun = false
+        _pen = _Pen{r=0, g=0, b=0, a=255, width=1.0, cap=0, join=0, fontPx=16.0, family="sans-serif"}
+        _saved = []
+        _depth = 0
+    }
+}
+
+// The pen's color as GDI+ takes one.
+func _argb() _GpArgb {
+    return _GpArgb(_pen.a * 16777216 + _pen.r * 65536 + _pen.g * 256 + _pen.b)
+}
+
+func _channel(v int) => v < 0 ? 0 : (v > 255 ? 255 : v)
+
+// The path emptied, after a fill, a stroke or a clip.
+func _newPath(g Gfx) {
+    _gdipResetPath(_gfxPath(g))
+    _gdipSetPathFillMode(_gfxPath(g), _gpFillModeWinding)
+    _at = false
+    _begun = false
+}
+
+// The arc of `sweep` radians from `start`, joined by a line to the current
+// point where there is one, as cairo's is: as cubic segments of a quarter
+// turn or less, since Wine's GdipAddPathArc ends one with a segment of no
+// length, after which its stroke drops the rest of the figure.
+func _arc(g Gfx, cx float, cy float, r float, start float, sweep float) {
+    var tau = 6.283185307179586
+    var turn = sweep > tau ? tau : (sweep < -tau ? -tau : sweep)
+    var sx = cx + r * math.cos(start)
+    var sy = cy + r * math.sin(start)
+    if _at && !_begun {
+        // GDI+ joins an arc to the figure's last point, and a move made
+        // none.
+        _gdipAddPathLine(_gfxPath(g), _x, _y, sx, sy)
+    } else if !_at {
+        _fx = sx
+        _fy = sy
+    }
+    var n = int(float.ceil(float.abs(turn) / (tau / 4.0) - 0.000000001))
+    var step = n > 0 ? turn / float(n) : 0.0
+    var k = 4.0 / 3.0 * math.tan(step / 4.0)
+    var a = start
+    var i = 0
+    for r > 0.0 && i < n {
+        var b = a + step
+        var x0 = cx + r * math.cos(a)
+        var y0 = cy + r * math.sin(a)
+        var x3 = cx + r * math.cos(b)
+        var y3 = cy + r * math.sin(b)
+        _gdipAddPathBezier(_gfxPath(g), x0, y0, x0 - k * r * math.sin(a), y0 + k * r * math.cos(a), x3 + k * r * math.sin(b), y3 - k * r * math.cos(b), x3, y3)
+        i += 1
+        a += step
+    }
+    _x = cx + r * math.cos(start + turn)
+    _y = cy + r * math.sin(start + turn)
+    _at = true
+    _begun = true
+}
+
+// The font family `name` names: CSS's generic families as GDI+'s, or the one
+// the system knows by that name, or its sans-serif.
+func _fontFamily(name string) option[_GpFontFamily] {
+    var f option[_GpFontFamily] = null
+    if name == "serif" {
+        _gdipGetGenericFontFamilySerif(&f)
+    } else if name == "monospace" {
+        _gdipGetGenericFontFamilyMonospace(&f)
+    } else if name != "sans-serif" && name != "" {
+        _gdipCreateFontFamilyFromName(name, null, &f)
+    }
+    if f == null {
+        _gdipGetGenericFontFamilySansSerif(&f)
+    }
+    return f
+}

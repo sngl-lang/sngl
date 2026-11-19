@@ -139,7 +139,7 @@ sha256:0f2d1b0c5c89d7d4f603f65f0e2c87d9
   ]
 }
 -- testrun/win32/c/app.sngl/shelf/1 --
-sha256:6e24129930ce11b7f393be585df7b577
+sha256:c45bdf7c0a9672bb87614825b1440390
 {
   "results": [
     {

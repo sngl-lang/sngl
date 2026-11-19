@@ -1665,96 +1665,221 @@ func _set_Picture_url(p Picture, url string) {
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Gfx")]
 struct Gfx {}
 
-#[c.native("sngl_win32_gfx_save")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxSave")]
-func Gfx.save()
+func Gfx.save(g Gfx) {
+    _paintOf(g)
+    if _depth < 16 {
+        var state = _GpGraphicsState(0)
+        _gdipSaveGraphics(_gfxGraphics(g), &state)
+        _saved.push(_Saved{pen=_pen, state=int(state)})
+    }
+    _depth += 1
+}
 
-#[c.native("sngl_win32_gfx_restore")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxRestore")]
-func Gfx.restore()
+func Gfx.restore(g Gfx) {
+    _paintOf(g)
+    if _depth > 0 {
+        _depth -= 1
+        if _depth < 16 {
+            var kept = _saved[_depth]
+            _gdipRestoreGraphics(_gfxGraphics(g), _GpGraphicsState(kept.state))
+            _pen = kept.pen
+            _saved.remove(_depth)
+        }
+    }
+}
 
 // Each channel 0..255, as a SNGL color holds it.
-#[c.native("sngl_win32_gfx_color")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxColor")]
-func Gfx.color(r int, g int, b int, a int)
+func Gfx.color(g Gfx, r int, gr int, b int, a int) {
+    _paintOf(g)
+    _pen.r = _channel(r)
+    _pen.g = _channel(gr)
+    _pen.b = _channel(b)
+    _pen.a = _channel(a)
+}
 
-#[c.native("sngl_win32_gfx_line_width")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxLineWidth")]
-func Gfx.lineWidth(w float)
+func Gfx.lineWidth(g Gfx, w float) {
+    _paintOf(g)
+    _pen.width = w
+}
 
 // `LineCap` and `LineJoin` in their order: butt, round, square, and miter,
 // round, bevel.
-#[c.native("sngl_win32_gfx_line_cap")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxLineCap")]
-func Gfx.lineCap(cap int)
+func Gfx.lineCap(g Gfx, cap int) {
+    _paintOf(g)
+    _pen.cap = cap
+}
 
-#[c.native("sngl_win32_gfx_line_join")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxLineJoin")]
-func Gfx.lineJoin(join int)
+func Gfx.lineJoin(g Gfx, join int) {
+    _paintOf(g)
+    _pen.join = join
+}
 
-#[c.native("sngl_win32_gfx_rect")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxRect")]
-func Gfx.rectangle(x float, y float, w float, h float)
+func Gfx.rectangle(g Gfx, x float, y float, w float, h float) {
+    _paintOf(g)
+    _gdipAddPathRectangle(_gfxPath(g), x, y, w, h)
+    _x = x
+    _fx = x
+    _y = y
+    _fy = y
+    _at = true
+    _begun = false
+}
 
-#[c.native("sngl_win32_gfx_new_sub_path")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxNewSubPath")]
-func Gfx.newSubPath()
+func Gfx.newSubPath(g Gfx) {
+    _paintOf(g)
+    _gdipStartPathFigure(_gfxPath(g))
+    _at = false
+    _begun = false
+}
 
-#[c.native("sngl_win32_gfx_move_to")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxMoveTo")]
-func Gfx.moveTo(x float, y float)
+func Gfx.moveTo(g Gfx, x float, y float) {
+    _paintOf(g)
+    _gdipStartPathFigure(_gfxPath(g))
+    _x = x
+    _fx = x
+    _y = y
+    _fy = y
+    _at = true
+    _begun = false
+}
 
-#[c.native("sngl_win32_gfx_line_to")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxLineTo")]
-func Gfx.lineTo(x float, y float)
+func Gfx.lineTo(g Gfx, x float, y float) {
+    _paintOf(g)
+    if !_at {
+        g.moveTo(x, y)
+    } else {
+        _gdipAddPathLine(_gfxPath(g), _x, _y, x, y)
+        _x = x
+        _y = y
+        _begun = true
+    }
+}
 
-#[c.native("sngl_win32_gfx_curve_to")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxCurveTo")]
-func Gfx.curveTo(x1 float, y1 float, x2 float, y2 float, x3 float, y3 float)
+func Gfx.curveTo(g Gfx, x1 float, y1 float, x2 float, y2 float, x3 float, y3 float) {
+    _paintOf(g)
+    if !_at {
+        g.moveTo(x1, y1)
+    }
+    _gdipAddPathBezier(_gfxPath(g), _x, _y, x1, y1, x2, y2, x3, y3)
+    _x = x3
+    _y = y3
+    _begun = true
+}
 
-#[c.native("sngl_win32_gfx_arc")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxArc")]
-func Gfx.arc(cx float, cy float, r float, start float, end float)
+func Gfx.arc(g Gfx, cx float, cy float, r float, start float, end float) {
+    _paintOf(g)
+    var to = end
+    for to < start {
+        to += math.tau
+    }
+    _arc(g, cx, cy, r, start, to - start)
+}
 
-#[c.native("sngl_win32_gfx_arc_negative")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxArcNegative")]
-func Gfx.arcNegative(cx float, cy float, r float, start float, end float)
+func Gfx.arcNegative(g Gfx, cx float, cy float, r float, start float, end float) {
+    _paintOf(g)
+    var to = end
+    for to > start {
+        to -= math.tau
+    }
+    _arc(g, cx, cy, r, start, to - start)
+}
 
-#[c.native("sngl_win32_gfx_close_path")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxClosePath")]
-func Gfx.closePath()
+func Gfx.closePath(g Gfx) {
+    _paintOf(g)
+    _gdipClosePathFigure(_gfxPath(g))
+    _x = _fx
+    _y = _fy
+    _begun = false
+}
 
 // The path filled, and kept for a stroke where `preserve` says.
-#[c.native("sngl_win32_gfx_fill")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxFill")]
-func Gfx.fill(preserve bool)
+func Gfx.fill(g Gfx, preserve bool) {
+    _paintOf(g)
+    var brush option[_GpSolidFill] = null
+    if _gdipCreateSolidFill(_argb(), &brush) == _gpOk && brush != null {
+        _gdipFillPath(_gfxGraphics(g), _gpSolidBrush(brush), _gfxPath(g))
+        _gdipDeleteBrush(_gpSolidBrush(brush))
+    }
+    if !preserve {
+        _newPath(g)
+    }
+}
 
-#[c.native("sngl_win32_gfx_stroke")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxStroke")]
-func Gfx.stroke()
+func Gfx.stroke(g Gfx) {
+    _paintOf(g)
+    var cap = _pen.cap >= 0 && _pen.cap < 3 ? _pen.cap : 0
+    var join = _pen.join >= 0 && _pen.join < 3 ? _pen.join : 0
+    var pen option[_GpPen] = null
+    if _gdipCreatePen1(_argb(), _pen.width, _gpUnitPixel, &pen) == _gpOk && pen != null {
+        var line = cap == 1 ? _gpLineCapRound : (cap == 2 ? _gpLineCapSquare : _gpLineCapFlat)
+        _gdipSetPenLineCap197819(pen, line, line, cap == 1 ? _gpDashCapRound : _gpDashCapFlat)
+        _gdipSetPenLineJoin(pen, join == 1 ? _gpLineJoinRound : (join == 2 ? _gpLineJoinBevel : _gpLineJoinMiter))
+        _gdipDrawPath(_gfxGraphics(g), pen, _gfxPath(g))
+        _gdipDeletePen(pen)
+    }
+    _newPath(g)
+}
 
-#[c.native("sngl_win32_gfx_font")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxFont")]
-func Gfx.font(family c.utf16, size float)
+func Gfx.font(g Gfx, family string, size float) {
+    _paintOf(g)
+    _pen.family = family
+    _pen.fontPx = size
+}
 
-// Drawn from the current point, on its baseline.
-#[c.native("sngl_win32_gfx_text")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxText")]
-func Gfx.showText(content c.utf16)
+// Drawn from the current point, on its baseline: from the top of its line,
+// which is the ascent above the baseline the point is on.
+func Gfx.showText(g Gfx, content string) {
+    _paintOf(g)
+    var family = _fontFamily(_pen.family)
+    if family != null {
+        var ascent = _GpUint16(0)
+        var em = _GpUint16(0)
+        _gdipGetCellAscent(family, _gpFontStyleRegular, &ascent)
+        _gdipGetEmHeight(family, _gpFontStyleRegular, &em)
+        var font option[_GpFont] = null
+        var brush option[_GpSolidFill] = null
+        var format option[_GpStringFormat] = null
+        // Each made only once the one before it is.
+        var made = _gdipCreateFont(family, _pen.fontPx, _gpFontStyleRegular, _gpUnitPixel, &font) == _gpOk
+        if made {
+            made = _gdipCreateSolidFill(_argb(), &brush) == _gpOk
+        }
+        if made {
+            made = _gdipStringFormatGetGenericTypographic(&format) == _gpOk
+        }
+        if made && font != null && brush != null && format != null {
+            var top = _y - (int(em) != 0 ? _pen.fontPx * float(int(ascent)) / float(int(em)) : _pen.fontPx)
+            var at = _GpRectF{X=_x, Y=top, Width=0.0, Height=0.0}
+            _gdipDrawString(_gfxGraphics(g), content, -1, font, &at, format, _gpSolidBrush(brush))
+        }
+        if format != null {
+            _gdipDeleteStringFormat(format)
+        }
+        if brush != null {
+            _gdipDeleteBrush(_gpSolidBrush(brush))
+        }
+        if font != null {
+            _gdipDeleteFont(font)
+        }
+        _gdipDeleteFontFamily(family)
+    }
+}
 
 // The space drawn in afterwards moved and scaled, and what is drawn limited
 // to the current path, which `clip` ends; `restore` undoes each.
-#[c.native("sngl_win32_gfx_translate")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxTranslate")]
-func Gfx.translate(x float, y float)
+func Gfx.translate(g Gfx, x float, y float) {
+    _gdipTranslateWorldTransform(_gfxGraphics(g), x, y, _gpMatrixOrderPrepend)
+}
 
-#[c.native("sngl_win32_gfx_scale")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxScale")]
-func Gfx.scale(x float, y float)
+func Gfx.scale(g Gfx, x float, y float) {
+    _gdipScaleWorldTransform(_gfxGraphics(g), x, y, _gpMatrixOrderPrepend)
+}
 
-#[c.native("sngl_win32_gfx_clip")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32GfxClip")]
-func Gfx.clip()
+func Gfx.clip(g Gfx) {
+    _paintOf(g)
+    _gdipSetClipPath(_gfxGraphics(g), _gfxPath(g), _gpCombineModeIntersect)
+    _newPath(g)
+}
 
 // The picture `url` names painted into the box at x, y sized w by h, found
 // as a `Picture`'s is, and painted again once a fetched one arrives.

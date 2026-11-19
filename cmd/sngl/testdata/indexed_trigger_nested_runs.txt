@@ -262,7 +262,7 @@ sha256:6a7a79d65de664695cebe933ae88cb83
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:90fe9fa5995426a84d51a9eacd976925
+sha256:daaf7ade73b3e3785bd7afd0efa7a9d2
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:90fe9fa5995426a84d51a9eacd976925
   ]
 }
 -- testrun/win32/c/app.sngl/single/1 --
-sha256:7db6596dff2a8f08585ac0a71a9da897
+sha256:45aa29385cdcd79977804b9aab3f2c20
 {
   "results": [
     {
@@ -286,7 +286,7 @@ sha256:7db6596dff2a8f08585ac0a71a9da897
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:9b66ad6df711e51f4646871824b87906
+sha256:c1a7aa8e43e56a06644fe9ae70d40774
 {
   "results": [
     {
@@ -300,7 +300,7 @@ sha256:9b66ad6df711e51f4646871824b87906
   ]
 }
 -- testrun/win32/go/app.sngl/single/1 --
-sha256:1c103446d0c09ee5dc708d2355e2de8a
+sha256:85f6c387ed160ca4644a19075044e94f
 {
   "results": [
     {

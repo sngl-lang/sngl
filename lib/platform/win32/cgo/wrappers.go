@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 589df750d46f385c4c542de5
+// The C sources, as a change to them builds this package again: 1b0581eee470bba8446c7330
 
 package cgo
 
@@ -12,6 +12,18 @@ package cgo
 #include "sngl_win32.h"
 #include <windows.h>
 #include <stdlib.h>
+
+static inline void * snglF__gfxGraphics(sngl_win32_gfx * a0) {
+	return (a0)->g;
+}
+
+static inline void * snglF__gfxPath(sngl_win32_gfx * a0) {
+	return (a0)->path;
+}
+
+static inline int snglF__gfxSerial(sngl_win32_gfx * a0) {
+	return (a0)->serial;
+}
 */
 import "C"
 
@@ -25,6 +37,14 @@ type ConstRect = *C.RECT
 
 // Gfx is C's sngl_win32_gfx *.
 type Gfx = *C.sngl_win32_gfx
+
+// GpRectF is C's RectF, field by field.
+type GpRectF struct {
+	X      float64
+	Y      float64
+	Width  float64
+	Height float64
+}
 
 // HBRUSH is C's HBRUSH.
 type HBRUSH = C.HBRUSH
@@ -79,6 +99,78 @@ type SIZE struct {
 	Cy int
 }
 
+// GdipCreateFontFamilyFromNameResult is what GdipCreateFontFamilyFromName hands back.
+type GdipCreateFontFamilyFromNameResult struct {
+	Result int
+	Out2   *unsafe.Pointer
+}
+
+// GdipCreateFontResult is what GdipCreateFont hands back.
+type GdipCreateFontResult struct {
+	Result int
+	Out4   *unsafe.Pointer
+}
+
+// GdipCreatePen1Result is what GdipCreatePen1 hands back.
+type GdipCreatePen1Result struct {
+	Result int
+	Out3   *unsafe.Pointer
+}
+
+// GdipCreateSolidFillResult is what GdipCreateSolidFill hands back.
+type GdipCreateSolidFillResult struct {
+	Result int
+	Out1   *unsafe.Pointer
+}
+
+// GdipDrawStringResult is what GdipDrawString hands back.
+type GdipDrawStringResult struct {
+	Result int
+	Out4   GpRectF
+}
+
+// GdipGetCellAscentResult is what GdipGetCellAscent hands back.
+type GdipGetCellAscentResult struct {
+	Result int
+	Out2   int
+}
+
+// GdipGetEmHeightResult is what GdipGetEmHeight hands back.
+type GdipGetEmHeightResult struct {
+	Result int
+	Out2   int
+}
+
+// GdipGetGenericFontFamilyMonospaceResult is what GdipGetGenericFontFamilyMonospace hands back.
+type GdipGetGenericFontFamilyMonospaceResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
+// GdipGetGenericFontFamilySansSerifResult is what GdipGetGenericFontFamilySansSerif hands back.
+type GdipGetGenericFontFamilySansSerifResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
+// GdipGetGenericFontFamilySerifResult is what GdipGetGenericFontFamilySerif hands back.
+type GdipGetGenericFontFamilySerifResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
+// GdipSaveGraphicsResult is what GdipSaveGraphics hands back.
+type GdipSaveGraphicsResult struct {
+	Result int
+	Out1   int
+}
+
+// GdipStringFormatGetGenericTypographicResult is what GdipStringFormatGetGenericTypographic hands back.
+type GdipStringFormatGetGenericTypographicResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
 // GetClientRectResult is what GetClientRect hands back.
 type GetClientRectResult struct {
 	Result int
@@ -115,6 +207,280 @@ func EnableWindow(hWnd HWND, bEnable bool) int {
 		__lt0 = 0
 	}
 	return int(C.EnableWindow(hWnd, C.int(__lt0)))
+}
+
+// GdipAddPathBezier calls GdipAddPathBezier.
+func GdipAddPathBezier(p unsafe.Pointer, x1 float64, y1 float64, x2 float64, y2 float64, x3 float64, y3 float64, x4 float64, y4 float64) int {
+	return int(C.GdipAddPathBezier(p, C.REAL(x1), C.REAL(y1), C.REAL(x2), C.REAL(y2), C.REAL(x3), C.REAL(y3), C.REAL(x4), C.REAL(y4)))
+}
+
+// GdipAddPathLine calls GdipAddPathLine.
+func GdipAddPathLine(p unsafe.Pointer, x1 float64, y1 float64, x2 float64, y2 float64) int {
+	return int(C.GdipAddPathLine(p, C.REAL(x1), C.REAL(y1), C.REAL(x2), C.REAL(y2)))
+}
+
+// GdipAddPathRectangle calls GdipAddPathRectangle.
+func GdipAddPathRectangle(p unsafe.Pointer, x float64, y float64, w float64, h float64) int {
+	return int(C.GdipAddPathRectangle(p, C.REAL(x), C.REAL(y), C.REAL(w), C.REAL(h)))
+}
+
+// GdipClosePathFigure calls GdipClosePathFigure.
+func GdipClosePathFigure(p unsafe.Pointer) int {
+	return int(C.GdipClosePathFigure(p))
+}
+
+// GdipCreateFont calls GdipCreateFont.
+func GdipCreateFont(family unsafe.Pointer, size float64, style int, units int, font *unsafe.Pointer) GdipCreateFontResult {
+	return func() GdipCreateFontResult {
+		__snglOut4 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipCreateFont(family, C.REAL(size), C.int(style), C.Unit(units), &__snglOut4))
+		return GdipCreateFontResult{Result: __snglResult, Out4: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut4)}
+	}()
+}
+
+// GdipCreateFontFamilyFromName calls GdipCreateFontFamilyFromName.
+func GdipCreateFontFamilyFromName(name string, collection *unsafe.Pointer, family *unsafe.Pointer) GdipCreateFontFamilyFromNameResult {
+	if collection == nil {
+		return func() GdipCreateFontFamilyFromNameResult {
+			__snglOut2 := (unsafe.Pointer)(nil)
+			__snglResult := int(C.GdipCreateFontFamilyFromName((*C.ushort)(unsafe.Pointer(cbind.UTF16(name))), nil, &__snglOut2))
+			return GdipCreateFontFamilyFromNameResult{Result: __snglResult, Out2: func(p unsafe.Pointer) *unsafe.Pointer {
+				if p == nil {
+					return nil
+				}
+				v := p
+				return &v
+			}(__snglOut2)}
+		}()
+	} else {
+		return func() GdipCreateFontFamilyFromNameResult {
+			__snglOut2 := (unsafe.Pointer)(nil)
+			__snglResult := int(C.GdipCreateFontFamilyFromName((*C.ushort)(unsafe.Pointer(cbind.UTF16(name))), (*(collection)), &__snglOut2))
+			return GdipCreateFontFamilyFromNameResult{Result: __snglResult, Out2: func(p unsafe.Pointer) *unsafe.Pointer {
+				if p == nil {
+					return nil
+				}
+				v := p
+				return &v
+			}(__snglOut2)}
+		}()
+	}
+}
+
+// GdipCreatePen1 calls GdipCreatePen1.
+func GdipCreatePen1(color int, width float64, units int, pen *unsafe.Pointer) GdipCreatePen1Result {
+	return func() GdipCreatePen1Result {
+		__snglOut3 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipCreatePen1(C.ARGB(color), C.REAL(width), C.GpUnit(units), &__snglOut3))
+		return GdipCreatePen1Result{Result: __snglResult, Out3: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut3)}
+	}()
+}
+
+// GdipCreateSolidFill calls GdipCreateSolidFill.
+func GdipCreateSolidFill(color int, brush *unsafe.Pointer) GdipCreateSolidFillResult {
+	return func() GdipCreateSolidFillResult {
+		__snglOut1 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipCreateSolidFill(C.ARGB(color), &__snglOut1))
+		return GdipCreateSolidFillResult{Result: __snglResult, Out1: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut1)}
+	}()
+}
+
+// GdipDeleteBrush calls GdipDeleteBrush.
+func GdipDeleteBrush(brush unsafe.Pointer) int {
+	return int(C.GdipDeleteBrush(brush))
+}
+
+// GdipDeleteFont calls GdipDeleteFont.
+func GdipDeleteFont(font unsafe.Pointer) int {
+	return int(C.GdipDeleteFont(font))
+}
+
+// GdipDeleteFontFamily calls GdipDeleteFontFamily.
+func GdipDeleteFontFamily(family unsafe.Pointer) int {
+	return int(C.GdipDeleteFontFamily(family))
+}
+
+// GdipDeletePen calls GdipDeletePen.
+func GdipDeletePen(pen unsafe.Pointer) int {
+	return int(C.GdipDeletePen(pen))
+}
+
+// GdipDeleteStringFormat calls GdipDeleteStringFormat.
+func GdipDeleteStringFormat(format unsafe.Pointer) int {
+	return int(C.GdipDeleteStringFormat(format))
+}
+
+// GdipDrawPath calls GdipDrawPath.
+func GdipDrawPath(g unsafe.Pointer, pen unsafe.Pointer, p unsafe.Pointer) int {
+	return int(C.GdipDrawPath(g, pen, p))
+}
+
+// GdipDrawString calls GdipDrawString.
+func GdipDrawString(g unsafe.Pointer, text string, length int, font unsafe.Pointer, at GpRectF, format unsafe.Pointer, brush unsafe.Pointer) GdipDrawStringResult {
+	return func() GdipDrawStringResult {
+		__snglOut4 := func(v GpRectF) C.RectF {
+			return C.RectF{X: C.REAL(v.X), Y: C.REAL(v.Y), Width: C.REAL(v.Width), Height: C.REAL(v.Height)}
+		}(at)
+		__snglResult := int(C.GdipDrawString(g, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))), C.int(length), font, &__snglOut4, format, brush))
+		return GdipDrawStringResult{Result: __snglResult, Out4: func(c C.RectF) GpRectF {
+			return GpRectF{X: float64(c.X), Y: float64(c.Y), Width: float64(c.Width), Height: float64(c.Height)}
+		}(__snglOut4)}
+	}()
+}
+
+// GdipFillPath calls GdipFillPath.
+func GdipFillPath(g unsafe.Pointer, brush unsafe.Pointer, p unsafe.Pointer) int {
+	return int(C.GdipFillPath(g, brush, p))
+}
+
+// GdipGetCellAscent calls GdipGetCellAscent.
+func GdipGetCellAscent(family unsafe.Pointer, style int, ascent int) GdipGetCellAscentResult {
+	return func() GdipGetCellAscentResult {
+		__snglOut2 := C.UINT16(ascent)
+		__snglResult := int(C.GdipGetCellAscent(family, C.int(style), &__snglOut2))
+		return GdipGetCellAscentResult{Result: __snglResult, Out2: int(__snglOut2)}
+	}()
+}
+
+// GdipGetEmHeight calls GdipGetEmHeight.
+func GdipGetEmHeight(family unsafe.Pointer, style int, em int) GdipGetEmHeightResult {
+	return func() GdipGetEmHeightResult {
+		__snglOut2 := C.UINT16(em)
+		__snglResult := int(C.GdipGetEmHeight(family, C.int(style), &__snglOut2))
+		return GdipGetEmHeightResult{Result: __snglResult, Out2: int(__snglOut2)}
+	}()
+}
+
+// GdipGetGenericFontFamilyMonospace calls GdipGetGenericFontFamilyMonospace.
+func GdipGetGenericFontFamilyMonospace(family *unsafe.Pointer) GdipGetGenericFontFamilyMonospaceResult {
+	return func() GdipGetGenericFontFamilyMonospaceResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipGetGenericFontFamilyMonospace(&__snglOut0))
+		return GdipGetGenericFontFamilyMonospaceResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipGetGenericFontFamilySansSerif calls GdipGetGenericFontFamilySansSerif.
+func GdipGetGenericFontFamilySansSerif(family *unsafe.Pointer) GdipGetGenericFontFamilySansSerifResult {
+	return func() GdipGetGenericFontFamilySansSerifResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipGetGenericFontFamilySansSerif(&__snglOut0))
+		return GdipGetGenericFontFamilySansSerifResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipGetGenericFontFamilySerif calls GdipGetGenericFontFamilySerif.
+func GdipGetGenericFontFamilySerif(family *unsafe.Pointer) GdipGetGenericFontFamilySerifResult {
+	return func() GdipGetGenericFontFamilySerifResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipGetGenericFontFamilySerif(&__snglOut0))
+		return GdipGetGenericFontFamilySerifResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipResetPath calls GdipResetPath.
+func GdipResetPath(p unsafe.Pointer) int {
+	return int(C.GdipResetPath(p))
+}
+
+// GdipRestoreGraphics calls GdipRestoreGraphics.
+func GdipRestoreGraphics(g unsafe.Pointer, state int) int {
+	return int(C.GdipRestoreGraphics(g, C.GraphicsState(state)))
+}
+
+// GdipSaveGraphics calls GdipSaveGraphics.
+func GdipSaveGraphics(g unsafe.Pointer, state int) GdipSaveGraphicsResult {
+	return func() GdipSaveGraphicsResult {
+		__snglOut1 := C.GraphicsState(state)
+		__snglResult := int(C.GdipSaveGraphics(g, &__snglOut1))
+		return GdipSaveGraphicsResult{Result: __snglResult, Out1: int(__snglOut1)}
+	}()
+}
+
+// GdipScaleWorldTransform calls GdipScaleWorldTransform.
+func GdipScaleWorldTransform(g unsafe.Pointer, x float64, y float64, order int) int {
+	return int(C.GdipScaleWorldTransform(g, C.REAL(x), C.REAL(y), C.GpMatrixOrder(order)))
+}
+
+// GdipSetClipPath calls GdipSetClipPath.
+func GdipSetClipPath(g unsafe.Pointer, p unsafe.Pointer, mode int) int {
+	return int(C.GdipSetClipPath(g, p, C.CombineMode(mode)))
+}
+
+// GdipSetPathFillMode calls GdipSetPathFillMode.
+func GdipSetPathFillMode(p unsafe.Pointer, mode int) int {
+	return int(C.GdipSetPathFillMode(p, C.GpFillMode(mode)))
+}
+
+// GdipSetPenLineCap197819 calls GdipSetPenLineCap197819.
+func GdipSetPenLineCap197819(pen unsafe.Pointer, start int, end int, dash int) int {
+	return int(C.GdipSetPenLineCap197819(pen, C.GpLineCap(start), C.GpLineCap(end), C.GpDashCap(dash)))
+}
+
+// GdipSetPenLineJoin calls GdipSetPenLineJoin.
+func GdipSetPenLineJoin(pen unsafe.Pointer, join int) int {
+	return int(C.GdipSetPenLineJoin(pen, C.GpLineJoin(join)))
+}
+
+// GdipStartPathFigure calls GdipStartPathFigure.
+func GdipStartPathFigure(p unsafe.Pointer) int {
+	return int(C.GdipStartPathFigure(p))
+}
+
+// GdipStringFormatGetGenericTypographic calls GdipStringFormatGetGenericTypographic.
+func GdipStringFormatGetGenericTypographic(format *unsafe.Pointer) GdipStringFormatGetGenericTypographicResult {
+	return func() GdipStringFormatGetGenericTypographicResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipStringFormatGetGenericTypographic(&__snglOut0))
+		return GdipStringFormatGetGenericTypographicResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipTranslateWorldTransform calls GdipTranslateWorldTransform.
+func GdipTranslateWorldTransform(g unsafe.Pointer, x float64, y float64, order int) int {
+	return int(C.GdipTranslateWorldTransform(g, C.REAL(x), C.REAL(y), C.GpMatrixOrder(order)))
 }
 
 // GetClientRect calls GetClientRect.
@@ -454,50 +820,9 @@ func SnglWin32GetText(e HWND) string {
 	return C.GoString(C.sngl_win32_get_text(e))
 }
 
-// SnglWin32GfxArc calls sngl_win32_gfx_arc.
-func SnglWin32GfxArc(recv Gfx, cx float64, cy float64, r float64, start float64, end float64) {
-	C.sngl_win32_gfx_arc(recv, C.double(cx), C.double(cy), C.double(r), C.double(start), C.double(end))
-}
-
-// SnglWin32GfxArcNegative calls sngl_win32_gfx_arc_negative.
-func SnglWin32GfxArcNegative(recv Gfx, cx float64, cy float64, r float64, start float64, end float64) {
-	C.sngl_win32_gfx_arc_negative(recv, C.double(cx), C.double(cy), C.double(r), C.double(start), C.double(end))
-}
-
-// SnglWin32GfxClip calls sngl_win32_gfx_clip.
-func SnglWin32GfxClip(recv Gfx) {
-	C.sngl_win32_gfx_clip(recv)
-}
-
-// SnglWin32GfxClosePath calls sngl_win32_gfx_close_path.
-func SnglWin32GfxClosePath(recv Gfx) {
-	C.sngl_win32_gfx_close_path(recv)
-}
-
-// SnglWin32GfxColor calls sngl_win32_gfx_color.
-func SnglWin32GfxColor(recv Gfx, r int, g int, b int, a int) {
-	C.sngl_win32_gfx_color(recv, C.int(r), C.int(g), C.int(b), C.int(a))
-}
-
-// SnglWin32GfxCurveTo calls sngl_win32_gfx_curve_to.
-func SnglWin32GfxCurveTo(recv Gfx, x1 float64, y1 float64, x2 float64, y2 float64, x3 float64, y3 float64) {
-	C.sngl_win32_gfx_curve_to(recv, C.double(x1), C.double(y1), C.double(x2), C.double(y2), C.double(x3), C.double(y3))
-}
-
-// SnglWin32GfxFill calls sngl_win32_gfx_fill.
-func SnglWin32GfxFill(recv Gfx, preserve bool) {
-	var __lt6 int
-	if preserve {
-		__lt6 = 1
-	} else {
-		__lt6 = 0
-	}
-	C.sngl_win32_gfx_fill(recv, C.int(__lt6))
-}
-
-// SnglWin32GfxFont calls sngl_win32_gfx_font.
-func SnglWin32GfxFont(recv Gfx, family string, size float64) {
-	C.sngl_win32_gfx_font(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))), C.double(size))
+// SnglWin32GfxG calls sngl_win32_gfx.g.
+func SnglWin32GfxG(g Gfx) unsafe.Pointer {
+	return C.snglF__gfxGraphics(g)
 }
 
 // SnglWin32GfxImage calls sngl_win32_gfx_image.
@@ -505,69 +830,14 @@ func SnglWin32GfxImage(recv Gfx, url string, x float64, y float64, w float64, h 
 	C.sngl_win32_gfx_image(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(url))), C.double(x), C.double(y), C.double(w), C.double(h))
 }
 
-// SnglWin32GfxLineCap calls sngl_win32_gfx_line_cap.
-func SnglWin32GfxLineCap(recv Gfx, cap int) {
-	C.sngl_win32_gfx_line_cap(recv, C.int(cap))
+// SnglWin32GfxPath calls sngl_win32_gfx.path.
+func SnglWin32GfxPath(g Gfx) unsafe.Pointer {
+	return C.snglF__gfxPath(g)
 }
 
-// SnglWin32GfxLineJoin calls sngl_win32_gfx_line_join.
-func SnglWin32GfxLineJoin(recv Gfx, join int) {
-	C.sngl_win32_gfx_line_join(recv, C.int(join))
-}
-
-// SnglWin32GfxLineTo calls sngl_win32_gfx_line_to.
-func SnglWin32GfxLineTo(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_line_to(recv, C.double(x), C.double(y))
-}
-
-// SnglWin32GfxLineWidth calls sngl_win32_gfx_line_width.
-func SnglWin32GfxLineWidth(recv Gfx, w float64) {
-	C.sngl_win32_gfx_line_width(recv, C.double(w))
-}
-
-// SnglWin32GfxMoveTo calls sngl_win32_gfx_move_to.
-func SnglWin32GfxMoveTo(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_move_to(recv, C.double(x), C.double(y))
-}
-
-// SnglWin32GfxNewSubPath calls sngl_win32_gfx_new_sub_path.
-func SnglWin32GfxNewSubPath(recv Gfx) {
-	C.sngl_win32_gfx_new_sub_path(recv)
-}
-
-// SnglWin32GfxRect calls sngl_win32_gfx_rect.
-func SnglWin32GfxRect(recv Gfx, x float64, y float64, w float64, h float64) {
-	C.sngl_win32_gfx_rect(recv, C.double(x), C.double(y), C.double(w), C.double(h))
-}
-
-// SnglWin32GfxRestore calls sngl_win32_gfx_restore.
-func SnglWin32GfxRestore(recv Gfx) {
-	C.sngl_win32_gfx_restore(recv)
-}
-
-// SnglWin32GfxSave calls sngl_win32_gfx_save.
-func SnglWin32GfxSave(recv Gfx) {
-	C.sngl_win32_gfx_save(recv)
-}
-
-// SnglWin32GfxScale calls sngl_win32_gfx_scale.
-func SnglWin32GfxScale(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_scale(recv, C.double(x), C.double(y))
-}
-
-// SnglWin32GfxStroke calls sngl_win32_gfx_stroke.
-func SnglWin32GfxStroke(recv Gfx) {
-	C.sngl_win32_gfx_stroke(recv)
-}
-
-// SnglWin32GfxText calls sngl_win32_gfx_text.
-func SnglWin32GfxText(recv Gfx, content string) {
-	C.sngl_win32_gfx_text(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(content))))
-}
-
-// SnglWin32GfxTranslate calls sngl_win32_gfx_translate.
-func SnglWin32GfxTranslate(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_translate(recv, C.double(x), C.double(y))
+// SnglWin32GfxSerial calls sngl_win32_gfx.serial.
+func SnglWin32GfxSerial(g Gfx) int {
+	return int(C.snglF__gfxSerial(g))
 }
 
 // SnglWin32Hold calls sngl_win32_hold.
@@ -752,13 +1022,13 @@ func SnglWin32SetChosen(t HWND, label string) {
 
 // SnglWin32SetClosable calls sngl_win32_set_closable.
 func SnglWin32SetClosable(m HWND, closable bool) {
-	var __lt7 int
+	var __lt6 int
 	if closable {
-		__lt7 = 1
+		__lt6 = 1
 	} else {
-		__lt7 = 0
+		__lt6 = 0
 	}
-	C.sngl_win32_set_closable(m, C.int(__lt7))
+	C.sngl_win32_set_closable(m, C.int(__lt6))
 }
 
 // SnglWin32SetColumns calls sngl_win32_set_columns.
@@ -793,24 +1063,24 @@ func SnglWin32SetEditText(e HWND, text string) {
 
 // SnglWin32SetEntryChecked calls sngl_win32_set_entry_checked.
 func SnglWin32SetEntryChecked(e HWND, checked bool) {
-	var __lt8 int
+	var __lt7 int
 	if checked {
-		__lt8 = 1
+		__lt7 = 1
 	} else {
-		__lt8 = 0
+		__lt7 = 0
 	}
-	C.sngl_win32_set_entry_checked(e, C.int(__lt8))
+	C.sngl_win32_set_entry_checked(e, C.int(__lt7))
 }
 
 // SnglWin32SetEntryDisabled calls sngl_win32_set_entry_disabled.
 func SnglWin32SetEntryDisabled(e HWND, disabled bool) {
-	var __lt9 int
+	var __lt8 int
 	if disabled {
-		__lt9 = 1
+		__lt8 = 1
 	} else {
-		__lt9 = 0
+		__lt8 = 0
 	}
-	C.sngl_win32_set_entry_disabled(e, C.int(__lt9))
+	C.sngl_win32_set_entry_disabled(e, C.int(__lt8))
 }
 
 // SnglWin32SetFit calls sngl_win32_set_fit.
@@ -825,13 +1095,13 @@ func SnglWin32SetFraction(p HWND, fraction float64) {
 
 // SnglWin32SetFramed calls sngl_win32_set_framed.
 func SnglWin32SetFramed(b HWND, framed bool) {
-	var __lt10 int
+	var __lt9 int
 	if framed {
-		__lt10 = 1
+		__lt9 = 1
 	} else {
-		__lt10 = 0
+		__lt9 = 0
 	}
-	C.sngl_win32_set_framed(b, C.int(__lt10))
+	C.sngl_win32_set_framed(b, C.int(__lt9))
 }
 
 // SnglWin32SetHref calls sngl_win32_set_href.
@@ -853,13 +1123,13 @@ func SnglWin32SetMode(b HWND, mode int) {
 
 // SnglWin32SetOpen calls sngl_win32_set_open.
 func SnglWin32SetOpen(m HWND, open bool) {
-	var __lt11 int
+	var __lt10 int
 	if open {
-		__lt11 = 1
+		__lt10 = 1
 	} else {
-		__lt11 = 0
+		__lt10 = 0
 	}
-	C.sngl_win32_set_open(m, C.int(__lt11))
+	C.sngl_win32_set_open(m, C.int(__lt10))
 }
 
 // SnglWin32SetRow calls sngl_win32_set_row.
@@ -879,19 +1149,19 @@ func SnglWin32SetScaling(w HWND, mode int) {
 
 // SnglWin32SetScroll calls sngl_win32_set_scroll.
 func SnglWin32SetScroll(s HWND, vertical bool, horizontal bool) {
-	var __lt12 int
+	var __lt11 int
 	if vertical {
+		__lt11 = 1
+	} else {
+		__lt11 = 0
+	}
+	var __lt12 int
+	if horizontal {
 		__lt12 = 1
 	} else {
 		__lt12 = 0
 	}
-	var __lt13 int
-	if horizontal {
-		__lt13 = 1
-	} else {
-		__lt13 = 0
-	}
-	C.sngl_win32_set_scroll(s, C.int(__lt12), C.int(__lt13))
+	C.sngl_win32_set_scroll(s, C.int(__lt11), C.int(__lt12))
 }
 
 // SnglWin32SetSelected calls sngl_win32_set_selected.
@@ -901,58 +1171,58 @@ func SnglWin32SetSelected(t HWND, selected int) {
 
 // SnglWin32SetShowText calls sngl_win32_set_show_text.
 func SnglWin32SetShowText(p HWND, show bool) {
-	var __lt14 int
+	var __lt13 int
 	if show {
-		__lt14 = 1
+		__lt13 = 1
 	} else {
-		__lt14 = 0
+		__lt13 = 0
 	}
-	C.sngl_win32_set_show_text(p, C.int(__lt14))
+	C.sngl_win32_set_show_text(p, C.int(__lt13))
 }
 
 // SnglWin32SetShown calls sngl_win32_set_shown.
 func SnglWin32SetShown(w HWND, shown bool) {
-	var __lt15 int
+	var __lt14 int
 	if shown {
-		__lt15 = 1
+		__lt14 = 1
 	} else {
-		__lt15 = 0
+		__lt14 = 0
 	}
-	C.sngl_win32_set_shown(w, C.int(__lt15))
+	C.sngl_win32_set_shown(w, C.int(__lt14))
 }
 
 // SnglWin32SetSpanStyle calls sngl_win32_set_span_style.
 func SnglWin32SetSpanStyle(w HWND, color int, size int, weight int, slant int, underline bool, strike bool, family string) {
-	var __lt16 int
+	var __lt15 int
 	if underline {
+		__lt15 = 1
+	} else {
+		__lt15 = 0
+	}
+	var __lt16 int
+	if strike {
 		__lt16 = 1
 	} else {
 		__lt16 = 0
 	}
-	var __lt17 int
-	if strike {
-		__lt17 = 1
-	} else {
-		__lt17 = 0
-	}
-	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt16), C.int(__lt17), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
+	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt15), C.int(__lt16), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
 }
 
 // SnglWin32SetTable calls sngl_win32_set_table.
 func SnglWin32SetTable(t HWND, selectable bool, sortable bool) {
-	var __lt18 int
+	var __lt17 int
 	if selectable {
+		__lt17 = 1
+	} else {
+		__lt17 = 0
+	}
+	var __lt18 int
+	if sortable {
 		__lt18 = 1
 	} else {
 		__lt18 = 0
 	}
-	var __lt19 int
-	if sortable {
-		__lt19 = 1
-	} else {
-		__lt19 = 0
-	}
-	C.sngl_win32_set_table(t, C.int(__lt18), C.int(__lt19))
+	C.sngl_win32_set_table(t, C.int(__lt17), C.int(__lt18))
 }
 
 // SnglWin32SetText calls sngl_win32_set_text.
@@ -972,24 +1242,24 @@ func SnglWin32SetUrl(p HWND, url string) {
 
 // SnglWin32SetVertical calls sngl_win32_set_vertical.
 func SnglWin32SetVertical(b HWND, vertical bool) {
-	var __lt20 int
+	var __lt19 int
 	if vertical {
-		__lt20 = 1
+		__lt19 = 1
 	} else {
-		__lt20 = 0
+		__lt19 = 0
 	}
-	C.sngl_win32_set_vertical(b, C.int(__lt20))
+	C.sngl_win32_set_vertical(b, C.int(__lt19))
 }
 
 // SnglWin32SetVisible calls sngl_win32_set_visible.
 func SnglWin32SetVisible(w HWND, visible bool) {
-	var __lt21 int
+	var __lt20 int
 	if visible {
-		__lt21 = 1
+		__lt20 = 1
 	} else {
-		__lt21 = 0
+		__lt20 = 0
 	}
-	C.sngl_win32_set_visible(w, C.int(__lt21))
+	C.sngl_win32_set_visible(w, C.int(__lt20))
 }
 
 // SnglWin32SetWords calls sngl_win32_set_words.

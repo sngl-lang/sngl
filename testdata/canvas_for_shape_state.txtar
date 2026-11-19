@@ -3505,6 +3505,9 @@ const SnglAsset sngl_assets[] = {
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct s_platform_win32___Pen s_platform_win32___Pen;
+typedef struct s_platform_win32___Saved s_platform_win32___Saved;
+typedef struct sngl_list__Saved sngl_list__Saved;
 typedef struct sngl_list_float sngl_list_float;
 typedef struct s___ref_map_string_pic s___ref_map_string_pic;
 typedef struct s_pic s_pic;
@@ -3518,11 +3521,37 @@ typedef struct s___anon_copy_on_5fc366 s___anon_copy_on_5fc366;
 typedef struct sngl_map_string____anon_copy_on_5fc366 sngl_map_string____anon_copy_on_5fc366;
 typedef struct s___anon_id_elem_4ccb28 s___anon_id_elem_4ccb28;
 typedef struct sngl_list___anon_id_elem_4ccb28 sngl_list___anon_id_elem_4ccb28;
+typedef struct s__gdipSaveGraphics__result s__gdipSaveGraphics__result;
 typedef struct s_ui_draw__Style s_ui_draw__Style;
 typedef struct s_builtin__color s_builtin__color;
+typedef struct s__gdipCreateSolidFill__result s__gdipCreateSolidFill__result;
+typedef struct s__gdipCreatePen1__result s__gdipCreatePen1__result;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct sngl_fn_sngl_win32_gfx_p__void sngl_fn_sngl_win32_gfx_p__void;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
+
+typedef struct s_platform_win32___Pen {
+	int64_t r;
+	int64_t g;
+	int64_t b;
+	int64_t a;
+	double width;
+	int64_t cap;
+	int64_t join;
+	double fontPx;
+	sngl_string family;
+} s_platform_win32___Pen;
+
+typedef struct s_platform_win32___Saved {
+	s_platform_win32___Pen pen;
+	int64_t state;
+} s_platform_win32___Saved;
+
+typedef struct sngl_list__Saved {
+	s_platform_win32___Saved *data;
+	int64_t len;
+	int64_t cap;
+} sngl_list__Saved;
 
 typedef struct sngl_list_float {
 	double *data;
@@ -3599,6 +3628,11 @@ typedef struct sngl_list___anon_id_elem_4ccb28 {
 	int64_t cap;
 } sngl_list___anon_id_elem_4ccb28;
 
+typedef struct s__gdipSaveGraphics__result {
+	int64_t result;
+	int64_t out1;
+} s__gdipSaveGraphics__result;
+
 typedef struct s_builtin__color {
 	uint8_t r;
 	uint8_t g;
@@ -3615,6 +3649,16 @@ typedef struct s_ui_draw__Style {
 	double fontSize;
 	sngl_string fontFamily;
 } s_ui_draw__Style;
+
+typedef struct s__gdipCreateSolidFill__result {
+	int64_t result;
+	void * out1;
+} s__gdipCreateSolidFill__result;
+
+typedef struct s__gdipCreatePen1__result {
+	int64_t result;
+	void * out3;
+} s__gdipCreatePen1__result;
 
 typedef struct s___lambda0_caps {
 	sngl_list_float ws;
@@ -3635,8 +3679,26 @@ typedef struct s___lambda0_caps__env {
 static void s_close(s_pic p);
 static s_pic s_load(int64_t n);
 static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs);
+static void s_platform_win32__Gfx_save(sngl_win32_gfx * g);
+static void sngl_list__Saved__unshare(sngl_list__Saved *l);
+static s_platform_win32___Saved s_platform_win32___Saved__keep(s_platform_win32___Saved v);
+static s_platform_win32___Pen s_platform_win32___Pen__keep(s_platform_win32___Pen v);
+static void s_platform_win32__Gfx_rectangle(sngl_win32_gfx * g, double x, double y, double w, double h);
 static void s_platform_win32__paint(sngl_win32_gfx * ctx, s_ui_draw__Style style);
+static void s_platform_win32__Gfx_restore(sngl_win32_gfx * g);
+static void s_platform_win32___Pen__drop(s_platform_win32___Pen v);
+static void s_platform_win32___Saved__drop(s_platform_win32___Saved v);
+static void s_platform_win32___paintOf(sngl_win32_gfx * g);
+static sngl_list__Saved sngl_list__Saved__keep(sngl_list__Saved v);
+static void sngl_list__Saved__drop(sngl_list__Saved v);
 static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c);
+static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve);
+static void s_platform_win32__Gfx_lineWidth(sngl_win32_gfx * g, double w);
+static void s_platform_win32__Gfx_lineCap(sngl_win32_gfx * g, int64_t cap);
+static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join);
+static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g);
+static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a);
+static void s_platform_win32___newPath(sngl_win32_gfx * g);
 static void s___effect0_enter(void);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
@@ -3742,6 +3804,139 @@ static void sngl_list___anon_id_elem_4ccb28_grow(sngl_list___anon_id_elem_4ccb28
 static void sngl_list___anon_id_elem_4ccb28_push(sngl_list___anon_id_elem_4ccb28 *l, s___anon_id_elem_4ccb28 v) {
 	sngl_list___anon_id_elem_4ccb28_grow(l, 1);
 	l->data[l->len++] = v;
+}
+
+static s__gdipSaveGraphics__result sngl_ccall_GdipSaveGraphics__gdipSaveGraphics(void * a0, int64_t a1) {
+	GraphicsState t1 = (GraphicsState)a1;
+	s__gdipSaveGraphics__result r;
+	r.result = (int64_t)GdipSaveGraphics(a0, &t1);
+	r.out1 = (int64_t)t1;
+	return r;
+}
+
+static s_platform_win32___Pen s_platform_win32___Pen__keep(s_platform_win32___Pen v) {
+	v.family = sngl_string_keep(v.family);
+	return v;
+}
+
+static s_platform_win32___Saved s_platform_win32___Saved__keep(s_platform_win32___Saved v) {
+	v.pen = s_platform_win32___Pen__keep(v.pen);
+	return v;
+}
+
+static void sngl_list__Saved__unshare(sngl_list__Saved *l) {
+	if (!sngl_shared(l->data)) {
+		return;
+	}
+	sngl_list__Saved v = *l;
+	sngl_let_go_shared(v.data);
+	s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(data, v.data, sizeof(s_platform_win32___Saved) * (size_t)v.len);
+	}
+	v.data = data;
+	sngl_kept_len(data, v.len);
+	v.cap = v.len;
+	for (int64_t i = 0; i < v.len; i++) {
+		v.data[i] = s_platform_win32___Saved__keep(v.data[i]);
+	}
+	*l = v;
+}
+
+static void sngl_list__Saved_grow_kept(sngl_list__Saved *l, int64_t n) {
+	if (l->len + n <= l->cap) {
+		return;
+	}
+	int64_t cap = l->cap * 2;
+	if (cap < l->len + n) {
+		cap = l->len + n;
+	}
+	if (cap < 4) {
+		cap = 4;
+	}
+	s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)cap);
+	if (l->len > 0) {
+		memcpy(data, l->data, sizeof(s_platform_win32___Saved) * (size_t)l->len);
+	}
+	sngl_drop(l->data);
+	l->data = data;
+	l->cap = cap;
+}
+
+static void sngl_list__Saved_push_kept(sngl_list__Saved *l, s_platform_win32___Saved v) {
+	sngl_list__Saved__unshare(l);
+	sngl_list__Saved_grow_kept(l, 1);
+	l->data[l->len++] = v;
+	sngl_kept_len(l->data, l->len);
+}
+
+static s_platform_win32___Saved *sngl_list__Saved_at(sngl_list__Saved l, int64_t i) {
+	if (i < 0 || i >= l.len) {
+		sngl_panic("index out of range");
+	}
+	return &l.data[i];
+}
+
+static void s_platform_win32___Pen__drop(s_platform_win32___Pen v) {
+	sngl_drop((v.family).ptr);
+}
+
+static void s_platform_win32___Saved__drop(s_platform_win32___Saved v) {
+	s_platform_win32___Pen__drop(v.pen);
+}
+
+static void sngl_list__Saved_remove_kept(sngl_list__Saved *l, int64_t i) {
+	if (i < 0 || i >= l->len) {
+		return;
+	}
+	sngl_list__Saved__unshare(l);
+	s_platform_win32___Saved__drop(l->data[i]);
+	memmove(&l->data[i], &l->data[i + 1], sizeof(s_platform_win32___Saved) * (size_t)(l->len - i - 1));
+	l->len--;
+	sngl_kept_len(l->data, l->len);
+}
+
+static sngl_list__Saved sngl_list__Saved__keep(sngl_list__Saved v) {
+	if (!sngl_share(v.data, v.len)) {
+		s_platform_win32___Saved *data = sngl_keep_alloc(sizeof(s_platform_win32___Saved) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(data, v.data, sizeof(s_platform_win32___Saved) * (size_t)v.len);
+		}
+		v.data = data;
+		sngl_kept_len(data, v.len);
+		v.cap = v.len;
+		for (int64_t i = 0; i < v.len; i++) {
+			v.data[i] = s_platform_win32___Saved__keep(v.data[i]);
+		}
+	}
+	return v;
+}
+
+static void sngl_list__Saved__drop(sngl_list__Saved v) {
+	if (!sngl_let_go_shared(v.data)) {
+		for (int64_t i = 0; i < v.len; i++) {
+			s_platform_win32___Saved__drop(v.data[i]);
+		}
+		sngl_drop(v.data);
+	}
+}
+
+static s__gdipCreateSolidFill__result sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill(ARGB a0, void * a1) {
+	void * t1 = NULL;
+	(void)a1;
+	s__gdipCreateSolidFill__result r;
+	r.result = (int64_t)GdipCreateSolidFill(a0, &t1);
+	r.out1 = (void *)t1;
+	return r;
+}
+
+static s__gdipCreatePen1__result sngl_ccall_GdipCreatePen1__gdipCreatePen1(ARGB a0, REAL a1, GpUnit a2, void * a3) {
+	void * t3 = NULL;
+	(void)a3;
+	s__gdipCreatePen1__result r;
+	r.result = (int64_t)GdipCreatePen1(a0, a1, a2, &t3);
+	r.out3 = (void *)t3;
+	return r;
 }
 
 static sngl_list_string sngl_list_string__keep(sngl_list_string v) {
@@ -4368,6 +4563,16 @@ static sngl_fn_sngl_win32_gfx_p__void sngl_fn_sngl_win32_gfx_p__void__keep(sngl_
 static int64_t s_opened;
 static int64_t s_closed;
 static int64_t s_lastClosed;
+static bool s_platform_win32___at;
+static bool s_platform_win32___begun;
+static int64_t s_platform_win32___depth;
+static double s_platform_win32___fx;
+static double s_platform_win32___fy;
+static int64_t s_platform_win32___paintSerial;
+static s_platform_win32___Pen s_platform_win32___pen;
+static sngl_list__Saved s_platform_win32___saved;
+static double s_platform_win32___x;
+static double s_platform_win32___y;
 static sngl_list_float s_ws;
 static s___ref_map_string_pic * s_p__inst0;
 static sngl_map_string____anon_copy_v0_2d5b73 s___copied__inst0;
@@ -4426,44 +4631,171 @@ static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs) {
 	return __out__r0;
 }
 
+static void s_platform_win32__Gfx_save(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	if (s_platform_win32___depth < 16) {
+		int64_t state = 0;
+		s__gdipSaveGraphics__result __ref0 = sngl_ccall_GdipSaveGraphics__gdipSaveGraphics((g)->g, state);
+		state = __ref0.out1;
+		sngl_list__Saved_push_kept(&(s_platform_win32___saved), s_platform_win32___Saved__keep((s_platform_win32___Saved){.pen = s_platform_win32___pen, .state = state}));
+	}
+	s_platform_win32___depth += 1;
+}
+
+static void s_platform_win32__Gfx_rectangle(sngl_win32_gfx * g, double x, double y, double w, double h) {
+	s_platform_win32___paintOf(g);
+	(void)(int64_t)GdipAddPathRectangle((g)->path, (REAL)(x), (REAL)(y), (REAL)(w), (REAL)(h));
+	s_platform_win32___x = x;
+	s_platform_win32___fx = x;
+	s_platform_win32___y = y;
+	s_platform_win32___fy = y;
+	s_platform_win32___at = true;
+	s_platform_win32___begun = false;
+}
+
 static void s_platform_win32__paint(sngl_win32_gfx * ctx, s_ui_draw__Style style) {
 	if (style.fill.a > 0) {
 		s_platform_win32__source(ctx, style.fill);
-		sngl_win32_gfx_fill(ctx, (int)(((style.stroke.a > 0) ? 1 : 0)));
+		s_platform_win32__Gfx_fill(ctx, (style.stroke.a > 0));
 	}
 	if (style.stroke.a > 0) {
-		sngl_win32_gfx_line_width(ctx, (double)(style.strokeWidth));
-		sngl_win32_gfx_line_cap(ctx, (int)((int64_t)(style.lineCap)));
-		sngl_win32_gfx_line_join(ctx, (int)((int64_t)(style.lineJoin)));
+		s_platform_win32__Gfx_lineWidth(ctx, style.strokeWidth);
+		s_platform_win32__Gfx_lineCap(ctx, (int64_t)(style.lineCap));
+		s_platform_win32__Gfx_lineJoin(ctx, (int64_t)(style.lineJoin));
 		s_platform_win32__source(ctx, style.stroke);
-		sngl_win32_gfx_stroke(ctx);
+		s_platform_win32__Gfx_stroke(ctx);
+	}
+}
+
+static void s_platform_win32__Gfx_restore(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	if (s_platform_win32___depth > 0) {
+		s_platform_win32___depth -= 1;
+		if (s_platform_win32___depth < 16) {
+			s_platform_win32___Saved kept = (*sngl_list__Saved_at(s_platform_win32___saved, s_platform_win32___depth));
+			(void)(int64_t)GdipRestoreGraphics((g)->g, (GraphicsState)(kept.state));
+			{
+	s_platform_win32___Pen __kept2 = s_platform_win32___Pen__keep(kept.pen);
+	s_platform_win32___Pen *__slot2 = &(s_platform_win32___pen);
+	s_platform_win32___Pen__drop(*__slot2);
+	*__slot2 = __kept2;
+}
+			sngl_list__Saved_remove_kept(&(s_platform_win32___saved), s_platform_win32___depth);
+		}
+	}
+}
+
+static void s_platform_win32___paintOf(sngl_win32_gfx * g) {
+	int64_t serial = (int64_t)(g)->serial;
+	if (serial != s_platform_win32___paintSerial) {
+		s_platform_win32___paintSerial = serial;
+		s_platform_win32___x = 0.0;
+		s_platform_win32___y = 0.0;
+		s_platform_win32___fx = 0.0;
+		s_platform_win32___fy = 0.0;
+		s_platform_win32___at = false;
+		s_platform_win32___begun = false;
+		{
+	s_platform_win32___Pen __kept3 = s_platform_win32___Pen__keep((s_platform_win32___Pen){.r = 0, .g = 0, .b = 0, .a = 255, .width = 1.0, .cap = 0, .join = 0, .fontPx = 16.0, .family = SNGL_STR("sans-serif")});
+	s_platform_win32___Pen *__slot3 = &(s_platform_win32___pen);
+	s_platform_win32___Pen__drop(*__slot3);
+	*__slot3 = __kept3;
+}
+		{
+	sngl_list__Saved __kept4 = sngl_list__Saved__keep(((sngl_list__Saved){0}));
+	sngl_list__Saved *__slot4 = &(s_platform_win32___saved);
+	sngl_list__Saved__drop(*__slot4);
+	*__slot4 = __kept4;
+}
+		s_platform_win32___depth = 0;
 	}
 }
 
 static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c) {
-	sngl_win32_gfx_color(ctx, (int)((int64_t)(c.r)), (int)((int64_t)(c.g)), (int)((int64_t)(c.b)), (int)((int64_t)(c.a)));
+	s_platform_win32__Gfx_color(ctx, (int64_t)(c.r), (int64_t)(c.g), (int64_t)(c.b), (int64_t)(c.a));
+}
+
+static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve) {
+	s_platform_win32___paintOf(g);
+	void * brush = NULL;
+	s__gdipCreateSolidFill__result __ref1 = sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), brush);
+	brush = __ref1.out1;
+	if ((__ref1.result == 0) && (brush != NULL)) {
+		(void)(int64_t)GdipFillPath((g)->g, (void *)(brush), (g)->path);
+		(void)(int64_t)GdipDeleteBrush((void *)(brush));
+	}
+	if (!preserve) {
+		s_platform_win32___newPath(g);
+	}
+}
+
+static void s_platform_win32__Gfx_lineWidth(sngl_win32_gfx * g, double w) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.width = w;
+}
+
+static void s_platform_win32__Gfx_lineCap(sngl_win32_gfx * g, int64_t cap) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.cap = cap;
+}
+
+static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.join = join;
+}
+
+static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g) {
+	s_platform_win32___paintOf(g);
+	int64_t cap = (((s_platform_win32___pen.cap >= 0) && (s_platform_win32___pen.cap < 3)) ? s_platform_win32___pen.cap : 0);
+	int64_t join = (((s_platform_win32___pen.join >= 0) && (s_platform_win32___pen.join < 3)) ? s_platform_win32___pen.join : 0);
+	void * pen = NULL;
+	s__gdipCreatePen1__result __ref2 = sngl_ccall_GdipCreatePen1__gdipCreatePen1((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), (REAL)(s_platform_win32___pen.width), (GpUnit)(2), pen);
+	pen = __ref2.out3;
+	if ((__ref2.result == 0) && (pen != NULL)) {
+		int64_t line = ((cap == 1) ? 2 : ((cap == 2) ? 1 : 0));
+		(void)(int64_t)GdipSetPenLineCap197819(pen, (GpLineCap)(line), (GpLineCap)(line), (GpDashCap)(((cap == 1) ? 2 : 0)));
+		(void)(int64_t)GdipSetPenLineJoin(pen, (GpLineJoin)(((join == 1) ? 2 : ((join == 2) ? 1 : 0))));
+		(void)(int64_t)GdipDrawPath((g)->g, pen, (g)->path);
+		(void)(int64_t)GdipDeletePen(pen);
+	}
+	s_platform_win32___newPath(g);
+}
+
+static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a) {
+	s_platform_win32___paintOf(g);
+	s_platform_win32___pen.r = ((r < 0) ? 0 : ((r > 255) ? 255 : r));
+	s_platform_win32___pen.g = ((gr < 0) ? 0 : ((gr > 255) ? 255 : gr));
+	s_platform_win32___pen.b = ((b < 0) ? 0 : ((b > 255) ? 255 : b));
+	s_platform_win32___pen.a = ((a < 0) ? 0 : ((a > 255) ? 255 : a));
+}
+
+static void s_platform_win32___newPath(sngl_win32_gfx * g) {
+	(void)(int64_t)GdipResetPath((g)->path);
+	(void)(int64_t)GdipSetPathFillMode((g)->path, (GpFillMode)(1));
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
 }
 
 static void s___effect0_enter(void) {
 	{
-	sngl_list_string __kept2 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot2 = &(s___effect0_desired);
-	sngl_list_string__drop(*__slot2);
-	*__slot2 = __kept2;
+	sngl_list_string __kept5 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot5 = &(s___effect0_desired);
+	sngl_list_string__drop(*__slot5);
+	*__slot5 = __kept5;
 }
 	{
-	sngl_list_string __kept3 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot3 = &(s___effect0_paths);
-	sngl_list_string__drop(*__slot3);
-	*__slot3 = __kept3;
+	sngl_list_string __kept6 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot6 = &(s___effect0_paths);
+	sngl_list_string__drop(*__slot6);
+	*__slot6 = __kept6;
 }
 	{
-	sngl_map_string__int __kept4 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot4 = &(s___effect0_pathAt);
-	sngl_map_string__int__drop(*__slot4);
-	*__slot4 = __kept4;
+	sngl_map_string__int __kept7 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot7 = &(s___effect0_pathAt);
+	sngl_map_string__int__drop(*__slot7);
+	*__slot7 = __kept7;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop5 = {s___identified0(s_ws), 0}; __loop5.i < __loop5.l.len; __loop5.i++) { int64_t __copy0 = __loop5.i; s___anon_id_elem_4ccb28 k = __loop5.l.data[__loop5.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop8 = {s___identified0(s_ws), 0}; __loop8.i < __loop8.l.len; __loop8.i++) { int64_t __copy0 = __loop8.i; s___anon_id_elem_4ccb28 k = __loop8.l.data[__loop8.i];
 		bool __effect0_fresh = true;
 		int64_t __effect0_at = sngl_map_string__int_get(s___effect0_liveAt, k.id, -1);
 		if (__effect0_at >= 0) {
@@ -4479,54 +4811,54 @@ static void s___effect0_enter(void) {
 		sngl_list_string_push_kept(&(s___effect0_desired), sngl_string_keep(k.id));
 	}
 	{
-	sngl_list_string __kept6 = sngl_list_string__keep(s___effect0_desired);
-	sngl_list_string *__slot6 = &(s___effect0_live);
-	sngl_list_string__drop(*__slot6);
-	*__slot6 = __kept6;
+	sngl_list_string __kept9 = sngl_list_string__keep(s___effect0_desired);
+	sngl_list_string *__slot9 = &(s___effect0_live);
+	sngl_list_string__drop(*__slot9);
+	*__slot9 = __kept9;
 }
 	{
-	sngl_list_string __kept7 = sngl_list_string__keep(s___effect0_paths);
-	sngl_list_string *__slot7 = &(s___effect0_livePaths);
-	sngl_list_string__drop(*__slot7);
-	*__slot7 = __kept7;
+	sngl_list_string __kept10 = sngl_list_string__keep(s___effect0_paths);
+	sngl_list_string *__slot10 = &(s___effect0_livePaths);
+	sngl_list_string__drop(*__slot10);
+	*__slot10 = __kept10;
 }
 	{
-	sngl_map_string__int __kept8 = sngl_map_string__int__keep(s___effect0_pathAt);
-	sngl_map_string__int *__slot8 = &(s___effect0_liveAt);
-	sngl_map_string__int__drop(*__slot8);
-	*__slot8 = __kept8;
+	sngl_map_string__int __kept11 = sngl_map_string__int__keep(s___effect0_pathAt);
+	sngl_map_string__int *__slot11 = &(s___effect0_liveAt);
+	sngl_map_string__int__drop(*__slot11);
+	*__slot11 = __kept11;
 }
 }
 
 static void s___effect1_mount(void) {
 	{
-	s___anon_copy_v0_2d5b73 __kept9 = s___anon_copy_v0_2d5b73__keep(s___effect1_key);
-	s___anon_copy_v0_2d5b73 *__slot9 = &((*sngl_map_string____anon_copy_v0_2d5b73_slot_kept(&(s___copied__inst0), s___effect1_key.copy)));
-	s___anon_copy_v0_2d5b73__drop(*__slot9);
-	*__slot9 = __kept9;
+	s___anon_copy_v0_2d5b73 __kept12 = s___anon_copy_v0_2d5b73__keep(s___effect1_key);
+	s___anon_copy_v0_2d5b73 *__slot12 = &((*sngl_map_string____anon_copy_v0_2d5b73_slot_kept(&(s___copied__inst0), s___effect1_key.copy)));
+	s___anon_copy_v0_2d5b73__drop(*__slot12);
+	*__slot12 = __kept12;
 }
 }
 
 static void s___effect1_down(void) {
 	{
-	sngl_list___anon_copy_v0_2d5b73 __kept10 = sngl_list___anon_copy_v0_2d5b73__keep(((sngl_list___anon_copy_v0_2d5b73){0}));
-	sngl_list___anon_copy_v0_2d5b73 *__slot10 = &(s___effect1_desired);
-	sngl_list___anon_copy_v0_2d5b73__drop(*__slot10);
-	*__slot10 = __kept10;
+	sngl_list___anon_copy_v0_2d5b73 __kept13 = sngl_list___anon_copy_v0_2d5b73__keep(((sngl_list___anon_copy_v0_2d5b73){0}));
+	sngl_list___anon_copy_v0_2d5b73 *__slot13 = &(s___effect1_desired);
+	sngl_list___anon_copy_v0_2d5b73__drop(*__slot13);
+	*__slot13 = __kept13;
 }
 	{
-	sngl_list_string __kept11 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot11 = &(s___effect1_paths);
-	sngl_list_string__drop(*__slot11);
-	*__slot11 = __kept11;
+	sngl_list_string __kept14 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot14 = &(s___effect1_paths);
+	sngl_list_string__drop(*__slot14);
+	*__slot14 = __kept14;
 }
 	{
-	sngl_map_string__int __kept12 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot12 = &(s___effect1_pathAt);
-	sngl_map_string__int__drop(*__slot12);
-	*__slot12 = __kept12;
+	sngl_map_string__int __kept15 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot15 = &(s___effect1_pathAt);
+	sngl_map_string__int__drop(*__slot15);
+	*__slot15 = __kept15;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop13 = {s___identified0(s_ws), 0}; __loop13.i < __loop13.l.len; __loop13.i++) { int64_t __copy0 = __loop13.i; s___anon_id_elem_4ccb28 k = __loop13.l.data[__loop13.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop16 = {s___identified0(s_ws), 0}; __loop16.i < __loop16.l.len; __loop16.i++) { int64_t __copy0 = __loop16.i; s___anon_id_elem_4ccb28 k = __loop16.l.data[__loop16.i];
 		sngl_list___anon_copy_v0_2d5b73_push_kept(&(s___effect1_desired), s___anon_copy_v0_2d5b73__keep((s___anon_copy_v0_2d5b73){.copy = k.id, .v0 = k.id}));
 		(*sngl_map_string__int_slot_kept(&(s___effect1_pathAt), k.id)) = (s___effect1_paths).len;
 		sngl_list_string_push_kept(&(s___effect1_paths), sngl_string_keep(k.id));
@@ -4534,45 +4866,45 @@ static void s___effect1_down(void) {
 }
 
 static void s___effect1_up(void) {
-	for (struct { sngl_list___anon_copy_v0_2d5b73 l; int64_t i; } __loop14 = {s___effect1_desired, 0}; __loop14.i < __loop14.l.len; __loop14.i++) { int64_t __effect1_i = __loop14.i; s___anon_copy_v0_2d5b73 __effect1_k = __loop14.l.data[__loop14.i];
+	for (struct { sngl_list___anon_copy_v0_2d5b73 l; int64_t i; } __loop17 = {s___effect1_desired, 0}; __loop17.i < __loop17.l.len; __loop17.i++) { int64_t __effect1_i = __loop17.i; s___anon_copy_v0_2d5b73 __effect1_k = __loop17.l.data[__loop17.i];
 		int64_t __effect1_at = sngl_map_string__int_get(s___effect1_liveAt, (*sngl_list_string_at(s___effect1_paths, __effect1_i)), -1);
 		if (__effect1_at < 0) {
 			{
-	s___anon_copy_v0_2d5b73 __kept15 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
-	s___anon_copy_v0_2d5b73 *__slot15 = &(s___effect1_key);
-	s___anon_copy_v0_2d5b73__drop(*__slot15);
-	*__slot15 = __kept15;
+	s___anon_copy_v0_2d5b73 __kept18 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
+	s___anon_copy_v0_2d5b73 *__slot18 = &(s___effect1_key);
+	s___anon_copy_v0_2d5b73__drop(*__slot18);
+	*__slot18 = __kept18;
 }
 			s___effect1_mount();
 		} else {
 			if (!sngl_string_eq((*sngl_list___anon_copy_v0_2d5b73_at(s___effect1_live, __effect1_at)).copy, __effect1_k.copy) || !sngl_string_eq((*sngl_list___anon_copy_v0_2d5b73_at(s___effect1_live, __effect1_at)).v0, __effect1_k.v0)) {
 				{
-	s___anon_copy_v0_2d5b73 __kept16 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
-	s___anon_copy_v0_2d5b73 *__slot16 = &(s___effect1_key);
-	s___anon_copy_v0_2d5b73__drop(*__slot16);
-	*__slot16 = __kept16;
+	s___anon_copy_v0_2d5b73 __kept19 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
+	s___anon_copy_v0_2d5b73 *__slot19 = &(s___effect1_key);
+	s___anon_copy_v0_2d5b73__drop(*__slot19);
+	*__slot19 = __kept19;
 }
 				s___effect1_mount();
 			}
 		}
 	}
 	{
-	sngl_list___anon_copy_v0_2d5b73 __kept17 = sngl_list___anon_copy_v0_2d5b73__keep(s___effect1_desired);
-	sngl_list___anon_copy_v0_2d5b73 *__slot17 = &(s___effect1_live);
-	sngl_list___anon_copy_v0_2d5b73__drop(*__slot17);
-	*__slot17 = __kept17;
+	sngl_list___anon_copy_v0_2d5b73 __kept20 = sngl_list___anon_copy_v0_2d5b73__keep(s___effect1_desired);
+	sngl_list___anon_copy_v0_2d5b73 *__slot20 = &(s___effect1_live);
+	sngl_list___anon_copy_v0_2d5b73__drop(*__slot20);
+	*__slot20 = __kept20;
 }
 	{
-	sngl_list_string __kept18 = sngl_list_string__keep(s___effect1_paths);
-	sngl_list_string *__slot18 = &(s___effect1_livePaths);
-	sngl_list_string__drop(*__slot18);
-	*__slot18 = __kept18;
+	sngl_list_string __kept21 = sngl_list_string__keep(s___effect1_paths);
+	sngl_list_string *__slot21 = &(s___effect1_livePaths);
+	sngl_list_string__drop(*__slot21);
+	*__slot21 = __kept21;
 }
 	{
-	sngl_map_string__int __kept19 = sngl_map_string__int__keep(s___effect1_pathAt);
-	sngl_map_string__int *__slot19 = &(s___effect1_liveAt);
-	sngl_map_string__int__drop(*__slot19);
-	*__slot19 = __kept19;
+	sngl_map_string__int __kept22 = sngl_map_string__int__keep(s___effect1_pathAt);
+	sngl_map_string__int *__slot22 = &(s___effect1_liveAt);
+	sngl_map_string__int__drop(*__slot22);
+	*__slot22 = __kept22;
 }
 }
 
@@ -4584,46 +4916,46 @@ static void s___effect2_unmount(void) {
 
 static void s___effect2_down(void) {
 	{
-	sngl_list_string __kept20 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot20 = &(s___effect2_desired);
-	sngl_list_string__drop(*__slot20);
-	*__slot20 = __kept20;
+	sngl_list_string __kept23 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot23 = &(s___effect2_desired);
+	sngl_list_string__drop(*__slot23);
+	*__slot23 = __kept23;
 }
 	{
-	sngl_list_string __kept21 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot21 = &(s___effect2_paths);
-	sngl_list_string__drop(*__slot21);
-	*__slot21 = __kept21;
+	sngl_list_string __kept24 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot24 = &(s___effect2_paths);
+	sngl_list_string__drop(*__slot24);
+	*__slot24 = __kept24;
 }
 	{
-	sngl_map_string__int __kept22 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot22 = &(s___effect2_pathAt);
-	sngl_map_string__int__drop(*__slot22);
-	*__slot22 = __kept22;
+	sngl_map_string__int __kept25 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot25 = &(s___effect2_pathAt);
+	sngl_map_string__int__drop(*__slot25);
+	*__slot25 = __kept25;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop23 = {s___identified0(s_ws), 0}; __loop23.i < __loop23.l.len; __loop23.i++) { int64_t __copy0 = __loop23.i; s___anon_id_elem_4ccb28 k = __loop23.l.data[__loop23.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop26 = {s___identified0(s_ws), 0}; __loop26.i < __loop26.l.len; __loop26.i++) { int64_t __copy0 = __loop26.i; s___anon_id_elem_4ccb28 k = __loop26.l.data[__loop26.i];
 		sngl_list_string_push_kept(&(s___effect2_desired), sngl_string_keep(k.id));
 		(*sngl_map_string__int_slot_kept(&(s___effect2_pathAt), k.id)) = (s___effect2_paths).len;
 		sngl_list_string_push_kept(&(s___effect2_paths), sngl_string_keep(k.id));
 	}
-	for (struct { sngl_list_string l; int64_t i; } __loop24 = {s___effect2_live, 0}; __loop24.i < __loop24.l.len; __loop24.i++) { int64_t __effect2_i = __loop24.i; sngl_string _ = __loop24.l.data[__loop24.i];
+	for (struct { sngl_list_string l; int64_t i; } __loop27 = {s___effect2_live, 0}; __loop27.i < __loop27.l.len; __loop27.i++) { int64_t __effect2_i = __loop27.i; sngl_string _ = __loop27.l.data[__loop27.i];
 		int64_t __effect2_j = (((s___effect2_live).len - 1) - __effect2_i);
 		int64_t __effect2_at = sngl_map_string__int_get(s___effect2_pathAt, (*sngl_list_string_at(s___effect2_livePaths, __effect2_j)), -1);
 		if (__effect2_at < 0) {
 			{
-	sngl_string __kept25 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
-	sngl_string *__slot25 = &(s___effect2_key);
-	sngl_drop((*__slot25).ptr);
-	*__slot25 = __kept25;
+	sngl_string __kept28 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
+	sngl_string *__slot28 = &(s___effect2_key);
+	sngl_drop((*__slot28).ptr);
+	*__slot28 = __kept28;
 }
 			s___effect2_unmount();
 		} else {
 			if (!sngl_string_eq((*sngl_list_string_at(s___effect2_desired, __effect2_at)), (*sngl_list_string_at(s___effect2_live, __effect2_j)))) {
 				{
-	sngl_string __kept26 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
-	sngl_string *__slot26 = &(s___effect2_key);
-	sngl_drop((*__slot26).ptr);
-	*__slot26 = __kept26;
+	sngl_string __kept29 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
+	sngl_string *__slot29 = &(s___effect2_key);
+	sngl_drop((*__slot29).ptr);
+	*__slot29 = __kept29;
 }
 				s___effect2_unmount();
 			}
@@ -4633,59 +4965,59 @@ static void s___effect2_down(void) {
 
 static void s___effect2_up(void) {
 	{
-	sngl_list_string __kept27 = sngl_list_string__keep(s___effect2_desired);
-	sngl_list_string *__slot27 = &(s___effect2_live);
-	sngl_list_string__drop(*__slot27);
-	*__slot27 = __kept27;
+	sngl_list_string __kept30 = sngl_list_string__keep(s___effect2_desired);
+	sngl_list_string *__slot30 = &(s___effect2_live);
+	sngl_list_string__drop(*__slot30);
+	*__slot30 = __kept30;
 }
 	{
-	sngl_list_string __kept28 = sngl_list_string__keep(s___effect2_paths);
-	sngl_list_string *__slot28 = &(s___effect2_livePaths);
-	sngl_list_string__drop(*__slot28);
-	*__slot28 = __kept28;
+	sngl_list_string __kept31 = sngl_list_string__keep(s___effect2_paths);
+	sngl_list_string *__slot31 = &(s___effect2_livePaths);
+	sngl_list_string__drop(*__slot31);
+	*__slot31 = __kept31;
 }
 	{
-	sngl_map_string__int __kept29 = sngl_map_string__int__keep(s___effect2_pathAt);
-	sngl_map_string__int *__slot29 = &(s___effect2_liveAt);
-	sngl_map_string__int__drop(*__slot29);
-	*__slot29 = __kept29;
+	sngl_map_string__int __kept32 = sngl_map_string__int__keep(s___effect2_pathAt);
+	sngl_map_string__int *__slot32 = &(s___effect2_liveAt);
+	sngl_map_string__int__drop(*__slot32);
+	*__slot32 = __kept32;
 }
 }
 
 static void s___effect2_teardown(void) {
-	for (struct { sngl_list_string l; int64_t i; } __loop30 = {s___effect2_live, 0}; __loop30.i < __loop30.l.len; __loop30.i++) { int64_t __effect2_ti = __loop30.i; sngl_string _ = __loop30.l.data[__loop30.i];
+	for (struct { sngl_list_string l; int64_t i; } __loop33 = {s___effect2_live, 0}; __loop33.i < __loop33.l.len; __loop33.i++) { int64_t __effect2_ti = __loop33.i; sngl_string _ = __loop33.l.data[__loop33.i];
 		{
-	sngl_string __kept31 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, (((s___effect2_live).len - 1) - __effect2_ti))));
-	sngl_string *__slot31 = &(s___effect2_key);
-	sngl_drop((*__slot31).ptr);
-	*__slot31 = __kept31;
+	sngl_string __kept34 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, (((s___effect2_live).len - 1) - __effect2_ti))));
+	sngl_string *__slot34 = &(s___effect2_key);
+	sngl_drop((*__slot34).ptr);
+	*__slot34 = __kept34;
 }
 		s___effect2_unmount();
 	}
 	{
-	sngl_list_string __kept32 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot32 = &(s___effect2_live);
-	sngl_list_string__drop(*__slot32);
-	*__slot32 = __kept32;
+	sngl_list_string __kept35 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot35 = &(s___effect2_live);
+	sngl_list_string__drop(*__slot35);
+	*__slot35 = __kept35;
 }
 	{
-	sngl_list_string __kept33 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot33 = &(s___effect2_livePaths);
-	sngl_list_string__drop(*__slot33);
-	*__slot33 = __kept33;
+	sngl_list_string __kept36 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot36 = &(s___effect2_livePaths);
+	sngl_list_string__drop(*__slot36);
+	*__slot36 = __kept36;
 }
 	{
-	sngl_map_string__int __kept34 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot34 = &(s___effect2_liveAt);
-	sngl_map_string__int__drop(*__slot34);
-	*__slot34 = __kept34;
+	sngl_map_string__int __kept37 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot37 = &(s___effect2_liveAt);
+	sngl_map_string__int__drop(*__slot37);
+	*__slot37 = __kept37;
 }
 }
 
 static void s___effect3_update(void) {
 	sngl_string __copyKey = s___effect3_key.copy;
 	s___anon_id_elem_4ccb28 k__at0 = (s___anon_id_elem_4ccb28){.id = SNGL_STR(""), .elem = 0.0};
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop35 = {s___identified0(s_ws), 0}; __loop35.i < __loop35.l.len; __loop35.i++) { int64_t __copyAt0 = __loop35.i; s___anon_id_elem_4ccb28 __copyElemAt0 = __loop35.l.data[__loop35.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop38 = {s___identified0(s_ws), 0}; __loop38.i < __loop38.l.len; __loop38.i++) { int64_t __copyAt0 = __loop38.i; s___anon_id_elem_4ccb28 __copyElemAt0 = __loop38.l.data[__loop38.i];
 		if (sngl_string_eq(__copyElemAt0.id, __copyKey)) {
 			k__at0 = __copyElemAt0;
 		}
@@ -4710,12 +5042,12 @@ static void s___effects0_settle(void) {
 				s___effects0_pending = false;
 				s___effects0_steps = (s___effects0_steps + 1);
 				sngl_map_string____anon_copy_on_5fc366 __effect3_next = ((sngl_map_string____anon_copy_on_5fc366){0});
-				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop36 = {s___identified0(s_ws), 0}; __loop36.i < __loop36.l.len; __loop36.i++) { int64_t __copy0 = __loop36.i; s___anon_id_elem_4ccb28 k = __loop36.l.data[__loop36.i];
+				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop39 = {s___identified0(s_ws), 0}; __loop39.i < __loop39.l.len; __loop39.i++) { int64_t __copy0 = __loop39.i; s___anon_id_elem_4ccb28 k = __loop39.l.data[__loop39.i];
 					{
-	s___anon_copy_on_5fc366 __kept37 = s___anon_copy_on_5fc366__keep((s___anon_copy_on_5fc366){.copy = k.id, .on = k.elem});
-	s___anon_copy_on_5fc366 *__slot37 = &(s___effect3_key);
-	s___anon_copy_on_5fc366__drop(*__slot37);
-	*__slot37 = __kept37;
+	s___anon_copy_on_5fc366 __kept40 = s___anon_copy_on_5fc366__keep((s___anon_copy_on_5fc366){.copy = k.id, .on = k.elem});
+	s___anon_copy_on_5fc366 *__slot40 = &(s___effect3_key);
+	s___anon_copy_on_5fc366__drop(*__slot40);
+	*__slot40 = __kept40;
 }
 					sngl_string __effect3_copy = k.id;
 					if (sngl_map_string____anon_copy_on_5fc366_find(s___effect3_keys, __effect3_copy) >= 0) {
@@ -4727,10 +5059,10 @@ static void s___effects0_settle(void) {
 					(*sngl_map_string____anon_copy_on_5fc366_slot(&(__effect3_next), __effect3_copy)) = s___effect3_key;
 				}
 				{
-	sngl_map_string____anon_copy_on_5fc366 __kept38 = sngl_map_string____anon_copy_on_5fc366__keep(__effect3_next);
-	sngl_map_string____anon_copy_on_5fc366 *__slot38 = &(s___effect3_keys);
-	sngl_map_string____anon_copy_on_5fc366__drop(*__slot38);
-	*__slot38 = __kept38;
+	sngl_map_string____anon_copy_on_5fc366 __kept41 = sngl_map_string____anon_copy_on_5fc366__keep(__effect3_next);
+	sngl_map_string____anon_copy_on_5fc366 *__slot41 = &(s___effect3_keys);
+	sngl_map_string____anon_copy_on_5fc366__drop(*__slot41);
+	*__slot41 = __kept41;
 }
 				s___effect3_dirty = false;
 				s___effect3_rekey = false;
@@ -4758,11 +5090,11 @@ static void s___snglTeardown(void) {
 }
 
 static void s___lambda0(s___lambda0_caps state, sngl_win32_gfx * ctx) {
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop39 = {s___identified0(state.ws), 0}; __loop39.i < __loop39.l.len; __loop39.i++) { int64_t __copy0 = __loop39.i; s___anon_id_elem_4ccb28 k = __loop39.l.data[__loop39.i];
-		sngl_win32_gfx_save(ctx);
-		sngl_win32_gfx_rect(ctx, (double)(0.0), (double)(0.0), (double)((double)(sngl_map_string__pic_get(state.p__inst0->value, k.id, (s_pic){.n = 0}).n)), (double)(k.elem));
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop42 = {s___identified0(state.ws), 0}; __loop42.i < __loop42.l.len; __loop42.i++) { int64_t __copy0 = __loop42.i; s___anon_id_elem_4ccb28 k = __loop42.l.data[__loop42.i];
+		s_platform_win32__Gfx_save(ctx);
+		s_platform_win32__Gfx_rectangle(ctx, 0.0, 0.0, (double)(sngl_map_string__pic_get(state.p__inst0->value, k.id, (s_pic){.n = 0}).n), k.elem);
 		s_platform_win32__paint(ctx, (s_ui_draw__Style){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 0, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
-		sngl_win32_gfx_restore(ctx);
+		s_platform_win32__Gfx_restore(ctx);
 	}
 }
 
@@ -4770,6 +5102,16 @@ static void sngl_init(void) {
 	s_opened = 0;
 	s_closed = 0;
 	s_lastClosed = 0;
+	s_platform_win32___at = false;
+	s_platform_win32___begun = false;
+	s_platform_win32___depth = 0;
+	s_platform_win32___fx = 0.0;
+	s_platform_win32___fy = 0.0;
+	s_platform_win32___paintSerial = 0;
+	s_platform_win32___pen = s_platform_win32___Pen__keep((s_platform_win32___Pen){.r = 0, .g = 0, .b = 0, .a = 255, .width = 1.0, .cap = 0, .join = 0, .fontPx = 16.0, .family = SNGL_STR("sans-serif")});
+	s_platform_win32___saved = sngl_list__Saved__keep(((sngl_list__Saved){0}));
+	s_platform_win32___x = 0.0;
+	s_platform_win32___y = 0.0;
 	s_ws = sngl_list_float__keep(sngl_list_float_of(2, (double[]){1.0, 2.0}));
 	s_p__inst0 = ((s___ref_map_string_pic *)sngl_counted_retain(((s___ref_map_string_pic *)sngl_counted_new(&(s___ref_map_string_pic[]){(s___ref_map_string_pic){.value = sngl_map_string__pic__keep(((sngl_map_string__pic){0}))}}, sizeof(s___ref_map_string_pic), s___ref_map_string_pic__release, s___ref_map_string_pic__rekeep, NULL))));
 	s___copied__inst0 = sngl_map_string____anon_copy_v0_2d5b73__keep(((sngl_map_string____anon_copy_v0_2d5b73){0}));
@@ -7797,6 +8139,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"unsafe"
 )
 
 type ErrorEvent struct {
@@ -7826,6 +8169,21 @@ type __anon_copy_on_5fc366 struct {
 	On   float64
 }
 
+type _gdipSaveGraphics__result struct {
+	Result int
+	Out1   int
+}
+
+type _gdipCreateSolidFill__result struct {
+	Result int
+	Out1   *unsafe.Pointer
+}
+
+type _gdipCreatePen1__result struct {
+	Result int
+	Out3   *unsafe.Pointer
+}
+
 type Style struct {
 	Fill        snglcolor.Color
 	Stroke      snglcolor.Color
@@ -7836,10 +8194,37 @@ type Style struct {
 	FontFamily  string
 }
 
+type _Pen struct {
+	R      int
+	G      int
+	B      int
+	A      int
+	Width  float64
+	Cap    int
+	Join   int
+	FontPx float64
+	Family string
+}
+
+type _Saved struct {
+	Pen   _Pen
+	State int
+}
+
 type snglState struct {
 	opened              int
 	closed              int
 	lastClosed          int
+	_at                 bool
+	_begun              bool
+	_depth              int
+	_fx                 float64
+	_fy                 float64
+	_paintSerial        int
+	_pen                _Pen
+	_saved              []_Saved
+	_x                  float64
+	_y                  float64
 	ws                  []float64
 	p__inst0            map[string]Pic
 	__copied__inst0     map[string]__anon_copy_v0_2d5b73
@@ -7906,22 +8291,194 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	return __out__r0
 }
 
+func GfxSave(g cgo.Gfx) {
+	_paintOf(g)
+	if m._depth < 16 {
+		var state int = 0
+		__ref0 := _gdipSaveGraphics__result(cgo.GdipSaveGraphics(cgo.SnglWin32GfxG(g), state))
+		state = __ref0.Out1
+		m._saved = append(m._saved, _Saved{Pen: m._pen, State: int(state)})
+	}
+	m._depth += 1
+}
+
+func GfxRectangle(g cgo.Gfx, x float64, y float64, w float64, h float64) {
+	_paintOf(g)
+	cgo.GdipAddPathRectangle(cgo.SnglWin32GfxPath(g), x, y, w, h)
+	m._x = x
+	m._fx = x
+	m._y = y
+	m._fy = y
+	m._at = true
+	m._begun = false
+}
+
 func Paint(ctx cgo.Gfx, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
-		cgo.SnglWin32GfxFill(ctx, (style.Stroke.A > 0))
+		GfxFill(ctx, (style.Stroke.A > 0))
 	}
 	if style.Stroke.A > 0 {
-		cgo.SnglWin32GfxLineWidth(ctx, style.StrokeWidth)
-		cgo.SnglWin32GfxLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
-		cgo.SnglWin32GfxLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
+		GfxLineWidth(ctx, style.StrokeWidth)
+		GfxLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
+		GfxLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
 		Source(ctx, style.Stroke)
-		cgo.SnglWin32GfxStroke(ctx)
+		GfxStroke(ctx)
+	}
+}
+
+func GfxRestore(g cgo.Gfx) {
+	_paintOf(g)
+	if m._depth > 0 {
+		m._depth -= 1
+		if m._depth < 16 {
+			kept := m._saved[m._depth]
+			cgo.GdipRestoreGraphics(cgo.SnglWin32GfxG(g), int(kept.State))
+			m._pen = kept.Pen
+			if __i := m._depth; __i >= 0 && __i < len(m._saved) {
+				m._saved = append(m._saved[:__i], m._saved[__i+1:]...)
+			}
+		}
+	}
+}
+
+func _paintOf(g cgo.Gfx) {
+	var serial int = cgo.SnglWin32GfxSerial(g)
+	if serial != m._paintSerial {
+		m._paintSerial = serial
+		m._x = 0.0
+		m._y = 0.0
+		m._fx = 0.0
+		m._fy = 0.0
+		m._at = false
+		m._begun = false
+		m._pen = _Pen{A: 255, Width: 1.0, FontPx: 16.0, Family: "sans-serif"}
+		m._saved = []_Saved{}
+		m._depth = 0
 	}
 }
 
 func Source(ctx cgo.Gfx, c snglcolor.Color) {
-	cgo.SnglWin32GfxColor(ctx, int(c.R), int(c.G), int(c.B), int(c.A))
+	GfxColor(ctx, int(c.R), int(c.G), int(c.B), int(c.A))
+}
+
+func GfxFill(g cgo.Gfx, preserve bool) {
+	_paintOf(g)
+	var brush *unsafe.Pointer
+	__ref1 := _gdipCreateSolidFill__result(cgo.GdipCreateSolidFill(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), brush))
+	brush = __ref1.Out1
+	if (__ref1.Result == 0) && (brush != nil) {
+		cgo.GdipFillPath(cgo.SnglWin32GfxG(g), unsafe.Pointer((*(brush))), cgo.SnglWin32GfxPath(g))
+		cgo.GdipDeleteBrush(unsafe.Pointer((*(brush))))
+	}
+	if !preserve {
+		_newPath(g)
+	}
+}
+
+func GfxLineWidth(g cgo.Gfx, w float64) {
+	_paintOf(g)
+	m._pen.Width = w
+}
+
+func GfxLineCap(g cgo.Gfx, cap__r0 int) {
+	_paintOf(g)
+	m._pen.Cap = cap__r0
+}
+
+func GfxLineJoin(g cgo.Gfx, join int) {
+	_paintOf(g)
+	m._pen.Join = join
+}
+
+func GfxStroke(g cgo.Gfx) {
+	_paintOf(g)
+	var __lt0 int
+	if (m._pen.Cap >= 0) && (m._pen.Cap < 3) {
+		__lt0 = m._pen.Cap
+	} else {
+		__lt0 = 0
+	}
+	var cap__r1 int = __lt0
+	var __lt1 int
+	if (m._pen.Join >= 0) && (m._pen.Join < 3) {
+		__lt1 = m._pen.Join
+	} else {
+		__lt1 = 0
+	}
+	var join int = __lt1
+	var pen *unsafe.Pointer
+	__ref2 := _gdipCreatePen1__result(cgo.GdipCreatePen1(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), m._pen.Width, 2, pen))
+	pen = __ref2.Out3
+	if (__ref2.Result == 0) && (pen != nil) {
+		var __lt3 int
+		if cap__r1 == 1 {
+			__lt3 = 2
+		} else {
+			var __lt2 int
+			if cap__r1 == 2 {
+				__lt2 = 1
+			} else {
+				__lt2 = 0
+			}
+			__lt3 = __lt2
+		}
+		var line int = __lt3
+		var __lt4 int
+		if cap__r1 == 1 {
+			__lt4 = 2
+		} else {
+			__lt4 = 0
+		}
+		cgo.GdipSetPenLineCap197819((*(pen)), line, line, __lt4)
+		var __lt6 int
+		if join == 1 {
+			__lt6 = 2
+		} else {
+			var __lt5 int
+			if join == 2 {
+				__lt5 = 1
+			} else {
+				__lt5 = 0
+			}
+			__lt6 = __lt5
+		}
+		cgo.GdipSetPenLineJoin((*(pen)), __lt6)
+		cgo.GdipDrawPath(cgo.SnglWin32GfxG(g), (*(pen)), cgo.SnglWin32GfxPath(g))
+		cgo.GdipDeletePen((*(pen)))
+	}
+	_newPath(g)
+}
+
+func GfxColor(g cgo.Gfx, r int, gr int, b int, a int) {
+	_paintOf(g)
+	m._pen.R = _channel(r)
+	m._pen.G = _channel(gr)
+	m._pen.B = _channel(b)
+	m._pen.A = _channel(a)
+}
+
+func _newPath(g cgo.Gfx) {
+	cgo.GdipResetPath(cgo.SnglWin32GfxPath(g))
+	cgo.GdipSetPathFillMode(cgo.SnglWin32GfxPath(g), 1)
+	m._at = false
+	m._begun = false
+}
+
+func _channel(v int) int {
+	var __lt8 int
+	if v < 0 {
+		__lt8 = 0
+	} else {
+		var __lt7 int
+		if v > 255 {
+			__lt7 = 255
+		} else {
+			__lt7 = v
+		}
+		__lt8 = __lt7
+	}
+	return __lt8
 }
 
 func __effect0_enter() {
@@ -8139,15 +8696,15 @@ func __snglTeardown() {
 
 func __drawing0_paint_handler(ctx cgo.Gfx) {
 	for _, k := range __identified0(m.ws) {
-		cgo.SnglWin32GfxSave(ctx)
-		cgo.SnglWin32GfxRect(ctx, 0.0, 0.0, float64(func() Pic {
+		GfxSave(ctx)
+		GfxRectangle(ctx, 0.0, 0.0, float64(func() Pic {
 			if __v, __ok := m.p__inst0[k.Id]; __ok {
 				return __v
 			}
 			return Pic{}
 		}().N), k.Elem)
 		Paint(ctx, Style{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, StrokeWidth: 1.0, LineCap: "butt", LineJoin: "miter", FontSize: 16.0, FontFamily: "sans-serif"})
-		cgo.SnglWin32GfxRestore(ctx)
+		GfxRestore(ctx)
 	}
 }
 
@@ -8156,6 +8713,16 @@ func snglInit() {
 	m.opened = 0
 	m.closed = 0
 	m.lastClosed = 0
+	m._at = false
+	m._begun = false
+	m._depth = 0
+	m._fx = 0.0
+	m._fy = 0.0
+	m._paintSerial = 0
+	m._pen = _Pen{A: 255, Width: 1.0, FontPx: 16.0, Family: "sans-serif"}
+	m._saved = []_Saved{}
+	m._x = 0.0
+	m._y = 0.0
 	m.ws = []float64{1.0, 2.0}
 	m.p__inst0 = map[string]Pic{}
 	m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
@@ -8550,7 +9117,7 @@ window.__sngl_boot = () => {
 -- run/c/gtk4 --
 pass sha256:10bbc8d666b6bbbd9631b2adeb9178c5
 -- run/c/win32 --
-pass sha256:8a4e952e884779b95487779bca608ff7
+pass sha256:4621b7f404df5916641c89f3c0868b39
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
@@ -8558,6 +9125,6 @@ pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
 pass sha256:858c375d5c77f59304352d3454946d43
 -- run/go/win32 --
-pass sha256:96b53c6a14fafa0473f4b11f21fde8b2
+pass sha256:b34fd2d5912bfea559b48a2d60db2420
 -- run/none/html --
 pass sha256:f421c9a95ab06abbbce1bd120fb70d21

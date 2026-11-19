@@ -538,7 +538,7 @@ func testACanvasPaintsTheFile(t test.Test, c main) {
     t.snapshot("canvas")
 }
 -- testrun/win32/c/controls.sngl/main/1 --
-sha256:75bd0dc91f72f3c281f96f414fed766a
+sha256:9bcf8850b20132f8b2e9ce5c7c325d99
 {
   "results": [
     {
@@ -563,7 +563,7 @@ sha256:75bd0dc91f72f3c281f96f414fed766a
   }
 }
 -- testrun/win32/c/data.sngl/main/1 --
-sha256:fd30652c575306651ba19193f2b861bb
+sha256:8b1a02fa196975117fa894d8acc89ff1
 {
   "results": [
     {
@@ -588,7 +588,7 @@ sha256:fd30652c575306651ba19193f2b861bb
   }
 }
 -- testrun/win32/c/image.sngl/main/1 --
-sha256:7dc7eea12b4de92c9a40314078982017
+sha256:6034fc89765611814dc37a80a3b2bbfc
 {
   "results": [
     {
@@ -614,7 +614,7 @@ sha256:7dc7eea12b4de92c9a40314078982017
   }
 }
 -- testrun/win32/c/layout.sngl/main/1 --
-sha256:a03cf605c5d1c85d9196d2c04d99e08f
+sha256:2ddc75a7ef9d3a44457889e386ee88b1
 {
   "results": [
     {
@@ -632,7 +632,7 @@ sha256:a03cf605c5d1c85d9196d2c04d99e08f
   }
 }
 -- testrun/win32/c/menus.sngl/_/1 --
-sha256:cbfbd0e3bf73098c702ce44dd3e4cdb1
+sha256:d7ee2f9bddb0b2b1c798773acf48fd7f
 {
   "results": [
     {
@@ -642,7 +642,7 @@ sha256:cbfbd0e3bf73098c702ce44dd3e4cdb1
   ]
 }
 -- testrun/win32/c/menus.sngl/main/1 --
-sha256:431940d89c892dd5a6e736c953734553
+sha256:ad5da4ac618a14c4a33ca999e27f940d
 {
   "results": [
     {
@@ -660,7 +660,7 @@ sha256:431940d89c892dd5a6e736c953734553
   }
 }
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:29eac77301762aa7c7e020def76c87fa
+sha256:3ee38ccb1806870674b85f164ffe1552
 {
   "results": [
     {

@@ -84,13 +84,76 @@ file, in these cases:
 Each such call stays in `lib/platform/win32/rt`, where C calls it directly.
 That is also where everything goes that interop does not reach at all:
 
-- a callback with no context (a `WNDPROC`);
+- a callback with no context (a `WNDPROC`), which is `__stdcall` on 386;
 - arrays and unions;
-- GDI+, WIC and the common controls' notification structs.
+- WIC and the common controls' notification structs.
 
 The SNGL in `win32.sngl` calls `api.sngl` for what a single Win32 call does
 (`SetWindowText`, `ShowWindow`, `SendMessage` with a generated `BM_SETCHECK`)
 and the runtime for the rest.
+
+## The runtime in SNGL
+
+**The runtime moves into the platform's SNGL as gtk4's did**, one area at a
+time, each pinned by a run first (`cmd/sngl/testdata/c_win32_*_runs.txt`,
+whose snapshots C, Go through the wrappers, Go called directly and C for
+386 must draw unchanged). What a single Win32 call does is api's
+(`SetWindowText`, `SendMessage` with `BM_SETCHECK`, `EnableWindow`); a call
+win32gen skips the platform declares itself (`InvalidateRect`, whose
+rectangle is a `const RECT *`, an option of a handle at that type for
+NULL); and GDI+, which win32gen reads none of, is `gdiplus.sngl`. GDI+'s
+objects are `void` to C (`gdiplusgpstubs.h`), so a handle to one is
+declared `void *`: spelled `GpPath *`, the wrappers held a type cgo would not
+pass where it takes an `unsafe.Pointer`.
+
+**A canvas's drawing context is the platform's, over GDI+.** `Gfx` is the
+runtime's `sngl_win32_gfx`, which holds GDI+'s graphics, the path being
+built and the paint's serial, read through `field` declarations; the rest of
+what cairo's context keeps -- the current point, the color, the line, the
+font, what each save kept -- is package state of the platform's (`_x`,
+`_pen`, `_saved`, `gdiplus.sngl`), made afresh where the serial differs from
+the last paint's, since the runtime begins each paint (`gfx_begin`) and no
+paint is begun inside another. C kept the current point as a `REAL`; SNGL
+keeps a float, rounded to `REAL` at each call, where C had rounded it, so
+the pixels are C's (`c_win32_paint_runs.txt`). Only `Gfx.image`, which reads
+the canvas's decoded pictures off the runtime's record, is still C.
+
+**What holds the rest in C.** Each is a gap in the language, not a choice:
+
+- **A Win32 callback is `__stdcall` on 386.** `CALLBACK` and `WINAPI` are
+  nothing on amd64 and arm64, but the platform builds and runs 386, where a
+  window procedure, a subclass procedure, a thread's and an enumeration's
+  are `__stdcall`, and a `#[c.static]` function is the default convention in
+  both languages: the C target hands it through a `(T)(void (*)(void))`
+  cast, which silences what MinGW reports without one (`initialization of 'WNDENUMPROC' ... from incompatible pointer type`), and a Go export is
+  cdecl. Wine restores the stack around such a call, so a run would pass;
+  Windows promises nothing. Every window procedure, the timers' and posts'
+  dispatch (`box_proc`), the fetch thread and http's threads stay C until
+  the language can say a callback's convention.
+- **A window's record stays the runtime's** (`ctl`). `c.held` needs a
+  `#[c.release]` parameter ("is a copy C holds until it calls the function
+  a #[c.release] parameter is handed"), and none of Win32's per-window slots
+  -- `GWLP_USERDATA`, a property, a subclass's reference data -- calls
+  anything as the window goes; the record would be let go on
+  `WM_NCDESTROY`, in a window procedure. `SetWindowLongPtrW` is a macro on
+  386, which cgo cannot call. Everything reading the record -- layout,
+  painting, events, the tree -- stays C with it.
+- **A pointer in a message's WPARAM or LPARAM.** A cast to an opaque
+  `#[c.native("LPARAM")]` handle compiles in C, but Go writes
+  `C.LPARAM(p)`, which converts no pointer to an integer, and an integer
+  would not keep Go's memory alive for the call. A cast to api's `LPARAM`,
+  an alias of `int`, is refused. So a message carrying a string, a struct or
+  a handle (`CB_ADDSTRING`, `LVM_*`, `TVM_*`, `DTM_SETSYSTEMTIME`,
+  `WM_SETFONT`, `WM_COMMAND`'s control, `WM_NOTIFY`) stays C.
+- **What C writes as UTF-16 or holds in a struct.** A C function answers no
+  `utf16`, and a wide buffer C fills (`GetWindowTextW`, `CB_GETLBTEXT`) has
+  no type, so the runtime answers UTF-8 (`sngl_win32_get_text`). A C
+  struct's field is a scalar, an alias or a C struct: `WNDCLASSEXW`'s window
+  procedure and class name, `LVITEMW`'s text, `ACTCTXW`'s source and
+  `BITMAPINFO`'s array of colors are none.
+- **The language runtime's ABI.** `sngl_post`, `sngl_loop_wait`, http's
+  `sngl_http_start` (`rt/http.c`) and the C test agent's channel
+  (`rt/sngl_win32_agent.c`) are what C's own runtime calls.
 
 ## The Go wrappers: `sngl tool cgogen`
 
