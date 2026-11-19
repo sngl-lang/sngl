@@ -878,19 +878,35 @@ func _cssProviderNew() _CssProvider
 #[c.native("gpointer", cast)]
 func _cssPointer(css _CssProvider) _Pointer
 
+#[c.native("GtkCssProvider *", cast)]
+func _cssOfPointer(p _Pointer) _CssProvider
+
 #[c.native("g_object_get_data")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DataCss")]
 func _dataCss(o _Object, key string) option[_CssProvider]
 
-// A provider restyling w alone, attached and detached through the style
-// context GTK deprecated (rt's look.c).
-#[c.native("sngl_style_add")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglStyleAdd")]
-func _styleAdd(w Widget, css _CssProvider)
+#[c.native("GtkStyleProvider *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.StyleProvider")]
+struct _StyleProvider {}
 
-#[c.native("sngl_style_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglStyleRemove")]
-func _styleRemove(w Widget, css _CssProvider)
+#[c.native("GtkStyleProvider *", cast)]
+func _styleProvider(css _CssProvider) _StyleProvider
+
+#[c.native("gtk_style_context_add_provider_for_display")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStyleContextAddProviderForDisplay")]
+func _displayAddStyle(d _Display, p _StyleProvider, priority _Count)
+
+#[c.native("gtk_style_context_remove_provider_for_display")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStyleContextRemoveProviderForDisplay")]
+func _displayRemoveStyle(d _Display, p _StyleProvider)
+
+#[c.native("gtk_widget_add_css_class")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetAddCssClass")]
+func _addCssClass(w Widget, name string)
+
+#[c.native("gtk_widget_remove_css_class")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetRemoveCssClass")]
+func _removeCssClass(w Widget, name string)
 
 // The provider's rules made rule, as the GTK it is built against takes them
 // (rt's look.c).
@@ -898,30 +914,93 @@ func _styleRemove(w Widget, css _CssProvider)
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCssLoad")]
 func _cssLoad(css _CssProvider, rule string)
 
-// One rule naming the widget's own node, so a node it draws inside itself
-// (a check button's check) is not restyled with it, in a provider of the
-// widget's own: style classes would put every distinct look in one
-// display-wide sheet and restyle every widget whenever a look changed;
-// this restyles one. A provider reaches the nodes of its own widget and not
-// another's: a popover draws its body on its contents, a widget of its own,
-// and its arrow on a node of the popover's, so its rule is on both and
-// names both, as the theme's does.
-func _lookCss(w Widget, rule string) {
+// What a widget's CSS is: the class its rules name it by, and the provider
+// holding them.
+struct _LookCssState {
+    name string = ""
+}
+
+// How many widgets the display has named for their looks.
+struct _LooksState {
+    count int = 0
+}
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdLookCss(o _Object, key string, #[c.type("gpointer")] s c.held[_LookCssState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldLookCss(o _Object, key string) option[c.held[_LookCssState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdLooks(o _Object, key string, #[c.type("gpointer")] s c.held[_LooksState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldLooks(o _Object, key string) option[c.held[_LooksState]]
+
+// A widget's provider, on the display while the widget holds it: let go,
+// it leaves the display with the widget's rules.
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldCss")]
+func _holdCss(o _Object, key string, data _Pointer, #[c.type("GDestroyNotify")] #[c.static] gone func(p _Pointer))
+
+func _cssGone(p _Pointer) {
+    _displayRemoveStyle(_defaultDisplay(), _styleProvider(_cssOfPointer(p)))
+    _unref(p)
+}
+
+// A class no other widget has, which the display counts out.
+func _lookClass() string {
+    var display = _displayObject(_defaultDisplay())
+    var looks = _heldLooks(display, "sngl-looks")
+    var n = 1
+    if looks != null {
+        n = looks.count + 1
+    }
+    _holdLooks(display, "sngl-looks", _LooksState{count=n})
+    return "sngl-look-{n}"
+}
+
+// A widget's look is rules naming it by a class of its own, in a provider
+// of its own on the display at application priority, above the theme's:
+// GTK deprecated a provider on one widget's style context and left none in
+// its place. A rule names the widget's own node, and its class, so a node it
+// draws inside itself (a check button's check) is not restyled with it, nor
+// a widget inside it, which no selector here reaches as a descendant. A
+// popover draws its body on its contents, a widget of its own, and its
+// arrow on a node of the popover's, so its rule names both, as the theme's
+// does. A rule changed is loaded over the provider's; none takes the class
+// off and lets the provider go, as the widget's going does.
+func _lookSetCss(w Widget, decls string) {
     var css = _dataCss(_object(w), "sngl-look-css")
-    if rule == "" {
-        if css != null {
-            _styleRemove(w, css)
-            _popoverStyle(w, css, false)
+    var held = _heldLookCss(_object(w), "sngl-look-class")
+    if decls == "" {
+        if css != null && held != null {
+            _removeCssClass(w, held.name)
             _setData(_object(w), "sngl-look-css", null)
+            _setData(_object(w), "sngl-look-class", null)
         }
-    } else if css != null {
+        return
+    }
+    var name = ""
+    if held != null {
+        name = held.name
+    } else {
+        name = _lookClass()
+    }
+    var rule = _lookRule(w, name, decls)
+    if css != null {
         _cssLoad(css, rule)
     } else {
         var made = _cssProviderNew()
-        _holdData(_object(w), "sngl-look-css", _cssPointer(made), _unrefData)
-        _styleAdd(w, made)
-        _popoverStyle(w, made, true)
         _cssLoad(made, rule)
+        _holdLookCss(_object(w), "sngl-look-class", _LookCssState{name=name})
+        _holdCss(_object(w), "sngl-look-css", _cssPointer(made), _cssGone)
+        _displayAddStyle(_defaultDisplay(), _styleProvider(made), _Count(600))
+        _addCssClass(w, name)
     }
 }
 
@@ -929,40 +1008,20 @@ func _lookCss(w Widget, rule string) {
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetCssName")]
 func _cssName(w Widget) string
 
-// Attaches css to a popover's contents, or detaches it.
-func _popoverStyle(w Widget, css _CssProvider, add bool) {
+// The rule giving w, named by its class, decls.
+func _lookRule(w Widget, class string, decls string) string {
+    var node = "{_cssName(w)}.{class}"
     if _is(w, _popoverType()) {
-        var done = false
-        for var c = _childrenOf(w, false) {
-            if !done && _cssName(c) == "contents" {
-                done = true
-                if add {
-                    _styleAdd(c, css)
-                } else {
-                    _styleRemove(c, css)
-                }
-            }
-        }
+        return "{node} > contents, {node} > arrow \{ {decls} \}"
     }
-}
-
-func _lookSetCss(w Widget, decls string) {
-    if decls == "" {
-        _lookCss(w, "")
-    } else {
-        var name = _cssName(w)
-        var rule = "{name} \{ {decls} \}"
-        if _is(w, _popoverType()) {
-            rule = "popover > contents, popover > arrow \{ {decls} \}"
-        }
-        // The rule outranks the theme's in every state, so a button given a
-        // background shades it itself when hovered and pressed, as the
-        // theme would. style.sngl writes `background` only for a Style's.
-        if _is(w, _buttonType()) && decls.contains("background") {
-            rule = rule + " {name}:hover \{ background-image: image(alpha(currentColor, 0.1)); \} {name}:active, {name}:checked \{ background-image: image(alpha(currentColor, 0.2)); \}"
-        }
-        _lookCss(w, rule)
+    var rule = "{node} \{ {decls} \}"
+    // The rule outranks the theme's in every state, so a button given a
+    // background shades it itself when hovered and pressed, as the theme
+    // would. style.sngl writes `background` only for a Style's.
+    if _is(w, _buttonType()) && decls.contains("background") {
+        rule = rule + " {node}:hover \{ background-image: image(alpha(currentColor, 0.1)); \} {node}:active, {node}:checked \{ background-image: image(alpha(currentColor, 0.2)); \}"
     }
+    return rule
 }
 
 #[c.native("GtkEditable *")]
