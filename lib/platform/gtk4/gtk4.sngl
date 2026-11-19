@@ -1568,44 +1568,43 @@ func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
 // to _keysGoOn, the functions _rtToplevelNew hands it (sngl_keys_hooks).
 
 // A key a window's `@key` names rather than types: a browser's
-// KeyboardEvent.key for its GDK keyval (gdkkeysyms.h's GDK_KEY_ values, in
-// decimal), the keypad's beside the main one's, which it reports the same:
-// Return, KP_Enter and ISO_Enter are Enter, Tab, KP_Tab and ISO_Left_Tab --
-// Shift+Tab to GDK -- Tab, and so on.
+// KeyboardEvent.key for its GDK keyval (gdkkeysyms.h's GDK_KEY_ value, in
+// decimal, each named after it), the keypad's beside the main one's, which
+// it reports the same. Shift+Tab is ISO_Left_Tab to GDK.
 struct _NamedKey {
     keyval int
     name   string
 }
 
 const _namedKeys = [
-    _NamedKey{keyval=65293, name="Enter"},
-    _NamedKey{keyval=65421, name="Enter"},
-    _NamedKey{keyval=65076, name="Enter"},
-    _NamedKey{keyval=65289, name="Tab"},
-    _NamedKey{keyval=65417, name="Tab"},
-    _NamedKey{keyval=65056, name="Tab"},
-    _NamedKey{keyval=65307, name="Escape"},
-    _NamedKey{keyval=65288, name="Backspace"},
-    _NamedKey{keyval=65535, name="Delete"},
-    _NamedKey{keyval=65439, name="Delete"},
-    _NamedKey{keyval=65379, name="Insert"},
-    _NamedKey{keyval=65438, name="Insert"},
-    _NamedKey{keyval=65362, name="ArrowUp"},
-    _NamedKey{keyval=65431, name="ArrowUp"},
-    _NamedKey{keyval=65364, name="ArrowDown"},
-    _NamedKey{keyval=65433, name="ArrowDown"},
-    _NamedKey{keyval=65361, name="ArrowLeft"},
-    _NamedKey{keyval=65430, name="ArrowLeft"},
-    _NamedKey{keyval=65363, name="ArrowRight"},
-    _NamedKey{keyval=65432, name="ArrowRight"},
-    _NamedKey{keyval=65360, name="Home"},
-    _NamedKey{keyval=65429, name="Home"},
-    _NamedKey{keyval=65367, name="End"},
-    _NamedKey{keyval=65436, name="End"},
-    _NamedKey{keyval=65365, name="PageUp"},
-    _NamedKey{keyval=65434, name="PageUp"},
-    _NamedKey{keyval=65366, name="PageDown"},
-    _NamedKey{keyval=65435, name="PageDown"},
+    _NamedKey{keyval=65293, name="Enter"},      // GDK_KEY_Return
+    _NamedKey{keyval=65421, name="Enter"},      // GDK_KEY_KP_Enter
+    _NamedKey{keyval=65076, name="Enter"},      // GDK_KEY_ISO_Enter
+    _NamedKey{keyval=65289, name="Tab"},        // GDK_KEY_Tab
+    _NamedKey{keyval=65417, name="Tab"},        // GDK_KEY_KP_Tab
+    _NamedKey{keyval=65056, name="Tab"},        // GDK_KEY_ISO_Left_Tab
+    _NamedKey{keyval=65307, name="Escape"},     // GDK_KEY_Escape
+    _NamedKey{keyval=65288, name="Backspace"},  // GDK_KEY_BackSpace
+    _NamedKey{keyval=65535, name="Delete"},     // GDK_KEY_Delete
+    _NamedKey{keyval=65439, name="Delete"},     // GDK_KEY_KP_Delete
+    _NamedKey{keyval=65379, name="Insert"},     // GDK_KEY_Insert
+    _NamedKey{keyval=65438, name="Insert"},     // GDK_KEY_KP_Insert
+    _NamedKey{keyval=65362, name="ArrowUp"},    // GDK_KEY_Up
+    _NamedKey{keyval=65431, name="ArrowUp"},    // GDK_KEY_KP_Up
+    _NamedKey{keyval=65364, name="ArrowDown"},  // GDK_KEY_Down
+    _NamedKey{keyval=65433, name="ArrowDown"},  // GDK_KEY_KP_Down
+    _NamedKey{keyval=65361, name="ArrowLeft"},  // GDK_KEY_Left
+    _NamedKey{keyval=65430, name="ArrowLeft"},  // GDK_KEY_KP_Left
+    _NamedKey{keyval=65363, name="ArrowRight"}, // GDK_KEY_Right
+    _NamedKey{keyval=65432, name="ArrowRight"}, // GDK_KEY_KP_Right
+    _NamedKey{keyval=65360, name="Home"},       // GDK_KEY_Home
+    _NamedKey{keyval=65429, name="Home"},       // GDK_KEY_KP_Home
+    _NamedKey{keyval=65367, name="End"},        // GDK_KEY_End
+    _NamedKey{keyval=65436, name="End"},        // GDK_KEY_KP_End
+    _NamedKey{keyval=65365, name="PageUp"},     // GDK_KEY_Page_Up
+    _NamedKey{keyval=65434, name="PageUp"},     // GDK_KEY_KP_Page_Up
+    _NamedKey{keyval=65366, name="PageDown"},   // GDK_KEY_Page_Down
+    _NamedKey{keyval=65435, name="PageDown"},   // GDK_KEY_KP_Page_Down
     _NamedKey{keyval=65470, name="F1"},
     _NamedKey{keyval=65471, name="F2"},
     _NamedKey{keyval=65472, name="F3"},
