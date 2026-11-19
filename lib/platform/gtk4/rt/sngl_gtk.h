@@ -24,12 +24,10 @@ void sngl_post(SnglFn fn, void *ctx, GDestroyNotify release);
 
 /* What of a widget's look gtk4.sngl does not write itself (look.c): a
  * widget kept on o under key without a reference, NULL once it is
- * finalized; a label sized width by height, measured by GtkLabel's own
- * class; and a CSS provider of w's own, attached through the deprecated
+ * finalized; and a CSS provider of w's own, attached through the deprecated
  * style context and loaded as the GTK built against takes it. */
 void sngl_weak_set(GObject *o, const char *key, GtkWidget *w);
 GtkWidget *sngl_weak(GObject *o, const char *key);
-void sngl_label_size(GtkWidget *w, int width, int height);
 void sngl_style_add(GtkWidget *w, GtkCssProvider *css);
 void sngl_style_remove(GtkWidget *w, GtkCssProvider *css);
 void sngl_css_load(GtkCssProvider *css, const char *rule);

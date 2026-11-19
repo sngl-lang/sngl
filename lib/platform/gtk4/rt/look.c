@@ -1,6 +1,5 @@
 /* What of a widget's look gtk4.sngl cannot write itself (its "A widget's
- * look"): a widget kept without a reference, a label sized by its look,
- * which GtkLabel's own class functions measure, and the CSS provider of a
+ * look"): a widget kept without a reference, and the CSS provider of a
  * widget's own, attached through the style context GTK deprecated and
  * loaded as the GTK it is built against takes it. Compiled into every gtk4
  * program: the Go wrappers include it, and a C program compiles it beside
@@ -25,47 +24,6 @@ void sngl_weak_set(GObject *o, const char *key, GtkWidget *w) {
 GtkWidget *sngl_weak(GObject *o, const char *key) {
     GtkWidget **slot = g_object_get_data(o, key);
     return slot ? *slot : NULL;
-}
-
-// A label sized by its look is that size, its words wrapping inside the
-// width as html's do: a size request is only the least a widget is, and a
-// long line widened it. It is measured and allocated by GtkLabel's own
-// code, given the width it is.
-typedef struct {
-    int width, height;
-} SnglLabelSize;
-
-static GtkWidgetClass *sngl_label_class(void) {
-    return GTK_WIDGET_CLASS(g_type_class_peek(GTK_TYPE_LABEL));
-}
-
-static void sngl_label_measure(GtkWidget *w, GtkOrientation o, int for_size,
-        int *min, int *nat, int *min_base, int *nat_base) {
-    SnglLabelSize *s = g_object_get_data(G_OBJECT(w), "sngl-label-size");
-    int width = s ? s->width : 0, height = s ? s->height : 0;
-    if (o == GTK_ORIENTATION_VERTICAL && width > 0) for_size = width;
-    sngl_label_class()->measure(w, o, for_size, min, nat, min_base, nat_base);
-    int want = o == GTK_ORIENTATION_HORIZONTAL ? width : height;
-    if (want > 0) *min = *nat = want;
-}
-
-static void sngl_label_allocate(GtkWidget *w, int width, int height, int baseline) {
-    sngl_label_class()->size_allocate(w, width, height, baseline);
-}
-
-static GtkSizeRequestMode sngl_label_mode(GtkWidget *w) {
-    return GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH;
-}
-
-void sngl_label_size(GtkWidget *w, int width, int height) {
-    SnglLabelSize *s = g_object_get_data(G_OBJECT(w), "sngl-label-size");
-    if (!s) {
-        s = g_new0(SnglLabelSize, 1);
-        g_object_set_data_full(G_OBJECT(w), "sngl-label-size", s, g_free);
-        gtk_widget_set_layout_manager(w, gtk_custom_layout_new(sngl_label_mode, sngl_label_measure, sngl_label_allocate));
-    }
-    s->width = width;
-    s->height = height;
 }
 
 // A provider of w's own, which restyles w alone. gtk_style_context_add_provider

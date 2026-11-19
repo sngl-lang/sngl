@@ -223,6 +223,10 @@ struct _LookState {
     lines0        int = 0
     ellipsize0    int = 0
     labelSized    bool = false
+    // The size a label sized by its look measures as, which its layout
+    // reads.
+    labelWidth    int = 0
+    labelHeight   int = 0
     hidden        bool = false
     visible0      bool = false
     cursor        bool = false
@@ -1108,21 +1112,75 @@ func _lookText(w Widget, t Widget, align int, lines int, wrap int) {
 
 // A label sized by its look is that size, its words wrapping inside the
 // width as html's do: a size request is only the least a widget is, and a
-// long line widened it. GtkLabel's own code measures and allocates it,
-// given the width it is (rt's sngl_label_size, which calls GtkLabel's class
-// functions).
-#[c.native("sngl_label_size")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglLabelSize")]
-func _labelSize(w Widget, width int, height int)
+// long line widened it. It is laid out by a layout of its own, which
+// GtkLabel's own class functions measure and allocate, given the width it
+// is: the size it answers is the last its look gave (labelWidth,
+// labelHeight).
+#[c.native("GtkWidgetClass *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.WidgetClass")]
+struct _WidgetClass {}
+
+#[c.native("g_type_class_peek")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GTypeClassPeek")]
+func _classPeek(of _Type) _Pointer
+
+#[c.native("GtkWidgetClass *", cast)]
+func _widgetClass(p _Pointer) _WidgetClass
+
+#[c.native("GtkWidgetClass.measure", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetClassMeasure")]
+func _classMeasure(k _WidgetClass, w Widget, orientation Orientation, forSize int, minimum ref[int], natural ref[int], minimumBaseline ref[int], naturalBaseline ref[int])
+
+#[c.native("GtkWidgetClass.size_allocate", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetClassSizeAllocate")]
+func _classAllocate(k _WidgetClass, w Widget, width int, height int, baseline int)
+
+#[c.native("gtk_custom_layout_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCustomLayoutNew")]
+func _labelLayout(
+    #[c.type("GtkCustomRequestModeFunc")] #[c.static] mode func(w Widget) int,
+    #[c.type("GtkCustomMeasureFunc")] #[c.static] #[c.outs] measure func(w Widget, orientation int, forSize int) Measured,
+    #[c.type("GtkCustomAllocateFunc")] #[c.static] allocate func(w Widget, width int, height int, baseline int),
+) LayoutManager
+
+func _labelClass() => _widgetClass(_classPeek(_labelType()))
+
+// Height for width, as GtkLabel's own is.
+func _labelMode(w Widget) => 0
+
+func _labelMeasure(w Widget, orientation int, forSize int) Measured {
+    var l = _lookOf(w)
+    var at = forSize
+    if orientation == 1 && l.labelWidth > 0 {
+        at = l.labelWidth
+    }
+    var minimum = 0
+    var natural = 0
+    var minimumBaseline = -1
+    var naturalBaseline = -1
+    _classMeasure(_labelClass(), w, Orientation(orientation), at, &minimum, &natural, &minimumBaseline, &naturalBaseline)
+    var want = orientation == 0 ? l.labelWidth : l.labelHeight
+    if want > 0 {
+        minimum = want
+        natural = want
+    }
+    return Measured{minimum=minimum, natural=natural, minimumBaseline=minimumBaseline, naturalBaseline=naturalBaseline}
+}
+
+func _labelAllocate(w Widget, width int, height int, baseline int) {
+    _classAllocate(_labelClass(), w, width, height, baseline)
+}
 
 func _lookSizeLabel(w Widget, wrap int) {
     var l = _lookOf(w)
     if _isLabel(w) && (l.width != 0 || l.height != 0 || l.labelSized) {
         if !l.labelSized {
             l.labelSized = true
-            _setLookState(w, l)
+            _setLayoutManager(w, _labelLayout(_labelMode, _labelMeasure, _labelAllocate))
         }
-        _labelSize(w, l.width, l.height)
+        l.labelWidth = l.width
+        l.labelHeight = l.height
+        _setLookState(w, l)
         if l.width > 0 && wrap != 1 {
             _labelSetWrap(_labelOf(w), true)
         }
@@ -1276,7 +1334,7 @@ func _applyLook(w Widget, look Look) {
 
 // A box the runtime lays out flexing, and a grid.
 #[c.native("gtk_custom_layout_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCustomLayoutNew")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.FlexLayout")]
 func _flexLayout(
     #[c.type("GtkCustomRequestModeFunc")] #[c.static] mode func(w Widget) int,
     #[c.type("GtkCustomMeasureFunc")] #[c.static] #[c.outs] measure func(w Widget, orientation int, forSize int) Measured,

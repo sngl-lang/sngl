@@ -287,6 +287,7 @@ typedef struct sngl_opt__MenuEntryState sngl_opt__MenuEntryState;
 typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
 typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
+typedef struct s__classMeasure__result s__classMeasure__result;
 typedef struct s_platform_gtk4___Allocation s_platform_gtk4___Allocation;
 typedef struct sngl_lambda9_env sngl_lambda9_env;
 typedef struct sngl_lambda10_env sngl_lambda10_env;
@@ -448,6 +449,8 @@ typedef struct s_platform_gtk4___LookState {
 	int64_t lines0;
 	int64_t ellipsize0;
 	bool labelSized;
+	int64_t labelWidth;
+	int64_t labelHeight;
 	bool hidden;
 	bool visible0;
 	bool cursor;
@@ -651,6 +654,13 @@ typedef struct s_platform_gtk4___GridRows {
 	sngl_list_int ends;
 } s_platform_gtk4___GridRows;
 
+typedef struct s__classMeasure__result {
+	int64_t out4;
+	int64_t out5;
+	int64_t out6;
+	int64_t out7;
+} s__classMeasure__result;
+
 typedef struct s_platform_gtk4___Allocation {
 	int64_t x;
 	int64_t y;
@@ -782,6 +792,9 @@ static void s_platform_gtk4___lookKidsChanged(gpointer m, int64_t at, int64_t re
 static void s_platform_gtk4___placeKids(GtkWidget * box);
 static void s_platform_gtk4___lookText(GtkWidget * w, GtkWidget * t, int64_t align, int64_t lines, int64_t wrap);
 static sngl_list_GtkWidget_p s_platform_gtk4___childrenOf(GtkWidget * box, bool laidOut);
+static int64_t s_platform_gtk4___labelMode(GtkWidget * w);
+static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure(GtkWidget * w, int64_t orientation, int64_t forSize);
+static void s_platform_gtk4___labelAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline);
 static void s_platform_gtk4___barApply(GtkWidget * box);
 static GtkWidget * s_platform_gtk4___barPart(GtkWidget * box, sngl_string key);
 static int64_t s_platform_gtk4___menuItemsFrom(GtkWidget * c, GMenu * menu, GSimpleActionGroup * group, int64_t n);
@@ -1221,6 +1234,49 @@ static void sngl_static_s_platform_gtk4___lookKidsChanged(gpointer a0, int a1, i
 	sngl_call_leave(m);
 }
 
+static int64_t s_platform_gtk4___labelMode__fn(void *env, GtkWidget * a0) {
+	return s_platform_gtk4___labelMode(a0);
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2) {
+	return s_platform_gtk4___labelMeasure(a0, a1, a2);
+}
+
+static void s_platform_gtk4___labelAllocate__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2, int64_t a3) {
+	s_platform_gtk4___labelAllocate(a0, a1, a2, a3);
+}
+
+static int sngl_static_s_platform_gtk4___labelMode(GtkWidget * a0) {
+	sngl_mark m = sngl_call_enter();
+	int r = (int)s_platform_gtk4___labelMode(a0);
+	sngl_call_leave(m);
+	return r;
+}
+
+static void sngl_static_s_platform_gtk4___labelMeasure(GtkWidget * a0, int a1, int a2, int *o0, int *o1, int *o2, int *o3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4__Measured r = s_platform_gtk4___labelMeasure(a0, (int64_t)a1, (int64_t)a2);
+	if (o0 != NULL) {
+		*o0 = (int)r.minimum;
+	}
+	if (o1 != NULL) {
+		*o1 = (int)r.natural;
+	}
+	if (o2 != NULL) {
+		*o2 = (int)r.minimumBaseline;
+	}
+	if (o3 != NULL) {
+		*o3 = (int)r.naturalBaseline;
+	}
+	sngl_call_leave(m);
+}
+
+static void sngl_static_s_platform_gtk4___labelAllocate(GtkWidget * a0, int a1, int a2, int a3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4___labelAllocate(a0, (int64_t)a1, (int64_t)a2, (int64_t)a3);
+	sngl_call_leave(m);
+}
+
 static sngl_opt__MenuEntryState sngl_held__MenuEntryState(void *p) {
 	sngl_opt__MenuEntryState o = {0};
 	if (p != NULL) {
@@ -1256,6 +1312,20 @@ static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static s__classMeasure__result sngl_ccall_GtkWidgetClass_measure__classMeasure(GtkWidgetClass * a0, GtkWidget * a1, GtkOrientation a2, int a3, int64_t a4, int64_t a5, int64_t a6, int64_t a7) {
+	int t4 = (int)a4;
+	int t5 = (int)a5;
+	int t6 = (int)a6;
+	int t7 = (int)a7;
+	s__classMeasure__result r;
+	(a0)->measure(a1, a2, a3, &t4, &t5, &t6, &t7);
+	r.out4 = (int64_t)t4;
+	r.out5 = (int64_t)t5;
+	r.out6 = (int64_t)t6;
+	r.out7 = (int64_t)t7;
+	return r;
 }
 
 static void sngl_list_int_grow(sngl_list_int *l, int64_t n) {
@@ -2090,7 +2160,7 @@ static GtkWidget * s_platform_gtk4___rtToplevelNew(void) {
 
 static GtkWidget * s_platform_gtk4___rtContents(void) {
 	GtkWidget * box = gtk_box_new((GtkOrientation)(1), (int)(6));
-	s_platform_gtk4___setLookState(box, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = true, .grid = false, .columns = 0});
+	s_platform_gtk4___setLookState(box, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .labelWidth = 0, .labelHeight = 0, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = true, .grid = false, .columns = 0});
 	GListModel * kids = gtk_widget_observe_children(box);
 	(void)(int64_t)g_signal_connect_object((gpointer)(kids), s___rel2, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___contentsKids, (gpointer)(box), (GConnectFlags)(0));
 	g_object_set_data_full((GObject *)(box), s___rel3, (gpointer)(kids), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
@@ -2233,7 +2303,7 @@ static s_platform_gtk4___LookState s_platform_gtk4___lookOf(GtkWidget * w) {
 	if ((l).ok) {
 		return (l).value;
 	}
-	return (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0};
+	return (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .labelWidth = 0, .labelHeight = 0, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0};
 }
 
 static void s_platform_gtk4___lookSetCss(GtkWidget * w, sngl_string decls) {
@@ -2419,9 +2489,11 @@ static void s_platform_gtk4___lookSizeLabel(GtkWidget * w, int64_t wrap) {
 	if ((g_type_check_instance_is_a((GTypeInstance *)((gpointer)(w)), (GType)((int64_t)gtk_label_get_type())) != 0) && (((l.width != 0) || (l.height != 0)) || l.labelSized)) {
 		if (!l.labelSized) {
 			l.labelSized = true;
-			s_platform_gtk4___setLookState(w, l);
+			gtk_widget_set_layout_manager(w, gtk_custom_layout_new((GtkCustomRequestModeFunc)(void (*)(void))sngl_static_s_platform_gtk4___labelMode, (GtkCustomMeasureFunc)(void (*)(void))sngl_static_s_platform_gtk4___labelMeasure, (GtkCustomAllocateFunc)(void (*)(void))sngl_static_s_platform_gtk4___labelAllocate));
 		}
-		sngl_label_size(w, (int)(l.width), (int)(l.height));
+		l.labelWidth = l.width;
+		l.labelHeight = l.height;
+		s_platform_gtk4___setLookState(w, l);
 		if ((l.width > 0) && (wrap != 1)) {
 			gtk_label_set_wrap((GtkLabel *)(w), (int)(1));
 		}
@@ -2600,7 +2672,7 @@ static void s_platform_gtk4___unalign(GtkWidget * w) {
 
 static void s_platform_gtk4___lookEnsure(GtkWidget * w) {
 	if (!(sngl_held__LookState(g_object_get_data((GObject *)(w), s___rel6))).ok) {
-		s_platform_gtk4___setLookState(w, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0});
+		s_platform_gtk4___setLookState(w, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .labelWidth = 0, .labelHeight = 0, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0});
 	}
 }
 
@@ -2954,6 +3026,37 @@ static sngl_list_GtkWidget_p s_platform_gtk4___childrenOf(GtkWidget * box, bool 
 	return kids;
 }
 
+static int64_t s_platform_gtk4___labelMode(GtkWidget * w) {
+	return 0;
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure(GtkWidget * w, int64_t orientation, int64_t forSize) {
+	s_platform_gtk4___LookState l = s_platform_gtk4___lookOf(w);
+	int64_t at = forSize;
+	if ((orientation == 1) && (l.labelWidth > 0)) {
+		at = l.labelWidth;
+	}
+	int64_t minimum = 0;
+	int64_t natural = 0;
+	int64_t minimumBaseline = -1;
+	int64_t naturalBaseline = -1;
+	s__classMeasure__result __ref4 = sngl_ccall_GtkWidgetClass_measure__classMeasure((GtkWidgetClass *)(g_type_class_peek((GType)((int64_t)gtk_label_get_type()))), w, (GtkOrientation)(orientation), (int)(at), minimum, natural, minimumBaseline, naturalBaseline);
+	minimum = __ref4.out4;
+	natural = __ref4.out5;
+	minimumBaseline = __ref4.out6;
+	naturalBaseline = __ref4.out7;
+	int64_t want = ((orientation == 0) ? l.labelWidth : l.labelHeight);
+	if (want > 0) {
+		minimum = want;
+		natural = want;
+	}
+	return (s_platform_gtk4__Measured){.minimum = minimum, .natural = natural, .minimumBaseline = minimumBaseline, .naturalBaseline = naturalBaseline};
+}
+
+static void s_platform_gtk4___labelAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline) {
+	((GtkWidgetClass *)(g_type_class_peek((GType)((int64_t)gtk_label_get_type()))))->size_allocate(w, (int)(width), (int)(height), (int)(baseline));
+}
+
 static void s_platform_gtk4___barApply(GtkWidget * box) {
 	GtkWindow * win = sngl_toplevel_window(box);
 	if (win != NULL) {
@@ -3108,9 +3211,9 @@ static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, 
 	while (i < n) {
 		int64_t minimum = 0;
 		int64_t natural = 0;
-		s__measureWidget__result __ref4 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o), (int)(across), minimum, natural, NULL, NULL);
-		minimum = __ref4.out3;
-		natural = __ref4.out4;
+		s__measureWidget__result __ref5 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o), (int)(across), minimum, natural, NULL, NULL);
+		minimum = __ref5.out3;
+		natural = __ref5.out4;
 		sngl_list_int_push(&(minimums), minimum);
 		sngl_list_int_push(&(naturals), natural);
 		spare -= minimum;
@@ -3156,9 +3259,9 @@ static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s
 		while (i < (*sngl_list_int_at(rows.ends, r))) {
 			int64_t minimum = 0;
 			int64_t natural = 0;
-			s__measureWidget__result __ref5 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(1), (int)((*sngl_list_int_at(rows.widths, i))), minimum, natural, NULL, NULL);
-			minimum = __ref5.out3;
-			natural = __ref5.out4;
+			s__measureWidget__result __ref6 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(1), (int)((*sngl_list_int_at(rows.widths, i))), minimum, natural, NULL, NULL);
+			minimum = __ref6.out3;
+			natural = __ref6.out4;
 			tall = ((natural > tall) ? natural : tall);
 			i += 1;
 		}
@@ -3199,9 +3302,9 @@ static s_platform_gtk4___GridRows s_platform_gtk4___gridRows(GtkWidget * box, in
 	while (i < n) {
 		int64_t minimum = 0;
 		int64_t natural = 0;
-		s__measureWidget__result __ref6 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(0), (int)(-1), minimum, natural, NULL, NULL);
-		minimum = __ref6.out3;
-		natural = __ref6.out4;
+		s__measureWidget__result __ref7 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(0), (int)(-1), minimum, natural, NULL, NULL);
+		minimum = __ref7.out3;
+		natural = __ref7.out4;
 		int64_t w = natural;
 		if (width >= 0) {
 			w = ((natural < width) ? natural : width);
@@ -4410,6 +4513,13 @@ type _measureWidget__result struct {
 	Out4 int
 }
 
+type _classMeasure__result struct {
+	Out4 int
+	Out5 int
+	Out6 int
+	Out7 int
+}
+
 type Pair__inst struct {
 	__prop_show         bool
 	Mounted             int
@@ -4540,6 +4650,8 @@ type _LookState struct {
 	Lines0        int
 	Ellipsize0    int
 	LabelSized    bool
+	LabelWidth    int
+	LabelHeight   int
 	Hidden        bool
 	Visible0      bool
 	Cursor        bool
@@ -5063,8 +5175,8 @@ func _boxUpdate(box cgo.Widget) {
 					if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(own))))), cgo.GtkBoxLayoutGetType()) {
 						_lookEnsure(box)
 						_keepBoxLayout(box, (*(own)))
-						cgo.GtkWidgetSetLayoutManager(box, cgo.GtkCustomLayoutNew(_flexMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
-							return cgo.GtkCustomLayoutNewMeasure(_flexMeasure(a0, a1, a2))
+						cgo.GtkWidgetSetLayoutManager(box, cgo.FlexLayout(_flexMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.FlexLayoutMeasure {
+							return cgo.FlexLayoutMeasure(_flexMeasure(a0, a1, a2))
 						}, _flexAllocate))
 					}
 				}
@@ -5164,9 +5276,13 @@ func _lookSizeLabel(w cgo.Widget, wrap int) {
 	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkLabelGetType()) && (((l.Width != 0) || (l.Height != 0)) || l.LabelSized) {
 		if !l.LabelSized {
 			l.LabelSized = true
-			_setLookState(w, l)
+			cgo.GtkWidgetSetLayoutManager(w, cgo.GtkCustomLayoutNew(_labelMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+				return cgo.GtkCustomLayoutNewMeasure(_labelMeasure(a0, a1, a2))
+			}, _labelAllocate))
 		}
-		cgo.SnglLabelSize(w, l.Width, l.Height)
+		l.LabelWidth = l.Width
+		l.LabelHeight = l.Height
+		_setLookState(w, l)
 		if (l.Width > 0) && (wrap != 1) {
 			cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(w)), true)
 		}
@@ -6112,6 +6228,43 @@ func _childrenOf(box cgo.Widget, laidOut bool) []cgo.Widget {
 	return kids
 }
 
+func _labelMode(w cgo.Widget) int {
+	return 0
+}
+
+func _labelMeasure(w cgo.Widget, orientation int, forSize int) Measured {
+	l := _lookOf(w)
+	var at int = forSize
+	if (orientation == 1) && (l.LabelWidth > 0) {
+		at = l.LabelWidth
+	}
+	var minimum int = 0
+	var natural int = 0
+	var minimumBaseline int = -1
+	var naturalBaseline int = -1
+	__ref4 := _classMeasure__result(cgo.GtkWidgetClassMeasure((cgo.WidgetClass)(unsafe.Pointer(cgo.GTypeClassPeek(cgo.GtkLabelGetType()))), w, int(orientation), at, minimum, natural, minimumBaseline, naturalBaseline))
+	minimum = __ref4.Out4
+	natural = __ref4.Out5
+	minimumBaseline = __ref4.Out6
+	naturalBaseline = __ref4.Out7
+	var __lt75 int
+	if orientation == 0 {
+		__lt75 = l.LabelWidth
+	} else {
+		__lt75 = l.LabelHeight
+	}
+	var want int = __lt75
+	if want > 0 {
+		minimum = want
+		natural = want
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: minimumBaseline, NaturalBaseline: naturalBaseline}
+}
+
+func _labelAllocate(w cgo.Widget, width int, height int, baseline int) {
+	cgo.GtkWidgetClassSizeAllocate((cgo.WidgetClass)(unsafe.Pointer(cgo.GTypeClassPeek(cgo.GtkLabelGetType()))), w, width, height, baseline)
+}
+
 func _barApply(box cgo.Widget) {
 	win := cgo.SnglToplevelWindow(box)
 	if win != nil {
@@ -6159,29 +6312,29 @@ func _backFrom(c *cgo.Widget) *cgo.Widget {
 }
 
 func Decl(name string, value string) string {
-	var __lt75 string
+	var __lt76 string
 	if value == "" {
-		__lt75 = ""
+		__lt76 = ""
 	} else {
-		__lt75 = (((name + ": ") + value) + "; ")
+		__lt76 = (((name + ": ") + value) + "; ")
 	}
-	return __lt75
+	return __lt76
 }
 
 func Length(m__r2 *Measurement) string {
-	var __lt77 string
+	var __lt78 string
 	if m__r2 == nil {
-		__lt77 = ""
+		__lt78 = ""
 	} else {
-		var __lt76 float64
+		var __lt77 float64
 		if m__r2 == nil {
-			__lt76 = 0.0
+			__lt77 = 0.0
 		} else {
-			__lt76 = max(((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem))), 0.0)
+			__lt77 = max(((*(m__r2)).Px + (16.0 * ((*(m__r2)).Em + (*(m__r2)).Rem))), 0.0)
 		}
-		__lt77 = (fmt.Sprint(__lt76) + "px")
+		__lt78 = (fmt.Sprint(__lt77) + "px")
 	}
-	return __lt77
+	return __lt78
 }
 
 func _popoverStyle(w cgo.Widget, css cgo.CssProvider, add bool) {
@@ -6264,20 +6417,20 @@ func _lookWeight(c cgo.Widget, o int) float64 {
 	if l.Grow > 0.0 {
 		return l.Grow
 	}
-	var __lt78 bool
+	var __lt79 bool
 	if int(o) == 0 {
-		__lt78 = cgo.GtkWidgetGetHexpand(c)
+		__lt79 = cgo.GtkWidgetGetHexpand(c)
 	} else {
-		__lt78 = cgo.GtkWidgetGetVexpand(c)
+		__lt79 = cgo.GtkWidgetGetVexpand(c)
 	}
-	own := __lt78
-	var __lt79 float64
+	own := __lt79
+	var __lt80 float64
 	if own {
-		__lt79 = 1.0
+		__lt80 = 1.0
 	} else {
-		__lt79 = 0.0
+		__lt80 = 0.0
 	}
-	return __lt79
+	return __lt80
 }
 
 func _boxSpacing(box cgo.Widget) int {
@@ -6302,22 +6455,22 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref4 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
-		minimum = __ref4.Out3
-		natural = __ref4.Out4
+		__ref5 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
+		minimum = __ref5.Out3
+		natural = __ref5.Out4
 		minimums = append(minimums, minimum)
 		naturals = append(naturals, natural)
 		spare -= minimum
 		weights += _lookWeight(kids[i], o)
 		i += 1
 	}
-	var __lt80 int
+	var __lt81 int
 	if spare > 0 {
-		__lt80 = spare
+		__lt81 = spare
 	} else {
-		__lt80 = 0
+		__lt81 = 0
 	}
-	var extra int = __lt80
+	var extra int = __lt81
 	sizes := _distribute(extra, minimums, naturals)
 	spare = extra
 	i = 0
@@ -6330,13 +6483,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		if weights > 0.0 {
 			var w float64 = _lookWeight(kids[i], o)
 			if w > 0.0 {
-				var __lt81 int
+				var __lt82 int
 				if w == weights {
-					__lt81 = spare
+					__lt82 = spare
 				} else {
-					__lt81 = int((((float64(spare) * w) / weights) + 0.5))
+					__lt82 = int((((float64(spare) * w) / weights) + 0.5))
 				}
-				var share int = __lt81
+				var share int = __lt82
 				sizes[i] = (sizes[i] + share)
 				spare -= share
 				weights -= w
@@ -6344,13 +6497,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		}
 		i += 1
 	}
-	var __lt82 int
+	var __lt83 int
 	if weights > 0.0 {
-		__lt82 = 0
+		__lt83 = 0
 	} else {
-		__lt82 = spare
+		__lt83 = spare
 	}
-	return _FlexSizes{Sizes: sizes, Spare: __lt82}
+	return _FlexSizes{Sizes: sizes, Spare: __lt83}
 }
 
 func _place(w cgo.Widget, x int, y int, width int, height int) {
@@ -6368,16 +6521,16 @@ func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
 		for i < rows.Ends[r] {
 			var minimum int = 0
 			var natural int = 0
-			__ref5 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
-			minimum = __ref5.Out3
-			natural = __ref5.Out4
-			var __lt83 int
+			__ref6 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
+			minimum = __ref6.Out3
+			natural = __ref6.Out4
+			var __lt84 int
 			if natural > tall {
-				__lt83 = natural
+				__lt84 = natural
 			} else {
-				__lt83 = tall
+				__lt84 = tall
 			}
-			tall = __lt83
+			tall = __lt84
 			i += 1
 		}
 		heights = append(heights, tall)
@@ -6417,38 +6570,38 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref6 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
-		minimum = __ref6.Out3
-		natural = __ref6.Out4
+		__ref7 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
+		minimum = __ref7.Out3
+		natural = __ref7.Out4
 		var w int = natural
 		if width >= 0 {
-			var __lt84 int
-			if natural < width {
-				__lt84 = natural
-			} else {
-				__lt84 = width
-			}
-			w = __lt84
 			var __lt85 int
-			if minimum > w {
-				__lt85 = minimum
+			if natural < width {
+				__lt85 = natural
 			} else {
-				__lt85 = w
+				__lt85 = width
 			}
 			w = __lt85
+			var __lt86 int
+			if minimum > w {
+				__lt86 = minimum
+			} else {
+				__lt86 = w
+			}
+			w = __lt86
 		}
 		widths = append(widths, w)
 		if ((run > 0) && (width >= 0)) && (((run + gap) + w) > width) {
 			ends = append(ends, i)
 			run = 0
 		}
-		var __lt86 int
+		var __lt87 int
 		if run > 0 {
-			__lt86 = gap
+			__lt87 = gap
 		} else {
-			__lt86 = 0
+			__lt87 = 0
 		}
-		run += (__lt86 + w)
+		run += (__lt87 + w)
 		i += 1
 	}
 	if n > 0 {
@@ -6603,13 +6756,13 @@ func _distribute(extra int, minimums []int, naturals []int) []int {
 		var k int = order[i]
 		var glue int = ((left + i) / (i + 1))
 		var gap int = (naturals[k] - minimums[k])
-		var __lt87 int
+		var __lt88 int
 		if glue < gap {
-			__lt87 = glue
+			__lt88 = glue
 		} else {
-			__lt87 = gap
+			__lt88 = gap
 		}
-		var add int = __lt87
+		var add int = __lt88
 		sizes[k] = (sizes[k] + add)
 		left -= add
 		i -= 1
@@ -6658,69 +6811,69 @@ func __effect0_mount() {
 			fmt.Println("before")
 			C.peek((*C.GtkWidget)(unsafe.Pointer(m.main__r0)))
 			m.flip = true
-			var __lt88 Style
+			var __lt89 Style
 			if m.flip {
-				__lt88 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+				__lt89 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			} else {
-				__lt88 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+				__lt89 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			}
-			_applyLook(m.__n1, BoxLookOf(__lt88, 6))
-			var __lt89 string
+			_applyLook(m.__n1, BoxLookOf(__lt89, 6))
+			var __lt90 string
 			if m.flip {
-				__lt89 = "unset"
+				__lt90 = "unset"
 			} else {
-				__lt89 = "center"
+				__lt90 = "center"
 			}
-			_applyLook(m.__n2, BoxLookOf(Style{Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: __lt89, JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
-			var __lt90 Style
-			if m.flip {
-				__lt90 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
-			} else {
-				__lt90 = Style{Width: snglSome(Measurement{Px: 30}), Height: snglSome(Measurement{Px: 5}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
-			}
-			_applyLook(m.__n3, BoxLookOf(__lt90, 6))
+			_applyLook(m.__n2, BoxLookOf(Style{Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: __lt90, JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
 			var __lt91 Style
 			if m.flip {
 				__lt91 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			} else {
-				__lt91 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", MaxLines: snglSome(2), WhiteSpace: "nowrap", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+				__lt91 = Style{Width: snglSome(Measurement{Px: 30}), Height: snglSome(Measurement{Px: 5}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			}
-			_applyLook(m.__n4, LookOf(__lt91))
-			var __lt92 string
+			_applyLook(m.__n3, BoxLookOf(__lt91, 6))
+			var __lt92 Style
 			if m.flip {
-				__lt92 = "left"
+				__lt92 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			} else {
-				__lt92 = "right"
+				__lt92 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", MaxLines: snglSome(2), WhiteSpace: "nowrap", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			}
-			_applyLook(m.entry, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt92, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
+			_applyLook(m.__n4, LookOf(__lt92))
 			var __lt93 string
 			if m.flip {
-				__lt93 = "none"
+				__lt93 = "left"
 			} else {
-				__lt93 = "unset"
+				__lt93 = "right"
 			}
-			_applyLook(m.__n5, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt93, ListStyleType: "unset"}))
-			var __lt94 Style
+			_applyLook(m.entry, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt93, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
+			var __lt94 string
 			if m.flip {
-				__lt94 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+				__lt94 = "none"
 			} else {
-				__lt94 = Style{Width: snglSome(Measurement{Px: 50}), Height: snglSome(Measurement{Px: 20}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Cursor: "pointer", Display: "unset", ListStyleType: "unset"}
+				__lt94 = "unset"
 			}
-			_applyLook(m.__n6, LookOf(__lt94))
+			_applyLook(m.__n5, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt94, ListStyleType: "unset"}))
 			var __lt95 Style
 			if m.flip {
 				__lt95 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			} else {
-				__lt95 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+				__lt95 = Style{Width: snglSome(Measurement{Px: 50}), Height: snglSome(Measurement{Px: 20}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Cursor: "pointer", Display: "unset", ListStyleType: "unset"}
 			}
-			_applyLook(m.__n7, LookOf(__lt95))
-			var __lt96 Measurement
+			_applyLook(m.__n6, LookOf(__lt95))
+			var __lt96 Style
 			if m.flip {
-				__lt96 = Measurement{Px: 7}
+				__lt96 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			} else {
-				__lt96 = Measurement{Px: 3}
+				__lt96 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 			}
-			_applyLook(m.__n8, BoxLookOf(Style{Gap: snglSome(__lt96), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
+			_applyLook(m.__n7, LookOf(__lt96))
+			var __lt97 Measurement
+			if m.flip {
+				__lt97 = Measurement{Px: 7}
+			} else {
+				__lt97 = Measurement{Px: 3}
+			}
+			_applyLook(m.__n8, BoxLookOf(Style{Gap: snglSome(__lt97), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
 			for _, __inst2_live_uv := range m.__inst2_live {
 				Growing__set_on(__inst2_live_uv, !m.flip)
 			}
@@ -7212,15 +7365,15 @@ func Pair__destroy(__self *Pair__inst) {
 func Growing__new(on bool) *Growing__inst {
 	__self := &Growing__inst{__prop_on: on, __effect3_live: []bool{}, __effect3_desired: []bool{}}
 	__self.__root = _rtContents()
-	var __lt98 Style
+	var __lt99 Style
 	if __self.__prop_on {
-		__lt98 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt99 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt98 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt99 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
 	__self.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n0)), cgo.CGtkOrientation(1))
-	_applyLook(__self.__n0, BoxLookOf(__lt98, 6))
+	_applyLook(__self.__n0, BoxLookOf(__lt99, 6))
 	__self.__n17 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(__self.__n17, "beside")
 	_applyLook(__self.__n17, Look{})
@@ -7281,13 +7434,13 @@ func Growing__set_on(__self *Growing__inst, __v bool) {
 		return
 	}
 	__self.__prop_on = __v
-	var __lt97 Style
+	var __lt98 Style
 	if __self.__prop_on {
-		__lt97 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt98 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt97 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt98 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
-	_applyLook(__self.__n0, BoxLookOf(__lt97, 6))
+	_applyLook(__self.__n0, BoxLookOf(__lt98, 6))
 }
 
 func Growing__destroy(__self *Growing__inst) {
@@ -7335,15 +7488,15 @@ func snglBuild() {
 	m.__n18 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n18)), cgo.CGtkOrientation(0))
 	_applyLook(m.__n18, Look{Width: 300.0, Height: 10.0, Spaced: true, Spacing: 6})
-	var __lt99 Style
+	var __lt100 Style
 	if m.flip {
-		__lt99 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt100 = Style{Height: snglSome(Measurement{Px: 10}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt99 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt100 = Style{Height: snglSome(Measurement{Px: 10}), Flex: snglSome(1.0), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
-	_applyLook(m.__n1, BoxLookOf(__lt99, 6))
+	_applyLook(m.__n1, BoxLookOf(__lt100, 6))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n18)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n19 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n19)), cgo.CGtkOrientation(1))
@@ -7355,15 +7508,15 @@ func snglBuild() {
 	_applyLook(m.__n15, Look{Width: 300.0, Height: 10.0, Spaced: true, Spacing: 6})
 	__renderSlot1(m.__n15)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n15)))
-	var __lt100 string
+	var __lt101 string
 	if m.flip {
-		__lt100 = "unset"
+		__lt101 = "unset"
 	} else {
-		__lt100 = "center"
+		__lt101 = "center"
 	}
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(0))
-	_applyLook(m.__n2, BoxLookOf(Style{Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: __lt100, JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
+	_applyLook(m.__n2, BoxLookOf(Style{Height: snglSome(Measurement{Px: 40}), FlexDirection: "unset", AlignItems: __lt101, JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
 	m.__n20 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n20)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n20, Look{Width: 10.0, Spaced: true, Spacing: 6})
@@ -7389,26 +7542,26 @@ func snglBuild() {
 	m.__n24 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n24)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n24, Look{Width: 100.0, Spaced: true, Spacing: 6})
-	var __lt101 Style
-	if m.flip {
-		__lt101 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
-	} else {
-		__lt101 = Style{Width: snglSome(Measurement{Px: 30}), Height: snglSome(Measurement{Px: 5}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
-	}
-	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
-	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
-	_applyLook(m.__n3, BoxLookOf(__lt101, 6))
-	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n24)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
-	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n24)))
 	var __lt102 Style
 	if m.flip {
 		__lt102 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt102 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", MaxLines: snglSome(2), WhiteSpace: "nowrap", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt102 = Style{Width: snglSome(Measurement{Px: 30}), Height: snglSome(Measurement{Px: 5}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+	}
+	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
+	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
+	_applyLook(m.__n3, BoxLookOf(__lt102, 6))
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n24)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n24)))
+	var __lt103 Style
+	if m.flip {
+		__lt103 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+	} else {
+		__lt103 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "center", MaxLines: snglSome(2), WhiteSpace: "nowrap", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
 	m.__n4 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n4, "centered")
-	_applyLook(m.__n4, LookOf(__lt102))
+	_applyLook(m.__n4, LookOf(__lt103))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
 	m.__n25 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n25, "right")
@@ -7418,15 +7571,15 @@ func snglBuild() {
 	cgo.SnglTextSetValue(m.__n26, "justified")
 	_applyLook(m.__n26, Look{TextAlign: 3})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n26)))
-	var __lt103 string
+	var __lt104 string
 	if m.flip {
-		__lt103 = "left"
+		__lt104 = "left"
 	} else {
-		__lt103 = "right"
+		__lt104 = "right"
 	}
 	m.entry = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.entry)), cgo.CGboolean(1))
-	_applyLook(m.entry, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt103, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
+	_applyLook(m.entry, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: __lt104, WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	cgo.SnglSignalConnect(m.entry, "changed", func() {
 		Entry_changed_handler(m.entry)
 	})
@@ -7440,45 +7593,45 @@ func snglBuild() {
 	_applyLook(m.__n27, Look{TextAlign: 1})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n27)))
 	__renderSlot3(m.__n14)
-	var __lt104 string
+	var __lt105 string
 	if m.flip {
-		__lt104 = "none"
+		__lt105 = "none"
 	} else {
-		__lt104 = "unset"
+		__lt105 = "unset"
 	}
 	m.__n5 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n5, "gone")
-	_applyLook(m.__n5, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt104, ListStyleType: "unset"}))
+	_applyLook(m.__n5, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: __lt105, ListStyleType: "unset"}))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
-	var __lt105 Style
-	if m.flip {
-		__lt105 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
-	} else {
-		__lt105 = Style{Width: snglSome(Measurement{Px: 50}), Height: snglSome(Measurement{Px: 20}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Cursor: "pointer", Display: "unset", ListStyleType: "unset"}
-	}
-	m.__n6 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n6, "pointed")
-	_applyLook(m.__n6, LookOf(__lt105))
-	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
 	var __lt106 Style
 	if m.flip {
 		__lt106 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	} else {
-		__lt106 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+		__lt106 = Style{Width: snglSome(Measurement{Px: 50}), Height: snglSome(Measurement{Px: 20}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Cursor: "pointer", Display: "unset", ListStyleType: "unset"}
+	}
+	m.__n6 = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.__n6, "pointed")
+	_applyLook(m.__n6, LookOf(__lt106))
+	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
+	var __lt107 Style
+	if m.flip {
+		__lt107 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
+	} else {
+		__lt107 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
 	m.__n7 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n7, "red")
-	_applyLook(m.__n7, LookOf(__lt106))
+	_applyLook(m.__n7, LookOf(__lt107))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n7)))
-	var __lt107 Measurement
+	var __lt108 Measurement
 	if m.flip {
-		__lt107 = Measurement{Px: 7}
+		__lt108 = Measurement{Px: 7}
 	} else {
-		__lt107 = Measurement{Px: 3}
+		__lt108 = Measurement{Px: 3}
 	}
 	m.__n8 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n8)), cgo.CGtkOrientation(1))
-	_applyLook(m.__n8, BoxLookOf(Style{Gap: snglSome(__lt107), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
+	_applyLook(m.__n8, BoxLookOf(Style{Gap: snglSome(__lt108), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, 6))
 	m.__n28 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n28, "a")
 	_applyLook(m.__n28, Look{})
@@ -7528,6 +7681,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:4b763d266d5807c6998c2d833e1eb32e
+pass sha256:39efe89259dece46501cfaa0014fed23
 -- run/go/gtk4 --
-pass sha256:41fb6a7c9a77068c4f6ec068a2edba70
+pass sha256:5e0b8a2cd6eaf8674f55939f537ad407
