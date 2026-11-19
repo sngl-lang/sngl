@@ -26,7 +26,7 @@ const widgetHeader = "import marks \"sngl:internal/marks\"\nimport macro \"sngl:
 // bundled GIR, made, filled and written through the C functions GTK names,
 // under header, the generated file's first lines. The platform declares the
 // Look every widget takes and the `_setLook` that gives it one, and a box's
-// child is appended by the runtime's sngl_box_append, which aligns it.
+// child is appended by gtk4.sngl's boxAppend, which aligns it.
 func WidgetSource(header string) ([]byte, error) {
 	reg, err := gir.Minimal()
 	if err != nil {
@@ -96,7 +96,7 @@ func widgetDecls(reg *gir.TypeRegistry, platform string) string {
 	var b strings.Builder
 	declared := map[string]bool{}
 	casts := map[string]string{}
-	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
+	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}, platform: platform}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
@@ -417,6 +417,9 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 type childOps struct {
 	natives map[string]bool
 	ptrs    map[string]bool
+	// platform qualifies what gtk4.sngl declares: "" in its own package,
+	// "gtk4." in the gir: scheme's.
+	platform string
 	// classPtrs is each class a `_ptr_` cast is declared for.
 	classPtrs map[string]bool
 }
@@ -446,20 +449,17 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
-	// A box's alignItems is the runtime's to apply as a child arrives, so a
-	// box takes one through it: GTK's own call left it unaligned.
+	// A box's alignItems is the platform's to apply as a child arrives, so a
+	// box takes one through gtk4.sngl's boxAppend: GTK's own call left it
+	// unaligned.
 	if call.Func == "gtk_box_append" {
-		o.ptrs["GtkWidget"] = true
-		o.classPtr(b, info.CType)
-		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[c.native(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
-		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    _sngl_box_append(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
-			op, op, info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"))
+		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %sboxAppend(parent, child)\n}\n",
+			op, op, info.CType, info.CType, o.platform)
 		// A child a render slot renders goes before the slot's anchor, which
-		// the runtime puts in place as it puts any child of a box.
+		// the platform puts in place as it puts any child of a box.
 		if op == "append" {
-			o.native(b, "_sngl_box_insert_before", fmt.Sprintf("\n#[c.native(\"sngl_box_insert_before\")]\nfunc _sngl_box_insert_before(parent %s, anchor %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget"), ptrType("GtkWidget")))
-			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    _sngl_box_insert_before(%s(_ptr_%s(parent)), %s(_widget(before)), %s(_widget(child)))\n}\n",
-				info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"), ptrFunc("GtkWidget"))
+			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    %sboxInsertBefore(parent, child, before)\n}\n",
+				info.CType, info.CType, o.platform)
 		}
 		return
 	}

@@ -39,8 +39,6 @@ void sngl_toplevel_set_title(GtkWidget *box, const char *title);
 void sngl_toplevel_set_visible(GtkWidget *box, int visible);
 void sngl_toplevel_on_closed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_toplevel_on_visible(GtkWidget *box, SnglBoolFn fn, void *ctx, GDestroyNotify release);
-void sngl_toplevel_append(GtkWidget *box, GtkWidget *child);
-void sngl_toplevel_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 
 /* A window's `@key`: fn hears each key pressed in the window before
  * anything in it (gtk4.sngl's controllers). While it runs, sngl_key_heard is the key's name
@@ -77,12 +75,14 @@ void sngl_set_prop_string(void *obj, const char *name, const char *v);
 void sngl_set_prop_bool(void *obj, const char *name, int v);
 void sngl_set_prop_int(void *obj, const char *name, int v);
 void sngl_set_prop_double(void *obj, const char *name, double v);
-void sngl_app_attach(GtkWidget *box);
+/* A toplevel attached to the application, its window shown once the
+ * application runs, and taken off it, its window destroyed: what
+ * gtk4.sngl's box calls end in for a window. */
+void sngl_toplevel_attach(GtkWidget *box);
+void sngl_toplevel_detach(GtkWidget *box);
 /* sngl_toplevel_window is the window a toplevel is shown in, or NULL while
  * it has none. */
 GtkWindow *sngl_toplevel_window(GtkWidget *box);
-
-void sngl_app_detach(GtkWidget *box);
 
 /* sngl_capture draws root -- or, where it is NULL, the content of the
  * toplevel attached last -- in a window of width by height, as a test's
@@ -92,55 +92,23 @@ void sngl_app_detach(GtkWidget *box);
 bool sngl_capture(GtkWidget *root, int width, int height, unsigned char **rgba, int *w, int *h, const char **why);
 int sngl_gtk_capture_file(const char *path, int width, int height);
 
-/* SNGL_APP is the application as a box: a slot at the package's root
- * renders its windows into it, which the box calls below attach and
- * detach, in no order a window shows. */
-#define SNGL_APP ((GtkWidget *)NULL)
-
-/* A slot's children sit in its parent box before its anchor, a hidden
- * widget sngl_slot_anchor makes at the box's end and hands back while it is
- * still the box's: what keeps a slot's children in their place among the
- * box's others as it renders again. The slot's var holds a reference on it,
- * so one its box let go of is still there to ask, and given back as the
- * next is made, or as a record destroyed asks with no box (SNGL_APP). NULL
- * where the slot renders into the application. */
-GtkWidget *sngl_slot_anchor(GtkWidget *box, GtkWidget *anchor);
-void sngl_box_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
-void sngl_box_remove(GtkWidget *box, GtkWidget *child);
-/* sngl_box_append is a child put at the end of a box, which a box of rt's
- * own takes as it takes children: a tabs as a page, a window a source as its
- * icon and an entry or a way back into its bar. */
-void sngl_box_append(GtkWidget *box, GtkWidget *child);
-
-/* A tabs is a box holding a GtkNotebook, whose pages are the tab pages
- * appended to the box: gtk4.sngl's. The box calls hand a tabs's append and
- * remove to the two functions sngl_tabs_hooks was last handed, each taking
- * the box and the page and answering whether the box is a tabs. */
-typedef int (*SnglTabsHook)(GtkWidget *box, GtkWidget *page);
-void sngl_tabs_hooks(SnglTabsHook add, SnglTabsHook remove);
-
 /* A window's menu entries and its way back: hidden widgets among its
  * content, from which the window builds its header bar's menu and back
- * button, gtk4.sngl's. The box calls and the window hand them to the
- * functions sngl_menu_hooks was last handed: apply builds a window's menu
- * afresh, moved tells box an entry or a way back came or went, back presses
- * the first way back among a window's content and answers whether there
- * was one, and forget drops the bar of a window destroyed. */
+ * button, gtk4.sngl's. The toplevel hands them to the functions
+ * sngl_menu_hooks was last handed: apply builds a window's menu afresh,
+ * back presses the first way back among a window's content and answers
+ * whether there was one, and forget drops the bar of a window destroyed. */
 typedef void (*SnglMenuHook)(GtkWidget *box);
-typedef void (*SnglMenuMovedHook)(GtkWidget *box, GtkWidget *child);
 typedef int (*SnglMenuBackHook)(GtkWidget *box);
-void sngl_menu_hooks(SnglMenuHook apply, SnglMenuMovedHook moved, SnglMenuBackHook back, SnglMenuHook forget);
+void sngl_menu_hooks(SnglMenuHook apply, SnglMenuBackHook back, SnglMenuHook forget);
 
 /* An image is a box holding the source it shows, a GtkPicture showing a
  * picture or what a drawing paints: gtk4.sngl's, which reads the bytes a
  * URL names. A file a program carries is one of the table its entry hands
  * sngl_gtk_carry, ending at a NULL name, or one sngl_gtk_carry_file was
  * handed, as a Go program hands each it embeds, which sngl_carried finds
- * by name (image.c).
- *
- * The box calls hand a window's append and remove of a source, its icon, to
- * the functions sngl_image_hooks was last handed, which answer whether they
- * were, and a window made has refresh read its icon. */
+ * by name (image.c). A window made has the function sngl_icon_hook was
+ * last handed read its icon, gtk4.sngl's. */
 typedef struct {
     const char *name;
     const unsigned char *data;
@@ -153,7 +121,7 @@ const SnglAsset *sngl_carried(const char *name);
 /* What sngl_http_start hands a fetch's answer to (gtk4.sngl's picture). */
 typedef void (*SnglHttpDone)(sngl_http_answer *a, void *ctx);
 typedef void (*SnglIconHook)(GtkWidget *box);
-void sngl_image_hooks(SnglTabsHook adopt, SnglTabsHook unadopt, SnglIconHook refresh);
+void sngl_icon_hook(SnglIconHook refresh);
 
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main
  * loop's thread, until sngl_schedule_cancel removes it, which releases ctx.

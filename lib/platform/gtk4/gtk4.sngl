@@ -81,15 +81,7 @@ func _handle(n ui.node) Widget
 
 // A node the program holds at its root, a window, is put on screen when the
 // program attaches it and destroyed, with everything in it, when it detaches
-// it.
-#[c.native("sngl_app_attach")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAppAttach")]
-func _rtAttach(n ui.node)
-
-#[c.native("sngl_app_detach")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAppDetach")]
-func _rtDetach(n ui.node)
-
+// it (_appAttach, _appDetach).
 #[gen.protocol(attach)]
 func _attach(n ui.node) {
     _rtAttach(n)
@@ -107,18 +99,10 @@ func _detach(n ui.node) {
 #[marks.intrinsic("gtk4:Contents")]
 component Contents(content ...component ui.node) ui.node
 
-#[c.native("sngl_box_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxRemove")]
-func _rtBoxRemove(box ui.node, child ui.node)
-
 #[gen.protocol(contents)]
 func _contents() Contents {
     return _rtContents()
 }
-
-#[c.native("sngl_slot_anchor")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSlotAnchor")]
-func _rtSlotAnchor(box ui.node, anchor ui.node) ui.node
 
 // A render slot's entries go before an anchor the runtime keeps in its
 // container, so a slot emptied and filled again comes back in its place.
@@ -134,12 +118,12 @@ func _create_Contents() Contents {
 
 #[gen.protocol(append)]
 func _append_Contents(parent Contents, child ui.node) {
-    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+    boxAppend(parent, child)
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_Contents(parent Contents, child ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+    boxInsertBefore(parent, child, before)
 }
 
 #[gen.protocol(remove)]
@@ -1424,6 +1408,495 @@ func _rtCarryFile(name string, data string, len int)
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkQuit")]
 func quit()
 
+// --- A box's and a slot's children ---
+//
+// What a protocol's append, insertBefore and remove do with a child, for a
+// box of the program's and for the application, the NULL widget a slot at
+// the package's root renders its windows into: a window is no child of a
+// box but a toplevel of the application, which the box keeps; a tabs takes
+// a page, a window a source as its icon and an entry or a way back into its
+// bar, a stack a layer; and a container holding one child -- a frame, a
+// button, a scroll, a window -- a box of the slot's it holds. A widget that
+// may be NULL is held as one and asked `_isWidget`, since an option of one
+// is a box every Go program would carry.
+
+#[c.native("gtk_widget_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetType")]
+func _widgetType() _Type
+
+#[c.native("gtk_stack_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStackGetType")]
+func _stackType() _Type
+
+#[c.native("gtk_frame_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkFrameGetType")]
+func _frameType() _Type
+
+#[c.native("gtk_window_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowGetType")]
+func _windowType() _Type
+
+#[c.native("GtkStack *", cast)]
+func _stackOf(w Widget) _p_GtkStack
+
+#[c.native("GtkFrame *", cast)]
+func _frameOf(w Widget) _p_GtkFrame
+
+#[c.native("GtkButton *", cast)]
+func _buttonOf(w Widget) _p_GtkButton
+
+#[c.native("gtk_stack_add_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.StackAdd")]
+func _stackAdd(stack _p_GtkStack, child Widget)
+
+#[c.native("gtk_stack_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStackRemove")]
+func _stackRemove(stack _p_GtkStack, child Widget)
+
+#[c.native("gtk_frame_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.FrameSetChild")]
+func _frameSetChild(frame _p_GtkFrame, child Widget)
+
+#[c.native("gtk_button_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ButtonSetChild")]
+func _buttonSetChild(button _p_GtkButton, child Widget)
+
+#[c.native("gtk_scrolled_window_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ScrolledSetBox")]
+func _scrolledSetBox(sw _p_GtkScrolledWindow, child Widget)
+
+#[c.native("gtk_window_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.WindowSetChild")]
+func _windowSetChild(win _Window, child Widget)
+
+// Each of these may answer NULL, which `_isWidget` asks.
+#[c.native("gtk_widget_get_parent")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetParent")]
+func _parentWidget(w Widget) Widget
+
+#[c.native("gtk_widget_get_last_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetLastChild")]
+func _lastWidget(w Widget) Widget
+
+#[c.native("gtk_widget_get_prev_sibling")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetPrevSibling")]
+func _prevWidget(w Widget) Widget
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DataPointer")]
+func _dataPointer(o _Object, key string) _Pointer
+
+func _dataPlain(o _Object, key string) Widget {
+    return _pointed(_dataPointer(o, key))
+}
+
+#[c.native("gtk_widget_insert_before")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetInsertBefore")]
+func _insertBefore(w Widget, parent Widget, next Widget)
+
+#[c.native("gtk_widget_insert_before")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.InsertLast")]
+func _insertLast(w Widget, parent Widget, next option[Widget])
+
+#[c.native("gtk_box_reorder_child_after")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxReorderChildAfter")]
+func _boxReorderAfter(box _p_GtkBox, child Widget, sibling Widget)
+
+#[c.native("gtk_box_insert_child_after")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxInsertChildAfter")]
+func _boxInsertAfter(box _p_GtkBox, child Widget, sibling Widget)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DataStore")]
+func _dataStore(o _Object, key string) option[_Store]
+
+#[c.native("g_object_steal_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.StealData")]
+func _stealData(o _Object, key string) option[_Pointer]
+
+#[c.native("g_type_name_from_instance")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GTypeNameFromInstance")]
+func _typeNameOf(i _Instance) string
+
+#[c.native("GLogLevelFlags")]
+struct _LogLevel = int
+
+// GLib's log of a message already formatted, at a level: a critical one
+// (8) fails the test running.
+#[c.native("g_log", variadic)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GLog")]
+func _log(domain option[string], level _LogLevel, format string, message string)
+
+// A toplevel attached to the application, shown once it runs, and taken
+// off it, its window destroyed (rt's, which keeps the application).
+#[c.native("sngl_toplevel_attach")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelAttach")]
+func _toplevelAttach(top Widget)
+
+#[c.native("sngl_toplevel_detach")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelDetach")]
+func _toplevelDetach(top Widget)
+
+// Whether w is a widget: the application, and what a getter answers where
+// there is none, is NULL.
+func _isWidget(w Widget) bool {
+    return _is(w, _widgetType())
+}
+
+func _isStack(w Widget) bool {
+    return _is(w, _stackType())
+}
+
+// The box a slot rendering into w puts its entries in: w, where it is a box,
+// a stack or the application, or a box w holds as its one child, made the
+// first time.
+func _slotHost(w Widget) Widget {
+    if !_isWidget(w) || _isBox(w) || _isStack(w) {
+        return w
+    }
+    var b = _slotBox(w)
+    if _isWidget(_parentWidget(b)) {
+        return b
+    }
+    if _is(w, _scrolledType()) {
+        _scrolledSetBox(_scrolledOf(w), b)
+    } else if _is(w, _frameType()) {
+        _frameSetChild(_frameOf(w), b)
+    } else if _is(w, _buttonType()) {
+        _buttonSetChild(_buttonOf(w), b)
+    } else if _is(w, _windowType()) {
+        _windowSetChild(_windowOf(w), b)
+    } else {
+        _log(null, _LogLevel(8), "%s", "a slot renders into a {_typeNameOf(_instanceOf(_pointer(w)))}, which holds no box")
+        return w
+    }
+    return b
+}
+
+func _slotBox(w Widget) Widget {
+    var made = _dataWidget(_object(w), "sngl-slot-box")
+    if made != null {
+        return made
+    }
+    var b = _boxNew(Orientation(1), 6)
+    _refSink(_pointer(b))
+    _holdData(_object(w), "sngl-slot-box", _pointer(b), _unrefData)
+    return b
+}
+
+// Puts child into box ahead of before, where box is a stack, whose
+// children are its layers: a slot directly inside one renders its entries
+// as layers of their own. Whether box is a stack.
+func _stackPut(box Widget, child Widget, before Widget) bool {
+    if !_isStack(box) {
+        return false
+    }
+    if _parentWidget(child) != box {
+        _stackAdd(_stackOf(box), child)
+    }
+    if child != before {
+        _insertBefore(child, box, before)
+    }
+    return true
+}
+
+// The same, child put last.
+func _stackPutLast(box Widget, child Widget) bool {
+    if !_isStack(box) {
+        return false
+    }
+    if _parentWidget(child) != box {
+        _stackAdd(_stackOf(box), child)
+    }
+    _insertLast(child, box, null)
+    return true
+}
+
+// A slot's children sit in its parent box before its anchor, a hidden label
+// made at the box's end and handed back while it is still the box's. The
+// slot's var holds a reference on it, so one its box let go of is still
+// there to ask, and given back as the next is made, or as a record
+// destroyed asks with no box. NULL where the slot renders into the
+// application, which keeps none.
+func _rtSlotAnchor(parent ui.node, anchor ui.node) ui.node {
+    return _widgetNode(_slotAnchor(_handle(parent), _handle(anchor)))
+}
+
+func _slotAnchor(parent Widget, anchor Widget) Widget {
+    if !_isWidget(parent) {
+        if _isWidget(anchor) {
+            _unref(_pointer(anchor))
+        }
+        return parent
+    }
+    var box = _slotHost(parent)
+    if _isWidget(anchor) {
+        if _parentWidget(anchor) == box {
+            return anchor
+        }
+        // The slot's var held the last one, which its container let go of.
+        _unref(_pointer(anchor))
+    }
+    // None, a key nothing sets answering NULL: what a slot rendering into
+    // a widget that holds no box anchors to.
+    if !_isBox(box) && !_isStack(box) {
+        return _dataPlain(_object(box), "sngl-no-anchor")
+    }
+    var w = _labelNew(null)
+    _refSink(_pointer(w))
+    _setVisible(w, false)
+    if !_stackPutLast(box, w) {
+        _boxAppend(_boxOf(box), w)
+    }
+    return w
+}
+
+// The windows box keeps, which it holds.
+func _windowsOf(box Widget) option[_Store] {
+    return _dataStore(_object(box), "sngl-windows")
+}
+
+func _windowsMade(box Widget) _Store {
+    var ws = _windowsOf(box)
+    if ws != null {
+        return ws
+    }
+    var made = _storeNew(_objectType())
+    _holdData(_object(box), "sngl-windows", _pointer(_storeWidget(made)), _unrefData)
+    return made
+}
+
+// A window put in box: kept by it and attached to the application.
+func _windowAdd(box Widget, child Widget) bool {
+    if !_isWidget(box) || !_isToplevel(child) {
+        return false
+    }
+    var ws = _windowsMade(box)
+    _refSink(_pointer(child))
+    _storeAppend(ws, _pointer(child))
+    _unref(_pointer(child))
+    _appAttach(child)
+    return true
+}
+
+func _windowRemove(box Widget, child Widget) bool {
+    if !_isWidget(box) || !_isToplevel(child) {
+        return false
+    }
+    var ws = _windowsOf(box)
+    if ws != null {
+        var at = _Count(0)
+        if _storeFind(ws, _pointer(child), &at) {
+            _appDetach(child)
+            _storeRemove(ws, at)
+            return true
+        }
+    }
+    return false
+}
+
+// The toplevel a node attached that is none is shown in: a test's
+// component, a program with no window, made the first time it is attached.
+func _wrapNew(box Widget) Widget {
+    var top = _toplevelWidget(_rtToplevelNew())
+    _rtBoxAppend(top, box)
+    _setDataTo(_object(box), "sngl-wrapper", _pointer(top))
+    _setDataTo(_object(top), "sngl-wraps", _pointer(box))
+    return top
+}
+
+// Attaches box to the application: a toplevel, shown once the application
+// runs; a box of windows each of them, the box held while it is attached;
+// and anything else in a toplevel of its own.
+func _rtAttach(n ui.node) {
+    _appAttach(_handle(n))
+}
+
+func _rtDetach(n ui.node) {
+    _appDetach(_handle(n))
+}
+
+func _appAttach(box Widget) {
+    if _isToplevel(box) {
+        _toplevelAttach(box)
+        return
+    }
+    var ws = _windowsOf(box)
+    if ws != null {
+        if _data(_object(box), "sngl-app-holds") == null {
+            _refSink(_pointer(box))
+            _setDataTo(_object(box), "sngl-app-holds", _pointer(box))
+        }
+        var i = 0
+        for i < int(_modelCount(_model(ws))) {
+            var w = _modelItem(_model(ws), _Count(i))
+            _appAttach(_pointed(w))
+            _unref(w)
+            i += 1
+        }
+        return
+    }
+    var top = _dataWidget(_object(box), "sngl-wrapper")
+    if top != null {
+        _toplevelAttach(top)
+    } else {
+        _toplevelAttach(_wrapNew(box))
+    }
+}
+
+// Takes box off the application: a toplevel's window destroyed, a box of
+// windows' each, and a node in a toplevel of its own that toplevel.
+func _appDetach(box Widget) {
+    if _isToplevel(box) {
+        _toplevelDetach(box)
+        return
+    }
+    var ws = _windowsOf(box)
+    if ws != null {
+        var i = 0
+        for i < int(_modelCount(_model(ws))) {
+            var w = _modelItem(_model(ws), _Count(i))
+            _appDetach(_pointed(w))
+            _unref(w)
+            i += 1
+        }
+        if _stealData(_object(box), "sngl-app-holds") != null {
+            _unref(_pointer(box))
+        }
+        return
+    }
+    var top = _dataWidget(_object(box), "sngl-wrapper")
+    if top != null {
+        _toplevelDetach(top)
+    }
+}
+
+// Takes child out of the box or stack it is in other than box, referenced
+// until the caller has put it in box, and whether it was: an instance a
+// render keeps goes into the container the render built afresh, as the
+// DOM's appendChild moves a node, and left in the old one it went with it
+// when that was destroyed.
+func _movedFrom(box Widget, child Widget) bool {
+    var old = _parentWidget(child)
+    if !_isWidget(old) || old == box || old == _dataPlain(_object(box), "sngl-slot-box") {
+        return false
+    }
+    // A box or stack of the program's: a tab page sits in a GtkNotebook's
+    // own stack, which the tabs move pages through themselves.
+    if !_isBox(old) && (!_isStack(old) || _ancestorOf(old, _notebookType()) != null) {
+        return false
+    }
+    _ref(_pointer(child))
+    if _isStack(old) {
+        _stackRemove(_stackOf(old), child)
+    } else {
+        _boxRemove(_boxOf(old), child)
+        _menuMoved(old, child)
+    }
+    return true
+}
+
+// A child put at the end of box.
+func _rtBoxAppend(box Widget, child Widget) {
+    var moved = _isWidget(box) && _movedFrom(box, child)
+    _boxPut(box, child)
+    if moved {
+        _unref(_pointer(child))
+    }
+}
+
+// A child put in box before anchor, or at its end where anchor is not in it.
+func _rtBoxInsertBefore(box Widget, anchor Widget, child Widget) {
+    var moved = _isWidget(box) && _movedFrom(box, child)
+    _boxInsert(box, anchor, child)
+    if moved {
+        _unref(_pointer(child))
+    }
+}
+
+func _boxPut(parent Widget, child Widget) {
+    if !_isWidget(parent) {
+        _appAttach(child)
+        return
+    }
+    if _windowAdd(parent, child) || _tabsAdd(parent, child) || _imageAdopt(parent, child) {
+        return
+    }
+    var box = _slotHost(parent)
+    if _stackPutLast(box, child) {
+        return
+    }
+    if _parentWidget(child) == box {
+        var last = _lastWidget(box)
+        if child != last {
+            _boxReorderAfter(_boxOf(box), child, last)
+        }
+    } else {
+        _boxAppend(_boxOf(box), child)
+    }
+    _menuMoved(box, child)
+}
+
+func _boxInsert(parent Widget, anchor Widget, child Widget) {
+    if _windowAdd(parent, child) {
+        return
+    }
+    var box = _slotHost(parent)
+    if !_isWidget(box) || !_isWidget(anchor) || _parentWidget(anchor) != box {
+        _boxPut(box, child)
+        return
+    }
+    if _tabsAdd(box, child) || _imageAdopt(box, child) || _stackPut(box, child, anchor) {
+        return
+    }
+    // A child the box already holds moves, as the DOM's insertBefore moves
+    // one: a keyed loop putting a row it kept in its new place.
+    var after = _prevWidget(anchor)
+    if _parentWidget(child) == box {
+        if child != anchor && child != after {
+            _boxReorderAfter(_boxOf(box), child, after)
+        }
+    } else {
+        _boxInsertAfter(_boxOf(box), child, after)
+    }
+    _menuMoved(box, child)
+}
+
+func _rtBoxRemove(box ui.node, child ui.node) {
+    _boxTake(_handle(box), _handle(child))
+}
+
+func _boxTake(parent Widget, child Widget) {
+    if !_isWidget(parent) {
+        _appDetach(child)
+        return
+    }
+    // What the box let go of may be gone once it has, and the bar and the
+    // tabs ask what it was.
+    _ref(_pointer(child))
+    if !_windowRemove(parent, child) && !_tabsRemove(parent, child) && !_imageUnadopt(parent, child) {
+        var box = _slotHost(parent)
+        if _isStack(box) {
+            _stackRemove(_stackOf(box), child)
+        } else {
+            _boxRemove(_boxOf(box), child)
+            _menuMoved(box, child)
+        }
+    }
+    _unref(_pointer(child))
+}
+
+// Puts child at the end of box, as a box's append protocol does: where box
+// is a tabs, a window or the application, as that takes it (_boxPut).
+func boxAppend(box ui.node, child ui.node) {
+    _rtBoxAppend(_handle(box), _handle(child))
+}
+
+// Puts child in box before before, as a box's insertBefore protocol does.
+func boxInsertBefore(box ui.node, child ui.node, before ui.node) {
+    _rtBoxInsertBefore(_handle(box), _handle(before), _handle(child))
+}
+
 // --- The timer ---
 //
 // A GLib timeout, armed as the effect mounts and removed as it unmounts. Its
@@ -1979,18 +2452,21 @@ func _keysHooks(
 )
 
 // A toplevel's content is a box's, whose append hands the window an entry of
-// its menu or its way back (rt's sngl_box_append).
-#[c.native("sngl_toplevel_append")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelAppend")]
-func _rtToplevelAppend(w Toplevel, child ui.node)
+// its menu or its way back (_boxPut).
+func _rtToplevelAppend(w Toplevel, child ui.node) {
+    _rtBoxAppend(_toplevelWidget(w), _handle(child))
+}
 
-#[c.native("sngl_toplevel_insert_before")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelInsertBefore")]
-func _rtToplevelInsert(w Toplevel, before ui.node, child ui.node)
+func _rtToplevelInsert(w Toplevel, before ui.node, child ui.node) {
+    _rtBoxInsertBefore(_toplevelWidget(w), _handle(before), _handle(child))
+}
 
-#[c.native("sngl_box_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxRemove")]
-func _rtToplevelRemove(w Toplevel, child ui.node)
+func _rtToplevelRemove(w Toplevel, child ui.node) {
+    _boxTake(_toplevelWidget(w), _handle(child))
+}
+
+#[c.native("GtkWidget *", cast)]
+func _toplevelWidget(w Toplevel) Widget
 
 #[gen.protocol(create)]
 func _create_Toplevel() Toplevel {
@@ -2078,12 +2554,12 @@ func _create_MenuEntry() MenuEntry {
 
 #[gen.protocol(append)]
 func _append_MenuEntry(parent MenuEntry, child ui.node) {
-    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+    boxAppend(parent, child)
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_MenuEntry(parent MenuEntry, child ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+    boxInsertBefore(parent, child, before)
 }
 
 #[gen.protocol(remove)]
@@ -2350,16 +2826,14 @@ func _actionMapAdd(m _ActionMap, a _Action)
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectActivate")]
 func _connectActivate(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(action _Pointer, parameter _Pointer, entry _Pointer), entry _Pointer, flags _ConnectFlags)
 
-// Hands the runtime's box calls and its window the functions a window's
-// menu and way back are: building the window's menu afresh, telling a box
-// an entry or a way back came or went, pressing the window's way back,
+// Hands the runtime's window the functions a window's menu and way back
+// are: building the window's menu afresh, pressing the window's way back,
 // answering whether there was one, and forgetting the bar of a window
 // destroyed.
 #[c.native("sngl_menu_hooks")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuHooks")]
 func _menuHooks(
     #[c.type("SnglMenuHook")] #[c.static] apply func(box Widget),
-    #[c.type("SnglMenuMovedHook")] #[c.static] moved func(box Widget, child Widget),
     #[c.type("SnglMenuBackHook")] #[c.static] back func(box Widget) bool,
     #[c.type("SnglMenuHook")] #[c.static] forget func(box Widget),
 )
@@ -2435,7 +2909,7 @@ func _isToplevel(box Widget) bool {
 }
 
 func _menuHooksSet() {
-    _menuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
+    _menuHooks(_menuApply, _windowBack, _barForget)
 }
 
 func _rtToplevelNew() Toplevel {
@@ -4544,7 +5018,7 @@ func _notebookTabLabel(nb _Notebook, page Widget) option[Widget]
 func _notebookSetTabText(nb _Notebook, page Widget, text string)
 
 #[c.native("gtk_widget_get_parent")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetParent")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ParentOf")]
 func _parentOf(w Widget) option[Widget]
 
 #[c.native("gtk_widget_get_ancestor")]
@@ -4554,15 +5028,6 @@ func _ancestorOf(w Widget, of _Type) option[Widget]
 #[c.native("gtk_widget_set_sensitive")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SetSensitive")]
 func _setSensitive(w Widget, sensitive bool)
-
-// Hands the runtime's box calls the functions a tabs's append and remove
-// are, each answering whether the box is a tabs.
-#[c.native("sngl_tabs_hooks")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglTabsHooks")]
-func _tabsHooks(
-    #[c.type("SnglTabsHook")] #[c.static] add func(box Widget, child Widget) bool,
-    #[c.type("SnglTabsHook")] #[c.static] remove func(box Widget, child Widget) bool,
-)
 
 func _tabsOf(box Widget) option[_TabsState] {
     return _heldTabs(_object(box), "sngl-tabs")
@@ -4657,7 +5122,6 @@ func _tabsShown(box Widget) {
 // The notebook reports the page it shows through its `page` property,
 // after the change, where `switch-page` fires before it.
 func _rtTabsNew() Tabs {
-    _tabsHooks(_tabsAdd, _tabsRemove)
     var box = _boxNew(1, 0)
     var nb = _notebookNew()
     _notebookSetScrollable(_notebookOf(nb), true)
@@ -4781,12 +5245,12 @@ func _create_Tabs() Tabs {
 
 #[gen.protocol(append)]
 func _append_Tabs(parent Tabs, page ui.node) {
-    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(page)))
+    boxAppend(parent, page)
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_Tabs(parent Tabs, page ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(page)))
+    boxInsertBefore(parent, page, before)
 }
 
 #[gen.protocol(remove)]
@@ -4811,12 +5275,12 @@ func _create_TabPage() TabPage {
 
 #[gen.protocol(append)]
 func _append_TabPage(parent TabPage, child ui.node) {
-    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+    boxAppend(parent, child)
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_TabPage(parent TabPage, child ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+    boxInsertBefore(parent, child, before)
 }
 
 #[gen.protocol(remove)]
@@ -5717,12 +6181,12 @@ func _create_Image() Image {
 
 #[gen.protocol(append)]
 func _append_Image(parent Image, child ui.node) {
-    _sngl_box_append(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(child)))
+    boxAppend(parent, child)
 }
 
 #[gen.protocol(insertBefore)]
 func _insert_Image(parent Image, child ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_widget(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+    boxInsertBefore(parent, child, before)
 }
 
 #[gen.protocol(remove)]
@@ -6375,16 +6839,11 @@ func _iconDir(display _Object) string {
     return dir
 }
 
-// Hands the runtime's box calls and its window the functions a window's
-// icon is: taking a source appended to it as its icon, and letting it go,
-// each answering whether it did, and showing it on the window made.
-#[c.native("sngl_image_hooks")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageHooks")]
-func _imageHooks(
-    #[c.type("SnglTabsHook")] #[c.static] adopt func(box Widget, child Widget) bool,
-    #[c.type("SnglTabsHook")] #[c.static] unadopt func(box Widget, child Widget) bool,
-    #[c.type("SnglIconHook")] #[c.static] refresh func(box Widget),
-)
+// Hands the runtime's window the function that shows a window's icon on
+// the window made.
+#[c.native("sngl_icon_hook")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglIconHook")]
+func _iconHook(#[c.type("SnglIconHook")] #[c.static] refresh func(box Widget))
 
 // What the program says of an image: its fit, as a GtkContentFit -- 0 fill,
 // 1 contain, 2 cover and 3 scale down -- what runs as it is clicked, as its
@@ -6496,7 +6955,7 @@ func _ceil(f float) int {
 }
 
 func _imageHooksSet() {
-    _imageHooks(_imageAdopt, _imageUnadopt, _iconRefresh)
+    _iconHook(_iconRefresh)
 }
 
 func _rtImageNew() Image {
@@ -7101,10 +7560,16 @@ func _iconRefresh(box Widget) {
     }
 }
 
+// Whether w is an image's source: what a box's append asks of every child,
+// which reads no _ImageSourceState, since a program with no image has none.
+func _isImageSource(w Widget) bool {
+    return _data(_object(w), "sngl-source") != null
+}
+
 // A window takes a source appended to it as its icon rather than as a
 // widget.
 func _imageAdopt(box Widget, child Widget) bool {
-    if _imageSourceOf(child) == null || !_isToplevel(box) {
+    if !_isImageSource(child) || !_isToplevel(box) {
         return false
     }
     _ref(_pointer(child))
@@ -7117,7 +7582,7 @@ func _imageAdopt(box Widget, child Widget) bool {
 
 func _imageUnadopt(box Widget, child Widget) bool {
     var icon = _dataWidget(_object(box), "sngl-icon")
-    if icon != null && _imageSourceOf(child) != null {
+    if icon != null && _isImageSource(child) {
         if icon == child {
             _setData(_object(child), "sngl-icon-of", null)
             _setData(_object(box), "sngl-icon", null)
