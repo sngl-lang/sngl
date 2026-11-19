@@ -567,14 +567,28 @@ func (c *checker) reportUnlinkedCNativeCalls() {
 	})
 }
 
+// checkCDeclarations judges pkg's C declarations once every mark has run:
+// casts, callbacks and C structs. A program's are judged after its check and
+// a library's as it loads.
+func (c *checker) checkCDeclarations(pkg *ir.Package) {
+	c.checkCCasts(pkg)
+	c.checkCCallbacks(pkg)
+	c.checkCStructs(pkg)
+}
+
 // checkCCasts refuses a `#[c.native(…, cast)]` function whose return type is
 // not the C type its name spells: the conversion is written to that type, so
 // a declaration naming another would hand C a value of the wrong one. Read
 // once every mark has run, since the return type's own mark may run after the
 // cast's.
-func (c *checker) checkCCasts() {
-	for _, fn := range c.pkg.Funcs {
+func (c *checker) checkCCasts(pkg *ir.Package) {
+	for _, fn := range pkg.Funcs {
 		if !fn.IsCCast() || fn.AST == nil {
+			continue
+		}
+		// A node is what the platform holds as its handle, which a cast to
+		// one makes: gtk4's `_asBack` makes a GtkWidget a Back.
+		if fn.Return != nil && fn.Return.Kind == ir.TypeComponent {
 			continue
 		}
 		if got := ir.CTypeOf(fn.Return); !got.Equal(fn.Foreign.C) {
@@ -589,8 +603,8 @@ func (c *checker) checkCCasts() {
 // which the translator fills with what finds the closure: the function marks
 // that parameter, takes one callback for it, and the callback's every
 // parameter and result is a value C has a type for.
-func (c *checker) checkCCallbacks() {
-	for _, fn := range c.pkg.Funcs {
+func (c *checker) checkCCallbacks(pkg *ir.Package) {
+	for _, fn := range pkg.Funcs {
 		if fn.AST == nil {
 			continue
 		}
@@ -884,8 +898,8 @@ func cFieldValue(t *ir.Type, alias *ir.Alias) bool {
 // checkCStructs refuses a C struct's field (ir.StructDef.IsCStruct) holding
 // what is not a C scalar or a C struct: a string, a list or a pointer would
 // cross as memory one side owns, which a platform's C runtime handles.
-func (c *checker) checkCStructs() {
-	for _, sd := range c.pkg.Structs {
+func (c *checker) checkCStructs(pkg *ir.Package) {
+	for _, sd := range pkg.Structs {
 		if !sd.IsCStruct() || sd.AST == nil {
 			continue
 		}

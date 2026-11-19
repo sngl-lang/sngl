@@ -545,6 +545,10 @@ func (c *checker) loadStdlibPackage(pkgName string) *ir.Package {
 	c.checkDeclarationBodies(stdlibPkg, nil)
 	c.finishDeclarations(stdlibPkg)
 	c.checkCLinks()
+	// Its C declarations are held to what a program's are: a library's
+	// escaped the judgments, so a cast answering an option passed here and
+	// miscompiled in Go (TestLibPackageJudgesItsCasts).
+	c.checkCDeclarations(stdlibPkg)
 
 	if _, ok := targetNamespaceName(pkgName); ok {
 		c.checkTargetComponentsConst(stdlibPkg)
