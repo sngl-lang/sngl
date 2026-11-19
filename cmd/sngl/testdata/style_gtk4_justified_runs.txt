@@ -67,7 +67,7 @@ ui.window {
     packed
 }
 -- testrun/gtk4/go/app.sngl/even/1 --
-sha256:c8e2cf979f9f820bad2fe5ae296d609e
+sha256:231df7af9d3a6b37be54a152105229c2
 {
   "results": [
     {
@@ -80,7 +80,7 @@ sha256:c8e2cf979f9f820bad2fe5ae296d609e
   }
 }
 -- testrun/gtk4/go/app.sngl/justified/1 --
-sha256:8d1ad4c26031750d5cb552dcd94cddb1
+sha256:04d8a43a47fbc55248fdf690b9c3f413
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:8d1ad4c26031750d5cb552dcd94cddb1
   }
 }
 -- testrun/gtk4/go/app.sngl/packed/1 --
-sha256:4a4e9dea6faca0fdbeb9920e400f9d78
+sha256:dc2e0c1b77906206665b896f1cdb1ab7
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:4a4e9dea6faca0fdbeb9920e400f9d78
   }
 }
 -- testrun/gtk4/go/app.sngl/weighted/1 --
-sha256:79cd90c858cb6005998ad9147595ce55
+sha256:21dc86dc71da076791b33aa175a894a9
 {
   "results": [
     {
