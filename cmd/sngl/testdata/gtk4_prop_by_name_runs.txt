@@ -1,0 +1,1069 @@
+# A property GTK ships no setter for is set by its name: a gir: class whose
+# GIR, the program's own, names no setter for a level bar's `inverted` and
+# `min-value`, nor for a widget's `name` and `width-request`, has each
+# written by name -- a boolean, a double, a string and an int -- which
+# peek.c reads back off the widget through GObject, in both languages.
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import c "sngl:x/c"
+import gtk "gir:Gtk-4.0"
+import test "sngl:test"
+import ui "sngl:ui"
+
+output {
+    c {
+        gtk4(gir="Gtk-4.0.gir")
+    }
+    go {
+        gtk4(gir="Gtk-4.0.gir")
+    }
+}
+
+c.link(include="peek.h", pkgConfig=["gtk4"], sources=["peek.c", "peek.h"])
+
+// What GObject says w's property name holds, as g_strdup_value_contents
+// writes it.
+#[c.native("peek_prop")]
+func peekProp(w ui.node, name string) string
+
+component bars ui.node {
+    ui.vbox {
+        gtk.GtkLevelBar #bar(inverted=true, minValue=0.5, name="levels", widthRequest=42) {}
+    }
+}
+
+func testSetByName(t test.Test, c bars) {
+    t.assert(peekProp(c.bar, "inverted") == "TRUE")
+    t.assert(peekProp(c.bar, "min-value") == "0.500000")
+    t.assert(peekProp(c.bar, "name") == "\"levels\"")
+    t.assert(peekProp(c.bar, "width-request") == "42")
+}
+
+ui.window {
+    bars
+}
+-- peek.h --
+#include <gtk/gtk.h>
+
+const char *peek_prop(GtkWidget *w, const char *name);
+-- peek.c --
+#include "peek.h"
+
+const char *peek_prop(GtkWidget *w, const char *name) {
+    static char said[256];
+    GParamSpec *ps = g_object_class_find_property(G_OBJECT_GET_CLASS(w), name);
+    if (ps == NULL) {
+        return "no such property";
+    }
+    GValue v = G_VALUE_INIT;
+    g_value_init(&v, ps->value_type);
+    g_object_get_property(G_OBJECT(w), name, &v);
+    char *s = g_strdup_value_contents(&v);
+    g_strlcpy(said, s, sizeof said);
+    g_free(s);
+    g_value_unset(&v);
+    return said;
+}
+-- Gtk-4.0.gir --
+<?xml version="1.0"?>
+<repository version="1.2"
+  xmlns="http://www.gtk.org/introspection/core/1.0"
+  xmlns:c="http://www.gtk.org/introspection/c/1.0"
+  xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <namespace name="Gtk" version="4.0">
+    <enumeration name="Orientation" c:type="GtkOrientation">
+      <member name="horizontal" value="0" c:identifier="GTK_ORIENTATION_HORIZONTAL"/>
+      <member name="vertical" value="1" c:identifier="GTK_ORIENTATION_VERTICAL"/>
+    </enumeration>
+    <interface name="Orientable">
+      <method name="set_orientation" c:identifier="gtk_orientable_set_orientation">
+        <parameters>
+          <instance-parameter name="orientable">
+            <type name="Orientable" c:type="GtkOrientable*"/>
+          </instance-parameter>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="orientation" writable="1" setter="set_orientation">
+        <type name="Orientation" c:type="GtkOrientation"/>
+      </property>
+    </interface>
+    <interface name="Editable">
+      <method name="set_text" c:identifier="gtk_editable_set_text">
+        <parameters>
+          <instance-parameter name="editable">
+            <type name="Editable" c:type="GtkEditable*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="text" writable="1" setter="set_text">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="changed">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </interface>
+    <class name="Widget" c:type="GtkWidget">
+      <method name="set_visible" c:identifier="gtk_widget_set_visible">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="visible">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_sensitive" c:identifier="gtk_widget_set_sensitive">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="sensitive">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_hexpand" c:identifier="gtk_widget_set_hexpand">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="expand">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_vexpand" c:identifier="gtk_widget_set_vexpand">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="expand">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_can_focus" c:identifier="gtk_widget_set_can_focus">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="can_focus">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_tooltip_text" c:identifier="gtk_widget_set_tooltip_text">
+        <parameters>
+          <instance-parameter name="widget">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="visible" writable="1" setter="set_visible">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="sensitive" writable="1" setter="set_sensitive">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="hexpand" writable="1" setter="set_hexpand">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="vexpand" writable="1" setter="set_vexpand">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="can-focus" writable="1" setter="set_can_focus">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="tooltip-text" writable="1" setter="set_tooltip_text">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <!-- Construct-only, so no widget may declare it, and a widget whose
+           props all came down the chain must not pick it up. -->
+      <property name="css-name" writable="1" construct-only="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <!-- Returns a gboolean the (instance, user_data) -> void trampoline
+           cannot produce, so it is inherited but not connectable. -->
+      <glib:signal name="query-tooltip">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+      </glib:signal>
+      <!-- Void with no arguments: the one shape the trampoline can carry, so
+           every class inherits it as a connectable event. -->
+      <glib:signal name="destroy">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Entry" c:type="GtkEntry" parent="Widget">
+      <implements name="Editable"/>
+      <constructor name="new" c:identifier="gtk_entry_new"/>
+      <glib:signal name="activate">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="Button" c:type="GtkButton" parent="Widget">
+      <constructor name="new" c:identifier="gtk_button_new"/>
+      <method name="set_label" c:identifier="gtk_button_set_label">
+        <parameters>
+          <instance-parameter name="button">
+            <type name="Button" c:type="GtkButton*"/>
+          </instance-parameter>
+          <parameter name="label">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="label" writable="1" setter="set_label">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <method name="set_has_frame" c:identifier="gtk_button_set_has_frame">
+        <parameters>
+          <instance-parameter name="button">
+            <type name="Button" c:type="GtkButton*"/>
+          </instance-parameter>
+          <parameter name="has_frame">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="has-frame" writable="1" setter="set_has_frame">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <glib:signal name="clicked">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    
+      <property name="child"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_child"
+                getter="get_child">
+        <type name="Widget"/>
+      </property>
+      <method name="set_child"
+              c:identifier="gtk_button_set_child"
+              glib:set-property="child">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="button" transfer-ownership="none">
+            <type name="Button" c:type="GtkButton*"/>
+          </instance-parameter>
+          <parameter name="child"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Label" c:type="GtkLabel" parent="Widget">
+      <constructor name="new" c:identifier="gtk_label_new">
+        <parameters>
+          <parameter name="str" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_label" c:identifier="gtk_label_set_label">
+        <parameters>
+          <instance-parameter name="label">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="str">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="label" writable="1" setter="set_label">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <method name="set_xalign" c:identifier="gtk_label_set_xalign">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Label" c:type="GtkLabel*"/>
+          </instance-parameter>
+          <parameter name="xalign">
+            <type name="gfloat" c:type="float"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="xalign" writable="1" setter="set_xalign">
+        <type name="gfloat" c:type="gfloat"/>
+      </property>
+    </class>
+    <class name="Box" c:type="GtkBox" parent="Widget">
+      <implements name="Orientable"/>
+      <constructor name="new" c:identifier="gtk_box_new">
+        <parameters>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+          <parameter name="spacing">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_spacing" c:identifier="gtk_box_set_spacing">
+        <parameters>
+          <instance-parameter name="box">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="spacing">
+            <type name="gint" c:type="int"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="spacing" writable="1" setter="set_spacing">
+        <type name="gint" c:type="int"/>
+      </property>
+      <method name="set_homogeneous" c:identifier="gtk_box_set_homogeneous">
+        <parameters>
+          <instance-parameter name="box">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="homogeneous">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="homogeneous" writable="1" setter="set_homogeneous">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+
+      <method name="append" c:identifier="gtk_box_append">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="box" transfer-ownership="none">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="child" transfer-ownership="none">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="remove" c:identifier="gtk_box_remove">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="box" transfer-ownership="none">
+            <type name="Box" c:type="GtkBox*"/>
+          </instance-parameter>
+          <parameter name="child" transfer-ownership="none">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="CheckButton" c:type="GtkCheckButton" parent="Widget">
+      <constructor name="new" c:identifier="gtk_check_button_new"/>
+      <constructor name="new_with_label" c:identifier="gtk_check_button_new_with_label">
+        <parameters>
+          <parameter name="label" transfer-ownership="none" nullable="1">
+            <type name="utf8" c:type="const gchar*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_active" c:identifier="gtk_check_button_set_active">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="CheckButton" c:type="GtkCheckButton*"/>
+          </instance-parameter>
+          <parameter name="setting">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_label" c:identifier="gtk_check_button_set_label" glib:set-property="label">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="CheckButton" c:type="GtkCheckButton*"/>
+          </instance-parameter>
+          <parameter name="label" nullable="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="active" writable="1" setter="set_active">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="label" writable="1" setter="set_label">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <glib:signal name="toggled">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    
+      <property name="child"
+                version="4.8"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_child"
+                getter="get_child">
+        <type name="Widget"/>
+      </property>
+      <method name="set_child"
+              c:identifier="gtk_check_button_set_child"
+              glib:set-property="child"
+              version="4.8">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="button" transfer-ownership="none">
+            <type name="CheckButton" c:type="GtkCheckButton*"/>
+          </instance-parameter>
+          <parameter name="child"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Image" c:type="GtkImage" parent="Widget">
+      <constructor name="new" c:identifier="gtk_image_new"/>
+      <method name="set_from_file" c:identifier="gtk_image_set_from_file" glib:set-property="file">
+        <parameters>
+          <instance-parameter name="image">
+            <type name="Image" c:type="GtkImage*"/>
+          </instance-parameter>
+          <parameter name="filename" nullable="1">
+            <type name="filename" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="file" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="ScrolledWindow" c:type="GtkScrolledWindow" parent="Widget">
+      <constructor name="new" c:identifier="gtk_scrolled_window_new"/>
+    
+      <property name="child"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_child"
+                getter="get_child">
+        <type name="Widget"/>
+      </property>
+      <method name="set_child"
+              c:identifier="gtk_scrolled_window_set_child"
+              glib:set-property="child">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="scrolled_window" transfer-ownership="none">
+            <type name="ScrolledWindow" c:type="GtkScrolledWindow*"/>
+          </instance-parameter>
+          <parameter name="child"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <!-- Between ApplicationWindow and Widget so the parent chain is two deep:
+         close-request is inherited twice over, and carries its own return type
+         rather than the one its landing class would suggest. -->
+    <class name="Window" c:type="GtkWindow" parent="Widget">
+      <constructor name="new" c:identifier="gtk_window_new"/>
+      <!-- Takes no arguments and is still unconnectable, because GTK reads a
+           gboolean back out of it. -->
+      <glib:signal name="close-request">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+      </glib:signal>
+    
+      <property name="child"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_child"
+                getter="get_child">
+        <type name="Widget"/>
+      </property>
+      <method name="set_child"
+              c:identifier="gtk_window_set_child"
+              glib:set-property="child">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="window" transfer-ownership="none">
+            <type name="Window" c:type="GtkWindow*"/>
+          </instance-parameter>
+          <parameter name="child"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="ApplicationWindow" c:type="GtkApplicationWindow" parent="Window">
+      <constructor name="new" c:identifier="gtk_application_window_new">
+        <parameters>
+          <parameter name="application">
+            <type name="Application" c:type="GtkApplication*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_title" c:identifier="gtk_window_set_title">
+        <parameters>
+          <instance-parameter name="window">
+            <type name="ApplicationWindow" c:type="GtkApplicationWindow*"/>
+          </instance-parameter>
+          <parameter name="title">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="title" writable="1" setter="set_title">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="default-width" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+      <property name="default-height" writable="1">
+        <type name="gint" c:type="int"/>
+      </property>
+    </class>
+    <class name="ProgressBar" c:type="GtkProgressBar" parent="Widget">
+      <constructor name="new" c:identifier="gtk_progress_bar_new"/>
+      <method name="pulse" c:identifier="gtk_progress_bar_pulse">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="pbar" transfer-ownership="none">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_fraction" c:identifier="gtk_progress_bar_get_fraction">
+        <return-value transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="pbar" transfer-ownership="none">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="set_fraction" c:identifier="gtk_progress_bar_set_fraction">
+        <parameters>
+          <instance-parameter name="pbar">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+          <parameter name="fraction">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="fraction" writable="1" setter="set_fraction">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <method name="set_text" c:identifier="gtk_progress_bar_set_text">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+          <parameter name="text">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_show_text" c:identifier="gtk_progress_bar_set_show_text">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="ProgressBar" c:type="GtkProgressBar*"/>
+          </instance-parameter>
+          <parameter name="setting">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="text" writable="1" setter="set_text">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="show-text" writable="1" setter="set_show_text">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="Spinner" c:type="GtkSpinner" parent="Widget">
+      <constructor name="new" c:identifier="gtk_spinner_new"/>
+      <method name="set_spinning" c:identifier="gtk_spinner_set_spinning">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Spinner" c:type="GtkSpinner*"/>
+          </instance-parameter>
+          <parameter name="spinning">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="spinning" writable="1" setter="set_spinning">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="Separator" c:type="GtkSeparator" parent="Widget">
+      <implements name="Orientable"/>
+      <constructor name="new" c:identifier="gtk_separator_new">
+        <parameters>
+          <parameter name="orientation">
+            <type name="Orientation" c:type="GtkOrientation"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+    <class name="LinkButton" c:type="GtkLinkButton" parent="Button">
+      <constructor name="new" c:identifier="gtk_link_button_new">
+        <parameters>
+          <parameter name="uri">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="set_uri" c:identifier="gtk_link_button_set_uri">
+        <parameters>
+          <instance-parameter name="link_button">
+            <type name="LinkButton" c:type="GtkLinkButton*"/>
+          </instance-parameter>
+          <parameter name="uri">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="uri" writable="1" setter="set_uri">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+    </class>
+    <class name="Switch" c:type="GtkSwitch" parent="Widget">
+      <constructor name="new" c:identifier="gtk_switch_new"/>
+      <method name="set_active" c:identifier="gtk_switch_set_active">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Switch" c:type="GtkSwitch*"/>
+          </instance-parameter>
+          <parameter name="is_active">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="active" writable="1" setter="set_active">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </class>
+    <class name="Calendar" c:type="GtkCalendar" parent="Widget">
+      <constructor name="new" c:identifier="gtk_calendar_new"/>
+      <glib:signal name="day-selected">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    </class>
+    <class name="DropDown" c:type="GtkDropDown" parent="Widget">
+      <constructor name="new" c:identifier="gtk_drop_down_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="model" transfer-ownership="full" nullable="1" allow-none="1">
+            <type name="Gio.ListModel" c:type="GListModel*"/>
+          </parameter>
+          <parameter name="expression" transfer-ownership="full" nullable="1" allow-none="1">
+            <type name="Expression" c:type="GtkExpression*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    </class>
+    <class name="Frame" c:type="GtkFrame" parent="Widget">
+      <constructor name="new" c:identifier="gtk_frame_new">
+        <parameters>
+          <parameter name="label" nullable="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </constructor>
+    
+      <property name="child"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_child"
+                getter="get_child">
+        <type name="Widget"/>
+      </property>
+      <method name="set_child"
+              c:identifier="gtk_frame_set_child"
+              glib:set-property="child">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="frame" transfer-ownership="none">
+            <type name="Frame" c:type="GtkFrame*"/>
+          </instance-parameter>
+          <parameter name="child"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Stack" c:type="GtkStack" parent="Widget">
+      <constructor name="new" c:identifier="gtk_stack_new"/>
+    
+      <method name="add_child" c:identifier="gtk_stack_add_child">
+        <return-value transfer-ownership="none">
+          <type name="StackPage" c:type="GtkStackPage*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="stack" transfer-ownership="none">
+            <type name="Stack" c:type="GtkStack*"/>
+          </instance-parameter>
+          <parameter name="child" transfer-ownership="none">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+    <class name="Popover" c:type="GtkPopover" parent="Widget">
+      <constructor name="new" c:identifier="gtk_popover_new"/>
+      <method name="set_autohide" c:identifier="gtk_popover_set_autohide">
+        <parameters>
+          <instance-parameter name="self">
+            <type name="Popover" c:type="GtkPopover*"/>
+          </instance-parameter>
+          <parameter name="autohide">
+            <type name="gboolean" c:type="gboolean"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="autohide" writable="1" setter="set_autohide">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <glib:signal name="closed">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+      </glib:signal>
+    
+      <property name="child"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_child"
+                getter="get_child">
+        <type name="Widget"/>
+      </property>
+      <method name="set_child"
+              c:identifier="gtk_popover_set_child"
+              glib:set-property="child">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="popover" transfer-ownership="none">
+            <type name="Popover" c:type="GtkPopover*"/>
+          </instance-parameter>
+          <parameter name="child"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="Widget" c:type="GtkWidget*"/>
+          </parameter>
+        </parameters>
+      </method>
+    </class>
+      <class name="LevelBar"
+           c:symbol-prefix="level_bar"
+           c:type="GtkLevelBar"
+           parent="Widget"
+           glib:type-name="GtkLevelBar"
+           glib:get-type="gtk_level_bar_get_type">
+      <implements name="Accessible"/>
+      <implements name="AccessibleRange"/>
+      <implements name="Buildable"/>
+      <implements name="ConstraintTarget"/>
+      <implements name="Orientable"/>
+      <constructor name="new" c:identifier="gtk_level_bar_new">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+      </constructor>
+      <constructor name="new_for_interval"
+                   c:identifier="gtk_level_bar_new_for_interval">
+        <return-value transfer-ownership="none">
+          <type name="Widget" c:type="GtkWidget*"/>
+        </return-value>
+        <parameters>
+          <parameter name="min_value" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+          <parameter name="max_value" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </constructor>
+      <method name="add_offset_value"
+              c:identifier="gtk_level_bar_add_offset_value">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_inverted"
+              c:identifier="gtk_level_bar_get_inverted"
+              glib:get-property="inverted">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_max_value"
+              c:identifier="gtk_level_bar_get_max_value"
+              glib:get-property="max-value">
+        <return-value transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_min_value"
+              c:identifier="gtk_level_bar_get_min_value"
+              glib:get-property="min-value">
+        <return-value transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_mode"
+              c:identifier="gtk_level_bar_get_mode"
+              glib:get-property="mode">
+        <return-value transfer-ownership="none">
+          <type name="LevelBarMode" c:type="GtkLevelBarMode"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="get_offset_value"
+              c:identifier="gtk_level_bar_get_offset_value">
+        <return-value transfer-ownership="none">
+          <type name="gboolean" c:type="gboolean"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+          <parameter name="value"
+                     direction="out"
+                     caller-allocates="0"
+                     transfer-ownership="full">
+            <type name="gdouble" c:type="double*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_value"
+              c:identifier="gtk_level_bar_get_value"
+              glib:get-property="value">
+        <return-value transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="remove_offset_value"
+              c:identifier="gtk_level_bar_remove_offset_value">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+          <parameter name="name"
+                     transfer-ownership="none"
+                     nullable="1"
+                     allow-none="1">
+            <type name="utf8" c:type="const char*"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_max_value"
+              c:identifier="gtk_level_bar_set_max_value"
+              glib:set-property="max-value">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="set_value"
+              c:identifier="gtk_level_bar_set_value"
+              glib:set-property="value">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="LevelBar" c:type="GtkLevelBar*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gdouble" c:type="double"/>
+          </parameter>
+        </parameters>
+      </method>
+      <property name="inverted"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_inverted"
+                default-value="FALSE">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+      <property name="max-value"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_max_value"
+                getter="get_max_value"
+                default-value="1.000000">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="min-value"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_min_value"
+                default-value="0.000000">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="mode"
+                writable="1"
+                transfer-ownership="none"
+                getter="get_mode"
+                default-value="GTK_LEVEL_BAR_MODE_CONTINUOUS">
+        <type name="LevelBarMode"/>
+      </property>
+      <property name="value"
+                writable="1"
+                transfer-ownership="none"
+                setter="set_value"
+                getter="get_value"
+                default-value="0.000000">
+        <type name="gdouble" c:type="gdouble"/>
+      </property>
+      <property name="name" writable="1" transfer-ownership="none">
+        <type name="utf8" c:type="gchar*"/>
+      </property>
+      <property name="width-request" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+      <glib:signal name="offset-changed" when="first" detailed="1">
+        <return-value transfer-ownership="none">
+          <type name="none" c:type="void"/>
+        </return-value>
+        <parameters>
+          <parameter name="name" transfer-ownership="none">
+            <type name="utf8" c:type="gchar*"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+</namespace>
+</repository>
+
+-- testrun/gtk4/c/app.sngl/bars/1 --
+sha256:4ae9ae4629908ea9c50e8d9339faad54
+{
+  "results": [
+    {
+      "Desc": "SetByName",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/bars/1 --
+sha256:4df8dbe9d5fbcfeabaa8ae44c1bdd95d
+{
+  "results": [
+    {
+      "Desc": "SetByName",
+      "Passed": true
+    }
+  ]
+}
