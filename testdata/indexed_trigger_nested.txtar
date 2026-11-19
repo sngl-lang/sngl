@@ -2828,6 +2828,10 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtSignalEmit(w cgo.Widget, signal string) {
+	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+}
+
 func _rtFireFlip(w cgo.Widget, v int) {
 	h := w
 	on := (v != 0)
@@ -2855,7 +2859,7 @@ func _rtFireFlip(w cgo.Widget, v int) {
 			}
 			cgo.GtkCheckButtonSetActive(b, cgo.CGboolean(__lt4))
 		} else {
-			cgo.SnglSignalEmit(w, "toggled")
+			_rtSignalEmit(w, "toggled")
 		}
 	}
 }
@@ -4500,7 +4504,7 @@ pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
 pass sha256:5377422dc1fa781c93a8a0edcb5243cf
 -- run/go/gtk4 --
-pass sha256:247dea34bbe6b7788a81dfe52cd7106a
+pass sha256:38bf5471bb4505fcd41b4743ba1e7b3d
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --

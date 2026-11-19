@@ -1028,6 +1028,10 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtSignalEmit(w cgo.Widget, signal string) {
+	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+}
+
 func _rtFireFlip(w cgo.Widget, v int) {
 	h := w
 	on__r0 := (v != 0)
@@ -1055,14 +1059,14 @@ func _rtFireFlip(w cgo.Widget, v int) {
 			}
 			cgo.GtkCheckButtonSetActive(b, cgo.CGboolean(__lt4))
 		} else {
-			cgo.SnglSignalEmit(w, "toggled")
+			_rtSignalEmit(w, "toggled")
 		}
 	}
 }
 
 func _rtFireText(e cgo.Widget, text string, signal string) {
 	cgo.SnglEditableSetTextQuiet(e, text)
-	cgo.SnglSignalEmit(e, signal)
+	_rtSignalEmit(e, signal)
 }
 
 func __effect0_mount() {
@@ -1606,7 +1610,7 @@ pass sha256:a611283a22da746c92444200354d5e1d
 -- run/go/fyne --
 pass sha256:4668b3c3f20b584a16fa1804963705c0
 -- run/go/gtk4 --
-pass sha256:278dd60ca2d5be8fab16086e2efc3a7d
+pass sha256:051ca658c7e757d931cdb4878e21c6cc
 -- run/kotlin/android --
 pass sha256:bac0fcb9f94ff275a4c4a943e3b4725d
 -- run/none/html --

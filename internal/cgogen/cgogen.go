@@ -112,6 +112,9 @@ type gen struct {
 	// statics are the functions the package exports for each wrapped
 	// declaration's static callbacks.
 	statics map[*ir.Func][]golang.Static
+	// variadics are the wrapped declarations taking a variable argument
+	// list, whose C function of one shape the preamble defines.
+	variadics []*ir.Func
 	// held says a wrapper takes or answers a value C holds (sngl:x/c's
 	// held), which the package registers as it does a callback's closure.
 	held bool
@@ -191,12 +194,6 @@ func (g *gen) collect(p *ir.Package) {
 // own, named for the declaration, where it does not -- gtk4 connects
 // g_signal_connect_data with a callback of each signal's shape.
 func (g *gen) add(fn *ir.Func) {
-	// A variadic function wants a C function of its one shape, which the
-	// program's own cgo calls.
-	if fn.Foreign.Variadic {
-		g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): it takes a variable argument list, which the program's own cgo calls", fn.Name, fn.Foreign.Name))
-		return
-	}
 	name := GoName(fn.Foreign.Name)
 	w := g.wrapperFunc(fn, name)
 	sig := g.goSig(w, false)
@@ -223,6 +220,12 @@ func (g *gen) add(fn *ir.Func) {
 		}
 	} else {
 		g.funcs[name] = &wrapper{decl: fn, fn: w, sig: g.goSig(w, true)}
+		// cgo calls no variadic function: the wrapper calls a C function of
+		// the declaration's one shape, which the preamble defines as a
+		// program's own cgo would (golang.VariadicShims).
+		if fn.Foreign.Variadic {
+			g.variadics = append(g.variadics, fn)
+		}
 	}
 	if fn.AST != nil {
 		g.res.Marks = append(g.res.Marks, g.mark(fn.AST.Pos, name))
@@ -541,7 +544,7 @@ func (g *gen) write() error {
 	if !slices.ContainsFunc(links, func(l *ir.CLink) bool { return l.Include == "stdlib.h" }) {
 		links = append(slices.Clip(links), &ir.CLink{Include: "stdlib.h", System: true})
 	}
-	cgo := g.cflags() + golang.CPreambleLines(links)
+	cgo := g.cflags() + golang.CPreambleLines(links) + golang.VariadicShims(g.variadics)
 	var src strings.Builder
 	src.WriteString(g.header(cgo))
 	if imps := gc.Imports(); len(imps) > 0 {

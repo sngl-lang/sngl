@@ -317,8 +317,13 @@ func _rtNotifyConnect(
 )
 
 // Emits w's signal as GTK would, which a test fires an event with.
-#[c.native("sngl_signal_emit")]
-func _rtSignalEmit(w ui.node, signal string)
+func _rtSignalEmit(w ui.node, signal string) {
+    _signalEmitByName(_as_GtkWidget(_widget(w)), signal)
+}
+
+// g_signal_emit_by_name with no argument beyond the signal's name.
+#[c.native("g_signal_emit_by_name", variadic)]
+func _signalEmitByName(w _p_GtkWidget, signal string)
 
 // Connects handler to w's signal, as the connect protocol does. A property
 // notification is its event's own protocol.

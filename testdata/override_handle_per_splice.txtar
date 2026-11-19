@@ -149,9 +149,13 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtSignalEmit(w cgo.Widget, signal string) {
+	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+}
+
 func _rtFireText(e cgo.Widget, text string, signal string) {
 	cgo.SnglEditableSetTextQuiet(e, text)
-	cgo.SnglSignalEmit(e, signal)
+	_rtSignalEmit(e, signal)
 }
 
 func SelectDay(cal cgo.Widget, y int, m__r0 int, d int) {
@@ -480,4 +484,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:a629c472f5c958b72d85c1b660758d95
+pass sha256:25e839b9a5bb6a75e4f71c93e5f72508

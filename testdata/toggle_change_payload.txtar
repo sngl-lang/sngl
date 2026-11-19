@@ -30,6 +30,7 @@ whatever the test passed, so the test flips from the state it is in.
 
 deny * `\bToggleEvent\b` -- the handler is handed the state itself, not a struct holding it
 deny out/go/gtk4/main.go `bool\(C\.` -- a gboolean is C.int, which Go converts to no bool
+deny out/go/gtk4/main.go `import "C"` -- the switch's toggled is emitted through g_signal_emit_by_name, a variadic C function the wrapper package calls
 deny out/go/bubbletea/model.go `\be\.` -- the state is read where the press is handled; no event reaches the key case
 -- app.sngl --
 import . "sngl:ui"
@@ -906,6 +907,10 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtSignalEmit(w cgo.Widget, signal string) {
+	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+}
+
 func _rtFireFlip(w cgo.Widget, v int) {
 	h := w
 	on__r0 := (v != 0)
@@ -933,7 +938,7 @@ func _rtFireFlip(w cgo.Widget, v int) {
 			}
 			cgo.GtkCheckButtonSetActive(b, cgo.CGboolean(__lt4))
 		} else {
-			cgo.SnglSignalEmit(w, "toggled")
+			_rtSignalEmit(w, "toggled")
 		}
 	}
 }
@@ -1439,7 +1444,7 @@ pass sha256:1e2635ade3355bdd6ee5a7e1fe7269c2
 -- run/go/fyne --
 pass sha256:05f334ab69a3387686b076c22ab40163
 -- run/go/gtk4 --
-pass sha256:6b29aff2d5128060dfa65650fa88149a
+pass sha256:ccd90d5b262e8de9b42abf2c4352d37c
 -- run/go/html --
 pass sha256:106c1d24cc879a6a15f423068ca44bfa
 -- run/kotlin/android --

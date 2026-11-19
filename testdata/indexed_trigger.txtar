@@ -2164,6 +2164,10 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtSignalEmit(w cgo.Widget, signal string) {
+	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+}
+
 func _rtFireFlip(w cgo.Widget, v int) {
 	h := w
 	on := (v != 0)
@@ -2191,14 +2195,14 @@ func _rtFireFlip(w cgo.Widget, v int) {
 			}
 			cgo.GtkCheckButtonSetActive(b, cgo.CGboolean(__lt4))
 		} else {
-			cgo.SnglSignalEmit(w, "toggled")
+			_rtSignalEmit(w, "toggled")
 		}
 	}
 }
 
 func _rtFireText(e cgo.Widget, text string, signal string) {
 	cgo.SnglEditableSetTextQuiet(e, text)
-	cgo.SnglSignalEmit(e, signal)
+	_rtSignalEmit(e, signal)
 }
 
 func __checkbox_state0__new(__start_checked bool, label string, __copy string, change func(bool)) *__checkbox_state0__inst {
@@ -3574,7 +3578,7 @@ pass sha256:e1a72c829c02188219eb833790b39cb7
 -- run/go/fyne --
 pass sha256:c9f935673287d281a9c156184baaefee
 -- run/go/gtk4 --
-pass sha256:d01d5dfacdbd9a33c605b7765369b9c0
+pass sha256:b45d6104c432d7d8ac1ea54454b481d2
 -- run/kotlin/android --
 pass sha256:ea3887296929cf6f2aa99a0d3947bb7a
 -- run/none/html --

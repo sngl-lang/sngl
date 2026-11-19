@@ -484,10 +484,6 @@ static void sngl_connect_with(GtkWidget *w, const char *signal, GCallback tramp,
     g_signal_connect_data(w, signal, tramp, h, sngl_handler_free, 0);
 }
 
-void sngl_signal_emit(GtkWidget *w, const char *signal) {
-    g_signal_emit_by_name(w, signal);
-}
-
 void sngl_signal_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx, GDestroyNotify release) {
     sngl_connect_with(w, signal, G_CALLBACK(sngl_signal_tramp), fn, ctx, release);
 }
