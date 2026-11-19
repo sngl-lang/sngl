@@ -1785,7 +1785,7 @@ func _rtSignalEmit(w ui.node, signal string) {
 
 // g_signal_emit_by_name with no argument beyond the signal's name.
 #[c.native("g_signal_emit_by_name", variadic)]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalEmitByName")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SignalEmitByName")]
 func _signalEmitByName(w _p_GtkWidget, signal string)
 
 // Connects handler to w's signal, as the connect protocol does. A property

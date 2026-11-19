@@ -44,7 +44,7 @@ void sngl_toplevel_append(GtkWidget *box, GtkWidget *child);
 void sngl_toplevel_insert_before(GtkWidget *box, GtkWidget *anchor, GtkWidget *child);
 
 /* A window's `@key`: fn hears each key pressed in the window before
- * anything in it (keys.c). While it runs, sngl_key_heard is the key's name
+ * anything in it (gtk4.sngl's controllers). While it runs, sngl_key_heard is the key's name
  * and sngl_key_held whether a modifier was held -- 0 Control, 1 Alt, 2
  * Shift, 3 Super or Meta -- or, at 4, whether the focused field was being
  * edited; sngl_key_stop keeps the key from going further. Neither is
@@ -193,26 +193,15 @@ typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
-/* A window's keys (keys.c). sngl_key_name is what a window's `@key` calls
- * the key keyval is with state held -- a name, or the character it types,
- * written into buf -- or NULL for one it does not report: a modifier on its
- * own, a control character, a key no browser names. With a shortcut's
- * modifier held a letter is the key's own, lowercase unless Shift is held.
- *
- * sngl_keys_watch gives win the controllers that hear its keys: hear, with
- * data, on each key pressed in it before anything in it, which is whether
- * the handler stopped the key; and back on an Escape nothing took, which is
- * whether it went back. back may be NULL.
- *
- * sngl_keys_go_on is a key nothing stopped going where it would have gone,
- * as a keyboard's would, for a test pressing it by name: typed into a
- * focused field, pressing a focused button, or moving focus. The caller
- * answers Escape, and a key held with a shortcut's modifier. */
-typedef bool (*SnglKeyHear)(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data);
-typedef bool (*SnglKeyBack)(void *data);
-const char *sngl_key_name(guint keyval, GdkModifierType state, char buf[8]);
-void sngl_keys_watch(GtkWidget *win, SnglKeyHear hear, SnglKeyBack back, void *data);
-void sngl_keys_go_on(GtkWindow *win, const char *key, bool shift);
+/* A window's keys are gtk4.sngl's, handed over through sngl_keys_hooks:
+ * watch gives a window made the controllers that hear its keys, and go_on
+ * takes a key a test pressed that nothing stopped where it would have
+ * gone. sngl_toplevel_hear has the toplevel box's `@key` hear a key, and
+ * is whether its handler stopped it. */
+typedef void (*SnglKeysWatch)(GtkWidget *win);
+typedef void (*SnglKeysGoOn)(GtkWidget *win, const char *key, int shift);
+void sngl_keys_hooks(SnglKeysWatch watch, SnglKeysGoOn go_on);
+int sngl_toplevel_hear(GtkWidget *box, const char *key, int ctrl, int alt, int shift, int meta, int editing);
 
 /* sngl_calendar_select_date selects day on w, a calendar, as
  * gtk_calendar_select_day does, which GTK 4.20 deprecates (choose.c). */

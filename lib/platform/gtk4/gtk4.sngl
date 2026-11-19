@@ -14,7 +14,7 @@ import markup "sngl:ui/markup"
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/keys.c", "rt/choose.c", "rt/image.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/choose.c", "rt/image.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //
@@ -1559,6 +1559,424 @@ func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
     _rtToplevelKey(w, e.key, e.ctrl, e.alt, e.shift, e.meta, e.editing, stop)
 }
 
+// --- A window's keys ---
+//
+// What a window's `@key` calls each key, the controllers that hear the
+// window's keys, and what a key nothing stopped does when a test presses it
+// by name. The runtime's toplevel keeps the handler, and hands the window
+// to _keysWatch as it makes it and a key a test pressed that nothing stopped
+// to _keysGoOn, the functions _rtToplevelNew hands it (sngl_keys_hooks).
+
+// A key a window's `@key` names rather than types: a browser's
+// KeyboardEvent.key for its GDK keyval, the keypad's beside the main one's,
+// which it reports the same. Shift+Tab is ISO_Left_Tab to GDK.
+struct _NamedKey {
+    keyval int
+    name   string
+}
+
+const _namedKeys = [
+    _NamedKey{keyval=65293, name="Enter"}, // GDK_KEY_Return
+    _NamedKey{keyval=65421, name="Enter"}, // GDK_KEY_KP_Enter
+    _NamedKey{keyval=65076, name="Enter"}, // GDK_KEY_ISO_Enter
+    _NamedKey{keyval=65289, name="Tab"}, // GDK_KEY_Tab
+    _NamedKey{keyval=65417, name="Tab"}, // GDK_KEY_KP_Tab
+    _NamedKey{keyval=65056, name="Tab"}, // GDK_KEY_ISO_Left_Tab
+    _NamedKey{keyval=65307, name="Escape"},
+    _NamedKey{keyval=65288, name="Backspace"},
+    _NamedKey{keyval=65535, name="Delete"},
+    _NamedKey{keyval=65439, name="Delete"}, // GDK_KEY_KP_Delete
+    _NamedKey{keyval=65379, name="Insert"},
+    _NamedKey{keyval=65438, name="Insert"}, // GDK_KEY_KP_Insert
+    _NamedKey{keyval=65362, name="ArrowUp"},
+    _NamedKey{keyval=65431, name="ArrowUp"},
+    _NamedKey{keyval=65364, name="ArrowDown"},
+    _NamedKey{keyval=65433, name="ArrowDown"},
+    _NamedKey{keyval=65361, name="ArrowLeft"},
+    _NamedKey{keyval=65430, name="ArrowLeft"},
+    _NamedKey{keyval=65363, name="ArrowRight"},
+    _NamedKey{keyval=65432, name="ArrowRight"},
+    _NamedKey{keyval=65360, name="Home"},
+    _NamedKey{keyval=65429, name="Home"},
+    _NamedKey{keyval=65367, name="End"},
+    _NamedKey{keyval=65436, name="End"},
+    _NamedKey{keyval=65365, name="PageUp"},
+    _NamedKey{keyval=65434, name="PageUp"},
+    _NamedKey{keyval=65366, name="PageDown"},
+    _NamedKey{keyval=65435, name="PageDown"},
+    _NamedKey{keyval=65470, name="F1"},
+    _NamedKey{keyval=65471, name="F2"},
+    _NamedKey{keyval=65472, name="F3"},
+    _NamedKey{keyval=65473, name="F4"},
+    _NamedKey{keyval=65474, name="F5"},
+    _NamedKey{keyval=65475, name="F6"},
+    _NamedKey{keyval=65476, name="F7"},
+    _NamedKey{keyval=65477, name="F8"},
+    _NamedKey{keyval=65478, name="F9"},
+    _NamedKey{keyval=65479, name="F10"},
+    _NamedKey{keyval=65480, name="F11"},
+    _NamedKey{keyval=65481, name="F12"},
+]
+
+// Whether state, a GdkModifierType, holds the modifier of mask, a power of
+// two.
+func _held(state int, mask int) => state / mask % 2 != 0
+
+// The modifiers a press reports as `meta`: Meta (GDK_META_MASK), and the
+// Super a Linux keyboard's Windows key is (GDK_SUPER_MASK).
+func _metaHeld(state int) => _held(state, 268435456) || _held(state, 67108864)
+
+// The modifiers that make a key the key's own character rather than what it
+// types, and Escape no way back: Control, Alt and Meta.
+func _shortcutHeld(state int) => _held(state, 4) || _held(state, 8) || _metaHeld(state)
+
+#[c.native("gunichar")]
+struct _Unichar = int
+
+#[c.native("gdk_keyval_to_unicode")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkKeyvalToUnicode")]
+func _keyvalUnicode(keyval _Count) _Unichar
+
+#[c.native("g_unichar_validate")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GUnicharValidate")]
+func _unicharValid(c _Unichar) bool
+
+#[c.native("g_unichar_toupper")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GUnicharToupper")]
+func _unicharUpper(c _Unichar) _Unichar
+
+#[c.native("g_unichar_tolower")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GUnicharTolower")]
+func _unicharLower(c _Unichar) _Unichar
+
+// What a window's `@key` calls the key keyval is with state held, or null
+// for one it hears nothing of: a key its name names, or the character it
+// types -- with Control, Alt or Meta held, the key's own, in the case Shift
+// says.
+func _keyName(keyval int, state int) option[string] {
+    for var k = _namedKeys {
+        if k.keyval == keyval {
+            return k.name
+        }
+    }
+    var r = int(_keyvalUnicode(_Count(keyval)))
+    if r < 32 || r == 127 || r >= 128 && r < 160 || !_unicharValid(_Unichar(r)) {
+        return null
+    }
+    if _shortcutHeld(state) {
+        r = _held(state, 1) ? int(_unicharUpper(_Unichar(r))) : int(_unicharLower(_Unichar(r)))
+    }
+    return string.fromCodePoint(r)
+}
+
+#[c.native("GtkRoot *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Root")]
+struct _Root {}
+
+#[c.native("GtkRoot *", cast)]
+func _rootOf(w Widget) _Root
+
+#[c.native("gtk_root_get_focus")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkRootGetFocus")]
+func _focusOf(r _Root) option[Widget]
+
+#[c.native("gtk_widget_observe_controllers")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetObserveControllers")]
+func _observeControllers(w Widget) _Model
+
+#[c.native("gtk_event_controller_key_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEventControllerKeyGetType")]
+func _keyControllerType() _Type
+
+#[c.native("GtkEventControllerKey *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.KeyController")]
+struct _KeyController {}
+
+#[c.native("GtkEventControllerKey *", cast)]
+func _keyControllerAt(p _Pointer) _KeyController
+
+#[c.native("GtkIMContext *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.IMContext")]
+struct _IMContext {}
+
+#[c.native("gtk_event_controller_key_get_im_context")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEventControllerKeyGetImContext")]
+func _keyControllerIm(c _KeyController) option[_IMContext]
+
+#[c.native("PangoAttrList **")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.AttrListOut")]
+struct _AttrListOut {}
+
+#[c.native("int *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.IntOut")]
+struct _IntOut {}
+
+#[c.native("gtk_im_context_get_preedit_string")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkImContextGetPreeditString")]
+func _preedit(im _IMContext, #[c.frees("g_free")] text ref[string], attrs option[_AttrListOut], cursor option[_IntOut])
+
+// Whether one of w's key controllers has an input method composing: text
+// in its preedit, which the keys pressed now build. GtkText and
+// GtkTextView hand their input method to their key controller, which is
+// how one is found.
+func _composing(w Widget) bool {
+    var controllers = _observeControllers(w)
+    var n = int(_modelCount(controllers))
+    var composing = false
+    var i = 0
+    for i < n && !composing {
+        var c = _modelItem(controllers, _Count(i))
+        if _isA(_instanceOf(c), _keyControllerType()) {
+            var im = _keyControllerIm(_keyControllerAt(c))
+            if im != null {
+                var text = ""
+                _preedit(im, &text, null, null)
+                composing = text != ""
+            }
+        }
+        _unref(c)
+        i += 1
+    }
+    _unref(_modelPointer(controllers))
+    return composing
+}
+
+#[c.native("gtk_text_view_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkTextViewGetType")]
+func _textViewType() _Type
+
+#[c.native("gtk_text_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkTextGetType")]
+func _textType() _Type
+
+#[c.native("gtk_window_get_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowGetChild")]
+func _windowChild(win _Window) option[Widget]
+
+#[c.native("GtkWindow *", cast)]
+func _windowOf(w Widget) _Window
+
+#[c.native("GtkWidget *", cast)]
+func _gtkWidget(w Widget) _p_GtkWidget
+
+// The window's toplevel's `@key` hears key, and whether its handler
+// stopped it (rt's sngl_toplevel_hear, which keeps the handler).
+#[c.native("sngl_toplevel_hear")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelHear")]
+func _toplevelHear(box Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool) bool
+
+// key-pressed on the window's controller in the capture phase: the key on
+// its way down to the focused widget, before that widget or anything
+// between them. Taken -- true, which ends its propagation -- where the
+// window's `@key` stopped it. A key an input method is composing with goes
+// by untouched, to the field whose it is; otherwise the window hears
+// whether focus is in a field that takes typing: an entry's focus is on the
+// GtkText it holds, a GtkEditable too.
+func _keysPressed(c _Pointer, keyval int, keycode int, state int, data _Pointer) bool {
+    var win = _pointed(data)
+    var box = _windowChild(_windowOf(win))
+    if box == null {
+        return false
+    }
+    var editing = false
+    var f = _focusOf(_rootOf(win))
+    for f != null && f != win {
+        if _composing(f) {
+            return false
+        }
+        if _is(f, _editableType()) || _is(f, _textViewType()) {
+            editing = true
+        }
+        f = _parentOf(f)
+    }
+    var name = _keyName(keyval, state)
+    if name == null {
+        return false
+    }
+    return _toplevelHear(box, name, _held(state, 4), _held(state, 8), _held(state, 1), _metaHeld(state), editing)
+}
+
+// key-pressed on the window's controller in the bubble phase: a key on its
+// way back up, after the handler and the focused widget both left it, which
+// is where an Escape goes back.
+func _keysBack(c _Pointer, keyval int, keycode int, state int, data _Pointer) bool {
+    var box = _windowChild(_windowOf(_pointed(data)))
+    if box == null || keyval != 65307 || _shortcutHeld(state) {
+        return false
+    }
+    return _windowBack(box)
+}
+
+#[c.native("gtk_event_controller_key_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEventControllerKeyNew")]
+func _keyControllerNew() _Controller
+
+#[c.native("GtkPropagationPhase")]
+struct _Phase = int
+
+#[c.native("gtk_event_controller_set_propagation_phase")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEventControllerSetPropagationPhase")]
+func _setPhase(c _Controller, phase _Phase)
+
+#[c.native("gpointer", cast)]
+func _controllerPointer(c _Controller) _Pointer
+
+#[c.native("g_signal_connect_object")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectKeyPressed")]
+func _connectKeyPressed(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(c _Pointer, keyval int, keycode int, state int, data _Pointer) bool, gobject _Pointer, flags _ConnectFlags) _Handler
+
+#[c.native("g_signal_connect_object")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectKeyBack")]
+func _connectKeyBack(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(c _Pointer, keyval int, keycode int, state int, data _Pointer) bool, gobject _Pointer, flags _ConnectFlags) _Handler
+
+// The window's two controllers. One is in the capture phase (1), which is
+// where `@key` hears a key; the other in the bubble phase (2), which is
+// where Escape goes back.
+func _keysWatch(win Widget) {
+    var c = _keyControllerNew()
+    _setPhase(c, 1)
+    _connectKeyPressed(_controllerPointer(c), "key-pressed", _keysPressed, _pointer(win), _ConnectFlags(0))
+    _addController(win, c)
+    var b = _keyControllerNew()
+    _setPhase(b, 2)
+    _connectKeyBack(_controllerPointer(b), "key-pressed", _keysBack, _pointer(win), _ConnectFlags(0))
+    _addController(win, b)
+}
+
+// What a key does once nothing stopped it, for a test pressing one by its
+// name: GTK makes no key event a program can send, so each is the signal
+// the key is bound to on the widget focus is on, or the window's own move
+// of focus.
+
+#[c.native("gtk_widget_activate")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetActivate")]
+func _activate(w Widget) bool
+
+#[c.native("GtkDirectionType")]
+struct _Direction = int
+
+#[c.native("gtk_widget_child_focus")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetChildFocus")]
+func _childFocus(w Widget, direction _Direction) bool
+
+#[c.native("gtk_window_set_focus")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetFocus")]
+func _windowSetFocus(win _Window, focus option[Widget])
+
+#[c.native("GtkTextView *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.TextView")]
+struct _TextView {}
+
+#[c.native("GtkTextView *", cast)]
+func _textViewOf(w Widget) _TextView
+
+#[c.native("gtk_text_view_get_accepts_tab")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkTextViewGetAcceptsTab")]
+func _acceptsTab(v _TextView) bool
+
+#[c.native("g_signal_emit_by_name", variadic)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalEmitByName")]
+func _emitCounted(w _p_GtkWidget, signal string, kind int, count int)
+
+#[c.native("g_signal_emit_by_name", variadic)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.EmitMove")]
+func _emitMove(w _p_GtkWidget, signal string, step int, count int, extend bool)
+
+#[c.native("g_signal_emit_by_name", variadic)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.EmitText")]
+func _emitText(w _p_GtkWidget, signal string, text string)
+
+// A button's activate presses it only after a moment, so a button is
+// clicked as its activation ends.
+func _keyActivate(w Widget) {
+    if _is(w, _buttonType()) {
+        _signalEmitByName(_gtkWidget(w), "clicked")
+        return
+    }
+    _activate(w)
+}
+
+// The window moves focus as its Tab and arrows do: past the last widget,
+// Tab starts again from the first.
+func _keyMoveFocus(win Widget, direction int) {
+    if !_childFocus(win, _Direction(direction)) {
+        _windowSetFocus(_windowOf(win), null)
+        _childFocus(win, _Direction(direction))
+    }
+}
+
+// key on the GtkText or GtkTextView w focus is on: what it types inserted
+// at the cursor, Enter activating an entry and starting a line in a text
+// view, and the editing keys their bindings' signals -- delete-from-cursor
+// by GTK_DELETE_CHARS (0), move-cursor by GTK_MOVEMENT_VISUAL_POSITIONS (1)
+// and GTK_MOVEMENT_DISPLAY_LINE_ENDS (4). Tab is a text view's only while
+// it takes Tab.
+func _textKey(w Widget, key string, shift bool) {
+    var g = _gtkWidget(w)
+    var typed = key
+    if key == "Tab" {
+        typed = "\t"
+    } else if key == "Enter" {
+        if !_is(w, _textViewType()) {
+            _signalEmitByName(g, "activate")
+            return
+        }
+        typed = "\n"
+    } else if key == "Backspace" {
+        _signalEmitByName(g, "backspace")
+        return
+    } else if key == "Delete" {
+        _emitCounted(g, "delete-from-cursor", 0, 1)
+        return
+    } else if key == "ArrowLeft" || key == "ArrowRight" {
+        _emitMove(g, "move-cursor", 1, key == "ArrowLeft" ? -1 : 1, shift)
+        return
+    } else if key == "Home" || key == "End" {
+        _emitMove(g, "move-cursor", 4, key == "Home" ? -1 : 1, shift)
+        return
+    }
+    // One character, or a name that types nothing.
+    if typed.length() == 1 {
+        _emitText(g, "insert-at-cursor", typed)
+    }
+}
+
+// A key a test pressed that nothing stopped, going where it would have
+// gone: to the field focus is on, or as the window's activation and moves
+// of focus -- GTK_DIR_TAB_FORWARD, _BACKWARD, UP, DOWN, LEFT and RIGHT,
+// 0 to 5.
+func _keysGoOn(win Widget, key string, shift bool) {
+    var focus = _focusOf(_rootOf(win))
+    if focus != null && (_is(focus, _textType()) || _is(focus, _textViewType())) && (key != "Tab" || _is(focus, _textViewType()) && _acceptsTab(_textViewOf(focus))) {
+        _textKey(focus, key, shift)
+        return
+    }
+    if key == "Enter" || key == " " {
+        if focus != null {
+            _keyActivate(focus)
+        }
+    } else if key == "Tab" {
+        _keyMoveFocus(win, shift ? 1 : 0)
+    } else if key == "ArrowUp" {
+        _keyMoveFocus(win, 2)
+    } else if key == "ArrowDown" {
+        _keyMoveFocus(win, 3)
+    } else if key == "ArrowLeft" {
+        _keyMoveFocus(win, 4)
+    } else if key == "ArrowRight" {
+        _keyMoveFocus(win, 5)
+    }
+}
+
+// Hands the runtime's toplevel the functions a window's keys are: watching
+// the window it makes, and a key a test pressed that nothing stopped.
+#[c.native("sngl_keys_hooks")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeysHooks")]
+func _keysHooks(
+    #[c.type("SnglKeysWatch")] #[c.static] watch func(win Widget),
+    #[c.type("SnglKeysGoOn")] #[c.static] goOn func(win Widget, key string, shift bool),
+)
+
 // A toplevel's content is a box's, whose append hands the window an entry of
 // its menu or its way back (rt's sngl_box_append).
 #[c.native("sngl_toplevel_append")]
@@ -1696,7 +2114,7 @@ func _on_MenuEntry(e MenuEntry, select func()) {
 // widget, which the runtime names as a browser names the key -- its character,
 // or "Enter", "Tab", "ArrowUp", "F1" and the rest -- and with Control, Alt,
 // Super or Meta held a letter is its own, lowercase unless Shift is held
-// (rt's keys.c). A stop is the window taking the key. A key pressed while the
+// (_keyName). A stop is the window taking the key. A key pressed while the
 // focused field's input method is composing is the input method's, and the
 // window does not hear it. Escape goes back while the window can, after
 // nothing took it: not the handler, not a focused widget.
@@ -2021,6 +2439,7 @@ func _menuHooksSet() {
 
 func _rtToplevelNew() Toplevel {
     _menuHooksSet()
+    _keysHooks(_keysWatch, _keysGoOn)
     return _rtToplevelMake()
 }
 

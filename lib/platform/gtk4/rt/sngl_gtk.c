@@ -163,12 +163,15 @@ static gboolean sngl_close_request(GtkWindow *win, gpointer data) {
     return TRUE;
 }
 
-static bool sngl_top_hear(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data);
+/* A window's keys are gtk4.sngl's, which hands them over as each toplevel
+ * is made: watching the window made, and a key a test pressed that nothing
+ * stopped. */
+static SnglKeysWatch sngl_keys_watch_hook;
+static SnglKeysGoOn sngl_keys_go_on_hook;
 
-/* An Escape nothing took goes back while the window can. */
-static bool sngl_top_back(void *data) {
-    SnglToplevel *t = data;
-    return sngl_window_back(t->box);
+void sngl_keys_hooks(SnglKeysWatch watch, SnglKeysGoOn go_on) {
+    sngl_keys_watch_hook = watch;
+    sngl_keys_go_on_hook = go_on;
 }
 
 static void sngl_toplevel_create(SnglToplevel *t) {
@@ -179,7 +182,7 @@ static void sngl_toplevel_create(SnglToplevel *t) {
     if (t->title) gtk_window_set_title(t->win, t->title);
     gtk_window_set_child(t->win, t->box);
     g_signal_connect(t->win, "close-request", G_CALLBACK(sngl_close_request), t);
-    sngl_keys_watch(GTK_WIDGET(t->win), sngl_top_hear, sngl_top_back, t);
+    if (sngl_keys_watch_hook != NULL) sngl_keys_watch_hook(GTK_WIDGET(t->win));
     sngl_menu_apply(t->box);
     sngl_toplevel_icon_refresh(t->box);
 }
@@ -1050,8 +1053,8 @@ static bool sngl_hear(SnglToplevel *t, const char *key, bool ctrl, bool alt, boo
     return h.stopped;
 }
 
-static bool sngl_top_hear(const char *key, bool ctrl, bool alt, bool shift, bool meta, bool editing, void *data) {
-    return sngl_hear(data, key, ctrl, alt, shift, meta, editing, NULL, NULL);
+int sngl_toplevel_hear(GtkWidget *box, const char *key, int ctrl, int alt, int shift, int meta, int editing) {
+    return sngl_hear(sngl_top(box), key, ctrl, alt, shift, meta, editing, NULL, NULL);
 }
 
 void sngl_toplevel_on_key(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release) {
@@ -1077,8 +1080,8 @@ void sngl_toplevel_key(GtkWidget *box, const char *key, int ctrl, int alt, int s
         sngl_window_back(box);
         return;
     }
-    if (!t->win) return;
-    sngl_keys_go_on(t->win, key, shift);
+    if (!t->win || sngl_keys_go_on_hook == NULL) return;
+    sngl_keys_go_on_hook(GTK_WIDGET(t->win), key, shift);
 }
 
 // A GTK property with no setter function of its own is set by name through
