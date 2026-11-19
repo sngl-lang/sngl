@@ -190,7 +190,11 @@ func (g *gen) add(fn *ir.Func) {
 	if g.funcs == nil {
 		g.funcs = map[string]*wrapper{}
 	}
-	if prev, ok := g.funcs[name]; ok && g.goSig(prev.fn, false) != sig {
+	// A wrapper taking a static callback calls the function the last call
+	// handed it, from the pointer C kept: two declarations handing it
+	// different functions are two wrappers, or C calls the second's where
+	// it kept the first's (gtk4's custom layouts).
+	if prev, ok := g.funcs[name]; ok && (g.goSig(prev.fn, false) != sig || takesStatic(fn) || takesStatic(prev.decl)) {
 		own := GoName(fn.Name)
 		if other, taken := g.funcs[own]; taken && other.decl != fn {
 			g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): its Go signature differs from %s's, which wraps the C function, and %s is taken", fn.Name, fn.Foreign.Name, prev.decl.Name, own))
@@ -204,7 +208,7 @@ func (g *gen) add(fn *ir.Func) {
 		w = g.wrapperFunc(fn, name)
 	}
 	if prev, ok := g.funcs[name]; ok {
-		if g.goSig(prev.fn, false) != sig {
+		if g.goSig(prev.fn, false) != sig || prev.decl != fn && (takesStatic(fn) || takesStatic(prev.decl)) {
 			g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): its Go signature differs from %s's, which wraps the C function", fn.Name, fn.Foreign.Name, prev.decl.Name))
 			return
 		}
@@ -220,6 +224,11 @@ func (g *gen) add(fn *ir.Func) {
 	if fn.AST != nil {
 		g.res.Marks = append(g.res.Marks, g.mark(fn.AST.Pos, name))
 	}
+}
+
+// takesStatic reports whether fn takes a callback C calls with no context.
+func takesStatic(fn *ir.Func) bool {
+	return slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.CStatic })
 }
 
 // wrapperFunc is the SNGL function the wrapper is: fn's parameters but the

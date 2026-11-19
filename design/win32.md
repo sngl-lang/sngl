@@ -149,7 +149,12 @@ exports one function per static parameter, named for the declaration and
 the parameter (`snglStatic__customLayout_measure`,
 `golang.WrapperStaticName`), calling through a package variable each call of
 the wrapper sets. So a parameter calls one function at a time, the last
-call's, which is all gtk4's probe layout and a flow's store hand it. What an
+call's, which is all gtk4's probe layout and a flow's store hand it. Two
+declarations of one C function taking a static callback are two wrappers
+(`takesStatic`), whatever their types: sharing one, C called the second's
+function through the pointer it kept for the first, and gtk4's flex, grid
+and probe layouts all measured as the last made did
+(`cgogen_user_package_runs.txt`'s `split_keep`). What an
 `#[c.outs]` one answers is the program's record, which the package
 declares again field for field (`GtkCustomLayoutNewMeasure`,
 `golang.WrapperOutsName`), and the program's call hands the wrapper an

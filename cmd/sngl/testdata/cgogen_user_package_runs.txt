@@ -6,8 +6,9 @@
 # among what it fills too; the struct is a Go type of the wrapper package's,
 # named so from its first generation, before a mark names it. Each handle the
 # package declares is a type of the wrapper package's too, crossing a wrapped
-# function or not, so a program holding one names no cgo type of its own. The
-# Go program calls the wrapper, reaching the program's module through its
+# function or not, so a program holding one names no cgo type of its own. Two
+# declarations of one C function keeping a static callback are two wrappers,
+# each keeping its own function, which C calls after both were kept. The Go program calls the wrapper, reaching the program's module through its
 # own, which replaces the host module with its root (codegen.WriteGoMod), and
 # compiles none of the package's C, which the wrapper package does.
 
@@ -36,7 +37,7 @@ grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +3 tests, 0 failures'
+stdout 'ok +4 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
@@ -48,6 +49,12 @@ typedef struct {
 void split_swap(split_pair *p);
 
 typedef struct split_state split_state;
+
+typedef int (*split_fn)(int);
+
+// Keeps f, answering where; split_call calls what is kept there.
+int split_keep(split_fn f);
+int split_call(int at, int x);
 -- mathx/split.c --
 #include "split.h"
 
@@ -55,6 +62,18 @@ int split_add(int a, int b, int *carry) {
 	int s = a + b;
 	*carry = s / 10;
 	return s % 10;
+}
+
+static split_fn kept[2];
+static int nkept;
+
+int split_keep(split_fn f) {
+	kept[nkept] = f;
+	return nkept++;
+}
+
+int split_call(int at, int x) {
+	return kept[at](x);
 }
 
 void split_swap(split_pair *p) {
@@ -83,6 +102,25 @@ func swapped(lo int, hi int) int {
     var p = _Pair{lo=lo, hi=hi}
     _swap(&p)
     return p.lo * 10 + p.hi
+}
+
+#[c.native("split_keep")]
+func _keepDoubled(#[c.type("split_fn")] #[c.static] f func(x int) int) int
+
+#[c.native("split_keep")]
+func _keepTripled(#[c.type("split_fn")] #[c.static] f func(x int) int) int
+
+#[c.native("split_call")]
+func _call(at int, x int) int
+
+func _doubled(x int) => x * 2
+
+func _tripled(x int) => x * 3
+
+func applied() string {
+    var d = _keepDoubled(_doubled)
+    var t = _keepTripled(_tripled)
+    return "{_call(d, 3)} {_call(t, 3)}"
 }
 
 // A handle no wrapped function crosses.
@@ -120,14 +158,22 @@ func testItSwaps(t test.Test) {
     t.assert(m.swapped(1, 2) == 21)
 }
 
+func testItAppliesEach(t test.Test) {
+    t.assert(m.applied() == "6 9")
+}
+
 func testItHoldsNoState(t test.Test) {
     t.assert(m.stateless())
 }
 
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:90ac23dcece305ccd71d998e1bc5f4ce
+sha256:6167e8f0f95422e3b3d5bfa792d2fb05
 {
   "results": [
+    {
+      "Desc": "ItAppliesEach",
+      "Passed": true
+    },
     {
       "Desc": "ItHoldsNoState",
       "Passed": true
