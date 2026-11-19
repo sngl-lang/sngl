@@ -6603,7 +6603,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:f81790c7f0a9575ea09ccc893d7516f2
+pass sha256:f2f975ede777188022d551d6b560f378
 -- run/c/win32 --
 pass sha256:e254869f7e25f4636add2d30d2d05f99
 -- run/go/fyne --

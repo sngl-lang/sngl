@@ -11497,7 +11497,7 @@ func snglWin32Snapshot(path string, w, h int) int    { return cgo.SnglWin32Snaps
 func snglWin32CarryFile(name, data string, n int)    { cgo.SnglWin32CarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:df95e8782f83d7a8ee1f2204f8e90ce9
+pass sha256:1c3ec43cdcc37fd1f2deb2d87ba3fe9d
 -- run/c/win32 --
 pass sha256:21baf8e9463ebb9d0fa1d4b490ca843b
 -- run/go/gtk4 --

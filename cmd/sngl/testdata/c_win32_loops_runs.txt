@@ -293,7 +293,7 @@ sha256:4adab804ef8bf6ae30bc51449991e14f
   }
 }
 -- testrun/win32/c/methods.sngl/main/1 --
-sha256:cf9f5c60d643e83fcba31bf107045ef9
+sha256:600f101be900a279ba0e76f2b817413f
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:d66602eeaaf4578923396b133acd916c
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:9ae617b90b7fa353cd5f10672dfff24c
+sha256:b94501640824213f8bafbb86e0dc3979
 {
   "results": [
     {

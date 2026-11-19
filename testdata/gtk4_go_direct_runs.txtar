@@ -3854,4 +3854,4 @@ static inline void snglF__classAllocate(GtkWidgetClass * a0, GtkWidget * a1, int
 
 #endif
 -- run/go/gtk4 --
-pass sha256:7099b30d7c8437b9ef1a47bae988b6a0
+pass sha256:fa6b5704b430aeb313d412e62c4b6f60

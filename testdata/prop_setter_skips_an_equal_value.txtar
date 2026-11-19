@@ -129,7 +129,7 @@ typedef struct sngl_lambda7_env sngl_lambda7_env;
 typedef struct s_platform_gtk4___Allocation s_platform_gtk4___Allocation;
 typedef struct sngl_lambda12_env sngl_lambda12_env;
 typedef struct sngl_lambda15_env sngl_lambda15_env;
-typedef struct sngl_lambda24_env sngl_lambda24_env;
+typedef struct sngl_lambda32_env sngl_lambda32_env;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
 typedef struct s___lambda1_caps s___lambda1_caps;
@@ -430,9 +430,9 @@ typedef struct sngl_lambda15_env {
 	s___anon_id_elem_c6a818 n;
 } sngl_lambda15_env;
 
-typedef struct sngl_lambda24_env {
+typedef struct sngl_lambda32_env {
 	sngl_env hdr;
-} sngl_lambda24_env;
+} sngl_lambda32_env;
 
 typedef struct s___lambda0_caps {
 	s___ref_func * __prop___on0;
@@ -590,7 +590,7 @@ static s_Link s_Link__keep(s_Link v);
 static sngl_list_Link sngl_list_Link__keep(sngl_list_Link v);
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v);
 static void sngl_list_string__unshare(sngl_list_string *l);
-static void sngl_lambda24(void *env_);
+static void sngl_lambda32(void *env_);
 static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
 static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void s___lambda0_caps__visit(s___lambda0_caps v, sngl_visit fn);
@@ -3438,11 +3438,19 @@ static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_lis
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(__self->__n5)), (GtkOrientation)((int)(1)));
 	s_platform_gtk4___applyLook((GtkWidget *)(__self->__n5), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = true, .spacing = 6, .grid = false, .columns = 0});
 	__self->__n0 = sngl_text_new();
-	char * __rel49 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), sngl_list_string_join(__self->__prop___p1, SNGL_STR(", "))), SNGL_STR(" ")), __self->__prop___p2), SNGL_STR(" ")), sngl_int_format((int64_t)(s_depth(__self->__prop___p3)))), SNGL_STR(" ")), sngl_int_format((int64_t)((__self->__prop___p4).len))));
+	sngl_string __snglPart24;
+	sngl_string __snglPart25;
+	sngl_string __snglPart26;
+	sngl_string __snglPart27;
+	sngl_string __snglPart28;
+	sngl_string __snglPart29;
+	sngl_string __snglPart30;
+	sngl_string __snglPart31;
+	char * __rel49 = sngl_cstring((__snglPart30 = sngl_concat((__snglPart28 = sngl_concat((__snglPart26 = sngl_concat((__snglPart24 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart25 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart24, __snglPart25)), SNGL_STR(" ")), __snglPart27 = __self->__prop___p2, sngl_concat(__snglPart26, __snglPart27)), SNGL_STR(" ")), __snglPart29 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart28, __snglPart29)), SNGL_STR(" ")), __snglPart31 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart30, __snglPart31)));
 	sngl_text_set_value(__self->__n0, __rel49);
 	s_x_c__free(__rel49);
 	s_platform_gtk4___applyLook((GtkWidget *)(__self->__n0), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
-	sngl_on_click(__self->__n0, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda24, NULL}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+	sngl_on_click(__self->__n0, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda32, NULL}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_box_append((GtkWidget *)((void *)(__self->__n5)), (GtkWidget *)((void *)(__self->__n0)));
 	__self->__n6 = gtk_button_new();
 	gtk_button_set_label((GtkButton *)((void *)(__self->__n6)), s___rel50);
@@ -3463,24 +3471,40 @@ static void s___child0__set___p0(s___child0__inst * __self, s___anon_id_elem_c6a
 		return;
 	}
 	{
-	s___anon_id_elem_c6a818 __kept25 = s___anon_id_elem_c6a818__keep(__v);
-	s___anon_id_elem_c6a818 *__slot25 = &(__self->__prop___p0);
-	s___anon_id_elem_c6a818__drop(*__slot25);
-	*__slot25 = __kept25;
+	s___anon_id_elem_c6a818 __kept33 = s___anon_id_elem_c6a818__keep(__v);
+	s___anon_id_elem_c6a818 *__slot33 = &(__self->__prop___p0);
+	s___anon_id_elem_c6a818__drop(*__slot33);
+	*__slot33 = __kept33;
 }
-	char * __rel41 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), sngl_list_string_join(__self->__prop___p1, SNGL_STR(", "))), SNGL_STR(" ")), __self->__prop___p2), SNGL_STR(" ")), sngl_int_format((int64_t)(s_depth(__self->__prop___p3)))), SNGL_STR(" ")), sngl_int_format((int64_t)((__self->__prop___p4).len))));
+	sngl_string __snglPart34;
+	sngl_string __snglPart35;
+	sngl_string __snglPart36;
+	sngl_string __snglPart37;
+	sngl_string __snglPart38;
+	sngl_string __snglPart39;
+	sngl_string __snglPart40;
+	sngl_string __snglPart41;
+	char * __rel41 = sngl_cstring((__snglPart40 = sngl_concat((__snglPart38 = sngl_concat((__snglPart36 = sngl_concat((__snglPart34 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart35 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart34, __snglPart35)), SNGL_STR(" ")), __snglPart37 = __self->__prop___p2, sngl_concat(__snglPart36, __snglPart37)), SNGL_STR(" ")), __snglPart39 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart38, __snglPart39)), SNGL_STR(" ")), __snglPart41 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart40, __snglPart41)));
 	sngl_text_set_value(__self->__n0, __rel41);
 	s_x_c__free(__rel41);
 }
 
 static void s___child0__set___p1(s___child0__inst * __self, sngl_list_string __v) {
 	{
-	sngl_list_string __kept26 = sngl_list_string__keep(__v);
-	sngl_list_string *__slot26 = &(__self->__prop___p1);
-	sngl_list_string__drop(*__slot26);
-	*__slot26 = __kept26;
+	sngl_list_string __kept42 = sngl_list_string__keep(__v);
+	sngl_list_string *__slot42 = &(__self->__prop___p1);
+	sngl_list_string__drop(*__slot42);
+	*__slot42 = __kept42;
 }
-	char * __rel42 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), sngl_list_string_join(__self->__prop___p1, SNGL_STR(", "))), SNGL_STR(" ")), __self->__prop___p2), SNGL_STR(" ")), sngl_int_format((int64_t)(s_depth(__self->__prop___p3)))), SNGL_STR(" ")), sngl_int_format((int64_t)((__self->__prop___p4).len))));
+	sngl_string __snglPart43;
+	sngl_string __snglPart44;
+	sngl_string __snglPart45;
+	sngl_string __snglPart46;
+	sngl_string __snglPart47;
+	sngl_string __snglPart48;
+	sngl_string __snglPart49;
+	sngl_string __snglPart50;
+	char * __rel42 = sngl_cstring((__snglPart49 = sngl_concat((__snglPart47 = sngl_concat((__snglPart45 = sngl_concat((__snglPart43 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart44 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart43, __snglPart44)), SNGL_STR(" ")), __snglPart46 = __self->__prop___p2, sngl_concat(__snglPart45, __snglPart46)), SNGL_STR(" ")), __snglPart48 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart47, __snglPart48)), SNGL_STR(" ")), __snglPart50 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart49, __snglPart50)));
 	sngl_text_set_value(__self->__n0, __rel42);
 	s_x_c__free(__rel42);
 }
@@ -3490,46 +3514,70 @@ static void s___child0__set___p2(s___child0__inst * __self, sngl_string __v) {
 		return;
 	}
 	{
-	sngl_string __kept27 = sngl_string_keep(__v);
-	sngl_string *__slot27 = &(__self->__prop___p2);
-	sngl_drop((*__slot27).ptr);
-	*__slot27 = __kept27;
+	sngl_string __kept51 = sngl_string_keep(__v);
+	sngl_string *__slot51 = &(__self->__prop___p2);
+	sngl_drop((*__slot51).ptr);
+	*__slot51 = __kept51;
 }
-	char * __rel43 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), sngl_list_string_join(__self->__prop___p1, SNGL_STR(", "))), SNGL_STR(" ")), __self->__prop___p2), SNGL_STR(" ")), sngl_int_format((int64_t)(s_depth(__self->__prop___p3)))), SNGL_STR(" ")), sngl_int_format((int64_t)((__self->__prop___p4).len))));
+	sngl_string __snglPart52;
+	sngl_string __snglPart53;
+	sngl_string __snglPart54;
+	sngl_string __snglPart55;
+	sngl_string __snglPart56;
+	sngl_string __snglPart57;
+	sngl_string __snglPart58;
+	sngl_string __snglPart59;
+	char * __rel43 = sngl_cstring((__snglPart58 = sngl_concat((__snglPart56 = sngl_concat((__snglPart54 = sngl_concat((__snglPart52 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart53 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart52, __snglPart53)), SNGL_STR(" ")), __snglPart55 = __self->__prop___p2, sngl_concat(__snglPart54, __snglPart55)), SNGL_STR(" ")), __snglPart57 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart56, __snglPart57)), SNGL_STR(" ")), __snglPart59 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart58, __snglPart59)));
 	sngl_text_set_value(__self->__n0, __rel43);
 	s_x_c__free(__rel43);
 }
 
 static void s___child0__set___p3(s___child0__inst * __self, s_Link __v) {
 	{
-	s_Link __kept28 = s_Link__keep(__v);
-	s_Link *__slot28 = &(__self->__prop___p3);
-	s_Link__drop(*__slot28);
-	*__slot28 = __kept28;
+	s_Link __kept60 = s_Link__keep(__v);
+	s_Link *__slot60 = &(__self->__prop___p3);
+	s_Link__drop(*__slot60);
+	*__slot60 = __kept60;
 }
-	char * __rel44 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), sngl_list_string_join(__self->__prop___p1, SNGL_STR(", "))), SNGL_STR(" ")), __self->__prop___p2), SNGL_STR(" ")), sngl_int_format((int64_t)(s_depth(__self->__prop___p3)))), SNGL_STR(" ")), sngl_int_format((int64_t)((__self->__prop___p4).len))));
+	sngl_string __snglPart61;
+	sngl_string __snglPart62;
+	sngl_string __snglPart63;
+	sngl_string __snglPart64;
+	sngl_string __snglPart65;
+	sngl_string __snglPart66;
+	sngl_string __snglPart67;
+	sngl_string __snglPart68;
+	char * __rel44 = sngl_cstring((__snglPart67 = sngl_concat((__snglPart65 = sngl_concat((__snglPart63 = sngl_concat((__snglPart61 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart62 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart61, __snglPart62)), SNGL_STR(" ")), __snglPart64 = __self->__prop___p2, sngl_concat(__snglPart63, __snglPart64)), SNGL_STR(" ")), __snglPart66 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart65, __snglPart66)), SNGL_STR(" ")), __snglPart68 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart67, __snglPart68)));
 	sngl_text_set_value(__self->__n0, __rel44);
 	s_x_c__free(__rel44);
 }
 
 static void s___child0__set___p4(s___child0__inst * __self, sngl_map_string__int __v) {
 	{
-	sngl_map_string__int __kept29 = sngl_map_string__int__keep(__v);
-	sngl_map_string__int *__slot29 = &(__self->__prop___p4);
-	sngl_map_string__int__drop(*__slot29);
-	*__slot29 = __kept29;
+	sngl_map_string__int __kept69 = sngl_map_string__int__keep(__v);
+	sngl_map_string__int *__slot69 = &(__self->__prop___p4);
+	sngl_map_string__int__drop(*__slot69);
+	*__slot69 = __kept69;
 }
-	char * __rel45 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), sngl_list_string_join(__self->__prop___p1, SNGL_STR(", "))), SNGL_STR(" ")), __self->__prop___p2), SNGL_STR(" ")), sngl_int_format((int64_t)(s_depth(__self->__prop___p3)))), SNGL_STR(" ")), sngl_int_format((int64_t)((__self->__prop___p4).len))));
+	sngl_string __snglPart70;
+	sngl_string __snglPart71;
+	sngl_string __snglPart72;
+	sngl_string __snglPart73;
+	sngl_string __snglPart74;
+	sngl_string __snglPart75;
+	sngl_string __snglPart76;
+	sngl_string __snglPart77;
+	char * __rel45 = sngl_cstring((__snglPart76 = sngl_concat((__snglPart74 = sngl_concat((__snglPart72 = sngl_concat((__snglPart70 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart71 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart70, __snglPart71)), SNGL_STR(" ")), __snglPart73 = __self->__prop___p2, sngl_concat(__snglPart72, __snglPart73)), SNGL_STR(" ")), __snglPart75 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart74, __snglPart75)), SNGL_STR(" ")), __snglPart77 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart76, __snglPart77)));
 	sngl_text_set_value(__self->__n0, __rel45);
 	s_x_c__free(__rel45);
 }
 
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v) {
 	{
-	sngl_fn_void__void __kept30 = sngl_fn_void__void__keep(__v);
-	sngl_fn_void__void *__slot30 = &(__self->__prop___on0->value);
-	sngl_fn_void__void__drop(*__slot30);
-	*__slot30 = __kept30;
+	sngl_fn_void__void __kept78 = sngl_fn_void__void__keep(__v);
+	sngl_fn_void__void *__slot78 = &(__self->__prop___on0->value);
+	sngl_fn_void__void__drop(*__slot78);
+	*__slot78 = __kept78;
 }
 }
 
@@ -3670,7 +3718,7 @@ static void sngl_lambda15(void *env_) {
 	}
 }
 
-static void sngl_lambda24(void *env_) {
+static void sngl_lambda32(void *env_) {
 }
 -- out/c/gtk4/sngl.build --
 # What this program links, which `sngl build` reads.
@@ -6202,7 +6250,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:f6741f46306c6c0479eba2fff0f80a99
+pass sha256:fa3667098ae1ab5e3800035151ae8b2c
 -- run/go/gtk4 --
 pass sha256:07d7a6c3060d828311b170a53ef1f673
 -- run/none/html --

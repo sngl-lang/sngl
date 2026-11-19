@@ -599,7 +599,7 @@ func testBoard(t test.Test, c board) {
     t.snapshot("painted")
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:860a5e5378ddf446a42b71126ed21db7
+sha256:cc016241c121cb5601167c00b25d46e3
 {
   "results": [
     {
@@ -613,7 +613,7 @@ sha256:860a5e5378ddf446a42b71126ed21db7
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:1d2c9bc5ead1b11895b80df2c2fd9574
+sha256:3e743d3c14eff1fd902d73c49b7e264d
 {
   "results": [
     {
@@ -627,7 +627,7 @@ sha256:1d2c9bc5ead1b11895b80df2c2fd9574
   }
 }
 -- testrun/gtk4/c/hover.sngl/main/1 --
-sha256:294eb8849712bd4fc0766125a112a744
+sha256:f0baa4ec733ba8b2919d392acdc7e7b5
 {
   "results": [
     {
@@ -642,7 +642,7 @@ sha256:294eb8849712bd4fc0766125a112a744
   }
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:3dcc9b7e64f4f512eafdba66b8de44b3
+sha256:029b3ba99495d18db95164ad01f7fc44
 {
   "results": [
     {
@@ -652,7 +652,7 @@ sha256:3dcc9b7e64f4f512eafdba66b8de44b3
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:1d83fdc783962bdeaaae84e0fc37f5e9
+sha256:3e986a1f9451913247556ade9d5fe459
 {
   "results": [
     {
@@ -666,7 +666,7 @@ sha256:1d83fdc783962bdeaaae84e0fc37f5e9
   ]
 }
 -- testrun/gtk4/c/pictures.sngl/board/1 --
-sha256:bc32bdbc50595ae8525cc2036aca4255
+sha256:4cf01ef26f47bcaaabff2f066ce22110
 {
   "results": [
     {
@@ -680,7 +680,7 @@ sha256:bc32bdbc50595ae8525cc2036aca4255
   }
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:0d19326e4c228d37638736a15d339ffa
+sha256:17ca6aa5d6004f69c85686d76c2fbdef
 {
   "results": [
     {
@@ -697,7 +697,7 @@ sha256:0d19326e4c228d37638736a15d339ffa
   }
 }
 -- testrun/gtk4/c/snap.sngl/_/1 --
-sha256:e2c0ba6a1356e258fa9beefa234c9c0d
+sha256:7f73abf2986aaee0c78196a4cba05dc7
 {
   "results": [
     {
@@ -710,7 +710,7 @@ sha256:e2c0ba6a1356e258fa9beefa234c9c0d
   }
 }
 -- testrun/gtk4/c/snap.sngl/main/1 --
-sha256:5f564d7d06da4f772e400adbf6d3340c
+sha256:d0e59b3ac424629ee919ece4d47eccc5
 {
   "results": [
     {
@@ -724,7 +724,7 @@ sha256:5f564d7d06da4f772e400adbf6d3340c
   }
 }
 -- testrun/gtk4/c/widgets.sngl/calendar/1 --
-sha256:51fda006a33ad1c68f1d29fe75ad9e47
+sha256:f19065591c3dc25b765148fd156f6dc5
 {
   "results": [
     {
@@ -737,7 +737,7 @@ sha256:51fda006a33ad1c68f1d29fe75ad9e47
   }
 }
 -- testrun/gtk4/c/widgets.sngl/form/1 --
-sha256:988badb277b1ecde546f8128e3d183bb
+sha256:a5a5410283b8205a34b5e68b71be94b5
 {
   "results": [
     {
@@ -778,7 +778,7 @@ sha256:988badb277b1ecde546f8128e3d183bb
   }
 }
 -- testrun/gtk4/c/windows.sngl/app/1 --
-sha256:8d744cb5683a7320180a23d993a0250f
+sha256:9210152dd368cf7046711f274e37b00d
 {
   "results": [
     {
@@ -853,7 +853,7 @@ sha256:0c6b726f1c011a22bfc38ba00a03b984
   }
 }
 -- testrun/gtk4/go/pictures.sngl/board/1 --
-sha256:fb26f9ff90abbbee1d10ece03d581988
+sha256:02f8a805aadbf1226bd067c391bdb54c
 {
   "results": [
     {
@@ -907,7 +907,7 @@ sha256:54b481093c98d2b99247db943fed07ce
   ]
 }
 -- testrun/gtk4/go/widgets.sngl/calendar/2 --
-sha256:d8baebda636c11605115e89d6711f6d2
+sha256:6f1d7e7046230535053ff5e740ce398e
 {
   "results": [
     {
@@ -955,7 +955,7 @@ sha256:0e3ba2e3bd95c4cbf0007df19848a899
   ]
 }
 -- testrun/gtk4/go/widgets.sngl/form/2 --
-sha256:dfa72286a648f7351c386fdfe2245926
+sha256:d66b25ba05b4835f32972c774f5f116c
 {
   "results": [
     {

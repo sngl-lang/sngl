@@ -1931,11 +1931,13 @@ static void s_x_c__free(char * s) {
 
 static void s___lambda0(s___lambda0_caps state) {
 	sngl_list_string xs = sngl_list_string_of(3, (sngl_string[]){SNGL_STR("a"), SNGL_STR("b"), SNGL_STR("c")});
+	sngl_string __snglPart7;
+	sngl_string __snglPart8;
 	{
-	sngl_string __kept7 = sngl_string_keep(sngl_concat(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("0 5 -1 6 23 "), s_names(((sngl_opt_int){true, 0}), xs)), SNGL_STR(" [")), s_names(((sngl_opt_int){0}), xs)), SNGL_STR("]")));
-	sngl_string *__slot7 = &(state.said->value);
-	sngl_drop((*__slot7).ptr);
-	*__slot7 = __kept7;
+	sngl_string __kept9 = sngl_string_keep(sngl_concat((__snglPart7 = sngl_concat(sngl_concat(SNGL_STR("0 5 -1 6 23 "), s_names(((sngl_opt_int){true, 0}), xs)), SNGL_STR(" [")), __snglPart8 = s_names(((sngl_opt_int){0}), xs), sngl_concat(__snglPart7, __snglPart8)), SNGL_STR("]")));
+	sngl_string *__slot9 = &(state.said->value);
+	sngl_drop((*__slot9).ptr);
+	*__slot9 = __kept9;
 }
 	char * __rel13 = sngl_cstring(state.said->value);
 	sngl_text_set_value(s___n0, __rel13);
@@ -2646,7 +2648,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:0468e10928a4fd2eaa99ea8ae7207773
+pass sha256:7df7cdc3a83d4f0d1b166c35526b32be
 -- run/go/bubbletea --
 pass sha256:8a724d3ec5f373c3599f3cef94ce8a35
 -- run/kotlin/android --

@@ -545,9 +545,11 @@ type _sizeRequest__result struct {
 	Out2 int
 }
 
-type _fileRead__result struct {
-	Result *cgo.Bytes
-	Out1   string
+type _fileGetContents__result struct {
+	Result bool
+	Out1   *cgo.Contents
+	Out2   int
+	Out3   *cgo.Error
 }
 
 type _measureWidget__result struct {
@@ -977,16 +979,26 @@ func _pictureRead(url__r2 string, pic cgo.Object) {
 		cgo.GBytesUnref(b)
 		return
 	}
-	why := ""
-	__ref1 := _fileRead__result(cgo.SnglFileRead(name, why))
-	why = __ref1.Out1
-	b := __ref1.Result
-	if b == nil {
+	var contents *cgo.Contents
+	var length__r0 int = 0
+	var err *cgo.Error
+	__ref1 := _fileGetContents__result(cgo.GFileGetContents(name, contents, length__r0, err))
+	contents = __ref1.Out1
+	length__r0 = __ref1.Out2
+	err = __ref1.Out3
+	read := __ref1.Result
+	if !read || (contents == nil) {
+		why := ""
+		if err != nil {
+			why = cgo.GErrorMessage((*(err)))
+			cgo.GErrorFree((*(err)))
+		}
 		_pictureFailed(pic, why)
 		return
 	}
-	_pictureArrived(pic, (*(b)))
-	cgo.GBytesUnref((*(b)))
+	b := cgo.GBytesNewTake(cgo.Pointer((*(contents))), length__r0)
+	_pictureArrived(pic, b)
+	cgo.GBytesUnref(b)
 }
 
 func _pictureLetGo(pic cgo.Object) {
@@ -3016,7 +3028,7 @@ pass sha256:2dbc2dead625a3509cc8ab5221613c03
 -- run/go/fyne --
 pass sha256:dcfa287e448cefd56ea5e4e4728fa962
 -- run/go/gtk4 --
-pass sha256:bd9a8db10ce3f5fa76f110b378ed4f0d
+pass sha256:060af9ba1f835d5f518ec3f15c79bad9
 -- run/kotlin/android --
 pass sha256:c17aab8690945f25d9e25193303735e9
 -- run/none/html --

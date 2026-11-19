@@ -6522,7 +6522,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:5b07b3a30de88783a474a558a6b53227
+pass sha256:78c3d9831c48608464dcba49070aab10
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

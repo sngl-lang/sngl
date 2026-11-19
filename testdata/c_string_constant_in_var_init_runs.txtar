@@ -2598,13 +2598,13 @@ static void s___effect0_unmount(void) {
 
 static void s___effect0_down(void) {
 	{
-	sngl_list_int __kept9 = sngl_list_int__keep(((sngl_list_int){0}));
-	sngl_list_int *__slot9 = &(s___effect0_desired);
-	sngl_list_int__drop(*__slot9);
-	*__slot9 = __kept9;
+	sngl_list_int __kept11 = sngl_list_int__keep(((sngl_list_int){0}));
+	sngl_list_int *__slot11 = &(s___effect0_desired);
+	sngl_list_int__drop(*__slot11);
+	*__slot11 = __kept11;
 }
 	sngl_list_int_push_kept(&(s___effect0_desired), 10);
-	for (struct { sngl_list_int l; int64_t i; } __loop10 = {s___effect0_live, 0}; __loop10.i < __loop10.l.len; __loop10.i++) { int64_t __effect0_i = __loop10.i; int64_t _ = __loop10.l.data[__loop10.i];
+	for (struct { sngl_list_int l; int64_t i; } __loop12 = {s___effect0_live, 0}; __loop12.i < __loop12.l.len; __loop12.i++) { int64_t __effect0_i = __loop12.i; int64_t _ = __loop12.l.data[__loop12.i];
 		int64_t __effect0_j = (((s___effect0_live).len - 1) - __effect0_i);
 		if (__effect0_j >= (s___effect0_desired).len) {
 			s___effect0_key = (*sngl_list_int_at(s___effect0_live, __effect0_j));
@@ -2619,7 +2619,7 @@ static void s___effect0_down(void) {
 }
 
 static void s___effect0_up(void) {
-	for (struct { sngl_list_int l; int64_t i; } __loop11 = {s___effect0_desired, 0}; __loop11.i < __loop11.l.len; __loop11.i++) { int64_t __effect0_i = __loop11.i; int64_t __effect0_k = __loop11.l.data[__loop11.i];
+	for (struct { sngl_list_int l; int64_t i; } __loop13 = {s___effect0_desired, 0}; __loop13.i < __loop13.l.len; __loop13.i++) { int64_t __effect0_i = __loop13.i; int64_t __effect0_k = __loop13.l.data[__loop13.i];
 		if (__effect0_i >= (s___effect0_live).len) {
 			s___effect0_key = __effect0_k;
 			s___effect0_mount();
@@ -2631,23 +2631,23 @@ static void s___effect0_up(void) {
 		}
 	}
 	{
-	sngl_list_int __kept12 = sngl_list_int__keep(s___effect0_desired);
-	sngl_list_int *__slot12 = &(s___effect0_live);
-	sngl_list_int__drop(*__slot12);
-	*__slot12 = __kept12;
+	sngl_list_int __kept14 = sngl_list_int__keep(s___effect0_desired);
+	sngl_list_int *__slot14 = &(s___effect0_live);
+	sngl_list_int__drop(*__slot14);
+	*__slot14 = __kept14;
 }
 }
 
 static void s___effect0_teardown(void) {
-	for (struct { sngl_list_int l; int64_t i; } __loop13 = {s___effect0_live, 0}; __loop13.i < __loop13.l.len; __loop13.i++) { int64_t __effect0_ti = __loop13.i; int64_t _ = __loop13.l.data[__loop13.i];
+	for (struct { sngl_list_int l; int64_t i; } __loop15 = {s___effect0_live, 0}; __loop15.i < __loop15.l.len; __loop15.i++) { int64_t __effect0_ti = __loop15.i; int64_t _ = __loop15.l.data[__loop15.i];
 		s___effect0_key = (*sngl_list_int_at(s___effect0_live, (((s___effect0_live).len - 1) - __effect0_ti)));
 		s___effect0_unmount();
 	}
 	{
-	sngl_list_int __kept14 = sngl_list_int__keep(((sngl_list_int){0}));
-	sngl_list_int *__slot14 = &(s___effect0_live);
-	sngl_list_int__drop(*__slot14);
-	*__slot14 = __kept14;
+	sngl_list_int __kept16 = sngl_list_int__keep(((sngl_list_int){0}));
+	sngl_list_int *__slot16 = &(s___effect0_live);
+	sngl_list_int__drop(*__slot16);
+	*__slot16 = __kept16;
 }
 }
 
@@ -2792,7 +2792,9 @@ static void sngl_lambda5(void *env_) {
 }
 
 static void sngl_lambda8(void *env_) {
-	char * __rel41 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(SNGL_STR("n "), sngl_int_format((int64_t)(s_n))), SNGL_STR(", again ")), sngl_int_format((int64_t)(s_measured()))));
+	sngl_string __snglPart9;
+	sngl_string __snglPart10;
+	char * __rel41 = sngl_cstring((__snglPart9 = sngl_concat(sngl_concat(SNGL_STR("n "), sngl_int_format((int64_t)(s_n))), SNGL_STR(", again ")), __snglPart10 = sngl_int_format((int64_t)(s_measured())), sngl_concat(__snglPart9, __snglPart10)));
 	puts(__rel41);
 	s_x_c__free(__rel41);
 	sngl_gtk_quit();
@@ -2810,4 +2812,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:22073d0f28df93b81e4d4149e1c01b9e
+pass sha256:098273418e8db249e78e6a1eba6c0915

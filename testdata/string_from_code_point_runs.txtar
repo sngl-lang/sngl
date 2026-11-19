@@ -1903,13 +1903,15 @@ static void s_x_c__free(char * s) {
 static void s___lambda0(s___lambda0_caps state) {
 	sngl_string out = SNGL_STR("");
 	for (struct { sngl_list_int l; int64_t i; } __loop7 = {state.points, 0}; __loop7.i < __loop7.l.len; __loop7.i++) { int64_t p = __loop7.l.data[__loop7.i];
-		out = sngl_concat(sngl_concat(out, sngl_from_code_point(p)), SNGL_STR("|"));
+		sngl_string __snglPart8;
+		sngl_string __snglPart9;
+		out = sngl_concat((__snglPart8 = out, __snglPart9 = sngl_from_code_point(p), sngl_concat(__snglPart8, __snglPart9)), SNGL_STR("|"));
 	}
 	{
-	sngl_string __kept8 = sngl_string_keep(out);
-	sngl_string *__slot8 = &(state.said->value);
-	sngl_drop((*__slot8).ptr);
-	*__slot8 = __kept8;
+	sngl_string __kept10 = sngl_string_keep(out);
+	sngl_string *__slot10 = &(state.said->value);
+	sngl_drop((*__slot10).ptr);
+	*__slot10 = __kept10;
 }
 	char * __rel13 = sngl_cstring(state.said->value);
 	sngl_text_set_value(s___n0, __rel13);
@@ -2602,7 +2604,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:2c0c1b5afa043ac2588f10bec47b70e6
+pass sha256:6b486a4190ad19def35dcd22c758bcdd
 -- run/go/bubbletea --
 pass sha256:d138c3b3370eb3e7109965062b744c08
 -- run/kotlin/android --
