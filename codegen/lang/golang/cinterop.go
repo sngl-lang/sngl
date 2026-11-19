@@ -134,6 +134,20 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			args[off+i] = "(" + gc.CType(sd.Foreign.C) + ")(unsafe.Pointer(" + args[off+i] + "))"
 		}
 	}
+	// An option of a pointer handle is the pointer to C, NULL for none, as
+	// one C answers is (cCall); Go's is a pointer to it, which the program's
+	// own cgo hands C what it points to. A wrapper package's takes the option
+	// and does so itself (cgogen).
+	if gc.Wrapping == "" {
+		for i, p := range fn.Params {
+			if !optionOfPointer(p.Type) || p.CAlias.IsCHeld() || args[off+i] == "nil" {
+				continue
+			}
+			gc.RequireImport("unsafe")
+			t := gc.CType(ir.CTypeOf(p.Type.Elems[0]))
+			args[off+i] = "func() " + t + " { if p := " + args[off+i] + "; p != nil { return (" + t + ")(unsafe.Pointer(*p)) }; return nil }()"
+		}
+	}
 	var body []string
 	var outs []string
 	for i, p := range fn.Params {
@@ -273,7 +287,7 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 			// A pointer C answers NULL for: Go's option of it is a pointer
 			// to the pointer, nil for NULL. A typedef of one (GLib's
 			// gpointer) is a pointer where its declaration says so.
-			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && ir.CTypeOf(elem) != nil && ir.CStructOf(elem) == nil && (ir.CTypeOf(elem).Ptr > 0 || cPointer(elem)) {
+			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && optionOfPointer(fn.Return) {
 				// Spelled as castType spells a conversion to it: cgo's
 				// pointer, which a wrapper package's handle type aliases.
 				t := gc.CType(ir.CTypeOf(elem))
@@ -295,6 +309,17 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		}
 	}
 	return call
+}
+
+// optionOfPointer reports whether t is an option of a handle whose C type is
+// a pointer: written with a `*`, or a typedef its declaration says is one.
+func optionOfPointer(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeOption || len(t.Elems) != 1 {
+		return false
+	}
+	elem := t.Elems[0]
+	ct := ir.CTypeOf(elem)
+	return ct != nil && ir.CStructOf(elem) == nil && (ct.Ptr > 0 || cPointer(elem))
 }
 
 // cPointer reports whether t's declaration says its C type is a typedef of
