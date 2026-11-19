@@ -6216,12 +6216,35 @@ func _assetLength(a _Asset) _Size
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesNewStatic")]
 func _bytesNewStatic(data _ConstPointer, size _Size) _Bytes
 
-// The bytes of the file beside the program name names, or NULL, why
-// holding GError's message: rt's, since what GLib reads a file into is a
-// GError ** out.
-#[c.native("sngl_file_read")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFileRead")]
-func _fileRead(name string, #[c.frees("g_free")] why ref[string]) option[_Bytes]
+// A file's contents as g_file_get_contents reads them: bytes, not a
+// string, which a NUL among them would end; the GBytes they are taken into
+// frees them.
+#[c.native("gchar *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Contents")]
+struct _Contents {}
+
+#[c.native("gpointer", cast)]
+func _contentsPointer(c _Contents) _Pointer
+
+#[c.native("GError *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Error")]
+struct _Error {}
+
+#[c.native("g_file_get_contents")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GFileGetContents")]
+func _fileGetContents(name string, contents ref[option[_Contents]], length ref[_Size], err ref[option[_Error]]) bool
+
+#[c.native("GError.message", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GErrorMessage")]
+func _errorMessage(e _Error) string
+
+#[c.native("g_error_free")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GErrorFree")]
+func _errorFree(e _Error)
+
+#[c.native("g_bytes_new_take")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesNewTake")]
+func _bytesNewTake(data _Pointer, size _Size) _Bytes
 
 // A fetch the runtime makes (sngl:http's, in rt's sngl_http.h), and the
 // answer it hands the function it is given once it arrives: a failure, by
@@ -6833,12 +6856,20 @@ func _pictureRead(url string, pic _Object) {
         _bytesUnref(b)
         return
     }
-    var why = ""
-    var b = _fileRead(name, &why)
-    if b == null {
+    var contents option[_Contents] = null
+    var length = _Size(0)
+    var err option[_Error] = null
+    var read = _fileGetContents(name, &contents, &length, &err)
+    if !read || contents == null {
+        var why = ""
+        if err != null {
+            why = _errorMessage(err)
+            _errorFree(err)
+        }
         _pictureFailed(pic, why)
         return
     }
+    var b = _bytesNewTake(_contentsPointer(contents), length)
     _pictureArrived(pic, b)
     _bytesUnref(b)
 }

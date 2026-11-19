@@ -1,7 +1,6 @@
 /* What of a `ui.image` on GTK is C's (the rest is gtk4.sngl's "An image,
  * with no struct of its own"): the tables of files a program carries,
- * which SNGL cannot walk, and reading a file beside it, which GLib answers
- * a GError ** out for, which SNGL cannot hand it. */
+ * arrays of C structs, which SNGL cannot walk. */
 #include "sngl_gtk.h"
 
 #include <string.h>
@@ -33,17 +32,4 @@ const SnglAsset *sngl_carried(const char *name) {
         if (strcmp(sngl_carried_files[i].name, name) == 0) return &sngl_carried_files[i];
     }
     return NULL;
-}
-
-/* The bytes of the file name names, or NULL with why GLib's message. */
-GBytes *sngl_file_read(const char *name, char **why) {
-    char *bytes = NULL;
-    gsize len = 0;
-    GError *err = NULL;
-    if (!g_file_get_contents(name, &bytes, &len, &err)) {
-        *why = g_strdup(err->message);
-        g_clear_error(&err);
-        return NULL;
-    }
-    return g_bytes_new_take(bytes, len);
 }

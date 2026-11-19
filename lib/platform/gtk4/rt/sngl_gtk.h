@@ -141,8 +141,7 @@ void sngl_menu_hooks(SnglMenuHook apply, SnglMenuMovedHook moved, SnglMenuBackHo
  * URL names. A file a program carries is one of the table its entry hands
  * sngl_gtk_carry, ending at a NULL name, or one sngl_gtk_carry_file was
  * handed, as a Go program hands each it embeds, which sngl_carried finds
- * by name (image.c). sngl_file_read reads a file beside the program, or
- * answers NULL and GLib's why, which the caller frees.
+ * by name (image.c).
  *
  * The box calls hand a window's append and remove of a source, its icon, to
  * the functions sngl_image_hooks was last handed, which answer whether they
@@ -156,7 +155,6 @@ extern const SnglAsset sngl_assets[];
 void sngl_gtk_carry(const SnglAsset *assets);
 void sngl_gtk_carry_file(const char *name, const char *data, int len);
 const SnglAsset *sngl_carried(const char *name);
-GBytes *sngl_file_read(const char *name, char **why);
 /* What sngl_http_start hands a fetch's answer to (gtk4.sngl's picture). */
 typedef void (*SnglHttpDone)(sngl_http_answer *a, void *ctx);
 typedef void (*SnglIconHook)(GtkWidget *box);

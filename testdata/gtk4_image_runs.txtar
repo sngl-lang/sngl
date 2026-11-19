@@ -287,7 +287,7 @@ typedef struct sngl_opt__LookState sngl_opt__LookState;
 typedef struct s__sizeRequest__result s__sizeRequest__result;
 typedef struct s_platform_gtk4___BackState s_platform_gtk4___BackState;
 typedef struct sngl_opt__BackState sngl_opt__BackState;
-typedef struct s__fileRead__result s__fileRead__result;
+typedef struct s__fileGetContents__result s__fileGetContents__result;
 typedef struct sngl_fn_GtkWidget_p_GtkWidget_p__bool sngl_fn_GtkWidget_p_GtkWidget_p__bool;
 typedef struct sngl_fn_gpointer__void sngl_fn_gpointer__void;
 typedef struct s_platform_gtk4___MenuEntryState s_platform_gtk4___MenuEntryState;
@@ -586,10 +586,12 @@ typedef struct sngl_opt__BackState {
 	s_platform_gtk4___BackState value;
 } sngl_opt__BackState;
 
-typedef struct s__fileRead__result {
-	GBytes * result;
-	sngl_string out1;
-} s__fileRead__result;
+typedef struct s__fileGetContents__result {
+	bool result;
+	gchar * out1;
+	int64_t out2;
+	GError * out3;
+} s__fileGetContents__result;
 
 typedef struct sngl_fn_GtkWidget_p_GtkWidget_p__bool {
 	bool (*fn)(void *env, GtkWidget *, GtkWidget *);
@@ -1328,20 +1330,17 @@ static void sngl_held_release__PictureState(void *p) {
 	free(p);
 }
 
-static sngl_string sngl_freed_g_free(const char *p) {
-	sngl_string s = sngl_string_copy(p);
-	if (p != NULL) {
-		g_free((void *)p);
-	}
-	return s;
-}
-
-static s__fileRead__result sngl_ccall_sngl_file_read__fileRead(const char * a0, sngl_string a1) {
-	char *t1 = NULL;
+static s__fileGetContents__result sngl_ccall_g_file_get_contents__fileGetContents(const char * a0, gchar * a1, int64_t a2, GError * a3) {
+	gchar * t1 = NULL;
 	(void)a1;
-	s__fileRead__result r;
-	r.result = sngl_file_read(a0, &t1);
-	r.out1 = sngl_freed_g_free(t1);
+	gsize t2 = (gsize)a2;
+	GError * t3 = NULL;
+	(void)a3;
+	s__fileGetContents__result r;
+	r.result = (g_file_get_contents(a0, &t1, &t2, &t3) != 0);
+	r.out1 = (gchar *)t1;
+	r.out2 = (int64_t)t2;
+	r.out3 = (GError *)t3;
 	return r;
 }
 
@@ -1553,6 +1552,14 @@ static void sngl_static_s_platform_gtk4___pictureFetched(sngl_http_answer * a0, 
 	sngl_mark m = sngl_call_enter();
 	s_platform_gtk4___pictureFetched(a0, a1);
 	sngl_call_leave(m);
+}
+
+static sngl_string sngl_freed_g_free(const char *p) {
+	sngl_string s = sngl_string_copy(p);
+	if (p != NULL) {
+		g_free((void *)p);
+	}
+	return s;
 }
 
 static sngl_string sngl_ccall_gtk_im_context_get_preedit_string__preedit(GtkIMContext * a0, sngl_string a1, PangoAttrList ** a2, int * a3) {
@@ -2859,16 +2866,26 @@ static void s_platform_gtk4___pictureRead(sngl_string url, GObject * pic) {
 		g_bytes_unref(b);
 		return;
 	}
-	sngl_string why = SNGL_STR("");
+	gchar * contents = NULL;
+	int64_t length__r0 = 0;
+	GError * err = NULL;
 	char * __rel17 = sngl_cstring(name);
-	s__fileRead__result __ref1 = sngl_ccall_sngl_file_read__fileRead(__rel17, why);
+	s__fileGetContents__result __ref1 = sngl_ccall_g_file_get_contents__fileGetContents(__rel17, contents, length__r0, err);
 	s_x_c__free(__rel17);
-	why = __ref1.out1;
-	GBytes * b = __ref1.result;
-	if (b == NULL) {
+	contents = __ref1.out1;
+	length__r0 = __ref1.out2;
+	err = __ref1.out3;
+	bool read = __ref1.result;
+	if (!read || (contents == NULL)) {
+		sngl_string why = SNGL_STR("");
+		if (err != NULL) {
+			why = sngl_string_copy((err)->message);
+			g_error_free(err);
+		}
 		s_platform_gtk4___pictureFailed(pic, why);
 		return;
 	}
+	GBytes * b = g_bytes_new_take((gpointer)(contents), (gsize)(length__r0));
 	s_platform_gtk4___pictureArrived(pic, b);
 	g_bytes_unref(b);
 }
@@ -5282,9 +5299,11 @@ type _sizeRequest__result struct {
 	Out2 int
 }
 
-type _fileRead__result struct {
-	Result *cgo.Bytes
-	Out1   string
+type _fileGetContents__result struct {
+	Result bool
+	Out1   *cgo.Contents
+	Out2   int
+	Out3   *cgo.Error
 }
 
 type _measureWidget__result struct {
@@ -6021,16 +6040,26 @@ func _pictureRead(url__r3 string, pic cgo.Object) {
 		cgo.GBytesUnref(b)
 		return
 	}
-	why := ""
-	__ref1 := _fileRead__result(cgo.SnglFileRead(name, why))
-	why = __ref1.Out1
-	b := __ref1.Result
-	if b == nil {
+	var contents *cgo.Contents
+	var length__r0 int = 0
+	var err *cgo.Error
+	__ref1 := _fileGetContents__result(cgo.GFileGetContents(name, contents, length__r0, err))
+	contents = __ref1.Out1
+	length__r0 = __ref1.Out2
+	err = __ref1.Out3
+	read := __ref1.Result
+	if !read || (contents == nil) {
+		why := ""
+		if err != nil {
+			why = cgo.GErrorMessage((*(err)))
+			cgo.GErrorFree((*(err)))
+		}
 		_pictureFailed(pic, why)
 		return
 	}
-	_pictureArrived(pic, (*(b)))
-	cgo.GBytesUnref((*(b)))
+	b := cgo.GBytesNewTake(cgo.Pointer((*(contents))), length__r0)
+	_pictureArrived(pic, b)
+	cgo.GBytesUnref(b)
 }
 
 func _pictureLetGo(pic cgo.Object) {
@@ -8567,6 +8596,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:5ab8dc829422f6150bb1a2db344f4f5d
+pass sha256:9e39e9694f26909fc1625c68400070df
 -- run/go/gtk4 --
-pass sha256:2ab38e65520596a7481651d7f0cf0f54
+pass sha256:723d2a7efa128b4d51d68e45d6138fed
