@@ -181,6 +181,63 @@ func narrowingsFrom(cond ir.Expr, positive bool, out map[narrowKey]narrowFact) {
 	}
 }
 
+// narrowingsAfter is what s, a statement of a block, establishes for the
+// rest of the block: an `if` one of whose branches always leaves narrows
+// as the other branch does, since only it falls through. `if x == null {
+// return }` narrows x after it, as `if x != null { … } else { return }`
+// does.
+func narrowingsAfter(s ir.Stmt) map[narrowKey]narrowFact {
+	n, ok := s.(*ir.If)
+	if !ok {
+		return nil
+	}
+	thenLeaves, elseLeaves := blockLeaves(n.Body), blockLeaves(n.Else)
+	if thenLeaves == elseLeaves {
+		return nil
+	}
+	facts := map[narrowKey]narrowFact{}
+	narrowingsFrom(n.Cond, elseLeaves, facts)
+	return facts
+}
+
+// blockLeaves reports whether control never falls out of the end of
+// stmts: its last statement returns, breaks or continues, or branches
+// every way to one that does.
+func blockLeaves(stmts []ir.Stmt) bool {
+	if len(stmts) == 0 {
+		return false
+	}
+	switch n := stmts[len(stmts)-1].(type) {
+	case *ir.Break, *ir.Continue:
+		return true
+	case *ir.If:
+		return len(n.Else) > 0 && blockLeaves(n.Body) && blockLeaves(n.Else)
+	case *ir.Match:
+		for _, arm := range n.Arms {
+			if !blockLeaves(arm.Body) {
+				return false
+			}
+		}
+		return len(n.Arms) > 0
+	}
+	return stmtAlwaysReturns(stmts[len(stmts)-1])
+}
+
+// assignsNarrowed reports whether a, a statement of a loop's body, assigns
+// what the loop's head narrowed, which ends the narrowing there.
+func assignsNarrowed(a *ir.Assign, facts map[narrowKey]narrowFact) bool {
+	key, ok := narrowKeyOf(a.Target)
+	if !ok {
+		return false
+	}
+	for k := range facts {
+		if key.root == k.root && pathPrefixOf(key.path, k.path) {
+			return true
+		}
+	}
+	return false
+}
+
 func addNullTest(n *ir.Binary, out map[narrowKey]narrowFact) {
 	var subject ir.Expr
 	switch {

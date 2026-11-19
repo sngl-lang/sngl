@@ -784,6 +784,10 @@ type checker struct {
 	narrowUsed   map[narrowKey]bool
 	narrowChecks []narrowCheck
 	noNarrow     int
+	// untilAssigned is what a `for` head's null test establishes, which the
+	// loop's body takes as it starts and holds until it assigns the value
+	// (checkBlockScoped).
+	untilAssigned map[narrowKey]narrowFact
 
 	// Deferred const(expr) assertions. Const-ness can depend on function
 	// purity, which is only assigned after all bodies are checked, so the

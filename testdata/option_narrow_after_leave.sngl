@@ -1,0 +1,73 @@
+import . "sngl:test"
+
+// A null test whose branch always leaves -- by return, break or continue --
+// narrows the value for the rest of the block, as the branch where the test
+// fails would: after `if x == null { return 0 }` x is the int it holds, and
+// after `if x != null { … } else { return }` too. A loop over `n != null`
+// reads n as what it holds in its body until the body assigns n, after
+// which the head tests it again.
+struct Node {
+    name string
+    next option[Node] = null
+}
+
+func plusOne(x option[int]) int {
+    if x == null {
+        return 0
+    }
+    return x + 1
+}
+
+func orElse(x option[int]) int {
+    if x != null {
+        var seen = x
+    } else {
+        return -1
+    }
+    return x * 2
+}
+
+func firstBig(xs list[option[int]]) int {
+    var total = 0
+    for var x = xs {
+        if x == null {
+            continue
+        }
+        if x > 10 {
+            total = total + x
+            break
+        }
+        total = total + x
+    }
+    return total
+}
+
+func names(start option[Node]) string {
+    var out = ""
+    var n = start
+    for n != null {
+        out = out + n.name
+        n = n.next
+    }
+    return out
+}
+
+func chain() option[Node] {
+    return Node{name="a", next=Node{name="b", next=Node{name="c"}}}
+}
+
+func testNarrowsAfterAReturn(t Test) {
+    t.assert(plusOne(null) == 0)
+    t.assert(plusOne(4) == 5)
+    t.assert(orElse(null) == -1)
+    t.assert(orElse(3) == 6)
+}
+
+func testNarrowsAfterABreakOrContinue(t Test) {
+    t.assert(firstBig([1, null, 2, 20, 5]) == 23)
+}
+
+func testNarrowsInALoopHead(t Test) {
+    t.assert(names(chain()) == "abc")
+    t.assert(names(null) == "")
+}

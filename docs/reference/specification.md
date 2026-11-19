@@ -745,12 +745,39 @@ The forms that narrow are:
 - `a && b` — a null test in `a` narrows `b` and everything the whole condition
   guards. `a || b` is the same fact negated: a `== null` test in `a` narrows
   `b`.
+- `if x == null { … }` whose block always leaves — its last statement is a
+  `return`, `break` or `continue`, or an `if` or `match` each of whose
+  branches ends so — narrows `x` for the rest of the enclosing block, which
+  only the test failing reaches. So does `if x != null { … } else { … }`
+  whose else always leaves.
+- `for x != null { … }` — the body, from its start to the statement of it
+  that assigns `x`. The head is tested again before each turn, so a body
+  ends by assigning the next value to test:
+
+```sngl
+struct Node {
+    next option[Node] = null
+}
+
+func length(start option[Node]) int {
+    var count = 0
+    var n = start
+    for n != null {
+        count += 1
+        n = n.next // n is a Node up to here
+    }
+    return count
+}
+```
 
 Every other form leaves the value an `option[T]`, so reading it as a `T` is
 the ordinary type error rather than a silent wrong type.
 
 A narrowing does not survive anything that could make the value absent again.
-Within the branch, assigning to the tested path or to a prefix of it, taking
+Within the branch -- the rest of the block after a branch that leaves, and in
+a loop's body the statements before the one assigning the tested path, which
+is a statement of the body itself rather than of a block nested in it --
+assigning to the tested path or to a prefix of it, taking
 its address, calling a method that mutates it, or — when the path is rooted at
 package or component state a callee could reach — calling anything that
 mutates state, is an error naming the write. A branch that narrows nothing

@@ -1,0 +1,51 @@
+import . "sngl:test"
+
+// What narrows after a branch that always leaves holds as a branch's
+// narrowing does: an assignment to the value in the rest of the block is
+// refused once the narrowing is read, a branch that may fall through
+// narrows nothing, and a loop over `n != null` narrows n only until its
+// body assigns it, and refuses one written inside a nested block.
+struct Node {
+    name string
+    next option[Node] = null
+}
+
+func clearsAfter(x option[int]) int {
+    if x == null {
+        return 0
+    }
+    var y = x + 1
+    x = null // ERROR(check) "x is assigned in this branch, so the null test on it no longer holds"
+    return y
+}
+
+func fallsThrough(x option[int], quiet bool) int {
+    if x == null {
+        if quiet {
+            return 0
+        }
+    }
+    return x + 1 // ERROR(check) "operator + not defined for option[int] and int"
+}
+
+func readAfterAssign(start option[Node]) string {
+    var n = start
+    var out = ""
+    for n != null {
+        n = n.next
+        out = out + n.name // ERROR(check) "option[Node] may be null: test it against null before reading .name"
+    }
+    return out
+}
+
+func assignNested(start option[Node], skip bool) string {
+    var n = start
+    var out = ""
+    for n != null {
+        if skip {
+            n = n.next // ERROR(check) "n is assigned in this branch, so the null test on it no longer holds"
+        }
+        out = out + n.name
+    }
+    return out
+}

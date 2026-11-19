@@ -3858,6 +3858,8 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 	if block == nil || !block.IsDefined() {
 		return nil
 	}
+	until := c.untilAssigned
+	c.untilAssigned = nil
 	c.pushScope()
 	defer c.popScope()
 	if isScope {
@@ -3867,6 +3869,23 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 		}
 	}
 	var out []ir.Stmt
+	// What narrows to the end of the block: each null test whose branch
+	// always leaves, from the statement after it.
+	type leftNarrowing struct {
+		restore func()
+		region  []ir.Stmt
+		start   int
+	}
+	var left []*leftNarrowing
+	// A loop head's null test holds in its body until the body assigns
+	// what it tested: the statements before that one are its region, and
+	// the value assigned is read under it.
+	var untilRegion []ir.Stmt
+	var untilExpr ir.Expr
+	var restoreUntil func()
+	if len(until) > 0 {
+		restoreUntil = c.pushNarrowings(until, &untilRegion, &untilExpr)
+	}
 	for _, stmt := range block.Stmts {
 		var prelude []ir.Stmt
 		restore := c.preludeFor(&prelude)
@@ -3878,7 +3897,42 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 		}
 		restore()
 		out = append(out, prelude...)
+		at := len(out)
 		out = append(out, checked...)
+		if restoreUntil != nil {
+			for i, s := range checked {
+				if a, ok := s.(*ir.Assign); ok && assignsNarrowed(a, until) {
+					untilRegion, untilExpr = out[:at+i], a.Value
+					restoreUntil()
+					restoreUntil = nil
+					break
+				}
+			}
+		}
+		if c.funcDepth == 0 {
+			continue
+		}
+		for _, s := range checked {
+			facts := narrowingsAfter(s)
+			for k := range facts {
+				if _, held := until[k]; held && restoreUntil != nil {
+					delete(facts, k)
+				}
+			}
+			if len(facts) > 0 {
+				l := &leftNarrowing{start: len(out)}
+				l.restore = c.pushNarrowings(facts, &l.region, nil)
+				left = append(left, l)
+			}
+		}
+	}
+	for _, l := range slices.Backward(left) {
+		l.region = out[l.start:]
+		l.restore()
+	}
+	if restoreUntil != nil {
+		untilRegion = out
+		restoreUntil()
 	}
 	return out
 }
@@ -5921,7 +5975,17 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	}
 	c.pushScope()
 	c.loopDepth++
+	// The head is tested before each turn, so what it establishes holds in
+	// the body until the body assigns it.
+	if cond != nil {
+		facts := map[narrowKey]narrowFact{}
+		narrowingsFrom(cond, true, facts)
+		if len(facts) > 0 {
+			c.untilAssigned = facts
+		}
+	}
 	body := c.checkScopeBlockIR(&x.Body)
+	c.untilAssigned = nil
 	c.loopDepth--
 	var elseBody []ir.Stmt
 	if cond != nil && x.Else.IsDefined() {
