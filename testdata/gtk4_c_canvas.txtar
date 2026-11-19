@@ -143,6 +143,8 @@ typedef struct s_platform_gtk4___TabsState s_platform_gtk4___TabsState;
 typedef struct sngl_opt__TabsState sngl_opt__TabsState;
 typedef struct s_platform_gtk4___TabPageState s_platform_gtk4___TabPageState;
 typedef struct sngl_opt__TabPageState sngl_opt__TabPageState;
+typedef struct s_platform_gtk4___ImageSourceState s_platform_gtk4___ImageSourceState;
+typedef struct sngl_opt__ImageSourceState sngl_opt__ImageSourceState;
 typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct sngl_list_int sngl_list_int;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
@@ -503,6 +505,22 @@ typedef struct sngl_opt__TabPageState {
 	bool ok;
 	s_platform_gtk4___TabPageState value;
 } sngl_opt__TabPageState;
+
+typedef struct s_platform_gtk4___ImageSourceState {
+	sngl_string url;
+	bool ready;
+	sngl_string err;
+	bool told;
+	int64_t width;
+	int64_t height;
+	bool painted;
+	sngl_fn_cairo_t_p__void paint;
+} s_platform_gtk4___ImageSourceState;
+
+typedef struct sngl_opt__ImageSourceState {
+	bool ok;
+	s_platform_gtk4___ImageSourceState value;
+} sngl_opt__ImageSourceState;
 
 typedef struct s__measureWidget__result {
 	int64_t out3;
@@ -1397,6 +1415,15 @@ static sngl_opt__TabPageState sngl_held__TabPageState(void *p) {
 	if (p != NULL) {
 		o.ok = true;
 		o.value = *(s_platform_gtk4___TabPageState *)p;
+	}
+	return o;
+}
+
+static sngl_opt__ImageSourceState sngl_held__ImageSourceState(void *p) {
+	sngl_opt__ImageSourceState o = {0};
+	if (p != NULL) {
+		o.ok = true;
+		o.value = *(s_platform_gtk4___ImageSourceState *)p;
 	}
 	return o;
 }
@@ -3180,7 +3207,7 @@ static bool s_platform_gtk4___tabsAdd(GtkWidget * box, GtkWidget * page) {
 }
 
 static bool s_platform_gtk4___imageAdopt(GtkWidget * box, GtkWidget * child) {
-	if (!(g_object_get_data((GObject *)(child), s___rel33) != NULL) || !(g_object_get_data((GObject *)(box), s___rel21) != NULL)) {
+	if (!(sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel33))).ok || !(g_object_get_data((GObject *)(box), s___rel21) != NULL)) {
 		return false;
 	}
 	g_object_ref((gpointer)(child));
@@ -4991,4 +5018,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:435aa01cf337b434a0833ebfc69d0d21
+pass sha256:f36d01295dbe8271708eff3f214612ba

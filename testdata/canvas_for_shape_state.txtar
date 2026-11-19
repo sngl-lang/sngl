@@ -134,6 +134,8 @@ typedef struct s_platform_gtk4___TabsState s_platform_gtk4___TabsState;
 typedef struct sngl_opt__TabsState sngl_opt__TabsState;
 typedef struct s_platform_gtk4___TabPageState s_platform_gtk4___TabPageState;
 typedef struct sngl_opt__TabPageState sngl_opt__TabPageState;
+typedef struct s_platform_gtk4___ImageSourceState s_platform_gtk4___ImageSourceState;
+typedef struct sngl_opt__ImageSourceState sngl_opt__ImageSourceState;
 typedef struct sngl_fn_GtkWidget_p__bool sngl_fn_GtkWidget_p__bool;
 typedef struct sngl_fn_gpointer_int_int_int_gpointer__bool sngl_fn_gpointer_int_int_int_gpointer__bool;
 typedef struct s_platform_gtk4___IconsState s_platform_gtk4___IconsState;
@@ -335,6 +337,22 @@ typedef struct sngl_opt__TabPageState {
 	bool ok;
 	s_platform_gtk4___TabPageState value;
 } sngl_opt__TabPageState;
+
+typedef struct s_platform_gtk4___ImageSourceState {
+	sngl_string url;
+	bool ready;
+	sngl_string err;
+	bool told;
+	int64_t width;
+	int64_t height;
+	bool painted;
+	sngl_fn_cairo_t_p__void paint;
+} s_platform_gtk4___ImageSourceState;
+
+typedef struct sngl_opt__ImageSourceState {
+	bool ok;
+	s_platform_gtk4___ImageSourceState value;
+} sngl_opt__ImageSourceState;
 
 typedef struct sngl_fn_GtkWidget_p__bool {
 	bool (*fn)(void *env, GtkWidget *);
@@ -759,6 +777,15 @@ static sngl_opt__TabPageState sngl_held__TabPageState(void *p) {
 	if (p != NULL) {
 		o.ok = true;
 		o.value = *(s_platform_gtk4___TabPageState *)p;
+	}
+	return o;
+}
+
+static sngl_opt__ImageSourceState sngl_held__ImageSourceState(void *p) {
+	sngl_opt__ImageSourceState o = {0};
+	if (p != NULL) {
+		o.ok = true;
+		o.value = *(s_platform_gtk4___ImageSourceState *)p;
 	}
 	return o;
 }
@@ -1986,7 +2013,7 @@ static bool s_platform_gtk4___tabsAdd(GtkWidget * box, GtkWidget * page) {
 }
 
 static bool s_platform_gtk4___imageAdopt(GtkWidget * box, GtkWidget * child) {
-	if (!(g_object_get_data((GObject *)(child), s___rel23) != NULL) || !(g_object_get_data((GObject *)(box), s___rel14) != NULL)) {
+	if (!(sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel23))).ok || !(g_object_get_data((GObject *)(box), s___rel14) != NULL)) {
 		return false;
 	}
 	g_object_ref((gpointer)(child));
@@ -5626,6 +5653,17 @@ type _HeardState struct {
 	Then    func()
 }
 
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
 type snglState struct {
 	opened              int
 	closed              int
@@ -6037,7 +6075,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -7610,7 +7653,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:8326f177663cdf0ed2e3f78778ad851a
+pass sha256:034a4104fad5a62709597667c21dd48c
 -- run/c/win32 --
 pass sha256:f7786aded031ae88e0b763f1594b9905
 -- run/go/bubbletea --
@@ -7618,7 +7661,7 @@ pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
 pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
-pass sha256:868f3f2e171561c22655b7a653a56da4
+pass sha256:bc81b09c6774f1b972692c9293cc38e0
 -- run/go/win32 --
 pass sha256:96b53c6a14fafa0473f4b11f21fde8b2
 -- run/none/html --

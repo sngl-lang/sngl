@@ -1767,13 +1767,12 @@ func _tabsAdd(box *C.GtkWidget, page *C.GtkWidget) bool {
 }
 
 func _imageAdopt(box *C.GtkWidget, child *C.GtkWidget) bool {
-	if !(func() *C.gpointer {
-		p := (C.gpointer)(C.g_object_get_data((*C.GObject)(unsafe.Pointer(child)), m.__rel10))
-		if p == nil {
-			return nil
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
 		}
-		return &p
-	}() != nil) || !(func() *C.gpointer {
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(child)), m.__rel10)))) == nil) || !(func() *C.gpointer {
 		p := (C.gpointer)(C.g_object_get_data((*C.GObject)(unsafe.Pointer(box)), m.__rel38))
 		if p == nil {
 			return nil
@@ -4192,4 +4191,4 @@ static inline void snglF__classAllocate(GtkWidgetClass * a0, GtkWidget * a1, int
 
 #endif
 -- run/go/gtk4 --
-pass sha256:0f70490cc5468c768c80d18d794bce71
+pass sha256:09efdbb5537382e60dbe55a5d2f8e996

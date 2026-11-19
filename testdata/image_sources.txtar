@@ -2602,7 +2602,12 @@ func _tabsRemove(box cgo.Widget, page cgo.Widget) bool {
 
 func _imageUnadopt(box cgo.Widget, child cgo.Widget) bool {
 	icon := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-icon")
-	if (icon != nil) && (cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) {
+	if (icon != nil) && (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) != nil) {
 		if (*(icon)) == child {
 			cgo.SetData((cgo.Object)(unsafe.Pointer(child)), "sngl-icon-of", nil)
 			cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon", nil)
@@ -3301,7 +3306,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -6319,7 +6329,7 @@ pass sha256:de50de046fa35ea9a2c763a8fbea5b84
 -- run/go/fyne --
 pass sha256:c0ce8b5d6eeb32a74db74f654b9fecbb
 -- run/go/gtk4 --
-pass sha256:d4ec63878f3b71df512cf13dabdf60b5
+pass sha256:b226fb0aab76b09ff3c9904ae2fdcbd4
 -- run/kotlin/android --
 pass sha256:9164c4affdd04c825ec35937d1b533d2
 -- run/none/html --

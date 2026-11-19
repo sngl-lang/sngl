@@ -7648,16 +7648,10 @@ func _iconRefresh(box Widget) {
     }
 }
 
-// Whether w is an image's source: what a box's append asks of every child,
-// which reads no _ImageSourceState, since a program with no image has none.
-func _isImageSource(w Widget) bool {
-    return _data(_object(w), "sngl-source") != null
-}
-
 // A window takes a source appended to it as its icon rather than as a
 // widget.
 func _imageAdopt(box Widget, child Widget) bool {
-    if !_isImageSource(child) || !_isToplevel(box) {
+    if _imageSourceOf(child) == null || !_isToplevel(box) {
         return false
     }
     _ref(_pointer(child))
@@ -7670,7 +7664,7 @@ func _imageAdopt(box Widget, child Widget) bool {
 
 func _imageUnadopt(box Widget, child Widget) bool {
     var icon = _dataWidget(_object(box), "sngl-icon")
-    if icon != null && _isImageSource(child) {
+    if icon != null && _imageSourceOf(child) != null {
         if icon == child {
             _setData(_object(child), "sngl-icon-of", null)
             _setData(_object(box), "sngl-icon", null)

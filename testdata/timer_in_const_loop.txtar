@@ -1325,6 +1325,17 @@ type _IconsState struct {
 	Dir   string
 }
 
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
 type snglState struct {
 	n                    int
 	shown                bool
@@ -1770,7 +1781,12 @@ func _tabsRemove(box cgo.Widget, page cgo.Widget) bool {
 
 func _imageUnadopt(box cgo.Widget, child cgo.Widget) bool {
 	icon := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-icon")
-	if (icon != nil) && (cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) {
+	if (icon != nil) && (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) != nil) {
 		if (*(icon)) == child {
 			cgo.SetData((cgo.Object)(unsafe.Pointer(child)), "sngl-icon-of", nil)
 			cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon", nil)
@@ -2333,7 +2349,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -4298,6 +4319,6 @@ pass sha256:223e61dca8e13fe89f85085dde24536f
 -- run/go/fyne --
 pass sha256:a24c24ca13033fe0afe6604378ee0b53
 -- run/go/gtk4 --
-pass sha256:da166abb0b4570580e2f4e96c4721101
+pass sha256:8bfe5e1282b3abd1e5d30f30f1db37fd
 -- run/none/html --
 pass sha256:9e84907c286cad317e626e4ac9864b0d

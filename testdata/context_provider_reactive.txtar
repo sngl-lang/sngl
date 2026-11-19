@@ -736,6 +736,17 @@ type _IconsState struct {
 	Dir   string
 }
 
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
 type snglState struct {
 	txt            string
 	visible__inst0 bool
@@ -1538,7 +1549,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -3079,7 +3095,7 @@ pass sha256:4c6c316b2bcdbe46bd222e5407413ebd
 -- run/go/fyne --
 pass sha256:dd2626af0c1bffa332cab59c889e6669
 -- run/go/gtk4 --
-pass sha256:90c42dee2f9e54c9d6a2555435e33cf5
+pass sha256:a25a9803c69b741e24baf1ab653d9ed6
 -- run/kotlin/android --
 pass sha256:b107f5273f76f27f338eb7d0ad5f70ff
 -- run/none/html --

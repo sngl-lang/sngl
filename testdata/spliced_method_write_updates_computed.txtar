@@ -714,6 +714,17 @@ type _IconsState struct {
 	Dir   string
 }
 
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
 type snglState struct {
 	items__inst0        []string
 	visible__inst0      bool
@@ -1554,7 +1565,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -3511,6 +3527,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:8f5e4319178cae89223a6e22fc0af936
 -- run/go/gtk4 --
-pass sha256:9d916c5a4118a72367099d6641486e18
+pass sha256:805320fa82cdb859c0c6c2c2711f35a8
 -- run/none/html --
 pass sha256:911c76a2b508d0be195cfaca1a4947c0

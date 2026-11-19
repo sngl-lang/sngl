@@ -1009,6 +1009,17 @@ type _HeardState struct {
 	Then    func()
 }
 
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
 type snglState struct {
 	__ctx_server        string
 	name                string
@@ -2226,7 +2237,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -3388,7 +3404,7 @@ pass sha256:4f51e7dcb6c4f2892d0a2ba26d4f6e88
 -- run/go/fyne --
 pass sha256:1d1bb6ffc8d8242e816dbebba16f8364
 -- run/go/gtk4 --
-pass sha256:735c1f40bca86f2ac86d8480183f9dbd
+pass sha256:fdbc294ac8c153041715dc1484040b4c
 -- run/kotlin/android --
 pass sha256:0bbf7d1be5dff9dc17c69f8450d99894
 -- run/none/html --

@@ -761,6 +761,17 @@ type _HeardState struct {
 	Then    func()
 }
 
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
 type snglState struct {
 	rs             []float64
 	grow           float64
@@ -1554,7 +1565,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -3762,6 +3778,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:e5d277f47430950b6ea29e07f632a3ac
 -- run/go/gtk4 --
-pass sha256:b9fa1b27f14f150f04c4b638e0884819
+pass sha256:455abb9532e08eb66c7f79a523504ca3
 -- run/none/html --
 pass sha256:b54614866a2ca6128a9d623f40e0dc7b

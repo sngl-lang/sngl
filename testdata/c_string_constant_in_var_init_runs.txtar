@@ -84,6 +84,9 @@ typedef struct s_platform_gtk4___TabsState s_platform_gtk4___TabsState;
 typedef struct sngl_opt__TabsState sngl_opt__TabsState;
 typedef struct s_platform_gtk4___TabPageState s_platform_gtk4___TabPageState;
 typedef struct sngl_opt__TabPageState sngl_opt__TabPageState;
+typedef struct s_platform_gtk4___ImageSourceState s_platform_gtk4___ImageSourceState;
+typedef struct sngl_fn_cairo_t_p__void sngl_fn_cairo_t_p__void;
+typedef struct sngl_opt__ImageSourceState sngl_opt__ImageSourceState;
 typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
 typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
@@ -327,6 +330,27 @@ typedef struct sngl_opt__TabPageState {
 	bool ok;
 	s_platform_gtk4___TabPageState value;
 } sngl_opt__TabPageState;
+
+typedef struct sngl_fn_cairo_t_p__void {
+	void (*fn)(void *env, cairo_t *);
+	void *env;
+} sngl_fn_cairo_t_p__void;
+
+typedef struct s_platform_gtk4___ImageSourceState {
+	sngl_string url;
+	bool ready;
+	sngl_string err;
+	bool told;
+	int64_t width;
+	int64_t height;
+	bool painted;
+	sngl_fn_cairo_t_p__void paint;
+} s_platform_gtk4___ImageSourceState;
+
+typedef struct sngl_opt__ImageSourceState {
+	bool ok;
+	s_platform_gtk4___ImageSourceState value;
+} sngl_opt__ImageSourceState;
 
 typedef struct s__measureWidget__result {
 	int64_t out3;
@@ -986,6 +1010,15 @@ static sngl_opt__TabPageState sngl_held__TabPageState(void *p) {
 	if (p != NULL) {
 		o.ok = true;
 		o.value = *(s_platform_gtk4___TabPageState *)p;
+	}
+	return o;
+}
+
+static sngl_opt__ImageSourceState sngl_held__ImageSourceState(void *p) {
+	sngl_opt__ImageSourceState o = {0};
+	if (p != NULL) {
+		o.ok = true;
+		o.value = *(s_platform_gtk4___ImageSourceState *)p;
 	}
 	return o;
 }
@@ -2055,7 +2088,7 @@ static bool s_platform_gtk4___tabsAdd(GtkWidget * box, GtkWidget * page) {
 }
 
 static bool s_platform_gtk4___imageAdopt(GtkWidget * box, GtkWidget * child) {
-	if (!(g_object_get_data((GObject *)(child), s___rel39) != NULL) || !(g_object_get_data((GObject *)(box), s___rel31) != NULL)) {
+	if (!(sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel39))).ok || !(g_object_get_data((GObject *)(box), s___rel31) != NULL)) {
 		return false;
 	}
 	g_object_ref((gpointer)(child));
@@ -3317,4 +3350,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:27cee5682f320851ce707f3b65959bc5
+pass sha256:55ae8ed113b8e2e009285cd689085490

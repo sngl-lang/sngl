@@ -3425,7 +3425,7 @@ static bool s_platform_gtk4___tabsRemove(GtkWidget * box, GtkWidget * page) {
 
 static bool s_platform_gtk4___imageUnadopt(GtkWidget * box, GtkWidget * child) {
 	GtkWidget * icon = g_object_get_data((GObject *)(box), s___rel29);
-	if ((icon != NULL) && (g_object_get_data((GObject *)(child), s___rel7) != NULL)) {
+	if ((icon != NULL) && (sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel7))).ok) {
 		if (icon == child) {
 			g_object_set_data((GObject *)(child), s___rel28, NULL);
 			g_object_set_data((GObject *)(box), s___rel29, NULL);
@@ -3972,7 +3972,7 @@ static bool s_platform_gtk4___tabsAdd(GtkWidget * box, GtkWidget * page) {
 }
 
 static bool s_platform_gtk4___imageAdopt(GtkWidget * box, GtkWidget * child) {
-	if (!(g_object_get_data((GObject *)(child), s___rel7) != NULL) || !(g_object_get_data((GObject *)(box), s___rel40) != NULL)) {
+	if (!(sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel7))).ok || !(g_object_get_data((GObject *)(box), s___rel40) != NULL)) {
 		return false;
 	}
 	g_object_ref((gpointer)(child));
@@ -7002,7 +7002,12 @@ func _tabsRemove(box cgo.Widget, page cgo.Widget) bool {
 
 func _imageUnadopt(box cgo.Widget, child cgo.Widget) bool {
 	icon := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-icon")
-	if (icon != nil) && (cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) {
+	if (icon != nil) && (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) != nil) {
 		if (*(icon)) == child {
 			cgo.SetData((cgo.Object)(unsafe.Pointer(child)), "sngl-icon-of", nil)
 			cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon", nil)
@@ -7664,7 +7669,12 @@ func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
-	if !(cgo.Data((cgo.Object)(unsafe.Pointer(child)), "sngl-source") != nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
 		return false
 	}
 	cgo.GObjectRef(cgo.Pointer(child))
@@ -9531,6 +9541,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:10d2a64501eeabade8c94de55512d2e5
+pass sha256:924af01214cb75e291b990d7084a1c50
 -- run/go/gtk4 --
-pass sha256:66a73725c28416563661b5e876e96b7a
+pass sha256:2985efc83ccd491fb420ac0cfd1eb941
