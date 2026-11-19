@@ -1524,7 +1524,6 @@ func _scrollReport(data cgo.Pointer) bool {
 }
 
 func _scrollReported(data cgo.Pointer) {
-	return
 }
 
 func _sourceGone(p cgo.Pointer) {
@@ -2935,7 +2934,7 @@ pass sha256:9acdbc41ec1fc0d21c56136e044b7f1d
 -- run/go/fyne --
 pass sha256:4749d73fe5fa467e53081de1f3c1008b
 -- run/go/gtk4 --
-pass sha256:9bf28dff4e3670a4646b08f84ed93bd5
+pass sha256:838d6d439f406fd37a5a05142290bd3a
 -- run/kotlin/android --
 pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --

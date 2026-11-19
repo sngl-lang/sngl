@@ -5,7 +5,8 @@ layout's measure and Win32 a window procedure. One marked `#[c.outs]`
 answers a struct C reads through the pointers it hands the callback after
 its arguments, field by field, skipping one that is NULL; a string C hands a
 static callback is copied into the turn. A function marked `variadic` is
-called with the arguments its declaration lists.
+called with the arguments its declaration lists. A function with an empty
+body is a function C can call all the same: only its calls are inlined away.
 
 -- app.sngl --
 import c "sngl:x/c"
@@ -23,6 +24,9 @@ func layout(#[c.static] mode func() int, #[c.static] #[c.outs] measure func(forS
 #[c.native("test_greet")]
 func greet(#[c.static] hear func(name string, loud bool) int) int
 
+#[c.native("test_then")]
+func then(#[c.static] done func()) int
+
 #[c.native("test_sum", variadic)]
 func sum3(n int, a int, b int, c int) int
 
@@ -35,7 +39,11 @@ func measure(forSize int) => Size{minimum=forSize, natural=forSize * 2}
 
 func hear(name string, loud bool) => loud ? name.length() * 10 : name.length()
 
+func ignore() {}
+
 func run() => layout(mode, measure)
+
+func thenRan() => then(ignore)
 
 func greeted() => greet(hear)
 
@@ -61,6 +69,12 @@ static int test_greet(int (*hear)(const char *, int)) {
 	int quiet = hear(buf, 0);
 	buf[0] = 0;
 	return quiet + hear("ab", 1);
+}
+
+// A callback with nothing to do is still a function C can call.
+static int test_then(void (*done)(void)) {
+	done();
+	return 1;
 }
 
 static int test_sum(int n, ...) {
@@ -91,9 +105,11 @@ int main(void) {
 	printf("%d\n", (int)s_run());
 	printf("%d\n", (int)s_greeted());
 	printf("%d %g\n", (int)s_summed(), s_mean());
+	printf("%d\n", (int)s_thenRan());
 	return 0;
 }
 -- want --
 74510
 24
 6 2
+1

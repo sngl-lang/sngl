@@ -217,6 +217,16 @@ func ReleaseOf(t *Type) *Func {
 	return nil
 }
 
+// WroteBody reports whether fn's declaration was written with a body, `{}`
+// included. A function whose block is empty may be either: one the program
+// wrote `{}`, which is a function like any other wherever it is a value,
+// since only its calls are inlined away; or a declaration with nothing behind
+// it -- a native, a handler lowering attached where none was written --
+// which no output defines. The block cannot tell them apart.
+func WroteBody(fn *Func) bool {
+	return fn != nil && fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined())
+}
+
 // IsRelease reports whether fn is the release some owned type declares, or
 // the one synthesized for a type owned by what it holds.
 func IsRelease(fn *Func) bool {

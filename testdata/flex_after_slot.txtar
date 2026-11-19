@@ -752,7 +752,6 @@ func _scrollReport(data cgo.Pointer) bool {
 }
 
 func _scrollReported(data cgo.Pointer) {
-	return
 }
 
 func _sourceGone(p cgo.Pointer) {
@@ -1041,4 +1040,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:96945cd5eabb1205b8a4274ceb20e553
 -- run/go/gtk4 --
-pass sha256:0ee1f67bb4a0a122e0910c82234d139d
+pass sha256:3e1195eb07d5ccb51f49f9550c8e4afa

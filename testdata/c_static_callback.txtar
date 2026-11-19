@@ -5,10 +5,12 @@ callbacks' file, so C calls it with nothing finding a closure; marked
 `#[c.outs]`, what it answers is written through the pointers C hands it,
 but one that is NULL; and a string C hands it is copied. cgo calls no
 variadic function, so a `variadic` declaration is called through a C
-function of its one shape, which the preamble defines.
+function of its one shape, which the preamble defines. A function with an
+empty body is one Go defines all the same: only its calls are inlined away.
 
 The test runs it: the mode is 7, measure wrote 4 alone and then 5 and 10,
-`hear` heard "café" quietly and "ab" loudly, and 1+2+3 is 6.
+`hear` heard "café" quietly and "ab" loudly, 1+2+3 is 6, and C called
+`ignore`.
 
 -- app.sngl --
 import ui "sngl:ui"
@@ -35,6 +37,9 @@ func layout(#[c.static] mode func(of int) int, #[c.static] #[c.outs] measure fun
 #[c.native("sngl_greet")]
 func greet(#[c.static] hear func(name string, loud bool) int) int
 
+#[c.native("sngl_then")]
+func then(#[c.static] done func()) int
+
 #[c.native("sngl_sum", variadic)]
 func sum3(n int, a int, b int, c int) int
 
@@ -44,14 +49,18 @@ func measure(forSize int) => Size{minimum=forSize, natural=forSize * 2}
 
 func hear(name string, loud bool) => loud ? name.length() * 10 : name.length()
 
+func ignore() {}
+
 component main ui.node {
     var laid = 0
     var heard = 0
     var sum = 0
+    var ran = 0
     ui.button #go(text="{laid}", @click {
         laid = layout(mode, measure)
         heard = greet(hear)
         sum = sum3(3, 1, 2, 3)
+        ran = then(ignore)
     })
 }
 
@@ -64,6 +73,7 @@ func testStaticCallbacks(t test.Test, c main) {
     t.assert(c.laid == 74510)
     t.assert(c.heard == 24)
     t.assert(c.sum == 6)
+    t.assert(c.ran == 1)
 }
 -- calls.h --
 // The mode, then what measure wrote: its minimum alone for 4, the natural's
@@ -72,6 +82,9 @@ int sngl_layout(int (*mode)(int), void (*measure)(int, int *, int *));
 
 // What hear answers for "café" quietly, plus for "ab" loudly.
 int sngl_greet(int (*hear)(const char *, int));
+
+// 1, once it has called done.
+int sngl_then(void (*done)(void));
 
 // The n ints after n, summed.
 int sngl_sum(int n, ...);
@@ -95,6 +108,11 @@ int sngl_greet(int (*hear)(const char *, int)) {
 	int quiet = hear(buf, 0);
 	buf[0] = 0;
 	return quiet + hear("ab", 1);
+}
+
+int sngl_then(void (*done)(void)) {
+	done();
+	return 1;
 }
 
 int sngl_sum(int n, ...) {
@@ -222,6 +240,7 @@ type modelState struct {
 	laid      int
 	heard     int
 	sum       int
+	ran       int
 	__focusID int
 
 	__clicks      tui.Clicks[snglStop]
@@ -242,6 +261,9 @@ func (m Model) __mount(preset map[string]bool) Model {
 	}
 	if !preset["sum"] {
 		m.sum = 0
+	}
+	if !preset["ran"] {
+		m.ran = 0
 	}
 	if !preset["__focusID"] {
 		m.__focusID = 0
@@ -271,6 +293,9 @@ func Hear(name string, loud bool) int {
 		__lt0 = utf8.RuneCountInString(name)
 	}
 	return __lt0
+}
+
+func Ignore() {
 }
 
 func BoxLook(s Style, words bool) lipgloss.Style {
@@ -502,6 +527,21 @@ func SetSumCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setSumMsg{value: v} }
 }
 
+func (m Model) Ran() int {
+	return m.ran
+}
+
+func (m Model) SetRan(v int) Model {
+	m.ran = v
+	return m
+}
+
+type setRanMsg struct{ value int }
+
+func SetRanCmd(v int) tea.Cmd {
+	return func() tea.Msg { return setRanMsg{value: v} }
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -517,6 +557,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.SetHeard(msg.value)
 	case setSumMsg:
 		m = m.SetSum(msg.value)
+	case setRanMsg:
+		m = m.SetRan(msg.value)
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -538,6 +580,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.laid = int(C.sngl_layout(func() *[0]byte { snglStatic_ModeFn = Mode; return snglStatic_ModePtr() }(), func() *[0]byte { snglStatic_MeasureFn = Measure; return snglStatic_MeasurePtr() }()))
 			m.heard = int(C.sngl_greet(func() *[0]byte { snglStatic_HearFn = Hear; return snglStatic_HearPtr() }()))
 			m.sum = int(C.snglV_sum3(C.int(3), C.int(1), C.int(2), C.int(3)))
+			m.ran = int(C.sngl_then(func() *[0]byte { snglStatic_IgnoreFn = Ignore; return snglStatic_IgnorePtr() }()))
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -605,6 +648,7 @@ func TestStaticCallbacks(t *testing.T) {
 	if !((c.laid == 74510)) { t.Errorf("assert failed: %s", "(c.laid == 74510)") }
 	if !((c.heard == 24)) { t.Errorf("assert failed: %s", "(c.heard == 24)") }
 	if !((c.sum == 6)) { t.Errorf("assert failed: %s", "(c.sum == 6)") }
+	if !((c.ran == 1)) { t.Errorf("assert failed: %s", "(c.ran == 1)") }
 }
 
 
@@ -628,6 +672,7 @@ package main
 extern int snglStatic_Mode(int);
 extern void snglStatic_Measure(int, int *, int *);
 extern int snglStatic_Hear(char *, int);
+extern void snglStatic_Ignore(void);
 */
 import "C"
 
@@ -675,6 +720,17 @@ func snglStatic_Hear(a0 *C.char, a1 C.int) C.int {
 
 // snglStatic_HearPtr is snglStatic_Hear as the function pointer C calls.
 func snglStatic_HearPtr() *[0]byte { return (*[0]byte)(C.snglStatic_Hear) }
+
+// snglStatic_IgnoreFn is the program's function C calls snglStatic_Ignore for, which the call handing it to C sets.
+var snglStatic_IgnoreFn func()
+
+//export snglStatic_Ignore
+func snglStatic_Ignore() {
+	snglStatic_IgnoreFn()
+}
+
+// snglStatic_IgnorePtr is snglStatic_Ignore as the function pointer C calls.
+func snglStatic_IgnorePtr() *[0]byte { return (*[0]byte)(C.snglStatic_Ignore) }
 -- out/go/bubbletea/sngl_variadic.h --
 // Code generated by sngl; DO NOT EDIT.
 
@@ -687,4 +743,4 @@ static inline int snglV_sum3(int a0, int a1, int a2, int a3) {
 
 #endif
 -- run/go/bubbletea --
-pass sha256:df6cefb89ff6cc1cbe56dbf7ca8e5fc9
+pass sha256:7ac13fef741277c0d8a165c79d6299d1

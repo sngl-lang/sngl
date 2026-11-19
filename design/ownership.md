@@ -452,6 +452,12 @@ every emitter took an empty block for a native with nothing to emit, since an
 empty function the program wrote is inlined away with its calls, and a
 release is called after the inliner ran. `codegen.HasBody` is the test, on
 Go, Kotlin and JavaScript alike (`testdata/owned_release_empty_body.txtar`).
+So is any function written `{}` (`ir.WroteBody`, which asks the declaration,
+since the block cannot tell `{}` from no body): only its calls are inlined,
+and one handed on as a value -- gtk4's `_scrollReported`, a
+`GDestroyNotify` with nothing to let go -- was undefined in Go, and in C
+when a library's, which `LibFuncs` did not promote
+(`testdata/c_static_callback.txtar`, `codegen/lang/c`'s `static` run).
 `c.free` calls cgo's `C.free`, which `<stdlib.h>`
 declares: gtk4's and win32's programs include it, and fyne's and
 bubbletea's (`EmitCHeader`) include it beside the program's links, since every `c.str`

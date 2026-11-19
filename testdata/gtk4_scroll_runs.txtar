@@ -1527,7 +1527,6 @@ static bool s_platform_gtk4___scrollReport(gpointer data) {
 }
 
 static void s_platform_gtk4___scrollReported(gpointer data) {
-	return;
 }
 
 static void s_platform_gtk4___sourceGone(gpointer p) {
@@ -2649,7 +2648,6 @@ func _scrollReport(data cgo.Pointer) bool {
 }
 
 func _scrollReported(data cgo.Pointer) {
-	return
 }
 
 func _sourceGone(p cgo.Pointer) {
@@ -3111,6 +3109,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:f61b793cc734af8fd1c333bdce8edb59
+pass sha256:be26ce21a4e410b61b5c040d51d38d45
 -- run/go/gtk4 --
-pass sha256:9665339dc30da5f8d1f2ca2a00c2693d
+pass sha256:c97851b6f16eee9d4333734734d425a3

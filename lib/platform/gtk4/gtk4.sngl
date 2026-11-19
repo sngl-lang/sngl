@@ -2151,9 +2151,7 @@ func _scrollReport(data _Pointer) bool {
 
 // What the report's source lets go of as it goes: nothing, since the
 // scroll it is handed is not its to hold.
-func _scrollReported(data _Pointer) {
-    return
-}
+func _scrollReported(data _Pointer) {}
 
 // Reads the scroll's end afresh, posting a report where it came within
 // half a viewport of showing, or the content grew while it showed.

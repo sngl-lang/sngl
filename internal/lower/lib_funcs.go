@@ -52,7 +52,7 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	// widget's action (`bar.pulse()`), since no component declaration is
 	// written for one.
 	wanted := func(fn *ir.Func) bool {
-		return fn != nil && !have[fn] && len(fn.Block) > 0 &&
+		return fn != nil && !have[fn] && (len(fn.Block) > 0 || ir.WroteBody(fn)) &&
 			(!fn.IsMethod() || libStructMethod(fn) || intrinsicMethod(fn)) && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
 			fn.PkgPath() != ""
 	}
