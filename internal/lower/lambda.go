@@ -45,8 +45,16 @@ func analyzeCaptures(body []ir.Stmt, params []*ir.Param) []capture {
 		if sym == nil || paramSet[sym] {
 			return
 		}
-		switch sym.(type) {
-		case *ir.Var, *ir.Param, *ir.LoopVar:
+		switch s := sym.(type) {
+		case *ir.Var:
+			// A const is one value wherever it is read, not the scope's:
+			// sngl:builtin's `false`, in gtk4's radio's `disabled == false`
+			// spliced into a handler, became a field `false_` the C closure
+			// was initialized from, which nothing declared.
+			if s.IsConst && !s.NodeHandle {
+				return
+			}
+		case *ir.Param, *ir.LoopVar:
 			// OK
 		default:
 			return

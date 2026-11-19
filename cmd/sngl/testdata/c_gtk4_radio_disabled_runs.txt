@@ -1,0 +1,49 @@
+# A radio group's `disabled` is written to the box the build made of it,
+# and to no other: its `if direction == ui.Orientation.horizontal`, spliced
+# with the default and folded away (on C, as `0 == 1` once NoEnum made the
+# members ints), gets no updater, where it wrote the horizontal box it never
+# built and GTK reported a critical, which fails a C test. The radio's
+# `disabled == false` reads sngl:builtin's `false`, a const the flip's
+# closure reads where it is rather than capturing.
+
+sngl test --platform=gtk4 --language=c radio.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- radio.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var size = 1
+    var off = true
+    ui.vbox {
+        ui.radio #sizes(:value=size, disabled=off) {
+            ui.choice(label="small", value=1)
+            ui.choice(label="large", value=2)
+        }
+        ui.button #flip(text="flip", @click {
+            off = !off
+        })
+    }
+}
+
+ui.window(title="Radio") {
+    main()
+}
+
+func testEnables(t test.Test, c main) {
+    c.flip.click()
+    t.assert(!c.off)
+    c.sizes.change(2)
+    t.assert(c.size == 2)
+}
+-- testrun/gtk4/c/radio.sngl/main/1 --
+sha256:98e7d0112cdd8d4018b7c5d254b958ad
+{
+  "results": [
+    {
+      "Desc": "Enables",
+      "Passed": true
+    }
+  ]
+}

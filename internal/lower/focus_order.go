@@ -3,6 +3,7 @@ package lower
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -1071,9 +1072,10 @@ func tabsPast(stmts []ir.Stmt) bool {
 }
 
 // foldedBool is what e says where the build can read it here: a literal, the
-// negation of one, or an equality between two members of one enum -- what an
-// override's `style.display != ui.Display.none` is once a Style literal's
-// field is read into it. The optimizer folds the rest, after this pass.
+// negation of one, or an equality between two members of one enum, or two int
+// or bool literals -- what an override's `style.display != ui.Display.none`
+// is once a Style literal's field is read into it, and on C once passEnum has
+// made the members ints. The optimizer folds the rest, after the lowering.
 func foldedBool(e ir.Expr) (value, known bool) {
 	switch x := e.(type) {
 	case *ir.Literal:
@@ -1089,12 +1091,35 @@ func foldedBool(e ir.Expr) (value, known bool) {
 		if x.Op != ast.BinEq && x.Op != ast.BinNeq {
 			return false, false
 		}
+		if same, ok := sameLiteral(x.Left, x.Right); ok {
+			return same == (x.Op == ast.BinEq), true
+		}
 		l, lok := enumMember(x.Left)
 		r, rok := enumMember(x.Right)
 		if !lok || !rok || !x.Left.ExprType().Equal(x.Right.ExprType()) {
 			return false, false
 		}
 		return (l == r) == (x.Op == ast.BinEq), true
+	}
+	return false, false
+}
+
+// sameLiteral is whether a and b hold one value, where both are literals of
+// one int or bool type: the two members of an equality passEnum has already
+// made ints, on C.
+func sameLiteral(a, b ir.Expr) (same, known bool) {
+	l, lok := a.(*ir.Literal)
+	r, rok := b.(*ir.Literal)
+	if !lok || !rok || l.Type == nil || !l.Type.Equal(r.Type) {
+		return false, false
+	}
+	switch l.Type.Kind {
+	case ir.TypeBool:
+		return l.Value == r.Value, true
+	case ir.TypeInt:
+		lv, lerr := strconv.ParseInt(l.Value, 10, 64)
+		rv, rerr := strconv.ParseInt(r.Value, 10, 64)
+		return lv == rv, lerr == nil && rerr == nil
 	}
 	return false, false
 }

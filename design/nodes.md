@@ -86,7 +86,13 @@ view's first: an updater and a handler write a node's prop as well, and
 `passReactivity` made both before `passDeclarative` runs, so `spliceSets`
 walks the whole package once the view is flattened and makes the write's
 value the set's call, with the node and the written value bound. A write that
-two blocks share is spliced once. `ReleaseTemps` visits an assignment's
+two blocks share is spliced once. A write is made only of a node the build renders:
+an arm of a plain `if` whose condition the build reads (`foldedBool`, which
+takes two enum members, or the two ints `passEnum` made of them on C) gets no
+updater, since the arm is folded away; gtk4's radio, its `direction`
+defaulted, wrote `sensitive` to the horizontal box it never built on each
+write of `disabled`, which GTK reported as a critical
+(`cmd/sngl/testdata/c_gtk4_radio_disabled_runs.txt`). `ReleaseTemps` visits an assignment's
 value, so a string the call hands C is bound before the write and freed after
 it, or made once for the application where it is a literal. The passes that
 lower a ternary and a match ran before the op existed: a match in a set
