@@ -736,6 +736,12 @@ func Run(f func()) {
 	f()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -1977,7 +1983,7 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 		}
 		return _GridRows{Widths: widths, Ends: ends}
 	}
-	var run__r0 int = 0
+	var run__r1 int = 0
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
@@ -2002,17 +2008,17 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 			w = __lt55
 		}
 		widths = append(widths, w)
-		if ((run__r0 > 0) && (width >= 0)) && (((run__r0 + gap) + w) > width) {
+		if ((run__r1 > 0) && (width >= 0)) && (((run__r1 + gap) + w) > width) {
 			ends = append(ends, i)
-			run__r0 = 0
+			run__r1 = 0
 		}
 		var __lt56 int
-		if run__r0 > 0 {
+		if run__r1 > 0 {
 			__lt56 = gap
 		} else {
 			__lt56 = 0
 		}
-		run__r0 += (__lt56 + w)
+		run__r1 += (__lt56 + w)
 		i += 1
 	}
 	if n > 0 {
@@ -2087,7 +2093,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 func Ch_clicked_handler() {
 	Run(func() {
 		m.picks += 1
-		cgo.SnglTextSetValue(m.__n0, ("picks=" + fmt.Sprint(m.picks)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("picks=" + fmt.Sprint(m.picks)))
 	})
 }
 
@@ -2103,8 +2109,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.ch)), cgo.CGboolean(1))
 	_applyLook(m.ch, Look{})
 	cgo.SnglSignalConnect(m.ch, "clicked", Ch_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ("picks=" + fmt.Sprint(m.picks)))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("picks=" + fmt.Sprint(m.picks)))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.ch)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
@@ -2315,7 +2321,7 @@ pass sha256:7e3fdfcff7e6509ea533ef037f08996c
 -- run/go/fyne --
 pass sha256:51d4e97933855089de63a6efab1ea7f8
 -- run/go/gtk4 --
-pass sha256:17a1e6a5ec9ed74445838edb1c6e19f1
+pass sha256:54e5a150cba45799579985208a261d92
 -- run/kotlin/android --
 pass sha256:27732316e8bdf5e624ea060c4954badd
 -- run/none/html --

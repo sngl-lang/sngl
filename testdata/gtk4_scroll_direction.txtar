@@ -298,6 +298,12 @@ func _rtScrollSetDirection(scroll cgo.Widget, direction string) {
 	}
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2320,8 +2326,8 @@ func snglBuild() {
 	}, _probeAllocate))
 	_rtScrollSetDirection(m.down, "vertical")
 	_applyLook(m.down, Look{})
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, "rows")
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "rows")
 	_applyLook(m.__n1, Look{})
 	_rtScrollSetChild(m.down, m.__n1)
 	cgo.SnglToplevelAppend(m.__n0, m.down)
@@ -2330,8 +2336,8 @@ func snglBuild() {
 	}, _probeAllocate))
 	_rtScrollSetDirection(m.across, "horizontal")
 	_applyLook(m.across, Look{})
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, "columns")
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "columns")
 	_applyLook(m.__n2, Look{})
 	_rtScrollSetChild(m.across, m.__n2)
 	cgo.SnglToplevelAppend(m.__n0, m.across)
@@ -2340,8 +2346,8 @@ func snglBuild() {
 	}, _probeAllocate))
 	_rtScrollSetDirection(m.either, "both")
 	_applyLook(m.either, Look{})
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, "a page")
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "a page")
 	_applyLook(m.__n3, Look{})
 	_rtScrollSetChild(m.either, m.__n3)
 	cgo.SnglToplevelAppend(m.__n0, m.either)
@@ -2382,4 +2388,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:a11a0c96e48d3e21d0b3024c1ce6c318
+pass sha256:38863ddcd32358cf225669238edd2dc4

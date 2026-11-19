@@ -125,22 +125,22 @@ sha256:02dca1fb1aa5ecdcea7245f3f02ac43b
   "stdout": "count 1\n"
 }
 -- testrun/run/gtk4/c/c.sngl/1 --
-sha256:d8a37de77f1703692491753f33ddb99a
+sha256:072236fd2f98a5a03754ddf47dfb98a7
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/gtk4/c/c.sngl/2 --
-sha256:d8a37de77f1703692491753f33ddb99a
+sha256:072236fd2f98a5a03754ddf47dfb98a7
 {
   "stdout": "count 1\n"
 }
 -- testrun/run/gtk4/go/app.sngl/1 --
-sha256:d7063d118ccdfda3e5a9f105a4ee1061
+sha256:30366f94d422a664a9659927b0ad9f99
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/gtk4/go/app.sngl/2 --
-sha256:d7063d118ccdfda3e5a9f105a4ee1061
+sha256:30366f94d422a664a9659927b0ad9f99
 {
   "stdout": "count 1\n"
 }

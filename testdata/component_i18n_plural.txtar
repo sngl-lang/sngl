@@ -760,6 +760,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -2111,7 +2117,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 func Add_clicked_handler() {
 	m.count = (m.count + 1)
 	m.label = i18n.Translate(m.__ctx_locale, "You have {count, plural, one{# item} other{# items}}", "You have {count, plural, one{# item} other{# items}}", map[string]any{"count": m.count})
-	cgo.SnglTextSetValue(m.__n0, m.label)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.label)
 }
 
 func snglInit() {
@@ -2123,8 +2129,8 @@ func snglInit() {
 
 func snglBuild() {
 	m.__root = _rtContents()
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.label)
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.label)
 	_applyLook(m.__n0, Look{})
 	m.add = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.add)), "add")
@@ -3329,7 +3335,7 @@ pass sha256:cd48d04b562bad650e75cf0af6fba081
 -- run/go/fyne --
 pass sha256:7cf2c37c2758773aa772ccb2fd288789
 -- run/go/gtk4 --
-pass sha256:a9910f34cc5c2e4a949be79eb5ab718a
+pass sha256:3512ea708c7889ca759fd26db9ad9a05
 -- run/kotlin/android --
 pass sha256:7b5cd556e9757801f33b8b70b150b78d
 -- run/none/html --

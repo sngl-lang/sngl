@@ -834,6 +834,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2647,8 +2653,8 @@ func snglBuild() {
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n2, Look{Spaced: true, Spacing: 6})
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, "base g")
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "base g")
 	_applyLook(m.__n3, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n1 = cgo.GtkButtonNew()
@@ -2922,7 +2928,7 @@ pass sha256:44a3845624ceff44f882354f081a994a
 -- run/go/fyne --
 pass sha256:9a5c29566d2af0396433e90ed2bd2e15
 -- run/go/gtk4 --
-pass sha256:c20d5459fc17232dfcf5849c684a13df
+pass sha256:6bb0f1d101bea6f42b824a7646dfb5c4
 -- run/kotlin/android --
 pass sha256:17e25c6f4ac5149191187defddf42f4f
 -- run/none/html --

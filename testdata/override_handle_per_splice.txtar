@@ -208,8 +208,16 @@ func _rtSignalEmit(w cgo.Widget, signal string) {
 }
 
 func _rtFireText(e cgo.Widget, text string, signal string) {
-	cgo.SnglEditableSetTextQuiet(e, text)
+	SetEntryText(e, text)
 	_rtSignalEmit(e, signal)
+}
+
+func SetEntryText(e cgo.Widget, text string) {
+	w := e
+	var id int = cgo.GSignalLookup("changed", cgo.GtkEditableGetType())
+	cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+	cgo.EditableSetText((cgo.Editable)(unsafe.Pointer(w)), text)
+	cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
 }
 
 func SelectDay(cal cgo.Widget, y int, m__r0 int, d int) {
@@ -1584,7 +1592,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.first))) != m.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(m.first, m.__effect0_key)
+		SetEntryText(m.first, m.__effect0_key)
 	}
 }
 
@@ -1610,7 +1618,7 @@ func __effect0_up() {
 
 func __effect1_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.second))) != m.__effect1_key {
-		cgo.SnglEditableSetTextQuiet(m.second, m.__effect1_key)
+		SetEntryText(m.second, m.__effect1_key)
 	}
 }
 
@@ -1844,4 +1852,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:9c197a8c508090266a8323ef47b88d45
+pass sha256:4e53484cbdd6c87eba22046564e44b2f

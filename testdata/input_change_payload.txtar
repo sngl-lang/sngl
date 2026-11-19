@@ -540,6 +540,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	last                string
 	items               []string
@@ -581,6 +585,36 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
+
+func SetEntryText(e cgo.Widget, text string) {
+	w := e
+	var id int = cgo.GSignalLookup("changed", cgo.GtkEditableGetType())
+	cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+	cgo.EditableSetText((cgo.Editable)(unsafe.Pointer(w)), text)
+	cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
 }
 
 func _applyLook(w cgo.Widget, look Look) {
@@ -674,6 +708,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -1910,7 +1961,7 @@ func Row__new(label string) *Row__inst {
 			__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			__self.Value__inst1 = __input_value_wrote1
 			__self.Committed = __input_value_wrote1
-			cgo.SnglTextSetValue(__self.__n0, __self.Committed)
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Committed)
 			Row__effects0_settle(__self)
 		}(__self.Entry)
 	})
@@ -1931,15 +1982,15 @@ func Row__new(label string) *Row__inst {
 			__textarea_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			__self.Value__inst2 = __textarea_value_wrote1
 			__self.Committed = ((__self.__prop_label + ":") + __textarea_value_wrote1)
-			cgo.SnglTextSetValue(__self.__n0, __self.Committed)
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Committed)
 			Row__effects0_settle(__self)
 		}(__self.Entry__1)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Entry__1)))
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, __self.Committed)
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Committed)
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	Row__effects0_settle(__self)
@@ -1949,7 +2000,7 @@ func Row__new(label string) *Row__inst {
 
 func Row__effect0_mount(__self *Row__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry))) != __self.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(__self.Entry, __self.__effect0_key)
+		SetEntryText(__self.Entry, __self.__effect0_key)
 	}
 }
 
@@ -1975,7 +2026,7 @@ func Row__effect0_up(__self *Row__inst) {
 
 func Row__effect1_mount(__self *Row__inst) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry__1))) != __self.__effect1_key {
-		cgo.SnglEditableSetTextQuiet(__self.Entry__1, __self.__effect1_key)
+		SetEntryText(__self.Entry__1, __self.__effect1_key)
 	}
 }
 
@@ -2036,7 +2087,7 @@ func Row__destroy(__self *Row__inst) {
 
 func __effect2_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect2_key {
-		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect2_key)
+		SetEntryText(m.entry, m.__effect2_key)
 	}
 }
 
@@ -2184,7 +2235,7 @@ func Entry_activate_handler(e cgo.Widget) {
 	__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	m.value__inst0 = __input_value_wrote1
 	m.last = ("got " + __input_value_wrote1)
-	cgo.SnglTextSetValue(m.__n1, m.last)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.last)
 	__effects1_settle()
 }
 
@@ -2220,8 +2271,8 @@ func snglBuild() {
 		Entry_activate_handler(m.entry)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.entry)))
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, m.last)
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.last)
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	__renderSlot0(m.__n3)
@@ -2262,4 +2313,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:0998d69f70352717020906c08d1691aa
 -- run/go/gtk4 --
-pass sha256:d2c9f44851c5eea71982e044c1f6d774
+pass sha256:dc9aa41b3ab50969c08953b3559b2169

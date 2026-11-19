@@ -833,6 +833,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func SelectDay(cal cgo.Widget, y int, m__r0 int, d int) {
 	day := cgo.GDateTimeNewUtc(y, m__r0, d, 0, 0, 0.0)
 	if day != nil {
@@ -2747,7 +2753,7 @@ func D_daySelected_handler(c cgo.Widget) {
 	} else {
 		__lt63 = "none"
 	}
-	cgo.SnglTextSetValue(m.__n1, __lt63)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt63)
 	m.changes__inst0 += 1
 	__effects0_settle()
 }
@@ -2787,8 +2793,8 @@ func snglBuild() {
 	} else {
 		__lt64 = "none"
 	}
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, __lt64)
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt64)
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
@@ -3134,7 +3140,7 @@ pass sha256:12eb12b75d7d682e49eeb4edcde90ecb
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:821c3da2a5269af4f2d1336ee1b785a4
+pass sha256:4489604b7a7a7a9966ec7c3703ce42e5
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --

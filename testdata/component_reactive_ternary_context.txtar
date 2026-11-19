@@ -767,6 +767,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -2080,14 +2086,14 @@ func __wrote_dark() {
 	} else {
 		__lt59 = "light"
 	}
-	cgo.SnglTextSetValue(m.__n0, ("outer: " + __lt59))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("outer: " + __lt59))
 	var __lt60 string
 	if m.dark {
 		__lt60 = "dark"
 	} else {
 		__lt60 = "light"
 	}
-	cgo.SnglTextSetValue(m.__n1, ("sibling: " + __lt60))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("sibling: " + __lt60))
 }
 
 func __n3_clicked_handler() {
@@ -2098,14 +2104,14 @@ func __n3_clicked_handler() {
 	} else {
 		__lt61 = "light"
 	}
-	cgo.SnglTextSetValue(m.__n0, ("outer: " + __lt61))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("outer: " + __lt61))
 	var __lt62 string
 	if m.dark {
 		__lt62 = "dark"
 	} else {
 		__lt62 = "light"
 	}
-	cgo.SnglTextSetValue(m.__n1, ("sibling: " + __lt62))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("sibling: " + __lt62))
 }
 
 func snglInit() {
@@ -2129,8 +2135,8 @@ func snglBuild() {
 	} else {
 		__lt63 = "light"
 	}
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ("outer: " + __lt63))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("outer: " + __lt63))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	var __lt64 string
@@ -2139,8 +2145,8 @@ func snglBuild() {
 	} else {
 		__lt64 = "light"
 	}
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ("sibling: " + __lt64))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("sibling: " + __lt64))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglAppAttach(m.__n2)
@@ -2484,7 +2490,7 @@ pass sha256:9abf28881bbbf71b3afff4e8daeca2bf
 -- run/go/fyne --
 pass sha256:2a2bbff37e2246e892cbbda11a73922b
 -- run/go/gtk4 --
-pass sha256:a4f3ef3c8878ee57479405f784545158
+pass sha256:71a0a931de9ce3ffc244f816eaa5296a
 -- run/kotlin/android --
 pass sha256:75c8f82851cb8daa3934bb6be589c3cb
 -- run/none/html --

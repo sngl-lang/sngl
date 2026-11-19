@@ -339,6 +339,13 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtFlowNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(l)), true)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtSpanNew() cgo.Widget {
 	w := (cgo.Widget)(unsafe.Pointer(cgo.GListStoreNew(cgo.GObjectGetType())))
 	_setSpan(w, _SpanState{})
@@ -1806,7 +1813,7 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.on {
-					__n0 := cgo.SnglFlowNew()
+					__n0 := _rtFlowNew()
 					_applyLook(__n0, Look{})
 					__n1 := _rtSpanNew()
 					_rtSpanWords(__n1, "hello")
@@ -1895,4 +1902,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:5f675abb8e1bc6869c3c2845c6ddfb69
 -- run/go/gtk4 --
-pass sha256:2e07a4550a75e1fd62678b16c4528e84
+pass sha256:11aa8f068ff1ad31d366466e2a3b9218

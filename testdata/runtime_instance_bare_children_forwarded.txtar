@@ -837,6 +837,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -910,6 +914,28 @@ func __identified2(__xs []string) []__anon_id_elem_c6a818 {
 
 func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtToplevelNew() cgo.Widget {
@@ -1009,6 +1035,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _menuHooksSet() {
@@ -2933,10 +2976,10 @@ func Card__slot2__new(__p0 __anon_id_elem_c6a818) *Card__slot2__inst {
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n1)), ("hit " + fmt.Sprint(__self.Hits)))
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n13)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)))
-	__self.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n2, ("ALPHA " + __self.__prop___p0.Elem))
+	__self.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ("ALPHA " + __self.__prop___p0.Elem))
 	_applyLook(__self.__n2, Look{})
-	cgo.SnglOnClick(__self.__n2, func() {
+	_rtOnClick(__self.__n2, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n13)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n2)))
 	__self.__root = __self.__n13
@@ -2948,7 +2991,7 @@ func Card__slot2__set___p0(__self *Card__slot2__inst, __v __anon_id_elem_c6a818)
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n2, ("ALPHA " + __self.__prop___p0.Elem))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ("ALPHA " + __self.__prop___p0.Elem))
 }
 
 func Card__slot2__destroy(__self *Card__slot2__inst) {
@@ -3721,6 +3764,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:9ab76569daeadaec8b461531301387cf
 -- run/go/gtk4 --
-pass sha256:c4089e15dd7f3733f8889a8ef0b1cd37
+pass sha256:f3678d5120d57b412a3196b89317b129
 -- run/none/html --
 pass sha256:732103103c4d724e5241ff6a8eb865bd

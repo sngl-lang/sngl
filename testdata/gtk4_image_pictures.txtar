@@ -174,6 +174,13 @@ type _ImageState struct {
 	Failure string
 }
 
+type _CanvasState struct {
+	Width  int
+	Height int
+	Mode   int
+	Paint  func(cgo.CairoContext)
+}
+
 type _LookState struct {
 	Given         Look
 	IsGiven       bool
@@ -453,6 +460,48 @@ func _rtImageOnLoad(image cgo.Widget, load func()) {
 	}
 }
 
+func _rtCanvasNew() cgo.Widget {
+	a := cgo.GtkDrawingAreaNew()
+	_setCanvas(a, _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}})
+	cgo.GtkDrawingAreaSetDrawFunc((cgo.DrawingArea)(unsafe.Pointer(a)), _canvasDraw, nil, nil)
+	return (cgo.Widget)(unsafe.Pointer(a))
+}
+
+func _rtCanvasSetHeight(c cgo.Widget, height int) {
+	w := c
+	s := _canvasOf(w)
+	s.Height = height
+	_setCanvas(w, s)
+	cgo.GtkDrawingAreaSetContentHeight((cgo.DrawingArea)(unsafe.Pointer(w)), height)
+}
+
+func _rtCanvasSetScaling(c cgo.Widget, mode int) {
+	w := c
+	s := _canvasOf(w)
+	s.Mode = mode
+	_setCanvas(w, s)
+	cgo.SetHexpand(w, (mode != 0))
+	cgo.SetVexpand(w, (mode != 0))
+	cgo.GtkWidgetQueueDraw(w)
+}
+
+func _rtCanvasSetWidth(c cgo.Widget, width int) {
+	w := c
+	s := _canvasOf(w)
+	s.Width = width
+	_setCanvas(w, s)
+	cgo.GtkDrawingAreaSetContentWidth((cgo.DrawingArea)(unsafe.Pointer(w)), width)
+}
+
+func _rtCanvasOnPaint(w cgo.Widget, fn func(cgo.CairoContext)) {
+	a := w
+	s := _canvasOf(a)
+	s.Paint = fn
+	_setCanvas(a, s)
+	cgo.GtkWidgetQueueDraw(a)
+}
+
 func LoadPicture(url__r1 string) cgo.Picture {
 	pic := (cgo.Object)(unsafe.Pointer(cgo.GObjectNew(cgo.GObjectGetType(), nil)))
 	_setPictureState(pic, _PictureState{Url: url__r1, Holders: 1})
@@ -713,6 +762,48 @@ func _imageClick(box cgo.Widget) {
 		run := (*(img)).Click
 		run()
 	}
+}
+
+func _setCanvas(w cgo.Widget, s _CanvasState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas", s)
+}
+
+func _canvasDraw(area cgo.Widget, cr cgo.CairoContext, pw int, ph int, data cgo.Pointer) {
+	s := _canvasOf(area)
+	if (s.Width > 0) && (s.Height > 0) {
+		var sx float64 = (float64(pw) / float64(s.Width))
+		var sy float64 = (float64(ph) / float64(s.Height))
+		if s.Mode == 2 {
+			if sy > sx {
+				sx = sy
+			}
+			sy = sx
+		} else {
+			if s.Mode != 3 {
+				if sy < sx {
+					sx = sy
+				}
+				sy = sx
+			}
+		}
+		cgo.CairoScale(cr, sx, sy)
+	}
+	paint := s.Paint
+	paint(cr)
+}
+
+func _canvasOf(w cgo.Widget) _CanvasState {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas"))
+	if s != nil {
+		return (*(s))
+	}
+	return _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -3025,7 +3116,7 @@ func __n6_clicked_handler() {
 	m.more__inst0 = []string{"d.png"}
 	__renderSlot0(m.__n5)
 	__effects0_settle()
-	cgo.SnglCanvasRedraw(m.__drawing0)
+	cgo.GtkWidgetQueueDraw(m.__drawing0)
 }
 
 func __remote_state1__new(url__r4 string) *__remote_state1__inst {
@@ -3198,11 +3289,11 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.frame)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.frame)))
 	__renderSlot0(m.__n5)
-	m.__drawing0 = cgo.SnglCanvasNew()
-	cgo.SnglCanvasSetWidth(m.__drawing0, 200)
-	cgo.SnglCanvasSetHeight(m.__drawing0, 100)
-	cgo.SnglCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
-	cgo.SnglCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
+	m.__drawing0 = _rtCanvasNew()
+	_rtCanvasSetWidth(m.__drawing0, 200)
+	_rtCanvasSetHeight(m.__drawing0, 100)
+	_rtCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	_rtCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__drawing0)))
 	m.__n6 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "next")
@@ -3250,4 +3341,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:0a444021a46dee19fc5ce993e9c6ec89
+pass sha256:fa3abe9a4607eef88aa5f882607fa804

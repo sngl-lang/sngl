@@ -695,6 +695,12 @@ func _rtImageUrlSetUrl(source cgo.Widget, url__r0 string) {
 	}
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -3325,8 +3331,8 @@ func snglBuild() {
 	_rtImageUrlSetPicture(m.__n1, m.picture__inst0__inst0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.frame)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.frame)))
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, "Heading")
+	m.__n5 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), "Heading")
 	_applyLook(m.__n5, Look{Css: "font-weight: bold; ", Width: 120.0})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
@@ -3379,4 +3385,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:798663df66e1a3c4fff11d209cab3f15
 -- run/go/gtk4 --
-pass sha256:312c04929dae312f72432f1f205cd4c8
+pass sha256:2aef3b4711823100e11fb77fd2822901

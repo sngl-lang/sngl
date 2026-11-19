@@ -1058,6 +1058,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -1093,6 +1097,28 @@ func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _menuHooksSet() {
@@ -1240,6 +1266,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -2905,10 +2948,10 @@ func __renderSlot0(parent cgo.Widget) {
 				for k, c := range []Card__record{Card__record{Label: "one"}, Card__record{Label: "two", __id: 1}} {
 					if k == m.shown {
 						if c.__id == 0 {
-							__n2 := cgo.SnglTextNew()
-							cgo.SnglTextSetValue(__n2, "first")
+							__n2 := _rtTextNew()
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n2)), "first")
 							_applyLook(__n2, Look{})
-							cgo.SnglOnClick(__n2, func() {
+							_rtOnClick(__n2, func() {
 							})
 							__place0_i_ref0 := snglSome(m.__anchor0)
 							if __place0_i < len(__place0_prev) {
@@ -3014,10 +3057,10 @@ func __n1_visible_handler(__visible bool) {
 
 func __child0__new(__p0 int) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.__prop___p0))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), fmt.Sprint(__self.__prop___p0))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
 	return __self
@@ -3028,7 +3071,7 @@ func __child0__set___p0(__self *__child0__inst, __v int) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, fmt.Sprint(__self.__prop___p0))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), fmt.Sprint(__self.__prop___p0))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -3491,7 +3534,7 @@ pass sha256:9a29060591679d06d504c9f74152ca4a
 -- run/go/fyne --
 pass sha256:41cb32470448bb6707b64136634913f9
 -- run/go/gtk4 --
-pass sha256:f4d299bb3f977659c709378769f94675
+pass sha256:26bc76929d3f6e10f566276cc2345eac
 -- run/kotlin/android --
 pass sha256:daf5ca92bfb8648aec9c730d0a02e28a
 -- run/none/html --

@@ -2946,6 +2946,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -4737,12 +4743,12 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __effect0_mount() {
 	m.log__inst0 = append(m.log__inst0, "in")
-	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log__inst0, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log__inst0, ","))
 }
 
 func __effect0_unmount() {
 	m.log__inst0 = append(m.log__inst0, "out")
-	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log__inst0, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log__inst0, ","))
 }
 
 func __effect0_down() {
@@ -4784,12 +4790,12 @@ func __effect0_teardown() {
 
 func __effect1_mount() {
 	m.log__inst1 = append(m.log__inst1, ("+" + m.__effect1_key))
-	cgo.SnglTextSetValue(m.__n2, strings.Join(m.log__inst1, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), strings.Join(m.log__inst1, ","))
 }
 
 func __effect1_unmount() {
 	m.log__inst1 = append(m.log__inst1, ("-" + m.__effect1_key))
-	cgo.SnglTextSetValue(m.__n2, strings.Join(m.log__inst1, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), strings.Join(m.log__inst1, ","))
 }
 
 func __effect1_down() {
@@ -4856,12 +4862,12 @@ func __effect1_teardown() {
 
 func __effect2_mount() {
 	m.log__inst2 = append(m.log__inst2, "+A")
-	cgo.SnglTextSetValue(m.__n3, strings.Join(m.log__inst2, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), strings.Join(m.log__inst2, ","))
 }
 
 func __effect2_unmount() {
 	m.log__inst2 = append(m.log__inst2, "-A")
-	cgo.SnglTextSetValue(m.__n3, strings.Join(m.log__inst2, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), strings.Join(m.log__inst2, ","))
 }
 
 func __effect2_down() {
@@ -4906,12 +4912,12 @@ func __effect2_teardown() {
 
 func __effect3_mount() {
 	m.log__inst2 = append(m.log__inst2, "+B")
-	cgo.SnglTextSetValue(m.__n3, strings.Join(m.log__inst2, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), strings.Join(m.log__inst2, ","))
 }
 
 func __effect3_unmount() {
 	m.log__inst2 = append(m.log__inst2, "-B")
-	cgo.SnglTextSetValue(m.__n3, strings.Join(m.log__inst2, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), strings.Join(m.log__inst2, ","))
 }
 
 func __effect3_down() {
@@ -4956,12 +4962,12 @@ func __effect3_teardown() {
 
 func __effect4_mount() {
 	m.log__inst3 = append(m.log__inst3, "f+")
-	cgo.SnglTextSetValue(m.__n4, strings.Join(m.log__inst3, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), strings.Join(m.log__inst3, ","))
 }
 
 func __effect4_unmount() {
 	m.log__inst3 = append(m.log__inst3, "f-")
-	cgo.SnglTextSetValue(m.__n4, strings.Join(m.log__inst3, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), strings.Join(m.log__inst3, ","))
 }
 
 func __effect4_down() {
@@ -5006,12 +5012,12 @@ func __effect4_teardown() {
 
 func __effect5_mount() {
 	m.log__inst3 = append(m.log__inst3, "c+")
-	cgo.SnglTextSetValue(m.__n4, strings.Join(m.log__inst3, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), strings.Join(m.log__inst3, ","))
 }
 
 func __effect5_unmount() {
 	m.log__inst3 = append(m.log__inst3, "c-")
-	cgo.SnglTextSetValue(m.__n4, strings.Join(m.log__inst3, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), strings.Join(m.log__inst3, ","))
 }
 
 func __effect5_down() {
@@ -5056,12 +5062,12 @@ func __effect5_teardown() {
 
 func __effect6_mount() {
 	m.log__inst4 = append(m.log__inst4, "m")
-	cgo.SnglTextSetValue(m.__n5, strings.Join(m.log__inst4, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), strings.Join(m.log__inst4, ","))
 }
 
 func __effect6_unmount() {
 	m.log__inst4 = append(m.log__inst4, "u")
-	cgo.SnglTextSetValue(m.__n5, strings.Join(m.log__inst4, ","))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), strings.Join(m.log__inst4, ","))
 }
 
 func __effect6_down() {
@@ -5249,8 +5255,8 @@ func snglBuild() {
 	_applyLook(m.toggle, Look{})
 	cgo.SnglSignalConnect(m.toggle, "clicked", Toggle_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.toggle)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, strings.Join(m.log__inst0, ","))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), strings.Join(m.log__inst0, ","))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.drop = cgo.GtkButtonNew()
@@ -5265,8 +5271,8 @@ func snglBuild() {
 	_applyLook(m.add, Look{})
 	cgo.SnglSignalConnect(m.add, "clicked", Add_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.add)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, strings.Join(m.log__inst1, ","))
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), strings.Join(m.log__inst1, ","))
 	_applyLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
 	m.rekey = cgo.GtkButtonNew()
@@ -5275,8 +5281,8 @@ func snglBuild() {
 	_applyLook(m.rekey, Look{})
 	cgo.SnglSignalConnect(m.rekey, "clicked", Rekey_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.rekey)
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, strings.Join(m.log__inst2, ","))
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), strings.Join(m.log__inst2, ","))
 	_applyLook(m.__n3, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
 	m.field = cgo.GtkButtonNew()
@@ -5291,8 +5297,8 @@ func snglBuild() {
 	_applyLook(m.called, Look{})
 	cgo.SnglSignalConnect(m.called, "clicked", Called_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.called)
-	m.__n4 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n4, strings.Join(m.log__inst3, ","))
+	m.__n4 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), strings.Join(m.log__inst3, ","))
 	_applyLook(m.__n4, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
 	m.same = cgo.GtkButtonNew()
@@ -5307,8 +5313,8 @@ func snglBuild() {
 	_applyLook(m.bump, Look{})
 	cgo.SnglSignalConnect(m.bump, "clicked", Bump_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.bump)
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, strings.Join(m.log__inst4, ","))
+	m.__n5 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), strings.Join(m.log__inst4, ","))
 	_applyLook(m.__n5, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n5)
 	cgo.SnglAppAttach(m.__n0)
@@ -6208,7 +6214,7 @@ pass sha256:efbe44d63a6755433e823660ecd746be
 -- run/go/fyne --
 pass sha256:49d059845d57a48a21677476915e7e9c
 -- run/go/gtk4 --
-pass sha256:37a796b4e345fe43a25d8989dd46ae85
+pass sha256:f6300f64e7b6d3ef9059b85f6f5a714c
 -- run/kotlin/android --
 pass sha256:f0d50dd9083976a1902b9fb0059e2a8d
 -- run/none/html --

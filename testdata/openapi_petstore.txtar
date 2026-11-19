@@ -1679,6 +1679,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -1894,6 +1898,28 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
+
 func ResponseChecked(r Response) Result__Response {
 	if (r.Status >= 200) && (r.Status < 300) {
 		return Result__Response{tag: 0, Ok: r}
@@ -2062,6 +2088,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -4243,11 +4286,11 @@ func __n12_clicked_handler() {
 					__lt62 = "nothing"
 				}
 				m.from__inst0 = __lt62
-				cgo.SnglTextSetValue(m.__n5, m.from__inst0)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), m.from__inst0)
 			default:
 				r := __match0.Failed
 				m.from__inst0 = r.Message
-				cgo.SnglTextSetValue(m.__n5, m.from__inst0)
+				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), m.from__inst0)
 			}
 		})
 	}()
@@ -4255,10 +4298,10 @@ func __n12_clicked_handler() {
 
 func __child0__new(__p0 *Failure) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ("Could not load rex: " + (*(__self.__prop___p0)).Message))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("Could not load rex: " + (*(__self.__prop___p0)).Message))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
 	return __self
@@ -4269,7 +4312,7 @@ func __child0__set___p0(__self *__child0__inst, __v *Failure) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, ("Could not load rex: " + (*(__self.__prop___p0)).Message))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("Could not load rex: " + (*(__self.__prop___p0)).Message))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -4278,10 +4321,10 @@ func __child0__destroy(__self *__child0__inst) {
 
 func __child1__new(__p0 *PetDetail) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0}
-	__self.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n1, ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
+	__self.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglOnClick(__self.__n1, func() {
+	_rtOnClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
 	return __self
@@ -4289,7 +4332,7 @@ func __child1__new(__p0 *PetDetail) *__child1__inst {
 
 func __child1__set___p0(__self *__child1__inst, __v *PetDetail) {
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n1, ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ((("#" + fmt.Sprint((*(__self.__prop___p0)).Id)) + " ") + (*(__self.__prop___p0)).Name))
 }
 
 func __child1__destroy(__self *__child1__inst) {
@@ -4298,10 +4341,10 @@ func __child1__destroy(__self *__child1__inst) {
 
 func __child2__new(__p0 PetSummary) *__child2__inst {
 	__self := &__child2__inst{__prop___p0: __p0}
-	__self.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n2, __self.__prop___p0.Name)
+	__self.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), __self.__prop___p0.Name)
 	_applyLook(__self.__n2, Look{})
-	cgo.SnglOnClick(__self.__n2, func() {
+	_rtOnClick(__self.__n2, func() {
 	})
 	__self.__root = __self.__n2
 	return __self
@@ -4312,7 +4355,7 @@ func __child2__set___p0(__self *__child2__inst, __v PetSummary) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n2, __self.__prop___p0.Name)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), __self.__prop___p0.Name)
 }
 
 func __child2__destroy(__self *__child2__inst) {
@@ -4321,10 +4364,10 @@ func __child2__destroy(__self *__child2__inst) {
 
 func __child3__new(__p0 PetTag) *__child3__inst {
 	__self := &__child3__inst{__prop___p0: __p0}
-	__self.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n3, __self.__prop___p0.Type.Name)
+	__self.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n3)), __self.__prop___p0.Type.Name)
 	_applyLook(__self.__n3, Look{Css: "padding-top: 2px; padding-right: 8px; padding-bottom: 2px; padding-left: 8px; border-radius: 12px; "})
-	cgo.SnglOnClick(__self.__n3, func() {
+	_rtOnClick(__self.__n3, func() {
 	})
 	__self.__root = __self.__n3
 	return __self
@@ -4335,7 +4378,7 @@ func __child3__set___p0(__self *__child3__inst, __v PetTag) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n3, __self.__prop___p0.Type.Name)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n3)), __self.__prop___p0.Type.Name)
 }
 
 func __child3__destroy(__self *__child3__inst) {
@@ -4410,8 +4453,8 @@ func snglBuild() {
 	_applyLook(m.__n12, Look{})
 	cgo.SnglSignalConnect(m.__n12, "clicked", __n12_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n4, m.__n12)
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, m.from__inst0)
+	m.__n5 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), m.from__inst0)
 	_applyLook(m.__n5, Look{})
 	cgo.SnglToplevelAppend(m.__n4, m.__n5)
 	cgo.SnglAppAttach(m.__n4)
@@ -6440,7 +6483,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:b5f3baeae86193fe834d670cec639e7f
 -- run/go/gtk4 --
-pass sha256:1d5436d41f0a1f8163e7995fac557409
+pass sha256:afb0fe94ba1cf0d5413d82a8c22749b7
 -- run/kotlin/android --
 pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --

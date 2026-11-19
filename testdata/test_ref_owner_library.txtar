@@ -173,6 +173,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	shown               bool
 	value__inst0        *time.Time
@@ -194,6 +198,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
 
 func SelectDay(cal cgo.Widget, y int, m__r0 int, d int) {
 	day := cgo.GDateTimeNewUtc(y, m__r0, d, 0, 0, 0.0)
@@ -315,6 +341,23 @@ func ParseDate(s string) *time.Time {
 		return unset
 	}
 	return snglSome(mustParseDate(s))
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -1631,11 +1674,11 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				if m.shown {
-					cal := cgo.SnglTextNew()
+					cal := _rtTextNew()
 					m.cal__held = snglSome(cal)
-					cgo.SnglTextSetValue(cal, "c")
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(cal)), "c")
 					_applyLook(cal, Look{})
-					cgo.SnglOnClick(cal, func() {
+					_rtOnClick(cal, func() {
 					})
 					__place0_i_ref0 := snglSome(m.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -1740,4 +1783,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:1859327672d270a19e8dd2ed52e7149b
+pass sha256:2bf5bd96fe3881fc2b1fa017778e7aee

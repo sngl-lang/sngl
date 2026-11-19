@@ -897,6 +897,12 @@ func Sum(first int, rest []int) int {
 	return total
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -2205,14 +2211,14 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __n4_clicked_handler() {
 	m.n__inst0 = (m.n__inst0 + 1)
-	cgo.SnglTextSetValue(m.__n1, ((fmt.Sprint(min(m.n__inst0, 3, 5)) + " ") + fmt.Sprint(func(__m int, __xs []int) int {
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((fmt.Sprint(min(m.n__inst0, 3, 5)) + " ") + fmt.Sprint(func(__m int, __xs []int) int {
 		for _, __x := range __xs {
 			__m = max(__m, __x)
 		}
 		return __m
 	}(m.n__inst0, m.xs__inst0))))
 	m.xs__inst0 = []int{m.n__inst0, 2}
-	cgo.SnglTextSetValue(m.__n1, ((fmt.Sprint(min(m.n__inst0, 3, 5)) + " ") + fmt.Sprint(func(__m int, __xs []int) int {
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((fmt.Sprint(min(m.n__inst0, 3, 5)) + " ") + fmt.Sprint(func(__m int, __xs []int) int {
 		for _, __x := range __xs {
 			__m = max(__m, __x)
 		}
@@ -2231,15 +2237,15 @@ func snglBuild() {
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n2, Look{Spaced: true, Spacing: 6})
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(Sum(1, slices.Concat([]int{2}, m.more))))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(Sum(1, slices.Concat([]int{2}, m.more))))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n3, Look{Spaced: true, Spacing: 6})
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ((fmt.Sprint(min(m.n__inst0, 3, 5)) + " ") + fmt.Sprint(func(__m int, __xs []int) int {
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((fmt.Sprint(min(m.n__inst0, 3, 5)) + " ") + fmt.Sprint(func(__m int, __xs []int) int {
 		for _, __x := range __xs {
 			__m = max(__m, __x)
 		}
@@ -2629,7 +2635,7 @@ pass sha256:5dc733026d940960e817adc81282b0fd
 -- run/go/fyne --
 pass sha256:b0fe26bd84bb3588e8ef84f70d367fd0
 -- run/go/gtk4 --
-pass sha256:bde804b23face00e12ebebc5d30458c2
+pass sha256:61d1f0df931241c2c732d5e7dde5e74f
 -- run/kotlin/android --
 pass sha256:6dbabfa4ab21ab75ad33ada86e7754e3
 -- run/none/html --

@@ -1203,6 +1203,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2995,7 +3001,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 func __effect0_mount() {
 	m.handle__inst1__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
 		m.seconds__inst0 += 1
-		cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.seconds__inst0))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.seconds__inst0))
 	})
 }
 
@@ -3048,7 +3054,7 @@ func __effect0_teardown() {
 func __effect1_mount() {
 	m.handle__inst0__inst0 = cgo.SnglEvery(int(m.__effect1_key/time.Millisecond), func() {
 		m.beats__inst0 += 1
-		cgo.SnglTextSetValue(m.__n1, ("beats " + fmt.Sprint(m.beats__inst0)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("beats " + fmt.Sprint(m.beats__inst0)))
 	})
 }
 
@@ -3154,12 +3160,12 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ("beats " + fmt.Sprint(m.beats__inst0)))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("beats " + fmt.Sprint(m.beats__inst0)))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.seconds__inst0))
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.seconds__inst0))
 	_applyLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
 	cgo.SnglAppAttach(m.__n0)
@@ -3444,7 +3450,7 @@ pass sha256:0edde74d4c1943b6785a3dcaa27bb50d
 -- run/go/fyne --
 pass sha256:acec6a1453449c8f6357cbebdce3930d
 -- run/go/gtk4 --
-pass sha256:cfad0c865c7fa2f6cbed7294a84b1285
+pass sha256:90643a6af78566fce1aa306200bf173a
 -- run/kotlin/android --
 pass sha256:3af616c557f868d1fcb2be0e0c457399
 -- run/none/html --

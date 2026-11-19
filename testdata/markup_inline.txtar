@@ -1046,6 +1046,13 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtFlowNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(l)), true)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtSpanNew() cgo.Widget {
 	w := (cgo.Widget)(unsafe.Pointer(cgo.GListStoreNew(cgo.GObjectGetType())))
 	_setSpan(w, _SpanState{})
@@ -3111,19 +3118,19 @@ func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n0, Look{Spaced: true, Spacing: 6})
-	m.__n1 = cgo.SnglFlowNew()
+	m.__n1 = _rtFlowNew()
 	_applyLook(m.__n1, Look{Css: "font-size: 32px; font-weight: bold; "})
 	m.__n2 = _rtSpanNew()
 	_rtSpanWords(m.__n2, "Title")
 	_spanInsert(m.__n1, m.__n2, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
-	m.__n3 = cgo.SnglFlowNew()
+	m.__n3 = _rtFlowNew()
 	_applyLook(m.__n3, Look{})
 	m.__n4 = _rtSpanNew()
 	_rtSpanWords(m.__n4, "a < b & \"c\"  two spaces\nand a newline")
 	_spanInsert(m.__n3, m.__n4, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
-	m.__n5 = cgo.SnglFlowNew()
+	m.__n5 = _rtFlowNew()
 	_applyLook(m.__n5, Look{})
 	m.__n6 = _rtSpanNew()
 	_rtSpanStyle(m.__n6, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "monospace")
@@ -3144,7 +3151,7 @@ func snglBuild() {
 	_spanInsert(m.__n9, m.__n10, nil)
 	_spanInsert(m.__n5, m.__n9, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
-	m.__n12 = cgo.SnglFlowNew()
+	m.__n12 = _rtFlowNew()
 	_applyLook(m.__n12, Look{Css: "padding-top: 12px; padding-right: 12px; padding-bottom: 12px; padding-left: 12px; background: #f5f5f5; border-radius: 4px; "})
 	m.__n13 = _rtSpanNew()
 	_rtSpanStyle(m.__n13, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "monospace")
@@ -3165,7 +3172,7 @@ func snglBuild() {
 	_spanInsert(m.__n13, m.__n17, nil)
 	_spanInsert(m.__n12, m.__n13, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n12)))
-	m.__n19 = cgo.SnglFlowNew()
+	m.__n19 = _rtFlowNew()
 	_applyLook(m.__n19, Look{})
 	m.__n20 = _rtSpanNew()
 	_rtSpanStyle(m.__n20, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), true, false, "")
@@ -3180,7 +3187,7 @@ func snglBuild() {
 	_spanInsert(m.__n20, m.__n21, nil)
 	_spanInsert(m.__n19, m.__n20, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n19)))
-	m.__n24 = cgo.SnglFlowNew()
+	m.__n24 = _rtFlowNew()
 	_applyLook(m.__n24, Look{})
 	m.__n25 = _rtSpanNew()
 	_rtSpanWords(m.__n25, "before ")
@@ -3192,7 +3199,7 @@ func snglBuild() {
 	_rtSpanWords(m.__n27, " after")
 	_spanInsert(m.__n24, m.__n27, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n24)))
-	m.__n28 = cgo.SnglFlowNew()
+	m.__n28 = _rtFlowNew()
 	_applyLook(m.__n28, Look{})
 	m.__n29 = _rtSpanNew()
 	_rtSpanStyle(m.__n29, 51, 102, 153, 255, 20.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "bold")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "")
@@ -3201,13 +3208,13 @@ func snglBuild() {
 	_spanInsert(m.__n29, m.__n30, nil)
 	_spanInsert(m.__n28, m.__n29, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n28)))
-	m.__n31 = cgo.SnglFlowNew()
+	m.__n31 = _rtFlowNew()
 	_applyLook(m.__n31, Look{Css: "padding-left: 12px; font-style: italic; border-left: 3px solid #CCCCCC; "})
 	m.__n32 = _rtSpanNew()
 	_rtSpanWords(m.__n32, "quoted")
 	_spanInsert(m.__n31, m.__n32, nil)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n31)))
-	m.__n33 = cgo.SnglFlowNew()
+	m.__n33 = _rtFlowNew()
 	_applyLook(m.__n33, Look{Css: "color: #666666; font-size: 13px; "})
 	m.__n34 = _rtSpanNew()
 	_rtSpanWords(m.__n34, "a caption")
@@ -3833,7 +3840,7 @@ pass sha256:a68fbbe9abd45a8ae168c8a9da3b18a7
 -- run/go/fyne --
 pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --
-pass sha256:cfe578016ce4dc186e9316fb6e1cba3a
+pass sha256:14aef144e86ada9d4db9eb17297038f6
 -- run/go/html --
 pass sha256:53ed55b98b2e38eca4b42793a849bc0a
 -- run/kotlin/android --

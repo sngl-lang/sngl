@@ -222,6 +222,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2093,12 +2099,12 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "t")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ((fmt.Sprint(m.n__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((fmt.Sprint(m.n__inst0) + " ") + fmt.Sprint(m.f__inst0.Fd)))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.total))
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.total))
 	_applyLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
 	cgo.SnglAppAttach(m.__n0)
@@ -2302,7 +2308,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:4155f1e190a47c269722c438bd7da745
+pass sha256:7dd404c1598b6047ae8b66fea83c5267
 -- run/kotlin/android --
 pass sha256:39b403af901cb01581c9b6ebc7043955
 -- run/none/html --

@@ -833,6 +833,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2635,7 +2641,7 @@ func __n3_clicked_handler() {
 	} else {
 		__lt64 = "y"
 	}
-	cgo.SnglTextSetValue(m.__n1, __lt64)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt64)
 }
 
 func snglInit() {
@@ -2672,8 +2678,8 @@ func snglBuild() {
 	_applyLook(m.__n3, Look{})
 	cgo.SnglSignalConnect(m.__n3, "clicked", __n3_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.greeting)
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.greeting)
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	var __lt65 string
@@ -2682,8 +2688,8 @@ func snglBuild() {
 	} else {
 		__lt65 = "y"
 	}
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, __lt65)
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), __lt65)
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglToplevelAppend(m.home, m.__n2)
@@ -2728,4 +2734,4 @@ pass sha256:0da749a4487ede9c5cd6af3f97ca0f82
 -- run/go/fyne --
 pass sha256:86ff6c6a7d8fd6a0fd49808bd956716d
 -- run/go/gtk4 --
-pass sha256:0fcd65c0cc155c5f6de7467c92ebf675
+pass sha256:689a75fb7120ce811dd11a0e2dc496e6

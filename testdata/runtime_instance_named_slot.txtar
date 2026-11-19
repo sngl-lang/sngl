@@ -2081,6 +2081,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	items          []int
 	mounted        string
@@ -2158,6 +2162,28 @@ func __identified2(__xs []int) []__anon_id_elem_cdfd47 {
 		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _applyLook(w cgo.Widget, look Look) {
@@ -2251,6 +2277,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -3794,10 +3837,10 @@ func Card__slot0__destroy(__self *Card__slot0__inst) {
 
 func __child0__new(__p0 __anon_id_elem_cdfd47, __p1 __anon_id_elem_cdfd47) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ((("item " + fmt.Sprint(__self.__prop___p0.Elem)) + " row ") + fmt.Sprint(__self.__prop___p1.Elem)))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("item " + fmt.Sprint(__self.__prop___p0.Elem)) + " row ") + fmt.Sprint(__self.__prop___p1.Elem)))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
 	return __self
@@ -3808,7 +3851,7 @@ func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_cdfd47) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, ((("item " + fmt.Sprint(__self.__prop___p0.Elem)) + " row ") + fmt.Sprint(__self.__prop___p1.Elem)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("item " + fmt.Sprint(__self.__prop___p0.Elem)) + " row ") + fmt.Sprint(__self.__prop___p1.Elem)))
 }
 
 func __child0__set___p1(__self *__child0__inst, __v __anon_id_elem_cdfd47) {
@@ -3816,7 +3859,7 @@ func __child0__set___p1(__self *__child0__inst, __v __anon_id_elem_cdfd47) {
 		return
 	}
 	__self.__prop___p1 = __v
-	cgo.SnglTextSetValue(__self.__n0, ((("item " + fmt.Sprint(__self.__prop___p0.Elem)) + " row ") + fmt.Sprint(__self.__prop___p1.Elem)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("item " + fmt.Sprint(__self.__prop___p0.Elem)) + " row ") + fmt.Sprint(__self.__prop___p1.Elem)))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -3825,10 +3868,10 @@ func __child0__destroy(__self *__child0__inst) {
 
 func __child1__new() *__child1__inst {
 	__self := &__child1__inst{}
-	__self.__n10 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n10, "empty")
+	__self.__n10 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n10)), "empty")
 	_applyLook(__self.__n10, Look{})
-	cgo.SnglOnClick(__self.__n10, func() {
+	_rtOnClick(__self.__n10, func() {
 	})
 	__self.__root = __self.__n10
 	return __self
@@ -5048,7 +5091,7 @@ pass sha256:b29a027ddbe5a1d39a755c3e0dd9d236
 -- run/go/fyne --
 pass sha256:0edfea225cb311430e4245b0db1e981b
 -- run/go/gtk4 --
-pass sha256:57be589e19678fa568c5126efcae472a
+pass sha256:ca648c3a9c59dfb31e8ce804e0dd5a2a
 -- run/kotlin/android --
 pass sha256:50138b384a1f3345b43fbbe40f76f5ce
 -- run/none/html --

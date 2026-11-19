@@ -580,12 +580,12 @@ static void sngl_lambda2(void *env_, cairo_t * ctx);
 static void s_platform_gtk4___rtCanvasSetHeight(GtkWidget * c, int64_t height);
 static void s_platform_gtk4___rtCanvasSetScaling(GtkWidget * c, int64_t mode);
 static void s_platform_gtk4___rtCanvasSetWidth(GtkWidget * c, int64_t width);
-static void s_platform_gtk4___rtOnClick(GtkWidget * n, sngl_fn_void__void fn);
+static void s_platform_gtk4___rtOnClick(GtkWidget * w, sngl_fn_void__void fn);
 static s_platform_gtk4___ClickState s_platform_gtk4___ClickState__keep(s_platform_gtk4___ClickState v);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s_platform_gtk4___ClickState__drop(s_platform_gtk4___ClickState v);
 static void sngl_fn_void__void__drop(sngl_fn_void__void v);
-static void s_platform_gtk4___rtCanvasOnPaint(GtkWidget * c, sngl_fn_cairo_t_p__void paint);
+static void s_platform_gtk4___rtCanvasOnPaint(GtkWidget * w, sngl_fn_cairo_t_p__void fn);
 static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style);
 static void s_platform_gtk4__CairoContext_setLineCap(cairo_t * cr, int64_t cap);
 static void s_platform_gtk4__CairoContext_setLineJoin(cairo_t * cr, int64_t join);
@@ -1977,23 +1977,23 @@ static void s_platform_gtk4___rtCanvasSetWidth(GtkWidget * c, int64_t width) {
 	gtk_drawing_area_set_content_width((GtkDrawingArea *)(w), (int)(width));
 }
 
-static void s_platform_gtk4___rtOnClick(GtkWidget * n, sngl_fn_void__void fn) {
-	GtkWidget * w = (GtkWidget *)(n);
-	bool had = (sngl_held__ClickState(g_object_get_data((GObject *)(w), s___rel2))).ok;
-	g_object_set_data_full((GObject *)(w), s___rel2, sngl_heap_copy(&(s_platform_gtk4___ClickState[]){s_platform_gtk4___ClickState__keep((s_platform_gtk4___ClickState){.run = fn})}, sizeof(s_platform_gtk4___ClickState)), (GDestroyNotify)(void (*)(void))sngl_held_release__ClickState);
+static void s_platform_gtk4___rtOnClick(GtkWidget * w, sngl_fn_void__void fn) {
+	GtkWidget * h = (GtkWidget *)(w);
+	bool had = (sngl_held__ClickState(g_object_get_data((GObject *)(h), s___rel2))).ok;
+	g_object_set_data_full((GObject *)(h), s___rel2, sngl_heap_copy(&(s_platform_gtk4___ClickState[]){s_platform_gtk4___ClickState__keep((s_platform_gtk4___ClickState){.run = fn})}, sizeof(s_platform_gtk4___ClickState)), (GDestroyNotify)(void (*)(void))sngl_held_release__ClickState);
 	if (!had) {
 		GtkGesture * g = gtk_gesture_click_new();
-		(void)(int64_t)g_signal_connect_object((gpointer)(g), s___rel1, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___clickPressed, (gpointer)(w), (GConnectFlags)(0));
-		gtk_widget_add_controller(w, (GtkEventController *)(g));
+		(void)(int64_t)g_signal_connect_object((gpointer)(g), s___rel1, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___clickPressed, (gpointer)(h), (GConnectFlags)(0));
+		gtk_widget_add_controller(h, (GtkEventController *)(g));
 	}
 }
 
-static void s_platform_gtk4___rtCanvasOnPaint(GtkWidget * c, sngl_fn_cairo_t_p__void paint) {
-	GtkWidget * w = (GtkWidget *)(c);
-	s_platform_gtk4___CanvasState s = s_platform_gtk4___canvasOf(w);
-	s.paint = paint;
-	s_platform_gtk4___setCanvas(w, s);
-	gtk_widget_queue_draw(w);
+static void s_platform_gtk4___rtCanvasOnPaint(GtkWidget * w, sngl_fn_cairo_t_p__void fn) {
+	GtkWidget * a = (GtkWidget *)(w);
+	s_platform_gtk4___CanvasState s = s_platform_gtk4___canvasOf(a);
+	s.paint = fn;
+	s_platform_gtk4___setCanvas(a, s);
+	gtk_widget_queue_draw(a);
 }
 
 static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style) {
@@ -3690,4 +3690,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:91a6ebfb9a67107399961e7c92ca1b61
+pass sha256:47231015d5a5bb1a23f35bf14a3b9ad9

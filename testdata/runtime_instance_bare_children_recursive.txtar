@@ -555,6 +555,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -581,6 +585,28 @@ var m = &snglState{}
 
 func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtToplevelNew() cgo.Widget {
@@ -680,6 +706,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _menuHooksSet() {
@@ -2393,10 +2436,10 @@ func Frame__slot2__new(n int, __depth int, __p0 int) *Frame__slot2__inst {
 	__self.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n4)), cgo.CGtkOrientation(1))
 	_applyLook(__self.__n4, Look{Spaced: true, Spacing: 6})
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ("level " + fmt.Sprint(__self.__prop___p0)))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("level " + fmt.Sprint(__self.__prop___p0)))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	Frame__slot2__renderSlot0(__self, __self.__n4)
@@ -2425,7 +2468,7 @@ func Frame__slot2__set___p0(__self *Frame__slot2__inst, __v int) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, ("level " + fmt.Sprint(__self.__prop___p0)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("level " + fmt.Sprint(__self.__prop___p0)))
 }
 
 func Frame__slot2__renderSlot0(__self *Frame__slot2__inst, parent cgo.Widget) {
@@ -2518,10 +2561,10 @@ func Frame__slot0__new(n int, __depth int) *Frame__slot0__inst {
 	__self.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n6)), cgo.CGtkOrientation(1))
 	_applyLook(__self.__n6, Look{Spaced: true, Spacing: 6})
-	__self.__n7 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n7, "top")
+	__self.__n7 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n7)), "top")
 	_applyLook(__self.__n7, Look{})
-	cgo.SnglOnClick(__self.__n7, func() {
+	_rtOnClick(__self.__n7, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n7)))
 	Frame__slot0__renderSlot1(__self, __self.__n6)
@@ -2951,6 +2994,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:fae4e48a8c497508dbacf10328ea7404
 -- run/go/gtk4 --
-pass sha256:62cf32ba8eabdc3c16d2442d4fe8be48
+pass sha256:583c99648eaf8905e286ed9343ea8553
 -- run/none/html --
 pass sha256:39a5410336619b9c43f53b927def2d71

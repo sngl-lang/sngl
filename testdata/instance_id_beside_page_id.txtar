@@ -1151,6 +1151,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	on             bool
 	outer          string
@@ -1164,6 +1168,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
 
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
@@ -1266,6 +1292,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -2605,10 +2648,10 @@ func __sign_state0__new(__start_msg string) *__sign_state0__inst {
 	__self.Failed = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.Failed)), cgo.CGtkOrientation(1))
 	_applyLook(__self.Failed, Look{Spaced: true, Spacing: 6})
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, __self.Msg)
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Msg)
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.Failed)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	__self.__n4 = cgo.GtkButtonNew()
@@ -2617,7 +2660,7 @@ func __sign_state0__new(__start_msg string) *__sign_state0__inst {
 	_applyLook(__self.__n4, Look{})
 	cgo.SnglSignalConnect(__self.__n4, "clicked", func() {
 		__self.Msg = "again"
-		cgo.SnglTextSetValue(__self.__n0, __self.Msg)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Msg)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.Failed)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)))
 	__self.__root = __self.Failed
@@ -2725,8 +2768,8 @@ func snglBuild() {
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n3, Look{Spaced: true, Spacing: 6})
-	m.failed = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.failed, m.outer)
+	m.failed = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.failed)), m.outer)
 	_applyLook(m.failed, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.failed)))
 	__renderSlot1(m.__n3)
@@ -3296,7 +3339,7 @@ pass sha256:f5824ff11bf792868bec9a1eda5a0265
 -- run/go/fyne --
 pass sha256:dd4f06caf9fd38bd939f9b77c385074b
 -- run/go/gtk4 --
-pass sha256:800863a9c9a45e3c7d07e29b0c26b507
+pass sha256:b8bd9bac6d59b79b469229b82c1bfc84
 -- run/kotlin/android --
 pass sha256:5fa77237af9f5038de2cc309219b3bc4
 -- run/none/html --

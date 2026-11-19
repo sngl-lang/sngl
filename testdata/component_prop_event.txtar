@@ -693,6 +693,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2489,7 +2495,7 @@ func __n0_visible_handler(__visible bool) {
 
 func __n2_clicked_handler() {
 	m.count__inst0 += 1
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.count__inst0))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.count__inst0))
 }
 
 func snglInit() {
@@ -2509,8 +2515,8 @@ func snglBuild() {
 	_applyLook(m.__n2, Look{})
 	cgo.SnglSignalConnect(m.__n2, "clicked", __n2_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.count__inst0))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.count__inst0))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -2647,7 +2653,7 @@ pass sha256:61e1ca8ffb05b690fde56f1745920ddc
 -- run/go/fyne --
 pass sha256:4e1d5219dbb1673fa8830b36c84953d1
 -- run/go/gtk4 --
-pass sha256:ae415dcceeb13719b058656098980736
+pass sha256:bb32d9e844cbd6be930aac0283313624
 -- run/kotlin/android --
 pass sha256:b66bfc016b2da04988a7d3055f7616a7
 -- run/none/html --

@@ -1182,6 +1182,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -1244,6 +1248,28 @@ func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _menuHooksSet() {
@@ -1391,6 +1417,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -3124,21 +3167,21 @@ func Grow_clicked_handler() {
 		__lt65 = Shape{tag: 0}
 	}
 	m.shape__inst0 = __lt65
-	cgo.SnglTextSetValue(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.shownArea)), fmt.Sprint(Area(m.shape__inst0)))
 	var __lt66 string
 	if m.shape__inst0.tag == 1 {
 		__lt66 = "round"
 	} else {
 		__lt66 = "not round"
 	}
-	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt66) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.facts)), ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt66) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	var __lt67 string
 	if m.shape__inst0.tag == 1 {
 		__lt67 = fmt.Sprint(m.shape__inst0.Circle)
 	} else {
 		__lt67 = "none"
 	}
-	cgo.SnglTextSetValue(m.radius, __lt67)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.radius)), __lt67)
 	__renderSlot0(m.__n0)
 }
 
@@ -3150,22 +3193,22 @@ func Odd_clicked_handler() {
 	} else {
 		__lt68 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	cgo.SnglTextSetValue(m.outcome, __lt68)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.outcome)), __lt68)
 	var __lt69 string
 	if m.shape__inst0.tag == 1 {
 		__lt69 = "round"
 	} else {
 		__lt69 = "not round"
 	}
-	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt69) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.facts)), ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt69) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 func __child0__new(__p0 Shape) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.Round = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.Round, ("radius " + fmt.Sprint(__self.__prop___p0.Circle)))
+	__self.Round = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Round)), ("radius " + fmt.Sprint(__self.__prop___p0.Circle)))
 	_applyLook(__self.Round, Look{})
-	cgo.SnglOnClick(__self.Round, func() {
+	_rtOnClick(__self.Round, func() {
 	})
 	__self.__root = __self.Round
 	return __self
@@ -3173,7 +3216,7 @@ func __child0__new(__p0 Shape) *__child0__inst {
 
 func __child0__set___p0(__self *__child0__inst, __v Shape) {
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.Round, ("radius " + fmt.Sprint(__self.__prop___p0.Circle)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Round)), ("radius " + fmt.Sprint(__self.__prop___p0.Circle)))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -3197,8 +3240,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.shownArea = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
+	m.shownArea = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.shownArea)), fmt.Sprint(Area(m.shape__inst0)))
 	_applyLook(m.shownArea, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.shownArea)
 	var __lt62 string
@@ -3207,8 +3250,8 @@ func snglBuild() {
 	} else {
 		__lt62 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	m.outcome = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.outcome, __lt62)
+	m.outcome = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.outcome)), __lt62)
 	_applyLook(m.outcome, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.outcome)
 	var __lt63 string
@@ -3217,8 +3260,8 @@ func snglBuild() {
 	} else {
 		__lt63 = "not round"
 	}
-	m.facts = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt63) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	m.facts = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.facts)), ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt63) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	_applyLook(m.facts, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.facts)
 	var __lt64 string
@@ -3227,8 +3270,8 @@ func snglBuild() {
 	} else {
 		__lt64 = "none"
 	}
-	m.radius = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.radius, __lt64)
+	m.radius = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.radius)), __lt64)
 	_applyLook(m.radius, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.radius)
 	__renderSlot0(m.__n0)
@@ -3592,7 +3635,7 @@ pass sha256:16104e60b32cf3745942e5f9bd7f6030
 -- run/go/fyne --
 pass sha256:a2aa9e4647134a568fbe61ac8db51221
 -- run/go/gtk4 --
-pass sha256:6d27dc8d9706bf601901ee06fedc20b9
+pass sha256:123804dbb3879684f1aab76d6431fd39
 -- run/kotlin/android --
 pass sha256:07c971f96ecee13b813de0f3ca3e2bed
 -- run/none/html --

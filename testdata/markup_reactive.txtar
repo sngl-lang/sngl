@@ -773,6 +773,13 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtFlowNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(l)), true)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtSpanNew() cgo.Widget {
 	w := (cgo.Widget)(unsafe.Pointer(cgo.GListStoreNew(cgo.GObjectGetType())))
 	_setSpan(w, _SpanState{})
@@ -2837,7 +2844,7 @@ func snglBuild() {
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n1, Look{Spaced: true, Spacing: 6})
-	m.__n2 = cgo.SnglFlowNew()
+	m.__n2 = _rtFlowNew()
 	_applyLook(m.__n2, Look{})
 	m.__n3 = _rtSpanNew()
 	_rtSpanWords(m.__n3, "count: ")
@@ -3154,7 +3161,7 @@ pass sha256:99d675a6dd54d1befd297cb45b599e6b
 -- run/go/fyne --
 pass sha256:974ff7bcf960050683981c4cc4e80ff8
 -- run/go/gtk4 --
-pass sha256:40d79722b78da5c5ec7dd7f8f5d58c9e
+pass sha256:33c26d0be4c4b52d85ae4a0fe7a53349
 -- run/go/html --
 pass sha256:b3641d52508f8aad1477725df23f05f5
 -- run/kotlin/android --

@@ -594,6 +594,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -681,6 +685,28 @@ func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _applyLook(w cgo.Widget, look Look) {
@@ -827,6 +853,23 @@ func _keysGoOn(win cgo.Widget, key string, shift bool) {
 				}
 			}
 		}
+	}
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
 	}
 }
 
@@ -2701,10 +2744,10 @@ func Row__destroy(__self *Row__inst) {
 
 func __child0__new(__p0 __anon_id_elem_c6a818) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n1, __self.__prop___p0.Elem)
+	__self.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), __self.__prop___p0.Elem)
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglOnClick(__self.__n1, func() {
+	_rtOnClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
 	return __self
@@ -2715,7 +2758,7 @@ func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n1, __self.__prop___p0.Elem)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), __self.__prop___p0.Elem)
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -2743,13 +2786,13 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.one, "One")
 	cgo.SnglToplevelSetVisible(m.one, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.one, One_visible_handler)
-	m.__n4 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n4, "one head")
+	m.__n4 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), "one head")
 	_applyLook(m.__n4, Look{})
 	cgo.SnglToplevelAppend(m.one, m.__n4)
 	__renderSlot0(m.one)
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, "one foot")
+	m.__n5 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), "one foot")
 	_applyLook(m.__n5, Look{})
 	cgo.SnglToplevelAppend(m.one, m.__n5)
 	m.more = cgo.GtkButtonNew()
@@ -2763,13 +2806,13 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.two, "Two")
 	cgo.SnglToplevelSetVisible(m.two, m.visible__inst1)
 	cgo.SnglToplevelOnVisible(m.two, Two_visible_handler)
-	m.__n6 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n6, "two head")
+	m.__n6 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n6)), "two head")
 	_applyLook(m.__n6, Look{})
 	cgo.SnglToplevelAppend(m.two, m.__n6)
 	__renderSlot1(m.two)
-	m.__n7 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n7, "two foot")
+	m.__n7 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n7)), "two foot")
 	_applyLook(m.__n7, Look{})
 	cgo.SnglToplevelAppend(m.two, m.__n7)
 	m.note = cgo.GtkButtonNew()
@@ -2818,4 +2861,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:b1ec7e11d5868596c945952180c4fc3e
 -- run/go/gtk4 --
-pass sha256:fb6c0005f38f7878d1b5d797cf37f133
+pass sha256:c63e3e32235395e2e5501b1fd9403942

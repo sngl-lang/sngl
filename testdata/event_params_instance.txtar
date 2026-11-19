@@ -1196,6 +1196,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -3025,9 +3031,9 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						Card__set_pick(__n3, func(i int, l string) {
 							m.at__inst0 = i
-							cgo.SnglTextSetValue(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 							m.picked__inst0 = l
-							cgo.SnglTextSetValue(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 						})
 						Card__set_label(__n3, n.Elem)
 					} else {
@@ -3041,9 +3047,9 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n3__made := Card__new(n.Elem, func(i int, l string) {
 							m.at__inst0 = i
-							cgo.SnglTextSetValue(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 							m.picked__inst0 = l
-							cgo.SnglTextSetValue(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 						})
 						__n3 = __n3__made
 					}
@@ -3140,8 +3146,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetVisible(m.__n1, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	__renderSlot0(m.__n1)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), ((m.picked__inst0 + " at ") + fmt.Sprint(m.at__inst0)))
 	_applyLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
 	cgo.SnglAppAttach(m.__n1)
@@ -3363,6 +3369,6 @@ pass sha256:3d70aaaf13c1c211f76f9893c9281261
 -- run/go/fyne --
 pass sha256:b4368ad464f5e2f23a174f2052e60555
 -- run/go/gtk4 --
-pass sha256:c1ef1acb78e9b24311713a25f9d0665f
+pass sha256:554bd908780ab3505689a838bcc12df0
 -- run/none/html --
 pass sha256:e3b7ebc2d0f6a373a10ef26028caa4cf

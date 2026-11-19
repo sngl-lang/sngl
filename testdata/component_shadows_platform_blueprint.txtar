@@ -779,6 +779,20 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func SetEntryText(e cgo.Widget, text string) {
+	w := e
+	var id int = cgo.GSignalLookup("changed", cgo.GtkEditableGetType())
+	cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+	cgo.EditableSetText((cgo.Editable)(unsafe.Pointer(w)), text)
+	cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2570,7 +2584,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
+		SetEntryText(m.entry, m.__effect0_key)
 	}
 }
 
@@ -2652,8 +2666,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, "user widget")
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "user widget")
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	m.entry = cgo.GtkEntryNew()
@@ -2796,7 +2810,7 @@ pass sha256:13ec5f5447c3bd70476022c6f038384b
 -- run/go/fyne --
 pass sha256:51de69565226a4106da04843359ade6c
 -- run/go/gtk4 --
-pass sha256:9e6e6993654367a60287d506e58ea2db
+pass sha256:1e0f6b3ddbbc002909ac5aec4bdcd1bc
 -- run/kotlin/android --
 pass sha256:2552ab02c3a6e1c9a6fe867d11dec8e6
 -- run/none/html --

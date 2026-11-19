@@ -591,6 +591,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2395,8 +2401,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.app, "Hi")
 	cgo.SnglToplevelSetVisible(m.app, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.app, App_visible_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, "hi")
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), "hi")
 	_applyLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.app, m.__n0)
 	cgo.SnglAppAttach(m.app)
@@ -2440,4 +2446,4 @@ pass sha256:8c26c8c158bac6364afdd1ac3e715a2a
 -- run/go/fyne --
 pass sha256:93a135f15567bc56961806b5463a3202
 -- run/go/gtk4 --
-pass sha256:e8c9ae609b1619db05abe4535bb3302e
+pass sha256:722420f6552c652d34faa087c10178fe

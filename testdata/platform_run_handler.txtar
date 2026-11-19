@@ -503,7 +503,7 @@ var m = &snglState{}
 func Start(args []string, run func()) {
 	fmt.Print((("before " + fmt.Sprint(len(args))) + "\n"))
 	m.n = len(args)
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	if slices.Index(args, "--window") >= 0 {
 		run()
 	}
@@ -518,6 +518,12 @@ func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
 }
 
 func _menuHooksSet() {
@@ -2410,8 +2416,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -2471,4 +2477,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:a4744d7ef8b17f6cdf6352eb12f85eb7
 -- run/go/gtk4 --
-pass sha256:e517907a3416c798efae8bba65297b36
+pass sha256:298535c1660634faf170d80a20bb449e

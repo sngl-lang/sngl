@@ -301,6 +301,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2109,8 +2115,8 @@ func snglBuild() {
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n2)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n2, Look{Spaced: true, Spacing: 6})
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, m.picked__inst0)
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.picked__inst0)
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n3 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -2118,10 +2124,10 @@ func snglBuild() {
 	_applyLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	for _, a := range []Action__record{Action__record{Label: "One", Run: func() {
 		m.picked__inst0 = "one"
-		cgo.SnglTextSetValue(m.__n1, m.picked__inst0)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.picked__inst0)
 	}}, Action__record{Label: "Two", Run: func() {
 		m.picked__inst0 = "two"
-		cgo.SnglTextSetValue(m.__n1, m.picked__inst0)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.picked__inst0)
 	}}} {
 		__n4 := cgo.GtkButtonNew()
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__n4)), a.Label)
@@ -2225,6 +2231,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:16124c324936e633c3a866336e7bdec0
 -- run/go/gtk4 --
-pass sha256:475b7f70ba31553e8ab1bea4b3917d48
+pass sha256:721fb03d62e9497d0803bcfd43a1c009
 -- run/none/html --
 pass sha256:01483a03a0f47cd1bcfba782f2220d84

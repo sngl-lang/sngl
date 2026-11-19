@@ -543,6 +543,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2352,7 +2358,7 @@ func __effect0_mount() {
 				__async_off0 := func() string { v, _ := os.Hostname(); return v }()
 				snglPost(func() {
 					m.name__inst0 = __async_off0
-					cgo.SnglTextSetValue(m.__n0, m.name__inst0)
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.name__inst0)
 				})
 			}()
 		}()
@@ -2453,8 +2459,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.main__r0, "poll")
 	cgo.SnglToplevelSetVisible(m.main__r0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.main__r0, Main__r0_visible_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.name__inst0)
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.name__inst0)
 	_applyLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.main__r0, m.__n0)
 	cgo.SnglAppAttach(m.main__r0)
@@ -2498,4 +2504,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:123cb637cc9927759f753223625f8b06
 -- run/go/gtk4 --
-pass sha256:c3f6d893f3ae548d319d3deb0146ca31
+pass sha256:538ebca8e2ea29d847e36240b0162ee7

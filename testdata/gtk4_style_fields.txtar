@@ -260,6 +260,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func LookOf(s Style) Look {
 	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
@@ -2292,20 +2298,20 @@ func snglBuild() {
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n4, Look{Css: "padding-top: 16px; padding-right: 16px; padding-bottom: 16px; padding-left: 16px; ", Cross: 2, Spaced: true, Spacing: 12})
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, "literal")
+	m.__n5 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), "literal")
 	_applyLook(m.__n5, Look{Css: "padding-right: 8px; padding-left: 8px; color: #336699; font-size: 16px; background: #eeeeee; "})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, "var")
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "var")
 	_applyLook(m.__n1, LookOf(m.held))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, "prop")
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "prop")
 	_applyLook(m.__n2, LookOf(m.held))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, "reactive")
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "reactive")
 	_applyLook(m.__n3, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(m.tone), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n6 = cgo.GtkButtonNew()
@@ -2314,8 +2320,8 @@ func snglBuild() {
 	_applyLook(m.__n6, Look{Css: "min-width: 200px; border-radius: 4px; border-color: #ff0000; border-width: 2px; border-style: dashed; ", Height: 32.0})
 	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
-	m.__n7 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n7, "type")
+	m.__n7 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n7)), "type")
 	_applyLook(m.__n7, Look{Css: "font-family: monospace; font-weight: bold; font-style: italic; opacity: 0.5; ", TextAlign: 1, Lines: 2})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n7)))
 	m.__n8 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -2335,12 +2341,12 @@ func snglBuild() {
 	m.__n11 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n11)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n11, Look{Spaced: true, Spacing: 6})
-	m.__n12 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n12, "kept apart")
+	m.__n12 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n12)), "kept apart")
 	_applyLook(m.__n12, Look{Css: "margin-top: 8px; margin-right: 8px; margin-bottom: 8px; margin-left: 8px; "})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n11)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n12)))
-	m.__n13 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n13, "beside")
+	m.__n13 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n13)), "beside")
 	_applyLook(m.__n13, Look{Hidden: true})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n11)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n13)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n11)))
@@ -2382,4 +2388,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:e09ea57364aab6cffe472dacdb100aa4
+pass sha256:1a02b2b68c9543edd8a6d6bede1e8cfc

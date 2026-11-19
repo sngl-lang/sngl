@@ -7370,7 +7370,7 @@ func _drawingAreaSetHeight(a _DrawingArea, height int)
 #[c.native("gtk_drawing_area_set_draw_func")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDrawingAreaSetDrawFunc")]
 func _drawingAreaSetDraw(
-    a _DrawingArea,
+    a    _DrawingArea,
     #[c.type("GtkDrawingAreaDrawFunc")] #[c.static] draw func(area Widget, cr CairoContext, width int, height int, data _Pointer),
     data option[_Pointer],
     #[c.type("GDestroyNotify")] destroy option[c.pointer],
@@ -7472,9 +7472,9 @@ func _heldClick(o _Object, key string) option[c.held[_ClickState]]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkGestureClickNew")]
 func _gestureClickNew() _Gesture
 
+// A static callback is one per declaration: the image has its own.
 #[c.native("g_signal_connect_object")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectClickPressed")]
-// A static callback is one per declaration: the image has its own.
 func _connectClickPressed(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(g _Pointer, n int, x float, y float, w _Pointer), gobject _Pointer, flags _ConnectFlags) _Handler
 
 func _rtOnClick(w ui.node, fn func()) {

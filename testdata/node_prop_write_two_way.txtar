@@ -861,6 +861,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2684,7 +2690,7 @@ func Free_toggled_handler(b cgo.Widget) {
 		} else {
 			__lt65 = "off"
 		}
-		cgo.SnglTextSetValue(m.seen, __lt65)
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.seen)), __lt65)
 	}
 }
 
@@ -2711,7 +2717,7 @@ func Flip_clicked_handler() {
 	} else {
 		__lt67 = "off"
 	}
-	cgo.SnglTextSetValue(m.seen, __lt67)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.seen)), __lt67)
 }
 
 func snglInit() {
@@ -2765,8 +2771,8 @@ func snglBuild() {
 	} else {
 		__lt66 = "off"
 	}
-	m.seen = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.seen, __lt66)
+	m.seen = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.seen)), __lt66)
 	_applyLook(m.seen, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.seen)))
 	m.flip = cgo.GtkButtonNew()
@@ -3070,7 +3076,7 @@ pass sha256:568e32de7d46bf37f93a5b973bf15d3b
 -- run/go/fyne --
 pass sha256:5bb07b8ea50d2deff00180019545355a
 -- run/go/gtk4 --
-pass sha256:54a8f5d02d44f94528c5d683951f4891
+pass sha256:6a3d92185f1cd085818b1ece1142c736
 -- run/kotlin/android --
 pass sha256:c5fb6e94f29ba19355caa333b18a0bad
 -- run/none/html --

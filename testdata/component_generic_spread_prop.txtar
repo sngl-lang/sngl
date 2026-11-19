@@ -820,6 +820,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2611,7 +2617,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __effect0_mount() {
 	m.page__inst0 = (m.__effect0_key + 1)
-	cgo.SnglTextSetValue(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("page=" + fmt.Sprint(m.page__inst0)))
 }
 
 func __effect0_down() {
@@ -2680,8 +2686,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ("page=" + fmt.Sprint(m.page__inst0)))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("page=" + fmt.Sprint(m.page__inst0)))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -2870,7 +2876,7 @@ pass sha256:79ee7e3ff9bfa7f2bdcf27f81a458a3e
 -- run/go/fyne --
 pass sha256:c0e2d7f92c14b89f911322f530b273ca
 -- run/go/gtk4 --
-pass sha256:a32e8b85ad82d0212b52a500e812da63
+pass sha256:6ddc76bea90e222d7114f73cee72d1e8
 -- run/kotlin/android --
 pass sha256:ffcd454c8e617cd9e6fc30af1f367735
 -- run/none/html --

@@ -2133,6 +2133,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	tap__copies    map[string]cgo.Widget
 	r__copies      map[string]*Tile__inst
@@ -2163,7 +2167,7 @@ var m = &snglState{}
 
 func Badge__reset(this *Badge__inst) {
 	this.Hits = 0
-	cgo.SnglTextSetValue(this.Shown, (((("[" + this.__prop_label) + ":") + fmt.Sprint(this.Hits)) + "]"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(this.Shown)), (((("[" + this.__prop_label) + ":") + fmt.Sprint(this.Hits)) + "]"))
 	Badge__renderSlot0(this, this.__root)
 }
 
@@ -2185,6 +2189,28 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtContents() cgo.Widget {
@@ -2288,6 +2314,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -3538,10 +3581,10 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 func Badge__new(label string) *Badge__inst {
 	__self := &Badge__inst{__prop_label: label, __slot0: []cgo.Widget{}}
 	__self.__root = _rtContents()
-	__self.Shown = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
+	__self.Shown = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 	_applyLook(__self.Shown, Look{})
-	cgo.SnglOnClick(__self.Shown, func() {
+	_rtOnClick(__self.Shown, func() {
 	})
 	__self.Hit = cgo.GtkButtonNew()
 	m.hit__held = snglSome(__self.Hit)
@@ -3552,7 +3595,7 @@ func Badge__new(label string) *Badge__inst {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Hit)))
 	cgo.SnglSignalConnect(__self.Hit, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
-		cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 		Badge__renderSlot0(__self, __self.__root)
 	})
 	Badge__renderSlot0(__self, __self.__root)
@@ -3564,7 +3607,7 @@ func Badge__set_label(__self *Badge__inst, __v string) {
 		return
 	}
 	__self.__prop_label = __v
-	cgo.SnglTextSetValue(__self.Shown, (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 }
 
 func Badge__renderSlot0(__self *Badge__inst, parent cgo.Widget) {
@@ -3588,12 +3631,12 @@ func Badge__renderSlot0(__self *Badge__inst, parent cgo.Widget) {
 				var __place0_i int = 0
 				__self.__slot0 = []cgo.Widget{}
 				if __self.Hits >= 2 {
-					done := cgo.SnglTextNew()
+					done := _rtTextNew()
 					m.done__held = snglSome(done)
 					__self.Done__held__mine = snglSome(done)
-					cgo.SnglTextSetValue(done, "done")
+					cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(done)), "done")
 					_applyLook(done, Look{})
-					cgo.SnglOnClick(done, func() {
+					_rtOnClick(done, func() {
 					})
 					__place0_i_ref0 := snglSome(__self.__anchor0)
 					if __place0_i < len(__place0_prev) {
@@ -3638,10 +3681,10 @@ func Badge__destroy(__self *Badge__inst) {
 func Tile__new(label string, __copy string, tapped func(int)) *Tile__inst {
 	__self := &Tile__inst{__prop_label: label, __prop___copy: __copy, __prop_tapped: tapped, __slot1: []cgo.Widget{}, __inst2_live: []*__child0__inst{}}
 	__self.__root = _rtContents()
-	__self.Face = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.Face, (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
+	__self.Face = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Face)), (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
 	_applyLook(__self.Face, Look{})
-	cgo.SnglOnClick(__self.Face, func() {
+	_rtOnClick(__self.Face, func() {
 	})
 	__self.Tap = cgo.GtkButtonNew()
 	m.tap__held = snglSome(__self.Tap)
@@ -3653,7 +3696,7 @@ func Tile__new(label string, __copy string, tapped func(int)) *Tile__inst {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Tap)))
 	cgo.SnglSignalConnect(__self.Tap, "clicked", func() {
 		__self.Taps = (__self.Taps + 1)
-		cgo.SnglTextSetValue(__self.Face, (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Face)), (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
 		Tile__renderSlot1(__self, __self.__root)
 		__self.__prop_tapped(__self.Taps)
 	})
@@ -3666,7 +3709,7 @@ func Tile__set_label(__self *Tile__inst, __v string) {
 		return
 	}
 	__self.__prop_label = __v
-	cgo.SnglTextSetValue(__self.Face, (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Face)), (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
 }
 
 func Tile__set___copy(__self *Tile__inst, __v string) {
@@ -3784,12 +3827,12 @@ func Tile__destroy(__self *Tile__inst) {
 
 func __child0__new(__p0 string) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.Fin = cgo.SnglTextNew()
+	__self.Fin = _rtTextNew()
 	m.fin__held = snglSome(__self.Fin)
-	cgo.SnglTextSetValue(__self.Fin, "fin")
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Fin)), "fin")
 	_applyLook(__self.Fin, Look{})
 	m.fin__copies[__self.__prop___p0] = __self.Fin
-	cgo.SnglOnClick(__self.Fin, func() {
+	_rtOnClick(__self.Fin, func() {
 	})
 	__self.__root = __self.Fin
 	return __self
@@ -4979,7 +5022,7 @@ pass sha256:b16162b15de60306c9eba6ab14ef1852
 -- run/go/fyne --
 pass sha256:8cc1e52fad46a0645f60fc495c4d512c
 -- run/go/gtk4 --
-pass sha256:7c98ec8ff19769a84011712beaf66bbe
+pass sha256:c6dbae3eb46db07f8c8792319fb98d6a
 -- run/kotlin/android --
 pass sha256:282c53c30ebf0f79bb1ad4e8f45cda84
 -- run/none/html --

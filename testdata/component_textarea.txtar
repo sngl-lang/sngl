@@ -730,6 +730,14 @@ type snglState struct {
 
 var m = &snglState{}
 
+func SetEntryText(e cgo.Widget, text string) {
+	w := e
+	var id int = cgo.GSignalLookup("changed", cgo.GtkEditableGetType())
+	cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+	cgo.EditableSetText((cgo.Editable)(unsafe.Pointer(w)), text)
+	cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -2038,7 +2046,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
+		SetEntryText(m.entry, m.__effect0_key)
 	}
 }
 
@@ -2288,7 +2296,7 @@ pass sha256:7a6a147de577c2fd62464256a92fedff
 -- run/go/fyne --
 pass sha256:99858d36f3aa8ccc36962e3491674516
 -- run/go/gtk4 --
-pass sha256:626be94e86c6f6cb2eebf250b0cd35fd
+pass sha256:ff7d6508f21517cc1407032eac6fd086
 -- run/kotlin/android --
 pass sha256:983e90438a8bf2381fa4d91ef1b985d0
 -- run/none/html --

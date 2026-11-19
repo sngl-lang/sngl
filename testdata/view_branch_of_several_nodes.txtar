@@ -1454,6 +1454,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	show           bool
 	k              int
@@ -1507,6 +1511,28 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _applyLook(w cgo.Widget, look Look) {
@@ -1600,6 +1626,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -2843,10 +2886,10 @@ func Counter__destroy(__self *Counter__inst) {
 
 func __child0__new(__p0 __anon_id_elem_cdfd47) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n1, ("first " + fmt.Sprint(__self.__prop___p0.Elem)))
+	__self.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ("first " + fmt.Sprint(__self.__prop___p0.Elem)))
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglOnClick(__self.__n1, func() {
+	_rtOnClick(__self.__n1, func() {
 	})
 	__self.__root = __self.__n1
 	return __self
@@ -2857,7 +2900,7 @@ func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_cdfd47) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n1, ("first " + fmt.Sprint(__self.__prop___p0.Elem)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ("first " + fmt.Sprint(__self.__prop___p0.Elem)))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -2866,10 +2909,10 @@ func __child0__destroy(__self *__child0__inst) {
 
 func __child1__new(__p0 __anon_id_elem_cdfd47) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0}
-	__self.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n2, ("second " + fmt.Sprint(__self.__prop___p0.Elem)))
+	__self.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ("second " + fmt.Sprint(__self.__prop___p0.Elem)))
 	_applyLook(__self.__n2, Look{})
-	cgo.SnglOnClick(__self.__n2, func() {
+	_rtOnClick(__self.__n2, func() {
 	})
 	__self.__root = __self.__n2
 	return __self
@@ -2880,7 +2923,7 @@ func __child1__set___p0(__self *__child1__inst, __v __anon_id_elem_cdfd47) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n2, ("second " + fmt.Sprint(__self.__prop___p0.Elem)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ("second " + fmt.Sprint(__self.__prop___p0.Elem)))
 }
 
 func __child1__destroy(__self *__child1__inst) {
@@ -4110,7 +4153,7 @@ pass sha256:ecbcd54f7f07f15aa519751dd5e55e63
 -- run/go/fyne --
 pass sha256:0624d60cb93be3428ff8ded28cdb9e06
 -- run/go/gtk4 --
-pass sha256:660f9932dc3ae007e6728f94dcb5dfee
+pass sha256:ae63fc94b1f128e3ccdeec9665f57f61
 -- run/kotlin/android --
 pass sha256:116983eae7ebd64d7f2ab52900985c7d
 -- run/none/html --

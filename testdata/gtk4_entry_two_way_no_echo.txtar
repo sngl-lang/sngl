@@ -244,19 +244,19 @@ func _rtTextNew() cgo.Widget {
 	return (cgo.Widget)(unsafe.Pointer(l))
 }
 
-func _rtOnClick(n cgo.Widget, fn func()) {
-	w := n
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
 	had := (func(h any) *_ClickState {
 		if v, ok := h.(_ClickState); ok {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click")) != nil)
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-click", _ClickState{Run: fn})
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
 	if !had {
 		g := cgo.GtkGestureClickNew()
-		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(w), 0)
-		cgo.GtkWidgetAddController(w, (cgo.Controller)(unsafe.Pointer(g)))
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
 	}
 }
 
@@ -300,12 +300,12 @@ func _rtCanvasSetWidth(c cgo.Widget, width int) {
 	cgo.GtkDrawingAreaSetContentWidth((cgo.DrawingArea)(unsafe.Pointer(w)), width)
 }
 
-func _rtCanvasOnPaint(c cgo.Widget, paint func(cgo.CairoContext)) {
-	w := c
-	s := _canvasOf(w)
-	s.Paint = paint
-	_setCanvas(w, s)
-	cgo.GtkWidgetQueueDraw(w)
+func _rtCanvasOnPaint(w cgo.Widget, fn func(cgo.CairoContext)) {
+	a := w
+	s := _canvasOf(a)
+	s.Paint = fn
+	_setCanvas(a, s)
+	cgo.GtkWidgetQueueDraw(a)
 }
 
 func SetEntryText(e cgo.Widget, text string) {
@@ -2448,4 +2448,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:b6ad89db9dedc086f41d660cee767aaf
+pass sha256:2ac69459b68f10126f1dce31473f37f5

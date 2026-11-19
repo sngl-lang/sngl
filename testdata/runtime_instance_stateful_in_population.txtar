@@ -1387,6 +1387,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	items          []int
 	foots          string
@@ -1418,6 +1422,28 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 		__out = append(__out, __anon_id_elem_cdfd47{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _applyLook(w cgo.Widget, look Look) {
@@ -1511,6 +1537,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -2731,10 +2774,10 @@ func Counter__new(tag string, seen func(string)) *Counter__inst {
 	__self.__n5 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n5)), cgo.CGtkOrientation(1))
 	_applyLook(__self.__n5, Look{Spaced: true, Spacing: 6})
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ((("counter " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("counter " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	Counter__effects0_settle(__self)
@@ -2793,7 +2836,7 @@ func Counter__set_tag(__self *Counter__inst, __v string) {
 		return
 	}
 	__self.__prop_tag = __v
-	cgo.SnglTextSetValue(__self.__n0, ((("counter " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((("counter " + __self.__prop_tag) + " ") + fmt.Sprint(__self.N)))
 	Counter__effects0_settle(__self)
 }
 
@@ -2807,10 +2850,10 @@ func Card__slot0__new(start int, __p0 __anon_id_elem_cdfd47, __on0 func(string))
 	__self.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(__self.__n6)), cgo.CGtkOrientation(1))
 	_applyLook(__self.__n6, Look{Spaced: true, Spacing: 6})
-	__self.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n1, ("card " + fmt.Sprint(__self.K)))
+	__self.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n1)), ("card " + fmt.Sprint(__self.K)))
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglOnClick(__self.__n1, func() {
+	_rtOnClick(__self.__n1, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)))
 	__self.__n2 = Counter__new(((fmt.Sprint(__self.__prop___p0.Elem) + "/") + fmt.Sprint(__self.K)), func(__on0_0 string) {
@@ -3566,7 +3609,7 @@ pass sha256:bc25d9bc0d9c7506976ebb6d2ea62d4d
 -- run/go/fyne --
 pass sha256:61b1527477928f5efea697c3bd845418
 -- run/go/gtk4 --
-pass sha256:ff014bbf16ae42727a16725d2d2ff22f
+pass sha256:a136a06caf650d449ed16228b1056cdd
 -- run/kotlin/android --
 pass sha256:43176170a40a4642087c5a4ae005b84c
 -- run/none/html --

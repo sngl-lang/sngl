@@ -643,6 +643,13 @@ type Look struct {
 	Columns   int
 }
 
+type _CanvasState struct {
+	Width  int
+	Height int
+	Mode   int
+	Paint  func(cgo.CairoContext)
+}
+
 type _LookState struct {
 	Given         Look
 	IsGiven       bool
@@ -701,6 +708,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	rs             []float64
 	grow           float64
@@ -740,6 +751,64 @@ func __identified0(__xs []float64) []__anon_id_elem_4ccb28 {
 	return __out
 }
 
+func _rtCanvasNew() cgo.Widget {
+	a := cgo.GtkDrawingAreaNew()
+	_setCanvas(a, _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}})
+	cgo.GtkDrawingAreaSetDrawFunc((cgo.DrawingArea)(unsafe.Pointer(a)), _canvasDraw, nil, nil)
+	return (cgo.Widget)(unsafe.Pointer(a))
+}
+
+func _rtCanvasSetHeight(c cgo.Widget, height int) {
+	w := c
+	s := _canvasOf(w)
+	s.Height = height
+	_setCanvas(w, s)
+	cgo.GtkDrawingAreaSetContentHeight((cgo.DrawingArea)(unsafe.Pointer(w)), height)
+}
+
+func _rtCanvasSetScaling(c cgo.Widget, mode int) {
+	w := c
+	s := _canvasOf(w)
+	s.Mode = mode
+	_setCanvas(w, s)
+	cgo.SetHexpand(w, (mode != 0))
+	cgo.SetVexpand(w, (mode != 0))
+	cgo.GtkWidgetQueueDraw(w)
+}
+
+func _rtCanvasSetWidth(c cgo.Widget, width int) {
+	w := c
+	s := _canvasOf(w)
+	s.Width = width
+	_setCanvas(w, s)
+	cgo.GtkDrawingAreaSetContentWidth((cgo.DrawingArea)(unsafe.Pointer(w)), width)
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
+
+func _rtCanvasOnPaint(w cgo.Widget, fn func(cgo.CairoContext)) {
+	a := w
+	s := _canvasOf(a)
+	s.Paint = fn
+	_setCanvas(a, s)
+	cgo.GtkWidgetQueueDraw(a)
+}
+
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
@@ -751,8 +820,8 @@ func Paint(ctx cgo.CairoContext, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		cgo.CairoSetLineWidth(ctx, style.StrokeWidth)
-		cgo.SnglCairoLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
-		cgo.SnglCairoLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
+		CairoContextSetLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
+		CairoContextSetLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
 		Source(ctx, style.Stroke)
 		cgo.CairoStroke(ctx)
 	}
@@ -851,6 +920,65 @@ func _applyLook(w cgo.Widget, look Look) {
 	_setLookState(w, h)
 }
 
+func _setCanvas(w cgo.Widget, s _CanvasState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas", s)
+}
+
+func _canvasDraw(area cgo.Widget, cr cgo.CairoContext, pw int, ph int, data cgo.Pointer) {
+	s := _canvasOf(area)
+	if (s.Width > 0) && (s.Height > 0) {
+		var sx float64 = (float64(pw) / float64(s.Width))
+		var sy float64 = (float64(ph) / float64(s.Height))
+		if s.Mode == 2 {
+			if sy > sx {
+				sx = sy
+			}
+			sy = sx
+		} else {
+			if s.Mode != 3 {
+				if sy < sx {
+					sx = sy
+				}
+				sy = sx
+			}
+		}
+		cgo.CairoScale(cr, sx, sy)
+	}
+	paint__r0 := s.Paint
+	paint__r0(cr)
+}
+
+func _canvasOf(w cgo.Widget) _CanvasState {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas"))
+	if s != nil {
+		return (*(s))
+	}
+	return _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}}
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
+}
+
 func _setLookState(w cgo.Widget, l _LookState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-look", l)
 }
@@ -861,6 +989,14 @@ func _unrefData(p cgo.Pointer) {
 
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
+}
+
+func CairoContextSetLineCap(cr cgo.CairoContext, cap__r0 int) {
+	cgo.CairoSetLineCap(cr, int(cap__r0))
+}
+
+func CairoContextSetLineJoin(cr cgo.CairoContext, join int) {
+	cgo.CairoSetLineJoin(cr, int(join))
 }
 
 func _lookOf(w cgo.Widget) _LookState {
@@ -2070,14 +2206,14 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __canvas0__new(__p0 __anon_id_elem_4ccb28, __p1 float64, __on0 func()) *__canvas0__inst {
 	__self := &__canvas0__inst{__prop___p0: __p0, __prop___p1: __p1, __prop___on0: __on0}
-	__self.__drawing0 = cgo.SnglCanvasNew()
-	cgo.SnglCanvasSetWidth(__self.__drawing0, 40)
-	cgo.SnglCanvasSetHeight(__self.__drawing0, 40)
-	cgo.SnglCanvasSetScaling(__self.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
-	cgo.SnglOnClick(__self.__drawing0, func() {
+	__self.__drawing0 = _rtCanvasNew()
+	_rtCanvasSetWidth(__self.__drawing0, 40)
+	_rtCanvasSetHeight(__self.__drawing0, 40)
+	_rtCanvasSetScaling(__self.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	_rtOnClick(__self.__drawing0, func() {
 		__self.__prop___on0()
 	})
-	cgo.SnglCanvasOnPaint(__self.__drawing0, func(ctx cgo.CairoContext) {
+	_rtCanvasOnPaint(__self.__drawing0, func(ctx cgo.CairoContext) {
 		cgo.CairoSave(ctx)
 		cgo.CairoNewSubPath(ctx)
 		cgo.CairoArc(ctx, 20.0, 20.0, (__self.__prop___p0.Elem + __self.__prop___p1), 0.0, 6.283185307179586)
@@ -2093,7 +2229,7 @@ func __canvas0__set___p0(__self *__canvas0__inst, __v __anon_id_elem_4ccb28) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglCanvasRedraw(__self.__drawing0)
+	cgo.GtkWidgetQueueDraw(__self.__drawing0)
 }
 
 func __canvas0__set___p1(__self *__canvas0__inst, __v float64) {
@@ -2101,7 +2237,7 @@ func __canvas0__set___p1(__self *__canvas0__inst, __v float64) {
 		return
 	}
 	__self.__prop___p1 = __v
-	cgo.SnglCanvasRedraw(__self.__drawing0)
+	cgo.GtkWidgetQueueDraw(__self.__drawing0)
 }
 
 func __canvas0__set___on0(__self *__canvas0__inst, __v func()) {
@@ -2114,13 +2250,13 @@ func __canvas0__destroy(__self *__canvas0__inst) {
 
 func __canvas1__new(__p0 __anon_id_elem_4ccb28) *__canvas1__inst {
 	__self := &__canvas1__inst{__prop___p0: __p0}
-	__self.__drawing1 = cgo.SnglCanvasNew()
-	cgo.SnglCanvasSetWidth(__self.__drawing1, 40)
-	cgo.SnglCanvasSetHeight(__self.__drawing1, 40)
-	cgo.SnglCanvasSetScaling(__self.__drawing1, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
-	cgo.SnglOnClick(__self.__drawing1, func() {
+	__self.__drawing1 = _rtCanvasNew()
+	_rtCanvasSetWidth(__self.__drawing1, 40)
+	_rtCanvasSetHeight(__self.__drawing1, 40)
+	_rtCanvasSetScaling(__self.__drawing1, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	_rtOnClick(__self.__drawing1, func() {
 	})
-	cgo.SnglCanvasOnPaint(__self.__drawing1, func(ctx cgo.CairoContext) {
+	_rtCanvasOnPaint(__self.__drawing1, func(ctx cgo.CairoContext) {
 		cgo.CairoSave(ctx)
 		cgo.CairoNewSubPath(ctx)
 		cgo.CairoArc(ctx, 20.0, 20.0, __self.__prop___p0.Elem, 0.0, 6.283185307179586)
@@ -2136,7 +2272,7 @@ func __canvas1__set___p0(__self *__canvas1__inst, __v __anon_id_elem_4ccb28) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglCanvasRedraw(__self.__drawing1)
+	cgo.GtkWidgetQueueDraw(__self.__drawing1)
 }
 
 func __canvas1__destroy(__self *__canvas1__inst) {
@@ -2779,6 +2915,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:e5d277f47430950b6ea29e07f632a3ac
 -- run/go/gtk4 --
-pass sha256:2b3e8aea1e7f2644e8076266216be709
+pass sha256:ece2dd294356bc94aba4e0df5082a929
 -- run/none/html --
 pass sha256:b54614866a2ca6128a9d623f40e0dc7b

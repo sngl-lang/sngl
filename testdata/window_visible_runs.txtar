@@ -569,6 +569,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2361,7 +2367,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 func __effect0_mount() {
 	m.handle__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
 		m.ticks += 1
-		cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.ticks))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.ticks))
 		fmt.Println(((("shown=" + fmt.Sprint(m.shown)) + " other=") + fmt.Sprint(m.visible__inst0)))
 		if m.ticks == 1 {
 			m.shown = false
@@ -2481,8 +2487,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.details, "Details")
 	cgo.SnglToplevelSetVisible(m.details, m.shown)
 	cgo.SnglToplevelOnVisible(m.details, Details_visible_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.ticks))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.ticks))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.details, m.__n0)
 	cgo.SnglAppAttach(m.details)
@@ -2490,8 +2496,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.other, "Other")
 	cgo.SnglToplevelSetVisible(m.other, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.other, Other_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, "other")
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), "other")
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.other, m.__n1)
 	cgo.SnglAppAttach(m.other)
@@ -2535,4 +2541,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:b48078756dc61687f30610d97e773c73
 -- run/go/gtk4 --
-pass sha256:3540a4b6ac92820b58f255fe891581de
+pass sha256:1bcc5af6f30c9023ba21f7eb9a65fa4e

@@ -422,6 +422,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2229,11 +2235,11 @@ func __n2_clicked_handler() {
 			}
 			_ = e
 			m.problem = e.Message
-			cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 		}()
 		m.age = RequireAge("")
 		m.problem = "after"
-		cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 	}()
 }
 
@@ -2250,7 +2256,7 @@ func __n3_clicked_handler() {
 			}
 			_ = e
 			m.problem = ("call: " + e.Kind)
-			cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 		}()
 		RequireAge("")
 	}()
@@ -2269,11 +2275,11 @@ func __n4_clicked_handler() {
 			}
 			_ = e
 			m.problem = e.Message
-			cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 		}()
 		m.age = RequireAge("")
 		m.problem = "deep after"
-		cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 	}()
 }
 
@@ -2310,8 +2316,8 @@ func snglBuild() {
 	_applyLook(m.__n4, Look{})
 	cgo.SnglSignalConnect(m.__n4, "clicked", __n4_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ("problem=" + m.problem))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("problem=" + m.problem))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	cgo.SnglToplevelAppend(m.home, m.__n1)
@@ -2354,4 +2360,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:1ae9c17e056fdf9086a8d9dc2f3033ea
 -- run/go/gtk4 --
-pass sha256:97e33ebaa2ec77989b69379b6a215cb3
+pass sha256:13bc238e0fd7320fa68baeac62756314

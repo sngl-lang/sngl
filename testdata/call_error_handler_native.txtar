@@ -859,6 +859,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -2212,10 +2218,10 @@ func Bad_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = e.Message
-		cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "b")
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 }
 
 func Good_clicked_handler() {
@@ -2223,10 +2229,10 @@ func Good_clicked_handler() {
 		e := ErrorEvent{Message: __err.Error()}
 		_ = e
 		m.caught = "never"
-		cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	}
 	m.after = (m.after + "g")
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 }
 
 func snglInit() {
@@ -2247,8 +2253,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.good)), cgo.CGboolean(1))
 	_applyLook(m.good, Look{})
 	cgo.SnglSignalConnect(m.good, "clicked", Good_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.bad)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.good)))
@@ -2290,4 +2296,4 @@ pass sha256:18b16700e85103bc7f54294108053b44
 -- run/go/fyne --
 pass sha256:8232bf48a3fd03d2dc9ef46fce42c3d6
 -- run/go/gtk4 --
-pass sha256:99b37543568ffc14a33f30ce1bf02a9d
+pass sha256:b78d4f8f289e6bf3f5768c36dcc198be

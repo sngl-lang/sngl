@@ -196,6 +196,13 @@ type Style struct {
 	FontFamily  string
 }
 
+type _CanvasState struct {
+	Width  int
+	Height int
+	Mode   int
+	Paint  func(cgo.CairoContext)
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -226,6 +233,48 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtCanvasNew() cgo.Widget {
+	a := cgo.GtkDrawingAreaNew()
+	_setCanvas(a, _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}})
+	cgo.GtkDrawingAreaSetDrawFunc((cgo.DrawingArea)(unsafe.Pointer(a)), _canvasDraw, nil, nil)
+	return (cgo.Widget)(unsafe.Pointer(a))
+}
+
+func _rtCanvasSetHeight(c cgo.Widget, height int) {
+	w__r0 := c
+	s := _canvasOf(w__r0)
+	s.Height = height
+	_setCanvas(w__r0, s)
+	cgo.GtkDrawingAreaSetContentHeight((cgo.DrawingArea)(unsafe.Pointer(w__r0)), height)
+}
+
+func _rtCanvasSetScaling(c cgo.Widget, mode int) {
+	w__r1 := c
+	s := _canvasOf(w__r1)
+	s.Mode = mode
+	_setCanvas(w__r1, s)
+	cgo.SetHexpand(w__r1, (mode != 0))
+	cgo.SetVexpand(w__r1, (mode != 0))
+	cgo.GtkWidgetQueueDraw(w__r1)
+}
+
+func _rtCanvasSetWidth(c cgo.Widget, width int) {
+	w__r2 := c
+	s := _canvasOf(w__r2)
+	s.Width = width
+	_setCanvas(w__r2, s)
+	cgo.GtkDrawingAreaSetContentWidth((cgo.DrawingArea)(unsafe.Pointer(w__r2)), width)
+}
+
+func _rtCanvasOnPaint(w cgo.Widget, fn func(cgo.CairoContext)) {
+	a := w
+	s := _canvasOf(a)
+	s.Paint = fn
+	_setCanvas(a, s)
+	cgo.GtkWidgetQueueDraw(a)
+}
+
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
@@ -237,8 +286,8 @@ func Paint(ctx cgo.CairoContext, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		cgo.CairoSetLineWidth(ctx, style.StrokeWidth)
-		cgo.SnglCairoLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
-		cgo.SnglCairoLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
+		CairoContextSetLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
+		CairoContextSetLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
 		Source(ctx, style.Stroke)
 		cgo.CairoStroke(ctx)
 	}
@@ -298,8 +347,58 @@ func _keysGoOn(win cgo.Widget, key string, shift bool) {
 	}
 }
 
+func _setCanvas(w cgo.Widget, s _CanvasState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas", s)
+}
+
+func _canvasDraw(area cgo.Widget, cr cgo.CairoContext, pw int, ph int, data cgo.Pointer) {
+	s := _canvasOf(area)
+	if (s.Width > 0) && (s.Height > 0) {
+		var sx float64 = (float64(pw) / float64(s.Width))
+		var sy float64 = (float64(ph) / float64(s.Height))
+		if s.Mode == 2 {
+			if sy > sx {
+				sx = sy
+			}
+			sy = sx
+		} else {
+			if s.Mode != 3 {
+				if sy < sx {
+					sx = sy
+				}
+				sy = sx
+			}
+		}
+		cgo.CairoScale(cr, sx, sy)
+	}
+	paint__r0 := s.Paint
+	paint__r0(cr)
+}
+
+func _canvasOf(w cgo.Widget) _CanvasState {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas"))
+	if s != nil {
+		return (*(s))
+	}
+	return _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}}
+}
+
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
+}
+
+func CairoContextSetLineCap(cr cgo.CairoContext, cap__r0 int) {
+	cgo.CairoSetLineCap(cr, int(cap__r0))
+}
+
+func CairoContextSetLineJoin(cr cgo.CairoContext, join int) {
+	cgo.CairoSetLineJoin(cr, int(join))
 }
 
 func _menuApply(box cgo.Widget) {
@@ -753,11 +852,11 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.w, "")
 	cgo.SnglToplevelSetVisible(m.w, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.w, W_visible_handler)
-	m.__drawing0 = cgo.SnglCanvasNew()
-	cgo.SnglCanvasSetWidth(m.__drawing0, 200)
-	cgo.SnglCanvasSetHeight(m.__drawing0, 100)
-	cgo.SnglCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
-	cgo.SnglCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
+	m.__drawing0 = _rtCanvasNew()
+	_rtCanvasSetWidth(m.__drawing0, 200)
+	_rtCanvasSetHeight(m.__drawing0, 100)
+	_rtCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	_rtCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
 	cgo.SnglToplevelAppend(m.w, m.__drawing0)
 	cgo.SnglAppAttach(m.w)
 }
@@ -1129,7 +1228,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:270cf44ca04ebd31cd73a28f04b2dac1
 -- run/go/gtk4 --
-pass sha256:9b2646d81ae68405079616571990f5ac
+pass sha256:ee58a45bcfe5463a54ab5b75b827faef
 -- run/kotlin/android --
 pass sha256:ec0a55771ac523739433aa6069e1cb13
 -- run/none/html --

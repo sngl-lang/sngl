@@ -525,6 +525,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -554,6 +558,28 @@ var m = &snglState{}
 
 func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtToplevelNew() cgo.Widget {
@@ -653,6 +679,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _menuHooksSet() {
@@ -2465,14 +2508,14 @@ func Flip__new(n int) *Flip__inst {
 	cgo.SnglSignalConnect(__self.Go__r0, "clicked", func() {
 		__self.Flips = (__self.Flips + 1)
 		m.shown = !m.shown
-		cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.shown))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.shown))
 		__refreshPage_shown()
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Go__r0)))
-	__self.Line = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.Line, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
+	__self.Line = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Line)), ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
 	_applyLook(__self.Line, Look{})
-	cgo.SnglOnClick(__self.Line, func() {
+	_rtOnClick(__self.Line, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Line)))
 	Flip__renderSlot0(__self, __self.__n4)
@@ -2485,14 +2528,14 @@ func Flip__set_n(__self *Flip__inst, __v int) {
 		return
 	}
 	__self.__prop_n = __v
-	cgo.SnglTextSetValue(__self.Line, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Line)), ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
 	for __inst1_live_ui, _ := range __self.__inst1_live {
 		__child0__set___p0(__self.__inst1_live[__inst1_live_ui], __self.__prop_n)
 	}
 }
 
 func Flip__set___page_shown(__self *Flip__inst, __v bool) {
-	cgo.SnglTextSetValue(__self.Line, ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Line)), ((fmt.Sprint(__self.__prop_n) + " ") + fmt.Sprint(m.shown)))
 	Flip__renderSlot0(__self, __self.__n4)
 }
 
@@ -2577,10 +2620,10 @@ func Flip__destroy(__self *Flip__inst) {
 
 func __child0__new(__p0 int) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, (fmt.Sprint(__self.__prop___p0) + " extra"))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), (fmt.Sprint(__self.__prop___p0) + " extra"))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
 	return __self
@@ -2591,7 +2634,7 @@ func __child0__set___p0(__self *__child0__inst, __v int) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, (fmt.Sprint(__self.__prop___p0) + " extra"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), (fmt.Sprint(__self.__prop___p0) + " extra"))
 }
 
 func __child0__destroy(__self *__child0__inst) {
@@ -2616,8 +2659,8 @@ func snglBuild() {
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n6, Look{Spaced: true, Spacing: 6})
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, fmt.Sprint(m.shown))
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.shown))
 	_applyLook(m.__n2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	__renderSlot1(m.__n6)
@@ -2924,6 +2967,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:c6057287c0a68f1d68bfc28304c49039
 -- run/go/gtk4 --
-pass sha256:77f26c0b9559e03e7ef938ed6e637241
+pass sha256:edd88dba41af061050363027977d8ed3
 -- run/none/html --
 pass sha256:77e90db56d2fac7d03adb3ee9c8d2ac2

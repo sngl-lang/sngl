@@ -671,6 +671,13 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtFlowNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(l)), true)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtSpanNew() cgo.Widget {
 	w := (cgo.Widget)(unsafe.Pointer(cgo.GListStoreNew(cgo.GObjectGetType())))
 	_setSpan(w, _SpanState{})
@@ -2726,7 +2733,7 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.home, "t")
 	cgo.SnglToplevelSetVisible(m.home, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
-	m.__n0 = cgo.SnglFlowNew()
+	m.__n0 = _rtFlowNew()
 	_applyLook(m.__n0, Look{})
 	m.__n1 = _rtSpanNew()
 	_rtSpanStyle(m.__n1, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "monospace")
@@ -2875,7 +2882,7 @@ pass sha256:4fdce193761eaeed9449c468ca68a1ad
 -- run/go/fyne --
 pass sha256:4cb40b2485d7b46ef74a968719b557cc
 -- run/go/gtk4 --
-pass sha256:157742c361c332904576046be2c40399
+pass sha256:116b667e95e02d3a9d7dd2ffc5c46459
 -- run/kotlin/android --
 pass sha256:87c510780598cdd0670e5695b4a347df
 -- run/none/html --

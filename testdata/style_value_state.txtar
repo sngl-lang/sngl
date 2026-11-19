@@ -1407,6 +1407,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -1468,6 +1472,28 @@ func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func LookOf(s Style) Look {
@@ -1620,6 +1646,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s__r1 := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s__r1 != nil {
+		run := (*(s__r1)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -3602,10 +3645,10 @@ func __n7_clicked_handler() {
 
 func __child0__new(__p0 __anon_id_elem_c6a818, __p1 Style) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Elem)
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.__prop___p0.Elem)
 	_applyLook(__self.__n0, LookOf(__self.__prop___p1))
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	__self.__root = __self.__n0
 	return __self
@@ -3616,7 +3659,7 @@ func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
 		return
 	}
 	__self.__prop___p0 = __v
-	cgo.SnglTextSetValue(__self.__n0, __self.__prop___p0.Elem)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.__prop___p0.Elem)
 }
 
 func __child0__set___p1(__self *__child0__inst, __v Style) {
@@ -3658,8 +3701,8 @@ func snglBuild() {
 	_applyLook(m.__n7, Look{})
 	cgo.SnglSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n7)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, "styled")
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "styled")
 	_applyLook(m.__n2, LookOf(m.s))
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
 	var __lt63 Style
@@ -3668,12 +3711,12 @@ func snglBuild() {
 	} else {
 		__lt63 = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	}
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, "picked")
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "picked")
 	_applyLook(m.__n3, LookOf(__lt63))
 	cgo.SnglToplevelAppend(m.__n1, m.__n3)
-	m.__n4 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n4, "kept")
+	m.__n4 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n4)), "kept")
 	_applyLook(m.__n4, LookOf(m.kept[0]))
 	cgo.SnglToplevelAppend(m.__n1, m.__n4)
 	__renderSlot0(m.__n1)
@@ -4483,7 +4526,7 @@ pass sha256:aa6af4182a68958e8229de1875a31091
 -- run/go/fyne --
 pass sha256:c61e669a06f5b9ad4accd954cb7670ab
 -- run/go/gtk4 --
-pass sha256:82858bfd8f03a2413b7082b10f796173
+pass sha256:75f7074ad2294c50e991aff4e3384d30
 -- run/kotlin/android --
 pass sha256:b76f92b388604f774a86191396c56aad
 -- run/none/html --

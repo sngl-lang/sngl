@@ -1901,6 +1901,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -2048,6 +2052,28 @@ func ReadOr__list_int(text string, fallback []int) []int {
 	return __lt3
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
+
 func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
@@ -2145,6 +2171,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _menuHooksSet() {
@@ -3874,7 +3917,7 @@ func __effect1_update() {
 		c0.Fields = []sngljson.Field{{Wire: "id", Codec: &sngljson.Codec{Kind: sngljson.Int}}, {Wire: "kind", Codec: c1}}
 		return c0
 	}())
-	cgo.SnglTextSetValue(m.__n2, m.last__inst0)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), m.last__inst0)
 }
 
 func __effect2_mount() {
@@ -3903,7 +3946,7 @@ func __effect2_up() {
 
 func __effect3_update() {
 	m.last__inst1 = sngljson.Encode[int](m.__effect3_key, &sngljson.Codec{Kind: sngljson.Int})
-	cgo.SnglTextSetValue(m.__n3, m.last__inst1)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), m.last__inst1)
 }
 
 func __effects0_settle() {
@@ -4032,10 +4075,10 @@ func __n1_visible_handler(__visible bool) {
 
 func Stored__int__new(text string, value int, __on_value func(int)) *Stored__int__inst {
 	__self := &Stored__int__inst{__prop_text: text, __prop_value: value, __prop___on_value: __on_value, __effect4_live: []bool{}, __effect4_desired: []bool{}}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, __self.Last)
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Last)
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	Stored__int__effects1_settle(__self)
 	__self.__root = __self.__n0
@@ -4066,7 +4109,7 @@ func Stored__int__effect4_up(__self *Stored__int__inst) {
 
 func Stored__int__effect5_update(__self *Stored__int__inst) {
 	__self.Last = sngljson.Encode[int](__self.__effect5_key, &sngljson.Codec{Kind: sngljson.Int})
-	cgo.SnglTextSetValue(__self.__n0, __self.Last)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Last)
 }
 
 func Stored__int__effects1_settle(__self *Stored__int__inst) {
@@ -4154,12 +4197,12 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n1, "")
 	cgo.SnglToplevelSetVisible(m.__n1, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, m.last__inst0)
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), m.last__inst0)
 	_applyLook(m.__n2, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n2)
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, m.last__inst1)
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), m.last__inst1)
 	_applyLook(m.__n3, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.__n3)
 	__renderSlot0(m.__n1)
@@ -5512,7 +5555,7 @@ pass sha256:489386416c339b38101f4698c2667a10
 -- run/go/fyne --
 pass sha256:721440230cde2c31eae9ab5f4dba9318
 -- run/go/gtk4 --
-pass sha256:c9befb60061035f0a023f5693323082a
+pass sha256:ca8484f32f7b6fff821e5b62a0caa893
 -- run/kotlin/android --
 pass sha256:2887e80c0c862fa8a2d63febf07bbe51
 -- run/none/html --

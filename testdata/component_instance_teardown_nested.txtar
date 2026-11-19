@@ -750,6 +750,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	rows           []string
 	log            string
@@ -803,6 +807,28 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtContents() cgo.Widget {
@@ -906,6 +932,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _setLookState(w cgo.Widget, l _LookState) {
@@ -2163,10 +2206,10 @@ func Nest__new(tag string, depth int, note func(string), __depth int) *Nest__ins
 		}
 	}())
 	__self.__root = _rtContents()
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, (("[" + __self.__prop_tag) + "]"))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), (("[" + __self.__prop_tag) + "]"))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
 	Nest__renderSlot0(__self, __self.__root)
@@ -2244,7 +2287,7 @@ func Nest__set_tag(__self *Nest__inst, __v string) {
 		return
 	}
 	__self.__prop_tag = __v
-	cgo.SnglTextSetValue(__self.__n0, (("[" + __self.__prop_tag) + "]"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), (("[" + __self.__prop_tag) + "]"))
 	Nest__effects0_settle(__self)
 }
 
@@ -2410,7 +2453,7 @@ func __renderSlot1(parent cgo.Widget) {
 						}()
 						Nest__set_note(__n3, func(s string) {
 							m.log = ((m.log + s) + ";")
-							cgo.SnglTextSetValue(m.__n1, ("log=" + m.log))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("log=" + m.log))
 						})
 						Nest__set_tag(__n3, r.Elem)
 						Nest__set_depth(__n3, 1)
@@ -2426,7 +2469,7 @@ func __renderSlot1(parent cgo.Widget) {
 						}
 						__n3__made := Nest__new(r.Elem, 1, func(s string) {
 							m.log = ((m.log + s) + ";")
-							cgo.SnglTextSetValue(m.__n1, ("log=" + m.log))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("log=" + m.log))
 						}, 0)
 						__n3 = __n3__made
 					}
@@ -2492,8 +2535,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.drop)), cgo.CGboolean(1))
 	_applyLook(m.drop, Look{})
 	cgo.SnglSignalConnect(m.drop, "clicked", Drop_clicked_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ("log=" + m.log))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ("log=" + m.log))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.drop)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
@@ -3081,7 +3124,7 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:cd4c6e33a54416af2cce586e553c47ab
 -- run/go/gtk4 --
-pass sha256:b4543e3cbc1fc958bfd0fbd79546af61
+pass sha256:e3e7a7ff6983840fafcea636d7681309
 -- run/kotlin/android --
 pass sha256:48864b6ad9d1802a77bfdbfcf724744d
 -- run/none/html --

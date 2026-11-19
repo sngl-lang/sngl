@@ -758,6 +758,20 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func SetEntryText(e cgo.Widget, text string) {
+	w := e
+	var id int = cgo.GSignalLookup("changed", cgo.GtkEditableGetType())
+	cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+	cgo.EditableSetText((cgo.Editable)(unsafe.Pointer(w)), text)
+	cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -2066,7 +2080,7 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
-		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
+		SetEntryText(m.entry, m.__effect0_key)
 	}
 }
 
@@ -2113,20 +2127,20 @@ func __effects0_settle() {
 }
 
 func __wrote_name() {
-	cgo.SnglTextSetValue(m.__n0, (("Hello, " + m.name) + "!"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
 }
 
 func Entry_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.name {
 		m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-		cgo.SnglTextSetValue(m.__n0, (("Hello, " + m.name) + "!"))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
 	m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	cgo.SnglTextSetValue(m.__n0, (("Hello, " + m.name) + "!"))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
 	__effects0_settle()
 }
 
@@ -2156,8 +2170,8 @@ func snglBuild() {
 		Entry_activate_handler(m.entry)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.entry)))
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, (("Hello, " + m.name) + "!"))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	__effects0_settle()
@@ -2504,7 +2518,7 @@ pass sha256:ce48074c571800c4037ae766bf333b1e
 -- run/go/fyne --
 pass sha256:8f31c74406f51fbf62a1768ff4ff10dd
 -- run/go/gtk4 --
-pass sha256:405e8744af650a7f5ee7d38d3e2652b5
+pass sha256:a504a28354125654afe60c4a7a6f6d82
 -- run/kotlin/android --
 pass sha256:3f4c3b32fd66b7783d15b8d877c51c11
 -- run/none/html --

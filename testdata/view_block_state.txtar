@@ -1543,6 +1543,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -1584,6 +1588,28 @@ var m = &snglState{}
 
 func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtToplevelNew() cgo.Widget {
@@ -1693,6 +1719,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _menuHooksSet() {
@@ -3463,7 +3506,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						__child0__set___on0(__n7, func(__total int) {
 							m.total__inst0 = __total
-							cgo.SnglTextSetValue(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n6)), ("total " + fmt.Sprint(m.total__inst0)))
 							for _, __inst1_live_uv := range m.__inst1_live {
 								__child0__set___p1(__inst1_live_uv, m.total__inst0)
 							}
@@ -3481,7 +3524,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n7__made := __child0__new(it, m.total__inst0, func(__total int) {
 							m.total__inst0 = __total
-							cgo.SnglTextSetValue(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n6)), ("total " + fmt.Sprint(m.total__inst0)))
 							for _, __inst1_live_uv := range m.__inst1_live {
 								__child0__set___p1(__inst1_live_uv, m.total__inst0)
 							}
@@ -3569,10 +3612,10 @@ func __renderSlot1(parent cgo.Widget) {
 					m.__slot1 = append(m.__slot1, __n8__el)
 				} else {
 					if m.pages__current.Id == 1 {
-						__n9 := cgo.SnglTextNew()
-						cgo.SnglTextSetValue(__n9, "about")
+						__n9 := _rtTextNew()
+						cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__n9)), "about")
 						_applyLook(__n9, Look{})
-						cgo.SnglOnClick(__n9, func() {
+						_rtOnClick(__n9, func() {
 						})
 						__place2_i_ref1 := snglSome(m.__anchor1)
 						if __place2_i < len(__place2_prev) {
@@ -3626,7 +3669,7 @@ func __n4_visible_handler(__visible bool) {
 
 func __n13_clicked_handler() {
 	m.opened += 1
-	cgo.SnglTextSetValue(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 }
 
 func __n14_clicked_handler() {
@@ -3645,14 +3688,14 @@ func __block_state0__new() *__block_state0__inst {
 	_applyLook(__self.__n11, Look{})
 	cgo.SnglSignalConnect(__self.__n11, "clicked", func() {
 		__self.Hits += 1
-		cgo.SnglTextSetValue(__self.__n0, ("hits " + fmt.Sprint(__self.Hits)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("hits " + fmt.Sprint(__self.Hits)))
 		m.visits += 1
-		cgo.SnglTextSetValue(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 	})
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ("hits " + fmt.Sprint(__self.Hits)))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("hits " + fmt.Sprint(__self.Hits)))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n11)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)))
@@ -3672,13 +3715,13 @@ func __block_state1__new(it string, total int, __on_total func(int)) *__block_st
 	_applyLook(__self.__n1, Look{})
 	cgo.SnglSignalConnect(__self.__n1, "clicked", func() {
 		__self.N += 1
-		cgo.SnglTextSetValue(__self.__n2, ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
 		__self.__prop___on_total((__self.__prop_total + 1))
 	})
-	__self.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n2, ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
+	__self.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
 	_applyLook(__self.__n2, Look{})
-	cgo.SnglOnClick(__self.__n2, func() {
+	_rtOnClick(__self.__n2, func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n2)))
@@ -3691,7 +3734,7 @@ func __block_state1__set_it(__self *__block_state1__inst, __v string) {
 	}
 	__self.__prop_it = __v
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n1)), __self.__prop_it)
-	cgo.SnglTextSetValue(__self.__n2, ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
 }
 
 func __block_state1__set_total(__self *__block_state1__inst, __v int) {
@@ -3780,13 +3823,13 @@ func snglBuild() {
 	_applyLook(m.__n13, Look{})
 	cgo.SnglSignalConnect(m.__n13, "clicked", __n13_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n13)))
-	m.__n5 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n5, ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
+	m.__n5 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
 	_applyLook(m.__n5, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
 	__renderSlot0(m.__n10)
-	m.__n6 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n6, ("total " + fmt.Sprint(m.total__inst0)))
+	m.__n6 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n6)), ("total " + fmt.Sprint(m.total__inst0)))
 	_applyLook(m.__n6, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
 	__renderSlot1(m.__n10)
@@ -4645,7 +4688,7 @@ pass sha256:0ee50d6ae4f995d0657a08e5f29e8c37
 -- run/go/fyne --
 pass sha256:112d2b51f5a1f1d8b6355f9a3ef6a328
 -- run/go/gtk4 --
-pass sha256:255e8f04a156b2b3720c593f6dccf17e
+pass sha256:6785ea0d915c637c76fbb9e29c5092ce
 -- run/kotlin/android --
 pass sha256:1ecc8767485daffba77a93fc0b51fc5f
 -- run/none/html --

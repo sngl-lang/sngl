@@ -1622,6 +1622,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -3079,12 +3085,12 @@ func __effects0_settle() {
 
 func Tap_clicked_handler() {
 	m.clicked = "d5"
-	cgo.SnglTextSetValue(m.__n1, ((m.clicked + " ") + m.provided))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.clicked + " ") + m.provided))
 }
 
 func Wrap_clicked_handler() {
 	m.provided = "d7"
-	cgo.SnglTextSetValue(m.__n1, ((m.clicked + " ") + m.provided))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.clicked + " ") + m.provided))
 }
 
 func snglInit() {
@@ -3115,11 +3121,11 @@ func snglInit() {
 
 func snglBuild() {
 	m.__root = _rtContents()
-	m.__n2 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n2, "d9")
+	m.__n2 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "d9")
 	_applyLook(m.__n2, Look{})
-	m.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n3, "d5")
+	m.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n3)), "d5")
 	_applyLook(m.__n3, Look{})
 	m.tap = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.tap)), "tap")
@@ -3131,11 +3137,11 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.wrap)), cgo.CGboolean(1))
 	_applyLook(m.wrap, Look{})
 	cgo.SnglSignalConnect(m.wrap, "clicked", Wrap_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ("d" + fmt.Sprint(m.__ctx_depth)))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ("d" + fmt.Sprint(m.__ctx_depth)))
 	_applyLook(m.__n0, Look{})
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, ((m.clicked + " ") + m.provided))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), ((m.clicked + " ") + m.provided))
 	_applyLook(m.__n1, Look{})
 	__effects0_settle()
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
@@ -3558,7 +3564,7 @@ pass sha256:70f63a91194e7c6a4d8374ad8452f80c
 -- run/go/fyne --
 pass sha256:4f85b7550e8e9470513ace29d8292193
 -- run/go/gtk4 --
-pass sha256:1a4b25cd3eb98b67f5f0b3a52f8a9efb
+pass sha256:daca20258a4af6caa5340342728aaaa6
 -- run/go/html --
 pass sha256:0a67a24dfdfbd1bd4c4d38fa0df40650
 -- run/kotlin/android --

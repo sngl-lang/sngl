@@ -629,6 +629,12 @@ func Count() int {
 	return m.n
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -1947,8 +1953,8 @@ func snglBuild() {
 	} else {
 		__lt58 = "none"
 	}
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, __lt58)
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), __lt58)
 	_applyLook(m.__n0, Look{})
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -2116,7 +2122,7 @@ pass sha256:89cdc25197ecc3ecda6e68c605070a05
 -- run/go/fyne --
 pass sha256:fe7b14bdbdbad9663ab83a08684a863e
 -- run/go/gtk4 --
-pass sha256:b72df98a7e408f7edae7f5d012f388a3
+pass sha256:bec33749edb9f2e4b90c7ab6dd922730
 -- run/kotlin/android --
 pass sha256:f5d265b11c5322afb194450bd44d4239
 -- run/none/html --

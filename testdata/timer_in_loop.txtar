@@ -708,6 +708,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -2580,7 +2586,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						Timer__set_tick(__n2, func() {
 							m.n__inst0 += 1
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n__inst0))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n__inst0))
 						})
 					} else {
 						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
@@ -2593,7 +2599,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n2__made := Timer__new(p.Elem, true, func() {
 							m.n__inst0 += 1
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n__inst0))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n__inst0))
 						})
 						__n2 = __n2__made
 					}
@@ -2758,8 +2764,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
 	__renderSlot0(m.__n0)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n__inst0))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n__inst0))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -3043,6 +3049,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:abda5ec747ea10f52ff54e8d4f4dfd34
 -- run/go/gtk4 --
-pass sha256:061ffc4d12f66d72a31ad160bde893bb
+pass sha256:69a94ca81cb409fda6e011fe0ee40dc1
 -- run/none/html --
 pass sha256:905ba1e32e05a0a371dec6ea3e5370b3

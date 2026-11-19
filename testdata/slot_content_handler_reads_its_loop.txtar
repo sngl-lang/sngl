@@ -2266,6 +2266,12 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -4009,7 +4015,7 @@ func __renderSlot1(parent cgo.Widget) {
 						__n5 = m.__inst4_live[__inst4_i]
 						Card__slot0__set___on0(__n5, func(__on0_i int, __on0_it __anon_id_elem_c6a818) {
 							m.log = (fmt.Sprint(__on0_i) + __on0_it.Elem)
-							cgo.SnglTextSetValue(m.__n1, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -4021,7 +4027,7 @@ func __renderSlot1(parent cgo.Widget) {
 								__list0 = append(__list0, (__item0 + ""))
 							}
 							m.log = ((__on1_it.Elem + s) + fmt.Sprint(len(__list0)))
-							cgo.SnglTextSetValue(m.__n1, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -4034,7 +4040,7 @@ func __renderSlot1(parent cgo.Widget) {
 						}
 						__n5__made := Card__slot0__new(row, fmt.Sprint(__copy0), func(__on0_i int, __on0_it __anon_id_elem_c6a818) {
 							m.log = (fmt.Sprint(__on0_i) + __on0_it.Elem)
-							cgo.SnglTextSetValue(m.__n1, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -4045,7 +4051,7 @@ func __renderSlot1(parent cgo.Widget) {
 								__list0 = append(__list0, (__item0 + ""))
 							}
 							m.log = ((__on1_it.Elem + s) + fmt.Sprint(len(__list0)))
-							cgo.SnglTextSetValue(m.__n1, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -4112,7 +4118,7 @@ func __renderSlot2(parent cgo.Widget) {
 						__child2__set___on0(__n6, func() {
 							s := "q"
 							m.log = (m.log + s)
-							cgo.SnglTextSetValue(m.__n1, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -4125,7 +4131,7 @@ func __renderSlot2(parent cgo.Widget) {
 						__n6__made := __child2__new(m.log, func() {
 							s := "q"
 							m.log = (m.log + s)
-							cgo.SnglTextSetValue(m.__n1, m.log)
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 							for __inst6_live_ui, _ := range m.__inst6_live {
 								__child2__set___p0(m.__inst6_live[__inst6_live_ui], m.log)
 							}
@@ -4214,8 +4220,8 @@ func snglBuild() {
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.swap)))
 	__renderSlot1(m.__n7)
 	__renderSlot2(m.__n7)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, m.log)
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.log)
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglAppAttach(m.__n7)
@@ -5248,7 +5254,7 @@ pass sha256:dbea6c1ed1b1bff6bebbc2915671d3e6
 -- run/go/fyne --
 pass sha256:96abfb5ec0a0dd8c2718d6808e3e58fe
 -- run/go/gtk4 --
-pass sha256:a9e3ecdf610b3332504394d5ff81dd9f
+pass sha256:928d417ec8615f07ab4252d411c1c6a9
 -- run/kotlin/android --
 pass sha256:e80981dd088c9496f4b801f6ee3d7973
 -- run/none/html --

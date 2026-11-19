@@ -1322,6 +1322,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -3194,7 +3200,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}()
 						Timer__set_tick(__n2, func() {
 							m.n = (m.n + 1)
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 						})
 					} else {
 						if func() bool { _, __ok := m.__inst1_live[__key2]; return __ok }() {
@@ -3207,7 +3213,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n2__made := Timer__new(p.Elem, true, func() {
 							m.n = (m.n + 1)
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 						})
 						__n2 = __n2__made
 					}
@@ -3288,7 +3294,7 @@ func __renderSlot1(parent cgo.Widget) {
 							}()
 							Timer__set_tick(__n3, func() {
 								m.n = (m.n + 1)
-								cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 							})
 						} else {
 							if func() bool { _, __ok := m.__inst3_live[__key4]; return __ok }() {
@@ -3301,7 +3307,7 @@ func __renderSlot1(parent cgo.Widget) {
 							}
 							__n3__made := Timer__new(p.Elem, true, func() {
 								m.n = (m.n + 1)
-								cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+								cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 							})
 							__n3 = __n3__made
 						}
@@ -3488,8 +3494,8 @@ func snglBuild() {
 	_applyLook(m.__n4, Look{})
 	cgo.SnglSignalConnect(m.__n4, "clicked", __n4_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__n4)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -3852,6 +3858,6 @@ pass sha256:223e61dca8e13fe89f85085dde24536f
 -- run/go/fyne --
 pass sha256:a24c24ca13033fe0afe6604378ee0b53
 -- run/go/gtk4 --
-pass sha256:cf02c8a08dbf7ad60488d7929325e5c7
+pass sha256:8dcc52fb9dc059d805a7fd72fe98194b
 -- run/none/html --
 pass sha256:9e84907c286cad317e626e4ac9864b0d

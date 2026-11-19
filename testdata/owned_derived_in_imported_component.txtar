@@ -1085,6 +1085,12 @@ func Close__r0(p Pic) {
 	m.lastClosed = p.N
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -2425,7 +2431,7 @@ func __effect1_update() {
 	__new0 := Load(m.n)
 	__old1 := m.picture__inst0
 	m.picture__inst0 = __new0
-	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.picture__inst0.N))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.picture__inst0.N))
 	Close__r0(__old1)
 }
 
@@ -2486,8 +2492,8 @@ func snglBuild() {
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n1, Look{Spaced: true, Spacing: 6})
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, fmt.Sprint(m.picture__inst0.N))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), fmt.Sprint(m.picture__inst0.N))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
 	__effects0_settle()
@@ -2673,6 +2679,6 @@ pass sha256:f7d77e77840a75fecc0dd55717e207bd
 -- run/go/fyne --
 pass sha256:bb4d93e48ea4c1a7e66ec620e7c4e6d7
 -- run/go/gtk4 --
-pass sha256:b8f72106ee801675c67e4da7879665cc
+pass sha256:25abf60246a9ba0ccd7f144ee7b5b053
 -- run/none/html --
 pass sha256:b14dd95c5ba3bb4a7ee61987b114bf8f

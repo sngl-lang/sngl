@@ -635,6 +635,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2440,8 +2446,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.home, "t")
 	cgo.SnglToplevelSetVisible(m.home, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, m.initialTheme)
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.initialTheme)
 	_applyLook(m.__n0, Look{})
 	cgo.SnglToplevelAppend(m.home, m.__n0)
 	cgo.SnglAppAttach(m.home)
@@ -2557,7 +2563,7 @@ pass sha256:5078b74e035f11c4e2100efa20ff422f
 -- run/go/fyne --
 pass sha256:ccf1b76fa8ea47fc80c91a82a6917a90
 -- run/go/gtk4 --
-pass sha256:1353b755a77bc6aaf75bf2f72342e087
+pass sha256:bc72fd438d2a757e3988be23918a517a
 -- run/kotlin/android --
 pass sha256:8a2242c94c50161d022239571774bf60
 -- run/none/html --

@@ -692,6 +692,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
@@ -2496,12 +2502,12 @@ func __effect0_mount() {
 		if m.ticks < 4 {
 			m.n += 1
 			m.__memoEpoch = (m.__memoEpoch + 1)
-			cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 		}
 		if m.ticks == 4 {
 			m.n += 1
 			m.__memoEpoch = (m.__memoEpoch + 1)
-			cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 		}
 		__effects0_settle()
 	})
@@ -2665,8 +2671,8 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "Main")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.n))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.n))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.__n1)
 	cgo.SnglAppAttach(m.__n0)
@@ -2710,4 +2716,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:139a5aacbd0aa0a6b5456875662cccdd
 -- run/go/gtk4 --
-pass sha256:536a90928ba495f4d658e71274819d6d
+pass sha256:1d8bcb3d0815aa94799ca3557cc8261d

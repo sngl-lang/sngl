@@ -2225,6 +2225,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type snglState struct {
 	mounts                int
 	strip__change__copies map[string]cgo.Widget
@@ -2244,6 +2248,28 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
+}
 
 func _rtTabsNew() cgo.Widget {
 	cgo.SnglTabsHooks(_tabsAdd, _tabsRemove)
@@ -2431,6 +2457,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
@@ -3827,10 +3870,10 @@ func Counter__destroy(__self *Counter__inst) {
 
 func Later__new() *Later__inst {
 	__self := &Later__inst{__effect0_live: []bool{}, __effect0_desired: []bool{}}
-	__self.__n3 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n3, "later")
+	__self.__n3 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n3)), "later")
 	_applyLook(__self.__n3, Look{})
-	cgo.SnglOnClick(__self.__n3, func() {
+	_rtOnClick(__self.__n3, func() {
 	})
 	Later__effects0_settle(__self)
 	__self.__root = __self.__n3
@@ -5511,7 +5554,7 @@ pass sha256:4421ef135162069748340f9230ecf99e
 -- run/go/fyne --
 pass sha256:1643b8603111f34b09b6f358ad454d99
 -- run/go/gtk4 --
-pass sha256:2f931759e3ac3113b5777f48e6443726
+pass sha256:39a6b0adcaa167f58f5412ce31b0caef
 -- run/kotlin/android --
 pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --

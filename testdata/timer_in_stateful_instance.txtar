@@ -1005,6 +1005,10 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _ClickState struct {
+	Run func()
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -1031,6 +1035,28 @@ var m = &snglState{}
 
 func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
+}
+
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
+func _rtOnClick(w cgo.Widget, fn func()) {
+	h := w
+	had := (func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(h)), "sngl-click")) != nil)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(h)), "sngl-click", _ClickState{Run: fn})
+	if !had {
+		g := cgo.GtkGestureClickNew()
+		cgo.ConnectClickPressed(cgo.Pointer(g), "pressed", _clickPressed, cgo.Pointer(h), 0)
+		cgo.GtkWidgetAddController(h, (cgo.Controller)(unsafe.Pointer(g)))
+	}
 }
 
 func _rtToplevelNew() cgo.Widget {
@@ -1130,6 +1156,23 @@ func _applyLook(w cgo.Widget, look Look) {
 	}
 	h.Cursor = (look.Cursor != "")
 	_setLookState(w, h)
+}
+
+func _clickPressed(g cgo.Pointer, n int, x float64, y float64, w cgo.Pointer) {
+	_clickRun((cgo.Widget)(unsafe.Pointer(w)))
+}
+
+func _clickRun(w cgo.Widget) {
+	s := func(h any) *_ClickState {
+		if v, ok := h.(_ClickState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-click"))
+	if s != nil {
+		run := (*(s)).Run
+		run()
+	}
 }
 
 func _menuHooksSet() {
@@ -2926,10 +2969,10 @@ func __n1_visible_handler(__visible bool) {
 
 func Ticker__new(period time.Duration) *Ticker__inst {
 	__self := &Ticker__inst{__prop_period: period, __effect0_key: (time.Duration(0) * time.Millisecond), __effect0_live: []time.Duration{}, __effect0_desired: []time.Duration{}}
-	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
+	__self.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglOnClick(__self.__n0, func() {
+	_rtOnClick(__self.__n0, func() {
 	})
 	Ticker__effects0_settle(__self)
 	__self.__root = __self.__n0
@@ -2939,7 +2982,7 @@ func Ticker__new(period time.Duration) *Ticker__inst {
 func Ticker__effect0_mount(__self *Ticker__inst) {
 	__self.Handle__inst0 = cgo.SnglEvery(int(__self.__effect0_key/time.Millisecond), func() {
 		__self.Ticks = (__self.Ticks + 1)
-		cgo.SnglTextSetValue(__self.__n0, ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
+		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
 	})
 }
 
@@ -3019,7 +3062,7 @@ func Ticker__set_period(__self *Ticker__inst, __v time.Duration) {
 		return
 	}
 	__self.__prop_period = __v
-	cgo.SnglTextSetValue(__self.__n0, ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ((snglStrDuration(__self.__prop_period) + ": ") + fmt.Sprint(__self.Ticks)))
 	Ticker__effects0_settle(__self)
 }
 
@@ -3293,6 +3336,6 @@ pass sha256:c4ff801327ad0079021152036a5543d5
 -- run/go/fyne --
 pass sha256:10ace80ec14bb42ae17a9d7a24976b2e
 -- run/go/gtk4 --
-pass sha256:100893449ef50032efd1f2f1e8cc4370
+pass sha256:4bf213b4f0fa44882d030ff038e31548
 -- run/none/html --
 pass sha256:e43f6e18e58c49f6e8ea08afc2c97f4e

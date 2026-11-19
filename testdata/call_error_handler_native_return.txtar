@@ -790,6 +790,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -2144,16 +2150,16 @@ func Bad_clicked_handler() {
 			e := ErrorEvent{Message: __err.Error()}
 			_ = e
 			m.caught = "c"
-			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 			if m.caught == "c" {
 				return
 			}
 			m.caught = "never"
-			cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 		}()
 	}
 	m.after = (m.after + "b")
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 }
 
 func snglInit() {
@@ -2169,8 +2175,8 @@ func snglBuild() {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.bad)), cgo.CGboolean(1))
 	_applyLook(m.bad, Look{})
 	cgo.SnglSignalConnect(m.bad, "clicked", Bad_clicked_handler)
-	m.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n0, ((m.caught + "|") + m.after))
+	m.__n0 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	_applyLook(m.__n0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.bad)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__root)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n0)))
@@ -2211,4 +2217,4 @@ pass sha256:4e94fa1f2de34840322c0d1c1bbfe3c6
 -- run/go/fyne --
 pass sha256:e887d53597d0ae4d067880cbbe510d1f
 -- run/go/gtk4 --
-pass sha256:8752ef379bfcf997a6177f88c8585670
+pass sha256:3d904cbdd82c3fc7fae413b8a3803167

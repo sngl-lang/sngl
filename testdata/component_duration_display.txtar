@@ -697,6 +697,12 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _applyLook(w cgo.Widget, look Look) {
 	var width int = int((look.Width + 0.5))
 	var height int = int((look.Height + 0.5))
@@ -2013,16 +2019,16 @@ func snglBuild() {
 	m.__n0 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n0)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n0, Look{Spaced: true, Spacing: 6})
-	m.sum = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.sum, snglStrDuration((m.short + m.long)))
+	m.sum = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.sum)), snglStrDuration((m.short + m.long)))
 	_applyLook(m.sum, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.sum)))
-	m.trunc = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.trunc, fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
+	m.trunc = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.trunc)), fmt.Sprint(int((m.short+m.long)/time.Millisecond)))
 	_applyLook(m.trunc, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.trunc)))
-	m.scaled = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.scaled, fmt.Sprint(int((m.short*3)/time.Millisecond)))
+	m.scaled = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.scaled)), fmt.Sprint(int((m.short*3)/time.Millisecond)))
 	_applyLook(m.scaled, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.scaled)))
 	cgo.SnglAppAttach(m.__n0)
@@ -2349,7 +2355,7 @@ pass sha256:4657a36ed97500dec96458b00a87f630
 -- run/go/fyne --
 pass sha256:c356e21e9e95d315eb726169541728ae
 -- run/go/gtk4 --
-pass sha256:e0c65cd567f30052a78700a3556b2b60
+pass sha256:5d6d495dfd4c011a1a1397b0559e2ef2
 -- run/kotlin/android --
 pass sha256:11ecdf0e9648925e3d7b30a31ce464a3
 -- run/none/html --

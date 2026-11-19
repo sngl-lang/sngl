@@ -829,6 +829,12 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtTextNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
+}
+
 func _rtContents() cgo.Widget {
 	box := cgo.BoxNew(1, 6)
 	_setLookState(box, _LookState{Given: Look{}, GrowAxis: -1, Contents: true})
@@ -2705,7 +2711,7 @@ func __renderSlot0(parent cgo.Widget) {
 						__query_state1__set_fetch(__n2, Lookup)
 						__query_state1__set_load(__n2, func(got int) {
 							m.total__inst0 += got
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total__inst0))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total__inst0))
 						})
 						__query_state1__set_on(__n2, n.Elem)
 						__query_state1__set___start_value(__n2, nil)
@@ -2722,7 +2728,7 @@ func __renderSlot0(parent cgo.Widget) {
 						}
 						__n2__made := __query_state1__new(nil, false, nil, n.Elem, Lookup, func(got int) {
 							m.total__inst0 += got
-							cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total__inst0))
+							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total__inst0))
 						})
 						__n2 = __n2__made
 					}
@@ -2964,8 +2970,8 @@ func snglBuild() {
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n3)), cgo.CGtkOrientation(1))
 	_applyLook(m.__n3, Look{Spaced: true, Spacing: 6})
 	__renderSlot0(m.__n3)
-	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, fmt.Sprint(m.total__inst0))
+	m.__n1 = _rtTextNew()
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), fmt.Sprint(m.total__inst0))
 	_applyLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	m.__n4 = cgo.GtkButtonNew()
@@ -3015,4 +3021,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:92de8e08692df86d49cccfc9d16e3816
 -- run/go/gtk4 --
-pass sha256:3cd8e309cb2a9a7760abccb8e20458e6
+pass sha256:35b79ba5e7aa4efbed42a9937dd1c314

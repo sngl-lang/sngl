@@ -251,6 +251,13 @@ type Style struct {
 	FontFamily  string
 }
 
+type _CanvasState struct {
+	Width  int
+	Height int
+	Mode   int
+	Paint  func(cgo.CairoContext)
+}
+
 type Look struct {
 	Css       string
 	Width     float64
@@ -360,6 +367,48 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
+func _rtCanvasNew() cgo.Widget {
+	a := cgo.GtkDrawingAreaNew()
+	_setCanvas(a, _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}})
+	cgo.GtkDrawingAreaSetDrawFunc((cgo.DrawingArea)(unsafe.Pointer(a)), _canvasDraw, nil, nil)
+	return (cgo.Widget)(unsafe.Pointer(a))
+}
+
+func _rtCanvasSetHeight(c cgo.Widget, height int) {
+	w := c
+	s := _canvasOf(w)
+	s.Height = height
+	_setCanvas(w, s)
+	cgo.GtkDrawingAreaSetContentHeight((cgo.DrawingArea)(unsafe.Pointer(w)), height)
+}
+
+func _rtCanvasSetScaling(c cgo.Widget, mode int) {
+	w := c
+	s := _canvasOf(w)
+	s.Mode = mode
+	_setCanvas(w, s)
+	cgo.SetHexpand(w, (mode != 0))
+	cgo.SetVexpand(w, (mode != 0))
+	cgo.GtkWidgetQueueDraw(w)
+}
+
+func _rtCanvasSetWidth(c cgo.Widget, width int) {
+	w := c
+	s := _canvasOf(w)
+	s.Width = width
+	_setCanvas(w, s)
+	cgo.GtkDrawingAreaSetContentWidth((cgo.DrawingArea)(unsafe.Pointer(w)), width)
+}
+
+func _rtCanvasOnPaint(w cgo.Widget, fn func(cgo.CairoContext)) {
+	a := w
+	s := _canvasOf(a)
+	s.Paint = fn
+	_setCanvas(a, s)
+	cgo.GtkWidgetQueueDraw(a)
+}
+
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
@@ -371,8 +420,8 @@ func Paint(ctx cgo.CairoContext, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		cgo.CairoSetLineWidth(ctx, style.StrokeWidth)
-		cgo.SnglCairoLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
-		cgo.SnglCairoLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
+		CairoContextSetLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
+		CairoContextSetLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
 		Source(ctx, style.Stroke)
 		cgo.CairoStroke(ctx)
 	}
@@ -430,6 +479,48 @@ func _keysGoOn(win cgo.Widget, key string, shift bool) {
 			}
 		}
 	}
+}
+
+func _setCanvas(w cgo.Widget, s _CanvasState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas", s)
+}
+
+func _canvasDraw(area cgo.Widget, cr cgo.CairoContext, pw int, ph int, data cgo.Pointer) {
+	s := _canvasOf(area)
+	if (s.Width > 0) && (s.Height > 0) {
+		var sx float64 = (float64(pw) / float64(s.Width))
+		var sy float64 = (float64(ph) / float64(s.Height))
+		if s.Mode == 2 {
+			if sy > sx {
+				sx = sy
+			}
+			sy = sx
+		} else {
+			if s.Mode != 3 {
+				if sy < sx {
+					sx = sy
+				}
+				sy = sx
+			}
+		}
+		cgo.CairoScale(cr, sx, sy)
+	}
+	paint__r0 := s.Paint
+	paint__r0(cr)
+}
+
+func _canvasOf(w cgo.Widget) _CanvasState {
+	s := func(h any) *_CanvasState {
+		if v, ok := h.(_CanvasState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-canvas"))
+	if s != nil {
+		return (*(s))
+	}
+	return _CanvasState{Paint: func(ctx cgo.CairoContext) {
+	}}
 }
 
 func _applyLook(w cgo.Widget, look Look) {
@@ -535,6 +626,14 @@ func _unrefData(p cgo.Pointer) {
 
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
+}
+
+func CairoContextSetLineCap(cr cgo.CairoContext, cap__r0 int) {
+	cgo.CairoSetLineCap(cr, int(cap__r0))
+}
+
+func CairoContextSetLineJoin(cr cgo.CairoContext, join int) {
+	cgo.CairoSetLineJoin(cr, int(join))
 }
 
 func _menuApply(box cgo.Widget) {
@@ -2186,7 +2285,7 @@ func __drawing0_paint_handler(ctx cgo.CairoContext) {
 
 func __n1_clicked_handler() {
 	m.r = 25.0
-	cgo.SnglCanvasRedraw(m.__drawing0)
+	cgo.GtkWidgetQueueDraw(m.__drawing0)
 }
 
 func __n2_clicked_handler() {
@@ -2202,7 +2301,7 @@ func __n2_clicked_handler() {
 			}
 			_ = e
 			m.r = 20.0
-			cgo.SnglCanvasRedraw(m.__drawing0)
+			cgo.GtkWidgetQueueDraw(m.__drawing0)
 		}()
 		panic(ErrorEvent{Message: "x", Kind: "boom"})
 	}()
@@ -2219,11 +2318,11 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "t")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.__drawing0 = cgo.SnglCanvasNew()
-	cgo.SnglCanvasSetWidth(m.__drawing0, 50)
-	cgo.SnglCanvasSetHeight(m.__drawing0, 50)
-	cgo.SnglCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
-	cgo.SnglCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
+	m.__drawing0 = _rtCanvasNew()
+	_rtCanvasSetWidth(m.__drawing0, 50)
+	_rtCanvasSetHeight(m.__drawing0, 50)
+	_rtCanvasSetScaling(m.__drawing0, int(slices.Index([]string{"center", "fit", "fill", "stretch"}, "center")))
+	_rtCanvasOnPaint(m.__drawing0, __drawing0_paint_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.__drawing0)
 	m.__n1 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n1)), "grow")
@@ -2382,6 +2481,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:e7aa3c103e2b58ec9e6b76cd406fa230
 -- run/go/gtk4 --
-pass sha256:8ceb5c6cc9cffd7df52a11b5fc2abea6
+pass sha256:a46f814b74f10d6a616252fdfce6688d
 -- run/none/html --
 pass sha256:d8153d2510526fe79a9754b1d26539d5
