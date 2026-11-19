@@ -228,7 +228,7 @@ sha256:155ac62180f6f630f7f763eaca9ac41a
   ]
 }
 -- testrun/gtk4/go/handed.sngl/page/1 --
-sha256:f83c273cfe22a09d3053f6b1c8cb0d45
+sha256:50d2f14995c44f9689eb071ab0501e52
 {
   "results": [
     {
@@ -248,7 +248,7 @@ sha256:98fe3844857b4b7062614fa884c6f65a
   ]
 }
 -- testrun/gtk4/go/returned.sngl/page/1 --
-sha256:f81baff238f6756e738ca808619def12
+sha256:2ab374901e509b1c15941cefc3faeb65
 {
   "results": [
     {
