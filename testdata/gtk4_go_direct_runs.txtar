@@ -58,6 +58,7 @@ package main
 #cgo pkg-config: gtk4 libcurl
 #cgo LDFLAGS: -lm
 #include "sngl_gtk.h"
+#include "sngl_shims.h"
 #include <stdlib.h>
 */
 import "C"
@@ -86,6 +87,13 @@ type _sizeRequest__result struct {
 type _measureWidget__result struct {
 	Out3 int
 	Out4 int
+}
+
+type _classMeasure__result struct {
+	Out4 int
+	Out5 int
+	Out6 int
+	Out7 int
 }
 
 type Style struct {
@@ -163,6 +171,8 @@ type _LookState struct {
 	Lines0        int
 	Ellipsize0    int
 	LabelSized    bool
+	LabelWidth    int
+	LabelHeight   int
 	Hidden        bool
 	Visible0      bool
 	Cursor        bool
@@ -205,6 +215,7 @@ type _BackState struct {
 
 type _IconsState struct {
 	Count int
+	Dir   string
 }
 
 type _Allocation struct {
@@ -247,7 +258,8 @@ type snglState struct {
 	__rel35             *C.char
 	__rel38             *C.char
 	__rel42             *C.char
-	__rel48             *C.char
+	__rel46             *C.char
+	__rel50             *C.char
 	ticks               int
 	handle__inst0       *C.SnglSchedule
 	visible__inst0      bool
@@ -976,9 +988,11 @@ func _lookSizeLabel(w *C.GtkWidget, wrap int) {
 	if (C.g_type_check_instance_is_a((*C.GTypeInstance)(unsafe.Pointer(C.gpointer(w))), C.GType(int(C.gtk_label_get_type()))) != 0) && (((l.Width != 0) || (l.Height != 0)) || l.LabelSized) {
 		if !l.LabelSized {
 			l.LabelSized = true
-			_setLookState(w, l)
+			C.gtk_widget_set_layout_manager(w, C.gtk_custom_layout_new(func() *[0]byte { snglStatic__labelModeFn = _labelMode; return snglStatic__labelModePtr() }(), func() *[0]byte { snglStatic__labelMeasureFn = _labelMeasure; return snglStatic__labelMeasurePtr() }(), func() *[0]byte { snglStatic__labelAllocateFn = _labelAllocate; return snglStatic__labelAllocatePtr() }()))
 		}
-		C.sngl_label_size(w, C.int(l.Width), C.int(l.Height))
+		l.LabelWidth = l.Width
+		l.LabelHeight = l.Height
+		_setLookState(w, l)
 		if (l.Width > 0) && (wrap != 1) {
 			var __lt17 int = 1
 			C.gtk_label_set_wrap((*C.GtkLabel)(unsafe.Pointer(w)), C.int(__lt17))
@@ -1851,6 +1865,50 @@ func _childrenOf(box *C.GtkWidget, laidOut bool) []*C.GtkWidget {
 	return kids
 }
 
+func _labelMode(w *C.GtkWidget) int {
+	return 0
+}
+
+func _labelMeasure(w *C.GtkWidget, orientation int, forSize int) Measured {
+	l := _lookOf(w)
+	var at int = forSize
+	if (orientation == 1) && (l.LabelWidth > 0) {
+		at = l.LabelWidth
+	}
+	var minimum int = 0
+	var natural int = 0
+	var minimumBaseline int = -1
+	var naturalBaseline int = -1
+	__ref4 := func() _classMeasure__result {
+		__snglOut4 := C.int(minimum)
+		__snglOut5 := C.int(natural)
+		__snglOut6 := C.int(minimumBaseline)
+		__snglOut7 := C.int(naturalBaseline)
+		C.snglF__classMeasure((*C.GtkWidgetClass)(unsafe.Pointer(C.g_type_class_peek(C.GType(int(C.gtk_label_get_type()))))), w, C.GtkOrientation(int(orientation)), C.int(at), &__snglOut4, &__snglOut5, &__snglOut6, &__snglOut7)
+		return _classMeasure__result{Out4: int(__snglOut4), Out5: int(__snglOut5), Out6: int(__snglOut6), Out7: int(__snglOut7)}
+	}()
+	minimum = __ref4.Out4
+	natural = __ref4.Out5
+	minimumBaseline = __ref4.Out6
+	naturalBaseline = __ref4.Out7
+	var __lt81 int
+	if orientation == 0 {
+		__lt81 = l.LabelWidth
+	} else {
+		__lt81 = l.LabelHeight
+	}
+	var want int = __lt81
+	if want > 0 {
+		minimum = want
+		natural = want
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: minimumBaseline, NaturalBaseline: naturalBaseline}
+}
+
+func _labelAllocate(w *C.GtkWidget, width int, height int, baseline int) {
+	C.snglF__classAllocate((*C.GtkWidgetClass)(unsafe.Pointer(C.g_type_class_peek(C.GType(int(C.gtk_label_get_type()))))), w, C.int(width), C.int(height), C.int(baseline))
+}
+
 func _imageAdopt(box *C.GtkWidget, child *C.GtkWidget) bool {
 	if (func(h any) *_ImageSourceState {
 		if v, ok := h.(_ImageSourceState); ok {
@@ -2028,23 +2086,23 @@ func _barApplyTo(box *C.GtkWidget, win *C.GtkWindow) {
 	}
 	back := _barPart(box, "sngl-header-back")
 	if back != nil {
-		var __lt84 int
-		if canBack {
-			__lt84 = 1
-		} else {
-			__lt84 = 0
-		}
-		C.gtk_widget_set_visible((*(back)), C.int(__lt84))
-	}
-	menu := _barPart(box, "sngl-header-menu")
-	if menu != nil {
 		var __lt85 int
-		if entries > 0 {
+		if canBack {
 			__lt85 = 1
 		} else {
 			__lt85 = 0
 		}
-		C.gtk_widget_set_visible((*(menu)), C.int(__lt85))
+		C.gtk_widget_set_visible((*(back)), C.int(__lt85))
+	}
+	menu := _barPart(box, "sngl-header-menu")
+	if menu != nil {
+		var __lt86 int
+		if entries > 0 {
+			__lt86 = 1
+		} else {
+			__lt86 = 0
+		}
+		C.gtk_widget_set_visible((*(menu)), C.int(__lt86))
 	}
 }
 
@@ -2083,23 +2141,23 @@ func _menuAdd(menu *C.GMenu, group *C.GSimpleActionGroup, n int, w *C.GtkWidget,
 		a := C.g_simple_action_new(__rel37, nil)
 		Free(__rel37)
 		if checkable {
-			var __lt86 int
+			var __lt87 int
 			if (*(e)).Checked {
-				__lt86 = 1
+				__lt87 = 1
 			} else {
-				__lt86 = 0
+				__lt87 = 0
 			}
 			__rel36 := C.CString(name)
-			a = C.g_simple_action_new_stateful(__rel36, nil, C.g_variant_new_boolean(C.int(__lt86)))
+			a = C.g_simple_action_new_stateful(__rel36, nil, C.g_variant_new_boolean(C.int(__lt87)))
 			Free(__rel36)
 		}
-		var __lt87 int
+		var __lt88 int
 		if !(*(e)).Disabled {
-			__lt87 = 1
+			__lt88 = 1
 		} else {
-			__lt87 = 0
+			__lt88 = 0
 		}
-		C.g_simple_action_set_enabled(a, C.int(__lt87))
+		C.g_simple_action_set_enabled(a, C.int(__lt88))
 		C.g_signal_connect_object(C.gpointer(a), m.__rel38, func() *[0]byte { snglStatic__menuActivateFn = _menuActivate; return snglStatic__menuActivatePtr() }(), C.gpointer(w), C.GConnectFlags(0))
 		C.g_action_map_add_action((*C.GActionMap)(unsafe.Pointer(group)), (*C.GAction)(unsafe.Pointer(a)))
 		C.g_object_unref(C.gpointer(a))
@@ -2233,21 +2291,21 @@ func _unpin(w *C.GtkWidget, axis int) {
 
 func _setExpandSet(w *C.GtkWidget, axis int, on bool) {
 	if axis == 0 {
-		var __lt88 int
-		if on {
-			__lt88 = 1
-		} else {
-			__lt88 = 0
-		}
-		C.gtk_widget_set_hexpand_set(w, C.int(__lt88))
-	} else {
 		var __lt89 int
 		if on {
 			__lt89 = 1
 		} else {
 			__lt89 = 0
 		}
-		C.gtk_widget_set_vexpand_set(w, C.int(__lt89))
+		C.gtk_widget_set_hexpand_set(w, C.int(__lt89))
+	} else {
+		var __lt90 int
+		if on {
+			__lt90 = 1
+		} else {
+			__lt90 = 0
+		}
+		C.gtk_widget_set_vexpand_set(w, C.int(__lt90))
 	}
 }
 
@@ -2296,20 +2354,20 @@ func _lookWeight(c *C.GtkWidget, o int) float64 {
 	if l.Grow > 0.0 {
 		return l.Grow
 	}
-	var __lt90 bool
+	var __lt91 bool
 	if int(o) == 0 {
-		__lt90 = (C.gtk_widget_get_hexpand(c) != 0)
+		__lt91 = (C.gtk_widget_get_hexpand(c) != 0)
 	} else {
-		__lt90 = (C.gtk_widget_get_vexpand(c) != 0)
+		__lt91 = (C.gtk_widget_get_vexpand(c) != 0)
 	}
-	own := __lt90
-	var __lt91 float64
+	own := __lt91
+	var __lt92 float64
 	if own {
-		__lt91 = 1.0
+		__lt92 = 1.0
 	} else {
-		__lt91 = 0.0
+		__lt92 = 0.0
 	}
-	return __lt91
+	return __lt92
 }
 
 func _boxSpacing(box *C.GtkWidget) int {
@@ -2340,27 +2398,27 @@ func _flexSizes(box *C.GtkWidget, o int, along int, across int, kids []*C.GtkWid
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref4 := func() _measureWidget__result {
+		__ref5 := func() _measureWidget__result {
 			__snglOut3 := C.int(minimum)
 			__snglOut4 := C.int(natural)
 			C.gtk_widget_measure(kids[i], C.GtkOrientation(o), C.int(across), &__snglOut3, &__snglOut4, nil, nil)
 			return _measureWidget__result{Out3: int(__snglOut3), Out4: int(__snglOut4)}
 		}()
-		minimum = __ref4.Out3
-		natural = __ref4.Out4
+		minimum = __ref5.Out3
+		natural = __ref5.Out4
 		minimums = append(minimums, minimum)
 		naturals = append(naturals, natural)
 		spare -= minimum
 		weights += _lookWeight(kids[i], o)
 		i += 1
 	}
-	var __lt92 int
+	var __lt93 int
 	if spare > 0 {
-		__lt92 = spare
+		__lt93 = spare
 	} else {
-		__lt92 = 0
+		__lt93 = 0
 	}
-	var extra int = __lt92
+	var extra int = __lt93
 	sizes := _distribute(extra, minimums, naturals)
 	spare = extra
 	i = 0
@@ -2373,13 +2431,13 @@ func _flexSizes(box *C.GtkWidget, o int, along int, across int, kids []*C.GtkWid
 		if weights > 0.0 {
 			var w float64 = _lookWeight(kids[i], o)
 			if w > 0.0 {
-				var __lt93 int
+				var __lt94 int
 				if w == weights {
-					__lt93 = spare
+					__lt94 = spare
 				} else {
-					__lt93 = int((((float64(spare) * w) / weights) + 0.5))
+					__lt94 = int((((float64(spare) * w) / weights) + 0.5))
 				}
-				var share int = __lt93
+				var share int = __lt94
 				sizes[i] = (sizes[i] + share)
 				spare -= share
 				weights -= w
@@ -2387,13 +2445,13 @@ func _flexSizes(box *C.GtkWidget, o int, along int, across int, kids []*C.GtkWid
 		}
 		i += 1
 	}
-	var __lt94 int
+	var __lt95 int
 	if weights > 0.0 {
-		__lt94 = 0
+		__lt95 = 0
 	} else {
-		__lt94 = spare
+		__lt95 = spare
 	}
-	return _FlexSizes{Sizes: sizes, Spare: __lt94}
+	return _FlexSizes{Sizes: sizes, Spare: __lt95}
 }
 
 func _place(w *C.GtkWidget, x int, y int, width int, height int) {
@@ -2419,21 +2477,21 @@ func _gridHeights(kids []*C.GtkWidget, rows _GridRows) []int {
 		for i < rows.Ends[r] {
 			var minimum int = 0
 			var natural int = 0
-			__ref5 := func() _measureWidget__result {
+			__ref6 := func() _measureWidget__result {
 				__snglOut3 := C.int(minimum)
 				__snglOut4 := C.int(natural)
 				C.gtk_widget_measure(kids[i], C.GtkOrientation(1), C.int(rows.Widths[i]), &__snglOut3, &__snglOut4, nil, nil)
 				return _measureWidget__result{Out3: int(__snglOut3), Out4: int(__snglOut4)}
 			}()
-			minimum = __ref5.Out3
-			natural = __ref5.Out4
-			var __lt95 int
+			minimum = __ref6.Out3
+			natural = __ref6.Out4
+			var __lt96 int
 			if natural > tall {
-				__lt95 = natural
+				__lt96 = natural
 			} else {
-				__lt95 = tall
+				__lt96 = tall
 			}
-			tall = __lt95
+			tall = __lt96
 			i += 1
 		}
 		heights = append(heights, tall)
@@ -2473,43 +2531,43 @@ func _gridRows(box *C.GtkWidget, room int, kids []*C.GtkWidget) _GridRows {
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref6 := func() _measureWidget__result {
+		__ref7 := func() _measureWidget__result {
 			__snglOut3 := C.int(minimum)
 			__snglOut4 := C.int(natural)
 			C.gtk_widget_measure(kids[i], C.GtkOrientation(0), C.int(-1), &__snglOut3, &__snglOut4, nil, nil)
 			return _measureWidget__result{Out3: int(__snglOut3), Out4: int(__snglOut4)}
 		}()
-		minimum = __ref6.Out3
-		natural = __ref6.Out4
+		minimum = __ref7.Out3
+		natural = __ref7.Out4
 		var w int = natural
 		if width >= 0 {
-			var __lt96 int
-			if natural < width {
-				__lt96 = natural
-			} else {
-				__lt96 = width
-			}
-			w = __lt96
 			var __lt97 int
-			if minimum > w {
-				__lt97 = minimum
+			if natural < width {
+				__lt97 = natural
 			} else {
-				__lt97 = w
+				__lt97 = width
 			}
 			w = __lt97
+			var __lt98 int
+			if minimum > w {
+				__lt98 = minimum
+			} else {
+				__lt98 = w
+			}
+			w = __lt98
 		}
 		widths = append(widths, w)
 		if ((run > 0) && (width >= 0)) && (((run + gap) + w) > width) {
 			ends = append(ends, i)
 			run = 0
 		}
-		var __lt98 int
+		var __lt99 int
 		if run > 0 {
-			__lt98 = gap
+			__lt99 = gap
 		} else {
-			__lt98 = 0
+			__lt99 = 0
 		}
-		run += (__lt98 + w)
+		run += (__lt99 + w)
 		i += 1
 	}
 	if n > 0 {
@@ -2551,9 +2609,9 @@ func _iconApply(toplevel *C.GtkWidget, source *C.GtkWidget) {
 		return &p
 	}()
 	if (win != nil) && (tex != nil) {
-		dir := C.GoString(C.sngl_icon_dir())
+		display := (*C.GObject)(unsafe.Pointer(C.gdk_display_get_default()))
+		dir := _iconDir(display)
 		if dir != "" {
-			display := (*C.GObject)(unsafe.Pointer(C.gdk_display_get_default()))
 			var count int = 1
 			icons := func(h any) *_IconsState {
 				if v, ok := h.(_IconsState); ok {
@@ -2564,7 +2622,7 @@ func _iconApply(toplevel *C.GtkWidget, source *C.GtkWidget) {
 			if icons != nil {
 				count = ((*(icons)).Count + 1)
 			}
-			C.g_object_set_data_full(display, m.__rel42, C.gpointer(snglContext(_IconsState{Count: count})), snglReleasePtr())
+			C.g_object_set_data_full(display, m.__rel42, C.gpointer(snglContext(_IconsState{Count: count, Dir: dir})), snglReleasePtr())
 			name := ((("sngl-icon-" + fmt.Sprint(int(C.getpid()))) + "-") + fmt.Sprint(count))
 			__rel43 := C.CString((((dir + "/") + name) + ".png"))
 			__cond44 := (C.gdk_texture_save_to_png((*C.GdkTexture)(unsafe.Pointer((*(tex)))), __rel43) != 0)
@@ -2614,18 +2672,50 @@ func _distribute(extra int, minimums []int, naturals []int) []int {
 		var k int = order[i]
 		var glue int = ((left + i) / (i + 1))
 		var gap int = (naturals[k] - minimums[k])
-		var __lt99 int
+		var __lt100 int
 		if glue < gap {
-			__lt99 = glue
+			__lt100 = glue
 		} else {
-			__lt99 = gap
+			__lt100 = gap
 		}
-		var add int = __lt99
+		var add int = __lt100
 		sizes[k] = (sizes[k] + add)
 		left -= add
 		i -= 1
 	}
 	return sizes
+}
+
+func _iconDir(display *C.GObject) string {
+	icons := func(h any) *_IconsState {
+		if v, ok := h.(_IconsState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data(display, m.__rel42))))
+	var count int = 0
+	if icons != nil {
+		if (*(icons)).Dir != "" {
+			return (*(icons)).Dir
+		}
+		count = (*(icons)).Count
+	}
+	dir := func(p *C.char) *string {
+		if p == nil {
+			return nil
+		}
+		defer C.snglFree_g_free(unsafe.Pointer(p))
+		s := C.GoString(p)
+		return &s
+	}(C.g_dir_make_tmp(m.__rel46, nil))
+	if dir == nil {
+		return ""
+	}
+	__rel47 := C.CString((*(dir)))
+	C.gtk_icon_theme_add_search_path(C.gtk_icon_theme_get_for_display(C.gdk_display_get_default()), __rel47)
+	Free(__rel47)
+	C.g_object_set_data_full(display, m.__rel42, C.gpointer(snglContext(_IconsState{Count: count, Dir: (*(dir))})), snglReleasePtr())
+	return (*(dir))
 }
 
 func _menuEntrySelect(w *C.GtkWidget) {
@@ -2657,9 +2747,9 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 func __effect0_mount() {
 	m.handle__inst0 = C.sngl_every(C.int(int(m.__effect0_key/time.Millisecond)), snglCallback_void__voidPtr(), snglContext(func() {
 		m.ticks += 1
-		__rel46 := C.CString(fmt.Sprint(m.ticks))
-		C.sngl_text_set_value(m.__n1, __rel46)
-		Free(__rel46)
+		__rel48 := C.CString(fmt.Sprint(m.ticks))
+		C.sngl_text_set_value(m.__n1, __rel48)
+		Free(__rel48)
 		if m.ticks == 3 {
 			fmt.Println(("ticked " + fmt.Sprint(m.ticks)))
 			C.sngl_gtk_quit()
@@ -2769,7 +2859,8 @@ func __snglTeardown() {
 	Free(m.__rel35)
 	Free(m.__rel38)
 	Free(m.__rel42)
-	Free(m.__rel48)
+	Free(m.__rel46)
+	Free(m.__rel50)
 }
 
 func __n0_visible_handler(__visible bool) {
@@ -2836,7 +2927,8 @@ func snglInit() {
 	m.__rel35 = C.CString("clicked")
 	m.__rel38 = C.CString("activate")
 	m.__rel42 = C.CString("sngl-icons")
-	m.__rel48 = C.CString("t")
+	m.__rel46 = C.CString("sngl-icons-XXXXXX")
+	m.__rel50 = C.CString("t")
 	m.ticks = 0
 	m.visible__inst0 = true
 	m.__effect0_key = (time.Duration(0) * time.Millisecond)
@@ -2850,7 +2942,7 @@ func snglInit() {
 
 func snglBuild() {
 	m.__n0 = _rtToplevelNew()
-	C.sngl_toplevel_set_title(m.__n0, m.__rel48)
+	C.sngl_toplevel_set_title(m.__n0, m.__rel50)
 	C.sngl_toplevel_set_visible(m.__n0, C.int(func() int {
 		if m.visible__inst0 {
 			return 1
@@ -2860,9 +2952,9 @@ func snglBuild() {
 	}()))
 	C.sngl_toplevel_on_visible(m.__n0, snglCallback_bool__voidPtr(), snglContext(__n0_visible_handler), snglReleasePtr())
 	m.__n1 = C.sngl_text_new()
-	__rel47 := C.CString(fmt.Sprint(m.ticks))
-	C.sngl_text_set_value(m.__n1, __rel47)
-	Free(__rel47)
+	__rel49 := C.CString(fmt.Sprint(m.ticks))
+	C.sngl_text_set_value(m.__n1, __rel49)
+	Free(__rel49)
 	_applyLook((*C.GtkWidget)(unsafe.Pointer(m.__n1)), Look{})
 	C.sngl_toplevel_append(m.__n0, m.__n1)
 	m.__drawing0 = C.sngl_canvas_new()
@@ -2910,6 +3002,7 @@ package main
 #cgo pkg-config: gtk4 libcurl
 #cgo LDFLAGS: -lm
 #include "sngl_gtk.h"
+#include "sngl_shims.h"
 #include <stdint.h>
 
 extern void snglCallback_bool__void(int, void *);
@@ -2930,6 +3023,9 @@ extern void snglStatic__gridMeasure(GtkWidget *, int, int, int *, int *, int *, 
 extern void snglStatic__gridAllocate(GtkWidget *, int, int, int);
 extern void snglStatic__lookKidsChanged(gpointer, int, int, int, gpointer);
 extern void snglStatic__unrefData(gpointer);
+extern int snglStatic__labelMode(GtkWidget *);
+extern void snglStatic__labelMeasure(GtkWidget *, int, int, int *, int *, int *, int *);
+extern void snglStatic__labelAllocate(GtkWidget *, int, int, int);
 extern int snglStatic__imageAdopt(GtkWidget *, GtkWidget *);
 extern int snglStatic__imageUnadopt(GtkWidget *, GtkWidget *);
 extern void snglStatic__iconRefresh(GtkWidget *);
@@ -3198,6 +3294,51 @@ func snglStatic__unrefData(a0 C.gpointer) {
 // snglStatic__unrefDataPtr is snglStatic__unrefData as the function pointer C calls.
 func snglStatic__unrefDataPtr() *[0]byte { return (*[0]byte)(C.snglStatic__unrefData) }
 
+// snglStatic__labelModeFn is the program's function C calls snglStatic__labelMode for, which the call handing it to C sets.
+var snglStatic__labelModeFn func(*C.GtkWidget) int
+
+//export snglStatic__labelMode
+func snglStatic__labelMode(a0 *C.GtkWidget) C.int {
+	return C.int(snglStatic__labelModeFn(a0))
+}
+
+// snglStatic__labelModePtr is snglStatic__labelMode as the function pointer C calls.
+func snglStatic__labelModePtr() *[0]byte { return (*[0]byte)(C.snglStatic__labelMode) }
+
+// snglStatic__labelMeasureFn is the program's function C calls snglStatic__labelMeasure for, which the call handing it to C sets.
+var snglStatic__labelMeasureFn func(*C.GtkWidget, int, int) Measured
+
+//export snglStatic__labelMeasure
+func snglStatic__labelMeasure(a0 *C.GtkWidget, a1 C.int, a2 C.int, o0 *C.int, o1 *C.int, o2 *C.int, o3 *C.int) {
+	r := snglStatic__labelMeasureFn(a0, int(a1), int(a2))
+	if o0 != nil {
+		*o0 = C.int(r.Minimum)
+	}
+	if o1 != nil {
+		*o1 = C.int(r.Natural)
+	}
+	if o2 != nil {
+		*o2 = C.int(r.MinimumBaseline)
+	}
+	if o3 != nil {
+		*o3 = C.int(r.NaturalBaseline)
+	}
+}
+
+// snglStatic__labelMeasurePtr is snglStatic__labelMeasure as the function pointer C calls.
+func snglStatic__labelMeasurePtr() *[0]byte { return (*[0]byte)(C.snglStatic__labelMeasure) }
+
+// snglStatic__labelAllocateFn is the program's function C calls snglStatic__labelAllocate for, which the call handing it to C sets.
+var snglStatic__labelAllocateFn func(*C.GtkWidget, int, int, int)
+
+//export snglStatic__labelAllocate
+func snglStatic__labelAllocate(a0 *C.GtkWidget, a1 C.int, a2 C.int, a3 C.int) {
+	snglStatic__labelAllocateFn(a0, int(a1), int(a2), int(a3))
+}
+
+// snglStatic__labelAllocatePtr is snglStatic__labelAllocate as the function pointer C calls.
+func snglStatic__labelAllocatePtr() *[0]byte { return (*[0]byte)(C.snglStatic__labelAllocate) }
+
 // snglStatic__imageAdoptFn is the program's function C calls snglStatic__imageAdopt for, which the call handing it to C sets.
 var snglStatic__imageAdoptFn func(*C.GtkWidget, *C.GtkWidget) bool
 
@@ -3315,5 +3456,26 @@ func snglGtkCarryFile(name, data string, n int) {
 	defer C.free(unsafe.Pointer(cd))
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
+-- out/go/gtk4/sngl_shims.h --
+// Code generated by sngl; DO NOT EDIT.
+
+#ifndef SNGL_SHIMS_H
+#define SNGL_SHIMS_H
+
+static inline void snglF__classMeasure(GtkWidgetClass * a0, GtkWidget * a1, GtkOrientation a2, int a3, int * a4, int * a5, int * a6, int * a7) {
+	(a0)->measure(a1, a2, a3, a4, a5, a6, a7);
+}
+
+static inline void snglF__classAllocate(GtkWidgetClass * a0, GtkWidget * a1, int a2, int a3, int a4) {
+	(a0)->size_allocate(a1, a2, a3, a4);
+}
+
+static inline void snglFree_g_free(void *p) {
+	if (p) {
+		g_free(p);
+	}
+}
+
+#endif
 -- run/go/gtk4 --
-pass sha256:c296bcb4a26d61a4fa97981091c0eeea
+pass sha256:4c8f137d557e246c50afd4c383dcd18b

@@ -117,6 +117,7 @@ typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct sngl_list_int sngl_list_int;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
 typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
+typedef struct s__classMeasure__result s__classMeasure__result;
 typedef struct s_platform_gtk4___Allocation s_platform_gtk4___Allocation;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
@@ -183,6 +184,8 @@ typedef struct s_platform_gtk4___LookState {
 	int64_t lines0;
 	int64_t ellipsize0;
 	bool labelSized;
+	int64_t labelWidth;
+	int64_t labelHeight;
 	bool hidden;
 	bool visible0;
 	bool cursor;
@@ -268,6 +271,13 @@ typedef struct s_platform_gtk4___GridRows {
 	sngl_list_int ends;
 } s_platform_gtk4___GridRows;
 
+typedef struct s__classMeasure__result {
+	int64_t out4;
+	int64_t out5;
+	int64_t out6;
+	int64_t out7;
+} s__classMeasure__result;
+
 typedef struct s_platform_gtk4___Allocation {
 	int64_t x;
 	int64_t y;
@@ -338,6 +348,9 @@ static void s_platform_gtk4___lookKidsChanged(gpointer m, int64_t at, int64_t re
 static void s_platform_gtk4___placeKids(GtkWidget * box);
 static void s_platform_gtk4___lookText(GtkWidget * w, GtkWidget * t, int64_t align, int64_t lines, int64_t wrap);
 static sngl_list_GtkWidget_p s_platform_gtk4___childrenOf(GtkWidget * box, bool laidOut);
+static int64_t s_platform_gtk4___labelMode(GtkWidget * w);
+static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure(GtkWidget * w, int64_t orientation, int64_t forSize);
+static void s_platform_gtk4___labelAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline);
 static void s_platform_gtk4___popoverStyle(GtkWidget * w, GtkCssProvider * css, bool add);
 static void s_platform_gtk4___unpin(GtkWidget * w, int64_t axis);
 static void s_platform_gtk4___setExpandSet(GtkWidget * w, int64_t axis, bool on);
@@ -556,6 +569,49 @@ static void sngl_static_s_platform_gtk4___lookKidsChanged(gpointer a0, int a1, i
 	sngl_call_leave(m);
 }
 
+static int64_t s_platform_gtk4___labelMode__fn(void *env, GtkWidget * a0) {
+	return s_platform_gtk4___labelMode(a0);
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2) {
+	return s_platform_gtk4___labelMeasure(a0, a1, a2);
+}
+
+static void s_platform_gtk4___labelAllocate__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2, int64_t a3) {
+	s_platform_gtk4___labelAllocate(a0, a1, a2, a3);
+}
+
+static int sngl_static_s_platform_gtk4___labelMode(GtkWidget * a0) {
+	sngl_mark m = sngl_call_enter();
+	int r = (int)s_platform_gtk4___labelMode(a0);
+	sngl_call_leave(m);
+	return r;
+}
+
+static void sngl_static_s_platform_gtk4___labelMeasure(GtkWidget * a0, int a1, int a2, int *o0, int *o1, int *o2, int *o3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4__Measured r = s_platform_gtk4___labelMeasure(a0, (int64_t)a1, (int64_t)a2);
+	if (o0 != NULL) {
+		*o0 = (int)r.minimum;
+	}
+	if (o1 != NULL) {
+		*o1 = (int)r.natural;
+	}
+	if (o2 != NULL) {
+		*o2 = (int)r.minimumBaseline;
+	}
+	if (o3 != NULL) {
+		*o3 = (int)r.naturalBaseline;
+	}
+	sngl_call_leave(m);
+}
+
+static void sngl_static_s_platform_gtk4___labelAllocate(GtkWidget * a0, int a1, int a2, int a3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4___labelAllocate(a0, (int64_t)a1, (int64_t)a2, (int64_t)a3);
+	sngl_call_leave(m);
+}
+
 static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i) {
 	if (i < 0 || i >= l.len) {
 		sngl_panic("index out of range");
@@ -578,6 +634,20 @@ static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static s__classMeasure__result sngl_ccall_GtkWidgetClass_measure__classMeasure(GtkWidgetClass * a0, GtkWidget * a1, GtkOrientation a2, int a3, int64_t a4, int64_t a5, int64_t a6, int64_t a7) {
+	int t4 = (int)a4;
+	int t5 = (int)a5;
+	int t6 = (int)a6;
+	int t7 = (int)a7;
+	s__classMeasure__result r;
+	(a0)->measure(a1, a2, a3, &t4, &t5, &t6, &t7);
+	r.out4 = (int64_t)t4;
+	r.out5 = (int64_t)t5;
+	r.out6 = (int64_t)t6;
+	r.out7 = (int64_t)t7;
+	return r;
 }
 
 static void sngl_list_int_grow(sngl_list_int *l, int64_t n) {
@@ -779,7 +849,7 @@ static void s_platform_gtk4___rtSignalEmit(GtkWidget * w, sngl_string signal) {
 
 static GtkWidget * s_platform_gtk4___rtContents(void) {
 	GtkWidget * box = gtk_box_new((GtkOrientation)(1), (int)(6));
-	s_platform_gtk4___setLookState(box, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = true, .grid = false, .columns = 0});
+	s_platform_gtk4___setLookState(box, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .labelWidth = 0, .labelHeight = 0, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = true, .grid = false, .columns = 0});
 	GListModel * kids = gtk_widget_observe_children(box);
 	(void)(int64_t)g_signal_connect_object((gpointer)(kids), s___rel1, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___contentsKids, (gpointer)(box), (GConnectFlags)(0));
 	g_object_set_data_full((GObject *)(box), s___rel2, (gpointer)(kids), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
@@ -889,7 +959,7 @@ static s_platform_gtk4___LookState s_platform_gtk4___lookOf(GtkWidget * w) {
 	if ((l).ok) {
 		return (l).value;
 	}
-	return (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0};
+	return (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .labelWidth = 0, .labelHeight = 0, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0};
 }
 
 static void s_platform_gtk4___lookSetCss(GtkWidget * w, sngl_string decls) {
@@ -1075,9 +1145,11 @@ static void s_platform_gtk4___lookSizeLabel(GtkWidget * w, int64_t wrap) {
 	if ((g_type_check_instance_is_a((GTypeInstance *)((gpointer)(w)), (GType)((int64_t)gtk_label_get_type())) != 0) && (((l.width != 0) || (l.height != 0)) || l.labelSized)) {
 		if (!l.labelSized) {
 			l.labelSized = true;
-			s_platform_gtk4___setLookState(w, l);
+			gtk_widget_set_layout_manager(w, gtk_custom_layout_new((GtkCustomRequestModeFunc)(void (*)(void))sngl_static_s_platform_gtk4___labelMode, (GtkCustomMeasureFunc)(void (*)(void))sngl_static_s_platform_gtk4___labelMeasure, (GtkCustomAllocateFunc)(void (*)(void))sngl_static_s_platform_gtk4___labelAllocate));
 		}
-		sngl_label_size(w, (int)(l.width), (int)(l.height));
+		l.labelWidth = l.width;
+		l.labelHeight = l.height;
+		s_platform_gtk4___setLookState(w, l);
 		if ((l.width > 0) && (wrap != 1)) {
 			gtk_label_set_wrap((GtkLabel *)(w), (int)(1));
 		}
@@ -1185,7 +1257,7 @@ static void s_platform_gtk4___unalign(GtkWidget * w) {
 
 static void s_platform_gtk4___lookEnsure(GtkWidget * w) {
 	if (!(sngl_held__LookState(g_object_get_data((GObject *)(w), s___rel4))).ok) {
-		s_platform_gtk4___setLookState(w, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0});
+		s_platform_gtk4___setLookState(w, (s_platform_gtk4___LookState){.given = (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0}, .isGiven = false, .width = 0, .height = 0, .sized = false, .width0 = 0, .height0 = 0, .grow = 0.0, .growAxis = -1, .expand0 = false, .expandSet0 = false, .growers = 0, .boxExpand0 = false, .boxExpandSet0 = false, .watching = false, .aligned = false, .alignAxis = 0, .align0 = 0, .cross = 0, .kidsHandler = 0, .textSaved = false, .xalign0 = 0.0, .justify0 = 0, .wrap0 = false, .lines0 = 0, .ellipsize0 = 0, .labelSized = false, .labelWidth = 0, .labelHeight = 0, .hidden = false, .visible0 = false, .cursor = false, .justify = 0, .spaced = false, .spacing = 0, .contents = false, .grid = false, .columns = 0});
 	}
 }
 
@@ -1539,6 +1611,37 @@ static sngl_list_GtkWidget_p s_platform_gtk4___childrenOf(GtkWidget * box, bool 
 	return kids;
 }
 
+static int64_t s_platform_gtk4___labelMode(GtkWidget * w) {
+	return 0;
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure(GtkWidget * w, int64_t orientation, int64_t forSize) {
+	s_platform_gtk4___LookState l = s_platform_gtk4___lookOf(w);
+	int64_t at = forSize;
+	if ((orientation == 1) && (l.labelWidth > 0)) {
+		at = l.labelWidth;
+	}
+	int64_t minimum = 0;
+	int64_t natural = 0;
+	int64_t minimumBaseline = -1;
+	int64_t naturalBaseline = -1;
+	s__classMeasure__result __ref4 = sngl_ccall_GtkWidgetClass_measure__classMeasure((GtkWidgetClass *)(g_type_class_peek((GType)((int64_t)gtk_label_get_type()))), w, (GtkOrientation)(orientation), (int)(at), minimum, natural, minimumBaseline, naturalBaseline);
+	minimum = __ref4.out4;
+	natural = __ref4.out5;
+	minimumBaseline = __ref4.out6;
+	naturalBaseline = __ref4.out7;
+	int64_t want = ((orientation == 0) ? l.labelWidth : l.labelHeight);
+	if (want > 0) {
+		minimum = want;
+		natural = want;
+	}
+	return (s_platform_gtk4__Measured){.minimum = minimum, .natural = natural, .minimumBaseline = minimumBaseline, .naturalBaseline = naturalBaseline};
+}
+
+static void s_platform_gtk4___labelAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline) {
+	((GtkWidgetClass *)(g_type_class_peek((GType)((int64_t)gtk_label_get_type()))))->size_allocate(w, (int)(width), (int)(height), (int)(baseline));
+}
+
 static void s_platform_gtk4___popoverStyle(GtkWidget * w, GtkCssProvider * css, bool add) {
 	if (g_type_check_instance_is_a((GTypeInstance *)((gpointer)(w)), (GType)((int64_t)gtk_popover_get_type())) != 0) {
 		bool done = false;
@@ -1640,9 +1743,9 @@ static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, 
 	while (i < n) {
 		int64_t minimum = 0;
 		int64_t natural = 0;
-		s__measureWidget__result __ref4 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o), (int)(across), minimum, natural, NULL, NULL);
-		minimum = __ref4.out3;
-		natural = __ref4.out4;
+		s__measureWidget__result __ref5 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o), (int)(across), minimum, natural, NULL, NULL);
+		minimum = __ref5.out3;
+		natural = __ref5.out4;
 		sngl_list_int_push(&(minimums), minimum);
 		sngl_list_int_push(&(naturals), natural);
 		spare -= minimum;
@@ -1688,9 +1791,9 @@ static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s
 		while (i < (*sngl_list_int_at(rows.ends, r))) {
 			int64_t minimum = 0;
 			int64_t natural = 0;
-			s__measureWidget__result __ref5 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(1), (int)((*sngl_list_int_at(rows.widths, i))), minimum, natural, NULL, NULL);
-			minimum = __ref5.out3;
-			natural = __ref5.out4;
+			s__measureWidget__result __ref6 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(1), (int)((*sngl_list_int_at(rows.widths, i))), minimum, natural, NULL, NULL);
+			minimum = __ref6.out3;
+			natural = __ref6.out4;
 			tall = ((natural > tall) ? natural : tall);
 			i += 1;
 		}
@@ -1731,9 +1834,9 @@ static s_platform_gtk4___GridRows s_platform_gtk4___gridRows(GtkWidget * box, in
 	while (i < n) {
 		int64_t minimum = 0;
 		int64_t natural = 0;
-		s__measureWidget__result __ref6 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(0), (int)(-1), minimum, natural, NULL, NULL);
-		minimum = __ref6.out3;
-		natural = __ref6.out4;
+		s__measureWidget__result __ref7 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(0), (int)(-1), minimum, natural, NULL, NULL);
+		minimum = __ref7.out3;
+		natural = __ref7.out4;
 		int64_t w = natural;
 		if (width >= 0) {
 			w = ((natural < width) ? natural : width);
@@ -2543,7 +2646,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:b116597607bcdec7b01a29d1d3424e92
+pass sha256:c0b993432c01a78f654e01a27a0ed45f
 -- run/go/bubbletea --
 pass sha256:8a724d3ec5f373c3599f3cef94ce8a35
 -- run/kotlin/android --

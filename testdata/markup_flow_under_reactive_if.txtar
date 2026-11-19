@@ -236,6 +236,13 @@ type _measureWidget__result struct {
 	Out4 int
 }
 
+type _classMeasure__result struct {
+	Out4 int
+	Out5 int
+	Out6 int
+	Out7 int
+}
+
 type Look struct {
 	Css       string
 	Width     float64
@@ -290,6 +297,8 @@ type _LookState struct {
 	Lines0        int
 	Ellipsize0    int
 	LabelSized    bool
+	LabelWidth    int
+	LabelHeight   int
 	Hidden        bool
 	Visible0      bool
 	Cursor        bool
@@ -647,8 +656,8 @@ func _boxUpdate(box cgo.Widget) {
 					if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(own))))), cgo.GtkBoxLayoutGetType()) {
 						_lookEnsure(box)
 						_keepBoxLayout(box, (*(own)))
-						cgo.GtkWidgetSetLayoutManager(box, cgo.GtkCustomLayoutNew(_flexMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
-							return cgo.GtkCustomLayoutNewMeasure(_flexMeasure(a0, a1, a2))
+						cgo.GtkWidgetSetLayoutManager(box, cgo.FlexLayout(_flexMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.FlexLayoutMeasure {
+							return cgo.FlexLayoutMeasure(_flexMeasure(a0, a1, a2))
 						}, _flexAllocate))
 					}
 				}
@@ -748,9 +757,13 @@ func _lookSizeLabel(w cgo.Widget, wrap int) {
 	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkLabelGetType()) && (((l.Width != 0) || (l.Height != 0)) || l.LabelSized) {
 		if !l.LabelSized {
 			l.LabelSized = true
-			_setLookState(w, l)
+			cgo.GtkWidgetSetLayoutManager(w, cgo.GtkCustomLayoutNew(_labelMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+				return cgo.GtkCustomLayoutNewMeasure(_labelMeasure(a0, a1, a2))
+			}, _labelAllocate))
 		}
-		cgo.SnglLabelSize(w, l.Width, l.Height)
+		l.LabelWidth = l.Width
+		l.LabelHeight = l.Height
+		_setLookState(w, l)
 		if (l.Width > 0) && (wrap != 1) {
 			cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(w)), true)
 		}
@@ -1386,6 +1399,43 @@ func _childrenOf(box cgo.Widget, laidOut bool) []cgo.Widget {
 	return kids
 }
 
+func _labelMode(w cgo.Widget) int {
+	return 0
+}
+
+func _labelMeasure(w cgo.Widget, orientation int, forSize int) Measured {
+	l := _lookOf(w)
+	var at int = forSize
+	if (orientation == 1) && (l.LabelWidth > 0) {
+		at = l.LabelWidth
+	}
+	var minimum int = 0
+	var natural int = 0
+	var minimumBaseline int = -1
+	var naturalBaseline int = -1
+	__ref7 := _classMeasure__result(cgo.GtkWidgetClassMeasure((cgo.WidgetClass)(unsafe.Pointer(cgo.GTypeClassPeek(cgo.GtkLabelGetType()))), w, int(orientation), at, minimum, natural, minimumBaseline, naturalBaseline))
+	minimum = __ref7.Out4
+	natural = __ref7.Out5
+	minimumBaseline = __ref7.Out6
+	naturalBaseline = __ref7.Out7
+	var __lt40 int
+	if orientation == 0 {
+		__lt40 = l.LabelWidth
+	} else {
+		__lt40 = l.LabelHeight
+	}
+	var want int = __lt40
+	if want > 0 {
+		minimum = want
+		natural = want
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: minimumBaseline, NaturalBaseline: naturalBaseline}
+}
+
+func _labelAllocate(w cgo.Widget, width int, height int, baseline int) {
+	cgo.GtkWidgetClassSizeAllocate((cgo.WidgetClass)(unsafe.Pointer(cgo.GTypeClassPeek(cgo.GtkLabelGetType()))), w, width, height, baseline)
+}
+
 func _spanMarkup(w cgo.Widget) string {
 	s := func(h any) *_SpanState {
 		if v, ok := h.(_SpanState); ok {
@@ -1483,20 +1533,20 @@ func _lookWeight(c cgo.Widget, o int) float64 {
 	if l.Grow > 0.0 {
 		return l.Grow
 	}
-	var __lt50 bool
+	var __lt51 bool
 	if int(o) == 0 {
-		__lt50 = cgo.GtkWidgetGetHexpand(c)
+		__lt51 = cgo.GtkWidgetGetHexpand(c)
 	} else {
-		__lt50 = cgo.GtkWidgetGetVexpand(c)
+		__lt51 = cgo.GtkWidgetGetVexpand(c)
 	}
-	own := __lt50
-	var __lt51 float64
+	own := __lt51
+	var __lt52 float64
 	if own {
-		__lt51 = 1.0
+		__lt52 = 1.0
 	} else {
-		__lt51 = 0.0
+		__lt52 = 0.0
 	}
-	return __lt51
+	return __lt52
 }
 
 func _boxSpacing(box cgo.Widget) int {
@@ -1521,22 +1571,22 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref7 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
-		minimum = __ref7.Out3
-		natural = __ref7.Out4
+		__ref8 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
+		minimum = __ref8.Out3
+		natural = __ref8.Out4
 		minimums = append(minimums, minimum)
 		naturals = append(naturals, natural)
 		spare -= minimum
 		weights += _lookWeight(kids[i], o)
 		i += 1
 	}
-	var __lt52 int
+	var __lt53 int
 	if spare > 0 {
-		__lt52 = spare
+		__lt53 = spare
 	} else {
-		__lt52 = 0
+		__lt53 = 0
 	}
-	var extra int = __lt52
+	var extra int = __lt53
 	sizes := _distribute(extra, minimums, naturals)
 	spare = extra
 	i = 0
@@ -1549,13 +1599,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		if weights > 0.0 {
 			var w float64 = _lookWeight(kids[i], o)
 			if w > 0.0 {
-				var __lt53 int
+				var __lt54 int
 				if w == weights {
-					__lt53 = spare
+					__lt54 = spare
 				} else {
-					__lt53 = int((((float64(spare) * w) / weights) + 0.5))
+					__lt54 = int((((float64(spare) * w) / weights) + 0.5))
 				}
-				var share int = __lt53
+				var share int = __lt54
 				sizes[i] = (sizes[i] + share)
 				spare -= share
 				weights -= w
@@ -1563,13 +1613,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		}
 		i += 1
 	}
-	var __lt54 int
+	var __lt55 int
 	if weights > 0.0 {
-		__lt54 = 0
+		__lt55 = 0
 	} else {
-		__lt54 = spare
+		__lt55 = spare
 	}
-	return _FlexSizes{Sizes: sizes, Spare: __lt54}
+	return _FlexSizes{Sizes: sizes, Spare: __lt55}
 }
 
 func _place(w cgo.Widget, x int, y int, width int, height int) {
@@ -1587,16 +1637,16 @@ func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
 		for i < rows.Ends[r] {
 			var minimum int = 0
 			var natural int = 0
-			__ref8 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
-			minimum = __ref8.Out3
-			natural = __ref8.Out4
-			var __lt55 int
+			__ref9 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
+			minimum = __ref9.Out3
+			natural = __ref9.Out4
+			var __lt56 int
 			if natural > tall {
-				__lt55 = natural
+				__lt56 = natural
 			} else {
-				__lt55 = tall
+				__lt56 = tall
 			}
-			tall = __lt55
+			tall = __lt56
 			i += 1
 		}
 		heights = append(heights, tall)
@@ -1636,38 +1686,38 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref9 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
-		minimum = __ref9.Out3
-		natural = __ref9.Out4
+		__ref10 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
+		minimum = __ref10.Out3
+		natural = __ref10.Out4
 		var w int = natural
 		if width >= 0 {
-			var __lt56 int
-			if natural < width {
-				__lt56 = natural
-			} else {
-				__lt56 = width
-			}
-			w = __lt56
 			var __lt57 int
-			if minimum > w {
-				__lt57 = minimum
+			if natural < width {
+				__lt57 = natural
 			} else {
-				__lt57 = w
+				__lt57 = width
 			}
 			w = __lt57
+			var __lt58 int
+			if minimum > w {
+				__lt58 = minimum
+			} else {
+				__lt58 = w
+			}
+			w = __lt58
 		}
 		widths = append(widths, w)
 		if ((run > 0) && (width >= 0)) && (((run + gap) + w) > width) {
 			ends = append(ends, i)
 			run = 0
 		}
-		var __lt58 int
+		var __lt59 int
 		if run > 0 {
-			__lt58 = gap
+			__lt59 = gap
 		} else {
-			__lt58 = 0
+			__lt59 = 0
 		}
-		run += (__lt58 + w)
+		run += (__lt59 + w)
 		i += 1
 	}
 	if n > 0 {
@@ -1713,13 +1763,13 @@ func _distribute(extra int, minimums []int, naturals []int) []int {
 		var k int = order[i]
 		var glue int = ((left + i) / (i + 1))
 		var gap int = (naturals[k] - minimums[k])
-		var __lt59 int
+		var __lt60 int
 		if glue < gap {
-			__lt59 = glue
+			__lt60 = glue
 		} else {
-			__lt59 = gap
+			__lt60 = gap
 		}
-		var add int = __lt59
+		var add int = __lt60
 		sizes[k] = (sizes[k] + add)
 		left -= add
 		i -= 1
@@ -1845,4 +1895,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:5f675abb8e1bc6869c3c2845c6ddfb69
 -- run/go/gtk4 --
-pass sha256:ddb18e03b91e6aae78f2166f9edf4f56
+pass sha256:2e07a4550a75e1fd62678b16c4528e84
