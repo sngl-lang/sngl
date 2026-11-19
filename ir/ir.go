@@ -926,7 +926,11 @@ type Func struct {
 	// type the alias spells, or, for sngl:x/c's `held` written as an
 	// option's element, as the value a held parameter handed C.
 	ReturnCAlias *Alias `json:",omitempty"`
-	Block        []Stmt // type-checked statements (expression bodies become a single Return)
+	// CFrees is the C function freeing the string a C function answers,
+	// sngl:x/c's #[frees]: the call copies the string and hands C's pointer
+	// to it, NULL to none. Empty where the string is C's own.
+	CFrees string `json:",omitempty"`
+	Block  []Stmt // type-checked statements (expression bodies become a single Return)
 	// PlatformOverrides holds the body each target implements this function
 	// with, keyed by platform. The checker collects every registered target's;
 	// ir.SpecializeForTarget swaps the chosen one into Block. Empty for a
@@ -1806,6 +1810,10 @@ type Param struct {
 	// pointers it hands the callback after its arguments, one for each
 	// field of the struct it answers, sngl:x/c's #[outs].
 	COuts bool `json:",omitempty"`
+	// CFrees is the C function freeing the string C stores through a
+	// `ref[string]` parameter, sngl:x/c's #[frees]: C is handed a pointer
+	// to NULL, and what it stored is copied once it returns and freed.
+	CFrees string `json:",omitempty"`
 }
 
 // CompilerPassed reports whether the translator, not a caller, passes p: a C

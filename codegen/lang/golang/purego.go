@@ -171,6 +171,9 @@ func puregoSources(pkg *ir.Package, generated map[string][]byte) (map[string][]b
 		if err != nil {
 			return nil, err
 		}
+		if freed := fn.CFreed(); len(freed) > 0 {
+			return nil, fmt.Errorf("%s hands over a string %s frees (#[c.frees]): purego copies a string C answers and hands back no pointer to free", fn.Foreign.Name, freed[0])
+		}
 		var params []string
 		for _, p := range fn.Params {
 			g, err := puregoParamType(p)

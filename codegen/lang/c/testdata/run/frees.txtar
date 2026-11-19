@@ -1,0 +1,85 @@
+A C function answering a string it hands over is marked `#[c.frees]` with
+the C function freeing it: the call copies the string into the turn and
+hands C's pointer to that function, but NULL. An `option[string]` is none
+where C answers NULL. A `ref[string]` marked so is a pointer to NULL C
+fills, copied and freed once C returns, and the empty string where C stored
+nothing. Unfreed, a string would be a leak the sanitized build reports.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_name")]
+#[c.frees("test_free")]
+func name(i int) string
+
+#[c.native("test_maybe")]
+#[c.frees("test_free")]
+func maybe(i int) option[string]
+
+#[c.native("test_fill")]
+func fill(i int, #[c.frees("test_free")] out ref[string]) bool
+
+#[c.native("test_freed")]
+func freed() int
+
+func names() string {
+    var m = maybe(2)
+    var some = m != null && m == "née 2"
+    var none = maybe(3) == null
+    var filled = "kept"
+    var empty = "kept"
+    var was = fill(4, &filled)
+    var wasnt = fill(5, &empty)
+    var first = name(1)
+    var count = freed()
+    return "{first} {some} {none} {was} {filled} {wasnt} [{empty}] {count}"
+}
+-- main.c --
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static int frees, nulls;
+
+static char *test_name(int i) {
+	char *s = malloc(32);
+	snprintf(s, 32, "n\xc3\xa9" "e %d", i);
+	return s;
+}
+
+static char *test_maybe(int i) {
+	return i % 2 == 0 ? test_name(i) : NULL;
+}
+
+static int test_fill(int i, char **out) {
+	if (i % 2 != 0) {
+		return 0;
+	}
+	*out = test_name(i);
+	return 1;
+}
+
+static void test_free(void *p) {
+	if (p == NULL) {
+		nulls++;
+		return;
+	}
+	frees++;
+	free(p);
+}
+
+static int test_freed(void) {
+	return frees * 100 + nulls;
+}
+
+#include "program.c"
+
+int main(void) {
+	sngl_string s = s_names();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	return 0;
+}
+-- want --
+née 1 true true true née 4 false [] 300

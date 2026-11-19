@@ -111,9 +111,9 @@ type gen struct {
 	// statics are the functions the package exports for each wrapped
 	// declaration's static callbacks.
 	statics map[*ir.Func][]golang.Static
-	// variadics are the wrapped declarations taking a variable argument
-	// list, whose C function of one shape the preamble defines.
-	variadics []*ir.Func
+	// shimmed are the wrapped declarations cgo cannot call as they are
+	// (ir.CalledCShimmed), whose C functions the preamble defines.
+	shimmed []*ir.Func
 	// held says a wrapper takes or answers a value C holds (sngl:x/c's
 	// held), which the package registers as it does a callback's closure.
 	held bool
@@ -214,11 +214,12 @@ func (g *gen) add(fn *ir.Func) {
 		}
 	} else {
 		g.funcs[name] = &wrapper{decl: fn, fn: w, sig: g.goSig(w, true)}
-		// cgo calls no variadic function: the wrapper calls a C function of
-		// the declaration's one shape, which the preamble defines as a
-		// program's own cgo would (golang.VariadicShims).
-		if fn.Foreign.Variadic {
-			g.variadics = append(g.variadics, fn)
+		// cgo calls no variadic function, nor a freeing function at its
+		// parameter's type: the wrapper calls a C function of the
+		// declaration's one shape, which the preamble defines as a
+		// program's own cgo would (golang.CShims).
+		if fn.CShimmed() {
+			g.shimmed = append(g.shimmed, fn)
 		}
 	}
 	if fn.AST != nil {
@@ -536,7 +537,7 @@ func (g *gen) write() error {
 	if !slices.ContainsFunc(links, func(l *ir.CLink) bool { return l.Include == "stdlib.h" }) {
 		links = append(slices.Clip(links), &ir.CLink{Include: "stdlib.h", System: true})
 	}
-	cgo := g.cflags() + golang.CPreambleLines(links) + golang.VariadicShims(g.variadics)
+	cgo := g.cflags() + golang.CPreambleLines(links) + golang.CShims(g.shimmed)
 	var src strings.Builder
 	src.WriteString(g.header(cgo))
 	if imps := gc.Imports(); len(imps) > 0 {

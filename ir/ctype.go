@@ -384,16 +384,39 @@ func CalledCStatics(pkg *Package, skip func(*Func) bool) []CStatic {
 	return out
 }
 
-// CalledCVariadics is each C function taking a variable argument list
-// (`#[c.native(…, variadic)]`) pkg calls, once, in the order the calls are
-// met.
-func CalledCVariadics(pkg *Package) []*Func {
+// CalledCShimmed is each C function pkg calls, once, in the order the calls
+// are met, that a language unable to call it as C does calls through a C
+// function of the declaration's one shape: one taking a variable argument
+// list (`#[c.native(…, variadic)]`), and one handing over a string the call
+// frees (`#[c.frees]`), whose freeing function takes a pointer of a type
+// only C converts to.
+func CalledCShimmed(pkg *Package) []*Func {
 	var out []*Func
 	_ = Walk(pkg, func(n Node) error {
-		if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Foreign.Path == CPath && c.Func.Foreign.Variadic && !slices.Contains(out, c.Func) {
+		if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Foreign.Path == CPath && c.Func.CShimmed() && !slices.Contains(out, c.Func) {
 			out = append(out, c.Func)
 		}
 		return nil
 	})
+	return out
+}
+
+// CShimmed reports whether fn, a C function, is one CalledCShimmed collects.
+func (fn *Func) CShimmed() bool {
+	return fn.Foreign.Variadic || len(fn.CFreed()) > 0
+}
+
+// CFreed is each C function freeing a string fn, a C function, hands over
+// (`#[c.frees]`), its result's first, once each.
+func (fn *Func) CFreed() []string {
+	var out []string
+	if fn.CFrees != "" {
+		out = append(out, fn.CFrees)
+	}
+	for _, p := range fn.Params {
+		if p.CFrees != "" && !slices.Contains(out, p.CFrees) {
+			out = append(out, p.CFrees)
+		}
+	}
 	return out
 }

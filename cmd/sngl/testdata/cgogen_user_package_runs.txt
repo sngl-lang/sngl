@@ -10,7 +10,9 @@
 # declarations of one C function keeping a static callback are two wrappers,
 # each keeping its own function, which C calls after both were kept. The Go program calls the wrapper, reaching the program's module through its
 # own, which replaces the host module with its root (codegen.WriteGoMod), and
-# compiles none of the package's C, which the wrapper package does.
+# compiles none of the package's C, which the wrapper package does. A string
+# C hands over (#[c.frees]) is freed in the wrapper, through the function its
+# preamble defines.
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -22,6 +24,7 @@ exists mathx/cgo/split.c
 grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.SplitAdd"\)\]' mathx/mathx.sngl
 grep 'func SplitAdd\(a int, b int, carry int\) SplitAddResult' mathx/cgo/wrappers.go
 grep 'func SplitSwap\(p Pair\) Pair' mathx/cgo/wrappers.go
+grep 'snglFree_split_free' mathx/cgo/wrappers.go
 grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.State"\)\]' mathx/mathx.sngl
 
 # A second run, reading the marks the first wrote, changes nothing.
@@ -37,7 +40,7 @@ grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +4 tests, 0 failures'
+stdout 'ok +5 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
@@ -55,7 +58,18 @@ typedef int (*split_fn)(int);
 // Keeps f, answering where; split_call calls what is kept there.
 int split_keep(split_fn f);
 int split_call(int at, int x);
+
+// A name for n, which split_free frees; split_fill stores one in *out.
+char *split_name(int n);
+void split_fill(int n, char **out);
+void split_free(void *p);
+
+// What split_free freed, counted.
+int split_freed(void);
 -- mathx/split.c --
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "split.h"
 
 int split_add(int a, int b, int *carry) {
@@ -74,6 +88,27 @@ int split_keep(split_fn f) {
 
 int split_call(int at, int x) {
 	return kept[at](x);
+}
+
+static int freed;
+
+char *split_name(int n) {
+	char *s = malloc(8);
+	snprintf(s, 8, "n%d", n);
+	return s;
+}
+
+void split_fill(int n, char **out) {
+	*out = split_name(n);
+}
+
+void split_free(void *p) {
+	freed++;
+	free(p);
+}
+
+int split_freed(void) {
+	return freed;
 }
 
 void split_swap(split_pair *p) {
@@ -131,6 +166,23 @@ func stateless() bool {
     var s option[_State] = null
     return s == null
 }
+#[c.native("split_name")]
+#[c.frees("split_free")]
+func _name(n int) string
+
+#[c.native("split_fill")]
+func _fill(n int, #[c.frees("split_free")] out ref[string])
+
+#[c.native("split_freed")]
+func _freed() int
+
+func names() string {
+    var s = ""
+    _fill(4, &s)
+    return "{_name(3)} {s}"
+}
+
+func freed() => _freed()
 -- mathx/gen.go --
 package mathx
 
@@ -166,12 +218,21 @@ func testItHoldsNoState(t test.Test) {
     t.assert(m.stateless())
 }
 
+func testItFreesWhatCHandsOver(t test.Test) {
+    t.assert(m.names() == "n3 n4")
+    t.assert(m.freed() == 2)
+}
+
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:6167e8f0f95422e3b3d5bfa792d2fb05
+sha256:969629933d5890b427e68f8aa88b4bdd
 {
   "results": [
     {
       "Desc": "ItAppliesEach",
+      "Passed": true
+    },
+    {
+      "Desc": "ItFreesWhatCHandsOver",
       "Passed": true
     },
     {

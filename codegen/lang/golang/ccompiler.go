@@ -117,7 +117,7 @@ func CLinks(pkg *ir.Package) []*ir.CLink {
 		return nil
 	})
 	// After the headers declaring what it calls.
-	if l := variadicLink(pkg); l != nil {
+	if l := shimsLink(pkg); l != nil {
 		out = append(out, l)
 	}
 	return out

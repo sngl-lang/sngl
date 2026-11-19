@@ -312,7 +312,25 @@ declaration itself. Two things about the name that are easy to get wrong:
   hands back a `const char *` it keeps, which the call copies -- `C.GoString`
   in Go, the turn's `sngl_string_copy` in C -- and one returning a `bool`
   its `int` (`testdata/c_string_return.txtar`, `codegen/lang/c`'s
-  `cinterop` run). The alias is expanded where
+  `cinterop` run). One answering a string it hands over, which the program
+  frees, is marked `#[c.frees("g_free")]` (`Func.CFrees`): the call copies
+  the string, then hands C's pointer to the named function, but NULL, which
+  is what lets gtk4 call `g_strdup_printf` or read an input method's
+  preedit. An `option[string]` result is `null` for NULL, freed or not. On
+  a `ref[string]` parameter (`Param.CFrees`) the mark says the same of what
+  C stores: C is handed a pointer to NULL, and what it stored is copied and
+  freed as the call writes back (`refCall`'s temp in C, `cStringOut` in
+  Go); an unmarked `ref[string]` stays refused, since nothing says whose
+  that string is (`checkCFrees`). C frees through a helper per function
+  (`sngl_freed_<f>`); Go cannot hand the function the pointer at a type it
+  does not know (GLib's gpointer is no `unsafe.Pointer` to cgo), so it calls
+  a C function freeing all but NULL (`snglFree_<f>`), which the
+  `sngl_shims.h` it writes beside a variadic call's shape defines, and a
+  wrapper package's preamble likewise (`ir.CalledCShimmed`, `CShims`).
+  purego refuses one, keeping no pointer to free
+  (`testdata/c_frees.txtar`, `error_c_frees.sngl`, `codegen/lang/c`'s
+  `frees` run, `cgogen_user_package_runs.txt`,
+  `go_cgo_purego_refused.txt`). The alias is expanded where
   it is written, so `ir.Param.CAlias` remembers it. It records the alias
   rather than its C type because the alias's mark may run after the parameter
   is built, and it is shared by every clone, its package being the library's
@@ -435,8 +453,8 @@ declaration itself. Two things about the name that are easy to get wrong:
   passes, so a function called two ways is declared twice. C calls it as
   it is; cgo calls no variadic function, so Go calls a `static inline` C
   function of the declaration's one shape (`snglV_<name>`), which the
-  `sngl_variadic.h` it writes after the program's links defines
-  (`variadicLink`).
+  `sngl_shims.h` it writes after the program's links defines
+  (`shimsLink`).
   A value C holds -- what `g_object_set_data_full` keeps on a widget -- is
   `sngl:x/c`'s `held`, a generic alias of its one parameter marked
   `#[builtin("cHeld")]` (`ir.Alias.IsCHeld`). `cAliasOf` records it as

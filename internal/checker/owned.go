@@ -138,6 +138,7 @@ var funcParamMarks = map[markKey]bool{
 	{"x/c", "type"}:      true,
 	{"x/c", "static"}:    true,
 	{"x/c", "outs"}:      true,
+	{"x/c", "frees"}:     true,
 }
 
 // applyFuncParamMarks runs the marks written on a declared function's
@@ -292,6 +293,33 @@ func markCStatic(m *mark) error {
 // through the pointers it hands it after its arguments.
 func markCOuts(m *mark) error {
 	return markCallbackParam(m, "outs", func(p *ir.Param) { p.COuts = true })
+}
+
+// markCFrees implements sngl:x/c's #[frees]: the string a C function
+// answers, or stores through its `ref[string]` parameter, is handed over,
+// and the named C function frees it once the call has copied it.
+// checkCFrees judges what it marks once the function's own marks say
+// whether it is C's.
+func markCFrees(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[c.frees]: the C function freeing the string is required")
+	}
+	if !ir.IsCIdent(name) {
+		return fmt.Errorf("#[c.frees(%q)] names no C function: it is the identifier of the one freeing the string", name)
+	}
+	switch d := m.sym.(type) {
+	case *ir.Func:
+		d.CFrees = name
+	case funcParam:
+		if d.bodied {
+			return fmt.Errorf("#[c.frees] cannot mark a parameter of a function with a body; only a ref[string] parameter of a #[c.native] function")
+		}
+		d.param.CFrees = name
+	default:
+		return fmt.Errorf("#[c.frees] cannot mark %s; only a #[c.native] function answering a string, or its ref[string] parameter", ast.DeclFormName(m.decl))
+	}
+	return nil
 }
 
 func markCallbackParam(m *mark, name string, set func(*ir.Param)) error {

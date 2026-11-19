@@ -33,6 +33,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/c", "release"}:                 markCRelease,
 	{"x/c", "static"}:                  markCStatic,
 	{"x/c", "outs"}:                    markCOuts,
+	{"x/c", "frees"}:                   markCFrees,
 	{"macro", "unusable"}:              markUnusable,
 	{"language/kotlin", "native"}:      markKotlinNative,
 	{"language/go", "native"}:          markGoNative,

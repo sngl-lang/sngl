@@ -634,6 +634,7 @@ func (c *checker) checkCCallbacks(pkg *ir.Package) {
 				callbacks = append(callbacks, i)
 			}
 		}
+		c.checkCFrees(fn, pos)
 		if fn.Foreign.Path != ir.CPath || fn.IsCCast() {
 			for _, i := range contexts {
 				c.error(pos(i), "#[c.context] marks what a #[c.native] function hands its callback, and %s is not a C function", fn.Name)
@@ -684,8 +685,8 @@ func (c *checker) checkCCallbacks(pkg *ir.Package) {
 			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && !p.CAlias.IsCHeld() && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
 				c.error(pos(i), "parameter %q is an option of %s, and C has no NULL %s: an option crosses to C as a pointer, a string's", p.Name, p.CAlias.Name, p.CAlias.Name)
 			}
-			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) {
-				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, or a C struct", p.Name, p.Type)
+			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) && p.CFrees == "" {
+				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, or a C struct, or a string marked #[c.frees]", p.Name, p.Type)
 			}
 		}
 		for _, i := range contexts {
@@ -711,6 +712,40 @@ func (c *checker) checkCCallbacks(pkg *ir.Package) {
 			if j := i - skip; j >= 0 && j < len(fn.AST.Params.Params) {
 				c.checkCallbackAliases(p.Name, fn.AST.Params.Params[j].Type, pos(i))
 			}
+		}
+	}
+}
+
+// checkCFrees judges sngl:x/c's #[frees] on fn: it marks a C function
+// answering a string or an option of one, and a ref[string] parameter of
+// one, which C fills.
+func (c *checker) checkCFrees(fn *ir.Func, pos func(int) ast.Pos) {
+	native := fn.Foreign.Path == ir.CPath && !fn.IsCCast()
+	if fn.CFrees != "" {
+		r := fn.Return
+		if r != nil && r.Kind == ir.TypeOption && len(r.Elems) == 1 {
+			r = r.Elems[0]
+		}
+		switch {
+		case !native:
+			c.error(fn.AST.Pos, "#[c.frees] marks a #[c.native] function's string result, and %s is not a C function", fn.Name)
+		case r == nil || r.Kind != ir.TypeString:
+			answers := "nothing"
+			if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+				answers = fn.Return.String()
+			}
+			c.error(fn.AST.Pos, "#[c.frees(%q)] frees the string %s answers, and it answers %s", fn.CFrees, fn.Name, answers)
+		}
+	}
+	for i, p := range fn.Params {
+		if p.CFrees == "" {
+			continue
+		}
+		switch {
+		case !native:
+			c.error(pos(i), "#[c.frees] marks a #[c.native] function's ref[string] parameter, and %s is not a C function", fn.Name)
+		case p.Type == nil || p.Type.Kind != ir.TypeRef || p.Type.Elems[0].Kind != ir.TypeString:
+			c.error(pos(i), "parameter %q is marked #[c.frees(%q)], which frees a string C stores through a ref[string], and it is a %s", p.Name, p.CFrees, p.Type)
 		}
 	}
 }

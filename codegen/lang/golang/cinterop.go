@@ -167,6 +167,14 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 		}
 		tmp := fmt.Sprintf("__snglOut%d", i)
 		elem := p.Type.Elems[0]
+		// A string C stores and hands over (#[c.frees]): C is handed a
+		// pointer to NULL to fill.
+		if elem.Kind == ir.TypeString {
+			body = append(body, tmp+" := (*C.char)(nil)")
+			args[off+i] = "&" + tmp
+			outs = append(outs, gc.cStringOut(tmp, p.CFrees, false))
+			continue
+		}
 		body = append(body, tmp+" := "+gc.cValueIn(elem, p.CAlias, args[off+i]))
 		args[off+i] = "&" + tmp
 		outs = append(outs, gc.cValueOut(elem, p.CAlias, tmp))
@@ -280,8 +288,9 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		case ir.TypeBool:
 			call = "(" + call + " != 0)"
 		case ir.TypeString:
-			// The C function keeps what it returns; the copy is Go's.
-			call = "C.GoString(" + call + ")"
+			// The C function keeps what it returns, but where it hands it
+			// over (#[c.frees]); the copy is Go's.
+			call = gc.cStringOut(call, fn.CFrees, false)
 		case ir.TypeStruct:
 			if ir.CStructOf(fn.Return) != nil {
 				call = gc.cValueOut(fn.Return, nil, call)
@@ -295,6 +304,10 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 				call = "(" + gc.goType(fn.Return) + ")(unsafe.Pointer(" + call + "))"
 			}
 		case ir.TypeOption:
+			if elem := fn.Return.Elems[0]; elem.Kind == ir.TypeString && fn.ReturnCAlias == nil {
+				call = gc.cStringOut(call, fn.CFrees, true)
+				break
+			}
 			// A pointer C answers NULL for: Go's option of it is a pointer
 			// to the pointer, nil for NULL. A typedef of one (GLib's
 			// gpointer) is a pointer where its declaration says so.
@@ -320,6 +333,25 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		}
 	}
 	return call
+}
+
+// cStringOut is v, a `char *` C answered or stored, as the string Go copies
+// it to: an option of one is nil where v is NULL. Where frees names the C
+// function freeing it (#[c.frees]), v is handed to it once copied, through
+// the function freeing it but NULL (freeName).
+func (gc *GoIRContext) cStringOut(v, frees string, option bool) string {
+	free := ""
+	if frees != "" {
+		gc.RequireImport("unsafe")
+		free = "defer C." + freeName(frees) + "(unsafe.Pointer(p)); "
+	}
+	if option {
+		return "func(p *C.char) *string { if p == nil { return nil }; " + free + "s := C.GoString(p); return &s }(" + v + ")"
+	}
+	if free == "" {
+		return "C.GoString(" + v + ")"
+	}
+	return "func(p *C.char) string { " + free + "return C.GoString(p) }(" + v + ")"
 }
 
 // optionOfPointer reports whether t is an option of a handle whose C type is

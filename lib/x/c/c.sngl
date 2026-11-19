@@ -165,6 +165,23 @@ func static() ir.Macro
 // NULL is not written. The C function itself answers nothing.
 func outs() ir.Macro
 
+// Marks a `#[native]` function answering a C string it hands over, which
+// the program frees: the call copies the string, then hands C's pointer to
+// the C function `name` names (GLib's `g_free`, `free`), and NULL to none.
+// It answers a `string`, or an `option[string]` that is `null` where C
+// answers NULL. `#[frees("g_free")] func format(n int) string` declares
+// GLib's `g_strdup_printf`.
+//
+// On a `ref[string]` parameter it says the same of the string C stores
+// through the pointer it is handed, which it fills: C is handed a pointer
+// to NULL, and what it stored is copied once it returns and freed. GLib's
+// `g_file_get_contents` fills its `contents` so.
+//
+// Unmarked, a string C answers is C's own, which the call copies and never
+// frees, and a `ref[string]` is refused, since nothing says whose the
+// string C stores is.
+func frees(name string) ir.Macro
+
 // Marks the parameter a `#[native]` function taking a callback is handed the
 // function C calls, with the context, once it is done with the callback:
 // GLib's `GClosureNotify` and `GDestroyNotify`. The compiler passes one that

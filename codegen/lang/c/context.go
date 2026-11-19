@@ -1373,8 +1373,13 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		case ir.TypeBool:
 			return "(" + call + " != 0)"
 		case ir.TypeString:
-			// The C function keeps what it returns; the copy is the turn's.
-			return "sngl_string_copy(" + call + ")"
+			// The C function keeps what it returns, but where it hands it
+			// over (#[c.frees]); the copy is the turn's.
+			return c.cStringOut(fn.CFrees, false) + "(" + call + ")"
+		case ir.TypeOption:
+			if fn.Return.Elems[0].Kind == ir.TypeString && fn.ReturnCAlias == nil {
+				return c.cStringOut(fn.CFrees, true) + "(" + call + ")"
+			}
 		case ir.TypeStruct:
 			if ir.CStructOf(fn.Return) != nil {
 				return c.fail("a C struct returned by %s", fn.Foreign.Name)
@@ -1382,6 +1387,32 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		}
 	}
 	return call
+}
+
+// cStringOut is the function copying a `char *` C answered or stored into
+// the turn: the empty string for NULL, or for an option none. Where frees
+// names the C function freeing it (#[c.frees]), the pointer is handed to it
+// once copied, but NULL. A copy alone is the runtime's sngl_string_copy.
+func (c *Context) cStringOut(frees string, option bool) string {
+	if frees == "" && !option {
+		return "sngl_string_copy"
+	}
+	free := ""
+	if frees != "" {
+		free = "\tif (p != NULL) {\n\t\t" + frees + "((void *)p);\n\t}\n"
+	}
+	if !option {
+		name := "sngl_freed_" + frees
+		c.file.helper(name, "static sngl_string "+name+"(const char *p) {\n\tsngl_string s = sngl_string_copy(p);\n"+free+"\treturn s;\n}\n")
+		return name
+	}
+	t := c.optType(&ir.Type{Kind: ir.TypeOption, Elems: []*ir.Type{ir.TypString}})
+	name := "sngl_cstring_opt"
+	if frees != "" {
+		name = "sngl_freed_opt_" + frees
+	}
+	c.file.helper(name, "static "+t+" "+name+"(const char *p) {\n\tif (p == NULL) {\n\t\treturn ("+t+"){0};\n\t}\n\t"+t+" o = {true, sngl_string_copy(p)};\n"+free+"\treturn o;\n}\n")
+	return name
 }
 
 // refCall is a call of a C function taking a `ref`, a pointer it fills: a
@@ -1407,6 +1438,13 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 			elem := p.Type.Elems[0]
 			params = append(params, c.typeName(elem)+" "+a)
 			cargs = append(cargs, fmt.Sprintf("&t%d", i))
+			// A string C stores and hands over (#[c.frees]): C is handed a
+			// pointer to NULL to fill.
+			if elem.Kind == ir.TypeString {
+				fmt.Fprintf(&body, "\tchar *t%d = NULL;\n\t(void)%s;\n", i, a)
+				outs = append(outs, fmt.Sprintf("%s(t%d)", c.cStringOut(p.CFrees, false), i))
+				continue
+			}
 			if sd := ir.CStructOf(elem); sd != nil {
 				fmt.Fprintf(&body, "\t%s t%d = %s(%s);\n", sd.Foreign.C.String(), i, c.cStruct(elem), a)
 				outs = append(outs, fmt.Sprintf("%s(t%d)", c.fromCStruct(elem), i))
@@ -1479,7 +1517,11 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 				case ir.TypeInt, ir.TypeFloat:
 					v = "(" + c.typeName(fn.Return) + ")" + call
 				case ir.TypeString:
-					v = "sngl_string_copy(" + call + ")"
+					v = c.cStringOut(fn.CFrees, false) + "(" + call + ")"
+				case ir.TypeOption:
+					if fn.Return.Elems[0].Kind == ir.TypeString && fn.ReturnCAlias == nil {
+						v = c.cStringOut(fn.CFrees, true) + "(" + call + ")"
+					}
 				}
 				fmt.Fprintf(&body, "\tr.%s = %s;\n", Local(f.Name), v)
 			}
