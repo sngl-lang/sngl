@@ -845,6 +845,8 @@ static void s_platform_gtk4___PictureState__drop(s_platform_gtk4___PictureState 
 static void s_platform_gtk4___pictureRead(sngl_string url, GObject * pic);
 static void s_platform_gtk4___pictureLetGo(GObject * pic);
 static void s_platform_gtk4__source(cairo_t * ctx, s_builtin__color c);
+static void s_platform_gtk4__CairoContext_setLineCap(cairo_t * cr, int64_t cap);
+static void s_platform_gtk4__CairoContext_setLineJoin(cairo_t * cr, int64_t join);
 static void s_platform_gtk4___imageHooksSet(void);
 static void s_platform_gtk4___imageSourceGone(gpointer data, GObject * gone);
 static void s_platform_gtk4___imageSourceParented(GtkWidget * w);
@@ -2602,8 +2604,8 @@ static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style) {
 	}
 	if (style.stroke.a > 0) {
 		cairo_set_line_width(ctx, (double)(style.strokeWidth));
-		sngl_cairo_line_cap(ctx, (int)((int64_t)(style.lineCap)));
-		sngl_cairo_line_join(ctx, (int)((int64_t)(style.lineJoin)));
+		s_platform_gtk4__CairoContext_setLineCap(ctx, (int64_t)(style.lineCap));
+		s_platform_gtk4__CairoContext_setLineJoin(ctx, (int64_t)(style.lineJoin));
 		s_platform_gtk4__source(ctx, style.stroke);
 		cairo_stroke(ctx);
 	}
@@ -2915,6 +2917,14 @@ static void s_platform_gtk4___pictureLetGo(GObject * pic) {
 
 static void s_platform_gtk4__source(cairo_t * ctx, s_builtin__color c) {
 	cairo_set_source_rgba(ctx, (double)(((double)(c.r) / 255.0)), (double)(((double)(c.g) / 255.0)), (double)(((double)(c.b) / 255.0)), (double)(((double)(c.a) / 255.0)));
+}
+
+static void s_platform_gtk4__CairoContext_setLineCap(cairo_t * cr, int64_t cap) {
+	cairo_set_line_cap(cr, (cairo_line_cap_t)(cap));
+}
+
+static void s_platform_gtk4__CairoContext_setLineJoin(cairo_t * cr, int64_t join) {
+	cairo_set_line_join(cr, (cairo_line_join_t)(join));
 }
 
 static void s_platform_gtk4___imageHooksSet(void) {
@@ -5725,8 +5735,8 @@ func Paint(ctx cgo.CairoContext, style Style) {
 	}
 	if style.Stroke.A > 0 {
 		cgo.CairoSetLineWidth(ctx, style.StrokeWidth)
-		cgo.SnglCairoLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
-		cgo.SnglCairoLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
+		CairoContextSetLineCap(ctx, int(slices.Index([]string{"butt", "round", "square"}, style.LineCap)))
+		CairoContextSetLineJoin(ctx, int(slices.Index([]string{"miter", "round", "bevel"}, style.LineJoin)))
 		Source(ctx, style.Stroke)
 		cgo.CairoStroke(ctx)
 	}
@@ -6094,6 +6104,14 @@ func _pictureLetGo(pic cgo.Object) {
 
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
+}
+
+func CairoContextSetLineCap(cr cgo.CairoContext, cap__r0 int) {
+	cgo.CairoSetLineCap(cr, int(cap__r0))
+}
+
+func CairoContextSetLineJoin(cr cgo.CairoContext, join int) {
+	cgo.CairoSetLineJoin(cr, int(join))
 }
 
 func _imageHooksSet() {
@@ -8598,6 +8616,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:e114c9fc7ee9d14ccf19552deb3a9677
+pass sha256:93a2d102c5ebf06b85e0b1d063aebe1d
 -- run/go/gtk4 --
-pass sha256:723d2a7efa128b4d51d68e45d6138fed
+pass sha256:39d18cf6d4ec29010fd0f4a6b0dbc8b5

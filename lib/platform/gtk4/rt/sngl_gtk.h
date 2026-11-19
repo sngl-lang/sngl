@@ -15,7 +15,6 @@
 typedef void (*SnglFn)(void *ctx);
 typedef void (*SnglBoolFn)(int v, void *ctx);
 typedef void (*SnglStrFn)(const char *s, void *ctx);
-typedef void (*SnglDrawFn)(cairo_t *cr, void *data);
 
 /* sngl_post runs fn from the main loop when it is next idle, then release
  * with its ctx: how work another thread finished reaches GTK, which owns its
@@ -160,29 +159,6 @@ typedef void (*SnglHttpDone)(sngl_http_answer *a, void *ctx);
 typedef void (*SnglIconHook)(GtkWidget *box);
 void sngl_image_hooks(SnglTabsHook adopt, SnglTabsHook unadopt, SnglIconHook refresh);
 
-/* A canvas is a GtkDrawingArea whose drawing is the handler of its paint,
- * handed the context, in a space of width by height that the scaling mode
- * -- `draw.ScalingMode`'s ordinal -- maps onto the room it is given. A
- * redraw asks it to paint again. */
-GtkWidget *sngl_canvas_new(void);
-void sngl_canvas_set_width(GtkWidget *w, int width);
-void sngl_canvas_set_height(GtkWidget *w, int height);
-void sngl_canvas_set_scaling(GtkWidget *w, int mode);
-void sngl_canvas_on_paint(GtkWidget *w, SnglDrawFn draw, void *data, GDestroyNotify release);
-void sngl_canvas_redraw(GtkWidget *w);
-void sngl_cairo_line_cap(cairo_t *cr, int cap);
-void sngl_cairo_line_join(cairo_t *cr, int join);
-void sngl_cairo_font(cairo_t *cr, const char *family, double size);
-/* sngl_on_click runs fn with ctx on a press of w, which a drawing area or
- * a label has no signal of its own for: a GtkGestureClick's, which releases
- * ctx with the gesture, and a second call replaces the first's handler. */
-void sngl_on_click(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-/* sngl_click is a press of w, as a test makes one. */
-void sngl_click(GtkWidget *w);
-GtkWidget *sngl_text_new(void);
-void sngl_text_set_value(GtkWidget *w, const char *value);
-
-
 /* A timer's schedule: fn runs with ctx every ms milliseconds, on the main
  * loop's thread, until sngl_schedule_cancel removes it, which releases ctx.
  * A period of 0 or less arms nothing and answers NULL, which cancels as a
@@ -204,28 +180,6 @@ int sngl_toplevel_hear(GtkWidget *box, const char *key, int ctrl, int alt, int s
 /* sngl_calendar_select_date selects day on w, a calendar, as
  * gtk_calendar_select_day does, which GTK 4.20 deprecates (choose.c). */
 void sngl_calendar_select_date(GtkWidget *w, GDateTime *day);
-
-/* sngl_hold makes *slot w, which it reads NULL once w is gone: what a test
- * asks of a widget a branch took away. */
-void sngl_hold(GtkWidget **slot, GtkWidget *w);
-
-/* A node loops render is held by the key of its copy (ir.CopyKey), which a
- * test reaching one copy finds it by: sngl_copy_put holds w under key in
- * *copies, made on first use, and takes it from any key it held before;
- * sngl_copy_get is the widget key holds, or NULL; sngl_copy_drop takes w
- * from every key, as w's finalizing does. */
-void sngl_copy_put(GHashTable **copies, const char *key, GtkWidget *w);
-void sngl_copy_drop(GHashTable *copies, GtkWidget *w);
-GtkWidget *sngl_copy_get(GHashTable *copies, const char *key);
-
-/* sngl_flow_new is the label a flow of rich text is: wrapped, and starting
- * at the left as a paragraph does. Its spans' words are its markup. */
-GtkWidget *sngl_flow_new(void);
-
-/* sngl_editable_set_text_quiet writes an entry's text with its "changed"
- * blocked, which an override does when the program's value moves, so the
- * write does not report itself back as an edit. */
-void sngl_editable_set_text_quiet(GtkWidget *e, const char *t);
 
 /* sngl_app_run runs the application: build makes the program's tree, its
  * toplevels attached, once GTK is up, and the windows of the visible ones

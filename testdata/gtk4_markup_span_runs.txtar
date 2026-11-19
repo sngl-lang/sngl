@@ -393,6 +393,7 @@ typedef struct s___lambda0_caps__env {
 static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static GtkWidget * s_platform_gtk4___rtToplevelNew(void);
+static GtkWidget * s_platform_gtk4___rtFlowNew(void);
 static GtkWidget * s_platform_gtk4___rtSpanNew(void);
 static void s_platform_gtk4___rtSpanHref(GtkWidget * span, sngl_string href);
 static void s_platform_gtk4___rtSpanStyle(GtkWidget * span, int64_t r, int64_t g, int64_t b, int64_t a, double size, int64_t weight, int64_t slant, bool underline, bool strike, sngl_string family);
@@ -1348,6 +1349,13 @@ static GtkWidget * s_platform_gtk4___rtToplevelNew(void) {
 	s_platform_gtk4___menuHooksSet();
 	sngl_keys_hooks((SnglKeysWatch)(void (*)(void))sngl_static_s_platform_gtk4___keysWatch, (SnglKeysGoOn)(void (*)(void))sngl_static_s_platform_gtk4___keysGoOn);
 	return sngl_toplevel_new();
+}
+
+static GtkWidget * s_platform_gtk4___rtFlowNew(void) {
+	GtkWidget * l = gtk_label_new(NULL);
+	gtk_label_set_wrap((GtkLabel *)(l), (int)(1));
+	gtk_label_set_xalign((GtkLabel *)(l), (float)((double)(0.0)));
+	return (GtkWidget *)(l);
 }
 
 static GtkWidget * s_platform_gtk4___rtSpanNew(void) {
@@ -3173,7 +3181,7 @@ static void s___renderSlot0(GtkWidget * parent) {
 	*__slot35 = __kept35;
 }
 					for (struct { sngl_list_int l; int64_t i; } __loop36 = {sngl_list_int_of(1, (int64_t[]){0}), 0}; __loop36.i < __loop36.l.len; __loop36.i++) {
-						GtkWidget * flow__r0 = sngl_flow_new();
+						GtkWidget * flow__r0 = s_platform_gtk4___rtFlowNew();
 						s_flow = flow__r0;
 						s_platform_gtk4___applyLook((GtkWidget *)(flow__r0), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
 						GtkWidget * __n1 = s_platform_gtk4___rtSpanNew();
@@ -3550,6 +3558,13 @@ func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
+}
+
+func _rtFlowNew() cgo.Widget {
+	l := cgo.GtkLabelNew(nil)
+	cgo.GtkLabelSetWrap((cgo.PGtkLabel)(unsafe.Pointer(l)), true)
+	cgo.GtkLabelSetXalign((cgo.PGtkLabel)(unsafe.Pointer(l)), cgo.CFloat(0.0))
+	return (cgo.Widget)(unsafe.Pointer(l))
 }
 
 func _rtSpanNew() cgo.Widget {
@@ -5702,7 +5717,7 @@ func __renderSlot0(parent cgo.Widget) {
 				var __place0_i int = 0
 				m.__slot0 = []cgo.Widget{}
 				for range []int{0} {
-					flow__r0 := cgo.SnglFlowNew()
+					flow__r0 := _rtFlowNew()
 					m.flow = flow__r0
 					_applyLook(flow__r0, Look{})
 					__n1 := _rtSpanNew()
@@ -5837,6 +5852,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:754ad01cde16fe4ba4286272f053664d
+pass sha256:4d2974d09e81d9d7d697523bdb8f921a
 -- run/go/gtk4 --
-pass sha256:945f3f3b6a2eb009d4f0692a7cd1cda4
+pass sha256:f10403a16b59910276e70de988a19dc6
