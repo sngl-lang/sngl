@@ -1128,6 +1128,22 @@ static void s___lambda6__fn(void *env) {
 	s___lambda6(((s___lambda6_caps__env *)env)->caps);
 }
 
+static char * s___rel3;
+static char * s___rel4;
+static char * s___rel5;
+static char * s___rel6;
+static char * s___rel7;
+static char * s___rel11;
+static char * s___rel12;
+static char * s___rel13;
+static char * s___rel14;
+static char * s___rel15;
+static char * s___rel16;
+static char * s___rel19;
+static char * s___rel38;
+static char * s___rel41;
+static char * s___rel44;
+static char * s___rel47;
 static sngl_string s___ctx_locale__inst0;
 static s___ref_list_string * s_items__inst0;
 static s___ref_string * s_mark__inst0;
@@ -1145,22 +1161,6 @@ static sngl_list_GtkWidget_p s___slot0;
 static GtkWidget * s___anchor0;
 static bool s___rendering0;
 static bool s___renderAgain0;
-static char * s___rel3;
-static char * s___rel4;
-static char * s___rel5;
-static char * s___rel6;
-static char * s___rel7;
-static char * s___rel11;
-static char * s___rel12;
-static char * s___rel13;
-static char * s___rel14;
-static char * s___rel15;
-static char * s___rel16;
-static char * s___rel19;
-static char * s___rel38;
-static char * s___rel41;
-static char * s___rel44;
-static char * s___rel47;
 static GtkWidget * s___n0;
 static GtkWidget * s___n4;
 static GtkWidget * s___n1;
@@ -1641,22 +1641,6 @@ static void s___lambda6(s___lambda6_caps state) {
 }
 
 static void sngl_init(void) {
-	s___ctx_locale__inst0 = sngl_string_keep(sngl_i18n_default_locale());
-	s_items__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("a")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
-	s_mark__inst0 = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("!"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL))));
-	s_chosen__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("x")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___memoEpoch = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
-	s___memo_rows__inst0 = sngl_list_string__keep(((sngl_list_string){0}));
-	s___memoAt_rows__inst0 = -1;
-	s___memo_greetings__inst0 = sngl_list_string__keep(((sngl_list_string){0}));
-	s___memoAt_greetings__inst0 = -1;
-	s___memoArg0_greetings__inst0 = sngl_string_keep(SNGL_STR(""));
-	s___memo_picked__inst0 = sngl_list_string__keep(((sngl_list_string){0}));
-	s___memoAt_picked__inst0 = -1;
-	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	s___rendering0 = false;
-	s___renderAgain0 = false;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -1673,6 +1657,22 @@ static void sngl_init(void) {
 	s___rel41 = sngl_cstring(SNGL_STR("mark"));
 	s___rel44 = sngl_cstring(SNGL_STR("pick"));
 	s___rel47 = sngl_cstring(SNGL_STR(""));
+	s___ctx_locale__inst0 = sngl_string_keep(sngl_i18n_default_locale());
+	s_items__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("a")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
+	s_mark__inst0 = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("!"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL))));
+	s_chosen__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("x")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___memoEpoch = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
+	s___memo_rows__inst0 = sngl_list_string__keep(((sngl_list_string){0}));
+	s___memoAt_rows__inst0 = -1;
+	s___memo_greetings__inst0 = sngl_list_string__keep(((sngl_list_string){0}));
+	s___memoAt_greetings__inst0 = -1;
+	s___memoArg0_greetings__inst0 = sngl_string_keep(SNGL_STR(""));
+	s___memo_picked__inst0 = sngl_list_string__keep(((sngl_list_string){0}));
+	s___memoAt_picked__inst0 = -1;
+	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	s___rendering0 = false;
+	s___renderAgain0 = false;
 }
 
 static void sngl_build(void) {
@@ -2409,6 +2409,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:2b16a777219224c677c1fbe7a6189b6c
+pass sha256:c9170ddf51177fdc9daa1de03b76101b
 -- run/go/gtk4 --
 pass sha256:f41d9be829cd622d5dcefadab30a6429

@@ -1279,6 +1279,20 @@ static void s___lambda1__fn(void *env) {
 	s___lambda1(((s___lambda1_caps__env *)env)->caps);
 }
 
+static char * s___rel3;
+static char * s___rel4;
+static char * s___rel5;
+static char * s___rel6;
+static char * s___rel7;
+static char * s___rel11;
+static char * s___rel12;
+static char * s___rel13;
+static char * s___rel14;
+static char * s___rel15;
+static char * s___rel16;
+static char * s___rel19;
+static char * s___rel27;
+static char * s___rel30;
 static sngl_string s_key__inst0;
 static sngl_opt_Echo s_answer__inst0;
 static s___ref_int * s_sent__inst0;
@@ -1296,20 +1310,6 @@ static bool s___effects0_settling;
 static bool s___effects0_pending;
 static bool s___effects0_torn;
 static int64_t s___effects0_steps;
-static char * s___rel3;
-static char * s___rel4;
-static char * s___rel5;
-static char * s___rel6;
-static char * s___rel7;
-static char * s___rel11;
-static char * s___rel12;
-static char * s___rel13;
-static char * s___rel14;
-static char * s___rel15;
-static char * s___rel16;
-static char * s___rel19;
-static char * s___rel27;
-static char * s___rel30;
 static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 static GtkWidget * s___n2;
@@ -1776,6 +1776,20 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void sngl_init(void) {
+	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
+	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
+	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
+	s___rel6 = sngl_cstring(SNGL_STR("sngl-header-menu"));
+	s___rel7 = sngl_cstring(SNGL_STR("sngl-header-decided"));
+	s___rel11 = sngl_cstring(SNGL_STR("sngl-back"));
+	s___rel12 = sngl_cstring(SNGL_STR("sngl-toplevel"));
+	s___rel13 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
+	s___rel14 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
+	s___rel15 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
+	s___rel16 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel19 = sngl_cstring(SNGL_STR("activate"));
+	s___rel27 = sngl_cstring(SNGL_STR("Send"));
+	s___rel30 = sngl_cstring(SNGL_STR(""));
 	s_key__inst0 = sngl_string_keep(SNGL_STR("a"));
 	s_answer__inst0 = (sngl_opt_Echo){0};
 	s_sent__inst0 = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
@@ -1793,20 +1807,6 @@ static void sngl_init(void) {
 	s___effects0_pending = false;
 	s___effects0_torn = false;
 	s___effects0_steps = 0;
-	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
-	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
-	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
-	s___rel6 = sngl_cstring(SNGL_STR("sngl-header-menu"));
-	s___rel7 = sngl_cstring(SNGL_STR("sngl-header-decided"));
-	s___rel11 = sngl_cstring(SNGL_STR("sngl-back"));
-	s___rel12 = sngl_cstring(SNGL_STR("sngl-toplevel"));
-	s___rel13 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
-	s___rel14 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
-	s___rel15 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
-	s___rel16 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel19 = sngl_cstring(SNGL_STR("activate"));
-	s___rel27 = sngl_cstring(SNGL_STR("Send"));
-	s___rel30 = sngl_cstring(SNGL_STR(""));
 }
 
 static void sngl_build(void) {
@@ -3524,7 +3524,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:177d43462297b7068c65834b09ca1a22
+pass sha256:9b2c9676d253371b6bc8258e2327e121
 -- run/go/fyne --
 pass sha256:4e647ae627ca47089e53b52582210ae2
 -- run/kotlin/android --

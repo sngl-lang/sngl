@@ -1121,18 +1121,6 @@ static bool s_Link__eq(s_Link a, s_Link b) {
 	return sngl_string_eq(a.name, b.name) && sngl_list_Link__eq(a.next, b.next);
 }
 
-static s___ref_list_string * s_names__inst0;
-static sngl_list_string s_tags__inst0;
-static sngl_map_string__int s_seen__inst0;
-static sngl_string s_picked__inst0;
-static s_Link s_chain__inst0;
-static s_Link s_other__inst0;
-static s___ref_bool * s_visible__inst0;
-static sngl_list_GtkWidget_p s___slot0;
-static GtkWidget * s___anchor0;
-static sngl_map_string____child0__inst s___inst1_live;
-static bool s___rendering0;
-static bool s___renderAgain0;
 static char * s___rel3;
 static char * s___rel4;
 static char * s___rel5;
@@ -1148,6 +1136,18 @@ static char * s___rel19;
 static char * s___rel30;
 static char * s___rel36;
 static char * s___rel42;
+static s___ref_list_string * s_names__inst0;
+static sngl_list_string s_tags__inst0;
+static sngl_map_string__int s_seen__inst0;
+static sngl_string s_picked__inst0;
+static s_Link s_chain__inst0;
+static s_Link s_other__inst0;
+static s___ref_bool * s_visible__inst0;
+static sngl_list_GtkWidget_p s___slot0;
+static GtkWidget * s___anchor0;
+static sngl_map_string____child0__inst s___inst1_live;
+static bool s___rendering0;
+static bool s___renderAgain0;
 static GtkWidget * s___n1;
 static GtkWidget * s___n4;
 static GtkWidget * s___n7;
@@ -1685,17 +1685,6 @@ static void s___lambda2(s___lambda2_caps state) {
 }
 
 static void sngl_init(void) {
-	s_names__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(2, (sngl_string[]){SNGL_STR("a"), SNGL_STR("b")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
-	s_tags__inst0 = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("x")}));
-	s_seen__inst0 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	s_picked__inst0 = sngl_string_keep(SNGL_STR(""));
-	s_chain__inst0 = s_Link__keep((s_Link){.name = SNGL_STR("a"), .next = sngl_list_Link_of(1, (s_Link[]){(s_Link){.name = SNGL_STR("b"), .next = ((sngl_list_Link){0})}})});
-	s_other__inst0 = s_Link__keep((s_Link){.name = SNGL_STR("a"), .next = ((sngl_list_Link){0})});
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
-	s___rendering0 = false;
-	s___renderAgain0 = false;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -1711,6 +1700,17 @@ static void sngl_init(void) {
 	s___rel30 = sngl_cstring(SNGL_STR("more"));
 	s___rel36 = sngl_cstring(SNGL_STR(""));
 	s___rel42 = sngl_cstring(SNGL_STR("pick"));
+	s_names__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(2, (sngl_string[]){SNGL_STR("a"), SNGL_STR("b")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
+	s_tags__inst0 = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("x")}));
+	s_seen__inst0 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	s_picked__inst0 = sngl_string_keep(SNGL_STR(""));
+	s_chain__inst0 = s_Link__keep((s_Link){.name = SNGL_STR("a"), .next = sngl_list_Link_of(1, (s_Link[]){(s_Link){.name = SNGL_STR("b"), .next = ((sngl_list_Link){0})}})});
+	s_other__inst0 = s_Link__keep((s_Link){.name = SNGL_STR("a"), .next = ((sngl_list_Link){0})});
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
+	s___rendering0 = false;
+	s___renderAgain0 = false;
 }
 
 static void sngl_build(void) {
@@ -2768,7 +2768,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:1ebb41474e624f85f93bf2520dcafff2
+pass sha256:a6b8ca61be9f6fa95c260047cd201d5e
 -- run/go/gtk4 --
 pass sha256:31d25a17e0e30017b21f82e612e3d22e
 -- run/none/html --

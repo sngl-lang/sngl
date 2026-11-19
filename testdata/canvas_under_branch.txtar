@@ -717,14 +717,6 @@ static void s___lambda3__fn(void *env, cairo_t * a0) {
 	s___lambda3(((s___lambda3_caps__env *)env)->caps, a0);
 }
 
-static s___ref_float * s_grow;
-static s___ref_float * s_w__inst0;
-static s___ref_bool * s_on__inst0;
-static s___ref_bool * s_visible__inst0;
-static sngl_list_GtkWidget_p s___slot0;
-static GtkWidget * s___anchor0;
-static bool s___rendering0;
-static bool s___renderAgain0;
 static char * s___rel3;
 static char * s___rel4;
 static char * s___rel5;
@@ -740,6 +732,14 @@ static char * s___rel19;
 static char * s___rel25;
 static char * s___rel28;
 static char * s___rel31;
+static s___ref_float * s_grow;
+static s___ref_float * s_w__inst0;
+static s___ref_bool * s_on__inst0;
+static s___ref_bool * s_visible__inst0;
+static sngl_list_GtkWidget_p s___slot0;
+static GtkWidget * s___anchor0;
+static bool s___rendering0;
+static bool s___renderAgain0;
 static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 static GtkWidget * s___n2;
@@ -1131,13 +1131,6 @@ static void s___lambda3(s___lambda3_caps state, cairo_t * ctx) {
 }
 
 static void sngl_init(void) {
-	s_grow = ((s___ref_float *)sngl_counted_retain(((s___ref_float *)sngl_counted_new(&(s___ref_float[]){(s___ref_float){.value = 0.0}}, sizeof(s___ref_float), s___ref_float__release, s___ref_float__rekeep, NULL))));
-	s_w__inst0 = ((s___ref_float *)sngl_counted_retain(((s___ref_float *)sngl_counted_new(&(s___ref_float[]){(s___ref_float){.value = 4.0}}, sizeof(s___ref_float), s___ref_float__release, s___ref_float__rekeep, NULL))));
-	s_on__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	s___rendering0 = false;
-	s___renderAgain0 = false;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -1153,6 +1146,13 @@ static void sngl_init(void) {
 	s___rel25 = sngl_cstring(SNGL_STR("grow"));
 	s___rel28 = sngl_cstring(SNGL_STR("flip"));
 	s___rel31 = sngl_cstring(SNGL_STR(""));
+	s_grow = ((s___ref_float *)sngl_counted_retain(((s___ref_float *)sngl_counted_new(&(s___ref_float[]){(s___ref_float){.value = 0.0}}, sizeof(s___ref_float), s___ref_float__release, s___ref_float__rekeep, NULL))));
+	s_w__inst0 = ((s___ref_float *)sngl_counted_retain(((s___ref_float *)sngl_counted_new(&(s___ref_float[]){(s___ref_float){.value = 4.0}}, sizeof(s___ref_float), s___ref_float__release, s___ref_float__rekeep, NULL))));
+	s_on__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	s___rendering0 = false;
+	s___renderAgain0 = false;
 }
 
 static void sngl_build(void) {
@@ -3156,7 +3156,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:ee926ee76842a66df39fbea709ff8055
+pass sha256:7a7cf119aa1bca0c6db7c41140934a7f
 -- run/c/win32 --
 pass sha256:e254869f7e25f4636add2d30d2d05f99
 -- run/go/fyne --

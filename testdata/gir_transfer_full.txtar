@@ -417,8 +417,6 @@ static void s___lambda1__fn(void *env) {
 	s___lambda1(((s___lambda1_caps__env *)env)->caps);
 }
 
-static s___ref_int * s_n;
-static s___ref_bool * s_visible__inst0;
 static char * s___rel4;
 static char * s___rel5;
 static char * s___rel6;
@@ -434,6 +432,8 @@ static char * s___rel20;
 static char * s___rel24;
 static char * s___rel25;
 static char * s___rel28;
+static s___ref_int * s_n;
+static s___ref_bool * s_visible__inst0;
 static GtkWidget * s___n0;
 static GtkWidget * s_l;
 static GtkWidget * s___n1;
@@ -734,8 +734,6 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void sngl_init(void) {
-	s_n = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel5 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel6 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -751,6 +749,8 @@ static void sngl_init(void) {
 	s___rel24 = sngl_cstring(SNGL_STR(""));
 	s___rel25 = sngl_cstring(SNGL_STR("go"));
 	s___rel28 = sngl_cstring(SNGL_STR("t"));
+	s_n = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
 }
 
 static void sngl_build(void) {
@@ -807,4 +807,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:996ed63e3d7b0dde1558ea1fb3d22bc2
+pass sha256:aa21d19c6e0f3b7b06dbdf742afddcd5

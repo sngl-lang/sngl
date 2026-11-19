@@ -2104,6 +2104,27 @@ static void s___lambda5__fn(void *env) {
 	s___lambda5(((s___lambda5_caps__env *)env)->caps);
 }
 
+static char * s___rel0;
+static char * s___rel6;
+static char * s___rel7;
+static char * s___rel9;
+static char * s___rel10;
+static char * s___rel11;
+static char * s___rel12;
+static char * s___rel13;
+static char * s___rel14;
+static char * s___rel15;
+static char * s___rel19;
+static char * s___rel20;
+static char * s___rel21;
+static char * s___rel22;
+static char * s___rel23;
+static char * s___rel24;
+static char * s___rel27;
+static char * s___rel31;
+static char * s___rel36;
+static char * s___rel41;
+static char * s___rel44;
 static s___ref_string * s_top;
 static s___ref_bool * s_shown;
 static s___ref_int * s_selected__inst0;
@@ -2131,27 +2152,6 @@ static GtkWidget * s___anchor2;
 static sngl_list_moves__inst s___inst5_live;
 static bool s___rendering2;
 static bool s___renderAgain2;
-static char * s___rel0;
-static char * s___rel6;
-static char * s___rel7;
-static char * s___rel9;
-static char * s___rel10;
-static char * s___rel11;
-static char * s___rel12;
-static char * s___rel13;
-static char * s___rel14;
-static char * s___rel15;
-static char * s___rel19;
-static char * s___rel20;
-static char * s___rel21;
-static char * s___rel22;
-static char * s___rel23;
-static char * s___rel24;
-static char * s___rel27;
-static char * s___rel31;
-static char * s___rel36;
-static char * s___rel41;
-static char * s___rel44;
 static GtkWidget * s___n2;
 static GtkWidget * s___n8;
 static GtkWidget * s___n3;
@@ -3530,6 +3530,27 @@ static void s___lambda5(s___lambda5_caps state) {
 }
 
 static void sngl_init(void) {
+	s___rel0 = sngl_cstring(SNGL_STR("notify::page"));
+	s___rel6 = sngl_cstring(SNGL_STR("notify"));
+	s___rel7 = sngl_cstring(SNGL_STR("selected"));
+	s___rel9 = sngl_cstring(SNGL_STR("sngl-tabs"));
+	s___rel10 = sngl_cstring(SNGL_STR("sngl-tab-page"));
+	s___rel11 = sngl_cstring(SNGL_STR("sngl"));
+	s___rel12 = sngl_cstring(SNGL_STR("sngl-header-back"));
+	s___rel13 = sngl_cstring(SNGL_STR("sngl-header"));
+	s___rel14 = sngl_cstring(SNGL_STR("sngl-header-menu"));
+	s___rel15 = sngl_cstring(SNGL_STR("sngl-header-decided"));
+	s___rel19 = sngl_cstring(SNGL_STR("sngl-back"));
+	s___rel20 = sngl_cstring(SNGL_STR("sngl-toplevel"));
+	s___rel21 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
+	s___rel22 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
+	s___rel23 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
+	s___rel24 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel27 = sngl_cstring(SNGL_STR("activate"));
+	s___rel31 = sngl_cstring(SNGL_STR("one"));
+	s___rel36 = sngl_cstring(SNGL_STR("notify::selected"));
+	s___rel41 = sngl_cstring(SNGL_STR("toggle"));
+	s___rel44 = sngl_cstring(SNGL_STR(""));
 	s_top = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("a"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL))));
 	s_shown = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
 	s_selected__inst0 = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
@@ -3556,27 +3577,6 @@ static void sngl_init(void) {
 	s___inst5_live = sngl_list_moves__inst__keep(((sngl_list_moves__inst){0}));
 	s___rendering2 = false;
 	s___renderAgain2 = false;
-	s___rel0 = sngl_cstring(SNGL_STR("notify::page"));
-	s___rel6 = sngl_cstring(SNGL_STR("notify"));
-	s___rel7 = sngl_cstring(SNGL_STR("selected"));
-	s___rel9 = sngl_cstring(SNGL_STR("sngl-tabs"));
-	s___rel10 = sngl_cstring(SNGL_STR("sngl-tab-page"));
-	s___rel11 = sngl_cstring(SNGL_STR("sngl"));
-	s___rel12 = sngl_cstring(SNGL_STR("sngl-header-back"));
-	s___rel13 = sngl_cstring(SNGL_STR("sngl-header"));
-	s___rel14 = sngl_cstring(SNGL_STR("sngl-header-menu"));
-	s___rel15 = sngl_cstring(SNGL_STR("sngl-header-decided"));
-	s___rel19 = sngl_cstring(SNGL_STR("sngl-back"));
-	s___rel20 = sngl_cstring(SNGL_STR("sngl-toplevel"));
-	s___rel21 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
-	s___rel22 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
-	s___rel23 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
-	s___rel24 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel27 = sngl_cstring(SNGL_STR("activate"));
-	s___rel31 = sngl_cstring(SNGL_STR("one"));
-	s___rel36 = sngl_cstring(SNGL_STR("notify::selected"));
-	s___rel41 = sngl_cstring(SNGL_STR("toggle"));
-	s___rel44 = sngl_cstring(SNGL_STR(""));
 }
 
 static void sngl_build(void) {
@@ -8067,7 +8067,7 @@ func snglWin32Snapshot(path string, w, h int) int    { return cgo.SnglWin32Snaps
 func snglWin32CarryFile(name, data string, n int)    { cgo.SnglWin32CarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:3b579171128d8214646b26bfd09bd16c
+pass sha256:3980f74e157fae1e6eccb75715f41750
 -- run/c/win32 --
 pass sha256:21baf8e9463ebb9d0fa1d4b490ca843b
 -- run/go/gtk4 --

@@ -647,18 +647,6 @@ static sngl_fn_cairo_t_p__void sngl_fn_cairo_t_p__void__keep(sngl_fn_cairo_t_p__
 	return v;
 }
 
-static s___ref_int * s_frame;
-static SnglSchedule * s_handle__inst0;
-static s___ref_bool * s_visible__inst0;
-static sngl_list_bool s___effect0_live;
-static sngl_list_bool s___effect0_desired;
-static int64_t s___effect1_key;
-static sngl_list_int s___effect1_live;
-static sngl_list_int s___effect1_desired;
-static bool s___effects0_settling;
-static bool s___effects0_pending;
-static bool s___effects0_torn;
-static int64_t s___effects0_steps;
 static char * s___rel3;
 static char * s___rel4;
 static char * s___rel5;
@@ -672,6 +660,18 @@ static char * s___rel15;
 static char * s___rel16;
 static char * s___rel19;
 static char * s___rel25;
+static s___ref_int * s_frame;
+static SnglSchedule * s_handle__inst0;
+static s___ref_bool * s_visible__inst0;
+static sngl_list_bool s___effect0_live;
+static sngl_list_bool s___effect0_desired;
+static int64_t s___effect1_key;
+static sngl_list_int s___effect1_live;
+static sngl_list_int s___effect1_desired;
+static bool s___effects0_settling;
+static bool s___effects0_pending;
+static bool s___effects0_torn;
+static int64_t s___effects0_steps;
 static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 static GtkWidget * s___drawing0;
@@ -1106,17 +1106,6 @@ static void s___lambda1(s___lambda1_caps state, cairo_t * ctx) {
 }
 
 static void sngl_init(void) {
-	s_frame = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___effect0_live = sngl_list_bool__keep(((sngl_list_bool){0}));
-	s___effect0_desired = sngl_list_bool__keep(((sngl_list_bool){0}));
-	s___effect1_key = 0;
-	s___effect1_live = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effect1_desired = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effects0_settling = false;
-	s___effects0_pending = false;
-	s___effects0_torn = false;
-	s___effects0_steps = 0;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -1130,6 +1119,17 @@ static void sngl_init(void) {
 	s___rel16 = sngl_cstring(SNGL_STR("clicked"));
 	s___rel19 = sngl_cstring(SNGL_STR("activate"));
 	s___rel25 = sngl_cstring(SNGL_STR("drawing"));
+	s_frame = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___effect0_live = sngl_list_bool__keep(((sngl_list_bool){0}));
+	s___effect0_desired = sngl_list_bool__keep(((sngl_list_bool){0}));
+	s___effect1_key = 0;
+	s___effect1_live = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effect1_desired = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effects0_settling = false;
+	s___effects0_pending = false;
+	s___effects0_torn = false;
+	s___effects0_steps = 0;
 }
 
 static void sngl_build(void) {
@@ -4451,7 +4451,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:4d6403b2a87a7491e46604a250861b89
+pass sha256:b88dca442a687777edf936a0c28516bc
 -- run/c/win32 --
 pass sha256:494e2294a0bb7630580379cc27c62325
 -- run/go/bubbletea --

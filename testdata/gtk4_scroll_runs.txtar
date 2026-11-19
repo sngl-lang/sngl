@@ -1089,26 +1089,6 @@ static void s___lambda1__fn(void *env) {
 	s___lambda1(((s___lambda1_caps__env *)env)->caps);
 }
 
-static s___ref_int * s_asked;
-static s___ref_int * s_rows;
-static int64_t s_seen;
-static int64_t s_still;
-static int64_t s_phase;
-static int64_t s_way;
-static SnglSchedule * s_handle__inst0;
-static s___ref_bool * s_visible__inst0;
-static int64_t s___effect0_key;
-static sngl_list_int s___effect0_live;
-static sngl_list_int s___effect0_desired;
-static bool s___effects0_settling;
-static bool s___effects0_pending;
-static bool s___effects0_torn;
-static int64_t s___effects0_steps;
-static sngl_list_GtkWidget_p s___slot0;
-static GtkWidget * s___anchor0;
-static sngl_map_string____child0__inst s___inst1_live;
-static bool s___rendering0;
-static bool s___renderAgain0;
 static char * s___rel3;
 static char * s___rel4;
 static char * s___rel5;
@@ -1129,6 +1109,26 @@ static char * s___rel22;
 static char * s___rel23;
 static char * s___rel26;
 static char * s___rel38;
+static s___ref_int * s_asked;
+static s___ref_int * s_rows;
+static int64_t s_seen;
+static int64_t s_still;
+static int64_t s_phase;
+static int64_t s_way;
+static SnglSchedule * s_handle__inst0;
+static s___ref_bool * s_visible__inst0;
+static int64_t s___effect0_key;
+static sngl_list_int s___effect0_live;
+static sngl_list_int s___effect0_desired;
+static bool s___effects0_settling;
+static bool s___effects0_pending;
+static bool s___effects0_torn;
+static int64_t s___effects0_steps;
+static sngl_list_GtkWidget_p s___slot0;
+static GtkWidget * s___anchor0;
+static sngl_map_string____child0__inst s___inst1_live;
+static bool s___rendering0;
+static bool s___renderAgain0;
 static GtkWidget * s___n1;
 static GtkWidget * s___n4;
 static GtkWidget * s_list;
@@ -1898,24 +1898,6 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void sngl_init(void) {
-	s_asked = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
-	s_rows = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 1}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
-	s_seen = 0;
-	s_still = 0;
-	s_phase = 0;
-	s_way = 0;
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___effect0_key = 0;
-	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effects0_settling = false;
-	s___effects0_pending = false;
-	s___effects0_torn = false;
-	s___effects0_steps = 0;
-	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
-	s___rendering0 = false;
-	s___renderAgain0 = false;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl-probe"));
 	s___rel4 = sngl_cstring(SNGL_STR("notify::child"));
 	s___rel5 = sngl_cstring(SNGL_STR("changed"));
@@ -1936,6 +1918,24 @@ static void sngl_init(void) {
 	s___rel23 = sngl_cstring(SNGL_STR("clicked"));
 	s___rel26 = sngl_cstring(SNGL_STR("activate"));
 	s___rel38 = sngl_cstring(SNGL_STR("t"));
+	s_asked = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
+	s_rows = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 1}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
+	s_seen = 0;
+	s_still = 0;
+	s_phase = 0;
+	s_way = 0;
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___effect0_key = 0;
+	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effects0_settling = false;
+	s___effects0_pending = false;
+	s___effects0_torn = false;
+	s___effects0_steps = 0;
+	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
+	s___rendering0 = false;
+	s___renderAgain0 = false;
 }
 
 static void sngl_build(void) {
@@ -3086,6 +3086,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:0f3271e683a9cd9211bcd367c426a943
+pass sha256:947b0470ea1067978408342c3c34d448
 -- run/go/gtk4 --
 pass sha256:4ebb77f45193279b31d39563b402320f

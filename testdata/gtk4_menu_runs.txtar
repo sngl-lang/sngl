@@ -1456,6 +1456,24 @@ static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 }
 
 static sngl_list_string s_sizes;
+static char * s___rel2;
+static char * s___rel3;
+static char * s___rel4;
+static char * s___rel5;
+static char * s___rel6;
+static char * s___rel7;
+static char * s___rel8;
+static char * s___rel12;
+static char * s___rel13;
+static char * s___rel14;
+static char * s___rel15;
+static char * s___rel18;
+static char * s___rel22;
+static char * s___rel23;
+static char * s___rel24;
+static char * s___rel26;
+static char * s___rel28;
+static char * s___rel31;
 static int64_t s_ticks;
 static s___ref_string * s_size;
 static s___ref_int * s_saved;
@@ -1480,24 +1498,6 @@ static sngl_list_GtkWidget_p s___slot1;
 static GtkWidget * s___anchor1;
 static bool s___rendering1;
 static bool s___renderAgain1;
-static char * s___rel2;
-static char * s___rel3;
-static char * s___rel4;
-static char * s___rel5;
-static char * s___rel6;
-static char * s___rel7;
-static char * s___rel8;
-static char * s___rel12;
-static char * s___rel13;
-static char * s___rel14;
-static char * s___rel15;
-static char * s___rel18;
-static char * s___rel22;
-static char * s___rel23;
-static char * s___rel24;
-static char * s___rel26;
-static char * s___rel28;
-static char * s___rel31;
 static GtkWidget * s_main__r0;
 static GtkWidget * s___n3;
 
@@ -2092,6 +2092,24 @@ static void s___lambda7(s___lambda7_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_sizes = sngl_list_string__keep(sngl_list_string_of(3, (sngl_string[]){SNGL_STR("Small"), SNGL_STR("Medium"), SNGL_STR("Large")}));
+	s___rel2 = sngl_cstring(SNGL_STR("sngl-back"));
+	s___rel3 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
+	s___rel4 = sngl_cstring(SNGL_STR("sngl"));
+	s___rel5 = sngl_cstring(SNGL_STR("sngl-header-back"));
+	s___rel6 = sngl_cstring(SNGL_STR("sngl-header"));
+	s___rel7 = sngl_cstring(SNGL_STR("sngl-header-menu"));
+	s___rel8 = sngl_cstring(SNGL_STR("sngl-header-decided"));
+	s___rel12 = sngl_cstring(SNGL_STR("sngl-toplevel"));
+	s___rel13 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
+	s___rel14 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
+	s___rel15 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel18 = sngl_cstring(SNGL_STR("activate"));
+	s___rel22 = sngl_cstring(SNGL_STR("sngl.e0"));
+	s___rel23 = sngl_cstring(SNGL_STR("sngl.e1"));
+	s___rel24 = sngl_cstring(SNGL_STR("sngl.e4"));
+	s___rel26 = sngl_cstring(SNGL_STR("sngl.e5"));
+	s___rel28 = sngl_cstring(SNGL_STR("body"));
+	s___rel31 = sngl_cstring(SNGL_STR("t"));
 	s_ticks = 0;
 	s_size = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("Medium"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL))));
 	s_saved = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
@@ -2113,24 +2131,6 @@ static void sngl_init(void) {
 	s___slot1 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___rendering1 = false;
 	s___renderAgain1 = false;
-	s___rel2 = sngl_cstring(SNGL_STR("sngl-back"));
-	s___rel3 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
-	s___rel4 = sngl_cstring(SNGL_STR("sngl"));
-	s___rel5 = sngl_cstring(SNGL_STR("sngl-header-back"));
-	s___rel6 = sngl_cstring(SNGL_STR("sngl-header"));
-	s___rel7 = sngl_cstring(SNGL_STR("sngl-header-menu"));
-	s___rel8 = sngl_cstring(SNGL_STR("sngl-header-decided"));
-	s___rel12 = sngl_cstring(SNGL_STR("sngl-toplevel"));
-	s___rel13 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
-	s___rel14 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
-	s___rel15 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel18 = sngl_cstring(SNGL_STR("activate"));
-	s___rel22 = sngl_cstring(SNGL_STR("sngl.e0"));
-	s___rel23 = sngl_cstring(SNGL_STR("sngl.e1"));
-	s___rel24 = sngl_cstring(SNGL_STR("sngl.e4"));
-	s___rel26 = sngl_cstring(SNGL_STR("sngl.e5"));
-	s___rel28 = sngl_cstring(SNGL_STR("body"));
-	s___rel31 = sngl_cstring(SNGL_STR("t"));
 }
 
 static void sngl_build(void) {
@@ -2296,6 +2296,10 @@ type _BackState struct {
 var sizes []string = []string{"Small", "Medium", "Large"}
 
 type snglState struct {
+	__rel0              *C.char
+	__rel1              *C.char
+	__rel2              *C.char
+	__rel3              *C.char
 	ticks               int
 	size                string
 	saved               int
@@ -2320,10 +2324,6 @@ type snglState struct {
 	__anchor1           cgo.Widget
 	__rendering1        bool
 	__renderAgain1      bool
-	__rel0              *C.char
-	__rel1              *C.char
-	__rel2              *C.char
-	__rel3              *C.char
 	main__r0            cgo.Widget
 	__n3                cgo.Widget
 }
@@ -2964,6 +2964,10 @@ func Free(s *C.char) {
 
 func snglInit() {
 	m = &snglState{}
+	m.__rel0 = C.CString("sngl.e0")
+	m.__rel1 = C.CString("sngl.e1")
+	m.__rel2 = C.CString("sngl.e4")
+	m.__rel3 = C.CString("sngl.e5")
 	m.ticks = 0
 	m.size = "Medium"
 	m.saved = 0
@@ -2985,10 +2989,6 @@ func snglInit() {
 	m.__slot1 = []cgo.Widget{}
 	m.__rendering1 = false
 	m.__renderAgain1 = false
-	m.__rel0 = C.CString("sngl.e0")
-	m.__rel1 = C.CString("sngl.e1")
-	m.__rel2 = C.CString("sngl.e4")
-	m.__rel3 = C.CString("sngl.e5")
 }
 
 func snglBuild() {
@@ -3041,6 +3041,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:3d39ecc72353e40c78917f33b7aebdbf
+pass sha256:14936b8a1a6c8964d19c902467371f28
 -- run/go/gtk4 --
-pass sha256:23aa1fdbe93f9e71cef52ef281509553
+pass sha256:0135373736c189d23192dd8b093ec122

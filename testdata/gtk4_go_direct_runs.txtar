@@ -100,16 +100,6 @@ type _BackState struct {
 }
 
 type snglState struct {
-	ticks               int
-	handle__inst0       *C.SnglSchedule
-	visible__inst0      bool
-	__effect0_key       time.Duration
-	__effect0_live      []time.Duration
-	__effect0_desired   []time.Duration
-	__effects0_settling bool
-	__effects0_pending  bool
-	__effects0_torn     bool
-	__effects0_steps    int
 	__rel2              *C.char
 	__rel3              *C.char
 	__rel4              *C.char
@@ -123,6 +113,16 @@ type snglState struct {
 	__rel15             *C.char
 	__rel18             *C.char
 	__rel29             *C.char
+	ticks               int
+	handle__inst0       *C.SnglSchedule
+	visible__inst0      bool
+	__effect0_key       time.Duration
+	__effect0_live      []time.Duration
+	__effect0_desired   []time.Duration
+	__effects0_settling bool
+	__effects0_pending  bool
+	__effects0_torn     bool
+	__effects0_steps    int
 	__n0                *C.GtkWidget
 	__n1                *C.GtkWidget
 	__drawing0          *C.GtkWidget
@@ -748,15 +748,6 @@ func Free(s *C.char) {
 
 func snglInit() {
 	m = &snglState{}
-	m.ticks = 0
-	m.visible__inst0 = true
-	m.__effect0_key = (time.Duration(0) * time.Millisecond)
-	m.__effect0_live = []time.Duration{}
-	m.__effect0_desired = []time.Duration{}
-	m.__effects0_settling = false
-	m.__effects0_pending = false
-	m.__effects0_torn = false
-	m.__effects0_steps = 0
 	m.__rel2 = C.CString("sngl")
 	m.__rel3 = C.CString("sngl-header-back")
 	m.__rel4 = C.CString("sngl-header")
@@ -770,6 +761,15 @@ func snglInit() {
 	m.__rel15 = C.CString("clicked")
 	m.__rel18 = C.CString("activate")
 	m.__rel29 = C.CString("t")
+	m.ticks = 0
+	m.visible__inst0 = true
+	m.__effect0_key = (time.Duration(0) * time.Millisecond)
+	m.__effect0_live = []time.Duration{}
+	m.__effect0_desired = []time.Duration{}
+	m.__effects0_settling = false
+	m.__effects0_pending = false
+	m.__effects0_torn = false
+	m.__effects0_steps = 0
 }
 
 func snglBuild() {
@@ -1052,4 +1052,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:7346bedff6fe8b8f90050525b8b5cdc7
+pass sha256:a40b3356724d6075c09683771683106b

@@ -139,10 +139,10 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
+	__rel0         Token
 	log            []string
 	visible__inst0 bool
 	__focusID      int
-	__rel0         Token
 
 	__clicks      tui.Clicks[snglStop]
 	width, height int
@@ -151,10 +151,10 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
+	m.__rel0 = Token{Id: 7}
 	m.log = []string{}
 	m.visible__inst0 = true
 	m.__focusID = 0
-	m.__rel0 = Token{Id: 7}
 	return m
 }
 
@@ -505,4 +505,4 @@ func main() {
 	}
 }
 -- run/go/bubbletea --
-pass sha256:4771d7555b937f65de3ec6cc6818504c
+pass sha256:472e4eb47d0167661abe4c76d6c46fe5

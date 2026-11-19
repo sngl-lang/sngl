@@ -168,12 +168,12 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
+	__rel3         *C.char
 	v__r0          int
 	word           string
 	problem        string
 	visible__inst0 bool
 	__focusID      int
-	__rel3         *C.char
 
 	__clicks      tui.Clicks[snglStop]
 	width, height int
@@ -182,12 +182,12 @@ type modelState struct {
 // New creates a Model with default bind values.
 func New() Model {
 	m := Model{&modelState{}}
+	m.__rel3 = C.CString("const")
 	m.v__r0 = 0
 	m.word = ""
 	m.problem = ""
 	m.visible__inst0 = true
 	m.__focusID = 0
-	m.__rel3 = C.CString("const")
 	return m
 }
 
@@ -645,11 +645,11 @@ type ErrorEvent struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	__rel3         *C.char
 	v              int
 	word           string
 	problem        string
 	visible__inst0 bool
-	__rel3         *C.char
 
 	__n0    *fynelayout.Toplevel
 	__n1    *fynelayout.Button
@@ -660,11 +660,11 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.__rel3 = C.CString("const")
 	m.v = 0
 	m.word = ""
 	m.problem = ""
 	m.visible__inst0 = true
-	m.__rel3 = C.CString("const")
 	return m
 }
 
@@ -868,11 +868,11 @@ type _BackState struct {
 }
 
 type snglState struct {
+	__rel3         *C.char
 	v              int
 	word           string
 	problem        string
 	visible__inst0 bool
-	__rel3         *C.char
 	__n0           cgo.Widget
 	__n1           cgo.Widget
 	__n2           cgo.Widget
@@ -1278,11 +1278,11 @@ func Free(s *C.char) {
 
 func snglInit() {
 	m = &snglState{}
+	m.__rel3 = C.CString("const")
 	m.v = 0
 	m.word = ""
 	m.problem = ""
 	m.visible__inst0 = true
-	m.__rel3 = C.CString("const")
 }
 
 func snglBuild() {
@@ -1340,8 +1340,8 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/bubbletea --
-pass sha256:0b8eb459173d77d1618acd8ef01d1158
+pass sha256:323ed6e21cc9a0f0600ac9b5d083184a
 -- run/go/fyne --
-pass sha256:192bcb8400135504bc324d9825c5879f
+pass sha256:0c7a3a06876389b322c946ddb9c9c666
 -- run/go/gtk4 --
-pass sha256:9fd63f0b266e7ad96345d0e0d34c530a
+pass sha256:4b7b2fcb7c274b975341b5846796bd5e

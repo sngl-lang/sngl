@@ -421,6 +421,7 @@ static sngl_win32_look sngl_to_platform_win32__Look(s_platform_win32__Look v) {
 	return (sngl_win32_look){.flex = (double)v.flex, .gap = (int)v.gap, .padTop = (int)v.padTop, .padRight = (int)v.padRight, .padBottom = (int)v.padBottom, .padLeft = (int)v.padLeft, .minWidth = (int)v.minWidth, .width = (int)v.width, .height = (int)v.height, .align = (int)v.align, .color = (int)v.color, .background = (int)v.background, .fontPx = (int)v.fontPx, .hidden = (int)v.hidden};
 }
 
+static char * s___rel3;
 static int64_t s_n;
 static bool s_stopped;
 static int64_t s_handle__inst0;
@@ -434,7 +435,6 @@ static bool s___effects0_settling;
 static bool s___effects0_pending;
 static bool s___effects0_torn;
 static int64_t s___effects0_steps;
-static char * s___rel3;
 static HWND s___n0;
 static HWND s___n1;
 
@@ -605,6 +605,7 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 }
 
 static void sngl_init(void) {
+	s___rel3 = sngl_cstring(SNGL_STR("unmount"));
 	s_n = 0;
 	s_stopped = false;
 	s_handle__inst0 = 0;
@@ -618,7 +619,6 @@ static void sngl_init(void) {
 	s___effects0_pending = false;
 	s___effects0_torn = false;
 	s___effects0_steps = 0;
-	s___rel3 = sngl_cstring(SNGL_STR("unmount"));
 }
 
 static void sngl_build(void) {
@@ -705,4 +705,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:ad57ce45d183a0f572a7a571261c273a
+pass sha256:c3cf491f0bb54c083580a637df626576

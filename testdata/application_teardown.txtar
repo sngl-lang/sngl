@@ -165,6 +165,7 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
+	__rel0              Token
 	log                 []string
 	held                Token
 	visible__inst0      bool
@@ -174,7 +175,6 @@ type modelState struct {
 	__effects0_pending  bool
 	__effects0_torn     bool
 	__effects0_steps    int
-	__rel0              Token
 
 	__timer0      map[string]int
 	__timer0Seq   map[string]int
@@ -186,6 +186,7 @@ func New() Model {
 	m := Model{&modelState{}}
 	m.__timer0 = map[string]int{}
 	m.__timer0Seq = map[string]int{}
+	m.__rel0 = Token{Id: 7}
 	m.log = []string{}
 	m.held = Token{Id: 3}
 	m.visible__inst0 = true
@@ -195,7 +196,6 @@ func New() Model {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
-	m.__rel0 = Token{Id: 7}
 	m.__effects0_settle()
 	return m
 }
@@ -605,6 +605,7 @@ type Token struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
+	__rel0              Token
 	log                 []string
 	held                Token
 	handle__inst0       *time.Ticker
@@ -623,7 +624,6 @@ type Model struct {
 	__effects0_pending  bool
 	__effects0_torn     bool
 	__effects0_steps    int
-	__rel0              Token
 
 	__n0    *fynelayout.Toplevel
 	__n1    *widget.Label
@@ -633,6 +633,7 @@ type Model struct {
 // New creates a Model with default values.
 func New() *Model {
 	m := &Model{}
+	m.__rel0 = Token{Id: 7}
 	m.log = []string{}
 	m.held = Token{Id: 3}
 	m.handle__inst0 = nil
@@ -651,7 +652,6 @@ func New() *Model {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
-	m.__rel0 = Token{Id: 7}
 	return m
 }
 
@@ -973,6 +973,7 @@ type _BackState struct {
 }
 
 type snglState struct {
+	__rel0              Token
 	log                 []string
 	held                Token
 	handle__inst0       cgo.Schedule
@@ -986,7 +987,6 @@ type snglState struct {
 	__effects0_pending  bool
 	__effects0_torn     bool
 	__effects0_steps    int
-	__rel0              Token
 	__n0                cgo.Widget
 	__n1                cgo.Widget
 }
@@ -1442,6 +1442,7 @@ func __n0_visible_handler(__visible bool) {
 
 func snglInit() {
 	m = &snglState{}
+	m.__rel0 = Token{Id: 7}
 	m.log = []string{}
 	m.held = Token{Id: 3}
 	m.visible__inst0 = true
@@ -1454,7 +1455,6 @@ func snglInit() {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
-	m.__rel0 = Token{Id: 7}
 }
 
 func snglBuild() {
@@ -1511,11 +1511,11 @@ package test.sngl.app
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberUpdatedState
@@ -1543,10 +1543,10 @@ fun _snglSplit(s: String, sep: String): List<String> =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+    var __rel0 by remember { mutableStateOf(Token(id = 7)) }
     val log = remember { mutableStateListOf<String>() }
     var held by remember { mutableStateOf(Token(id = 3)) }
     var visible__inst0 by remember { mutableStateOf(true) }
-    var __rel0 by remember { mutableStateOf(Token(id = 7)) }
 
 
     fun release(t: Token) {
@@ -1754,12 +1754,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:5132eb7056ae47c0da7ca1bca3c8d7a0
+pass sha256:561c8ea0b4908c050b1a83093527ace2
 -- run/go/fyne --
-pass sha256:2cc2c7372b0e0e79e1d92e48c0567252
+pass sha256:dd3be17f4a4e7dfe3affdc147d32ee08
 -- run/go/gtk4 --
-pass sha256:764b937158227b5123e40433b8da6a44
+pass sha256:b696e79b194d4f3465d0d65640078bab
 -- run/kotlin/android --
-pass sha256:cc856f992a205d3f879134ba05e91d80
+pass sha256:bcc68eaac45c714b96ac15ae15afc9ee
 -- run/none/html --
 pass sha256:a4681e87ef98e929555d69aafabab9e8

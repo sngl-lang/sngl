@@ -697,7 +697,7 @@ sha256:b6143955ef61b9d1f8dff8fba6174d47
   }
 }
 -- testrun/gtk4/c/snap.sngl/_/1 --
-sha256:897c7f5384bf99458afdddd3d4efd1a4
+sha256:603dfce328647de255c92205afbbd311
 {
   "results": [
     {

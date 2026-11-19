@@ -252,7 +252,7 @@ sha256:529f8d6afe64e8c7deea0bbedfdf6afa
   ]
 }
 -- testrun/gtk4/c/closure.sngl/rows/1 --
-sha256:849ce9129289c440b3fb346c94936cac
+sha256:6efa58d2a4af1754d69f5cbbb8210904
 {
   "results": [
     {

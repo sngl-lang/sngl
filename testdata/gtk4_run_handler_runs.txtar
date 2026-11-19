@@ -578,19 +578,6 @@ static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 	return v;
 }
 
-static int64_t s_n;
-static s___ref_bool * s_shown;
-static bool s_stopped;
-static SnglSchedule * s_handle__inst0;
-static int64_t s___effect0_key;
-static sngl_list_int s___effect0_live;
-static sngl_list_int s___effect0_desired;
-static sngl_list_bool s___effect1_live;
-static sngl_list_bool s___effect1_desired;
-static bool s___effects0_settling;
-static bool s___effects0_pending;
-static bool s___effects0_torn;
-static int64_t s___effects0_steps;
 static char * s___rel5;
 static char * s___rel6;
 static char * s___rel7;
@@ -605,6 +592,19 @@ static char * s___rel18;
 static char * s___rel21;
 static char * s___rel26;
 static char * s___rel30;
+static int64_t s_n;
+static s___ref_bool * s_shown;
+static bool s_stopped;
+static SnglSchedule * s_handle__inst0;
+static int64_t s___effect0_key;
+static sngl_list_int s___effect0_live;
+static sngl_list_int s___effect0_desired;
+static sngl_list_bool s___effect1_live;
+static sngl_list_bool s___effect1_desired;
+static bool s___effects0_settling;
+static bool s___effects0_pending;
+static bool s___effects0_torn;
+static int64_t s___effects0_steps;
 static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 
@@ -1038,18 +1038,6 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 }
 
 static void sngl_init(void) {
-	s_n = 0;
-	s_shown = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s_stopped = false;
-	s___effect0_key = 0;
-	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effect1_live = sngl_list_bool__keep(((sngl_list_bool){0}));
-	s___effect1_desired = sngl_list_bool__keep(((sngl_list_bool){0}));
-	s___effects0_settling = false;
-	s___effects0_pending = false;
-	s___effects0_torn = false;
-	s___effects0_steps = 0;
 	s___rel5 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel6 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel7 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -1064,6 +1052,18 @@ static void sngl_init(void) {
 	s___rel21 = sngl_cstring(SNGL_STR("activate"));
 	s___rel26 = sngl_cstring(SNGL_STR("unmount"));
 	s___rel30 = sngl_cstring(SNGL_STR(""));
+	s_n = 0;
+	s_shown = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s_stopped = false;
+	s___effect0_key = 0;
+	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effect1_live = sngl_list_bool__keep(((sngl_list_bool){0}));
+	s___effect1_desired = sngl_list_bool__keep(((sngl_list_bool){0}));
+	s___effects0_settling = false;
+	s___effects0_pending = false;
+	s___effects0_torn = false;
+	s___effects0_steps = 0;
 }
 
 static void sngl_build(void) {
@@ -1708,6 +1708,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:39630c1f98b59b24bb236b0e00321445
+pass sha256:3e79bb76dd0f363e6646ddbac6e4d05b
 -- run/go/gtk4 --
 pass sha256:f98c86d646f54323639fae7b5d873434

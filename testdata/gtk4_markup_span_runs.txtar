@@ -670,21 +670,6 @@ static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 	return v;
 }
 
-static bool s_loud;
-static int64_t s_ticks;
-static SnglSchedule * s_handle__inst0;
-static s___ref_bool * s_visible__inst0;
-static int64_t s___effect0_key;
-static sngl_list_int s___effect0_live;
-static sngl_list_int s___effect0_desired;
-static bool s___effects0_settling;
-static bool s___effects0_pending;
-static bool s___effects0_torn;
-static int64_t s___effects0_steps;
-static sngl_list_GtkWidget_p s___slot0;
-static GtkWidget * s___anchor0;
-static bool s___rendering0;
-static bool s___renderAgain0;
 static char * s___rel3;
 static char * s___rel4;
 static char * s___rel6;
@@ -701,6 +686,21 @@ static char * s___rel19;
 static char * s___rel20;
 static char * s___rel23;
 static char * s___rel31;
+static bool s_loud;
+static int64_t s_ticks;
+static SnglSchedule * s_handle__inst0;
+static s___ref_bool * s_visible__inst0;
+static int64_t s___effect0_key;
+static sngl_list_int s___effect0_live;
+static sngl_list_int s___effect0_desired;
+static bool s___effects0_settling;
+static bool s___effects0_pending;
+static bool s___effects0_torn;
+static int64_t s___effects0_steps;
+static sngl_list_GtkWidget_p s___slot0;
+static GtkWidget * s___anchor0;
+static bool s___rendering0;
+static bool s___renderAgain0;
 static GtkWidget * s___n0;
 static GtkWidget * s___n12;
 static GtkWidget * s_flow;
@@ -1393,19 +1393,6 @@ static void s___lambda0(s___lambda0_caps state, bool __visible) {
 }
 
 static void sngl_init(void) {
-	s_loud = true;
-	s_ticks = 0;
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___effect0_key = 0;
-	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
-	s___effects0_settling = false;
-	s___effects0_pending = false;
-	s___effects0_torn = false;
-	s___effects0_steps = 0;
-	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	s___rendering0 = false;
-	s___renderAgain0 = false;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl-parent"));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl-span"));
 	s___rel6 = sngl_cstring(SNGL_STR("sngl"));
@@ -1422,6 +1409,19 @@ static void sngl_init(void) {
 	s___rel20 = sngl_cstring(SNGL_STR("clicked"));
 	s___rel23 = sngl_cstring(SNGL_STR("activate"));
 	s___rel31 = sngl_cstring(SNGL_STR("t"));
+	s_loud = true;
+	s_ticks = 0;
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___effect0_key = 0;
+	s___effect0_live = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effect0_desired = sngl_list_int__keep(((sngl_list_int){0}));
+	s___effects0_settling = false;
+	s___effects0_pending = false;
+	s___effects0_torn = false;
+	s___effects0_steps = 0;
+	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	s___rendering0 = false;
+	s___renderAgain0 = false;
 }
 
 static void sngl_build(void) {
@@ -2367,6 +2367,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:16648d0e114fc0c7a19938fa573714ca
+pass sha256:dd1e3da7d5e06136e672e93316f30a64
 -- run/go/gtk4 --
 pass sha256:a3209ad9c144f51b98bc3c3aa2db2118

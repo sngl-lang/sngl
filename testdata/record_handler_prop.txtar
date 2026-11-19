@@ -854,12 +854,6 @@ static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 }
 
 static sngl_list_string s_languages;
-static s___ref_string * s_language__inst0;
-static s___ref_bool * s_visible__inst0;
-static sngl_list_GtkWidget_p s___slot0;
-static GtkWidget * s___anchor0;
-static bool s___rendering0;
-static bool s___renderAgain0;
 static char * s___rel3;
 static char * s___rel4;
 static char * s___rel5;
@@ -873,6 +867,12 @@ static char * s___rel15;
 static char * s___rel16;
 static char * s___rel19;
 static char * s___rel32;
+static s___ref_string * s_language__inst0;
+static s___ref_bool * s_visible__inst0;
+static sngl_list_GtkWidget_p s___slot0;
+static GtkWidget * s___anchor0;
+static bool s___rendering0;
+static bool s___renderAgain0;
 static GtkWidget * s___n0;
 static GtkWidget * s_p;
 static GtkWidget * s_summary;
@@ -1247,11 +1247,6 @@ static void s___lambda3(s___lambda3_caps state, bool __visible) {
 
 static void sngl_init(void) {
 	s_languages = sngl_list_string__keep(sngl_list_string_of(3, (sngl_string[]){SNGL_STR("en"), SNGL_STR("fr"), SNGL_STR("de")}));
-	s_language__inst0 = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("en"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL))));
-	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
-	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	s___rendering0 = false;
-	s___renderAgain0 = false;
 	s___rel3 = sngl_cstring(SNGL_STR("sngl"));
 	s___rel4 = sngl_cstring(SNGL_STR("sngl-header-back"));
 	s___rel5 = sngl_cstring(SNGL_STR("sngl-header"));
@@ -1265,6 +1260,11 @@ static void sngl_init(void) {
 	s___rel16 = sngl_cstring(SNGL_STR("clicked"));
 	s___rel19 = sngl_cstring(SNGL_STR("activate"));
 	s___rel32 = sngl_cstring(SNGL_STR("Languages"));
+	s_language__inst0 = ((s___ref_string *)sngl_counted_retain(((s___ref_string *)sngl_counted_new(&(s___ref_string[]){(s___ref_string){.value = sngl_string_keep(SNGL_STR("en"))}}, sizeof(s___ref_string), s___ref_string__release, s___ref_string__rekeep, NULL))));
+	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	s___rendering0 = false;
+	s___renderAgain0 = false;
 }
 
 static void sngl_build(void) {
@@ -3076,7 +3076,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:9536b9d65047b60c70f92b7d6c2d652a
+pass sha256:06862827968c5aeaa8f0b16b428c9547
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --
