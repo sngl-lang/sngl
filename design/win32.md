@@ -135,6 +135,23 @@ package's type crosses through `unsafe.Pointer` to its own cgo's, since
 `C.HWND` in two packages is two types, and one C answers crosses back the
 same way (`cmd/sngl/testdata/gir_scheme.txt`).
 
+**A static callback is wrapped; a variadic function is not.** A declaration
+taking a `#[c.static]` callback (`design/nodes.md`) is wrapped, though the
+wrapper package cannot name the program's function C is to call: the
+wrapper takes it as a Go `func` value, and the package's `callbacks.go`
+exports one function per static parameter, named for the declaration and
+the parameter (`snglStatic__customLayout_measure`,
+`golang.WrapperStaticName`), calling through a package variable each call of
+the wrapper sets. So a parameter calls one function at a time, the last
+call's, which is all gtk4's probe layout and a flow's store hand it. What an
+`#[c.outs]` one answers is the program's record, which the package
+declares again field for field (`GtkCustomLayoutNewMeasure`,
+`golang.WrapperOutsName`), and the program's call hands the wrapper an
+adapter converting the one into the other (`nativeCall`). A variadic
+declaration is skipped, its reason in `Result.Skipped`: it wants a C function
+of its one shape, which the program's own cgo calls through the
+`sngl_variadic.h` it writes (`variadicLink`).
+
 **A change to the runtime's C builds the wrappers again.** The package
 compiles `rt/sngl_win32.c` through a stub including it, and Go's build cache
 does not see a file outside the package that one includes: a test agent built
