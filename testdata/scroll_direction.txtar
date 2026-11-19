@@ -1099,7 +1099,7 @@ func _scrollChanged(sw cgo.Widget) {
 		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: near, Content: content, ReachEnd: (*(s)).ReachEnd})
 		if fire && (cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked") == nil) {
 			source := cgo.GIdleSourceNew()
-			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), _scrollReported)
+			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), nil)
 			cgo.GSourceAttach(source, nil)
 			cgo.HoldSource((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
 		}
@@ -1213,9 +1213,6 @@ func _scrollReport(data cgo.Pointer) bool {
 		(*(s)).ReachEnd()
 	}
 	return false
-}
-
-func _scrollReported(data cgo.Pointer) {
 }
 
 func _sourceGone(p cgo.Pointer) {
@@ -2166,7 +2163,7 @@ pass sha256:b46bfed2ffd53b2aed2c15f32389ff49
 -- run/go/fyne --
 pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
-pass sha256:f60c18cd2a0256e2c21126a304f9d77d
+pass sha256:276ae7f29185c3aba65598047c710952
 -- run/kotlin/android --
 pass sha256:97e558d298093de726189480c09eadfa
 -- run/none/html --

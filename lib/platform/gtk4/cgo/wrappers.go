@@ -654,14 +654,18 @@ func GSourceDestroy(s Source) {
 }
 
 // GSourceSetCallback calls g_source_set_callback.
-func GSourceSetCallback(s Source, run func(Pointer) bool, data Pointer, gone func(Pointer)) {
-	C.g_source_set_callback(s, func() *[0]byte {
-		snglStatic__sourceSetCallback_runFn = run
-		return snglStatic__sourceSetCallback_runPtr()
-	}(), data, func() *[0]byte {
-		snglStatic__sourceSetCallback_goneFn = gone
-		return snglStatic__sourceSetCallback_gonePtr()
-	}())
+func GSourceSetCallback(s Source, run func(Pointer) bool, data Pointer, gone *unsafe.Pointer) {
+	if gone == nil {
+		C.g_source_set_callback(s, func() *[0]byte {
+			snglStatic__sourceSetCallback_runFn = run
+			return snglStatic__sourceSetCallback_runPtr()
+		}(), data, nil)
+	} else {
+		C.g_source_set_callback(s, func() *[0]byte {
+			snglStatic__sourceSetCallback_runFn = run
+			return snglStatic__sourceSetCallback_runPtr()
+		}(), data, (C.GDestroyNotify)(unsafe.Pointer((*(gone)))))
+	}
 }
 
 // GSourceUnref calls g_source_unref.

@@ -17,7 +17,6 @@ extern void snglCallback_void__void(void *);
 extern void snglStatic__connectObject_handler(gpointer, gpointer);
 extern void snglStatic__connectActivate_handler(gpointer, gpointer, gpointer);
 extern int snglStatic__sourceSetCallback_run(gpointer);
-extern void snglStatic__sourceSetCallback_gone(gpointer);
 extern int snglStatic__customLayout_mode(GtkWidget *);
 extern void snglStatic__customLayout_measure(GtkWidget *, int, int, int *, int *, int *, int *);
 extern void snglStatic__customLayout_allocate(GtkWidget *, int, int, int);
@@ -141,19 +140,6 @@ func snglStatic__sourceSetCallback_run(a0 C.gpointer) C.int {
 // snglStatic__sourceSetCallback_runPtr is snglStatic__sourceSetCallback_run as the function pointer C calls.
 func snglStatic__sourceSetCallback_runPtr() *[0]byte {
 	return (*[0]byte)(C.snglStatic__sourceSetCallback_run)
-}
-
-// snglStatic__sourceSetCallback_goneFn is the program's function C calls snglStatic__sourceSetCallback_gone for, which the call handing it to C sets.
-var snglStatic__sourceSetCallback_goneFn func(C.gpointer)
-
-//export snglStatic__sourceSetCallback_gone
-func snglStatic__sourceSetCallback_gone(a0 C.gpointer) {
-	snglStatic__sourceSetCallback_goneFn(a0)
-}
-
-// snglStatic__sourceSetCallback_gonePtr is snglStatic__sourceSetCallback_gone as the function pointer C calls.
-func snglStatic__sourceSetCallback_gonePtr() *[0]byte {
-	return (*[0]byte)(C.snglStatic__sourceSetCallback_gone)
 }
 
 // snglStatic__customLayout_modeFn is the program's function C calls snglStatic__customLayout_mode for, which the call handing it to C sets.

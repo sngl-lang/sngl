@@ -148,6 +148,17 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			args[off+i] = "func() " + t + " { if p := " + args[off+i] + "; p != nil { return (" + t + ")(unsafe.Pointer(*p)) }; return nil }()"
 		}
 	}
+	// A pointer handed for a function pointer C may be handed NULL for --
+	// GLib's GDestroyNotify, written `#[c.type("GDestroyNotify")] notify
+	// option[c.pointer]` -- crosses at the typedef #[c.type] names: cgo
+	// holds a function pointer as `*[0]byte`, which no data pointer is.
+	for i, p := range fn.Params {
+		if !cFuncPointer(p) || args[off+i] == "nil" {
+			continue
+		}
+		gc.RequireImport("unsafe")
+		args[off+i] = "(" + gc.CType(p.CFuncType) + ")(unsafe.Pointer(" + args[off+i] + "))"
+	}
 	var body []string
 	var outs []string
 	for i, p := range fn.Params {
@@ -320,6 +331,21 @@ func optionOfPointer(t *ir.Type) bool {
 	elem := t.Elems[0]
 	ct := ir.CTypeOf(elem)
 	return ct != nil && ir.CStructOf(elem) == nil && (ct.Ptr > 0 || cPointer(elem))
+}
+
+// cFuncPointer reports whether p is a pointer, or an option of one, handed
+// where C takes the function-pointer typedef its #[c.type] names: no
+// callback, release or held value, which cross as their own.
+func cFuncPointer(p *ir.Param) bool {
+	if p.CFuncType == nil || p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() {
+		return false
+	}
+	t := p.Type
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	ct := ir.CTypeOf(t)
+	return ct != nil && ir.CStructOf(t) == nil && (ct.Ptr > 0 || cPointer(t))
 }
 
 // cPointer reports whether t's declaration says its C type is a typedef of

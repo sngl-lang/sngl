@@ -2042,7 +2042,7 @@ func _idleSource() _Source
 
 #[c.native("g_source_set_callback")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSourceSetCallback")]
-func _sourceSetCallback(s _Source, #[c.type("GSourceFunc")] #[c.static] run func(data _Pointer) bool, data _Pointer, #[c.type("GDestroyNotify")] #[c.static] gone func(data _Pointer))
+func _sourceSetCallback(s _Source, #[c.type("GSourceFunc")] #[c.static] run func(data _Pointer) bool, data _Pointer, #[c.type("GDestroyNotify")] gone option[c.pointer])
 
 #[c.native("g_source_attach")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSourceAttach")]
@@ -2146,10 +2146,6 @@ func _scrollReport(data _Pointer) bool {
     return false
 }
 
-// What the report's source lets go of as it goes: nothing, since the
-// scroll it is handed is not its to hold.
-func _scrollReported(data _Pointer) {}
-
 // Reads the scroll's end afresh, posting a report where it came within
 // half a viewport of showing, or the content grew while it showed.
 func _scrollChanged(sw Widget) {
@@ -2175,7 +2171,7 @@ func _scrollChanged(sw Widget) {
         _setScroll(sw, _ScrollState{axis=s.axis, near=near, content=content, reachEnd=s.reachEnd})
         if fire && _data(_object(sw), "sngl-asked") == null {
             var source = _idleSource()
-            _sourceSetCallback(source, _scrollReport, _pointer(sw), _scrollReported)
+            _sourceSetCallback(source, _scrollReport, _pointer(sw), null)
             _sourceAttach(source, null)
             _holdSource(_object(sw), "sngl-asked", _sourcePointer(source), _sourceGone)
         }

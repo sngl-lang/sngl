@@ -7,6 +7,8 @@ its arguments, field by field, skipping one that is NULL; a string C hands a
 static callback is copied into the turn. A function marked `variadic` is
 called with the arguments its declaration lists. A function with an empty
 body is a function C can call all the same: only its calls are inlined away.
+A function pointer C may be handed NULL for is an option of a pointer at the
+typedef `#[c.type]` names, handed `null`.
 
 -- app.sngl --
 import c "sngl:x/c"
@@ -27,6 +29,9 @@ func greet(#[c.static] hear func(name string, loud bool) int) int
 #[c.native("test_then")]
 func then(#[c.static] done func()) int
 
+#[c.native("test_maybe")]
+func maybe(#[c.type("test_notify")] gone option[c.pointer]) int
+
 #[c.native("test_sum", variadic)]
 func sum3(n int, a int, b int, c int) int
 
@@ -44,6 +49,8 @@ func ignore() {}
 func run() => layout(mode, measure)
 
 func thenRan() => then(ignore)
+
+func nulled() => maybe(null)
 
 func greeted() => greet(hear)
 
@@ -77,6 +84,12 @@ static int test_then(void (*done)(void)) {
 	return 1;
 }
 
+typedef void (*test_notify)(void *);
+
+static int test_maybe(test_notify gone) {
+	return gone == NULL;
+}
+
 static int test_sum(int n, ...) {
 	va_list ap;
 	va_start(ap, n);
@@ -105,11 +118,11 @@ int main(void) {
 	printf("%d\n", (int)s_run());
 	printf("%d\n", (int)s_greeted());
 	printf("%d %g\n", (int)s_summed(), s_mean());
-	printf("%d\n", (int)s_thenRan());
+	printf("%d %d\n", (int)s_thenRan(), (int)s_nulled());
 	return 0;
 }
 -- want --
 74510
 24
 6 2
-1
+1 1

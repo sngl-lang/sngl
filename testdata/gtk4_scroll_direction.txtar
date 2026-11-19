@@ -480,7 +480,7 @@ func _scrollChanged(sw cgo.Widget) {
 		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: near, Content: content, ReachEnd: (*(s)).ReachEnd})
 		if fire && (cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked") == nil) {
 			source := cgo.GIdleSourceNew()
-			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), _scrollReported)
+			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), nil)
 			cgo.GSourceAttach(source, nil)
 			cgo.HoldSource((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
 		}
@@ -594,9 +594,6 @@ func _scrollReport(data cgo.Pointer) bool {
 		(*(s)).ReachEnd()
 	}
 	return false
-}
-
-func _scrollReported(data cgo.Pointer) {
 }
 
 func _sourceGone(p cgo.Pointer) {
@@ -836,4 +833,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:18328fc087b0d7200d1211205cbb5322
+pass sha256:6d3a5336b8cd0ed93c36e9140f5145d7

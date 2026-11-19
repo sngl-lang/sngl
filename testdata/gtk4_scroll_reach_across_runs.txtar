@@ -350,7 +350,6 @@ static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c);
 static void s_platform_gtk4___backPress(GtkWidget * w);
 static void s_platform_gtk4___probeForget(GtkWidget * probe);
 static bool s_platform_gtk4___scrollReport(gpointer data);
-static void s_platform_gtk4___scrollReported(gpointer data);
 static void s_platform_gtk4___sourceGone(gpointer p);
 static void s_platform_gtk4___barApplyTo(GtkWidget * box, GtkWindow * win);
 static void *sngl_lambda3_env__keep(const void *p);
@@ -575,21 +574,11 @@ static bool s_platform_gtk4___scrollReport__fn(void *env, gpointer a0) {
 	return s_platform_gtk4___scrollReport(a0);
 }
 
-static void s_platform_gtk4___scrollReported__fn(void *env, gpointer a0) {
-	s_platform_gtk4___scrollReported(a0);
-}
-
 static int sngl_static_s_platform_gtk4___scrollReport(gpointer a0) {
 	sngl_mark m = sngl_call_enter();
 	int r = (int)s_platform_gtk4___scrollReport(a0);
 	sngl_call_leave(m);
 	return r;
-}
-
-static void sngl_static_s_platform_gtk4___scrollReported(gpointer a0) {
-	sngl_mark m = sngl_call_enter();
-	s_platform_gtk4___scrollReported(a0);
-	sngl_call_leave(m);
 }
 
 static void s_platform_gtk4___sourceGone__fn(void *env, gpointer a0) {
@@ -1384,7 +1373,7 @@ static void s_platform_gtk4___scrollChanged(GtkWidget * sw) {
 		}
 		if (__arm0) {
 			GSource * source = g_idle_source_new();
-			g_source_set_callback(source, (GSourceFunc)(void (*)(void))sngl_static_s_platform_gtk4___scrollReport, (gpointer)(sw), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___scrollReported);
+			g_source_set_callback(source, (GSourceFunc)(void (*)(void))sngl_static_s_platform_gtk4___scrollReport, (gpointer)(sw), NULL);
 			g_source_attach(source, NULL);
 			g_object_set_data_full((GObject *)(sw), s___rel13, (gpointer)(source), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___sourceGone);
 		}
@@ -1470,9 +1459,6 @@ static bool s_platform_gtk4___scrollReport(gpointer data) {
 		((s).value.reachEnd).fn(((s).value.reachEnd).env);
 	}
 	return false;
-}
-
-static void s_platform_gtk4___scrollReported(gpointer data) {
 }
 
 static void s_platform_gtk4___sourceGone(gpointer p) {
@@ -2447,7 +2433,7 @@ func _scrollChanged(sw cgo.Widget) {
 		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: near, Content: content, ReachEnd: (*(s)).ReachEnd})
 		if fire && (cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked") == nil) {
 			source := cgo.GIdleSourceNew()
-			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), _scrollReported)
+			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), nil)
 			cgo.GSourceAttach(source, nil)
 			cgo.HoldSource((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
 		}
@@ -2561,9 +2547,6 @@ func _scrollReport(data cgo.Pointer) bool {
 		(*(s)).ReachEnd()
 	}
 	return false
-}
-
-func _scrollReported(data cgo.Pointer) {
 }
 
 func _sourceGone(p cgo.Pointer) {
@@ -3009,6 +2992,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:9653332711415643e999e4fb8a7c4900
+pass sha256:94074ec7261fb0ec7d7741f052335679
 -- run/go/gtk4 --
-pass sha256:f7623f1fd47a83ee907d6379b3f79f9d
+pass sha256:85762937914c0ce49240b71d330c7e36

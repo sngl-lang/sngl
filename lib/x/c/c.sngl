@@ -199,7 +199,9 @@ struct held[T any] = T
 // C refuses a function of another type. Go needs none, since cgo takes any
 // function there. On a `held` parameter it names the pointer typedef the C
 // function takes, as GLib's `gpointer` is, which cgo holds apart from
-// `void *`.
+// `void *`. On an `option[pointer]` it names the function-pointer typedef
+// a caller hands NULL for, writing `null`: GLib's `GDestroyNotify` where
+// nothing is let go.
 func type(name string) ir.Macro
 
 #[native("void *", cast)]

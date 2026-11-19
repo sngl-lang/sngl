@@ -410,6 +410,15 @@ declaration itself. Two things about the name that are easy to get wrong:
   `codegen/lang/c`'s `static` run). gtk4 lays a scroll's probe out by three
   of its functions handed to `gtk_custom_layout_new`, and lets a flow's
   span store go through one handed to `g_object_set_data_full`.
+  A function pointer the caller hands C NULL for -- `g_source_set_callback`'s
+  `GDestroyNotify` where nothing is let go -- is no callback, since none is
+  handed: it is declared an option of a pointer at the typedef `#[c.type]`
+  names, `#[c.type("GDestroyNotify")] notify option[c.pointer]`, and handed
+  `null`. C passes NULL; Go converts what it hands to the typedef, cgo's
+  `*[0]byte`, which no data pointer is (`cFuncPointer`): a wrapper package
+  hands the option's pointer on, and refused to compile handing a
+  `gpointer` there (`c_static_callback.txtar`, `codegen/lang/c`'s `static`
+  run). A static callback with an empty body did the job before.
   A C function taking a variable argument list -- `printf`,
   `g_object_set` -- is `#[c.native(name, variadic)]`, on a function and
   never beside `cast` (`markCNative`). The declaration lists what one call
