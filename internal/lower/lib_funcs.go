@@ -209,7 +209,7 @@ func placedProtocols(pkg *ir.Package) []*ir.Func {
 	}
 	for _, c := range comps {
 		p := c.Protocol
-		for _, fn := range []*ir.Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw} {
+		for _, fn := range []*ir.Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw, p.Connect, p.Attach, p.Detach} {
 			add(fn)
 		}
 		for _, m := range []map[string]*ir.Func{p.Set, p.On, p.Fire} {
