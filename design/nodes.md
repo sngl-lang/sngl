@@ -747,9 +747,9 @@ matched. Each target reads its host its own way, in its own `.sngl`:
 - **gtk4**'s GIR signals hand their callback the instance they fired on, which
   is what every generated event now declares, `@toggled(self GtkCheckButton)`; a component may name itself in its own signature for this.
   The override reads that widget with a getter `gtk4.sngl` declares --
-  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- the
-  runtime's C, `sngl_check_active` and its kin, taking the widget a node is,
-  which each language calls as it calls C. The trampoline passes nothing, so
+  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- SNGL calling
+  GTK's own getters on the widget a node is, which each language calls as it
+  calls C. The trampoline passes nothing, so
   a signal handler's `self` is the node it is connected on: placement wraps a
   handler taking the widget in one taking nothing that hands it the node
   (`handedTheNode`).
@@ -774,8 +774,8 @@ overrides do not bind `text` but push it from
 "changed", because gtk_editable_set_text deletes and reinserts and a runtime
 instance's handler writing the text back re-entered itself until the stack
 overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
-`sngl_calendar_select` blocks "day-selected" the same way; a test's fire
-puts the value in place first and emits the signal itself (`sngl_fire_day`).
+`selectDay` blocks "day-selected" the same way; a test's fire
+puts the value in place first and emits the signal itself (`_rtFireDay`).
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
@@ -831,7 +831,7 @@ holds is the override's to convert: it shows `ui.choiceLabel(options, value)`
 and writes the value of the choice `ui.choiceLabeled(options, label)` finds.
 A test hands a value, and each target's override of the event says how its
 control takes it (`func ui.select[T].change[platform](value)`, see
-design/testing.md): gtk4 selects the label through the runtime's `sngl_drop_down_select`
+design/testing.md): gtk4 selects the label through `selectLabel`
 and fyne through `Select.SetSelected`, each of which reports the change as a
 pick does; html sets the `<select>`'s value to the label and dispatches
 `change`, and checks the radio button at the choice's index under the
@@ -856,8 +856,8 @@ holds the bound value even before a choice carries it, since choices may
 be state that arrives later, and neither offering choices nor writing the
 value is reported as a choice:
 
-- **gtk4** offers a GtkStringList through `offerChoices`, the runtime's
-  `sngl_drop_down_offer`, which blocks `notify::selected` meanwhile; the
+- **gtk4** offers a GtkStringList through `offerChoices`, which blocks
+  `notify::selected` meanwhile (`testdata/gtk4_choose_runs.txtar`); the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
   own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's

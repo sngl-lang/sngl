@@ -667,6 +667,7 @@ import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
 	"duckfam.us/sngl/pkg/go/snglopt"
 	"duckfam.us/sngl/pkg/go/snglparse"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -755,6 +756,18 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func SelectDay(cal cgo.Widget, y int, m__r0 int, d int) {
+	day := cgo.GDateTimeNewUtc(y, m__r0, d, 0, 0, 0.0)
+	if day != nil {
+		w := cal
+		var id int = cgo.GSignalLookup("day-selected", cgo.GtkCalendarGetType())
+		cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+		cgo.SnglCalendarSelectDate(w, (*(day)))
+		cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+		cgo.GDateTimeUnref((*(day)))
+	}
+}
+
 func ParseDate(s string) *time.Time {
 	var unset *time.Time
 	if ((utf8.RuneCountInString(s) != 10) || (string([]rune(s)[4:5]) != "-")) || (string([]rune(s)[7:8]) != "-") {
@@ -764,12 +777,19 @@ func ParseDate(s string) *time.Time {
 		return unset
 	}
 	var y int = snglopt.Or(snglparse.Int(string([]rune(s)[0:4]), 10), 0)
-	var m__r4 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
+	var m__r5 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
 	var d__r0 int = snglopt.Or(snglparse.Int(string([]rune(s)[8:10]), 10), 0)
-	if (((m__r4 < 1) || (m__r4 > 12)) || (d__r0 < 1)) || (d__r0 > _daysIn(y, m__r4)) {
+	if (((m__r5 < 1) || (m__r5 > 12)) || (d__r0 < 1)) || (d__r0 > _daysIn(y, m__r5)) {
 		return unset
 	}
 	return snglSome(mustParseDate(s))
+}
+
+func _rtCalendarDay(c cgo.Widget) string {
+	t := cgo.GtkCalendarGetDate((cgo.Calendar)(unsafe.Pointer(c)))
+	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
+	cgo.GDateTimeUnref(t)
+	return day
 }
 
 func _digits(t string) bool {
@@ -792,9 +812,17 @@ func _daysIn(y int, m__r1 int) int {
 	return 31
 }
 
+func _padded(n int, width int) string {
+	s := fmt.Sprint(n)
+	for utf8.RuneCountInString(s) < width {
+		s = ("0" + s)
+	}
+	return s
+}
+
 func __effect0_mount() {
 	if m.__effect0_key != nil {
-		cgo.SnglCalendarSelect(m.d, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10), 0))
+		SelectDay(m.d, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -846,7 +874,7 @@ func __n0_visible_handler(__visible bool) {
 }
 
 func D_daySelected_handler(c cgo.Widget) {
-	m.picked__inst0 = ParseDate(cgo.SnglCalendarDay(c))
+	m.picked__inst0 = ParseDate(_rtCalendarDay(c))
 	var __lt22 string
 	if m.picked__inst0 != nil {
 		__lt22 = (*(m.picked__inst0)).Format("2006-01-02")
@@ -1240,7 +1268,7 @@ pass sha256:12eb12b75d7d682e49eeb4edcde90ecb
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:260e208aa869d8898b269f621b23eec5
+pass sha256:e16266088bd800961106a27b6cd176eb
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --

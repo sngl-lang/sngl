@@ -673,7 +673,7 @@ func _setLook(w cgo.Widget, l Look) {
 }
 
 func __effect0_mount() {
-	if cgo.SnglEntryText(m.entry) != m.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
 	}
 }
@@ -726,15 +726,15 @@ func __n0_visible_handler(__visible bool) {
 }
 
 func Entry_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.name {
-		m.name = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.name {
+		m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 		cgo.SnglTextSetValue(m.__n1, ("hello " + m.name))
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	m.name = cgo.SnglEntryText(e)
+	m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	cgo.SnglTextSetValue(m.__n1, ("hello " + m.name))
 	__effects0_settle()
 }
@@ -861,6 +861,6 @@ pass sha256:ad17e41aa8e86e1225138eab76a8813a
 -- run/go/fyne --
 pass sha256:23ae43cba8f25a2f213cc1a58690ba82
 -- run/go/gtk4 --
-pass sha256:73c65946cbd3d0c19d10055d299c16fe
+pass sha256:7d8dd82a56984c0a5045a3c99f14b52c
 -- run/none/html --
 pass sha256:d27513d14a1cd0d441c12cc6039a7cdf

@@ -836,7 +836,7 @@ func __renderSlot0(parent cgo.Widget) {
 					if len(m.__inst1_live) > __inst1_i {
 						__n1 = m.__inst1_live[__inst1_i]
 						__child0__set___on0(__n1, func(b cgo.Widget) {
-							if cgo.SnglCheckActive(b) && (m.idx != k) {
+							if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) && (m.idx != k) {
 								m.idx = k
 								for __inst1_live_ui, _ := range m.__inst1_live {
 									__child0__set___p1(m.__inst1_live[__inst1_live_ui], m.idx)
@@ -851,7 +851,7 @@ func __renderSlot0(parent cgo.Widget) {
 							__child0__destroy(m.__inst1_live[__inst1_i])
 						}
 						__n1__made := __child0__new(k, m.idx, row, func(b cgo.Widget) {
-							if cgo.SnglCheckActive(b) && (m.idx != k) {
+							if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) && (m.idx != k) {
 								m.idx = k
 								for __inst1_live_ui, _ := range m.__inst1_live {
 									__child0__set___p1(m.__inst1_live[__inst1_live_ui], m.idx)
@@ -1171,7 +1171,7 @@ pass sha256:5bfc00b7d2334179215bb6aea70b0eae
 -- run/go/fyne --
 pass sha256:b53d42ebc05e54d244e10ff88239ff71
 -- run/go/gtk4 --
-pass sha256:49a9d82d30d902e0e3b9d9593bbd35fe
+pass sha256:dd8b33a23e094d33d53f612f16ce5e7c
 -- run/kotlin/android --
 pass sha256:6f0c6b92e9db9093c588d597be6a4660
 -- run/none/html --

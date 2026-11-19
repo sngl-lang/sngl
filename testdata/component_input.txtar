@@ -704,7 +704,7 @@ func _setLook(w cgo.Widget, l Look) {
 }
 
 func __effect0_mount() {
-	if cgo.SnglEntryText(m.entry) != m.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(m.entry, m.__effect0_key)
 	}
 }
@@ -756,15 +756,15 @@ func __wrote_name() {
 }
 
 func Entry_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.name {
-		m.name = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.name {
+		m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 		cgo.SnglTextSetValue(m.__n0, (("Hello, " + m.name) + "!"))
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	m.name = cgo.SnglEntryText(e)
+	m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	cgo.SnglTextSetValue(m.__n0, (("Hello, " + m.name) + "!"))
 	__effects0_settle()
 }
@@ -1143,7 +1143,7 @@ pass sha256:ce48074c571800c4037ae766bf333b1e
 -- run/go/fyne --
 pass sha256:8f31c74406f51fbf62a1768ff4ff10dd
 -- run/go/gtk4 --
-pass sha256:7025a8f2360d438d0b80050d44e5276b
+pass sha256:4d9e5e567ed0b32bb08ee617f5933925
 -- run/kotlin/android --
 pass sha256:3f4c3b32fd66b7783d15b8d877c51c11
 -- run/none/html --

@@ -144,7 +144,7 @@ so of a method that in GTK copies: GTK 4's one transfer-full string,
 `gtk_string_list_take`, is on a model no view renders). GIR has no
 annotation for a borrowed pointer the callee keeps, so `#[retains]` is
 written by hand, and gtk4 has none to write: what it declares --
-`sngl_calendar_select`, the cairo functions in gtk4.sngl, the `gir:` actions
+a calendar's and a drop-down's GTK calls, the cairo functions in gtk4.sngl, the `gir:` actions
 -- takes scalars, cairo's enums, the `cairo_t*` GTK lends a draw callback,
 and strings cairo and GTK copy (`cairo_select_font_face` builds a toy face
 that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that

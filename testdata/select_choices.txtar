@@ -7,7 +7,7 @@ The population is read by lower.DataFamilies before the first optimize, into
 the select's `options` prop; the overrides map the records to their labels.
 
 deny * `__list\d+` -- a prop's map is an expression, not a hoisted accumulator
-deny out/go/gtk4/main.go `sngl_drop_down_\w+` -- gtk4's drop-down C is the runtime's (choose.c), which Go reaches through `cgo.SnglDropDownOffer` and its siblings
+deny out/go/gtk4/main.go `sngl_drop_down_\w+` -- gtk4's drop-down is the platform's SNGL calling GTK, which Go reaches through the cgo wrappers
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -1016,6 +1016,10 @@ import (
 	"unsafe"
 )
 
+func snglSome[T any](v T) *T {
+	return &v
+}
+
 type ErrorEvent struct {
 	Message string
 	Kind    string
@@ -1115,8 +1119,75 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func DropDownLabel(d cgo.Widget) string {
+	item := cgo.GtkDropDownGetSelectedItem((cgo.DropDown)(unsafe.Pointer(d)))
+	if item != nil {
+		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer((*(item)))), cgo.GtkStringObjectGetType()) {
+			return cgo.GtkStringObjectGetString((cgo.StringObject)(unsafe.Pointer((*(item)))))
+		}
+	}
+	return ""
+}
+
+func OfferChoices(d cgo.Widget, labels string, chosen string) {
+	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(d))), cgo.GtkDropDownGetType()) {
+		w := d
+		drop__r0 := (cgo.DropDown)(unsafe.Pointer(w))
+		var notify int = cgo.GSignalLookup("notify", cgo.GObjectGetType())
+		var selected int = cgo.GQuarkFromString("selected")
+		cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 3, notify, selected, nil, nil, nil)
+		split := _labelsOf(labels)
+		if !_holds(cgo.GtkDropDownGetModel(drop__r0), split) {
+			made := cgo.GtkStringListNew(nil)
+			for _, s := range split {
+				cgo.GtkStringListAppend(made, s)
+			}
+			cgo.GtkDropDownSetModel(drop__r0, snglSome((cgo.Model)(unsafe.Pointer(made))))
+			cgo.GObjectUnref(cgo.Pointer(made))
+		}
+		var at int = 4294967295
+		var i int = (len(split) - 1)
+		for i >= 0 {
+			if split[i] == chosen {
+				at = i
+			}
+			i -= 1
+		}
+		cgo.GtkDropDownSetSelected(drop__r0, int(at))
+		cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 3, notify, selected, nil, nil, nil)
+	}
+}
+
+func _labelsOf(labels string) []string {
+	if labels == "" {
+		return []string{}
+	}
+	return strings.Split(labels, "\n")
+}
+
+func _holds(m__r0 *cgo.Model, labels []string) bool {
+	if m__r0 != nil {
+		if !cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer((*(m__r0)))), cgo.GtkStringListGetType()) {
+			return false
+		}
+		var n int = len(labels)
+		if int(cgo.GListModelGetNItems((*(m__r0)))) != n {
+			return false
+		}
+		var i int = 0
+		for i < n {
+			if cgo.GtkStringListGetString((cgo.StringList)(unsafe.Pointer((*(m__r0)))), int(i)) != labels[i] {
+				return false
+			}
+			i += 1
+		}
+		return true
+	}
+	return false
+}
+
 func __effect0_mount() {
-	cgo.SnglDropDownOffer(m.drop, m.__effect0_key.Labels, ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
+	OfferChoices(m.drop, m.__effect0_key.Labels, ChoiceLabel__string(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
 		__out := make([]Choice__record__string, len(m.fruits))
 		for __i, __item := range m.fruits {
 			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
@@ -1164,7 +1235,7 @@ func __effect0_up() {
 }
 
 func __effect1_mount() {
-	cgo.SnglDropDownOffer(m.drop, strings.Join(func() []string {
+	OfferChoices(m.drop, strings.Join(func() []string {
 		__out := make([]string, len(slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
 			__out := make([]Choice__record__string, len(m.fruits))
 			for __i, __item := range m.fruits {
@@ -1252,7 +1323,7 @@ func Drop_notifySelected_handler(d cgo.Widget) {
 			__out[__i] = func(f string) Choice__record__string { return Choice__record__string{Label: f, Value: f} }(__item)
 		}
 		return __out
-	}()), cgo.SnglDropDownLabel(d))
+	}()), DropDownLabel(d))
 	if (at >= 0) && (slices.Concat([]Choice__record__string{Choice__record__string{Label: "None", Value: "None"}}, func() []Choice__record__string {
 		__out := make([]Choice__record__string, len(m.fruits))
 		for __i, __item := range m.fruits {
@@ -1789,7 +1860,7 @@ pass sha256:dfd900aba61699167365a265b4ef6b8c
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
-pass sha256:9f34d9b1b4c13db65b9d2428c470d6d8
+pass sha256:14f39b6899e0daf57e68f787f5f39078
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --

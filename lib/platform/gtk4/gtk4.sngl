@@ -633,17 +633,30 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // What a control holds, read off its widget. A GTK signal hands its handler
 // the widget it fired on and nothing else, so an override reporting a change
 // asks that widget: `@toggled(b) { checked = checkActive(b) }`.
-#[c.native("sngl_check_active")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCheckActive")]
-func checkActive(b ui.node) bool
+func checkActive(b ui.node) bool {
+    return _checkButtonActive(_as_GtkCheckButton(_widget(b)))
+}
 
-#[c.native("sngl_switch_active")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSwitchActive")]
-func switchActive(s ui.node) bool
+func switchActive(s ui.node) bool {
+    return _switchActive(_as_GtkSwitch(_widget(s)))
+}
 
-#[c.native("sngl_entry_text")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEntryText")]
-func entryText(e ui.node) string
+// An entry's text, which is GTK's until the entry changes.
+func entryText(e ui.node) string {
+    return _editableText(_as_GtkEditable(_widget(e)))
+}
+
+#[c.native("gtk_check_button_get_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCheckButtonGetActive")]
+func _checkButtonActive(b _p_GtkCheckButton) bool
+
+#[c.native("gtk_switch_get_active")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSwitchGetActive")]
+func _switchActive(s _p_GtkSwitch) bool
+
+#[c.native("gtk_editable_get_text")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkEditableGetText")]
+func _editableText(e _p_GtkEditable) string
 
 // Writes an entry's text with its "changed" blocked, which an override does
 // itself rather than binding `text`: see ui.input.
@@ -651,9 +664,203 @@ func entryText(e ui.node) string
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglEditableSetTextQuiet")]
 func setEntryText(e ui.node, text string)
 
-#[c.native("sngl_calendar_day")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarDay")]
-func _rtCalendarDay(c ui.node) string
+// --- What a user chooses among ---
+//
+// A calendar's day and a drop-down's choices, set as the program says and
+// read as the user left them. What the program sets is no choice anyone
+// made, so the signal reporting one is blocked while it is set.
+
+#[c.native("GtkCalendar *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Calendar")]
+struct _Calendar {}
+
+#[c.native("GtkCalendar *", cast)]
+func _calendarOf(w Widget) _Calendar
+
+#[c.native("GtkDropDown *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DropDown")]
+struct _DropDown {}
+
+#[c.native("GtkDropDown *", cast)]
+func _dropDownOf(w Widget) _DropDown
+
+#[c.native("GtkStringList *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.StringList")]
+struct _StringList {}
+
+#[c.native("GtkStringList *", cast)]
+func _stringListOf(m _Model) _StringList
+
+#[c.native("GListModel *", cast)]
+func _stringListModel(l _StringList) _Model
+
+#[c.native("gpointer", cast)]
+func _stringListPointer(l _StringList) _Pointer
+
+#[c.native("GtkStringObject *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.StringObject")]
+struct _StringObject {}
+
+#[c.native("GtkStringObject *", cast)]
+func _stringObjectOf(p _Pointer) _StringObject
+
+// The strings a string list starts with: none, as NULL.
+#[c.native("const char **")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Strings")]
+struct _Strings {}
+
+#[c.native("GDateTime *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DateTime")]
+struct _DateTime {}
+
+#[c.native("GTypeInstance *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Instance")]
+struct _Instance {}
+
+#[c.native("GTypeInstance *", cast)]
+func _instanceOf(p _Pointer) _Instance
+
+#[c.native("GTypeInstance *", cast)]
+func _modelInstance(m _Model) _Instance
+
+#[c.native("GClosure *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Closure")]
+struct _Closure {}
+
+#[c.native("GSignalMatchType")]
+struct _Match = int
+
+#[c.native("GQuark")]
+struct _Quark = int
+
+#[c.native("g_type_check_instance_is_a")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GTypeCheckInstanceIsA")]
+func _isA(i _Instance, of _Type) bool
+
+#[c.native("gtk_calendar_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCalendarGetType")]
+func _calendarType() _Type
+
+#[c.native("gtk_switch_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkSwitchGetType")]
+func _switchType() _Type
+
+#[c.native("gtk_string_list_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListGetType")]
+func _stringListType() _Type
+
+#[c.native("gtk_string_object_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringObjectGetType")]
+func _stringObjectType() _Type
+
+#[c.native("g_signal_lookup")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalLookup")]
+func _signalLookup(name string, of _Type) _Count
+
+#[c.native("g_quark_from_string")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GQuarkFromString")]
+func _quark(s string) _Quark
+
+#[c.native("g_signal_handlers_block_matched")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalHandlersBlockMatched")]
+func _blockMatched(instance _Pointer, mask _Match, id _Count, detail _Quark, closure option[_Closure], fn option[_Pointer], data option[_Pointer]) _Count
+
+#[c.native("g_signal_handlers_unblock_matched")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalHandlersUnblockMatched")]
+func _unblockMatched(instance _Pointer, mask _Match, id _Count, detail _Quark, closure option[_Closure], fn option[_Pointer], data option[_Pointer]) _Count
+
+#[c.native("g_object_notify")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectNotify")]
+func _notify(o _Object, property string)
+
+#[c.native("g_date_time_new_utc")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeNewUtc")]
+func _dateTimeUTC(year int, month int, day int, hour int, minute int, seconds float) option[_DateTime]
+
+#[c.native("g_date_time_unref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeUnref")]
+func _dateTimeUnref(t _DateTime)
+
+#[c.native("g_date_time_get_year")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeGetYear")]
+func _dateYear(t _DateTime) int
+
+#[c.native("g_date_time_get_month")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeGetMonth")]
+func _dateMonth(t _DateTime) int
+
+#[c.native("g_date_time_get_day_of_month")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDateTimeGetDayOfMonth")]
+func _dateDay(t _DateTime) int
+
+// The day a calendar has selected, which the caller lets go.
+#[c.native("gtk_calendar_get_date")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCalendarGetDate")]
+func _calendarDate(c _Calendar) _DateTime
+
+// gtk_calendar_select_day, the call every GTK 4 has, which 4.20 deprecates
+// for gtk_calendar_set_date, which the older ones lack. The runtime makes it
+// (rt/choose.c): a call written here cannot say it knows, so every build of
+// a program would warn.
+#[c.native("sngl_calendar_select_date")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarSelectDate")]
+func _calendarSelectDay(c Widget, day _DateTime)
+
+#[c.native("gtk_drop_down_get_model")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownGetModel")]
+func _dropDownModel(d _DropDown) option[_Model]
+
+#[c.native("gtk_drop_down_set_model")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownSetModel")]
+func _dropDownSetModel(d _DropDown, m option[_Model])
+
+#[c.native("gtk_drop_down_set_selected")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownSetSelected")]
+func _dropDownSetSelected(d _DropDown, at _Count)
+
+#[c.native("gtk_drop_down_get_selected_item")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownGetSelectedItem")]
+func _dropDownSelectedItem(d _DropDown) option[_Pointer]
+
+#[c.native("gtk_string_list_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListNew")]
+func _stringListNew(strings option[_Strings]) _StringList
+
+#[c.native("gtk_string_list_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListAppend")]
+func _stringListAppend(l _StringList, s string)
+
+#[c.native("gtk_string_list_get_string")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringListGetString")]
+func _stringListString(l _StringList, at _Count) string
+
+#[c.native("gtk_string_object_get_string")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkStringObjectGetString")]
+func _stringObjectString(s _StringObject) string
+
+// G_SIGNAL_MATCH_ID, and G_SIGNAL_MATCH_DETAIL beside it.
+const _matchID = 1
+const _matchIDAndDetail = 3
+
+// GTK_INVALID_LIST_POSITION: no choice.
+const _noPosition = 4294967295
+
+// n in decimal, zeros before it up to width digits.
+func _padded(n int, width int) string {
+    var s = "{n}"
+    for s.length() < width {
+        s = "0" + s
+    }
+    return s
+}
+
+// The day a calendar has selected as a date's text, YYYY-MM-DD.
+func _rtCalendarDay(c ui.node) string {
+    var t = _calendarDate(_calendarOf(_handle(c)))
+    var day = "{_padded(_dateYear(t), 4)}-{_padded(_dateMonth(t), 2)}-{_padded(_dateDay(t), 2)}"
+    _dateTimeUnref(t)
+    return day
+}
 
 // The day a calendar has selected. A calendar always has one, so this is null
 // only where GTK reports no date at all.
@@ -662,45 +869,175 @@ func calendarDate(c ui.node) option[time.date] {
 }
 
 // Selects y-m-d on a calendar as a click on the day does, without reporting
-// it.
-#[c.native("sngl_calendar_select")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarSelect")]
-func selectDay(cal ui.node, y int, m int, d int)
+// it: "day-selected" is blocked, and a test's fire emits it itself after
+// selecting. A day no month has selects nothing.
+func selectDay(cal ui.node, y int, m int, d int) {
+    var day = _dateTimeUTC(y, m, d, 0, 0, 0.0)
+    if day != null {
+        var w = _handle(cal)
+        var id = _signalLookup("day-selected", _calendarType())
+        _blockMatched(_pointer(w), _matchID, id, 0, null, null, null)
+        _calendarSelectDay(w, day)
+        _unblockMatched(_pointer(w), _matchID, id, 0, null, null, null)
+        _dateTimeUnref(day)
+    }
+}
+
+// The labels an offer joins with newlines, as GLib's g_strsplit splits them:
+// none at all in "".
+func _labelsOf(labels string) list[string] {
+    if labels == "" {
+        return []
+    }
+    return labels.split("\n")
+}
+
+// Whether m is a string list holding exactly labels.
+func _holds(m option[_Model], labels list[string]) bool {
+    if m != null {
+        if !_isA(_modelInstance(m), _stringListType()) {
+            return false
+        }
+        var n = labels.length()
+        if int(_modelCount(m)) != n {
+            return false
+        }
+        var i = 0
+        for i < n {
+            if _stringListString(_stringListOf(m), _Count(i)) != labels[i] {
+                return false
+            }
+            i += 1
+        }
+        return true
+    }
+    return false
+}
 
 // Offers a drop-down the labels `labels` joins with newlines, and selects
-// `chosen` where one of them is it and nothing where none is. A drop-down
-// takes its choices as a GListModel, which no SNGL expression produces, so
-// the runtime builds one. Neither is a choice anyone made, so the drop-down
-// reports neither.
-#[c.native("sngl_drop_down_offer")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownOffer")]
-func offerChoices(d ui.node, labels string, chosen string)
+// `chosen` where one of them is it and nothing where none is, so a label
+// holding a newline is offered as two choices. A drop-down takes its choices
+// as a GListModel: a GtkStringList, replaced only for labels that differ,
+// which would otherwise drop the popup a user has open. Neither is a choice
+// anyone made, so `notify::selected` is blocked meanwhile. A drop-down a
+// render has not built yet is offered nothing: a settle the render's own
+// instances ask for runs before it, and the drop-down's build mounts the
+// offer again.
+func offerChoices(d ui.node, labels string, chosen string) {
+    if _builtDropDown(d) {
+        var w = _handle(d)
+        var drop = _dropDownOf(w)
+        var notify = _signalLookup("notify", _objectType())
+        var selected = _quark("selected")
+        _blockMatched(_pointer(w), _matchIDAndDetail, notify, selected, null, null, null)
+        var split = _labelsOf(labels)
+        if !_holds(_dropDownModel(drop), split) {
+            var made = _stringListNew(null)
+            for var s = split {
+                _stringListAppend(made, s)
+            }
+            _dropDownSetModel(drop, _stringListModel(made))
+            _unref(_stringListPointer(made))
+        }
+        var at = _noPosition
+        var i = split.length() - 1
+        for i >= 0 {
+            if split[i] == chosen {
+                at = i
+            }
+            i -= 1
+        }
+        _dropDownSetSelected(drop, _Count(at))
+        _unblockMatched(_pointer(w), _matchIDAndDetail, notify, selected, null, null, null)
+    }
+}
 
 // Selects the choice labeled `label`, as a pick does: unlike an offer, the
 // drop-down notifies, so its @notifySelected handler runs. A label among none
-// of its choices selects nothing.
-#[c.native("sngl_drop_down_select")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownSelect")]
-func selectLabel(d ui.node, label string)
+// of its choices selects nothing. The handler may render the page the
+// drop-down is on afresh, which drops the drop-down while GTK is still
+// setting it, so it is held until the selection is done.
+func selectLabel(d ui.node, label string) {
+    var w = _handle(d)
+    var drop = _dropDownOf(w)
+    var m = _dropDownModel(drop)
+    if m != null {
+        if _isA(_modelInstance(m), _stringListType()) {
+            var n = int(_modelCount(m))
+            var i = 0
+            for i < n {
+                if _stringListString(_stringListOf(m), _Count(i)) == label {
+                    _ref(_pointer(w))
+                    _dropDownSetSelected(drop, _Count(i))
+                    _unref(_pointer(w))
+                    return
+                }
+                i += 1
+            }
+        }
+    }
+}
 
 // The label a drop-down has selected, or "" where it has none.
-#[c.native("sngl_drop_down_label")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDropDownLabel")]
-func dropDownLabel(d ui.node) string
+func dropDownLabel(d ui.node) string {
+    var item = _dropDownSelectedItem(_dropDownOf(_handle(d)))
+    if item != null {
+        if _isA(_instanceOf(item), _stringObjectType()) {
+            return _stringObjectString(_stringObjectOf(item))
+        }
+    }
+    return ""
+}
 
 // A test's fire of an event whose handler reads a value off the widget puts
 // the value there first, as the user's flip, typing or click on a day does.
-#[c.native("sngl_fire_flip")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireFlip")]
-func _rtFireFlip(w ui.node, v int)
+// A flip to the state w is already in changes nothing, so it reports itself:
+// a switch through `notify::active`, a check button through "toggled".
+func _rtFireFlip(w ui.node, v int) {
+    var h = _handle(w)
+    var on = v != 0
+    if _isA(_instanceOf(_pointer(h)), _switchType()) {
+        var s = _as_GtkSwitch(_widget(w))
+        if _switchActive(s) != on {
+            _gtk_switch_set_active(s, _to_gboolean(v != 0 ? 1 : 0))
+        } else {
+            _notify(_object(h), "active")
+        }
+    } else {
+        var b = _as_GtkCheckButton(_widget(w))
+        if _checkButtonActive(b) != on {
+            _gtk_check_button_set_active(b, _to_gboolean(v != 0 ? 1 : 0))
+        } else {
+            _rtSignalEmit(w, "toggled")
+        }
+    }
+}
 
-#[c.native("sngl_fire_text")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireText")]
-func _rtFireText(e ui.node, text string, signal string)
+func _rtFireText(e ui.node, text string, signal string) {
+    setEntryText(e, text)
+    _rtSignalEmit(e, signal)
+}
 
-#[c.native("sngl_fire_day")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFireDay")]
-func _rtFireDay(c ui.node, day string)
+// `day` is a date's text, or "" to select nothing first.
+func _rtFireDay(c ui.node, day string) {
+    if day != "" {
+        var at = time.parseDate(day)
+        if at != null {
+            selectDay(c, at.year(), at.month(), at.day())
+        }
+    }
+    _rtSignalEmit(c, "day-selected")
+}
+
+#[c.native("gtk_drop_down_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkDropDownGetType")]
+func _dropDownType() _Type
+
+// Whether n is a drop-down a render has built: one it has not is NULL,
+// which GLib's check answers false for.
+func _builtDropDown(n ui.node) bool {
+    return _isA(_instanceOf(_pointer(_handle(n))), _dropDownType())
+}
 
 #[gen.fires("toggled")]
 func _fire_GtkCheckButton_toggled(b GtkCheckButton, checked bool) {

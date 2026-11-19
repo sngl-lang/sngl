@@ -2318,7 +2318,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:74e375b07906d6fbe0cd8c5b1c744cf0
+pass sha256:0b00edcad4365278f5e9d94bc1138155
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

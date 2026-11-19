@@ -640,8 +640,8 @@ func __wrote_on() {
 }
 
 func __n0_notifyActive_handler(s cgo.Widget) {
-	if cgo.SnglSwitchActive(s) != m.on {
-		m.on = cgo.SnglSwitchActive(s)
+	if cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s))) != m.on {
+		m.on = cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s)))
 		cgo.GtkSwitchSetActive((cgo.PGtkSwitch)(unsafe.Pointer(m.__n0)), cgo.CGboolean(func() int {
 			if m.on {
 				return 1
@@ -858,7 +858,7 @@ pass sha256:c1ce2cc2e06c9bdc31013866b555cee9
 -- run/go/fyne --
 pass sha256:c89f4f5ba88e86c3af1d45b68b690545
 -- run/go/gtk4 --
-pass sha256:f80e0f029063b7a08190d5502ed38d4a
+pass sha256:e6b7aa8036e6af3513f1e6088de9cda4
 -- run/kotlin/android --
 pass sha256:b75e36a6494010727c449f2b3543ddb5
 -- run/none/html --

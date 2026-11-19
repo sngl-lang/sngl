@@ -589,8 +589,8 @@ func __checkbox_state0__new(__start_checked bool, disabled bool) *__checkbox_sta
 	_setLook(__self.__n0, Look{})
 	cgo.SnglSignalConnect(__self.__n0, "toggled", func() {
 		func(b cgo.Widget) {
-			if cgo.SnglCheckActive(b) != __self.Checked {
-				__self.Checked = cgo.SnglCheckActive(b)
+			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
+				__self.Checked = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 				cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(func() int {
 					if __self.Checked {
 						return 1
@@ -925,4 +925,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:283ea108dceefdc115e8b7b1970f4b1b
 -- run/go/gtk4 --
-pass sha256:da802db075248b6f09fe2f91738d463b
+pass sha256:87788c9cbbff3107a059ffe6a1620fbd

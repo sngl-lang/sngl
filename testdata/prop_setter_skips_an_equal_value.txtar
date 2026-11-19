@@ -2011,7 +2011,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:7f31a8f47879d875faeb3a73a9e6a430
+pass sha256:55bcc208465831b9b9041e8206c740f6
 -- run/go/gtk4 --
 pass sha256:fffe2e057ba12f5027c82535a2510de3
 -- run/none/html --

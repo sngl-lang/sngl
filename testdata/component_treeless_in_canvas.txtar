@@ -3690,7 +3690,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:2b3e6156da12c6eae05ba420475eaa4e
+pass sha256:2bd3d2b359e8edade05dcf7e60ae13e6
 -- run/c/win32 --
 pass sha256:494e2294a0bb7630580379cc27c62325
 -- run/go/bubbletea --

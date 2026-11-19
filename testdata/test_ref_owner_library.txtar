@@ -46,6 +46,7 @@ import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
 	"duckfam.us/sngl/pkg/go/snglopt"
 	"duckfam.us/sngl/pkg/go/snglparse"
+	"fmt"
 	"os"
 	"runtime"
 	"slices"
@@ -141,6 +142,18 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func SelectDay(cal cgo.Widget, y int, m__r0 int, d int) {
+	day := cgo.GDateTimeNewUtc(y, m__r0, d, 0, 0, 0.0)
+	if day != nil {
+		w := cal
+		var id int = cgo.GSignalLookup("day-selected", cgo.GtkCalendarGetType())
+		cgo.GSignalHandlersBlockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+		cgo.SnglCalendarSelectDate(w, (*(day)))
+		cgo.GSignalHandlersUnblockMatched(cgo.Pointer(w), 1, id, 0, nil, nil, nil)
+		cgo.GDateTimeUnref((*(day)))
+	}
+}
+
 func ParseDate(s string) *time.Time {
 	var unset *time.Time
 	if ((utf8.RuneCountInString(s) != 10) || (string([]rune(s)[4:5]) != "-")) || (string([]rune(s)[7:8]) != "-") {
@@ -150,12 +163,19 @@ func ParseDate(s string) *time.Time {
 		return unset
 	}
 	var y int = snglopt.Or(snglparse.Int(string([]rune(s)[0:4]), 10), 0)
-	var m__r4 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
+	var m__r5 int = snglopt.Or(snglparse.Int(string([]rune(s)[5:7]), 10), 0)
 	var d int = snglopt.Or(snglparse.Int(string([]rune(s)[8:10]), 10), 0)
-	if (((m__r4 < 1) || (m__r4 > 12)) || (d < 1)) || (d > _daysIn(y, m__r4)) {
+	if (((m__r5 < 1) || (m__r5 > 12)) || (d < 1)) || (d > _daysIn(y, m__r5)) {
 		return unset
 	}
 	return snglSome(mustParseDate(s))
+}
+
+func _rtCalendarDay(c cgo.Widget) string {
+	t__r0 := cgo.GtkCalendarGetDate((cgo.Calendar)(unsafe.Pointer(c)))
+	day := ((((_padded(cgo.GDateTimeGetYear(t__r0), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t__r0), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t__r0), 2))
+	cgo.GDateTimeUnref(t__r0)
+	return day
 }
 
 func _digits(t string) bool {
@@ -178,9 +198,17 @@ func _daysIn(y int, m__r1 int) int {
 	return 31
 }
 
+func _padded(n int, width int) string {
+	s := fmt.Sprint(n)
+	for utf8.RuneCountInString(s) < width {
+		s = ("0" + s)
+	}
+	return s
+}
+
 func __effect0_mount() {
 	if m.__effect0_key != nil {
-		cgo.SnglCalendarSelect(m.cal__own0, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10), 0))
+		SelectDay(m.cal__own0, snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[0:4]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[5:7]), 10), 0), snglopt.Or(snglparse.Int(string([]rune((*(m.__effect0_key)).Format("2006-01-02"))[8:10]), 10), 0))
 	}
 }
 
@@ -276,7 +304,7 @@ func __renderSlot0(parent cgo.Widget) {
 }
 
 func Cal__own0_daySelected_handler(c cgo.Widget) {
-	m.value__inst0 = ParseDate(cgo.SnglCalendarDay(c))
+	m.value__inst0 = ParseDate(_rtCalendarDay(c))
 	__effects0_settle()
 }
 
@@ -353,4 +381,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:bbd39a27bd74fe9572c9298ab951f2fd
+pass sha256:84c74ff3214dd0e4463bd0112bb8f746

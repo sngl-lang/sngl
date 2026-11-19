@@ -1678,8 +1678,8 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 	m.tick__copies[__self.__prop___copy] = __self.Tick
 	cgo.SnglSignalConnect(__self.Tick, "toggled", func() {
 		func(b cgo.Widget) {
-			if cgo.SnglCheckActive(b) != __self.Checked {
-				__checkbox_checked_wrote0 := cgo.SnglCheckActive(b)
+			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
+				__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 				__self.Checked = __checkbox_checked_wrote0
 				cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.Tick)), cgo.CGboolean(func() int {
 					if __self.Checked {
@@ -2531,7 +2531,7 @@ pass sha256:3f4afb47dbddadb7bf892e2fa9b1024a
 -- run/go/fyne --
 pass sha256:0a0a776544a9dbbc15cde234e5e13c69
 -- run/go/gtk4 --
-pass sha256:9b1da0d7c33e1d37eabde6c51dc81e26
+pass sha256:6066b68970c23a1f740aa2b6739f6fac
 -- run/kotlin/android --
 pass sha256:a897c5c3dff5f58ce6216ac711315832
 -- run/none/html --

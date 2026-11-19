@@ -506,8 +506,8 @@ func Row__new(label string) *Row__inst {
 	_setLook(__self.__n0, Look{})
 	cgo.SnglSignalConnect(__self.__n0, "toggled", func() {
 		func(b cgo.Widget) {
-			if cgo.SnglCheckActive(b) != __self.Checked__inst0 {
-				__self.Checked__inst0 = cgo.SnglCheckActive(b)
+			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked__inst0 {
+				__self.Checked__inst0 = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 				cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(func() int {
 					if __self.Checked__inst0 {
 						return 1
@@ -534,8 +534,8 @@ func Row__new(label string) *Row__inst {
 	_setLook(__self.__n1, Look{})
 	cgo.SnglSignalConnect(__self.__n1, "toggled", func() {
 		func(b cgo.Widget) {
-			if cgo.SnglCheckActive(b) != __self.Checked__inst1 {
-				__self.Checked__inst1 = cgo.SnglCheckActive(b)
+			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked__inst1 {
+				__self.Checked__inst1 = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 				cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(__self.__n1)), cgo.CGboolean(func() int {
 					if __self.Checked__inst1 {
 						return 1
@@ -552,8 +552,8 @@ func Row__new(label string) *Row__inst {
 	_setLook(__self.Entry, Look{})
 	cgo.SnglSignalConnect(__self.Entry, "changed", func() {
 		func(e cgo.Widget) {
-			if cgo.SnglEntryText(e) != __self.Value__inst0 {
-				__input_value_wrote0 := cgo.SnglEntryText(e)
+			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Value__inst0 {
+				__input_value_wrote0 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 				__self.Value__inst0 = __input_value_wrote0
 				__self.Typed = __input_value_wrote0
 				cgo.SnglTextSetValue(__self.__n2, ((((__self.__prop_label + " ") + fmt.Sprint(__self.On)) + " ") + __self.Typed))
@@ -563,7 +563,7 @@ func Row__new(label string) *Row__inst {
 	})
 	cgo.SnglSignalConnect(__self.Entry, "activate", func() {
 		func(e cgo.Widget) {
-			__self.Value__inst0 = cgo.SnglEntryText(e)
+			__self.Value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			Row__effects0_settle(__self)
 		}(__self.Entry)
 	})
@@ -580,7 +580,7 @@ func Row__new(label string) *Row__inst {
 }
 
 func Row__effect0_mount(__self *Row__inst) {
-	if cgo.SnglEntryText(__self.Entry) != __self.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(__self.Entry))) != __self.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(__self.Entry, __self.__effect0_key)
 	}
 }
@@ -780,4 +780,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:0746e6044180c7a4a3afe84ce415da29
 -- run/go/gtk4 --
-pass sha256:803c08351a2946cb7da262c289791294
+pass sha256:a8a8c701cfd814749745e509598bc1b3

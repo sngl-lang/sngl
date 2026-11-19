@@ -1028,8 +1028,45 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtFireFlip(w cgo.Widget, v int) {
+	h := w
+	on__r0 := (v != 0)
+	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(h))), cgo.GtkSwitchGetType()) {
+		s := (cgo.PGtkSwitch)(unsafe.Pointer(w))
+		if cgo.GtkSwitchGetActive(s) != on__r0 {
+			var __lt3 int
+			if v != 0 {
+				__lt3 = 1
+			} else {
+				__lt3 = 0
+			}
+			cgo.GtkSwitchSetActive(s, cgo.CGboolean(__lt3))
+		} else {
+			cgo.GObjectNotify((cgo.Object)(unsafe.Pointer(h)), "active")
+		}
+	} else {
+		b := (cgo.PGtkCheckButton)(unsafe.Pointer(w))
+		if cgo.GtkCheckButtonGetActive(b) != on__r0 {
+			var __lt4 int
+			if v != 0 {
+				__lt4 = 1
+			} else {
+				__lt4 = 0
+			}
+			cgo.GtkCheckButtonSetActive(b, cgo.CGboolean(__lt4))
+		} else {
+			cgo.SnglSignalEmit(w, "toggled")
+		}
+	}
+}
+
+func _rtFireText(e cgo.Widget, text string, signal string) {
+	cgo.SnglEditableSetTextQuiet(e, text)
+	cgo.SnglSignalEmit(e, signal)
+}
+
 func __effect0_mount() {
-	if cgo.SnglEntryText(m.field) != m.__effect0_key {
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.field))) != m.__effect0_key {
 		cgo.SnglEditableSetTextQuiet(m.field, m.__effect0_key)
 	}
 }
@@ -1077,8 +1114,8 @@ func __effects0_settle() {
 }
 
 func Box_toggled_handler(b cgo.Widget) {
-	if cgo.SnglCheckActive(b) != m.checked__inst0 {
-		m.checked__inst0 = cgo.SnglCheckActive(b)
+	if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != m.checked__inst0 {
+		m.checked__inst0 = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
 		cgo.GtkCheckButtonSetActive((cgo.PGtkCheckButton)(unsafe.Pointer(m.box)), cgo.CGboolean(func() int {
 			if m.checked__inst0 {
 				return 1
@@ -1091,21 +1128,21 @@ func Box_toggled_handler(b cgo.Widget) {
 }
 
 func Field_changed_handler(e cgo.Widget) {
-	if cgo.SnglEntryText(e) != m.value__inst0 {
-		m.value__inst0 = cgo.SnglEntryText(e)
+	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.value__inst0 {
+		m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 		m.v = (m.v + "!")
 	}
 	__effects0_settle()
 }
 
 func Field_activate_handler(e cgo.Widget) {
-	m.value__inst0 = cgo.SnglEntryText(e)
+	m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 	__effects0_settle()
 }
 
 func Sw_notifyActive_handler(s cgo.Widget) {
-	if cgo.SnglSwitchActive(s) != m.checked__inst1 {
-		__toggle_checked_wrote0 := cgo.SnglSwitchActive(s)
+	if cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s))) != m.checked__inst1 {
+		__toggle_checked_wrote0 := cgo.GtkSwitchGetActive((cgo.PGtkSwitch)(unsafe.Pointer(s)))
 		m.checked__inst1 = __toggle_checked_wrote0
 		cgo.GtkSwitchSetActive((cgo.PGtkSwitch)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int {
 			if m.checked__inst1 {
@@ -1569,7 +1606,7 @@ pass sha256:a611283a22da746c92444200354d5e1d
 -- run/go/fyne --
 pass sha256:4668b3c3f20b584a16fa1804963705c0
 -- run/go/gtk4 --
-pass sha256:5ad80e4ef3ab592e90e31bd34c09753a
+pass sha256:278dd60ca2d5be8fab16086e2efc3a7d
 -- run/kotlin/android --
 pass sha256:bac0fcb9f94ff275a4c4a943e3b4725d
 -- run/none/html --
