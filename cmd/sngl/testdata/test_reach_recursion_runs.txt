@@ -296,7 +296,7 @@ sha256:a148efb712b4cae60de8012e0bc94bbc
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:3ba48971edf16b41a67fae9f61696f65
+sha256:4776e6c6661fd14fa8e0b462ab752031
 {
   "results": [
     {
@@ -306,7 +306,7 @@ sha256:3ba48971edf16b41a67fae9f61696f65
   ]
 }
 -- testrun/gtk4/go/counters.sngl/main/1 --
-sha256:e7becd40b6e00a4fb838617bd2b50d1f
+sha256:a6beb6be1361170fb0a13a344af68fe5
 {
   "results": [
     {

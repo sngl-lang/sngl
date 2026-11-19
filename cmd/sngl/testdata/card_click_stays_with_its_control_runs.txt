@@ -99,7 +99,7 @@ sha256:7e423a9116ca2851d792a023b70f93fe
   ]
 }
 -- testrun/gtk4/go/app.sngl/cardWithButton/1 --
-sha256:1abccd4ffdf4f21533d42c0ddde3eb89
+sha256:ddf46b2e82f1d474fc91f303896c028f
 {
   "results": [
     {

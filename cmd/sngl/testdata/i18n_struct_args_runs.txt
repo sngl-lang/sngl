@@ -93,7 +93,7 @@ sha256:7e064cfcdeb50014c09c5573ec58db57
   ]
 }
 -- testrun/gtk4/c/app.sngl/Greeter/1 --
-sha256:1b84ed5f26e97ffc9aa07b8bd601bbea
+sha256:1429112f7abba7bc2d41d42ae4d68087
 {
   "results": [
     {

@@ -1413,10 +1413,10 @@ func _keysPressed(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Po
 		f = cgo.GtkWidgetGetParent((*(f)))
 	}
 	name := _keyName(keyval, state)
-	if name == nil {
+	if name == "" {
 		return false
 	}
-	return cgo.SnglToplevelHear((*(box)), (*(name)), (((state / 4) % 2) != 0), (((state / 8) % 2) != 0), (((state / 1) % 2) != 0), ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)), editing)
+	return cgo.SnglToplevelHear((*(box)), name, (((state / 4) % 2) != 0), (((state / 8) % 2) != 0), (((state / 1) % 2) != 0), ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)), editing)
 }
 
 func _keysBack(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Pointer) bool {
@@ -1811,15 +1811,15 @@ func _composing(w cgo.Widget) bool {
 	return composing
 }
 
-func _keyName(keyval int, state int) *string {
+func _keyName(keyval int, state int) string {
 	for _, k := range []_NamedKey{_NamedKey{Keyval: 65293, Name: "Enter"}, _NamedKey{Keyval: 65421, Name: "Enter"}, _NamedKey{Keyval: 65076, Name: "Enter"}, _NamedKey{Keyval: 65289, Name: "Tab"}, _NamedKey{Keyval: 65417, Name: "Tab"}, _NamedKey{Keyval: 65056, Name: "Tab"}, _NamedKey{Keyval: 65307, Name: "Escape"}, _NamedKey{Keyval: 65288, Name: "Backspace"}, _NamedKey{Keyval: 65535, Name: "Delete"}, _NamedKey{Keyval: 65439, Name: "Delete"}, _NamedKey{Keyval: 65379, Name: "Insert"}, _NamedKey{Keyval: 65438, Name: "Insert"}, _NamedKey{Keyval: 65362, Name: "ArrowUp"}, _NamedKey{Keyval: 65431, Name: "ArrowUp"}, _NamedKey{Keyval: 65364, Name: "ArrowDown"}, _NamedKey{Keyval: 65433, Name: "ArrowDown"}, _NamedKey{Keyval: 65361, Name: "ArrowLeft"}, _NamedKey{Keyval: 65430, Name: "ArrowLeft"}, _NamedKey{Keyval: 65363, Name: "ArrowRight"}, _NamedKey{Keyval: 65432, Name: "ArrowRight"}, _NamedKey{Keyval: 65360, Name: "Home"}, _NamedKey{Keyval: 65429, Name: "Home"}, _NamedKey{Keyval: 65367, Name: "End"}, _NamedKey{Keyval: 65436, Name: "End"}, _NamedKey{Keyval: 65365, Name: "PageUp"}, _NamedKey{Keyval: 65434, Name: "PageUp"}, _NamedKey{Keyval: 65366, Name: "PageDown"}, _NamedKey{Keyval: 65435, Name: "PageDown"}, _NamedKey{Keyval: 65470, Name: "F1"}, _NamedKey{Keyval: 65471, Name: "F2"}, _NamedKey{Keyval: 65472, Name: "F3"}, _NamedKey{Keyval: 65473, Name: "F4"}, _NamedKey{Keyval: 65474, Name: "F5"}, _NamedKey{Keyval: 65475, Name: "F6"}, _NamedKey{Keyval: 65476, Name: "F7"}, _NamedKey{Keyval: 65477, Name: "F8"}, _NamedKey{Keyval: 65478, Name: "F9"}, _NamedKey{Keyval: 65479, Name: "F10"}, _NamedKey{Keyval: 65480, Name: "F11"}, _NamedKey{Keyval: 65481, Name: "F12"}} {
 		if k.Keyval == keyval {
-			return snglSome(k.Name)
+			return k.Name
 		}
 	}
 	var r int = int(cgo.GdkKeyvalToUnicode(int(keyval)))
 	if (((r < 32) || (r == 127)) || ((r >= 128) && (r < 160))) || !cgo.GUnicharValidate(int(r)) {
-		return nil
+		return ""
 	}
 	if ((((state / 4) % 2) != 0) || (((state / 8) % 2) != 0)) || ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)) {
 		var __lt17 int
@@ -1830,12 +1830,12 @@ func _keyName(keyval int, state int) *string {
 		}
 		r = __lt17
 	}
-	return snglSome(func(c int) string {
+	return func(c int) string {
 		if c < 0 || c > utf8.MaxRune {
 			return string(utf8.RuneError)
 		}
 		return string(rune(c))
-	}(r))
+	}(r)
 }
 
 func _lookCss(w cgo.Widget, rule string) {
@@ -3451,6 +3451,6 @@ pass sha256:f4ff9777436983e33bd69fd01659d3bf
 -- run/go/fyne --
 pass sha256:841fcb8dd5b9127e0c1d0dcb903f6fdd
 -- run/go/gtk4 --
-pass sha256:ae77cf2b8033a59329b9d3c46e585250
+pass sha256:8c79a60fa4d31b46b832a0e1a81a4667
 -- run/kotlin/android --
 pass sha256:fa20068808c94c01b89e4fa11b4d6eeb
