@@ -179,6 +179,10 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -583,9 +587,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -610,4 +618,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:a7bce4bcd8fe62fdf179651d8bd249fd
+pass sha256:54feba98a458078e2b3a2bb4396af141

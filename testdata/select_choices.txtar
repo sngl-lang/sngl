@@ -1089,6 +1089,10 @@ func ChoiceLabel__string(options []Choice__record__string, value string) string 
 	return ""
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1320,9 +1324,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1781,7 +1789,7 @@ pass sha256:dfd900aba61699167365a265b4ef6b8c
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
-pass sha256:a682ae3580f791ca1979808a35b398f3
+pass sha256:9f34d9b1b4c13db65b9d2428c470d6d8
 -- run/kotlin/android --
 pass sha256:2a93448725330676a8d7771074ca8707
 -- run/none/html --

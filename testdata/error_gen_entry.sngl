@@ -1,0 +1,19 @@
+// `#[gen.entry]` marks a function with a body that a target's generated
+// entry calls: no struct, no method and no native.
+import gen "sngl:x/gen"
+import c "sngl:x/c"
+
+#[gen.entry]
+func start(build func()) int {
+    build()
+    return 0
+}
+
+#[gen.entry] // ERROR(check) "#[gen.entry] cannot mark a struct; it marks a function"
+struct Loop {
+    n int
+}
+
+#[gen.entry] // ERROR(check) "#[gen.entry] marks a function with a body, no method, native or protocol operation"
+#[c.native("run")]
+func run() int

@@ -1246,6 +1246,23 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	if f.Path == ir.CPath {
 		return gc.CCall(n, args), true
 	}
+	// A wrapper's `#[c.outs]` callback answers the wrapper package's record,
+	// field for field the program's, which a function converting it adapts.
+	if off := len(args) - len(n.Func.Params); n.Func.Foreign.Path == ir.CPath && off >= 0 {
+		for i, p := range n.Func.Params {
+			if !p.CStatic || !p.COuts || p.Type == nil || p.Type.Sig == nil {
+				continue
+			}
+			var params, names []string
+			for k, sp := range p.Type.Sig.Params {
+				a := fmt.Sprintf("a%d", k)
+				params = append(params, a+" "+gc.goType(sp.Type))
+				names = append(names, a)
+			}
+			outs := WrapperOutsName(f.Name, p)
+			args[off+i] = "func(" + strings.Join(params, ", ") + ") " + outs + " { return " + outs + "(" + args[off+i] + "(" + strings.Join(names, ", ") + ")) }"
+		}
+	}
 	name := f.Name
 	gc.RequireImport(f.Path)
 	// Context-taking native call: inject the context expression as the first

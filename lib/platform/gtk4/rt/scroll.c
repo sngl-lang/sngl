@@ -78,34 +78,22 @@ static void sngl_scroll_adj(GtkAdjustment *a, gpointer data) {
     if (s != NULL) sngl_scroll_changed(s);
 }
 
-static void sngl_probe_measure(GtkWidget *w, GtkOrientation o, int for_size,
-        int *min, int *nat, int *min_base, int *nat_base) {
-    (void)min_base; (void)nat_base;
-    *min = *nat = 0;
-    GtkWidget *c = gtk_widget_get_first_child(w);
-    if (c != NULL && gtk_widget_should_layout(c)) gtk_widget_measure(c, o, for_size, min, nat, NULL, NULL);
+/* The probe's layout is gtk4.sngl's: a custom layout whose mode, measure
+ * and allocate are SNGL functions GTK calls. What they keep on the probe is
+ * read and written here: sngl_probe_across is whether the scroll's end is
+ * read along x, and sngl_probe_measured takes the content's natural length
+ * along that axis as the probe was allocated, telling the scroll when it
+ * changed. */
+int sngl_probe_across(GtkWidget *w) {
+    return g_object_get_data(G_OBJECT(w), "sngl-across") != NULL;
 }
 
-static void sngl_probe_allocate(GtkWidget *w, int width, int height, int baseline) {
-    GtkWidget *c = gtk_widget_get_first_child(w);
-    if (c == NULL || !gtk_widget_should_layout(c)) return;
-    gtk_widget_allocate(c, width, height, baseline, NULL);
-    int nat = 0;
-    if (g_object_get_data(G_OBJECT(w), "sngl-across") != NULL) {
-        gtk_widget_measure(c, GTK_ORIENTATION_HORIZONTAL, height, NULL, &nat, NULL, NULL);
-    } else {
-        gtk_widget_measure(c, GTK_ORIENTATION_VERTICAL, width, NULL, &nat, NULL, NULL);
-    }
+void sngl_probe_measured(GtkWidget *w, int nat) {
     if (nat != GPOINTER_TO_INT(g_object_get_data(G_OBJECT(w), "sngl-content"))) {
         g_object_set_data(G_OBJECT(w), "sngl-content", GINT_TO_POINTER(nat));
         SnglScroll *s = g_object_get_data(G_OBJECT(w), "sngl-changed");
         if (s != NULL) sngl_scroll_changed(s);
     }
-}
-
-static GtkSizeRequestMode sngl_probe_mode(GtkWidget *w) {
-    GtkWidget *c = gtk_widget_get_first_child(w);
-    return c != NULL ? gtk_widget_get_request_mode(c) : GTK_SIZE_REQUEST_CONSTANT_SIZE;
 }
 
 static void sngl_scroll_policies(GtkScrolledWindow *sw) {
@@ -146,15 +134,14 @@ static void sngl_scroll_child(GObject *o, GParamSpec *ps, gpointer data) {
     g_object_unref(content);
 }
 
-GtkWidget *sngl_scroll_new(void) {
+GtkWidget *sngl_scroll_new(GtkLayoutManager *layout) {
     GtkWidget *sw = gtk_scrolled_window_new();
     SnglScroll *s = g_new0(SnglScroll, 1);
     s->sw = sw;
     s->content = -1;
     g_object_set_data_full(G_OBJECT(sw), "sngl-scroll", s, sngl_scroll_free);
     GtkWidget *probe = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_layout_manager(probe,
-        gtk_custom_layout_new(sngl_probe_mode, sngl_probe_measure, sngl_probe_allocate));
+    gtk_widget_set_layout_manager(probe, layout);
     g_object_set_data(G_OBJECT(probe), "sngl-changed", s);
     g_object_set_data(G_OBJECT(probe), "sngl-content", GINT_TO_POINTER(-1));
     g_object_set_data_full(G_OBJECT(sw), "sngl-probe", g_object_ref_sink(probe), g_object_unref);

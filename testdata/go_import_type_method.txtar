@@ -635,6 +635,10 @@ func PointSum(q image.Point) int {
 	return ((q.X + q.Y) + m.bonus)
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -697,9 +701,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -728,4 +736,4 @@ pass sha256:aede3a67a3fc4828840c94891a297d22
 -- run/go/fyne --
 pass sha256:6db8f8c70c9184e823487f9983b723a6
 -- run/go/gtk4 --
-pass sha256:3c2e67b34c24762d9ca3a92966b2ed14
+pass sha256:233c423c811aaaec9c0a49e3e6c33dee

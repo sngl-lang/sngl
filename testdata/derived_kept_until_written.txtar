@@ -258,11 +258,12 @@ static void s___lambda2_caps__env__release(void *p);
 static void s___lambda2_caps__env__rekeep(void *p);
 static void s___lambda2_caps__env__visit(void *p, sngl_visit fn);
 static sngl_string s___lambda2__inst0(s___lambda2_caps state, sngl_string s);
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___renderSlot0(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
 static void sngl_lambda11(void *env_);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void sngl_list_GtkWidget_p__unshare(sngl_list_GtkWidget_p *l);
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
@@ -544,6 +545,22 @@ static sngl_string s___lambda2__inst0__fn(void *env, sngl_string a0) {
 	return s___lambda2__inst0(((s___lambda2_caps__env *)env)->caps, a0);
 }
 
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
+}
+
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v) {
 	if (!sngl_share(v.data, v.len)) {
 		GtkWidget * *data = sngl_keep_alloc(sizeof(GtkWidget *) * (size_t)(v.len + 1));
@@ -561,22 +578,6 @@ static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v) {
 	if (!sngl_let_go_shared(v.data)) {
 		sngl_drop(v.data);
 	}
-}
-
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
-}
-
-static void sngl_release(void *ctx) {
-	sngl_closure_release(ctx);
-}
-
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
-	v.env = sngl_env_keep(v.env);
-	return v;
 }
 
 static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i) {
@@ -1077,6 +1078,10 @@ static sngl_string s___lambda2__inst0(s___lambda2_caps state, sngl_string s) {
 	return sngl_concat(s, state.mark->value);
 }
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+}
+
 static void s___renderSlot0(GtkWidget * parent) {
 	if (s___rendering0) {
 		s___renderAgain0 = true;
@@ -1289,7 +1294,8 @@ static void sngl_build(void) {
 	sngl_app_attach(s___n0);
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -1298,7 +1304,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -1452,6 +1458,10 @@ func Picked__inst0() []string {
 	m.__memo_picked__inst0 = __list2
 	m.__memoAt_picked__inst0 = m.__memoEpoch
 	return m.__memo_picked__inst0
+}
+
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -1611,9 +1621,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1638,6 +1652,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:62efab17531958a406d8a3babf688f53
+pass sha256:81f440e98f9bebdb18c5e96823305000
 -- run/go/gtk4 --
-pass sha256:51b9cab372542293e0eb653f1fbb9cf9
+pass sha256:0b7c3fab1c062002feb7fb11b72f5975

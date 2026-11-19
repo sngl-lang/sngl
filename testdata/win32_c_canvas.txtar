@@ -112,7 +112,6 @@ typedef struct s___anon_id_elem_4ccb28 s___anon_id_elem_4ccb28;
 typedef struct s___ref_func s___ref_func;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_map_string____canvas0__inst sngl_map_string____canvas0__inst;
-typedef struct sngl_opt_HWND sngl_opt_HWND;
 typedef struct sngl_list___anon_id_elem_4ccb28 sngl_list___anon_id_elem_4ccb28;
 typedef struct sngl_map_string__int sngl_map_string__int;
 typedef struct s_ui__Style s_ui__Style;
@@ -225,11 +224,6 @@ typedef struct sngl_fn_void__void {
 typedef struct s___ref_func {
 	sngl_fn_void__void value;
 } s___ref_func;
-
-typedef struct sngl_opt_HWND {
-	bool ok;
-	HWND value;
-} sngl_opt_HWND;
 
 typedef struct sngl_list___anon_id_elem_4ccb28 {
 	s___anon_id_elem_4ccb28 *data;
@@ -1370,7 +1364,7 @@ static HWND s_board;
 static HWND s_flip;
 static HWND s___drawing1;
 static HWND s_pic;
-static sngl_opt_HWND s_pic__held;
+static HWND s_pic__held;
 
 static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs) {
 	sngl_map_string__int __seen = ((sngl_map_string__int){0});
@@ -1591,7 +1585,7 @@ static void s___canvas0__destroy(s___canvas0__inst * __self) {
 }
 
 static void s___renderSlot0(HWND parent) {
-	s_pic__held = ((sngl_opt_HWND){0});
+	s_pic__held = NULL;
 	if (s___rendering0) {
 		s___renderAgain0 = true;
 	} else {
@@ -1614,24 +1608,24 @@ static void s___renderSlot0(HWND parent) {
 }
 					if (s_on->value) {
 						HWND pic__r0 = sngl_win32_canvas();
-						s_pic__held = ((sngl_opt_HWND){true, pic__r0});
+						s_pic__held = pic__r0;
 						s_pic = pic__r0;
 						sngl_win32_set_canvas_width(pic__r0, (int)(60));
 						sngl_win32_set_canvas_height(pic__r0, (int)(20));
 						sngl_win32_set_scaling(pic__r0, (int)(0));
 						sngl_win32_on_click(pic__r0, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda6, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
 						sngl_win32_on_paint(pic__r0, (sngl_win32_paint_fn)(void (*)(void))sngl_dispatch_sngl_win32_gfx_p__void, (void *)sngl_heap_copy(&(sngl_fn_sngl_win32_gfx_p__void[]){sngl_fn_sngl_win32_gfx_p__void__keep(((sngl_fn_sngl_win32_gfx_p__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_sngl_win32_gfx_p__void)), (sngl_win32_release)(void (*)(void))sngl_release);
-						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
+						HWND __place0_i_ref0 = s___anchor0;
 						if (__place0_i < (__place0_prev).len) {
-							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
+							__place0_i_ref0 = (*sngl_list_HWND_at(__place0_prev, __place0_i));
 						}
-						if ((__place0_i_ref0).ok && ((__place0_i_ref0).value == pic__r0)) {
+						if (__place0_i_ref0 == pic__r0) {
 							__place0_i = (__place0_i + 1);
 						} else {
-							if (!(__place0_i_ref0).ok) {
+							if (__place0_i_ref0 == NULL) {
 								sngl_win32_append(parent, pic__r0);
 							} else {
-								sngl_win32_insert(parent, pic__r0, (__place0_i_ref0).value);
+								sngl_win32_insert(parent, pic__r0, __place0_i_ref0);
 							}
 						}
 						sngl_list_HWND_push_kept(&(s___slot0), pic__r0);
@@ -1699,17 +1693,17 @@ static void s___renderSlot1(HWND parent) {
 						}
 						(*sngl_map_string__dot__inst_slot(&(__inst2_next), __key3)) = __n0;
 						HWND __n0__el = __n0->__root;
-						sngl_opt_HWND __place1_i_ref0 = ((sngl_opt_HWND){true, s___anchor1});
+						HWND __place1_i_ref0 = s___anchor1;
 						if (__place1_i < (__place1_prev).len) {
-							__place1_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place1_prev, __place1_i))});
+							__place1_i_ref0 = (*sngl_list_HWND_at(__place1_prev, __place1_i));
 						}
-						if ((__place1_i_ref0).ok && ((__place1_i_ref0).value == __n0__el)) {
+						if (__place1_i_ref0 == __n0__el) {
 							__place1_i = (__place1_i + 1);
 						} else {
-							if (!(__place1_i_ref0).ok) {
+							if (__place1_i_ref0 == NULL) {
 								sngl_win32_append(parent, __n0__el);
 							} else {
-								sngl_win32_insert(parent, __n0__el, (__place1_i_ref0).value);
+								sngl_win32_insert(parent, __n0__el, __place1_i_ref0);
 							}
 						}
 						sngl_list_HWND_push_kept(&(s___slot1), __n0__el);
@@ -1734,17 +1728,17 @@ static void s___renderSlot1(HWND parent) {
 						}
 						(*sngl_map_string____canvas0__inst_slot(&(__inst3_next), __key4)) = __n1;
 						HWND __n1__el = __n1->__root;
-						sngl_opt_HWND __place1_i_ref1 = ((sngl_opt_HWND){true, s___anchor1});
+						HWND __place1_i_ref1 = s___anchor1;
 						if (__place1_i < (__place1_prev).len) {
-							__place1_i_ref1 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place1_prev, __place1_i))});
+							__place1_i_ref1 = (*sngl_list_HWND_at(__place1_prev, __place1_i));
 						}
-						if ((__place1_i_ref1).ok && ((__place1_i_ref1).value == __n1__el)) {
+						if (__place1_i_ref1 == __n1__el) {
 							__place1_i = (__place1_i + 1);
 						} else {
-							if (!(__place1_i_ref1).ok) {
+							if (__place1_i_ref1 == NULL) {
 								sngl_win32_append(parent, __n1__el);
 							} else {
-								sngl_win32_insert(parent, __n1__el, (__place1_i_ref1).value);
+								sngl_win32_insert(parent, __n1__el, __place1_i_ref1);
 							}
 						}
 						sngl_list_HWND_push_kept(&(s___slot1), __n1__el);
@@ -1974,4 +1968,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:a9f6dd0a85ecaeff8f663985c1bc3f12
+pass sha256:9344247760350394663d3bbca87776b9

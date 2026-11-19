@@ -136,6 +136,8 @@ var funcParamMarks = map[markKey]bool{
 	{"x/c", "context"}:   true,
 	{"x/c", "release"}:   true,
 	{"x/c", "type"}:      true,
+	{"x/c", "static"}:    true,
+	{"x/c", "outs"}:      true,
 }
 
 // applyFuncParamMarks runs the marks written on a declared function's
@@ -277,6 +279,35 @@ func markCContext(m *mark) error {
 // which the translator passes.
 func markCRelease(m *mark) error {
 	return markCompilerPassed(m, "release", func(p *ir.Param) { p.CRelease = true })
+}
+
+// markCStatic implements sngl:x/c's #[static]: the parameter is a callback
+// C calls with no context, so its argument names a function of a package.
+// checkCCallbacks judges the function and checkCStaticArgs each call.
+func markCStatic(m *mark) error {
+	return markCallbackParam(m, "static", func(p *ir.Param) { p.CStatic = true })
+}
+
+// markCOuts implements sngl:x/c's #[outs]: C reads the callback's result
+// through the pointers it hands it after its arguments.
+func markCOuts(m *mark) error {
+	return markCallbackParam(m, "outs", func(p *ir.Param) { p.COuts = true })
+}
+
+func markCallbackParam(m *mark, name string, set func(*ir.Param)) error {
+	fp, ok := m.sym.(funcParam)
+	if !ok || fp.bodied || fp.param.Type == nil || fp.param.Type.Kind != ir.TypeFunc {
+		what := "a parameter that is no func"
+		switch {
+		case !ok:
+			what = ast.DeclFormName(m.decl)
+		case fp.bodied:
+			what = "a parameter of a function with a body"
+		}
+		return fmt.Errorf("#[c.%s] cannot mark %s; only a func parameter of a #[c.native] function", name, what)
+	}
+	set(fp.param)
+	return nil
 }
 
 // markCType implements sngl:x/c's #[type]: the C function-pointer type a

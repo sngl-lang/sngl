@@ -316,6 +316,10 @@ func RequireAge(s string) int {
 	return snglopt.Or(snglparse.Int(s, 10), 0)
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -448,9 +452,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -477,4 +485,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:1ae9c17e056fdf9086a8d9dc2f3033ea
 -- run/go/gtk4 --
-pass sha256:1eaf4ef11d8229d43eb7be0092e36cb0
+pass sha256:a79fb8aa961dec6a1feea5b6b5517d7e

@@ -582,6 +582,10 @@ func Sorry() string {
 	return ("failed after " + fmt.Sprint(m.tries))
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -769,9 +773,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -961,6 +969,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:9aaf23777b694691f27d526927868272
 -- run/go/gtk4 --
-pass sha256:3c5e51561bad51fde3e1df8e72db7cf3
+pass sha256:f09abf87448907263794195e8c84885d
 -- run/none/html --
 pass sha256:1ab93164742a61797486678a3ef32659

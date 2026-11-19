@@ -109,6 +109,10 @@ func CLinks(pkg *ir.Package) []*ir.CLink {
 		}
 		return nil
 	})
+	// After the headers declaring what it calls.
+	if l := variadicLink(pkg); l != nil {
+		out = append(out, l)
+	}
 	return out
 }
 
@@ -150,7 +154,11 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		}
 	}
 	wrapped := func(fn *ir.Func) bool { return wrapper(&fn.Foreign, pkg.CCalls) != nil }
-	if sigs, held := ir.ReachedCCallbacks(pkg, wrapped), ir.ReachesCHeld(pkg, wrapped); len(sigs) > 0 || held {
+	var statics []Static
+	for _, s := range ir.CalledCStatics(pkg, wrapped) {
+		statics = append(statics, Static{Name: staticName(s.Callee), Param: s.Param})
+	}
+	if sigs, held := ir.ReachedCCallbacks(pkg, wrapped), ir.ReachesCHeld(pkg, wrapped); len(sigs) > 0 || held || len(statics) > 0 {
 		name, err := generatedPackage(generated)
 		if err != nil {
 			return nil, err
@@ -161,7 +169,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		if out == nil {
 			out = map[string][]byte{}
 		}
-		out[callbacksFile] = CallbacksSource(name, links, sigs, held, pkg.CCalls == ir.CCallsDirect)
+		out[callbacksFile] = CallbacksSource(name, links, sigs, statics, pkg.CCalls, held, pkg.CCalls == ir.CCallsDirect)
 	}
 	return out, nil
 }

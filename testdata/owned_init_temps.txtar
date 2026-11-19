@@ -116,6 +116,10 @@ var m = &snglState{}
 func Close__r0(f File) {
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -236,9 +240,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -425,7 +433,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/gtk4 --
-pass sha256:12bd93448cbb9fd354e3140f7d3fafb1
+pass sha256:3f3a44d8ce6260849a63ca0e4e7a4df9
 -- run/kotlin/android --
 pass sha256:39b403af901cb01581c9b6ebc7043955
 -- run/none/html --

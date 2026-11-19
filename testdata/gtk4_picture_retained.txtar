@@ -97,6 +97,10 @@ func Next__inst0() {
 	__effects0_settle()
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func __effect0_unmount() {
 	cgo.SnglPictureUnref(m.last__inst0)
 	cgo.SnglPictureUnref(m.picture__inst0)
@@ -232,9 +236,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -259,4 +267,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:442c8f528f757f2a0e96aa61e92df8db
+pass sha256:23e24922c025cf9ae3592a0ea8160f06

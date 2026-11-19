@@ -57,7 +57,6 @@ typedef struct s_platform_win32__Look s_platform_win32__Look;
 typedef struct sngl_list_float sngl_list_float;
 typedef struct sngl_lambda4_env sngl_lambda4_env;
 typedef struct sngl_lambda6_env sngl_lambda6_env;
-typedef struct sngl_opt_HWND sngl_opt_HWND;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
 typedef struct s___lambda1_caps s___lambda1_caps;
@@ -240,11 +239,6 @@ typedef struct sngl_lambda6_env {
 	sngl_env hdr;
 	s___anon_id_elem_c6a818 name;
 } sngl_lambda6_env;
-
-typedef struct sngl_opt_HWND {
-	bool ok;
-	HWND value;
-} sngl_opt_HWND;
 
 typedef struct s___lambda0_caps {
 	s___ref_func * __prop___on0;
@@ -868,17 +862,17 @@ static void s___renderSlot0(HWND parent) {
 						}
 						(*sngl_map_string____child0__inst_slot(&(__inst1_next), __key2)) = __n3;
 						HWND __n3__el = __n3->__root;
-						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
+						HWND __place0_i_ref0 = s___anchor0;
 						if (__place0_i < (__place0_prev).len) {
-							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
+							__place0_i_ref0 = (*sngl_list_HWND_at(__place0_prev, __place0_i));
 						}
-						if ((__place0_i_ref0).ok && ((__place0_i_ref0).value == __n3__el)) {
+						if (__place0_i_ref0 == __n3__el) {
 							__place0_i = (__place0_i + 1);
 						} else {
-							if (!(__place0_i_ref0).ok) {
+							if (__place0_i_ref0 == NULL) {
 								sngl_win32_append(parent, __n3__el);
 							} else {
-								sngl_win32_insert(parent, __n3__el, (__place0_i_ref0).value);
+								sngl_win32_insert(parent, __n3__el, __place0_i_ref0);
 							}
 						}
 						sngl_list_HWND_push_kept(&(s___slot0), __n3__el);
@@ -1055,4 +1049,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:90fd99a6e766a94bcd13acf260a77696
+pass sha256:e89992a2c64d5232424c35d428df692c

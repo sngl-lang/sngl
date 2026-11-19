@@ -326,3 +326,74 @@ func NewCAliasConvert(a *Alias, operand Expr) *CConvert {
 	}
 	return &CConvert{Kind: kind, To: a.C, Operand: operand, Type: a.Type, Alias: a}
 }
+
+// StaticCallee is the function e names where e is what a callback C calls
+// with no context (sngl:x/c's #[static]) may be handed: a package's
+// function by name, no method and no lambda. A conversion a pass wrapped the
+// argument in is looked through.
+func StaticCallee(e Expr) *Func {
+	if cv, ok := e.(*CConvert); ok {
+		e = cv.Operand
+	}
+	id, ok := e.(*Ident)
+	if !ok {
+		return nil
+	}
+	fn, ok := id.Sym.(*Func)
+	if !ok || fn.IsMethod() || fn.Foreign.Path != "" {
+		return nil
+	}
+	return fn
+}
+
+// CStatic is a function C is handed for a callback it calls with no context:
+// the package's function, and the parameter taking it, which says how it
+// crosses.
+type CStatic struct {
+	Callee *Func
+	Param  *Param
+}
+
+// CalledCStatics is each function pkg hands a C function as a callback it
+// calls with no context (sngl:x/c's #[static]), once, in the order the calls
+// are met: what a translator writes a function of its own for. A call of a
+// function skip answers for is passed over: one a Go wrapper package makes,
+// which exports the callback itself.
+func CalledCStatics(pkg *Package, skip func(*Func) bool) []CStatic {
+	var out []CStatic
+	_ = Walk(pkg, func(n Node) error {
+		c, ok := n.(*Call)
+		if !ok || c.Func == nil || c.Func.Foreign.Path != CPath || skip != nil && skip(c.Func) {
+			return nil
+		}
+		off := len(c.Args) - len(c.Func.Params)
+		if off < 0 {
+			return nil
+		}
+		for i, p := range c.Func.Params {
+			if !p.CStatic {
+				continue
+			}
+			callee := StaticCallee(c.Args[off+i].Value)
+			if callee != nil && !slices.ContainsFunc(out, func(s CStatic) bool { return s.Callee == callee }) {
+				out = append(out, CStatic{Callee: callee, Param: p})
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// CalledCVariadics is each C function taking a variable argument list
+// (`#[c.native(…, variadic)]`) pkg calls, once, in the order the calls are
+// met.
+func CalledCVariadics(pkg *Package) []*Func {
+	var out []*Func
+	_ = Walk(pkg, func(n Node) error {
+		if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Foreign.Path == CPath && c.Func.Foreign.Variadic && !slices.Contains(out, c.Func) {
+			out = append(out, c.Func)
+		}
+		return nil
+	})
+	return out
+}

@@ -68,6 +68,13 @@ enum NativeFlag {
     // The function is a conversion to the C type its name spells, which its
     // return type declares, rather than a C function to call.
     cast
+
+    // The C function takes a variable argument list, as `printf` and GLib's
+    // `g_object_set` do. A declaration lists the arguments one call of it
+    // passes, so a function called two ways is declared twice; a language
+    // that cannot call one itself calls a C function of that one shape, which
+    // its build writes.
+    variadic
 }
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which
@@ -131,6 +138,25 @@ struct pointer {}
 // is held for the call; `#[macro.retains]`, for the rest of the program; and
 // where the function takes `#[release]`, until C calls it.
 func context() ir.Macro
+
+// Marks a callback C calls with no context to find a closure by: the measure
+// of a GTK custom layout, a Win32 window procedure. The argument names a
+// function of a package, which C is handed as a function pointer of its own;
+// a lambda, or a method of a component, is refused, since nothing C hands
+// back would find what it captured. What such a function works on it reads
+// off what C hands it: a `held` value kept on the widget or the window.
+//
+// A function takes as many as it likes, and no `#[context]` for them. Beside
+// what any callback takes, one may take a `string`, C's `const char *`,
+// copied as C calls.
+func static() ir.Macro
+
+// Marks a `#[static]` callback whose answer C reads through pointers: its
+// result is a struct of `int`, `float` and `bool` fields, and C hands the
+// callback one pointer for each, in order, after its arguments, as GTK hands
+// a layout's measure `int *minimum, int *natural`. A field whose pointer is
+// NULL is not written. The C function itself answers nothing.
+func outs() ir.Macro
 
 // Marks the parameter a `#[native]` function taking a callback is handed the
 // function C calls, with the context, once it is done with the callback:

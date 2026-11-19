@@ -124,8 +124,28 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 		args, run := pkg.Run.Params[0], pkg.Run.Params[1]
 		fmt.Fprintf(&b, "\nfunc snglRun(args %s, run %s) {\n\t%s(args, run)\n}\n", gc.goType(args.Type), gc.goType(run.Type), gc.FreeFuncName(pkg.Run.Name))
 	}
+	// What the target's generated entry calls (sngl:x/gen's #[entry]), each
+	// under a name the entry can write: `_main` is snglEntryMain.
+	for _, fn := range pkg.Entries {
+		var params, args []string
+		for _, p := range fn.Params {
+			params = append(params, p.Name+" "+gc.goType(p.Type))
+			args = append(args, p.Name)
+		}
+		ret, pre := "", ""
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+			ret, pre = " "+gc.goType(fn.Return), "return "
+		}
+		fmt.Fprintf(&b, "\nfunc %s(%s)%s {\n\t%s%s(%s)\n}\n", EntryName(fn), strings.Join(params, ", "), ret, pre, gc.FreeFuncName(fn.Name), strings.Join(args, ", "))
+	}
 	_, err := io.WriteString(fe, b.String())
 	return err
+}
+
+// EntryName is the Go function WriteProgram writes for fn, one the target's
+// generated entry calls: `_main` is snglEntryMain.
+func EntryName(fn *ir.Func) string {
+	return "snglEntry" + ExportName(strings.TrimLeft(fn.Name, "_"))
 }
 
 // RunsHandler reports whether pkg's `@run` handler is one an entry calls,

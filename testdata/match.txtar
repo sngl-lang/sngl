@@ -1052,6 +1052,10 @@ func Roll__inst0() string {
 	return m.status__inst0
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt3 int
 	if l.Hidden {
@@ -1272,9 +1276,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1607,7 +1615,7 @@ pass sha256:678cbccf30220caacd98fdec36ccde2a
 -- run/go/fyne --
 pass sha256:9dda7cd9183637282c05391e710b8ced
 -- run/go/gtk4 --
-pass sha256:9b88873206e2329c0d349438ba7bb3f5
+pass sha256:afd91031d6e30d83b9b022f5e2d2e402
 -- run/kotlin/android --
 pass sha256:3e70fef7309827fd0b084950fc7fe213
 -- run/none/html --

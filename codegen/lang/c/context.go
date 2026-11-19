@@ -1283,12 +1283,20 @@ func (c *Context) cStruct(t *ir.Type) string {
 func (c *Context) CCall(n *ir.Call, args []string) string {
 	fn := n.Func
 	off := len(args) - len(fn.Params)
-	for _, p := range fn.Params {
-		if p.Type != nil && p.Type.Kind == ir.TypeRef {
-			return c.fail("calling %s, which takes a %s", fn.Foreign.Name, p.Type)
+	if slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.Type != nil && p.Type.Kind == ir.TypeRef }) {
+		return c.refCall(n, args)
+	}
+	if off >= 0 {
+		for i, p := range fn.Params {
+			if p.CStatic {
+				args = slices.Clone(args)
+				args[off+i] = c.staticCallback(fn, i, n.Args[off+i].Value)
+			}
 		}
 	}
-	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CompilerPassed() && p.Type != nil && p.Type.Kind == ir.TypeFunc })
+	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool {
+		return !p.CompilerPassed() && !p.CStatic && p.Type != nil && p.Type.Kind == ir.TypeFunc
+	})
 	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
 	rel := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CRelease })
 	var free string
@@ -1351,6 +1359,188 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		}
 	}
 	return call
+}
+
+// refCall is a call of a C function taking a `ref`, a pointer it fills: a
+// function the file defines, which takes each argument as the call renders
+// it, hands C the address of a C temp for each ref, and answers what
+// lower.RefParams made of the call -- the one value C wrote, or the record
+// of the result and each one. A ref is to a scalar here, and the function
+// takes no callback.
+func (c *Context) refCall(n *ir.Call, args []string) string {
+	fn := n.Func
+	off := len(args) - len(fn.Params)
+	if off < 0 {
+		return c.fail("calling %s, which takes a ref, with a receiver", fn.Foreign.Name)
+	}
+	name := "sngl_ccall_" + fn.Foreign.Name + "_" + mangle(fn.Name)
+	var params, cargs, outs []string
+	var body strings.Builder
+	for i, p := range fn.Params {
+		a := fmt.Sprintf("a%d", i)
+		switch {
+		case p.Type.Kind == ir.TypeRef:
+			elem := p.Type.Elems[0]
+			switch elem.Kind {
+			case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+			default:
+				return c.fail("calling %s, whose ref is to a %s", fn.Foreign.Name, elem)
+			}
+			ct := staticCType(elem)
+			if p.CAlias != nil && p.CAlias.C != nil {
+				ct = p.CAlias.C.String()
+			}
+			params = append(params, c.typeName(elem)+" "+a)
+			fmt.Fprintf(&body, "\t%s t%d = (%s)%s;\n", ct, i, ct, a)
+			cargs = append(cargs, fmt.Sprintf("&t%d", i))
+			out := fmt.Sprintf("(%s)t%d", c.typeName(elem), i)
+			if elem.Kind == ir.TypeBool {
+				out = fmt.Sprintf("(t%d != 0)", i)
+			}
+			outs = append(outs, out)
+		case p.Type.Kind == ir.TypeFunc || p.CompilerPassed() || p.CAlias.IsCHeld():
+			return c.fail("calling %s, which takes a ref and a callback or a held value", fn.Foreign.Name)
+		default:
+			ct := "void *"
+			switch t := p.Type; {
+			case p.CAlias != nil && p.CAlias.C != nil:
+				ct = p.CAlias.C.String()
+			case t.Kind == ir.TypeOption && len(t.Elems) == 1 && ir.CTypeOf(t.Elems[0]) != nil:
+				ct = ir.CTypeOf(t.Elems[0]).String()
+			case t.Kind == ir.TypeOption:
+				ct = "const char *"
+			case ir.CStructOf(t) != nil:
+				return c.fail("calling %s, which takes a ref and a C struct", fn.Foreign.Name)
+			case t.Kind == ir.TypeStruct || t.Kind == ir.TypeString:
+				ct = staticCType(t)
+				// A node is the pointer the platform spells it as.
+				if ir.CTypeOf(t) == nil && t.Kind == ir.TypeStruct {
+					ct = c.typeName(t)
+				}
+			case t.Kind == ir.TypeInt || t.Kind == ir.TypeFloat || t.Kind == ir.TypeBool:
+				ct = staticCType(t)
+			default:
+				ct = c.typeName(t)
+			}
+			params = append(params, ct+" "+a)
+			cargs = append(cargs, a)
+		}
+	}
+	call := fn.Foreign.Name + "(" + strings.Join(cargs, ", ") + ")"
+	void := fn.Return == nil || fn.Return.Kind == ir.TypeVoid
+	ret := c.typeName(n.Type)
+	switch {
+	case void && len(outs) == 1:
+		fmt.Fprintf(&body, "\t%s;\n\treturn %s;\n", call, outs[0])
+	default:
+		def, _ := n.Type.Decl.(*ir.StructDef)
+		if def == nil {
+			return c.fail("calling %s, whose outs lowering gave no record", fn.Foreign.Name)
+		}
+		c.defineStruct(def)
+		fmt.Fprintf(&body, "\t%s r;\n", ret)
+		k := 0
+		for _, f := range def.Fields {
+			if f.Name == "result" {
+				v := call
+				switch fn.Return.Kind {
+				case ir.TypeBool:
+					v = "(" + call + " != 0)"
+				case ir.TypeInt, ir.TypeFloat:
+					v = "(" + c.typeName(fn.Return) + ")" + call
+				case ir.TypeString:
+					v = "sngl_string_copy(" + call + ")"
+				}
+				fmt.Fprintf(&body, "\tr.%s = %s;\n", Local(f.Name), v)
+			}
+		}
+		if void {
+			fmt.Fprintf(&body, "\t%s;\n", call)
+		}
+		for _, f := range def.Fields {
+			if f.Name != "result" {
+				fmt.Fprintf(&body, "\tr.%s = %s;\n", Local(f.Name), outs[k])
+				k++
+			}
+		}
+		body.WriteString("\treturn r;\n")
+	}
+	c.file.helper(name, "static "+ret+" "+name+"("+strings.Join(params, ", ")+") {\n"+body.String()+"}\n")
+	return name + "(" + strings.Join(args, ", ") + ")"
+}
+
+// staticCallback is the function C is handed for parameter i of fn, a
+// callback it calls with no context (sngl:x/c's #[static]): one the file
+// defines for the package's function arg names, taking each argument as C
+// passes it and calling that function with the SNGL value it is. Marked
+// #[c.outs], it writes each field of what the function answers through the
+// pointer C handed it for one, where that is not NULL.
+func (c *Context) staticCallback(fn *ir.Func, i int, arg ir.Expr) string {
+	p := fn.Params[i]
+	callee := ir.StaticCallee(arg)
+	if callee == nil {
+		return c.fail("calling %s, whose static callback %s is handed no function of a package", fn.Foreign.Name, p.Name)
+	}
+	sig := p.Type.Sig
+	name := "sngl_static_" + funcName(callee)
+	var params, args []string
+	for j, sp := range sig.Params {
+		a := fmt.Sprintf("a%d", j)
+		params = append(params, staticCType(sp.Type)+" "+a)
+		switch {
+		case sp.Type.Kind == ir.TypeString:
+			args = append(args, "sngl_string_copy("+a+")")
+		case sp.Type.Kind == ir.TypeBool:
+			args = append(args, "("+a+" != 0)")
+		case ir.CTypeOf(sp.Type) != nil:
+			args = append(args, a)
+		default:
+			args = append(args, "("+c.typeName(sp.Type)+")"+a)
+		}
+	}
+	call := funcName(callee) + "(" + strings.Join(args, ", ") + ")"
+	ret, body := "void", "\t"+call+";\n"
+	switch r := sig.Return; {
+	case p.COuts:
+		sd, _ := r.Decl.(*ir.StructDef)
+		body = "\t" + c.typeName(r) + " r = " + call + ";\n"
+		for k, f := range sd.Fields {
+			o := fmt.Sprintf("o%d", k)
+			params = append(params, staticCType(f.Type)+" *"+o)
+			body += "\tif (" + o + " != NULL) {\n\t\t*" + o + " = (" + staticCType(f.Type) + ")r." + Local(f.Name) + ";\n\t}\n"
+		}
+	case r != nil && r.Kind != ir.TypeVoid:
+		ret = staticCType(r)
+		body = "\t" + ret + " r = (" + ret + ")" + call + ";\n"
+	}
+	if len(params) == 0 {
+		params = []string{"void"}
+	}
+	// What C calls back is a turn of the program's, as a dispatcher's is.
+	body = "\tsngl_mark m = sngl_call_enter();\n" + body + "\tsngl_call_leave(m);\n"
+	if ret != "void" {
+		body += "\treturn r;\n"
+	}
+	c.file.helper(name, "static "+ret+" "+name+"("+strings.Join(params, ", ")+") {\n"+body+"}\n")
+	if p.CFuncType != nil {
+		return c.fnPointer(fn, i, name)
+	}
+	return name
+}
+
+// staticCType is the C type t crosses a static callback as: a handle as the
+// C type it names, a string as C's own, a bool as an int.
+func staticCType(t *ir.Type) string {
+	if ct := ir.CTypeOf(t); ct != nil {
+		return ct.String()
+	}
+	switch t.Kind {
+	case ir.TypeString:
+		return "const char *"
+	case ir.TypeFloat:
+		return "double"
+	}
+	return "int"
 }
 
 // heldRelease is the function C calls with the pointer a held value of t

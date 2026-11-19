@@ -196,6 +196,8 @@ static void *s___lambda2_caps__env__keep(const void *p);
 static void s___lambda2_caps__env__release(void *p);
 static void s___lambda2_caps__env__rekeep(void *p);
 static void s___lambda2_caps__env__visit(void *p, sngl_visit fn);
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___renderSlot0(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
@@ -209,7 +211,6 @@ static void s___lambda1_caps__env__rekeep(void *p);
 static void s___lambda1_caps__env__visit(void *p, sngl_visit fn);
 static s_ui__menuItem__record s_ui__menuItem__record__keep(s_ui__menuItem__record v);
 static sngl_list_menuItem__record sngl_list_menuItem__record__keep(sngl_list_menuItem__record v);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s_ui__menuItem__record__drop(s_ui__menuItem__record v);
 static void sngl_list_menuItem__record__drop(sngl_list_menuItem__record v);
 static void sngl_fn_void__void__drop(sngl_fn_void__void v);
@@ -287,6 +288,22 @@ static void *s___lambda2_caps__env__keep(const void *p) {
 
 static void s___lambda2__inst0__fn(void *env) {
 	s___lambda2__inst0(((s___lambda2_caps__env *)env)->caps);
+}
+
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
 }
 
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v) {
@@ -404,11 +421,6 @@ static sngl_list_menuItem__record sngl_list_menuItem__record__keep(sngl_list_men
 	return v;
 }
 
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
-	v.env = sngl_env_keep(v.env);
-	return v;
-}
-
 static s_ui__menuItem__record s_ui__menuItem__record__keep(s_ui__menuItem__record v) {
 	sngl_deeper();
 	v.label = sngl_string_keep(v.label);
@@ -473,17 +485,6 @@ static void *sngl_lambda4_env__keep(const void *p) {
 	e->hdr.counted = true;
 	sngl_lambda4_env__rekeep(e);
 	return e;
-}
-
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
-}
-
-static void sngl_release(void *ctx) {
-	sngl_closure_release(ctx);
 }
 
 static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i) {
@@ -713,6 +714,10 @@ static s_ui__menuItem__record s___lambda1__inst0(s___lambda1_caps state, sngl_st
 	return (s_ui__menuItem__record){.label = l, .disabled = false, .checked = sngl_string_eq(l, state.language->value), .children = ((sngl_list_menuItem__record){0}), .select = ((sngl_fn_void__void){s___lambda2__inst0__fn, sngl_alloc_copy(&(s___lambda2_caps__env[]){{{s___lambda2_caps__env__keep, false}, (s___lambda2_caps){.language = state.language, .l = l}}}, sizeof(s___lambda2_caps__env))})};
 }
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+}
+
 static void s___renderSlot0(GtkWidget * parent) {
 	if (s___rendering0) {
 		s___renderAgain0 = true;
@@ -841,7 +846,8 @@ static void sngl_build(void) {
 	sngl_app_attach(s___n0);
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -850,7 +856,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -1757,6 +1763,10 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1954,9 +1964,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -2304,13 +2318,13 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:cd36da861e3d7213843e78e2bd675ad8
+pass sha256:74e375b07906d6fbe0cd8c5b1c744cf0
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --
 pass sha256:356307ab58c67c65161a5582dd0c6798
 -- run/go/gtk4 --
-pass sha256:4a3fa4075bc8182def52afc5a0eef610
+pass sha256:247063c828c72fe9250234fbe0548325
 -- run/go/html --
 pass sha256:5510c033443eae0827f90d3aa3e3e6d0
 -- run/kotlin/android --

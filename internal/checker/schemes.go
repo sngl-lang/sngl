@@ -601,12 +601,17 @@ func (c *checker) checkCCallbacks() {
 			}
 			return fn.AST.Pos
 		}
-		var callbacks, contexts, releases, helds []int
+		var callbacks, contexts, releases, helds, statics []int
 		for i, p := range fn.Params {
 			if p.CAlias.IsCHeld() {
 				helds = append(helds, i)
 			}
+			if p.COuts && !p.CStatic {
+				c.error(pos(i), "callback %q is marked #[c.outs], which a callback C calls with no context has: mark it #[c.static] as well", p.Name)
+			}
 			switch {
+			case p.CStatic:
+				statics = append(statics, i)
 			case p.CContext:
 				contexts = append(contexts, i)
 			case p.CRelease:
@@ -622,7 +627,16 @@ func (c *checker) checkCCallbacks() {
 			for _, i := range releases {
 				c.error(pos(i), "#[c.release] marks what a #[c.native] function calls to release its callback, and %s is not a C function", fn.Name)
 			}
+			for _, i := range statics {
+				c.error(pos(i), "#[c.static] marks a callback a #[c.native] function takes, and %s is not a C function", fn.Name)
+			}
 			continue
+		}
+		for _, i := range statics {
+			p := fn.Params[i]
+			if why := cStaticRefusal(p); why != "" {
+				c.error(pos(i), "callback %q %s", p.Name, why)
+			}
 		}
 		c.checkCHeld(fn, pos, helds, releases, callbacks)
 		for _, i := range releases {
@@ -747,6 +761,80 @@ func (c *checker) checkCallbackAliases(name string, te ast.TypeExpr, at ast.Pos)
 		check(p.Type)
 	}
 	check(ft.Return)
+}
+
+// cStaticRefusal says what in p, a callback C calls with no context
+// (sngl:x/c's #[static]), cannot cross, or "". It takes what any callback
+// does and a string, which is copied as C calls; marked #[c.outs] it
+// answers a struct of scalars, each written through a pointer C hands it.
+func cStaticRefusal(p *ir.Param) string {
+	sig := p.Type.Sig
+	if sig.Color == ir.ColorAsync {
+		return "is async, and C waits for its callback to return"
+	}
+	for _, sp := range sig.Params {
+		if !cCallbackValue(sp.Type) && sp.Type.Kind != ir.TypeString {
+			return fmt.Sprintf("takes a %s: a static callback crosses an int, float, bool, string or #[c.native] handle", sp.Type)
+		}
+	}
+	r := sig.Return
+	if p.COuts {
+		sd, _ := r.Decl.(*ir.StructDef)
+		if r.Kind != ir.TypeStruct || sd == nil || len(sd.Fields) == 0 || ir.CTypeOf(r) != nil {
+			return fmt.Sprintf("is marked #[c.outs] and answers %s: what C reads through the pointers it hands the callback is a struct of the program's, a field for each", typeOrNothing(r))
+		}
+		for _, f := range sd.Fields {
+			switch f.Type.Kind {
+			case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+			default:
+				return fmt.Sprintf("is marked #[c.outs] and answers a %s whose field %q is a %s: C reads an int, float or bool through a pointer", r, f.Name, f.Type)
+			}
+		}
+		return ""
+	}
+	if r != nil && r.Kind != ir.TypeVoid && !cCallbackValue(r) {
+		return fmt.Sprintf("answers a %s: a static callback answers an int, float, bool or #[c.native] handle, or through pointers where it is marked #[c.outs]", r)
+	}
+	return ""
+}
+
+func typeOrNothing(t *ir.Type) string {
+	if t == nil || t.Kind == ir.TypeVoid {
+		return "nothing"
+	}
+	return "a " + t.String()
+}
+
+// checkCStaticArgs refuses an argument for a `#[c.static]` callback that is
+// not a function of a package by name: C calls it with nothing to find a
+// closure by, so a lambda's captures and a method's receiver have nowhere to
+// come from.
+func (c *checker) checkCStaticArgs() {
+	_ = ir.Walk(c.pkg, func(n ir.Node) error {
+		call, ok := n.(*ir.Call)
+		if !ok || call.AST == nil || call.Func == nil {
+			return nil
+		}
+		for _, p := range call.Func.Params {
+			if !p.CStatic {
+				continue
+			}
+			arg := call.ArgFor(p.Name)
+			if arg == nil {
+				continue
+			}
+			if StaticCallee(arg) == nil {
+				c.error(call.AST.Pos, "callback %q of C function %q is called with no context, so its argument names a function of a package: a lambda or a method has nothing to find what it captured by", p.Name, call.Func.Foreign.Name)
+			}
+		}
+		return nil
+	})
+}
+
+// StaticCallee is the function e names where e is one a `#[c.static]`
+// callback may be handed: a package's function, no method and no lambda.
+func StaticCallee(e ir.Expr) *ir.Func {
+	return ir.StaticCallee(e)
 }
 
 // cCallbackRefusal says what in sig no C callback can carry, or "".

@@ -236,6 +236,10 @@ type Package struct {
 	// calls it before anything the program renders exists. Nil where the
 	// program wrote none, and the host starts as it always has.
 	Run *Func `json:"-"`
+	// Entries are the target's functions the generated entry calls
+	// (Func.GenEntry), as the build promoted them: a generator finds one by
+	// its name (Entry).
+	Entries []*Func `json:"-"`
 	// RunPos is where the handler Run was made from is written, which a host
 	// names when the handler calls `run` a second time.
 	RunPos ast.Pos `json:"-"`
@@ -288,12 +292,23 @@ func (p *Package) EntryPoints() []*Func {
 		return nil
 	}
 	out := make([]*Func, 0, 2+len(p.Mounts))
-	for _, fn := range append([]*Func{p.Teardown, p.Run}, p.Mounts...) {
+	for _, fn := range slices.Concat([]*Func{p.Teardown, p.Run}, p.Mounts, p.Entries) {
 		if fn != nil {
 			out = append(out, fn)
 		}
 	}
 	return out
+}
+
+// Entry is the function named name among those the generated entry calls
+// (Entries), or nil.
+func (p *Package) Entry(name string) *Func {
+	for _, fn := range p.Entries {
+		if fn.Name == name {
+			return fn
+		}
+	}
+	return nil
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
@@ -852,6 +867,10 @@ type Foreign struct {
 	// function converts to, parsed from Name. Nil for a C function, whose
 	// Name is the identifier to call.
 	C *CType
+	// Variadic says a C function takes a variable argument list, written
+	// `#[c.native(…, variadic)]`: the declaration lists the arguments one
+	// call of it passes.
+	Variadic bool `json:",omitempty"`
 	// Also is the declaration's spelling in each other language that has
 	// one: today a Go wrapper's (`#[go.native]`) beside a C declaration's,
 	// which stays the primary, since every C pass reads it there. In finds
@@ -979,6 +998,10 @@ type Func struct {
 	// Protocol is the operation a #[gen.protocol] mark names, ProtocolNone
 	// otherwise. The component it serves holds it (Component.Protocol).
 	Protocol ProtocolOp `json:",omitempty"`
+	// GenEntry marks a function of a target's package the generated entry
+	// calls, sngl:x/gen's #[entry]: lower.LibFuncs promotes it into every
+	// build for the target (Package.Entries).
+	GenEntry bool `json:",omitempty"`
 }
 
 // ProtocolOp is one operation of the protocol a platform builds an
@@ -1771,6 +1794,14 @@ type Param struct {
 	// parameter is, sngl:x/c's #[type]: what a language passing a function
 	// of its own there casts it to, which its SNGL type does not say.
 	CFuncType *CType `json:",omitempty"`
+	// CStatic marks a callback C calls with no context, sngl:x/c's
+	// #[static]: the argument names a function of a package, and the
+	// translator hands C a function of its own that calls it.
+	CStatic bool `json:",omitempty"`
+	// COuts marks a static callback whose result C reads through the
+	// pointers it hands the callback after its arguments, one for each
+	// field of the struct it answers, sngl:x/c's #[outs].
+	COuts bool `json:",omitempty"`
 }
 
 // CompilerPassed reports whether the translator, not a caller, passes p: a C

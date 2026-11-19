@@ -1234,6 +1234,10 @@ func Close__r0(f File) {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n2)), fmt.Sprint(m.closed))
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1481,9 +1485,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1900,7 +1908,7 @@ pass sha256:502f0dabd7fa81e371f89386cfac785c
 -- run/go/fyne --
 pass sha256:83b1f3cc4a6e0cd26858e514213819b8
 -- run/go/gtk4 --
-pass sha256:9e8044041053342840a976ecafab0a5a
+pass sha256:44231cf805afd696749ecbdcc926f9c3
 -- run/kotlin/android --
 pass sha256:fdc9cbd75242eda716648a1ee8facf56
 -- run/none/html --

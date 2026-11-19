@@ -146,7 +146,25 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 		args[off+i] = "&" + tmp
 		outs = append(outs, gc.cValueOut(elem, p.CAlias, tmp))
 	}
-	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return !p.CompilerPassed() && p.Type != nil && p.Type.Kind == ir.TypeFunc })
+	// A callback C calls with no context is the function cgo exports for
+	// the program's function the argument names (cstatic.go).
+	for i, p := range fn.Params {
+		if !p.CStatic {
+			continue
+		}
+		if gc.Wrapping != "" {
+			args[off+i] = staticArg(WrapperStaticName(fn, p), args[off+i])
+			continue
+		}
+		callee := ir.StaticCallee(c.Args[off+i].Value)
+		if callee == nil {
+			panic(fmt.Sprintf("calling %s, whose static callback %s is handed no function of a package", fn.Foreign.Name, p.Name))
+		}
+		args[off+i] = staticArg(staticName(callee), args[off+i])
+	}
+	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool {
+		return !p.CompilerPassed() && !p.CStatic && p.Type != nil && p.Type.Kind == ir.TypeFunc
+	})
 	ctx := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CContext })
 	rel := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CRelease })
 	if cb >= 0 && ctx >= 0 {
@@ -223,7 +241,11 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 }
 
 func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
-	call := "C." + fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
+	name := fn.Foreign.Name
+	if fn.Foreign.Variadic {
+		name = variadicName(fn)
+	}
+	call := "C." + name + "(" + strings.Join(args, ", ") + ")"
 	if fn.Return != nil {
 		switch fn.Return.Kind {
 		case ir.TypeInt:
@@ -249,8 +271,9 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 			}
 		case ir.TypeOption:
 			// A pointer C answers NULL for: Go's option of it is a pointer
-			// to the pointer, nil for NULL.
-			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && ir.CTypeOf(elem) != nil && ir.CStructOf(elem) == nil && ir.CTypeOf(elem).Ptr > 0 {
+			// to the pointer, nil for NULL. A typedef of one (GLib's
+			// gpointer) is a pointer too, which only an option says.
+			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && ir.CTypeOf(elem) != nil && ir.CStructOf(elem) == nil {
 				// Spelled as castType spells a conversion to it: cgo's
 				// pointer, which a wrapper package's handle type aliases.
 				t := gc.CType(ir.CTypeOf(elem))

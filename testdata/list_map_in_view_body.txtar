@@ -551,6 +551,10 @@ func Dbl(x int) int {
 	return (x * 2)
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -613,9 +617,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -644,4 +652,4 @@ pass sha256:f7ca81ee3fe38b93da1da6eb536e5db3
 -- run/go/fyne --
 pass sha256:b3552dde39ae8b48fcad2d101d1f8797
 -- run/go/gtk4 --
-pass sha256:1d1e1451c7b8a2616f71f6d64034bc4d
+pass sha256:ff725fb49d636a06556de708a9d7a213

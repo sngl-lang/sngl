@@ -1542,6 +1542,10 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func __renderSlot0(parent cgo.Widget) {
 	if m.__rendering0 {
 		m.__renderAgain0 = true
@@ -1730,9 +1734,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -2230,7 +2238,7 @@ pass sha256:8ab129d3e83f640c7c781b64a7734d25
 -- run/go/fyne --
 pass sha256:f1a9c4e11a646bc9894981f5df859780
 -- run/go/gtk4 --
-pass sha256:56bb959786527f2588adb54915792e0f
+pass sha256:77e75281e2d1b63279599826420f63bf
 -- run/kotlin/android --
 pass sha256:4a50ab40ead2aa32828dbabb1800059e
 -- run/none/html --

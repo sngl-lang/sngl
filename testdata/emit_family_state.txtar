@@ -527,6 +527,10 @@ func __bar_members() []Entry {
 	return __members
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt2 int
 	if l.Hidden {
@@ -659,9 +663,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -688,4 +696,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:51ce8cd5b986e25f8d146f29f76576c2
 -- run/go/gtk4 --
-pass sha256:7733bb60b600a5981f9c2064a6dfb823
+pass sha256:b7f14908aee2978f89c0ba085be0ac42

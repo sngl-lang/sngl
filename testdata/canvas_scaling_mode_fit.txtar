@@ -210,6 +210,10 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func Paint(ctx cgo.CairoContext, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
@@ -266,9 +270,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -632,7 +640,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:1e2a1a453f8c3bd4500128b906572e12
 -- run/go/gtk4 --
-pass sha256:5a12621f14ea24e8f8cf17d65bf619ee
+pass sha256:af1a57822c2d33f138117f1985d2fc7f
 -- run/kotlin/android --
 pass sha256:59fbec641070e9e1797b577d8fdd056c
 -- run/none/html --

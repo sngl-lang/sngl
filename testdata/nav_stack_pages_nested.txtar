@@ -1456,6 +1456,10 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 	return __out
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt3 int
 	if l.Hidden {
@@ -1890,9 +1894,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -2110,6 +2118,6 @@ pass sha256:eab7b5528cfe54f143b93d19110ece88
 -- run/go/fyne --
 pass sha256:e7baa3669c56763fe01c4409cc487c7f
 -- run/go/gtk4 --
-pass sha256:0f7a931bb6a87e76a8d154d0fa91424a
+pass sha256:05aa587a07434a306a7050498d8be2fa
 -- run/kotlin/android --
 pass sha256:809fe68da24f4f90ae5a726a36919015

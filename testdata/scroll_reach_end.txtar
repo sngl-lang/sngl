@@ -687,10 +687,22 @@ func snglOptEq[T comparable](p *T, v T) bool {
 type Test struct {
 }
 
+type _measureWidget__result struct {
+	Out3 int
+	Out4 int
+}
+
 type __child0__inst struct {
 	__prop___p0 int
 	__root      cgo.Widget
 	__n0        cgo.Widget
+}
+
+type Measured struct {
+	Minimum         int
+	Natural         int
+	MinimumBaseline int
+	NaturalBaseline int
 }
 
 type Look struct {
@@ -723,6 +735,49 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _probeMode(w cgo.Widget) int {
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		return cgo.GtkWidgetGetRequestMode((*(child)))
+	}
+	return 2
+}
+
+func _probeMeasure(w cgo.Widget, orientation int, forSize int) Measured {
+	var minimum int = 0
+	var natural int = 0
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		if cgo.GtkWidgetShouldLayout((*(child))) {
+			__ref0 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), orientation, forSize, minimum, natural, nil, nil))
+			minimum = __ref0.Out3
+			natural = __ref0.Out4
+		}
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: -1, NaturalBaseline: -1}
+}
+
+func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		if cgo.GtkWidgetShouldLayout((*(child))) {
+			cgo.GtkWidgetAllocate((*(child)), width, height, baseline, nil)
+			var minimum int = 0
+			var natural int = 0
+			if cgo.SnglProbeAcross(w) {
+				__ref1 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 0, height, minimum, natural, nil, nil))
+				minimum = __ref1.Out3
+				natural = __ref1.Out4
+			} else {
+				__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 1, width, minimum, natural, nil, nil))
+				minimum = __ref2.Out3
+				natural = __ref2.Out4
+			}
+			cgo.SnglProbeMeasured(w, natural)
+		}
+	}
+}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -877,7 +932,9 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.list = cgo.SnglScrollNew()
+	m.list = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
+	}, _probeAllocate))
 	cgo.SnglScrollSetDirection(m.list, "vertical")
 	_setLook(m.list, Look{Grow: 1.0})
 	cgo.SnglScrollOnReachEnd(m.list, List_reachEnd_handler)
@@ -1689,7 +1746,7 @@ pass sha256:5a4034cb1163c2f3082b2aecd48bbcba
 -- run/go/fyne --
 pass sha256:0d9758631027613ea989befecc162950
 -- run/go/gtk4 --
-pass sha256:8b01eee52a67821e43ddb7db8f176989
+pass sha256:00d5b86ac96ef0e301f98ffca81b979a
 -- run/kotlin/android --
 pass sha256:4bee11b91272d47ac6ea1f1709ef170c
 -- run/none/html --

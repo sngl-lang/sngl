@@ -182,6 +182,10 @@ func Encode(xs []string) string {
 	return s
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -230,9 +234,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -259,4 +267,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:e5bf1f45331d11af7285e584293f4f28
 -- run/go/gtk4 --
-pass sha256:e523fbbf999ed4a565fe73aa61a11cba
+pass sha256:6afb2b9dc5ea2ebf59578a2bfe896b82

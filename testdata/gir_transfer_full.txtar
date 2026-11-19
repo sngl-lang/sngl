@@ -42,11 +42,11 @@ ui.window(title="t") {
 
 typedef struct s___ref_int s___ref_int;
 typedef struct s___ref_bool s___ref_bool;
+typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
-typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct s___lambda1_caps__env s___lambda1_caps__env;
 
 typedef struct s___ref_int {
@@ -56,6 +56,11 @@ typedef struct s___ref_int {
 typedef struct s___ref_bool {
 	bool value;
 } s___ref_bool;
+
+typedef struct sngl_fn_void__void {
+	void (*fn)(void *env);
+	void *env;
+} sngl_fn_void__void;
 
 typedef struct s___lambda0_caps {
 	s___ref_bool * visible__inst0;
@@ -75,11 +80,6 @@ typedef struct s___lambda0_caps__env {
 	s___lambda0_caps caps;
 } s___lambda0_caps__env;
 
-typedef struct sngl_fn_void__void {
-	void (*fn)(void *env);
-	void *env;
-} sngl_fn_void__void;
-
 typedef struct s___lambda1_caps__env {
 	sngl_env hdr;
 	s___lambda1_caps caps;
@@ -88,6 +88,8 @@ typedef struct s___lambda1_caps__env {
 
 static void s_Widget_setMarkup(GtkWidget * w, sngl_string str);
 static void s_Widget_setText(GtkWidget * w, sngl_string str);
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static void s___lambda0(s___lambda0_caps state, bool __visible);
@@ -111,7 +113,22 @@ static void *s___lambda1_caps__env__keep(const void *p);
 static void s___lambda1_caps__env__release(void *p);
 static void s___lambda1_caps__env__rekeep(void *p);
 static void s___lambda1_caps__env__visit(void *p, sngl_visit fn);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
+
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
+}
 
 static void s___ref_int__release(void *p) {
 	s___ref_int *b = p;
@@ -184,10 +201,6 @@ static void sngl_dispatch_bool__void(bool a0, void *ctx) {
 	sngl_call_leave(m);
 }
 
-static void sngl_release(void *ctx) {
-	sngl_closure_release(ctx);
-}
-
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 	v.env = sngl_env_keep(v.env);
 	return v;
@@ -237,18 +250,6 @@ static void s___lambda1__fn(void *env) {
 	s___lambda1(((s___lambda1_caps__env *)env)->caps);
 }
 
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
-}
-
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
-	v.env = sngl_env_keep(v.env);
-	return v;
-}
-
 static s___ref_int * s_n;
 static s___ref_bool * s_visible__inst0;
 static char * s___rel3;
@@ -267,6 +268,10 @@ static void s_Widget_setMarkup(GtkWidget * w, sngl_string str) {
 
 static void s_Widget_setText(GtkWidget * w, sngl_string str) {
 	gtk_label_set_text((GtkLabel *)((void *)(w)), sngl_cstring(str));
+}
+
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 }
 
 static void s___snglTeardown(void) {
@@ -321,7 +326,8 @@ static void sngl_build(void) {
 	sngl_app_attach(s___n0);
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -330,7 +336,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -347,4 +353,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:298849311101a94661a27f29c6ae0b74
+pass sha256:e8dc8d6804f10426ecee239f23cb0e2d

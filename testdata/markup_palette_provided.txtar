@@ -511,10 +511,22 @@ package main
 
 import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
+	"fmt"
 	"os"
 	"runtime"
 	"slices"
+	"strings"
+	"unsafe"
 )
+
+func snglSome[T any](v T) *T {
+	return &v
+}
+
+type _storeFind__result struct {
+	Result bool
+	Out2   int
+}
 
 type Look struct {
 	Css       string
@@ -534,6 +546,14 @@ type Look struct {
 	Columns   int
 }
 
+type _SpanState struct {
+	Words string
+	Href  string
+	Open  string
+	Close string
+	Sunk  bool
+}
+
 type snglState struct {
 	visible__inst0 bool
 	home           cgo.Widget
@@ -547,6 +567,10 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -570,6 +594,223 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtSpanNew() cgo.Widget {
+	w := (cgo.Widget)(unsafe.Pointer(cgo.GListStoreNew(cgo.GObjectGetType())))
+	_setSpan(w, _SpanState{})
+	return (cgo.Widget)(unsafe.Pointer(w))
+}
+
+func _rtSpanStyle(span cgo.Widget, r int, g int, b int, a int, size float64, weight int, slant int, underline bool, strike bool, family string) {
+	mono := (family == "monospace")
+	attrs := ""
+	if (weight == 1) || (weight == 3) {
+		attrs += " weight=\"normal\""
+	}
+	if slant == 1 {
+		attrs += " style=\"normal\""
+	}
+	if (family != "") && !mono {
+		attrs += ((" font_family=\"" + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(family, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&apos;"), "\"", "&quot;")) + "\"")
+	}
+	if a != 0 {
+		attrs += ((((" foreground=\"#" + _hexByte(r)) + _hexByte(g)) + _hexByte(b)) + "\"")
+	}
+	if size > 0.0 {
+		attrs += ((" font_desc=\"" + fmt.Sprint(size)) + "px\"")
+	}
+	bold := ((weight == 2) || (weight == 4))
+	italic := ((slant == 2) || (slant == 3))
+	open := ""
+	close__r0 := ""
+	if bold {
+		open += "<b>"
+	}
+	if italic {
+		open += "<i>"
+	}
+	if underline {
+		open += "<u>"
+	}
+	if strike {
+		open += "<s>"
+	}
+	if mono {
+		open += "<tt>"
+	}
+	if attrs != "" {
+		open += (("<span" + attrs) + ">")
+		close__r0 += "</span>"
+	}
+	if mono {
+		close__r0 += "</tt>"
+	}
+	if strike {
+		close__r0 += "</s>"
+	}
+	if underline {
+		close__r0 += "</u>"
+	}
+	if italic {
+		close__r0 += "</i>"
+	}
+	if bold {
+		close__r0 += "</b>"
+	}
+	w := span
+	s := _spanSaid(w)
+	_setSpan(w, _SpanState{Words: s.Words, Href: s.Href, Open: open, Close: close__r0, Sunk: s.Sunk})
+	_spanChanged(w)
+}
+
+func _rtSpanWords(span cgo.Widget, words string) {
+	w := span
+	s := _spanSaid(w)
+	_setSpan(w, _SpanState{Words: words, Href: s.Href, Open: s.Open, Close: s.Close, Sunk: s.Sunk})
+	_spanChanged(w)
+}
+
+func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
+	kids := _spanKids(parent)
+	var at int = 0
+	s := func(h any) *_SpanState {
+		if v, ok := h.(_SpanState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(child)), "sngl-span"))
+	if s != nil {
+		if (*(s)).Sunk {
+			cgo.GObjectRef(cgo.Pointer(child))
+		} else {
+			_setSpan(child, _SpanState{Words: (*(s)).Words, Href: (*(s)).Href, Open: (*(s)).Open, Close: (*(s)).Close, Sunk: true})
+		}
+	}
+	old := _spanParent(child)
+	if old != nil {
+		from := _spanKids((*(old)))
+		__ref0 := _storeFind__result(cgo.GListStoreFind(from, cgo.Pointer(child), at))
+		at = __ref0.Out2
+		if __ref0.Result {
+			cgo.GListStoreRemove(from, at)
+		}
+	}
+	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(child)), "sngl-parent", snglSome(cgo.Pointer(parent)))
+	placed := false
+	if before != nil {
+		__ref1 := _storeFind__result(cgo.GListStoreFind(kids, cgo.Pointer((*(before))), at))
+		at = __ref1.Out2
+		if __ref1.Result {
+			cgo.GListStoreInsert(kids, at, cgo.Pointer(child))
+			placed = true
+		}
+	}
+	if !placed {
+		cgo.GListStoreAppend(kids, cgo.Pointer(child))
+	}
+	cgo.GObjectUnref(cgo.Pointer(child))
+	_spanChanged(parent)
+}
+
+func _setSpan(w cgo.Widget, s _SpanState) {
+	cgo.HoldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
+}
+
+func _spanSaid(w cgo.Widget) _SpanState {
+	s := func(h any) *_SpanState {
+		if v, ok := h.(_SpanState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span"))
+	if s != nil {
+		return (*(s))
+	}
+	return _SpanState{}
+}
+
+func _spanChanged(from cgo.Widget) {
+	if func(h any) *_SpanState {
+		if v, ok := h.(_SpanState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(from)), "sngl-span")) != nil {
+		up := _spanParent(from)
+		if up != nil {
+			_spanChanged((*(up)))
+		}
+		return
+	}
+	cgo.GtkLabelSetMarkup((cgo.PGtkLabel)(unsafe.Pointer(from)), _kidsMarkup(_spanKids(from)))
+}
+
+func _hexByte(n int) string {
+	digits := "0123456789ABCDEF"
+	var high int = ((n / 16) % 16)
+	var low int = (n % 16)
+	return (string([]rune(digits)[high:(high+1)]) + string([]rune(digits)[low:(low+1)]))
+}
+
+func _spanKids(parent cgo.Widget) cgo.Store {
+	if func(h any) *_SpanState {
+		if v, ok := h.(_SpanState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(parent)), "sngl-span")) != nil {
+		return (cgo.Store)(unsafe.Pointer(parent))
+	}
+	held := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans")
+	if held != nil {
+		return (cgo.Store)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer((*(held))))))
+	}
+	made := cgo.GListStoreNew(cgo.GObjectGetType())
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
+	return made
+}
+
+func _spanParent(w cgo.Widget) *cgo.Widget {
+	p := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-parent")
+	if p != nil {
+		return snglSome((cgo.Widget)(unsafe.Pointer((*(p)))))
+	}
+	return nil
+}
+
+func _kidsMarkup(kids cgo.Store) string {
+	out := ""
+	var n int = int(cgo.GListModelGetNItems((cgo.Model)(unsafe.Pointer(kids))))
+	var i int = 0
+	for i < n {
+		item := cgo.GListModelGetItem((cgo.Model)(unsafe.Pointer(kids)), int(i))
+		cgo.GObjectUnref(item)
+		out += _spanMarkup((cgo.Widget)(unsafe.Pointer(item)))
+		i += 1
+	}
+	return out
+}
+
+func _unrefData(p cgo.Pointer) {
+	cgo.GObjectUnref(p)
+}
+
+func _spanMarkup(w cgo.Widget) string {
+	s := func(h any) *_SpanState {
+		if v, ok := h.(_SpanState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span"))
+	if s != nil {
+		inner := ((((*(s)).Open + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll((*(s)).Words, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&apos;"), "\"", "&quot;")) + _kidsMarkup((cgo.Store)(unsafe.Pointer(w)))) + (*(s)).Close)
+		if (*(s)).Href != "" {
+			return (((("<a href=\"" + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll((*(s)).Href, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&apos;"), "\"", "&quot;")) + "\">") + inner) + "</a>")
+		}
+		return inner
+	}
+	return ""
+}
+
 func Home_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.home, m.visible__inst0)
@@ -587,24 +828,24 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.home, Home_visible_handler)
 	m.__n0 = cgo.SnglFlowNew()
 	_setLook(m.__n0, Look{})
-	m.__n1 = cgo.SnglSpanNew()
-	cgo.SnglSpanSetStyle(m.__n1, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "monospace")
-	m.__n2 = cgo.SnglSpanNew()
-	cgo.SnglSpanSetStyle(m.__n2, 255, 123, 114, 255, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "")
-	m.__n3 = cgo.SnglSpanNew()
-	cgo.SnglSpanSetWords(m.__n3, "func")
-	cgo.SnglSpanAppend(m.__n2, m.__n3)
-	cgo.SnglSpanAppend(m.__n1, m.__n2)
-	m.__n4 = cgo.SnglSpanNew()
-	cgo.SnglSpanSetWords(m.__n4, " ")
-	cgo.SnglSpanAppend(m.__n1, m.__n4)
-	m.__n5 = cgo.SnglSpanNew()
-	cgo.SnglSpanSetStyle(m.__n5, 210, 168, 255, 255, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "")
-	m.__n6 = cgo.SnglSpanNew()
-	cgo.SnglSpanSetWords(m.__n6, "main")
-	cgo.SnglSpanAppend(m.__n5, m.__n6)
-	cgo.SnglSpanAppend(m.__n1, m.__n5)
-	cgo.SnglSpanAppend(m.__n0, m.__n1)
+	m.__n1 = _rtSpanNew()
+	_rtSpanStyle(m.__n1, 0, 0, 0, 0, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "monospace")
+	m.__n2 = _rtSpanNew()
+	_rtSpanStyle(m.__n2, 255, 123, 114, 255, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "")
+	m.__n3 = _rtSpanNew()
+	_rtSpanWords(m.__n3, "func")
+	_spanInsert(m.__n2, m.__n3, nil)
+	_spanInsert(m.__n1, m.__n2, nil)
+	m.__n4 = _rtSpanNew()
+	_rtSpanWords(m.__n4, " ")
+	_spanInsert(m.__n1, m.__n4, nil)
+	m.__n5 = _rtSpanNew()
+	_rtSpanStyle(m.__n5, 210, 168, 255, 255, 0.0, int(slices.Index([]string{"inherit", "normal", "bold", "lighter", "bolder"}, "inherit")), int(slices.Index([]string{"inherit", "normal", "italic", "oblique"}, "inherit")), false, false, "")
+	m.__n6 = _rtSpanNew()
+	_rtSpanWords(m.__n6, "main")
+	_spanInsert(m.__n5, m.__n6, nil)
+	_spanInsert(m.__n1, m.__n5, nil)
+	_spanInsert(m.__n0, m.__n1, nil)
 	cgo.SnglToplevelAppend(m.home, m.__n0)
 	cgo.SnglAppAttach(m.home)
 }
@@ -612,9 +853,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -730,7 +975,7 @@ pass sha256:4fdce193761eaeed9449c468ca68a1ad
 -- run/go/fyne --
 pass sha256:4cb40b2485d7b46ef74a968719b557cc
 -- run/go/gtk4 --
-pass sha256:b884b6b267b2a9fdec6f1fd393c40771
+pass sha256:c541bc52f9acdccc8d83c1df019542c1
 -- run/kotlin/android --
 pass sha256:87c510780598cdd0670e5695b4a347df
 -- run/none/html --

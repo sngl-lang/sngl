@@ -232,7 +232,10 @@ void sngl_schedule_cancel(SnglSchedule *s);
  * content is set through sngl_scroll_set_child, which leaves content it
  * already holds where it is. sngl_scroll_reach_end runs the handler, as a
  * test does. */
-GtkWidget *sngl_scroll_new(void);
+GtkWidget *sngl_scroll_new(GtkLayoutManager *layout);
+/* What the layout a scroll's probe is handed keeps on the probe (scroll.c). */
+int sngl_probe_across(GtkWidget *w);
+void sngl_probe_measured(GtkWidget *w, int nat);
 void sngl_scroll_set_child(GtkWidget *sw, GtkWidget *child);
 void sngl_scroll_set_direction(GtkWidget *sw, const char *dir);
 void sngl_scroll_on_reach_end(GtkWidget *sw, SnglFn fn, void *ctx, GDestroyNotify release);
@@ -313,23 +316,6 @@ GtkWidget *sngl_copy_get(GHashTable *copies, const char *key);
 /* sngl_flow_new is the label a flow of rich text is: wrapped, and starting
  * at the left as a paragraph does. Its spans' words are its markup. */
 GtkWidget *sngl_flow_new(void);
-
-/* sngl_span_new is a span of a flow's rich text (markup.c): no widget, but
- * handed about as one. sngl_span_append, _insert and _remove put a span in
- * a flow or in another span, and take it out, which lets it go. A span holds
- * its words, its link and its style (sngl_span_set_style: a color's
- * channels, written where its alpha is not 0; a size in px, 0 unset; a
- * weight and a slant as markup.Weight's and markup.Slant's ordinals,
- * inherit 0; a line under and through; a family, "" inherit). Any change
- * sets the markup of the flow the span is in again. */
-GtkWidget *sngl_span_new(void);
-void sngl_span_append(GtkWidget *parent, GtkWidget *child);
-void sngl_span_insert(GtkWidget *parent, GtkWidget *child, GtkWidget *before);
-void sngl_span_remove(GtkWidget *parent, GtkWidget *child);
-void sngl_span_set_words(GtkWidget *w, const char *words);
-void sngl_span_set_href(GtkWidget *w, const char *href);
-void sngl_span_set_style(GtkWidget *w, int r, int g, int b, int a, double size, int weight, int slant,
-                         int underline, int strike, const char *family);
 
 /* sngl_editable_set_text_quiet writes an entry's text with its "changed"
  * blocked, which an override does when the program's value moves, so the

@@ -280,6 +280,8 @@ static bool sngl_jd_Echo(const sngl_json *v, const sngl_json_path *p, s_Echo *ou
 static bool sngl_jd_string(const sngl_json *v, const sngl_json_path *p, sngl_string *out);
 static bool sngl_jd_option_string_(const sngl_json *v, const sngl_json_path *p, sngl_opt_string *out);
 static bool sngl_jd_Kind(const sngl_json *v, const sngl_json_path *p, int64_t *out);
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static s_async__Result__Response s_http__Response_checked(s_http__Response r);
 static void s_async__Lifetime_end(s_async__Lifetime life);
 static void s___effect0_mount(void);
@@ -309,7 +311,6 @@ static void sngl_je_Echo(sngl_buf *b, s_Echo v);
 static void sngl_je_string(sngl_buf *b, sngl_string v);
 static void sngl_je_option_string_(sngl_buf *b, sngl_opt_string v);
 static void sngl_je_Kind(sngl_buf *b, int64_t v);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___effect0_unmount(void);
 static void s___effect0_down(void);
 static sngl_list___anon_key_n_a1dba7 sngl_list___anon_key_n_a1dba7__keep(sngl_list___anon_key_n_a1dba7 v);
@@ -511,6 +512,22 @@ static s_async__Result__Echo sngl_jdecode_Result__Echo(sngl_string text) {
 	return ((s_async__Result__Echo){.tag = 0, .ok = __snglV});
 }
 
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
+}
+
 static s_async__Failure s_async__Failure__keep(s_async__Failure v) {
 	v.message = sngl_string_keep(v.message);
 	v.code = sngl_string_keep(v.code);
@@ -710,22 +727,6 @@ static sngl_opt_Failure sngl_opt_Failure_copy(sngl_opt_Failure o) {
 		o.value = o.value;
 	}
 	return o;
-}
-
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
-}
-
-static void sngl_release(void *ctx) {
-	sngl_closure_release(ctx);
-}
-
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
-	v.env = sngl_env_keep(v.env);
-	return v;
 }
 
 static sngl_list___anon_key_n_a1dba7 sngl_list___anon_key_n_a1dba7__keep(sngl_list___anon_key_n_a1dba7 v) {
@@ -1154,6 +1155,10 @@ static s_async__Result__Echo s_lookup(sngl_string name, s_async__Lifetime life) 
 	return ((s_async__Result__Echo){.tag = 0, .ok = (s_Echo){.method = SNGL_STR(""), .query = ((sngl_opt_string){0}), .kind = 0}});
 }
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+}
+
 static s_async__Result__Response s_http__Response_checked(s_http__Response r) {
 	if ((r.status >= 200) && (r.status < 300)) {
 		return ((s_async__Result__Response){.tag = 0, .ok = r});
@@ -1385,7 +1390,8 @@ static void sngl_build(void) {
 	s___effects0_settle();
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -1394,7 +1400,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -3064,7 +3070,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:f1da9c450b959fa7ab7566d5ed668a10
+pass sha256:77e5b2fcf432278376497db4faac0f1e
 -- run/go/fyne --
 pass sha256:4e647ae627ca47089e53b52582210ae2
 -- run/kotlin/android --

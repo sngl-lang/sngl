@@ -108,6 +108,10 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _main(build func()) int {
+	return int(C.sngl_gtk_main(snglCallback_void__voidPtr(), snglContext(build), snglReleasePtr()))
+}
+
 func Paint(ctx *C.cairo_t, style Style) {
 	if style.Fill.A > 0 {
 		Source(ctx, style.Fill)
@@ -310,9 +314,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -473,4 +481,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:2c6d4eb4541163110212690c436d7353
+pass sha256:f5b1a48ea68e0e8478535674e247e471

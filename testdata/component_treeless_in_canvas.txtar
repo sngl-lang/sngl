@@ -63,9 +63,9 @@ typedef struct s___ref_int s___ref_int;
 typedef struct s___ref_bool s___ref_bool;
 typedef struct sngl_list_bool sngl_list_bool;
 typedef struct sngl_list_int sngl_list_int;
+typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct s_ui_draw__Style s_ui_draw__Style;
 typedef struct s_builtin__color s_builtin__color;
-typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_lambda4_env sngl_lambda4_env;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
@@ -94,6 +94,11 @@ typedef struct sngl_list_int {
 	int64_t cap;
 } sngl_list_int;
 
+typedef struct sngl_fn_void__void {
+	void (*fn)(void *env);
+	void *env;
+} sngl_fn_void__void;
+
 typedef struct s_builtin__color {
 	uint8_t r;
 	uint8_t g;
@@ -110,11 +115,6 @@ typedef struct s_ui_draw__Style {
 	double fontSize;
 	sngl_string fontFamily;
 } s_ui_draw__Style;
-
-typedef struct sngl_fn_void__void {
-	void (*fn)(void *env);
-	void *env;
-} sngl_fn_void__void;
 
 typedef struct sngl_lambda4_env {
 	sngl_env hdr;
@@ -149,6 +149,8 @@ typedef struct s___lambda1_caps__env {
 } s___lambda1_caps__env;
 
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style);
 static void s_platform_gtk4__source(cairo_t * ctx, s_builtin__color c);
 static void s___effect0_mount(void);
@@ -159,7 +161,6 @@ static void sngl_list_bool__unshare(sngl_list_bool *l);
 static void s___effect0_up(void);
 static void s___effect1_mount(void);
 static void sngl_lambda4(void *env_);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___effect1_unmount(void);
 static void s___effect1_down(void);
 static sngl_list_int sngl_list_int__keep(sngl_list_int v);
@@ -192,6 +193,22 @@ static void s___lambda1_caps__env__release(void *p);
 static void s___lambda1_caps__env__rekeep(void *p);
 static void s___lambda1_caps__env__visit(void *p, sngl_visit fn);
 static sngl_fn_cairo_t_p__void sngl_fn_cairo_t_p__void__keep(sngl_fn_cairo_t_p__void v);
+
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
+}
 
 static sngl_list_bool sngl_list_bool__keep(sngl_list_bool v) {
 	if (!sngl_share(v.data, v.len)) {
@@ -260,22 +277,6 @@ static bool *sngl_list_bool_at(sngl_list_bool l, int64_t i) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
-}
-
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
-}
-
-static void sngl_release(void *ctx) {
-	sngl_closure_release(ctx);
-}
-
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
-	v.env = sngl_env_keep(v.env);
-	return v;
 }
 
 static sngl_list_int sngl_list_int__keep(sngl_list_int v) {
@@ -496,6 +497,10 @@ static GtkWidget * s___n0;
 static GtkWidget * s___n1;
 static GtkWidget * s___drawing0;
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+}
+
 static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style) {
 	if (style.fill.a > 0) {
 		s_platform_gtk4__source(ctx, style.fill);
@@ -699,7 +704,8 @@ static void sngl_build(void) {
 	s___effects0_settle();
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -708,7 +714,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -2489,6 +2495,10 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -2687,9 +2697,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -3676,7 +3690,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:806f0c39ea83913d6b47464644cf5d94
+pass sha256:2b3e6156da12c6eae05ba420475eaa4e
 -- run/c/win32 --
 pass sha256:494e2294a0bb7630580379cc27c62325
 -- run/go/bubbletea --
@@ -3684,7 +3698,7 @@ pass sha256:4050baaf343b3789637964efbf3dbf2e
 -- run/go/fyne --
 pass sha256:4a19961ae5f2c22c86eb5adb5bdb5ae8
 -- run/go/gtk4 --
-pass sha256:4ca668240aa263f2c4985fa80ffdc973
+pass sha256:0e88bf55f0202cc7af93d012486b75b2
 -- run/go/win32 --
 pass sha256:2dcbe1d2a62d33c81be0f1ed00f5bd8d
 -- run/kotlin/android --

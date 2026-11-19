@@ -50,12 +50,23 @@ func (c *Context) optType(t *ir.Type) string {
 	et := c.typeName(elem)
 	// An option of what C holds by pointer -- a widget, a record, a C
 	// object -- is the pointer, NULL where it holds none.
-	if strings.HasSuffix(et, "*") {
+	if strings.HasSuffix(et, "*") || cHandle(elem) {
 		return et
 	}
 	name := "sngl_opt_" + typeToken(elem)
 	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\tbool ok;\n\t%s value;\n} %s;\n", name, et, name), et)
 	return name
+}
+
+// cHandle reports whether t is a C type SNGL holds opaquely, a struct
+// declaring no fields: a pointer, or a typedef of one as GLib's gpointer
+// and Win32's HWND are, which C's own NULL is none of.
+func cHandle(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Foreign.Path == ir.CPath && sd.Foreign.C != nil && len(sd.Fields) == 0
 }
 
 // listOp is the function op of list type t, defined from its body the first
@@ -905,7 +916,7 @@ func (c *Context) optionIntrinsic(n *ir.Call) (string, bool) {
 // ptrOption reports whether t is an option C holds as the pointer it is
 // (optType).
 func (c *Context) ptrOption(t *ir.Type) bool {
-	return t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && c.isPointer(t.Elems[0])
+	return t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && (c.isPointer(t.Elems[0]) || cHandle(t.Elems[0]))
 }
 
 // keptArg is v, an element pushed into recv, a list of type t, as recv keeps

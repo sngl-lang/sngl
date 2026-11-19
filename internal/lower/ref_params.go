@@ -35,6 +35,27 @@ var passRefParams = pass{
 	apply:   func(pkg *ir.Package, _ Features, _ Options) error { return RefParams(pkg) },
 }
 
+// passCRefCalls is passRefParams again for the calls of C functions alone,
+// after passLibFuncs: a library function a build promotes arrives once
+// passRefParams has run, and its call of a C function filling a `ref` still
+// hands it `&x`, which no translator writes. A call lowered already passes
+// no `&`, and is left as it is.
+var passCRefCalls = pass{
+	name:    "CRefCalls",
+	enabled: func(Features) bool { return true },
+	apply: func(pkg *ir.Package, _ Features, _ Options) error {
+		rp := &refParams{pkg: pkg, outs: map[*ir.Func][]int{}, done: map[*ir.Call]bool{}, cOnly: true}
+		for _, block := range imperativeBlocks(pkg) {
+			out, err := rp.block(*block)
+			if err != nil {
+				return err
+			}
+			*block = out
+		}
+		return nil
+	},
+}
+
 // RefParams is passRefParams for a pipeline that lowers nothing else: the
 // interpreter runs it in Prepare, so a call writes back on every target the
 // same way.
@@ -91,6 +112,9 @@ type refParams struct {
 	temps  int
 	// cSeen is each C function cOuts has made the outs of.
 	cSeen map[*ir.Func]bool
+	// cOnly lowers the calls of C functions that still pass an address,
+	// and nothing else (passCRefCalls).
+	cOnly bool
 }
 
 func (rp *refParams) funcs() []*ir.Func {
@@ -284,6 +308,14 @@ func (rp *refParams) declareResult(f *ir.Func) {
 	if void && len(outs) == 1 {
 		return
 	}
+	if rp.result == nil {
+		rp.result = map[*ir.Func]*ir.StructDef{}
+	}
+	// The record an earlier run of the pass declared for f is this run's.
+	if i := slices.IndexFunc(rp.pkg.Structs, func(sd *ir.StructDef) bool { return sd.Name == resultName(f) }); rp.cOnly && i >= 0 {
+		rp.result[f] = rp.pkg.Structs[i]
+		return
+	}
 	def := &ir.StructDef{}
 	def.Name = resultName(f)
 	def.Pkg = rp.pkg
@@ -399,6 +431,12 @@ func (rp *refParams) stmt(s ir.Stmt) (pre, repl []ir.Stmt, err error) {
 
 func (rp *refParams) writesBack(c *ir.Call) bool {
 	if c == nil || c.Func == nil {
+		return false
+	}
+	if rp.cOnly && (c.Func.Foreign.Path != ir.CPath || !slices.ContainsFunc(c.Args, func(a ir.CallArg) bool {
+		u, ok := a.Value.(*ir.Unary)
+		return ok && u.Op == ast.UnaryAddr
+	})) {
 		return false
 	}
 	rp.cOuts(c.Func)

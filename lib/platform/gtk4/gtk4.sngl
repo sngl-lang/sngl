@@ -14,7 +14,7 @@ import markup "sngl:ui/markup"
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "rt/markup.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/scroll.c", "rt/keys.c", "rt/choose.c", "rt/tabs.c", "rt/menu.c", "rt/image.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //
@@ -220,6 +220,13 @@ func _rtMain(
     #[c.context] ctx c.pointer,
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 ) int
+
+// The application, as the generated entry runs it: the program's build
+// handed to the loop, which builds once GTK is ready.
+#[gen.entry]
+func _main(build func()) int {
+    return _rtMain(build)
+}
 
 // What an entry whose platform node wrote `@run` starts with, Go's through
 // the wrappers these give it: the windows the build attaches held hidden
@@ -891,7 +898,113 @@ component Scroll(
 
 #[c.native("sngl_scroll_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollNew")]
-func _rtScrollNew() Scroll
+func _rtScrollNew(layout LayoutManager) Scroll
+
+// A GtkLayoutManager: what measures and places a widget's children.
+#[c.native("GtkLayoutManager *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.LayoutManager")]
+struct LayoutManager {}
+
+#[c.native("GtkOrientation")]
+struct Orientation = int
+
+// Pointers GTK takes NULL for: a baseline nobody asks after, and no
+// transform.
+#[c.native("int *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.IntPointer")]
+struct IntPointer {}
+
+#[c.native("GskTransform *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Transform")]
+struct Transform {}
+
+// What a layout's measure answers, which GTK reads through the four
+// pointers it hands one: -1 is no baseline.
+struct Measured {
+    minimum         int
+    natural         int
+    minimumBaseline int
+    naturalBaseline int
+}
+
+// A layout whose three functions GTK calls with the widget and nothing
+// else: each is a function of this package, which reads what it needs off
+// the widget.
+#[c.native("gtk_custom_layout_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkCustomLayoutNew")]
+func _customLayout(
+    #[c.type("GtkCustomRequestModeFunc")] #[c.static] mode func(w Widget) int,
+    #[c.type("GtkCustomMeasureFunc")] #[c.static] #[c.outs] measure func(w Widget, orientation int, forSize int) Measured,
+    #[c.type("GtkCustomAllocateFunc")] #[c.static] allocate func(w Widget, width int, height int, baseline int),
+) LayoutManager
+
+#[c.native("gtk_widget_get_first_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetFirstChild")]
+func _firstChild(w Widget) option[Widget]
+
+#[c.native("gtk_widget_should_layout")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetShouldLayout")]
+func _shouldLayout(w Widget) bool
+
+#[c.native("gtk_widget_get_request_mode")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetRequestMode")]
+func _requestMode(w Widget) int
+
+#[c.native("gtk_widget_measure")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetMeasure")]
+func _measureWidget(w Widget, orientation Orientation, forSize int, minimum ref[int], natural ref[int], minimumBaseline option[IntPointer], naturalBaseline option[IntPointer])
+
+#[c.native("gtk_widget_allocate")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetAllocate")]
+func _allocateWidget(w Widget, width int, height int, baseline int, transform option[Transform])
+
+#[c.native("sngl_probe_across")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeAcross")]
+func _probeAcross(w Widget) bool
+
+#[c.native("sngl_probe_measured")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglProbeMeasured")]
+func _probeMeasured(w Widget, natural int)
+
+// A scroll's probe is laid out as its one child is, the scroll's content,
+// and tells the scroll the content's natural length along the axis its end
+// is read on each time it is allocated. GTK_SIZE_REQUEST_CONSTANT_SIZE is 2.
+func _probeMode(w Widget) int {
+    var child = _firstChild(w)
+    if child != null {
+        return _requestMode(child)
+    }
+    return 2
+}
+
+func _probeMeasure(w Widget, orientation int, forSize int) Measured {
+    var minimum = 0
+    var natural = 0
+    var child = _firstChild(w)
+    if child != null {
+        if _shouldLayout(child) {
+            _measureWidget(child, orientation, forSize, &minimum, &natural, null, null)
+        }
+    }
+    return Measured{minimum=minimum, natural=natural, minimumBaseline=-1, naturalBaseline=-1}
+}
+
+func _probeAllocate(w Widget, width int, height int, baseline int) {
+    var child = _firstChild(w)
+    if child != null {
+        if _shouldLayout(child) {
+            _allocateWidget(child, width, height, baseline, null)
+            var minimum = 0
+            var natural = 0
+            if _probeAcross(w) {
+                _measureWidget(child, 0, height, &minimum, &natural, null, null)
+            } else {
+                _measureWidget(child, 1, width, &minimum, &natural, null, null)
+            }
+            _probeMeasured(w, natural)
+        }
+    }
+}
 
 #[c.native("sngl_scroll_set_child")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglScrollSetChild")]
@@ -916,7 +1029,7 @@ func _rtScrollReachEnd(sw Scroll)
 
 #[gen.protocol(create)]
 func _create_Scroll() Scroll {
-    return _rtScrollNew()
+    return _rtScrollNew(_customLayout(_probeMode, _probeMeasure, _probeAllocate))
 }
 
 #[gen.protocol(append)]
@@ -1426,48 +1539,328 @@ component Span(
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFlowNew")]
 func _rtFlowNew() Flow
 
-#[c.native("sngl_span_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanNew")]
-func _rtSpanNew() Span
+// --- A span, with no class of its own ---
+//
+// A span is no widget and no GObject subclass: it is a GListStore, the
+// spans in it, with what it says kept on it as a value C holds, and the
+// span or flow it is in as a pointer it does not hold. It is handed about
+// as every node is, as a GtkWidget pointer, and is one only to the
+// functions here. A flow holds its spans in a store of its own. Any change
+// sets its flow's markup again, whole.
+#[c.native("GObject *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Object")]
+struct _Object {}
 
-#[c.native("sngl_span_append")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanAppend")]
-func _rtSpanAppend(parent ui.node, child markup.span)
+#[c.native("GListStore *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Store")]
+struct _Store {}
 
-#[c.native("sngl_span_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanInsert")]
-func _rtSpanInsert(parent ui.node, child markup.span, before markup.span)
+#[c.native("gpointer")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Pointer")]
+struct _Pointer {}
 
-#[c.native("sngl_span_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanRemove")]
-func _rtSpanRemove(parent ui.node, child markup.span)
+#[c.native("GListModel *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Model")]
+struct _Model {}
 
-#[c.native("sngl_span_append")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanAppend")]
-func _rtSpanAppendIn(parent markup.span, child markup.span)
+#[c.native("GType")]
+struct _Type = int
 
-#[c.native("sngl_span_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanInsert")]
-func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span)
+#[c.native("guint")]
+struct _Count = int
 
-#[c.native("sngl_span_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanRemove")]
-func _rtSpanRemoveIn(parent markup.span, child markup.span)
+#[c.native("GObject *", cast)]
+func _object(w Widget) _Object
 
-#[c.native("sngl_span_set_words")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetWords")]
-func _rtSpanWords(w Span, words string)
+#[c.native("GListStore *", cast)]
+func _store(w Widget) _Store
 
-#[c.native("sngl_span_set_href")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetHref")]
-func _rtSpanHref(w Span, href string)
+#[c.native("GListModel *", cast)]
+func _model(s _Store) _Model
 
-// A run's style: its color's channels, its size in px (0 unset), its weight
-// and slant as markup's enums, `inherit` first, its lines and its family.
-#[c.native("sngl_span_set_style")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSpanSetStyle")]
+#[c.native("gpointer", cast)]
+func _pointer(w Widget) _Pointer
+
+#[c.native("GtkWidget *", cast)]
+func _pointed(p _Pointer) Widget
+
+#[c.native("GtkWidget *", cast)]
+func _storeWidget(s _Store) Widget
+
+#[c.native("GtkWidget *", cast)]
+func _spanHandle(s markup.span) Widget
+
+#[c.native("GtkWidget *", cast)]
+func _asSpan(w Widget) Span
+
+#[c.native("g_object_get_type")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetType")]
+func _objectType() _Type
+
+#[c.native("g_list_store_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListStoreNew")]
+func _storeNew(of _Type) _Store
+
+#[c.native("g_list_store_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListStoreAppend")]
+func _storeAppend(s _Store, item _Pointer)
+
+#[c.native("g_list_store_insert")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListStoreInsert")]
+func _storeInsert(s _Store, at _Count, item _Pointer)
+
+#[c.native("g_list_store_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListStoreRemove")]
+func _storeRemove(s _Store, at _Count)
+
+#[c.native("g_list_store_find")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListStoreFind")]
+func _storeFind(s _Store, item _Pointer, at ref[_Count]) bool
+
+#[c.native("g_list_model_get_n_items")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListModelGetNItems")]
+func _modelCount(m _Model) _Count
+
+// The item, which the caller holds: it lets it go.
+#[c.native("g_list_model_get_item")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListModelGetItem")]
+func _modelItem(m _Model, at _Count) _Pointer
+
+#[c.native("g_object_ref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectRef")]
+func _ref(p _Pointer)
+
+#[c.native("g_object_unref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectUnref")]
+func _unref(p _Pointer)
+
+#[c.native("g_object_set_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetData")]
+func _setData(o _Object, key string, data option[_Pointer])
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _data(o _Object, key string) option[_Pointer]
+
+// A flow's store, let go with the label through a function of this
+// package's: GTK hands it the store and nothing else.
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdData(o _Object, key string, data _Pointer, #[c.type("GDestroyNotify")] #[c.static] gone func(p _Pointer))
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldSpan")]
+func _holdSpan(o _Object, key string, #[c.type("gpointer")] s c.held[_SpanState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldSpan")]
+func _heldSpan(o _Object, key string) option[c.held[_SpanState]]
+
+#[c.native("GtkLabel *", cast)]
+func _labelOf(w Widget) _p_GtkLabel
+
+#[c.native("gtk_label_set_markup")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelSetMarkup")]
+func _setMarkup(l _p_GtkLabel, markup string)
+
+// What a span says: its words, its link, the tags its style opens and
+// closes, and whether a parent has held it yet.
+struct _SpanState {
+    words string = ""
+    href  string = ""
+    open  string = ""
+    close string = ""
+    sunk  bool = false
+}
+
+func _spanOf(w Widget) option[_SpanState] {
+    return _heldSpan(_object(w), "sngl-span")
+}
+
+func _setSpan(w Widget, s _SpanState) {
+    _holdSpan(_object(w), "sngl-span", s)
+}
+
+func _unrefData(p _Pointer) {
+    _unref(p)
+}
+
+func _rtSpanNew() Span {
+    var w = _storeWidget(_storeNew(_objectType()))
+    _setSpan(w, _SpanState{})
+    return _asSpan(w)
+}
+
+// The spans parent holds: a span's own store, or a flow's, made on first
+// use and let go with the label.
+func _spanKids(parent Widget) _Store {
+    if _spanOf(parent) != null {
+        return _store(parent)
+    }
+    var held = _data(_object(parent), "sngl-spans")
+    if held != null {
+        return _store(_pointed(held))
+    }
+    var made = _storeNew(_objectType())
+    _holdData(_object(parent), "sngl-spans", _pointer(_storeWidget(made)), _unrefData)
+    return made
+}
+
+func _spanParent(w Widget) option[Widget] {
+    var p = _data(_object(w), "sngl-parent")
+    if p != null {
+        return _pointed(p)
+    }
+    return null
+}
+
+func _markupEscape(s string) => s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&apos;").replace("\"", "&quot;")
+
+func _kidsMarkup(kids _Store) string {
+    var out = ""
+    var n = int(_modelCount(_model(kids)))
+    var i = 0
+    for i < n {
+        var item = _modelItem(_model(kids), _Count(i))
+        _unref(item)
+        out += _spanMarkup(_pointed(item))
+        i += 1
+    }
+    return out
+}
+
+func _spanMarkup(w Widget) string {
+    var s = _spanOf(w)
+    if s != null {
+        var inner = s.open + _markupEscape(s.words) + _kidsMarkup(_store(w)) + s.close
+        if s.href != "" {
+            return "<a href=\"{_markupEscape(s.href)}\">{inner}</a>"
+        }
+        return inner
+    }
+    return ""
+}
+
+// Sets the markup of the flow a span is in, if it is in one yet.
+func _spanChanged(from Widget) {
+    if _spanOf(from) != null {
+        var up = _spanParent(from)
+        if up != null {
+            _spanChanged(up)
+        }
+        return
+    }
+    _setMarkup(_labelOf(from), _kidsMarkup(_spanKids(from)))
+}
+
+// Puts child in parent before `before`, or last: a span a parent holds
+// already moves, as a keyed loop's kept row does. The first parent to hold
+// a span takes the reference it was made with.
+func _spanInsert(parent Widget, child Widget, before option[Widget]) {
+    var kids = _spanKids(parent)
+    var at = _Count(0)
+    var s = _spanOf(child)
+    if s != null {
+        if s.sunk {
+            _ref(_pointer(child))
+        } else {
+            _setSpan(child, _SpanState{words=s.words, href=s.href, open=s.open, close=s.close, sunk=true})
+        }
+    }
+    var old = _spanParent(child)
+    if old != null {
+        var from = _spanKids(old)
+        if _storeFind(from, _pointer(child), &at) {
+            _storeRemove(from, at)
+        }
+    }
+    _setData(_object(child), "sngl-parent", _pointer(parent))
+    var placed = false
+    if before != null {
+        if _storeFind(kids, _pointer(before), &at) {
+            _storeInsert(kids, at, _pointer(child))
+            placed = true
+        }
+    }
+    if !placed {
+        _storeAppend(kids, _pointer(child))
+    }
+    _unref(_pointer(child))
+    _spanChanged(parent)
+}
+
+func _spanRemove(parent Widget, child Widget) {
+    var kids = _spanKids(parent)
+    var at = _Count(0)
+    if _storeFind(kids, _pointer(child), &at) {
+        _setData(_object(child), "sngl-parent", null)
+        _storeRemove(kids, at)
+        _spanChanged(parent)
+    }
+}
+
+func _rtSpanAppend(parent ui.node, child markup.span) {
+    _spanInsert(_handle(parent), _spanHandle(child), null)
+}
+
+func _rtSpanInsert(parent ui.node, child markup.span, before markup.span) {
+    _spanInsert(_handle(parent), _spanHandle(child), _spanHandle(before))
+}
+
+func _rtSpanRemove(parent ui.node, child markup.span) {
+    _spanRemove(_handle(parent), _spanHandle(child))
+}
+
+func _rtSpanAppendIn(parent markup.span, child markup.span) {
+    _spanInsert(_spanHandle(parent), _spanHandle(child), null)
+}
+
+func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span) {
+    _spanInsert(_spanHandle(parent), _spanHandle(child), _spanHandle(before))
+}
+
+func _rtSpanRemoveIn(parent markup.span, child markup.span) {
+    _spanRemove(_spanHandle(parent), _spanHandle(child))
+}
+
+func _spanSaid(w Widget) _SpanState {
+    var s = _spanOf(w)
+    if s != null {
+        return s
+    }
+    return _SpanState{}
+}
+
+func _rtSpanWords(span Span, words string) {
+    var w = _spanHandle(span)
+    var s = _spanSaid(w)
+    _setSpan(w, _SpanState{words=words, href=s.href, open=s.open, close=s.close, sunk=s.sunk})
+    _spanChanged(w)
+}
+
+func _rtSpanHref(span Span, href string) {
+    var w = _spanHandle(span)
+    var s = _spanSaid(w)
+    _setSpan(w, _SpanState{words=s.words, href=href, open=s.open, close=s.close, sunk=s.sunk})
+    _spanChanged(w)
+}
+
+// A color's channel as the two digits Pango reads.
+func _hexByte(n int) string {
+    var digits = "0123456789ABCDEF"
+    var high = n / 16 % 16
+    var low = n % 16
+    return digits.substring(high, high + 1) + digits.substring(low, low + 1)
+}
+
+// A style as the Pango a run's words are wrapped in: Pango's own elements
+// for a weight, a slant, a line and a monospace family, and a span's
+// attributes for the rest. What the style leaves alone writes nothing, so
+// the run inherits it from the span around it, as the cascade asks. The
+// weights and slants are markup's, inherit first: normal 1, bold 2, lighter
+// 3, bolder 4, and normal 1, italic 2, oblique 3.
 func _rtSpanStyle(
-    w         Span,
+    span      Span,
     r         int,
     g         int,
     b         int,
@@ -1478,7 +1871,67 @@ func _rtSpanStyle(
     underline bool,
     strike    bool,
     family    string,
-)
+) {
+    var mono = family == "monospace"
+    var attrs = ""
+    if weight == 1 || weight == 3 {
+        attrs += " weight=\"normal\""
+    }
+    if slant == 1 {
+        attrs += " style=\"normal\""
+    }
+    if family != "" && !mono {
+        attrs += " font_family=\"{_markupEscape(family)}\""
+    }
+    if a != 0 {
+        attrs += " foreground=\"#{_hexByte(r)}{_hexByte(g)}{_hexByte(b)}\""
+    }
+    if size > 0 {
+        attrs += " font_desc=\"{size}px\""
+    }
+    var bold = weight == 2 || weight == 4
+    var italic = slant == 2 || slant == 3
+    var open = ""
+    var close = ""
+    if bold {
+        open += "<b>"
+    }
+    if italic {
+        open += "<i>"
+    }
+    if underline {
+        open += "<u>"
+    }
+    if strike {
+        open += "<s>"
+    }
+    if mono {
+        open += "<tt>"
+    }
+    if attrs != "" {
+        open += "<span{attrs}>"
+        close += "</span>"
+    }
+    if mono {
+        close += "</tt>"
+    }
+    if strike {
+        close += "</s>"
+    }
+    if underline {
+        close += "</u>"
+    }
+    if italic {
+        close += "</i>"
+    }
+    if bold {
+        close += "</b>"
+    }
+    var w = _spanHandle(span)
+    var s = _spanSaid(w)
+    _setSpan(w, _SpanState{words=s.words, href=s.href, open=open, close=close, sunk=s.sunk})
+    _spanChanged(w)
+}
 
 #[gen.protocol(create)]
 func _create_Flow() Flow {

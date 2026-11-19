@@ -892,6 +892,10 @@ func Positive(n int) int {
 	return n
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1002,9 +1006,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1033,4 +1041,4 @@ pass sha256:0b8eb459173d77d1618acd8ef01d1158
 -- run/go/fyne --
 pass sha256:192bcb8400135504bc324d9825c5879f
 -- run/go/gtk4 --
-pass sha256:57de0c8f1151aff16b9bd237fef7188e
+pass sha256:d19571bdcb2a70d680a03de90a32fb70

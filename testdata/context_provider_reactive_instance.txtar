@@ -888,6 +888,10 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1079,9 +1083,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1508,7 +1516,7 @@ pass sha256:47ba5df361d9a89ff52b340ccbad9c47
 -- run/go/fyne --
 pass sha256:b436c7a771fbda012e414da4895ed4db
 -- run/go/gtk4 --
-pass sha256:4ae1388bd4a4cf11fdf696b591433cff
+pass sha256:5d461af329dec287e1697a7d1793ca30
 -- run/kotlin/android --
 pass sha256:c004e0ab10592d248a749b29441caa48
 -- run/none/html --

@@ -1155,6 +1155,10 @@ func Nth__string__inst0(xs []string) string {
 	return xs[i]
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1244,9 +1248,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1551,7 +1559,7 @@ pass sha256:bdd52ad2aef2f763f2ac17a4c44e0d07
 -- run/go/fyne --
 pass sha256:84a554a56f827b567442e6bd50eb1eb3
 -- run/go/gtk4 --
-pass sha256:ae8ab4d02cc2eec43e1374078d56a48c
+pass sha256:ef394808873e500fcb002cbd4d797acb
 -- run/kotlin/android --
 pass sha256:d0a850091cabca827094da4fea2ef9c4
 -- run/none/html --

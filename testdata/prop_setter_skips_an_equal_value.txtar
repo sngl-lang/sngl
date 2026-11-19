@@ -236,6 +236,8 @@ typedef struct s___lambda2_caps__env {
 
 static int64_t s_depth(s_Link l);
 static sngl_list___anon_id_elem_c6a818 s___identified0(sngl_list_string __xs);
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___renderSlot0(GtkWidget * parent);
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v);
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
@@ -255,7 +257,6 @@ static void sngl_map_string____child0__inst__drop(sngl_map_string____child0__ins
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
 static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_list_string __p1, sngl_string __p2, s_Link __p3, sngl_map_string__int __p4, sngl_fn_void__void __on0);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___ref_func__release(void *p);
 static void s___ref_func__rekeep(void *p);
 static void sngl_fn_void__void__drop(sngl_fn_void__void v);
@@ -369,6 +370,22 @@ static void sngl_list___anon_id_elem_c6a818_grow(sngl_list___anon_id_elem_c6a818
 static void sngl_list___anon_id_elem_c6a818_push(sngl_list___anon_id_elem_c6a818 *l, s___anon_id_elem_c6a818 v) {
 	sngl_list___anon_id_elem_c6a818_grow(l, 1);
 	l->data[l->len++] = v;
+}
+
+static void sngl_dispatch_void__void(void *ctx) {
+	sngl_fn_void__void *f = ctx;
+	sngl_mark m = sngl_call_enter();
+	f->fn(f->env);
+	sngl_call_leave(m);
+}
+
+static void sngl_release(void *ctx) {
+	sngl_closure_release(ctx);
+}
+
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
+	v.env = sngl_env_keep(v.env);
+	return v;
 }
 
 static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v) {
@@ -567,11 +584,6 @@ static int64_t sngl_list_GtkWidget_p_index_of(sngl_list_GtkWidget_p l, GtkWidget
 	return -1;
 }
 
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
-	v.env = sngl_env_keep(v.env);
-	return v;
-}
-
 static void sngl_fn_void__void__drop(sngl_fn_void__void v) {
 	sngl_env_drop(v.env);
 }
@@ -682,17 +694,6 @@ static sngl_string sngl_list_string_join(sngl_list_string l, sngl_string sep) {
 		out = sngl_concat(out, l.data[i]);
 	}
 	return out;
-}
-
-static void sngl_dispatch_void__void(void *ctx) {
-	sngl_fn_void__void *f = ctx;
-	sngl_mark m = sngl_call_enter();
-	f->fn(f->env);
-	sngl_call_leave(m);
-}
-
-static void sngl_release(void *ctx) {
-	sngl_closure_release(ctx);
 }
 
 static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v) {
@@ -997,6 +998,10 @@ static sngl_list___anon_id_elem_c6a818 s___identified0(sngl_list_string __xs) {
 	return __out;
 }
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+}
+
 static void s___renderSlot0(GtkWidget * parent) {
 	if (s___rendering0) {
 		s___renderAgain0 = true;
@@ -1297,7 +1302,8 @@ static void sngl_build(void) {
 	sngl_app_attach(s___n1);
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -1306,7 +1312,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -1476,6 +1482,10 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
 }
 
 func _setLook(w cgo.Widget, l Look) {
@@ -1726,9 +1736,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1997,8 +2011,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:98078cff0a74123db4accbc35889cd55
+pass sha256:7f31a8f47879d875faeb3a73a9e6a430
 -- run/go/gtk4 --
-pass sha256:e745396a217f2196094a24ee518d9e5a
+pass sha256:fffe2e057ba12f5027c82535a2510de3
 -- run/none/html --
 pass sha256:0da2198f6bcf3a43924bae1affe2f6e6

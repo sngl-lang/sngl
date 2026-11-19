@@ -657,6 +657,10 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -809,9 +813,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1138,7 +1146,7 @@ pass sha256:b8028d4c617082459f293c647af1ff7d
 -- run/go/fyne --
 pass sha256:be80dff2ac2f5d0e5f0b711b7da208eb
 -- run/go/gtk4 --
-pass sha256:b382bff69eef7f8a3fa2c5025b1662a8
+pass sha256:1486e51d3f29962d2b47ed274a3bcc7c
 -- run/kotlin/android --
 pass sha256:07cb1ed97f4a9c906c0f5ba671658cb9
 -- run/none/html --

@@ -1040,6 +1040,10 @@ func Describe(d int) string {
 	return (fmt.Sprint(d) + m.mark)
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -1358,9 +1362,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1926,7 +1934,7 @@ pass sha256:abd6a1f28106fa200510e38faae6022c
 -- run/go/fyne --
 pass sha256:8f13ff1b3a6bc4a06246cc371c9759df
 -- run/go/gtk4 --
-pass sha256:025384cb9a4b57d309e0e5db3cf6c273
+pass sha256:1270ba650ab674a42668749b352fa5b0
 -- run/kotlin/android --
 pass sha256:33fbf6898dafef51c8c8441b077e3afb
 -- run/none/html --

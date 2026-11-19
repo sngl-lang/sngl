@@ -1790,6 +1790,10 @@ func PetRetrieveCall(id string, life Lifetime, __ctx_server string) Result__PetD
 	return Result__PetDetail{tag: 0, Ok: PetDetail{Breed: PetBreedSummary{}, Photos: PetPhotos{}, Measurements: []PetMeasurement{}, Tags: []PetTag{}}}
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -2551,9 +2555,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -4565,7 +4573,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:b5f3baeae86193fe834d670cec639e7f
 -- run/go/gtk4 --
-pass sha256:eef520cf824ae0a80b633672bf5b1ac4
+pass sha256:fa61bca323500f52c527e784531f4b1b
 -- run/kotlin/android --
 pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --

@@ -117,7 +117,8 @@ var referenceSlots = map[string]bool{
 	"Package.Mounts": true,
 	// The @run function, owned by pkg.Funcs and walked there. Stored on the
 	// package so the host's entry point calls it without a name to look up.
-	"Package.Run": true,
+	"Package.Run":     true,
+	"Package.Entries": true,
 }
 
 // bodySlots returns "Type.Field" for every field holding IR a node owns and

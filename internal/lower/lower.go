@@ -124,6 +124,7 @@ var passes = []pass{
 	// After passShapeDraw: the call it promotes may be inside a drawing, which
 	// is a shape override's handler body by the time that pass has run.
 	passLibFuncs,
+	passCRefCalls,
 	// After every pass that splices a library body -- the inliners, ShapeDraw,
 	// LibFuncs -- each of which brings its enum members with it.
 	passEnum,

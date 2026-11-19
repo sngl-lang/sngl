@@ -531,6 +531,10 @@ func __identified0(__xs []int) []__anon_id_elem_cdfd47 {
 	return __out
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -721,9 +725,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -909,6 +917,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2560d451920ee7647ae95dbb846ab958
 -- run/go/gtk4 --
-pass sha256:a98c3cc0f7a8824d8763256caec1448e
+pass sha256:c3441ea083ab4594cc8d6405a087ea83
 -- run/none/html --
 pass sha256:86df68ad37dadfd4655aec3013872c9c

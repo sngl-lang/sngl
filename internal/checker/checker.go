@@ -3932,6 +3932,7 @@ func (c *checker) pass2() {
 	c.checkGenSchemes()
 	c.checkCLinks()
 	c.reportUnlinkedCNativeCalls()
+	c.checkCStaticArgs()
 	c.checkGenericCodecs()
 	c.checkOwnedReleases()
 

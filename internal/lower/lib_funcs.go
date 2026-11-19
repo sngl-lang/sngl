@@ -26,7 +26,7 @@ var passLibFuncs = pass{
 	apply:   lowerLibFuncs,
 }
 
-func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
+func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -74,6 +74,37 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
 		}
 	}
 	var added []*ir.Func
+	// What the target's generated entry calls (sngl:x/gen's #[entry]) no
+	// SNGL code names: each is promoted as a root of its own, where the
+	// program starts as the target's own entry does -- not under a test
+	// agent's, nor an `@run` handler's.
+	if pkg.Run == nil && !opts.Tests && opts.Platform != "" {
+		for _, tp := range ir.TargetPackages(pkg) {
+			if tp.Path != "platform/"+opts.Platform && tp.Path != "sngl:platform/"+opts.Platform {
+				continue
+			}
+			for _, fn := range tp.Funcs {
+				if !fn.GenEntry || len(fn.Block) == 0 {
+					continue
+				}
+				key := libFuncKey(fn)
+				c := promoted[key]
+				if c == nil {
+					c = fn
+					if fn.Frozen {
+						c = thaw(fn)
+					}
+					have[fn], have[c] = true, true
+					promoted[key] = c
+					added = append(added, c)
+					push(c.Block)
+				}
+				if !slices.Contains(pkg.Entries, c) {
+					pkg.Entries = append(pkg.Entries, c)
+				}
+			}
+		}
+	}
 	foreign := importedVars(pkg)
 	for {
 		push(pkg)

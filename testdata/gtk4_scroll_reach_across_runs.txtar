@@ -78,6 +78,8 @@ typedef struct sngl_list_GtkWidget_p sngl_list_GtkWidget_p;
 typedef struct s___child0__inst s___child0__inst;
 typedef struct sngl_map_string____child0__inst sngl_map_string____child0__inst;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
+typedef struct s_platform_gtk4__Measured s_platform_gtk4__Measured;
+typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct sngl_lambda1_env sngl_lambda1_env;
 typedef struct sngl_map_string__int sngl_map_string__int;
 typedef struct sngl_lambda15_env sngl_lambda15_env;
@@ -85,6 +87,9 @@ typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
+typedef struct sngl_fn_GtkWidget_p__int sngl_fn_GtkWidget_p__int;
+typedef struct sngl_fn_GtkWidget_p_int_int__Measured sngl_fn_GtkWidget_p_int_int__Measured;
+typedef struct sngl_fn_GtkWidget_p_int_int_int__void sngl_fn_GtkWidget_p_int_int_int__void;
 typedef struct s___lambda1_caps__env s___lambda1_caps__env;
 
 typedef struct s___ref_int {
@@ -125,6 +130,18 @@ typedef struct sngl_fn_void__void {
 	void *env;
 } sngl_fn_void__void;
 
+typedef struct s_platform_gtk4__Measured {
+	int64_t minimum;
+	int64_t natural;
+	int64_t minimumBaseline;
+	int64_t naturalBaseline;
+} s_platform_gtk4__Measured;
+
+typedef struct s__measureWidget__result {
+	int64_t out3;
+	int64_t out4;
+} s__measureWidget__result;
+
 typedef struct sngl_lambda1_env {
 	sngl_env hdr;
 } sngl_lambda1_env;
@@ -159,15 +176,34 @@ typedef struct s___lambda0_caps__env {
 	s___lambda0_caps caps;
 } s___lambda0_caps__env;
 
+typedef struct sngl_fn_GtkWidget_p__int {
+	int64_t (*fn)(void *env, GtkWidget *);
+	void *env;
+} sngl_fn_GtkWidget_p__int;
+
+typedef struct sngl_fn_GtkWidget_p_int_int__Measured {
+	s_platform_gtk4__Measured (*fn)(void *env, GtkWidget *, int64_t, int64_t);
+	void *env;
+} sngl_fn_GtkWidget_p_int_int__Measured;
+
+typedef struct sngl_fn_GtkWidget_p_int_int_int__void {
+	void (*fn)(void *env, GtkWidget *, int64_t, int64_t, int64_t);
+	void *env;
+} sngl_fn_GtkWidget_p_int_int_int__void;
+
 typedef struct s___lambda1_caps__env {
 	sngl_env hdr;
 	s___lambda1_caps caps;
 } s___lambda1_caps__env;
 
 
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
+static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
+static int64_t s_platform_gtk4___probeMode(GtkWidget * w);
+static s_platform_gtk4__Measured s_platform_gtk4___probeMeasure(GtkWidget * w, int64_t orientation, int64_t forSize);
+static void s_platform_gtk4___probeAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline);
 static void s___effect0_mount(void);
 static void sngl_lambda1(void *env_);
-static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static void s___effect0_unmount(void);
 static void s___effect0_down(void);
 static sngl_list_int sngl_list_int__keep(sngl_list_int v);
@@ -224,6 +260,16 @@ static void sngl_release(void *ctx) {
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v) {
 	v.env = sngl_env_keep(v.env);
 	return v;
+}
+
+static s__measureWidget__result sngl_ccall_gtk_widget_measure__measureWidget(GtkWidget * a0, GtkOrientation a1, int a2, int64_t a3, int64_t a4, int * a5, int * a6) {
+	int t3 = (int)a3;
+	int t4 = (int)a4;
+	s__measureWidget__result r;
+	gtk_widget_measure(a0, a1, a2, &t3, &t4, a5, a6);
+	r.out3 = (int64_t)t3;
+	r.out4 = (int64_t)t4;
+	return r;
 }
 
 static sngl_list_int sngl_list_int__keep(sngl_list_int v) {
@@ -555,6 +601,49 @@ static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v) {
 	return v;
 }
 
+static int64_t s_platform_gtk4___probeMode__fn(void *env, GtkWidget * a0) {
+	return s_platform_gtk4___probeMode(a0);
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___probeMeasure__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2) {
+	return s_platform_gtk4___probeMeasure(a0, a1, a2);
+}
+
+static void s_platform_gtk4___probeAllocate__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2, int64_t a3) {
+	s_platform_gtk4___probeAllocate(a0, a1, a2, a3);
+}
+
+static int sngl_static_s_platform_gtk4___probeMode(GtkWidget * a0) {
+	sngl_mark m = sngl_call_enter();
+	int r = (int)s_platform_gtk4___probeMode(a0);
+	sngl_call_leave(m);
+	return r;
+}
+
+static void sngl_static_s_platform_gtk4___probeMeasure(GtkWidget * a0, int a1, int a2, int *o0, int *o1, int *o2, int *o3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4__Measured r = s_platform_gtk4___probeMeasure(a0, (int64_t)a1, (int64_t)a2);
+	if (o0 != NULL) {
+		*o0 = (int)r.minimum;
+	}
+	if (o1 != NULL) {
+		*o1 = (int)r.natural;
+	}
+	if (o2 != NULL) {
+		*o2 = (int)r.minimumBaseline;
+	}
+	if (o3 != NULL) {
+		*o3 = (int)r.naturalBaseline;
+	}
+	sngl_call_leave(m);
+}
+
+static void sngl_static_s_platform_gtk4___probeAllocate(GtkWidget * a0, int a1, int a2, int a3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4___probeAllocate(a0, (int64_t)a1, (int64_t)a2, (int64_t)a3);
+	sngl_call_leave(m);
+}
+
 static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v) {
 	v.asked = ((s___ref_int *)sngl_counted_retain(v.asked));
 	v.columns = ((s___ref_int *)sngl_counted_retain(v.columns));
@@ -628,6 +717,53 @@ static GtkWidget * s___n1;
 static GtkWidget * s___n4;
 static GtkWidget * s___n5;
 static GtkWidget * s___n3;
+
+static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
+	return (int64_t)sngl_gtk_main((SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(build)}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
+}
+
+static int64_t s_platform_gtk4___probeMode(GtkWidget * w) {
+	GtkWidget * child = gtk_widget_get_first_child(w);
+	if (child != NULL) {
+		return (int64_t)gtk_widget_get_request_mode(child);
+	}
+	return 2;
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___probeMeasure(GtkWidget * w, int64_t orientation, int64_t forSize) {
+	int64_t minimum = 0;
+	int64_t natural = 0;
+	GtkWidget * child = gtk_widget_get_first_child(w);
+	if (child != NULL) {
+		if (gtk_widget_should_layout(child) != 0) {
+			s__measureWidget__result __ref0 = sngl_ccall_gtk_widget_measure__measureWidget(child, (GtkOrientation)(orientation), (int)(forSize), minimum, natural, NULL, NULL);
+			minimum = __ref0.out3;
+			natural = __ref0.out4;
+		}
+	}
+	return (s_platform_gtk4__Measured){.minimum = minimum, .natural = natural, .minimumBaseline = -1, .naturalBaseline = -1};
+}
+
+static void s_platform_gtk4___probeAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline) {
+	GtkWidget * child = gtk_widget_get_first_child(w);
+	if (child != NULL) {
+		if (gtk_widget_should_layout(child) != 0) {
+			gtk_widget_allocate(child, (int)(width), (int)(height), (int)(baseline), NULL);
+			int64_t minimum = 0;
+			int64_t natural = 0;
+			if (sngl_probe_across(w) != 0) {
+				s__measureWidget__result __ref1 = sngl_ccall_gtk_widget_measure__measureWidget(child, (GtkOrientation)(0), (int)(height), minimum, natural, NULL, NULL);
+				minimum = __ref1.out3;
+				natural = __ref1.out4;
+			} else {
+				s__measureWidget__result __ref2 = sngl_ccall_gtk_widget_measure__measureWidget(child, (GtkOrientation)(1), (int)(width), minimum, natural, NULL, NULL);
+				minimum = __ref2.out3;
+				natural = __ref2.out4;
+			}
+			sngl_probe_measured(w, (int)(natural));
+		}
+	}
+}
 
 static void s___effect0_mount(void) {
 	s_handle__inst0 = sngl_every((int)(s___effect0_key), (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda1, NULL}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
@@ -895,7 +1031,7 @@ static void sngl_build(void) {
 	sngl_set_look(s___n4, __rel4, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel5, (int)(0), (int)(1), (int)(6), (int)(0), (int)(0));
 	s_x_c__free(__rel5);
 	s_x_c__free(__rel4);
-	s___n5 = sngl_scroll_new();
+	s___n5 = sngl_scroll_new(gtk_custom_layout_new((GtkCustomRequestModeFunc)(void (*)(void))sngl_static_s_platform_gtk4___probeMode, (GtkCustomMeasureFunc)(void (*)(void))sngl_static_s_platform_gtk4___probeMeasure, (GtkCustomAllocateFunc)(void (*)(void))sngl_static_s_platform_gtk4___probeAllocate));
 	sngl_scroll_set_direction(s___n5, s___rel6);
 	char * __rel7 = sngl_cstring(SNGL_STR(""));
 	char * __rel8 = sngl_cstring(SNGL_STR(""));
@@ -918,7 +1054,8 @@ static void sngl_build(void) {
 	s___effects0_settle();
 }
 
-static void sngl_start(void) {
+static void sngl_start(void *env) {
+	(void)env;
 	sngl_turn_enter();
 	sngl_init();
 	sngl_build();
@@ -927,7 +1064,7 @@ static void sngl_start(void) {
 
 int main(void) {
 	sngl_gtk_carry(sngl_assets);
-	int status = sngl_app_run(sngl_start);
+	int status = (int)s_platform_gtk4___main((sngl_fn_void__void){sngl_start, NULL});
 	s___snglTeardown();
 	return status;
 }
@@ -989,10 +1126,22 @@ type ErrorEvent struct {
 	Kind    string
 }
 
+type _measureWidget__result struct {
+	Out3 int
+	Out4 int
+}
+
 type __child0__inst struct {
 	__prop___p0 int
 	__root      cgo.Widget
 	__n0        cgo.Widget
+}
+
+type Measured struct {
+	Minimum         int
+	Natural         int
+	MinimumBaseline int
+	NaturalBaseline int
 }
 
 type snglState struct {
@@ -1021,6 +1170,53 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
+func _probeMode(w cgo.Widget) int {
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		return cgo.GtkWidgetGetRequestMode((*(child)))
+	}
+	return 2
+}
+
+func _probeMeasure(w cgo.Widget, orientation int, forSize int) Measured {
+	var minimum int = 0
+	var natural int = 0
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		if cgo.GtkWidgetShouldLayout((*(child))) {
+			__ref0 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), orientation, forSize, minimum, natural, nil, nil))
+			minimum = __ref0.Out3
+			natural = __ref0.Out4
+		}
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: -1, NaturalBaseline: -1}
+}
+
+func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		if cgo.GtkWidgetShouldLayout((*(child))) {
+			cgo.GtkWidgetAllocate((*(child)), width, height, baseline, nil)
+			var minimum int = 0
+			var natural int = 0
+			if cgo.SnglProbeAcross(w) {
+				__ref1 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 0, height, minimum, natural, nil, nil))
+				minimum = __ref1.Out3
+				natural = __ref1.Out4
+			} else {
+				__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 1, width, minimum, natural, nil, nil))
+				minimum = __ref2.Out3
+				natural = __ref2.Out4
+			}
+			cgo.SnglProbeMeasured(w, natural)
+		}
+	}
+}
 
 func __effect0_mount() {
 	m.handle__inst0 = cgo.SnglEvery(int(m.__effect0_key/time.Millisecond), func() {
@@ -1258,7 +1454,9 @@ func snglBuild() {
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n4)), cgo.CGtkOrientation(1))
 	cgo.SnglSetLook(m.__n4, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
-	m.__n5 = cgo.SnglScrollNew()
+	m.__n5 = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
+	}, _probeAllocate))
 	cgo.SnglScrollSetDirection(m.__n5, "horizontal")
 	cgo.SnglSetLook(m.__n5, "", 400, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
 	cgo.SnglScrollOnReachEnd(m.__n5, __n5_reachEnd_handler)
@@ -1277,9 +1475,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1304,6 +1506,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:f5fe1dbcd8afb0fa703e0e8263b2cb7b
+pass sha256:ed320feeb25560a32a2ac87b1d6a8389
 -- run/go/gtk4 --
-pass sha256:1b5de3f5e9a0d0ba09f3848a7df34f0c
+pass sha256:8254e7037c4f6924a400bcb9fbc9a098

@@ -211,6 +211,12 @@ func appMain(c *clang.Context, pkg *ir.Package) string {
 		teardown = "\t" + clang.Decl(&pkg.Teardown.DeclInfo) + "();\n"
 	}
 	build := "\tsngl_gtk_carry(sngl_assets);\n\tsngl_turn_enter();\n\tsngl_init();\n\tsngl_build();\n\tsngl_turn_leave();\n"
+	// The application's loop is the platform's own SNGL, its #[gen.entry],
+	// handed the build as the closure a `func()` is.
+	if e := pkg.Entry("_main"); e != nil && pkg.Run == nil && len(e.Params) == 1 {
+		return "\nstatic void sngl_start(void *env) {\n\t(void)env;\n" + strings.Replace(build, "\tsngl_gtk_carry(sngl_assets);\n", "", 1) + "}\n" +
+			"\nint main(void) {\n\tsngl_gtk_carry(sngl_assets);\n\tint status = (int)" + clang.Decl(&e.DeclInfo) + "((" + c.TypeName(e.Params[0].Type) + "){sngl_start, NULL});\n" + teardown + "\treturn status;\n}\n"
+	}
 	if pkg.Run == nil {
 		return "\nstatic void sngl_start(void) {\n" + strings.Replace(build, "\tsngl_gtk_carry(sngl_assets);\n", "", 1) + "}\n" +
 			"\nint main(void) {\n\tsngl_gtk_carry(sngl_assets);\n\tint status = sngl_app_run(sngl_start);\n" + teardown + "\treturn status;\n}\n"
@@ -313,6 +319,10 @@ func generateGo(req *codegen.Request, sink codegen.Sink) error {
 			io.WriteString(fe, opened(strings.ReplaceAll(goRunMain, "POS", strconv.Quote(pkg.RunPos.String()))))
 		case pkg.Run != nil:
 			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tsnglGtkHold()\n\tsnglInit()\n\tsnglBuild()\n\tstatus := snglGtkRun()\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
+		case pkg.Entry("_main") != nil:
+			// The application's loop is the platform's own SNGL, its
+			// #[gen.entry].
+			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := "+golang.EntryName(pkg.Entry("_main"))+"(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
 		default:
 			io.WriteString(fe, opened("\nfunc main() {\n\truntime.LockOSThread()\n\tstatus := snglGtkMain(func() {\n\t\tsnglInit()\n\t\tsnglBuild()\n\t})\n\tsnglTeardown()\n\tos.Exit(status)\n}\n"))
 		}

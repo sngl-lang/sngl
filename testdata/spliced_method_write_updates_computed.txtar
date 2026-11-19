@@ -652,6 +652,10 @@ func Row__slot0__summary(this *Row__slot0__inst) string {
 	return ((this.__prop_label + "=") + fmt.Sprint(this.Marks))
 }
 
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
+
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
 	if l.Hidden {
@@ -943,9 +947,13 @@ func snglTeardown() {
 	__snglTeardown()
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1254,6 +1262,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:8f5e4319178cae89223a6e22fc0af936
 -- run/go/gtk4 --
-pass sha256:e72299a95f04185758f7e93b60ccef0b
+pass sha256:175d985d4fecfbbe336199bf61d80eaf
 -- run/none/html --
 pass sha256:911c76a2b508d0be195cfaca1a4947c0

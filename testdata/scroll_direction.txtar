@@ -660,6 +660,11 @@ import (
 	"unsafe"
 )
 
+type _measureWidget__result struct {
+	Out3 int
+	Out4 int
+}
+
 type Look struct {
 	Css       string
 	Width     float64
@@ -678,6 +683,13 @@ type Look struct {
 	Columns   int
 }
 
+type Measured struct {
+	Minimum         int
+	Natural         int
+	MinimumBaseline int
+	NaturalBaseline int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	__n0           cgo.Widget
@@ -691,6 +703,10 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _main(build func()) int {
+	return cgo.SnglGtkMain(build)
+}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -714,6 +730,49 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _probeMode(w cgo.Widget) int {
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		return cgo.GtkWidgetGetRequestMode((*(child)))
+	}
+	return 2
+}
+
+func _probeMeasure(w cgo.Widget, orientation int, forSize int) Measured {
+	var minimum int = 0
+	var natural int = 0
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		if cgo.GtkWidgetShouldLayout((*(child))) {
+			__ref0 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), orientation, forSize, minimum, natural, nil, nil))
+			minimum = __ref0.Out3
+			natural = __ref0.Out4
+		}
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: -1, NaturalBaseline: -1}
+}
+
+func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
+	child := cgo.GtkWidgetGetFirstChild(w)
+	if child != nil {
+		if cgo.GtkWidgetShouldLayout((*(child))) {
+			cgo.GtkWidgetAllocate((*(child)), width, height, baseline, nil)
+			var minimum int = 0
+			var natural int = 0
+			if cgo.SnglProbeAcross(w) {
+				__ref1 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 0, height, minimum, natural, nil, nil))
+				minimum = __ref1.Out3
+				natural = __ref1.Out4
+			} else {
+				__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 1, width, minimum, natural, nil, nil))
+				minimum = __ref2.Out3
+				natural = __ref2.Out4
+			}
+			cgo.SnglProbeMeasured(w, natural)
+		}
+	}
+}
+
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -732,7 +791,9 @@ func snglBuild() {
 	m.__n1 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n1)), cgo.CGtkOrientation(1))
 	_setLook(m.__n1, Look{Spaced: true, Spacing: 8})
-	m.down = cgo.SnglScrollNew()
+	m.down = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
+	}, _probeAllocate))
 	cgo.SnglScrollSetDirection(m.down, "vertical")
 	_setLook(m.down, Look{Height: 120.0})
 	m.__n2 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -746,7 +807,9 @@ func snglBuild() {
 	}
 	cgo.SnglScrollSetChild(m.down, m.__n2)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.down)))
-	m.across = cgo.SnglScrollNew()
+	m.across = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
+	}, _probeAllocate))
 	cgo.SnglScrollSetDirection(m.across, "horizontal")
 	_setLook(m.across, Look{})
 	m.__n4 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -760,7 +823,9 @@ func snglBuild() {
 	}
 	cgo.SnglScrollSetChild(m.across, m.__n4)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.across)))
-	m.either = cgo.SnglScrollNew()
+	m.either = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
+	}, _probeAllocate))
 	cgo.SnglScrollSetDirection(m.either, "both")
 	_setLook(m.either, Look{Height: 120.0})
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -781,9 +846,13 @@ func snglBuild() {
 func snglTeardown() {
 }
 
+func snglEntryMain(build func()) int {
+	return _main(build)
+}
+
 func main() {
 	runtime.LockOSThread()
-	status := snglGtkMain(func() {
+	status := snglEntryMain(func() {
 		snglInit()
 		snglBuild()
 	})
@@ -1497,7 +1566,7 @@ pass sha256:b46bfed2ffd53b2aed2c15f32389ff49
 -- run/go/fyne --
 pass sha256:ed3ec962c6d353842ac95da6cf4f617e
 -- run/go/gtk4 --
-pass sha256:eb107628231f03b957ad0dbbe3bafa30
+pass sha256:bdaa6e2fbdd8880cab3911e1d10fecaf
 -- run/kotlin/android --
 pass sha256:97e558d298093de726189480c09eadfa
 -- run/none/html --

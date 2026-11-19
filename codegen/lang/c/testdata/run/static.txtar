@@ -1,0 +1,99 @@
+What C reaches with no context to hand back: a callback marked `#[c.static]`
+is a function of the package's, which C is handed as a function pointer of
+its own and calls with nothing finding a closure, as GTK calls a custom
+layout's measure and Win32 a window procedure. One marked `#[c.outs]`
+answers a struct C reads through the pointers it hands the callback after
+its arguments, field by field, skipping one that is NULL; a string C hands a
+static callback is copied into the turn. A function marked `variadic` is
+called with the arguments its declaration lists.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+struct Size {
+    minimum int
+    natural int
+}
+
+#[c.native("test_layout")]
+func layout(#[c.static] mode func() int, #[c.static] #[c.outs] measure func(forSize int) Size) int
+
+#[c.native("test_greet")]
+func greet(#[c.static] hear func(name string, loud bool) int) int
+
+#[c.native("test_sum", variadic)]
+func sum3(n int, a int, b int, c int) int
+
+#[c.native("test_mean", variadic)]
+func mean2(n int, a float, b float) float
+
+func mode() => 7
+
+func measure(forSize int) => Size{minimum=forSize, natural=forSize * 2}
+
+func hear(name string, loud bool) => loud ? name.length() * 10 : name.length()
+
+func run() => layout(mode, measure)
+
+func greeted() => greet(hear)
+
+func summed() => sum3(3, 1, 2, 3)
+
+func mean() => mean2(2, 1.5, 2.5)
+-- main.c --
+#include <stdarg.h>
+#include <stdio.h>
+
+// The mode, then what measure wrote for 5: its minimum alone the first
+// time, the natural's pointer NULL, then both.
+static int test_layout(int (*mode)(void), void (*measure)(int, int *, int *)) {
+	int min = 0, nat = 0, only = 0;
+	measure(4, &only, NULL);
+	measure(5, &min, &nat);
+	return mode() * 10000 + only * 1000 + min * 100 + nat;
+}
+
+static int test_greet(int (*hear)(const char *, int)) {
+	char buf[8];
+	snprintf(buf, sizeof buf, "caf\xc3\xa9");
+	int quiet = hear(buf, 0);
+	buf[0] = 0;
+	return quiet + hear("ab", 1);
+}
+
+static int test_sum(int n, ...) {
+	va_list ap;
+	va_start(ap, n);
+	int s = 0;
+	for (int i = 0; i < n; i++) {
+		s += va_arg(ap, int);
+	}
+	va_end(ap);
+	return s;
+}
+
+static double test_mean(int n, ...) {
+	va_list ap;
+	va_start(ap, n);
+	double s = 0;
+	for (int i = 0; i < n; i++) {
+		s += va_arg(ap, double);
+	}
+	va_end(ap);
+	return s / n;
+}
+
+#include "program.c"
+
+int main(void) {
+	printf("%d\n", (int)s_run());
+	printf("%d\n", (int)s_greeted());
+	printf("%d %g\n", (int)s_summed(), s_mean());
+	return 0;
+}
+-- want --
+74510
+24
+6 2

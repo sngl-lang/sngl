@@ -103,14 +103,15 @@ func callbackCType(t *ir.Type) *ir.CType {
 // (sngl tool cgogen), whose own type for it is an alias of that and which
 // cannot name itself, and in a program calling C directly, which spells every
 // C type as cgo does.
-func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, held, cSpelled bool) []byte {
+func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, statics []Static, calls ir.CCalls, held, cSpelled bool) []byte {
 	byName := map[string]*ir.FuncSig{}
 	for _, s := range sigs {
 		byName[callbackName(s)] = s
 	}
-	if len(byName) == 0 && !held {
+	if len(byName) == 0 && !held && len(statics) == 0 {
 		return nil
 	}
+	staticExterns, staticSource, staticImports := staticsSource(statics, calls)
 	names := make([]string, 0, len(byName))
 	for n := range byName {
 		names = append(names, n)
@@ -134,13 +135,27 @@ func CallbacksSource(pkgName string, links []*ir.CLink, sigs []*ir.FuncSig, held
 		}
 		fmt.Fprintf(&b, "extern %s %s(%s);\n", ret, n, strings.Join(params, ", "))
 	}
+	b.WriteString(staticExterns)
+	// The registry a closure or a held value is found through, which a
+	// program handing C only functions of its own has no use for: a wrapper
+	// package it links beside its own cgo exports snglRelease already.
+	registry := len(byName) > 0 || held
+	if !registry {
+		b.WriteString("*/\nimport \"C\"\n\nimport (\n\t\"unsafe\"\n")
+		for _, imp := range staticImports {
+			fmt.Fprintf(&b, "\t%q\n", imp)
+		}
+		b.WriteString(")\n\nvar _ unsafe.Pointer\n")
+		b.WriteString(staticSource)
+		return []byte(b.String())
+	}
 	b.WriteString("extern void snglRelease(void *);\n")
 	b.WriteString("\nstatic void *sngl_context(uintptr_t i) { return (void *)i; }\n*/\nimport \"C\"\n\n")
-	b.WriteString(`import (
-	"unsafe"
-
-	"duckfam.us/sngl/pkg/go/cbind"
-)
+	b.WriteString("import (\n\t\"unsafe\"\n\n\t\"duckfam.us/sngl/pkg/go/cbind\"\n")
+	for _, imp := range staticImports {
+		fmt.Fprintf(&b, "\t%q\n", imp)
+	}
+	b.WriteString(`)
 
 // snglContextBase is where contexts start: past NULL, and past the page
 // below which Go takes a pointer on its stack for a bad one and throws as it
@@ -209,6 +224,7 @@ func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 		fmt.Fprintf(&b, "\n//export %s\nfunc %s(%s)%s {\n\t%s\n}\n", n, n, strings.Join(params, ", "), ret, body)
 		fmt.Fprintf(&b, "\n// %sPtr is %s as the function pointer C calls.\nfunc %sPtr() *[0]byte { return (*[0]byte)(C.%s) }\n", n, n, n, n)
 	}
+	b.WriteString(staticSource)
 	return []byte(b.String())
 }
 
