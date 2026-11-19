@@ -40,21 +40,6 @@ void sngl_toplevel_set_visible(GtkWidget *box, int visible);
 void sngl_toplevel_on_closed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_toplevel_on_visible(GtkWidget *box, SnglBoolFn fn, void *ctx, GDestroyNotify release);
 
-/* A window's `@key`: fn hears each key pressed in the window before
- * anything in it (gtk4.sngl's controllers). While it runs, sngl_key_heard is the key's name
- * and sngl_key_held whether a modifier was held -- 0 Control, 1 Alt, 2
- * Shift, 3 Super or Meta -- or, at 4, whether the focused field was being
- * edited; sngl_key_stop keeps the key from going further. Neither is
- * anything once fn returns. sngl_toplevel_key presses a key as a test
- * describes it: fn hears it, stop is called with stop_ctx by the handler's
- * stop and released after, and a key the handler leaves goes on where it
- * would have gone. */
-void sngl_toplevel_on_key(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-const char *sngl_key_heard(void);
-int sngl_key_held(int which);
-void sngl_key_stop(void);
-void sngl_toplevel_key(GtkWidget *box, const char *key, int ctrl, int alt, int shift, int meta, int editing,
-                       SnglFn stop, void *stop_ctx, GDestroyNotify stop_release);
 void sngl_gtk_init(void);
 /* What an entry whose platform node wrote `@run` calls: sngl_gtk_hold makes
  * GTK ready to build in and holds the windows the build attaches hidden as
@@ -126,15 +111,10 @@ typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
-/* A window's keys are gtk4.sngl's, handed over through sngl_keys_hooks:
- * watch gives a window made the controllers that hear its keys, and go_on
- * takes a key a test pressed that nothing stopped where it would have
- * gone. sngl_toplevel_hear has the toplevel box's `@key` hear a key, and
- * is whether its handler stopped it. */
+/* A window's keys are gtk4.sngl's, which sngl_keys_hooks hands the
+ * function that gives a window made the controllers that hear them. */
 typedef void (*SnglKeysWatch)(GtkWidget *win);
-typedef void (*SnglKeysGoOn)(GtkWidget *win, const char *key, int shift);
-void sngl_keys_hooks(SnglKeysWatch watch, SnglKeysGoOn go_on);
-int sngl_toplevel_hear(GtkWidget *box, const char *key, int ctrl, int alt, int shift, int meta, int editing);
+void sngl_keys_hooks(SnglKeysWatch watch);
 
 /* sngl_calendar_select_date selects day on w, a calendar, as
  * gtk_calendar_select_day does, which GTK 4.20 deprecates (choose.c). */

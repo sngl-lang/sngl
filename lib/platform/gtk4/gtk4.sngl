@@ -1981,51 +1981,135 @@ func _rtToplevelOnVisible(
     #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
 )
 
-#[c.native("sngl_toplevel_on_key")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnKey")]
-func _rtToplevelOnKey(
-    w Toplevel,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+// What a window's `@key` runs, held on its toplevel's box, which a second
+// replaces.
+struct _KeyState {
+    run func() = func() {}
+}
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdKey(o _Object, key string, #[c.type("gpointer")] s c.held[_KeyState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldKey(o _Object, key string) option[c.held[_KeyState]]
+
+func _rtToplevelOnKey(w Toplevel, fn func()) {
+    _holdKey(_object(_toplevelWidget(w)), "sngl-key", _KeyState{run=fn})
+}
+
+// The key a window's `@key` handler is hearing, while it runs: its name,
+// what was held, whether the handler has stopped it, and what a stop runs
+// beside -- a test's own. It is held on the display, the one object every
+// window shares, since the handler reads it with nothing to find a window
+// by; a key heard while another is heard puts the outer one back after.
+struct _HeardState {
+    key     string = ""
+    ctrl    bool = false
+    alt     bool = false
+    shift   bool = false
+    meta    bool = false
+    editing bool = false
+    stopped bool = false
+    then    func() = func() {}
+}
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdHeard(o _Object, key string, #[c.type("gpointer")] s c.held[_HeardState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldHeard(o _Object, key string) option[c.held[_HeardState]]
+
+func _heard() option[_HeardState] {
+    return _heldHeard(_displayObject(_defaultDisplay()), "sngl-heard")
+}
 
 // The key a window's `@key` handler is hearing: its name, and whether a
 // modifier was held -- 0 Control, 1 Alt, 2 Shift, 3 Super or Meta -- or, at
 // 4, whether the focused field's text was being edited. Read while the
 // handler runs, and nothing after.
-#[c.native("sngl_key_heard")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyHeard")]
-func _rtKeyHeard() string
+func _rtKeyHeard() string {
+    var h = _heard()
+    if h != null {
+        return h.key
+    }
+    return ""
+}
 
-#[c.native("sngl_key_held")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyHeld")]
-func _rtKeyHeld(which int) bool
+func _rtKeyHeld(which int) bool {
+    var h = _heard()
+    if h != null {
+        if which == 0 {
+            return h.ctrl
+        } else if which == 1 {
+            return h.alt
+        } else if which == 2 {
+            return h.shift
+        } else if which == 3 {
+            return h.meta
+        } else if which == 4 {
+            return h.editing
+        }
+    }
+    return false
+}
 
 // Stops the key the handler is hearing: the window takes it, so a focused
 // entry types none of it, a focused button is not activated and Tab moves
 // no focus.
-#[c.native("sngl_key_stop")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeyStop")]
-func _rtKeyStop()
+func _rtKeyStop() {
+    var h = _heard()
+    if h != null {
+        _holdHeard(_displayObject(_defaultDisplay()), "sngl-heard", _HeardState{key=h.key, ctrl=h.ctrl, alt=h.alt, shift=h.shift, meta=h.meta, editing=h.editing, stopped=true, then=h.then})
+        var then = h.then
+        then()
+    }
+}
+
+// Has box's `@key` hear key, and whether its handler stopped it.
+func _hear(box Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, then func()) bool {
+    var k = _heldKey(_object(box), "sngl-key")
+    if k == null {
+        return false
+    }
+    var d = _displayObject(_defaultDisplay())
+    var outer = _heldHeard(d, "sngl-heard")
+    _holdHeard(d, "sngl-heard", _HeardState{key=key, ctrl=ctrl, alt=alt, shift=shift, meta=meta, editing=editing, stopped=false, then=then})
+    var run = k.run
+    run()
+    var mine = _heldHeard(d, "sngl-heard")
+    var stopped = mine != null && mine.stopped
+    if outer != null {
+        _holdHeard(d, "sngl-heard", outer)
+    } else {
+        _setData(d, "sngl-heard", null)
+    }
+    return stopped
+}
 
 // A test's key, pressed as the test describes it: the handler hears it, a
 // stop it calls calls the test's, and a key it leaves goes on where it would
-// have gone.
-#[c.native("sngl_toplevel_key")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelKey")]
-func _rtToplevelKey(
-    w       Toplevel,
-    key     string,
-    ctrl    bool,
-    alt     bool,
-    shift   bool,
-    meta    bool,
-    editing bool,
-    #[c.type("SnglFn")] stop func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+// have gone: an Escape back while the window can.
+func _rtToplevelKey(w Toplevel, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+    _testKey(_toplevelWidget(w), key, ctrl, alt, shift, meta, editing, stop)
+}
+
+func _testKey(box Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, stop func()) {
+    if _hear(box, key, ctrl, alt, shift, meta, editing, stop) || ctrl || alt || meta {
+        return
+    }
+    if key == "Escape" {
+        _windowBack(box)
+        return
+    }
+    var win = _toplevelWindow(box)
+    if win != null {
+        _keysGoOn(_windowWidget(win), key, shift)
+    }
+}
 
 #[gen.fires("key")]
 func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
@@ -2234,10 +2318,10 @@ func _windowOf(w Widget) _Window
 func _gtkWidget(w Widget) _p_GtkWidget
 
 // The window's toplevel's `@key` hears key, and whether its handler
-// stopped it (rt's sngl_toplevel_hear, which keeps the handler).
-#[c.native("sngl_toplevel_hear")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelHear")]
-func _toplevelHear(box Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool) bool
+// stopped it.
+func _toplevelHear(box Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool) bool {
+    return _hear(box, key, ctrl, alt, shift, meta, editing, func() {})
+}
 
 // key-pressed on the window's controller in the capture phase: the key on
 // its way down to the focused widget, before that widget or anything
@@ -2446,10 +2530,7 @@ func _keysGoOn(win Widget, key string, shift bool) {
 // the window it makes, and a key a test pressed that nothing stopped.
 #[c.native("sngl_keys_hooks")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeysHooks")]
-func _keysHooks(
-    #[c.type("SnglKeysWatch")] #[c.static] watch func(win Widget),
-    #[c.type("SnglKeysGoOn")] #[c.static] goOn func(win Widget, key string, shift bool),
-)
+func _keysHooks(#[c.type("SnglKeysWatch")] #[c.static] watch func(win Widget))
 
 // A toplevel's content is a box's, whose append hands the window an entry of
 // its menu or its way back (_boxPut).
@@ -2914,7 +2995,7 @@ func _menuHooksSet() {
 
 func _rtToplevelNew() Toplevel {
     _menuHooksSet()
-    _keysHooks(_keysWatch, _keysGoOn)
+    _keysHooks(_keysWatch)
     return _rtToplevelMake()
 }
 
@@ -3682,6 +3763,13 @@ func _gtk_widget_set_state_flags(w _p_GtkWidget, flags _c_GtkStateFlags, clear b
 // Puts w in the state a pointer resting on it puts it in, which its look
 // draws: what a test snapshots to see a button shaded as it is hovered. GTK
 // takes the state back once a pointer moves, and a test has none.
+// Presses key in the window w is the toplevel of as a test does, Shift
+// held where shift says: its `@key` hears it, and a key it leaves goes on
+// where it would have gone.
+func pressKey(w Widget, key string, shift bool) {
+    _testKey(w, key, false, false, shift, false, false, func() {})
+}
+
 func hover(w ui.node) {
     _gtk_widget_set_state_flags(_as_GtkWidget(_widget(w)), 2, false)
 }
