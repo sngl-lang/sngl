@@ -589,58 +589,6 @@ void sngl_toplevel_key(GtkWidget *box, const char *key, int ctrl, int alt, int s
     sngl_keys_go_on_hook(GTK_WIDGET(t->win), key, shift);
 }
 
-// A GTK property with no setter function of its own is set by name through
-// GObject. g_object_set is variadic, which cgo cannot call at all, so the
-// value goes through g_object_set_property — which takes a GValue of the
-// property's own GType. Only the four scalar GValues below are built here;
-// g_value_transform lands each on whatever the class's GParamSpec declares,
-// which is how an enum, a float or an unsigned property is reached from one
-// of them. A construct-only property fails inside GTK with a warning, since
-// only the class knows which those are.
-static void sngl_set_prop(void *obj, const char *name, GValue *src) {
-    GObject *o = G_OBJECT(obj);
-    GParamSpec *ps = g_object_class_find_property(G_OBJECT_GET_CLASS(o), name);
-    if (ps == NULL) {
-        g_warning("sngl: %s has no property \"%s\"", G_OBJECT_TYPE_NAME(o), name);
-    } else if (g_value_type_compatible(G_VALUE_TYPE(src), ps->value_type)) {
-        g_object_set_property(o, name, src);
-    } else {
-        GValue dst = G_VALUE_INIT;
-        g_value_init(&dst, ps->value_type);
-        if (g_value_transform(src, &dst)) {
-            g_object_set_property(o, name, &dst);
-        } else {
-            g_warning("sngl: cannot set %s.%s from a %s", G_OBJECT_TYPE_NAME(o), name, G_VALUE_TYPE_NAME(src));
-        }
-        g_value_unset(&dst);
-    }
-    g_value_unset(src);
-}
-void sngl_set_prop_string(void *obj, const char *name, const char *v) {
-    GValue src = G_VALUE_INIT;
-    g_value_init(&src, G_TYPE_STRING);
-    g_value_set_string(&src, v);
-    sngl_set_prop(obj, name, &src);
-}
-void sngl_set_prop_bool(void *obj, const char *name, int v) {
-    GValue src = G_VALUE_INIT;
-    g_value_init(&src, G_TYPE_BOOLEAN);
-    g_value_set_boolean(&src, v ? TRUE : FALSE);
-    sngl_set_prop(obj, name, &src);
-}
-void sngl_set_prop_int(void *obj, const char *name, int v) {
-    GValue src = G_VALUE_INIT;
-    g_value_init(&src, G_TYPE_INT);
-    g_value_set_int(&src, v);
-    sngl_set_prop(obj, name, &src);
-}
-void sngl_set_prop_double(void *obj, const char *name, double v) {
-    GValue src = G_VALUE_INIT;
-    g_value_init(&src, G_TYPE_DOUBLE);
-    g_value_set_double(&src, v);
-    sngl_set_prop(obj, name, &src);
-}
-
 /* sngl_gtk_capture_file is sngl_capture of what was shown last, written to
  * path as its width and height, each four bytes little-endian, and then its
  * pixels: how a Go test agent, which takes no pointer back, reads one. Not

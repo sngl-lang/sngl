@@ -70,11 +70,6 @@ void sngl_gtk_step(void);
  * what a test agent does before the next test builds afresh. */
 void sngl_gtk_reset(void);
 int sngl_gtk_main(SnglFn build, void *ctx, GDestroyNotify release);
-/* A GTK property with no setter of its own, set by name through GObject. */
-void sngl_set_prop_string(void *obj, const char *name, const char *v);
-void sngl_set_prop_bool(void *obj, const char *name, int v);
-void sngl_set_prop_int(void *obj, const char *name, int v);
-void sngl_set_prop_double(void *obj, const char *name, double v);
 /* A toplevel attached to the application, its window shown once the
  * application runs, and taken off it, its window destroyed: what
  * gtk4.sngl's box calls end in for a window. */

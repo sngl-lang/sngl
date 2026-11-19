@@ -497,12 +497,11 @@ type setProp struct {
 // writeSets declares, for each prop of info a value can be written to, the
 // #[gen.protocol(set)] function lowering splices wherever the program writes
 // it: GIR's setter, its receiver cast to the class or interface that declares
-// it, and where GTK ships none, the preamble's sngl_set_prop_* by the
-// property's name; either set by name is converted by GObject to the type the
-// property's GParamSpec declares. A string handed to a C setter is converted
-// by CMarshal and freed by ReleaseTemps; an enumeration's member is written as
-// its name, which a match turns into the member's value and which folds where
-// it is spliced.
+// it, and where GTK ships none, g_object_set by the property's name, handed
+// the value as the C type GObject reads for the property's. A string handed
+// to a C setter is converted by CMarshal and freed by ReleaseTemps; an
+// enumeration's member is written as its name, which a match turns into the
+// member's value and which folds where it is spliced.
 func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, props []setProp, casts map[string]string) {
 	for _, sp := range props {
 		p, n := sp.prop, sp.name
@@ -514,7 +513,7 @@ func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gi
 		if p.Setter != "" {
 			call = o.cSet(b, reg, info, p, n, casts)
 		} else {
-			call = o.propSet(b, reg, info, p, n, kind)
+			call = o.propSet(b, reg, info, p, n, kind, casts)
 		}
 		fmt.Fprintf(b, "\n#[gen.protocol(set)]\nfunc _set_%s_%s(self %s, %s %s) {\n    %s\n}\n", info.CType, n, info.CType, n, propTypeName(p), call)
 	}
@@ -577,21 +576,53 @@ func (o *childOps) cSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.Cla
 	return fmt.Sprintf("%s(%s(_ptr_%s(self)), %s)", native, ptrFunc(recv), info.CType, value)
 }
 
-// propSet is the call of the preamble helper that sets p by its name,
-// for a property GTK ships no setter for.
-func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, p gir.Prop, n string, kind propValueKind) string {
-	fn := gObjectSetFn[kind]
-	typ, value := map[propValueKind]string{propString: "string", propBool: "int", propInt: "int", propFloat: "float", propEnum: "int"}[kind], n
-	switch kind {
-	case propBool:
-		value = n + " ? 1 : 0"
-	case propEnum:
-		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
+// propSet is the call of g_object_set that sets p by its name, for a
+// property GTK ships no setter for: one declaration of the variadic
+// function for each C type a value is handed as, which is the one GObject
+// reads off its arguments for the property's type (propSetShape).
+func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, p gir.Prop, n string, kind propValueKind, casts map[string]string) string {
+	typ, value, native := "string", n, "_g_object_set_string"
+	if shape := propSetShape(p, kind); shape != "" {
+		from := "int"
+		if kind == propFloat {
+			from = "float"
+		}
+		casts[shape] = from
+		typ, native = castType(shape), "_g_object_set_"+shape
+		switch kind {
+		case propBool:
+			value = fmt.Sprintf("%s(%s ? 1 : 0)", castFunc(shape), n)
+		case propEnum:
+			value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return fmt.Sprintf("%s(%d)", castFunc(shape), v) })
+		default:
+			value = fmt.Sprintf("%s(%s)", castFunc(shape), n)
+		}
 	}
 	o.classPtr(b, info.CType)
-	native := "_" + fn
-	o.native(b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
-	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s)", native, info.CType, p.Name, value)
+	o.native(b, native, fmt.Sprintf("\n#[c.native(\"g_object_set\", variadic)]\nfunc %s(w c.pointer, name string, v %s, end option[c.pointer])\n", native, typ))
+	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s, null)", native, info.CType, p.Name, value)
+}
+
+// propSetShape is the C type g_object_set reads a value of p's off its
+// arguments as -- a GValue of the property's type collects a gboolean, an
+// enum and a gint as an int, which gboolean is, and a gfloat as the double C
+// promotes it to -- or "" for a string.
+func propSetShape(p gir.Prop, kind propValueKind) string {
+	switch kind {
+	case propString:
+		return ""
+	case propBool, propEnum:
+		return "gint"
+	case propFloat:
+		return "gdouble"
+	}
+	switch p.GIRType {
+	case "gint64", "guint64", "gsize":
+		return p.GIRType
+	case "guint", "guint32":
+		return "guint"
+	}
+	return "gint"
 }
 
 // enumMatch is a match of n, a member's name, to the member's value as
