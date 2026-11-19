@@ -210,6 +210,10 @@ func (g *gen) add(fn *ir.Func) {
 			return
 		}
 		name = own
+		// The first wrapperFunc registered fn's static callbacks under
+		// the C function's name; the wrapper named for fn registers them
+		// again, which would export each twice.
+		delete(g.statics, fn)
 		w = g.wrapperFunc(fn, name)
 	}
 	if prev, ok := g.funcs[name]; ok {
