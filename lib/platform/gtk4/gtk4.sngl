@@ -2718,7 +2718,7 @@ func _hostOf(page Widget) option[Widget] {
 
 func _rtTabPageNew() TabPage {
     var page = _boxNew(1, 0)
-    _setTabPage(page, _TabPageState{title="", disabled=false, shown=func() {}})
+    _setTabPage(page, _TabPageState{})
     return _asTabPage(page)
 }
 

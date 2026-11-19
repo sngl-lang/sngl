@@ -239,6 +239,14 @@ write. TestGolden fingerprints the checked package, and the library it
 reaches, around `Emit`. A target's copy keeps other targets' override entries
 emptied, since a build still asks whether a declaration is overridden for
 *some* target (`cmd/sngl/testdata/emit_family_refused.txt`).
+A library declaration is folded only where the build reached it as it copied
+the library, and a protocol function lowering splices in later reaches a
+struct whose declaration nothing folded: frozen, or copied and not folded for
+this target. So a library struct's literal names, folded, each field it
+leaves out whose default is no literal (`unfoldedDefaults`): gtk4's
+`_TabPageState{}` left out a field defaulting to `false`, the builtin const,
+which C spelled from the declaration as the identifier `false_`
+(`testdata/select_under_tabs.txtar`, `gtk4_tabs_runs.txtar`).
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 

@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 
 	"duckfam.us/sngl/ast"
@@ -250,6 +251,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 				x.Fields[i].Value = foldExpr(x.Fields[i].Value, ctx)
 			}
 		}
+		x.Fields = append(x.Fields, unfoldedDefaults(x, ctx)...)
 	case *ir.Spread:
 		x.Operand = foldExpr(x.Operand, ctx)
 	case *ir.MapLitIR:
@@ -914,4 +916,37 @@ func identityMap(call *ir.Call) ir.Expr {
 		return nil
 	}
 	return list
+}
+
+// unfoldedDefaults is each field x leaves out whose declaration's default is
+// no literal, written out folded. A library struct's declaration is folded
+// only where the build reached it as it copied the library, and a protocol
+// function spliced after that -- gtk4's _rtTabPageNew building a
+// _TabPageState -- reaches one that is frozen, or copied for another target
+// and not folded for this one, so a backend spelling the field from the
+// declaration read its `false`, the builtin const, as an identifier: C's
+// `false_`. A literal folding whole is filled from the evaluated defaults
+// already; one holding a lambda folds field by field, and is filled here.
+// The program's own declarations are folded with it.
+func unfoldedDefaults(x *ir.StructLit, ctx *evalCtx) []ir.FieldInit {
+	if x.Def == nil || x.Def.PkgPath() == "" || x.Def.Foreign.Name != "" && !x.Def.Foreign.Marked {
+		return nil
+	}
+	if slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Spread }) {
+		return nil
+	}
+	var out []ir.FieldInit
+	for _, d := range x.Def.Fields {
+		if d.Default == nil || !d.DefaultWritten {
+			continue
+		}
+		if slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Name == d.Name }) {
+			continue
+		}
+		if _, folded := d.Default.(*ir.Literal); folded {
+			continue
+		}
+		out = append(out, ir.FieldInit{Name: d.Name, Value: foldExpr(ir.CloneExprSharingDecls(d.Default), ctx)})
+	}
+	return out
 }
