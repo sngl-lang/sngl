@@ -315,7 +315,16 @@ func markCNative(m *mark) error {
 	cast := slices.Contains(flags, flagCast)
 	variadic := slices.Contains(flags, flagVariadic)
 	pointer := slices.Contains(flags, flagPointer)
-	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name, Variadic: variadic, CPointer: pointer}
+	field := slices.Contains(flags, flagField)
+	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name, Variadic: variadic, CPointer: pointer, Field: field}
+	if _, isFunc := m.sym.(*ir.Func); field && !isFunc {
+		return fmt.Errorf("#[c.native(%q)] carries field, which describes a function reading a member of a C struct", name)
+	}
+	for _, other := range []string{flagVariadic, flagCast} {
+		if field && slices.Contains(flags, other) {
+			return fmt.Errorf("#[c.native(%q)] carries field beside %s: a member of a C struct is read, not called as a C function is", name, other)
+		}
+	}
 	if sd, isStruct := m.sym.(*ir.StructDef); pointer && (!isStruct || len(sd.Fields) > 0) {
 		return fmt.Errorf("#[c.native(%q)] carries pointer, which describes a struct declaring no fields whose C type is a typedef of a pointer", name)
 	}
@@ -331,6 +340,12 @@ func markCNative(m *mark) error {
 			if fm.C, err = ir.ParseCType(name); err != nil {
 				return fmt.Errorf("#[c.native(%q, cast)]: %w", name, err)
 			}
+		} else if field {
+			if st, member, ok := strings.Cut(name, "."); !ok || !ir.IsCIdent(st) || !ir.IsCIdent(member) {
+				return fmt.Errorf("#[c.native(%q, field)] names no member: a field is the struct and the member, joined by one dot, as `GError.message`", name)
+			}
+		} else if st, member, ok := strings.Cut(name, "."); ok && ir.IsCIdent(st) && ir.IsCIdent(member) {
+			return fmt.Errorf("#[c.native(%q)] names no C function: a function is its C identifier, and a member of a C struct is #[c.native(%q, field)]", name, name)
 		} else if !ir.IsCIdent(name) {
 			return fmt.Errorf("#[c.native(%q)] names no C function: a function is its C identifier, and a conversion to a C type is #[c.native(%q, cast)]", name, name)
 		}
@@ -400,6 +415,10 @@ const flagVariadic = "variadic"
 // flagPointer says a #[c.native] struct's C type is a typedef of a pointer,
 // whose option is the pointer itself.
 const flagPointer = "pointer"
+
+// flagField says a #[c.native] function reads a member of the C struct its
+// first parameter points to, `Struct.member`.
+const flagField = "field"
 
 // markJSNative implements #[js.native("name")] and #[js.native("name",
 // "module")]: the declaration *is* that JavaScript identifier.

@@ -82,6 +82,18 @@ enum NativeFlag {
     // Unflagged, NULL is a value of the typedef like any other, as it is of
     // a Win32 `HWND` a function is handed for "no window".
     pointer
+
+    // The function reads a member of a C struct, which its name spells as
+    // the struct and the member joined by a dot (`GError.message`): its
+    // first parameter is a handle whose C type is a pointer to that struct,
+    // and a call is `first->member`. With that one parameter it answers the
+    // member, read as a C function's result of its type is (a `char *`
+    // copied); with more, the member is a function pointer, called with the
+    // rest as a C function is, as GTK's class functions are
+    // (`GtkWidgetClass.measure`). A language that cannot read a member
+    // itself calls a C function of the declaration's one shape, which its
+    // build writes.
+    field
 }
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which

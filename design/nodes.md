@@ -455,6 +455,20 @@ declaration itself. Two things about the name that are easy to get wrong:
   function of the declaration's one shape (`snglV_<name>`), which the
   `sngl_shims.h` it writes after the program's links defines
   (`shimsLink`).
+  A member of a C struct is read by a function flagged `field`, named
+  `Struct.member` (`Foreign.Field`): its first parameter is a handle whose
+  C type is a pointer to the struct (`checkCFields`), and a call is
+  `first->member`, or, handed more, a call of the function pointer the
+  member holds with the rest (`ir.CCallExpr`), converted as a C function's
+  call is: gtk4 reads `GError.message` and calls GtkLabel's class
+  `measure` that way. cgo reads a member but calls no function pointer, so
+  Go goes through a C function of the declaration's shape (`snglF_<name>`)
+  in `sngl_shims.h`, as a variadic call does, a ref crossing it as a
+  pointer to its element's C type; a wrapper package's preamble defines it
+  (cgogen names the wrapper `GErrorMessage`). purego refuses one, finding
+  a function by its name alone (`testdata/c_field.txtar`,
+  `error_c_field.sngl`, `codegen/lang/c`'s `fields` run,
+  `cgogen_user_package_runs.txt`, `go_cgo_purego_refused.txt`).
   A value C holds -- what `g_object_set_data_full` keeps on a widget -- is
   `sngl:x/c`'s `held`, a generic alias of its one parameter marked
   `#[builtin("cHeld")]` (`ir.Alias.IsCHeld`). `cAliasOf` records it as

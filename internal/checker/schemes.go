@@ -572,6 +572,7 @@ func (c *checker) reportUnlinkedCNativeCalls() {
 // a library's as it loads.
 func (c *checker) checkCDeclarations(pkg *ir.Package) {
 	c.checkCCasts(pkg)
+	c.checkCFields(pkg)
 	c.checkCCallbacks(pkg)
 	c.checkCStructs(pkg)
 }
@@ -593,6 +594,26 @@ func (c *checker) checkCCasts(pkg *ir.Package) {
 		}
 		if got := ir.CTypeOf(fn.Return); !got.Equal(fn.Foreign.C) {
 			c.error(fn.AST.Pos, "#[c.native(%q, cast)] converts to %s, so %s returns a #[c.native(%q)] struct, not %s", fn.Foreign.Name, fn.Foreign.C, fn.Name, fn.Foreign.C.String(), fn.Return)
+		}
+	}
+}
+
+// checkCFields judges each `#[c.native("Struct.member", field)]` function:
+// its first parameter is the handle the member is read through, a
+// #[c.native] struct whose C type is a pointer to Struct.
+func (c *checker) checkCFields(pkg *ir.Package) {
+	for _, fn := range pkg.Funcs {
+		if !fn.Foreign.Field || fn.Foreign.Path != ir.CPath || fn.AST == nil {
+			continue
+		}
+		if len(fn.Params) == 0 {
+			c.error(fn.AST.Pos, "#[c.native(%q, field)] reads a member of the struct its first parameter points to, and %s takes none", fn.Foreign.Name, fn.Name)
+			continue
+		}
+		st, _, _ := strings.Cut(fn.Foreign.Name, ".")
+		want := &ir.CType{Name: st, Ptr: 1}
+		if t := fn.Params[0].Type; ir.CStructOf(t) != nil || !ir.CTypeOf(t).Equal(want) {
+			c.error(fn.AST.Pos, "#[c.native(%q, field)] reads a member of a %s, so its first parameter is a #[c.native(%q)] handle, not %s", fn.Foreign.Name, st, want.String(), t)
 		}
 	}
 }

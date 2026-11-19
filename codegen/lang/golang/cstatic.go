@@ -39,10 +39,10 @@ func WrapperStaticName(fn *ir.Func, p *ir.Param) string {
 
 // WrapperName is the exported Go name `sngl tool cgogen` wraps a C
 // identifier as: `sngl_win32_append` is `SnglWin32Append`, `CreateWindowExW`
-// itself.
+// itself, and a member of a C struct, `GError.message`, `GErrorMessage`.
 func WrapperName(c string) string {
 	var b strings.Builder
-	for part := range strings.SplitSeq(c, "_") {
+	for part := range strings.FieldsFuncSeq(c, func(r rune) bool { return r == '_' || r == '.' }) {
 		if part == "" {
 			continue
 		}
@@ -236,13 +236,13 @@ func CShims(fns []*ir.Func) string {
 				fmt.Fprintf(&b, "\nstatic inline void %s(void *p) {\n\tif (p) {\n\t\t%s(p);\n\t}\n}\n", freeName(f), f)
 			}
 		}
-		if !fn.Foreign.Variadic {
+		if !fn.Foreign.Variadic && !fn.Foreign.Field {
 			continue
 		}
 		var params, args []string
 		for i, p := range fn.Params {
 			a := fmt.Sprintf("a%d", i)
-			params = append(params, variadicCType(p.Type, p.CAlias)+" "+a)
+			params = append(params, shimCType(p.Type, p.CAlias)+" "+a)
 			args = append(args, a)
 		}
 		if len(params) == 0 {
@@ -250,16 +250,33 @@ func CShims(fns []*ir.Func) string {
 		}
 		ret, pre := "void", ""
 		if r := fn.Return; r != nil && r.Kind != ir.TypeVoid {
-			ret, pre = variadicCType(r, fn.ReturnCAlias), "return "
+			ret, pre = shimCType(r, fn.ReturnCAlias), "return "
 		}
-		fmt.Fprintf(&b, "\nstatic inline %s %s(%s) {\n\t%s%s(%s);\n}\n", ret, variadicName(fn), strings.Join(params, ", "), pre, fn.Foreign.Name, strings.Join(args, ", "))
+		call := ir.CCallExpr(fn, args)
+		fmt.Fprintf(&b, "\nstatic inline %s %s(%s) {\n\t%s%s;\n}\n", ret, shimName(fn), strings.Join(params, ", "), pre, call)
 	}
 	return b.String()
 }
 
-// variadicCType is the C type a parameter or result of type t, written with
-// alias where its declaration names one, crosses as.
-func variadicCType(t *ir.Type, alias *ir.Alias) string {
+// shimName is the C function of one shape a Go call of fn goes through: a
+// variadic one's, or a member's of a C struct.
+func shimName(fn *ir.Func) string {
+	if fn.Foreign.Field {
+		return "snglF_" + fn.Name
+	}
+	return variadicName(fn)
+}
+
+// shimCType is the C type a parameter or result of type t, written with
+// alias where its declaration names one, crosses a shim as: a ref as a
+// pointer to its element's, which a string C stores is a `char *`.
+func shimCType(t *ir.Type, alias *ir.Alias) string {
+	if t.Kind == ir.TypeRef && len(t.Elems) == 1 {
+		if t.Elems[0].Kind == ir.TypeString {
+			return "char **"
+		}
+		return shimCType(t.Elems[0], alias) + " *"
+	}
 	if alias != nil && alias.C != nil {
 		return alias.C.String()
 	}

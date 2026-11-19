@@ -387,9 +387,10 @@ func CalledCStatics(pkg *Package, skip func(*Func) bool) []CStatic {
 // CalledCShimmed is each C function pkg calls, once, in the order the calls
 // are met, that a language unable to call it as C does calls through a C
 // function of the declaration's one shape: one taking a variable argument
-// list (`#[c.native(…, variadic)]`), and one handing over a string the call
-// frees (`#[c.frees]`), whose freeing function takes a pointer of a type
-// only C converts to.
+// list (`#[c.native(…, variadic)]`), a member of a C struct read or called
+// (`#[c.native(…, field)]`), and one handing over a string the call frees
+// (`#[c.frees]`), whose freeing function takes a pointer of a type only C
+// converts to.
 func CalledCShimmed(pkg *Package) []*Func {
 	var out []*Func
 	_ = Walk(pkg, func(n Node) error {
@@ -401,9 +402,26 @@ func CalledCShimmed(pkg *Package) []*Func {
 	return out
 }
 
+// CCallExpr is the C expression a call of fn, a C function, is with args
+// rendered: its name called with them, or for a
+// `#[c.native("Struct.member", field)]` function the member read through
+// the first argument, or, handed more, the function pointer it holds
+// called with the rest.
+func CCallExpr(fn *Func, args []string) string {
+	if !fn.Foreign.Field || len(args) == 0 {
+		return fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
+	}
+	_, member, _ := strings.Cut(fn.Foreign.Name, ".")
+	read := "(" + args[0] + ")->" + member
+	if len(args) == 1 {
+		return read
+	}
+	return read + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
 // CShimmed reports whether fn, a C function, is one CalledCShimmed collects.
 func (fn *Func) CShimmed() bool {
-	return fn.Foreign.Variadic || len(fn.CFreed()) > 0
+	return fn.Foreign.Variadic || fn.Foreign.Field || len(fn.CFreed()) > 0
 }
 
 // CFreed is each C function freeing a string fn, a C function, hands over

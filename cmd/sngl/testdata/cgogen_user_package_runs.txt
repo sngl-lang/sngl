@@ -12,7 +12,7 @@
 # own, which replaces the host module with its root (codegen.WriteGoMod), and
 # compiles none of the package's C, which the wrapper package does. A string
 # C hands over (#[c.frees]) is freed in the wrapper, through the function its
-# preamble defines.
+# preamble defines, as a member of a C struct is read and called (`field`).
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -25,6 +25,7 @@ grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.SplitAdd"\)\]' mathx/mathx
 grep 'func SplitAdd\(a int, b int, carry int\) SplitAddResult' mathx/cgo/wrappers.go
 grep 'func SplitSwap\(p Pair\) Pair' mathx/cgo/wrappers.go
 grep 'snglFree_split_free' mathx/cgo/wrappers.go
+grep 'func SplitThingTwice\(t Thing, n int\) int' mathx/cgo/wrappers.go
 grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.State"\)\]' mathx/mathx.sngl
 
 # A second run, reading the marks the first wrote, changes nothing.
@@ -40,7 +41,7 @@ grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +5 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
@@ -66,6 +67,14 @@ void split_free(void *p);
 
 // What split_free freed, counted.
 int split_freed(void);
+
+// A struct a program reads the members of, and calls one of.
+typedef struct split_thing {
+	int code;
+	int (*twice)(int n);
+} split_thing;
+
+split_thing *split_thing_new(int code);
 -- mathx/split.c --
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,6 +118,16 @@ void split_free(void *p) {
 
 int split_freed(void) {
 	return freed;
+}
+
+static int split_twice(int n) {
+	return n * 2;
+}
+
+split_thing *split_thing_new(int code) {
+	static split_thing t;
+	t = (split_thing){code, split_twice};
+	return &t;
 }
 
 void split_swap(split_pair *p) {
@@ -183,6 +202,23 @@ func names() string {
 }
 
 func freed() => _freed()
+
+#[c.native("split_thing *")]
+struct _Thing {}
+
+#[c.native("split_thing_new")]
+func _thingNew(code int) _Thing
+
+#[c.native("split_thing.code", field)]
+func _code(t _Thing) int
+
+#[c.native("split_thing.twice", field)]
+func _twice(t _Thing, n int) int
+
+func members() int {
+    var t = _thingNew(7)
+    return _code(t) * 100 + _twice(t, 21)
+}
 -- mathx/gen.go --
 package mathx
 
@@ -218,13 +254,17 @@ func testItHoldsNoState(t test.Test) {
     t.assert(m.stateless())
 }
 
+func testItReadsAndCallsMembers(t test.Test) {
+    t.assert(m.members() == 742)
+}
+
 func testItFreesWhatCHandsOver(t test.Test) {
     t.assert(m.names() == "n3 n4")
     t.assert(m.freed() == 2)
 }
 
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:969629933d5890b427e68f8aa88b4bdd
+sha256:66180c9b6bb89ea5021114861cf9876c
 {
   "results": [
     {
@@ -237,6 +277,10 @@ sha256:969629933d5890b427e68f8aa88b4bdd
     },
     {
       "Desc": "ItHoldsNoState",
+      "Passed": true
+    },
+    {
+      "Desc": "ItReadsAndCallsMembers",
       "Passed": true
     },
     {

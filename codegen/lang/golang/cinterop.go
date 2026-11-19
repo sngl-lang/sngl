@@ -275,8 +275,8 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 
 func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 	name := fn.Foreign.Name
-	if fn.Foreign.Variadic {
-		name = variadicName(fn)
+	if fn.Foreign.Variadic || fn.Foreign.Field {
+		name = shimName(fn)
 	}
 	call := "C." + name + "(" + strings.Join(args, ", ") + ")"
 	if fn.Return != nil {

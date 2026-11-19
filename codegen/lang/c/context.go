@@ -1359,7 +1359,7 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		args = slices.Clone(args)
 		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(fn.Params[held].Type))
 	}
-	call := fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
+	call := ir.CCallExpr(fn, args)
 	if free != "" {
 		return c.fail("a callback %s holds for the call alone", fn.Foreign.Name)
 	}
@@ -1428,7 +1428,7 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 	if off < 0 {
 		return c.fail("calling %s, which takes a ref, with a receiver", fn.Foreign.Name)
 	}
-	name := "sngl_ccall_" + fn.Foreign.Name + "_" + mangle(fn.Name)
+	name := "sngl_ccall_" + strings.ReplaceAll(fn.Foreign.Name, ".", "_") + "_" + mangle(fn.Name)
 	var params, cargs, outs []string
 	var body strings.Builder
 	for i, p := range fn.Params {
@@ -1494,7 +1494,7 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 			cargs = append(cargs, a)
 		}
 	}
-	call := fn.Foreign.Name + "(" + strings.Join(cargs, ", ") + ")"
+	call := ir.CCallExpr(fn, cargs)
 	void := fn.Return == nil || fn.Return.Kind == ir.TypeVoid
 	ret := c.typeName(n.Type)
 	switch {

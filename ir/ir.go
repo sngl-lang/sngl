@@ -875,6 +875,11 @@ type Foreign struct {
 	// written `#[c.native(…, pointer)]`: an option of it is the pointer,
 	// NULL for none.
 	CPointer bool `json:",omitempty"`
+	// Field says a C function's Name is a member of a C struct,
+	// `Struct.member`, read through its first parameter, a pointer to the
+	// struct, written `#[c.native(…, field)]`: called with more, the member
+	// is a function pointer.
+	Field bool `json:",omitempty"`
 	// Also is the declaration's spelling in each other language that has
 	// one: today a Go wrapper's (`#[go.native]`) beside a C declaration's,
 	// which stays the primary, since every C pass reads it there. In finds

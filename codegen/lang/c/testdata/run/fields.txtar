@@ -1,0 +1,70 @@
+A member of a C struct is read through a declaration flagged `field`, named
+`Struct.member`, whose first parameter is a handle to the struct: with that
+one parameter it answers the member, a string copied into the turn as a C
+function's is; with more, the member is a function pointer, called with the
+rest, a ref among them as a C function's is.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("thing *")]
+struct Thing {}
+
+#[c.native("thing_new")]
+func newThing(code int) Thing
+
+#[c.native("thing.message", field)]
+func message(t Thing) string
+
+#[c.native("thing.code", field)]
+func code(t Thing) int
+
+#[c.native("thing.twice", field)]
+func twice(t Thing, n int) int
+
+#[c.native("thing.split", field)]
+func split(t Thing, n int, tens ref[int], ones ref[int])
+
+func read(n int) string {
+    var t = newThing(n)
+    var tens = 0
+    var ones = 0
+    split(t, 42, &tens, &ones)
+    return "{message(t)} {code(t)} {twice(t, 21)} {tens} {ones}"
+}
+-- main.c --
+#include <stdio.h>
+
+typedef struct thing {
+	const char *message;
+	int code;
+	int (*twice)(int n);
+	void (*split)(int n, int *tens, int *ones);
+} thing;
+
+static int thing_twice(int n) {
+	return n * 2;
+}
+
+static void thing_split(int n, int *tens, int *ones) {
+	*tens = n / 10;
+	*ones = n % 10;
+}
+
+static thing *thing_new(int code) {
+	static thing t;
+	t = (thing){"n\xc3\xa9" "e", code, thing_twice, thing_split};
+	return &t;
+}
+
+#include "program.c"
+
+int main(void) {
+	sngl_string s = s_read(7);
+	printf("%.*s\n", (int)s.len, s.ptr);
+	return 0;
+}
+-- want --
+née 7 42 4 2

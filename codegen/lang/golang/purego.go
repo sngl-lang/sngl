@@ -171,6 +171,9 @@ func puregoSources(pkg *ir.Package, generated map[string][]byte) (map[string][]b
 		if err != nil {
 			return nil, err
 		}
+		if fn.Foreign.Field {
+			return nil, fmt.Errorf("%s is a member of a C struct (field): purego opens a C function by its name, and a member has none", fn.Foreign.Name)
+		}
 		if freed := fn.CFreed(); len(freed) > 0 {
 			return nil, fmt.Errorf("%s hands over a string %s frees (#[c.frees]): purego copies a string C answers and hands back no pointer to free", fn.Foreign.Name, freed[0])
 		}
