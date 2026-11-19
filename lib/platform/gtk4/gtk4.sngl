@@ -1914,35 +1914,24 @@ struct _TextDirection = int
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetDirection")]
 func _direction(w Widget) _TextDirection
 
-#[c.native("graphene_point_t *")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Point")]
-struct _Point {}
+// Where a parent places a child, and how large: GTK's GdkRectangle.
+#[c.native("GtkAllocation")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Allocation")]
+struct _Allocation {
+    x      int
+    y      int
+    width  int
+    height int
+}
 
-#[c.native("graphene_point_alloc")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GraphenePointAlloc")]
-func _pointAlloc() _Point
+#[c.native("gtk_widget_size_allocate")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSizeAllocate")]
+func _sizeAllocate(w Widget, allocation ref[_Allocation], baseline int)
 
-#[c.native("graphene_point_init")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GraphenePointInit")]
-func _pointInit(p _Point, x _c_float, y _c_float) _Point
-
-#[c.native("graphene_point_free")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GraphenePointFree")]
-func _pointFree(p _Point)
-
-#[c.native("gsk_transform_translate")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GskTransformTranslate")]
-func _translate(next option[Transform], point _Point) option[Transform]
-
-// Allocates w width by height at x, y in its parent, as
-// gtk_widget_size_allocate does: a translation, handed to
-// gtk_widget_allocate, which takes it. That one takes a GtkAllocation by
-// pointer, which the C target hands C no struct of the program's as.
+// Allocates w width by height at x, y in its parent.
 func _place(w Widget, x int, y int, width int, height int) {
-    var p = _pointAlloc()
-    _pointInit(p, _to_float(float(x)), _to_float(float(y)))
-    _allocateWidget(w, width, height, -1, _translate(null, p))
-    _pointFree(p)
+    var a = _Allocation{x=x, y=y, width=width, height=height}
+    _sizeAllocate(w, &a, -1)
 }
 
 // Hands look.c the functions a box it lays out flexing and a grid are laid

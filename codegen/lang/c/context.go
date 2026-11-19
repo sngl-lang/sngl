@@ -1275,6 +1275,29 @@ func (c *Context) cStruct(t *ir.Type) string {
 	return fn
 }
 
+// fromCStruct is the helper reading a C struct back as t, the program's
+// struct declaring it: field by field, as cStruct wrote it.
+func (c *Context) fromCStruct(t *ir.Type) string {
+	sd := ir.CStructOf(t)
+	if sd == nil {
+		return c.fail("crossing a C struct back as a %s", t)
+	}
+	to, from := c.typeName(t), sd.Foreign.C.String()
+	fn := "sngl_from_" + strings.TrimPrefix(to, "s_")
+	var fields []string
+	for _, f := range sd.Fields {
+		v := "v." + f.Name
+		if f.Type.Kind == ir.TypeBool {
+			v = "(" + v + " != 0)"
+		} else {
+			v = "(" + c.typeName(f.Type) + ")" + v
+		}
+		fields = append(fields, "."+Local(f.Name)+" = "+v)
+	}
+	c.file.helper(fn, "static "+to+" "+fn+"("+from+" v) {\n\treturn ("+to+"){"+strings.Join(fields, ", ")+"};\n}\n")
+	return fn
+}
+
 // CCall is a call of the C function c names, whose number comes back as the
 // SNGL number it is. A callback is the dispatcher for its C signature, handed
 // the closure on the heap as its context: released by C through the
@@ -1365,8 +1388,9 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 // function the file defines, which takes each argument as the call renders
 // it, hands C the address of a C temp for each ref, and answers what
 // lower.RefParams made of the call -- the one value C wrote, or the record
-// of the result and each one. A ref is to a scalar here, and the function
-// takes no callback.
+// of the result and each one. A ref is to a scalar, or to a struct declaring
+// a C struct, which crosses into its temp and back field by field; the
+// function takes no callback.
 func (c *Context) refCall(n *ir.Call, args []string) string {
 	fn := n.Func
 	off := len(args) - len(fn.Params)
@@ -1381,6 +1405,13 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 		switch {
 		case p.Type.Kind == ir.TypeRef:
 			elem := p.Type.Elems[0]
+			params = append(params, c.typeName(elem)+" "+a)
+			cargs = append(cargs, fmt.Sprintf("&t%d", i))
+			if sd := ir.CStructOf(elem); sd != nil {
+				fmt.Fprintf(&body, "\t%s t%d = %s(%s);\n", sd.Foreign.C.String(), i, c.cStruct(elem), a)
+				outs = append(outs, fmt.Sprintf("%s(t%d)", c.fromCStruct(elem), i))
+				continue
+			}
 			switch elem.Kind {
 			case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
 			default:
@@ -1390,9 +1421,7 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 			if p.CAlias != nil && p.CAlias.C != nil {
 				ct = p.CAlias.C.String()
 			}
-			params = append(params, c.typeName(elem)+" "+a)
 			fmt.Fprintf(&body, "\t%s t%d = (%s)%s;\n", ct, i, ct, a)
-			cargs = append(cargs, fmt.Sprintf("&t%d", i))
 			out := fmt.Sprintf("(%s)t%d", c.typeName(elem), i)
 			if elem.Kind == ir.TypeBool {
 				out = fmt.Sprintf("(t%d != 0)", i)
@@ -1410,7 +1439,8 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 			case t.Kind == ir.TypeOption:
 				ct = "const char *"
 			case ir.CStructOf(t) != nil:
-				return c.fail("calling %s, which takes a ref and a C struct", fn.Foreign.Name)
+				// Crossed already, as lower.CMarshal converts it.
+				ct = ir.CStructOf(t).Foreign.C.String()
 			case t.Kind == ir.TypeStruct || t.Kind == ir.TypeString:
 				ct = staticCType(t)
 				// A node is the pointer the platform spells it as.

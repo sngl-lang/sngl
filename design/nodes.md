@@ -348,8 +348,12 @@ declaration itself. Two things about the name that are easy to get wrong:
   `error_c_struct.sngl`, `error_c_struct_mark.sngl`). The C target defines a
   function per such C function (`sngl_ccall_<name>_<func>`, `refCall`)
   taking each argument as the call renders it, handing C the address of a
-  C temp for each `ref`, a scalar's, and answering what the pass made of
-  the call. `passRefParams` runs before `passLibFuncs`, so a promoted
+  C temp for each `ref` -- a scalar's, or a C struct's, converted into it
+  and back field by field (`cStruct`, `fromCStruct`; gtk4's `_place` hands
+  `gtk_widget_size_allocate` a GtkAllocation) -- and answering what the
+  pass made of the call. `passNoRef` leaves a C function's signature alone
+  too (`cRefs`): boxed, a program's own C function was handed a box where C
+  takes a pointer to its type (`codegen/lang/c/testdata/run/refs.txtar`). `passRefParams` runs before `passLibFuncs`, so a promoted
   library function's `&x` reached no translator -- gtk4's probe measures
   its child through `gtk_widget_measure` that way -- and `passCRefCalls`,
   after it, lowers the calls of C functions still handing an address and

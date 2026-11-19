@@ -2,10 +2,12 @@
 # library package: it writes the Go package wrapping the package's C
 # declarations into cgo/ beside it, in the program's Go module, and marks each
 # declaration with its wrapper, which a //go:generate line keeps in step. A
-# function taking a ref is wrapped copy-in, copy-out. The Go program calls the
-# wrapper, reaching the program's module through its own, which replaces the
-# host module with its root (codegen.WriteGoMod), and compiles none of the
-# package's C, which the wrapper package does.
+# function taking a ref is wrapped copy-in, copy-out, a C struct with fields
+# among what it fills too; the struct is a Go type of the wrapper package's,
+# named so from its first generation, before a mark names it. The Go program
+# calls the wrapper, reaching the program's module through its own, which
+# replaces the host module with its root (codegen.WriteGoMod), and compiles
+# none of the package's C, which the wrapper package does.
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -16,21 +18,30 @@ exists mathx/cgo/wrappers.go
 exists mathx/cgo/split.c
 grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.SplitAdd"\)\]' mathx/mathx.sngl
 grep 'func SplitAdd\(a int, b int, carry int\) SplitAddResult' mathx/cgo/wrappers.go
+grep 'func SplitSwap\(p Pair\) Pair' mathx/cgo/wrappers.go
 
-# A second run changes nothing.
+# A second run, reading the marks the first wrote, changes nothing.
 cp mathx/mathx.sngl marked.sngl
+cp mathx/cgo/wrappers.go wrappers.first
 sngl tool cgogen mathx
 cmp mathx/mathx.sngl marked.sngl
+cmp mathx/cgo/wrappers.go wrappers.first
 
 sngl generate --lang go --platform bubbletea -o out app.sngl
 grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'import "C"' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +2 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
+
+typedef struct {
+	int lo, hi;
+} split_pair;
+
+void split_swap(split_pair *p);
 -- mathx/split.c --
 #include "split.h"
 
@@ -39,6 +50,12 @@ int split_add(int a, int b, int *carry) {
 	*carry = s / 10;
 	return s % 10;
 }
+
+void split_swap(split_pair *p) {
+	int lo = p->lo;
+	p->lo = p->hi;
+	p->hi = lo;
+}
 -- mathx/mathx.sngl --
 import c "sngl:x/c"
 
@@ -46,6 +63,21 @@ c.link(include="split.h", sources=["split.c", "split.h"])
 
 #[c.native("split_add")]
 func splitAdd(a int, b int, carry ref[int]) int
+
+#[c.native("split_pair")]
+struct _Pair {
+    lo int
+    hi int
+}
+
+#[c.native("split_swap")]
+func _swap(p ref[_Pair])
+
+func swapped(lo int, hi int) int {
+    var p = _Pair{lo=lo, hi=hi}
+    _swap(&p)
+    return p.lo * 10 + p.hi
+}
 -- mathx/gen.go --
 package mathx
 
@@ -68,12 +100,21 @@ ui.window(title="t") {
 func testItSplits(t test.Test) {
     t.assert(digits() == "15")
 }
+
+func testItSwaps(t test.Test) {
+    t.assert(m.swapped(1, 2) == 21)
+}
+
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:e075fa6712331ae5e4d76de2173f52ad
+sha256:58e16f8730b73dc8d044b9ef1b493258
 {
   "results": [
     {
       "Desc": "ItSplits",
+      "Passed": true
+    },
+    {
+      "Desc": "ItSwaps",
       "Passed": true
     }
   ]

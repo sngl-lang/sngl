@@ -40,6 +40,14 @@ type Actions = *C.GActionGroup
 // Adjustment is C's GtkAdjustment *.
 type Adjustment = *C.GtkAdjustment
 
+// Allocation is C's GtkAllocation, field by field.
+type Allocation struct {
+	X      int
+	Y      int
+	Width  int
+	Height int
+}
+
 // Buffer is C's const guchar *.
 type Buffer = *C.guchar
 
@@ -198,9 +206,6 @@ type PixbufLoader = *C.GdkPixbufLoader
 
 // Pixels is C's unsigned char *.
 type Pixels = *C.uchar
-
-// Point is C's graphene_point_t *.
-type Point = *C.graphene_point_t
 
 // Pointer is C's gpointer.
 type Pointer = C.gpointer
@@ -1113,42 +1118,6 @@ func Getpid() int {
 	return int(C.getpid())
 }
 
-// GraphenePointAlloc calls graphene_point_alloc.
-func GraphenePointAlloc() Point {
-	return C.graphene_point_alloc()
-}
-
-// GraphenePointFree calls graphene_point_free.
-func GraphenePointFree(p Point) {
-	C.graphene_point_free(p)
-}
-
-// GraphenePointInit calls graphene_point_init.
-func GraphenePointInit(p Point, x CFloat, y CFloat) Point {
-	return C.graphene_point_init(p, x, y)
-}
-
-// GskTransformTranslate calls gsk_transform_translate.
-func GskTransformTranslate(next *Transform, point Point) *Transform {
-	if next == nil {
-		return func() **C.GskTransform {
-			p := (*C.GskTransform)(C.gsk_transform_translate(nil, point))
-			if p == nil {
-				return nil
-			}
-			return &p
-		}()
-	} else {
-		return func() **C.GskTransform {
-			p := (*C.GskTransform)(C.gsk_transform_translate((*(next)), point))
-			if p == nil {
-				return nil
-			}
-			return &p
-		}()
-	}
-}
-
 // GtkAdjustmentGetPageSize calls gtk_adjustment_get_page_size.
 func GtkAdjustmentGetPageSize(a Adjustment) float64 {
 	return float64(C.gtk_adjustment_get_page_size(a))
@@ -1969,6 +1938,19 @@ func GtkWidgetSetVisible(w PGtkWidget, v CGboolean) {
 // GtkWidgetShouldLayout calls gtk_widget_should_layout.
 func GtkWidgetShouldLayout(w Widget) bool {
 	return (C.gtk_widget_should_layout(w) != 0)
+}
+
+// GtkWidgetSizeAllocate calls gtk_widget_size_allocate.
+func GtkWidgetSizeAllocate(w Widget, allocation Allocation, baseline int) Allocation {
+	return func() Allocation {
+		__snglOut1 := func(v Allocation) C.GtkAllocation {
+			return C.GtkAllocation{x: C.int(v.X), y: C.int(v.Y), width: C.int(v.Width), height: C.int(v.Height)}
+		}(allocation)
+		C.gtk_widget_size_allocate(w, &__snglOut1, C.int(baseline))
+		return func(c C.GtkAllocation) Allocation {
+			return Allocation{X: int(c.x), Y: int(c.y), Width: int(c.width), Height: int(c.height)}
+		}(__snglOut1)
+	}()
 }
 
 // GtkWindowNew calls gtk_window_new.

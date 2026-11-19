@@ -101,7 +101,10 @@ by `go generate ./lib`) writes `lib/platform/win32/cgo`: one exported Go
 function per C function the platform and `api` declare, named for it
 (`sngl_win32_append` is `SnglWin32Append`), and the Go type each handle they
 cross and each C struct they declare is (`type HWND = C.HWND`, `type Look struct`): a struct no function crosses still gets one, since a program's own
-literal of it names the wrapper package's. Both SNGL
+literal of it names the wrapper package's. The wrappers' bodies spell such a
+struct by the name the package declares (`golang.WrapperTypeName`), not by
+the mark naming it, which the first generation runs without: it said
+`_Allocation` where it declared `Allocation`. Both SNGL
 packages go into one Go package, because a handle is a type of the cgo
 package declaring it, and `C.HWND` in two packages is two types.
 

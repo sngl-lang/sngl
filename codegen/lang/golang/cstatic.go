@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode"
 
 	"duckfam.us/sngl/ir"
 )
@@ -34,6 +35,33 @@ func staticName(callee *ir.Func) string {
 // a Go value and the export calls whichever the last call handed it.
 func WrapperStaticName(fn *ir.Func, p *ir.Param) string {
 	return "snglStatic_" + ExportName(fn.Name) + "_" + p.Name
+}
+
+// WrapperName is the exported Go name `sngl tool cgogen` wraps a C
+// identifier as: `sngl_win32_append` is `SnglWin32Append`, `CreateWindowExW`
+// itself.
+func WrapperName(c string) string {
+	var b strings.Builder
+	for part := range strings.SplitSeq(c, "_") {
+		if part == "" {
+			continue
+		}
+		r := []rune(part)
+		r[0] = unicode.ToUpper(r[0])
+		b.WriteString(string(r))
+	}
+	return b.String()
+}
+
+// WrapperTypeName is the exported Go name of the type a wrapper package
+// declares for a SNGL struct named n: n capitalized, or, where n is a
+// package's own (`_p_GtkWidget`), each of its words capitalized
+// (`PGtkWidget`), as WrapperName spells a C function.
+func WrapperTypeName(n string) string {
+	if strings.HasPrefix(n, "_") {
+		return WrapperName(n)
+	}
+	return ExportName(n)
 }
 
 // WrapperOutsName is the record a wrapper named name declares for what its

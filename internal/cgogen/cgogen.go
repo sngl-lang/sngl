@@ -28,7 +28,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
@@ -149,18 +148,7 @@ func handleType(pkgs []*ir.Package) *ir.Type {
 
 // GoName is the exported Go name a C identifier is wrapped as:
 // `sngl_win32_append` is `SnglWin32Append`, `CreateWindowExW` itself.
-func GoName(c string) string {
-	var b strings.Builder
-	for part := range strings.SplitSeq(c, "_") {
-		if part == "" {
-			continue
-		}
-		r := []rune(part)
-		r[0] = unicode.ToUpper(r[0])
-		b.WriteString(string(r))
-	}
-	return b.String()
-}
+func GoName(c string) string { return golang.WrapperName(c) }
 
 func (g *gen) collect(p *ir.Package) {
 	for _, l := range p.CLinks {
@@ -450,15 +438,8 @@ func (g *gen) goSig(w *ir.Func, named bool) string {
 	return "(" + strings.Join(ps, ", ") + ")" + r
 }
 
-// typeName is the exported Go name of the type a SNGL struct named n is: n
-// capitalized, or, where n is a package's own (`_p_GtkWidget`), each of its
-// words capitalized (`PGtkWidget`), as GoName spells a C function.
-func typeName(n string) string {
-	if strings.HasPrefix(n, "_") {
-		return GoName(n)
-	}
-	return golang.ExportName(n)
-}
+// typeName is the exported Go name of the type a SNGL struct named n is.
+func typeName(n string) string { return golang.WrapperTypeName(n) }
 
 // pkgName is the Go package's name, the last element of its import path.
 func (g *gen) pkgName() string {

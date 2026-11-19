@@ -2328,6 +2328,12 @@ func typeToGo(t *ir.Type, at site) string {
 				}
 				return g.Name
 			}
+			// A C struct with fields is, in the wrapper package, the type
+			// it declares, which its first generation spells before any
+			// mark names it.
+			if at.own != "" && sd.Foreign.Path == ir.CPath && sd.IsCStruct() {
+				return WrapperTypeName(sd.Name)
+			}
 			// A C struct with fields is the program's own, declared below
 			// and converted at the call (CInterop). One C holds opaquely is
 			// cgo's type, or the pointer purego hands back.

@@ -152,6 +152,9 @@ func assertNoRefSurvives(pkg *ir.Package) error {
 		}
 	}
 	for _, f := range pkg.Funcs {
+		if cRefs(f) {
+			continue
+		}
 		for _, p := range f.Params {
 			check(p.Type)
 		}
@@ -173,14 +176,23 @@ func assertNoRefSurvives(pkg *ir.Package) error {
 
 // rewriteFuncSignature rewrites every Param's Type and the Return type of f
 // through rw, replacing any ref[T] shape with the corresponding box struct.
+// A C function's `ref` is a pointer C fills, at C's own type: its calls hand
+// the value passRefParams left them, and the translator hands C the address
+// of a temp of it (codegen/lang/c refCall), so it keeps its signature.
 func rewriteFuncSignature(f *ir.Func, rw *refRewriter) {
-	if f == nil {
+	if f == nil || cRefs(f) {
 		return
 	}
 	for _, p := range f.Params {
 		p.Type = rw.rewriteType(p.Type)
 	}
 	f.Return = rw.rewriteType(f.Return)
+}
+
+// cRefs reports whether f is a C function, whose `ref` parameters are the
+// pointers C takes and no box.
+func cRefs(f *ir.Func) bool {
+	return f.Foreign.Path == ir.CPath && !f.IsCCast()
 }
 
 // orNullLiteral returns init if non-nil, else a null literal of elem's type.
