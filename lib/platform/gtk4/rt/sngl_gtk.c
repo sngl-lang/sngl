@@ -1,7 +1,18 @@
+/* What of gtk4's runtime SNGL cannot write, compiled into every gtk4
+ * program: a C program compiles it beside its own, and Go's wrappers
+ * (lib/platform/gtk4/cgo) include it. Everything else -- the widgets, the
+ * toplevel, the application and its loop -- is gtk4.sngl's. Each part says
+ * why it is C. */
 #include "sngl_gtk.h"
 
 #include <string.h>
 
+/* --- The loop: signals, posted work, the timer ---
+ *
+ * SIGINT and SIGTERM are watched through glib-unix.h, which only a Unix
+ * has; the posted work and loop wait are the C language runtime's ABI
+ * (sngl.h, sngl_http.h); and the timer's tick is what go.native's
+ * `schedules` flag names, which a SNGL body cannot carry. */
 #ifdef G_OS_UNIX
 #include <glib-unix.h>
 #include <signal.h>
@@ -90,6 +101,11 @@ void sngl_schedule_cancel(SnglSchedule *s) {
     if (s) g_source_remove(s->id);
 }
 
+/* --- A snapshot's drawing ---
+ *
+ * gtk4.sngl picks and presents the window a snapshot draws (_captureWindow)
+ * and puts back what it took; the drawing is here because the renderer's
+ * realize and the texture's download differ by GTK_CHECK_VERSION. */
 /* A tick that keeps a blocking iteration from parking past a deadline. */
 static gboolean sngl_capture_tick(gpointer data) {
     (void)data;
@@ -191,4 +207,84 @@ int sngl_draw_file(GtkWidget *win, const char *path, int width, int height) {
     ok = fclose(f) == 0 && ok;
     g_free(rgba);
     return ok ? 0 : 1;
+}
+
+/* --- A widget's look ---
+ *
+ * A widget kept without a reference, since g_object_add_weak_pointer writes
+ * through a pointer no SNGL value is, and a CSS provider loaded on either
+ * side of GTK_CHECK_VERSION(4, 12, 0). */
+// A widget kept on o under key without a reference, which reads as NULL
+// once it is finalized, and is let go as key is set to NULL.
+static void sngl_weak_free(gpointer data) {
+    GtkWidget **slot = data;
+    if (*slot) g_object_remove_weak_pointer(G_OBJECT(*slot), (gpointer *)slot);
+    g_free(slot);
+}
+
+void sngl_weak_set(GObject *o, const char *key, GtkWidget *w) {
+    GtkWidget **slot = g_new(GtkWidget *, 1);
+    *slot = w;
+    g_object_add_weak_pointer(G_OBJECT(w), (gpointer *)slot);
+    g_object_set_data_full(o, key, slot, sngl_weak_free);
+}
+
+GtkWidget *sngl_weak(GObject *o, const char *key) {
+    GtkWidget **slot = g_object_get_data(o, key);
+    return slot ? *slot : NULL;
+}
+
+void sngl_css_load(GtkCssProvider *css, const char *rule) {
+#if GTK_CHECK_VERSION(4, 12, 0)
+    gtk_css_provider_load_from_string(css, rule);
+#else
+    gtk_css_provider_load_from_data(css, rule, -1);
+#endif
+}
+
+/* --- The files a program carries ---
+ *
+ * Its entry's table and each Go hands: arrays of C structs, which SNGL
+ * cannot walk. */
+/* The files the program carries: its entry's table, and each Go hands. */
+static const SnglAsset *sngl_carried_table;
+static SnglAsset *sngl_carried_files;
+static size_t sngl_ncarried_files;
+
+void sngl_gtk_carry(const SnglAsset *assets) {
+    sngl_carried_table = assets;
+}
+
+void sngl_gtk_carry_file(const char *name, const char *data, int len) {
+    size_t n = len > 0 ? (size_t)len : 0;
+    unsigned char *copy = g_malloc(n ? n : 1);
+    memcpy(copy, data, n);
+    sngl_carried_files = g_renew(SnglAsset, sngl_carried_files, sngl_ncarried_files + 1);
+    sngl_carried_files[sngl_ncarried_files++] = (SnglAsset){g_strdup(name), copy, n};
+}
+
+/* The file the program carries name names, from its entry's table or
+ * those Go handed, or NULL. */
+const SnglAsset *sngl_carried(const char *name) {
+    for (const SnglAsset *a = sngl_carried_table; a && a->name; a++) {
+        if (strcmp(a->name, name) == 0) return a;
+    }
+    for (size_t i = 0; i < sngl_ncarried_files; i++) {
+        if (strcmp(sngl_carried_files[i].name, name) == 0) return &sngl_carried_files[i];
+    }
+    return NULL;
+}
+
+/* --- A calendar ---
+ *
+ * gtk_calendar_select_day, which GTK 4.20 deprecates for set_date, which
+ * the older ones lack: a call written in SNGL cannot say it knows, and every
+ * build of a program calling it would warn. */
+/* select_day is the call every GTK 4 has; 4.20 deprecates it for set_date,
+ * which the older ones lack. A call written in SNGL cannot say it knows, and
+ * every build of a program calling it would warn. */
+void sngl_calendar_select_date(GtkWidget *w, GDateTime *day) {
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_calendar_select_day(GTK_CALENDAR(w), day);
+    G_GNUC_END_IGNORE_DEPRECATIONS
 }

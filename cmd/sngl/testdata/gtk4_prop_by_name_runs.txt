@@ -1048,7 +1048,7 @@ const char *peek_prop(GtkWidget *w, const char *name) {
 </repository>
 
 -- testrun/gtk4/c/app.sngl/bars/1 --
-sha256:14041f1c4652d77c15589a9fd49c3b77
+sha256:d4ca59bb4a44583080e85c91a2f5b883
 {
   "results": [
     {
@@ -1058,7 +1058,7 @@ sha256:14041f1c4652d77c15589a9fd49c3b77
   ]
 }
 -- testrun/gtk4/go/app.sngl/bars/1 --
-sha256:15cf8aeac3b92f42cbf4c8d8d3ac21a4
+sha256:b1a4ceff44ee4529d7b93173860a9df7
 {
   "results": [
     {

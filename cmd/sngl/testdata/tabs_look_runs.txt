@@ -251,7 +251,7 @@ sha256:ac32b7ef105d5b964cd308abaf1b666f
   }
 }
 -- testrun/gtk4/c/app.sngl/grows/1 --
-sha256:3dc16c1d518ed2a0b7532c99678e0d87
+sha256:01f89c5ffbeb526e58cf60ede3be4cb4
 {
   "results": [
     {
@@ -261,7 +261,7 @@ sha256:3dc16c1d518ed2a0b7532c99678e0d87
   ]
 }
 -- testrun/gtk4/c/app.sngl/pills/1 --
-sha256:f304cb7615392bca006c0f9132b73192
+sha256:fcde0918ad670a010818cfe6efc16ba4
 {
   "results": [
     {
@@ -271,7 +271,7 @@ sha256:f304cb7615392bca006c0f9132b73192
   ]
 }
 -- testrun/gtk4/c/app.sngl/strip/1 --
-sha256:1d7bf30cc79edcc25c57d0e7da6cd069
+sha256:1da59d42e4091019183eaeb50b9a2899
 {
   "results": [
     {

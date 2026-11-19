@@ -4558,7 +4558,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:360bf2835d696e6786bf4093e134180e
+pass sha256:96e94b64604438de6341d909cb06da38
 -- run/go/bubbletea --
 pass sha256:8a724d3ec5f373c3599f3cef94ce8a35
 -- run/kotlin/android --

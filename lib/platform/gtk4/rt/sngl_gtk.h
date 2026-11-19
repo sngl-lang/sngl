@@ -22,7 +22,7 @@ typedef void (*SnglFn)(void *ctx);
  * widgets from the loop's thread. */
 void sngl_post(SnglFn fn, void *ctx, GDestroyNotify release);
 
-/* What of a widget's look gtk4.sngl does not write itself (look.c): a
+/* What of a widget's look gtk4.sngl does not write itself: a
  * widget kept on o under key without a reference, NULL once it is
  * finalized; and a CSS provider loaded as the GTK built against takes it. */
 void sngl_weak_set(GObject *o, const char *key, GtkWidget *w);
@@ -49,7 +49,7 @@ int sngl_draw_file(GtkWidget *win, const char *path, int width, int height);
  * URL names. A file a program carries is one of the table its entry hands
  * sngl_gtk_carry, ending at a NULL name, or one sngl_gtk_carry_file was
  * handed, as a Go program hands each it embeds, which sngl_carried finds
- * by name (image.c). */
+ * by name. */
 typedef struct {
     const char *name;
     const unsigned char *data;
@@ -73,7 +73,7 @@ SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
 /* sngl_calendar_select_date selects day on w, a calendar, as
- * gtk_calendar_select_day does, which GTK 4.20 deprecates (choose.c). */
+ * gtk_calendar_select_day does, which GTK 4.20 deprecates. */
 void sngl_calendar_select_date(GtkWidget *w, GDateTime *day);
 
 #endif

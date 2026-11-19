@@ -10040,7 +10040,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:73e7130a3a967849231b3a6e20541b5b
+pass sha256:348f611255760e5766302d57cf0cb1c4
 -- run/c/win32 --
 pass sha256:494e2294a0bb7630580379cc27c62325
 -- run/go/bubbletea --

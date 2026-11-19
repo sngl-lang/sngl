@@ -14,7 +14,7 @@ import markup "sngl:ui/markup"
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/choose.c", "rt/image.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //
@@ -251,7 +251,7 @@ func _lookEnsure(w Widget) {
 
 // A widget kept on another under key without a reference, which reads as
 // none once it is gone, and is let go by setting the key to null: rt's
-// look.c, since g_object_add_weak_pointer writes through a pointer no SNGL
+// sngl_gtk.c, since g_object_add_weak_pointer writes through a pointer no SNGL
 // value has.
 #[c.native("sngl_weak_set")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglWeakSet")]
@@ -901,7 +901,7 @@ func _addCssClass(w Widget, name string)
 func _removeCssClass(w Widget, name string)
 
 // The provider's rules made rule, as the GTK it is built against takes them
-// (rt's look.c).
+// (rt's sngl_gtk.c).
 #[c.native("sngl_css_load")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCssLoad")]
 func _cssLoad(css _CssProvider, rule string)
@@ -3957,7 +3957,7 @@ func _calendarDate(c _Calendar) _DateTime
 
 // gtk_calendar_select_day, the call every GTK 4 has, which 4.20 deprecates
 // for gtk_calendar_set_date, which the older ones lack. The runtime makes it
-// (rt/choose.c): a call written here cannot say it knows, so every build of
+// (rt/sngl_gtk.c): a call written here cannot say it knows, so every build of
 // a program would warn.
 #[c.native("sngl_calendar_select_date")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCalendarSelectDate")]

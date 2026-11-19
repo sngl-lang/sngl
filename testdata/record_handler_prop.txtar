@@ -8472,7 +8472,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:3795cf29dcd6023a30104c1ca2f4d513
+pass sha256:a65800c0f8ef25330b502236dd690b14
 -- run/go/bubbletea --
 pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --

@@ -4,7 +4,7 @@
 # between the ones that expand, so each pair below drew the same picture: a
 # row justified to its end as one packed at its start, and children flexing
 # 1 and 3 as children flexing 1 and 1. gtk4's runtime lays such a box out
-# itself now (lib/platform/gtk4/rt/look.c).
+# itself now (lib/platform/gtk4/gtk4.sngl).
 
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=gtk4 app.sngl

@@ -8922,7 +8922,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:aed9fcc5d011e859de1e4b17e945a738
+pass sha256:a6b9cfb130a8a34877cba473f9e1756c
 -- run/c/win32 --
 pass sha256:e254869f7e25f4636add2d30d2d05f99
 -- run/go/fyne --

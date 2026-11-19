@@ -53,9 +53,9 @@ does with it is each target's:
   (`imageFailure`), as win32's does. A drawn source is painted through its
   protocol as a canvas is (`design/nodes.md`): its shapes are the handler of
   its `@paint`, which paints a texture of its size, and a write to what they
-  read is its redraw. What a URL names is read in C (rt's `image.c`, which
-  SNGL can hand neither the table of carried files nor a `GError`'s message
-  nor the answer `sngl_http_start` hands its callback), and is fetched by
+  read is its redraw. What a URL names is read by gtk4.sngl, a file the
+  program carries found through rt's `sngl_carried` (in `sngl_gtk.c`, since
+  the tables are arrays of C structs SNGL cannot walk), and is fetched by
   C's libcurl client, which the
   platform's link ships for either language (`design/stdlib.md`), rather
   than GIO's `GFile`, whose http is GVfs's, which a test's session bus does
