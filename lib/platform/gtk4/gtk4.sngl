@@ -5772,16 +5772,138 @@ func _windowSetIconName(win _Window, name string)
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Getpid")]
 func _processId() int
 
-// Reads the bytes url names, handing done them, or why not, now or, for
-// one fetched, once it arrives: a file the program carries, one beside it,
-// or one fetched.
-#[c.native("sngl_picture_read")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureRead")]
-func _pictureRead(url string, pic Picture, #[c.type("SnglPictureRead")] #[c.static] done func(pic _Object, bytes _Bytes, err string))
+// A file the program carries (rt's SnglAsset): its bytes and how many. The
+// tables of them are rt's to walk, by sngl_carried, which answers the one
+// named, or NULL.
+#[c.native("const SnglAsset *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Asset")]
+struct _Asset {}
 
-#[c.native("sngl_icon_dir")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglIconDir")]
-func _iconDir() string
+#[c.native("sngl_carried")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglCarried")]
+func _carried(name string) option[_Asset]
+
+#[c.native("SnglAsset.data", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAssetData")]
+func _assetData(a _Asset) _ConstPointer
+
+#[c.native("SnglAsset.len", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglAssetLen")]
+func _assetLength(a _Asset) _Size
+
+#[c.native("g_bytes_new_static")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesNewStatic")]
+func _bytesNewStatic(data _ConstPointer, size _Size) _Bytes
+
+// The bytes of the file beside the program name names, or NULL, why
+// holding GError's message: rt's, since what GLib reads a file into is a
+// GError ** out.
+#[c.native("sngl_file_read")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglFileRead")]
+func _fileRead(name string, #[c.frees("g_free")] why ref[string]) option[_Bytes]
+
+// A fetch the runtime makes (sngl:http's, in rt's sngl_http.h), and the
+// answer it hands the function it is given once it arrives: a failure, by
+// its message, or the status and the body.
+#[c.native("sngl_http_request *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HttpRequest")]
+struct _HttpRequest {}
+
+#[c.native("sngl_http_answer *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HttpAnswer")]
+struct _HttpAnswer {}
+
+#[c.native("const char **")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Names")]
+struct _Names {}
+
+#[c.native("sngl_http_start")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpStart")]
+func _httpStart(
+    method   string,
+    url      string,
+    nheaders _Size,
+    names    option[_Names],
+    values   option[_Names],
+    body     option[string],
+    length   _Size,
+    #[c.type("SnglHttpDone")] #[c.static] done func(a _HttpAnswer, data c.pointer),
+    data     c.pointer,
+) option[_HttpRequest]
+
+#[c.native("sngl_http_cancel")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpCancel")]
+func _httpCancel(r _HttpRequest)
+
+#[c.native("sngl_http_answer.failure", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpAnswerFailure")]
+func _answerFailure(a _HttpAnswer) int
+
+#[c.native("sngl_http_answer.message", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpAnswerMessage")]
+func _answerMessage(a _HttpAnswer) string
+
+#[c.native("sngl_http_answer.status", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpAnswerStatus")]
+func _answerStatus(a _HttpAnswer) int
+
+#[c.native("sngl_http_answer.body", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpAnswerBody")]
+func _answerBody(a _HttpAnswer) _ConstPointer
+
+#[c.native("sngl_http_answer.body_len", field)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglHttpAnswerBodyLen")]
+func _answerLength(a _HttpAnswer) _Size
+
+#[c.native("void *", cast)]
+func _voidOf(o _Object) c.pointer
+
+#[c.native("GObject *", cast)]
+func _objectOfVoid(p c.pointer) _Object
+
+#[c.native("gpointer", cast)]
+func _requestPointer(r _HttpRequest) _Pointer
+
+#[c.native("sngl_http_request *", cast)]
+func _requestAt(p _Pointer) _HttpRequest
+
+// The directory of the icon theme's search path a window's icon is
+// written into, made once the first is: GTK 4 takes a window's icon by
+// name only.
+#[c.native("g_dir_make_tmp")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GDirMakeTmp")]
+#[c.frees("g_free")]
+func _dirMakeTmp(template string, error option[_ErrorOut]) option[string]
+
+#[c.native("GtkIconTheme *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.IconTheme")]
+struct _IconTheme {}
+
+#[c.native("gtk_icon_theme_get_for_display")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkIconThemeGetForDisplay")]
+func _iconTheme(d _Display) _IconTheme
+
+#[c.native("gtk_icon_theme_add_search_path")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkIconThemeAddSearchPath")]
+func _iconThemeAddPath(t _IconTheme, path string)
+
+func _iconDir(display _Object) string {
+    var icons = _heldIcons(display, "sngl-icons")
+    var count = 0
+    if icons != null {
+        if icons.dir != "" {
+            return icons.dir
+        }
+        count = icons.count
+    }
+    var dir = _dirMakeTmp("sngl-icons-XXXXXX", null)
+    if dir == null {
+        return ""
+    }
+    _iconThemeAddPath(_iconTheme(_defaultDisplay()), dir)
+    _holdIcons(display, "sngl-icons", _IconsState{count=count, dir=dir})
+    return dir
+}
 
 // Hands the runtime's box calls and its window the functions a window's
 // icon is: taking a source appended to it as its icon, and letting it go,
@@ -5831,9 +5953,11 @@ struct _PictureState {
     height   int = 0
 }
 
-// How many icons the display's windows were given.
+// How many icons the display's windows were given, and the directory they
+// are written into.
 struct _IconsState {
     count int = 0
+    dir   string = ""
 }
 
 #[c.native("g_object_set_data_full")]
@@ -6240,24 +6364,96 @@ func _pictureDecode(pic _Object, bytes _Bytes) bool {
     return made
 }
 
-// What a picture's URL named arrived, as bytes or as why not: a picture
+// What a picture's URL named arrived, as bytes, or why not: a picture
 // given back before it did goes as its reading lets go of it.
-func _pictureArrived(pic _Object, bytes _Bytes, err string) {
+func _pictureArrived(pic _Object, bytes _Bytes) {
     var p = _pictureStateOf(pic)
-    if p != null {
-        if !p.released {
-            var why = ""
-            if err != "" {
-                why = "{p.url}: {err}"
-            } else if int(_bytesSize(bytes)) == 0 {
-                why = "{p.url}: empty"
-            } else if !_pictureDecode(pic, bytes) {
-                why = "{p.url}: not an image GTK can read"
-            }
-            _setPictureState(pic, _PictureState{url=p.url, arrived=true, err=why, holders=p.holders, released=p.released, width=p.width, height=p.height})
-            _pictureTell(pic)
-        }
+    if p == null || p.released {
+        return
     }
+    var why = ""
+    if int(_bytesSize(bytes)) == 0 {
+        why = "empty"
+    } else if !_pictureDecode(pic, bytes) {
+        why = "not an image GTK can read"
+    }
+    _pictureSettled(pic, why)
+}
+
+func _pictureFailed(pic _Object, err string) {
+    var p = _pictureStateOf(pic)
+    if p == null || p.released {
+        return
+    }
+    _pictureSettled(pic, err == "" ? "empty" : err)
+}
+
+func _pictureSettled(pic _Object, why string) {
+    var p = _pictureStateOf(pic)
+    if p == null {
+        return
+    }
+    _setPictureState(pic, _PictureState{url=p.url, arrived=true, err=why == "" ? "" : "{p.url}: {why}", holders=p.holders, released=p.released, width=p.width, height=p.height})
+    _pictureTell(pic)
+}
+
+// Reads the bytes url names: a file the program carries or one beside it
+// now, and one fetched once it arrives.
+func _pictureRead(url string, pic _Object) {
+    if url.startsWith("http://") || url.startsWith("https://") {
+        _pictureFetch(url, pic)
+        return
+    }
+    var name = url.startsWith("/") ? url.substring(1, url.length()) : url
+    var a = _carried(name)
+    if a != null {
+        var b = _bytesNewStatic(_assetData(a), _assetLength(a))
+        _pictureArrived(pic, b)
+        _bytesUnref(b)
+        return
+    }
+    var why = ""
+    var b = _fileRead(name, &why)
+    if b == null {
+        _pictureFailed(pic, why)
+        return
+    }
+    _pictureArrived(pic, b)
+    _bytesUnref(b)
+}
+
+// A picture fetched is held until its answer arrives, on the main loop,
+// and the request it was made by under sngl-fetch.
+func _pictureFetch(url string, pic _Object) {
+    _ref(_objectPointer(pic))
+    var r = _httpStart("GET", url, _Size(0), null, null, null, _Size(0), _pictureFetched, _voidOf(pic))
+    if r == null {
+        _unref(_objectPointer(pic))
+        _pictureFailed(pic, "out of memory")
+        return
+    }
+    _setDataTo(pic, "sngl-fetch", _requestPointer(r))
+}
+
+// A fetch's answer: one whose status is no success failed, by its status.
+func _pictureFetched(a _HttpAnswer, data c.pointer) {
+    var pic = _objectOfVoid(data)
+    var r = _data(pic, "sngl-fetch")
+    if r != null {
+        _setData(pic, "sngl-fetch", null)
+        _httpCancel(_requestAt(r))
+    }
+    var status = _answerStatus(a)
+    if _answerFailure(a) != 0 {
+        _pictureFailed(pic, _answerMessage(a))
+    } else if status < 200 || status >= 300 {
+        _pictureFailed(pic, "HTTP {status}")
+    } else {
+        var b = _bytesNew(_answerBody(a), _answerLength(a))
+        _pictureArrived(pic, b)
+        _bytesUnref(b)
+    }
+    _unref(_objectPointer(pic))
 }
 
 // Telling a source runs the program's @load or @error, which may give the
@@ -6289,7 +6485,7 @@ func loadPicture(url string) Picture {
     var pic = _objectAt(_objectNew(_objectType(), null))
     _setPictureState(pic, _PictureState{url=url, arrived=false, err="", holders=1, released=false, width=0, height=0})
     var picture = _asPicture(pic)
-    _pictureRead(url, picture, _pictureArrived)
+    _pictureRead(url, pic)
     return picture
 }
 
@@ -6402,15 +6598,15 @@ func _iconApply(toplevel Widget, source Widget) {
     var win = _toplevelWindow(toplevel)
     var tex = _data(_object(source), "sngl-texture")
     if win != null && tex != null {
-        var dir = _iconDir()
+        var display = _displayObject(_defaultDisplay())
+        var dir = _iconDir(display)
         if dir != "" {
-            var display = _displayObject(_defaultDisplay())
             var count = 1
             var icons = _heldIcons(display, "sngl-icons")
             if icons != null {
                 count = icons.count + 1
             }
-            _holdIcons(display, "sngl-icons", _IconsState{count=count})
+            _holdIcons(display, "sngl-icons", _IconsState{count=count, dir=dir})
             var name = "sngl-icon-{_processId()}-{count}"
             if _textureSavePng(_textureAt(tex), "{dir}/{name}.png") {
                 _windowSetIconName(win, name)
