@@ -85,7 +85,10 @@ func CPreambleLines(links []*ir.CLink) string {
 // the platform's wrappers do not cover -- is called directly, as `direct`
 // calls every one: the program includes that package's links' headers, and
 // the headers they ship, but none of their C, which the wrapper package
-// compiles.
+// compiles. A program's own package is wrapped the same way where one of its
+// functions has a Go spelling beside its C name (puts in C, fmt.Println in
+// Go), but no wrapper package compiles its C: a call of one of its others
+// links that package's own links whole.
 func CLinks(pkg *ir.Package) []*ir.CLink {
 	if pkg.CCalls == ir.CCallsPurego {
 		return nil
@@ -103,6 +106,10 @@ func CLinks(pkg *ir.Package) []*ir.CLink {
 				continue
 			}
 			headers[l] = true
+			if !c.Func.Pkg.Library && slices.Contains(c.Func.Pkg.CLinks, l) {
+				out = append(out, l)
+				continue
+			}
 			h := *l
 			h.Sources = slices.DeleteFunc(slices.Clone(l.Sources), func(src ir.CSource) bool { return !strings.HasSuffix(src.Name, ".h") })
 			out = append(out, &h)
