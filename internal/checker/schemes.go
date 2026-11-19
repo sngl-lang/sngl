@@ -611,8 +611,9 @@ func (c *checker) checkCFields(pkg *ir.Package) {
 			continue
 		}
 		st, _, _ := strings.Cut(fn.Foreign.Name, ".")
+		// A pointer to a const one reads as well: a member is only read.
 		want := &ir.CType{Name: st, Ptr: 1}
-		if t := fn.Params[0].Type; ir.CStructOf(t) != nil || !ir.CTypeOf(t).Equal(want) {
+		if t := fn.Params[0].Type; ir.CStructOf(t) != nil || ir.CTypeOf(t) == nil || ir.CTypeOf(t).Name != st || ir.CTypeOf(t).Ptr != 1 {
 			c.error(fn.AST.Pos, "#[c.native(%q, field)] reads a member of a %s, so its first parameter is a #[c.native(%q)] handle, not %s", fn.Foreign.Name, st, want.String(), t)
 		}
 	}

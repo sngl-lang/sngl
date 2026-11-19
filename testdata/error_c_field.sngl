@@ -19,8 +19,14 @@ struct Value {
     code int
 }
 
+#[c.native("const thing *")]
+struct ConstThing {}
+
 #[c.native("thing.message", field)]
 func message(t Thing) string
+
+#[c.native("thing.message", field)]
+func constMessage(t ConstThing) string
 
 #[c.native("thing.twice", field)]
 func twice(t Thing, n int) int
