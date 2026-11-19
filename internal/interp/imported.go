@@ -39,7 +39,7 @@ func (env *Env) importedVarOwner(sym ir.Symbol) *Env {
 		}
 		visit(root.Pkg)
 	}
-	if !root.imported[v] {
+	if !root.imported[v] && !targetVar(v) {
 		return nil
 	}
 	val, err := root.Eval(v.Init)
@@ -63,4 +63,14 @@ func (env *Env) programRoot() *Env {
 		}
 		e = e.origin
 	}
+}
+
+// targetVar reports whether v is a package var of a library package, which
+// the program may reach without importing it: a target's, whose overrides and
+// protocol functions the simulator runs, and which keeps state across their
+// calls as a compiled target keeps its promoted copy (sngl:platform/win32's
+// drawing state, simulate_win32.txt). Unbound, a write of it failed as one
+// to an undefined variable. A component's var names no package.
+func targetVar(v *ir.Var) bool {
+	return v.Pkg != nil && v.Pkg.Library
 }
