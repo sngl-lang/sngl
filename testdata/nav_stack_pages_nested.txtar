@@ -1615,13 +1615,13 @@ func __renderSlot0(parent cgo.Widget) {
 								for _, __inst1_live_uv := range m.__inst1_live {
 									__child0__set___p2(__inst1_live_uv, m.cell__params__inst0)
 								}
-								var __lt23 string
+								var __lt24 string
 								if c.Elem == "3" {
-									__lt23 = "/"
+									__lt24 = "/"
 								} else {
-									__lt23 = ((("/" + r.Name) + "/") + c.Elem)
+									__lt24 = ((("/" + r.Name) + "/") + c.Elem)
 								}
-								m.pages__current__inst0 = _page__value{Href: __lt23, Title: (r.Name + c.Elem), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
+								m.pages__current__inst0 = _page__value{Href: __lt24, Title: (r.Name + c.Elem), Meta: __anon_e3b0c4{}, Copy: []int{__copy, __copy1}}
 								cgo.SnglTextSetValue(m.heading, m.pages__current__inst0.Title)
 								__renderSlot0(m.__n1)
 								__renderSlot1(m.__n1)
@@ -1790,14 +1790,14 @@ func __child0__destroy(__self *__child0__inst) {
 
 func __child1__new(__p0 _page__value, __p1 int, __p2 int) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0, __prop___p1: __p1, __prop___p2: __p2}
-	var __lt27 string
+	var __lt28 string
 	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
-		__lt27 = "showing"
+		__lt28 = "showing"
 	} else {
-		__lt27 = "hidden"
+		__lt28 = "hidden"
 	}
 	__self.__n0 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(__self.__n0, __lt27)
+	cgo.SnglTextSetValue(__self.__n0, __lt28)
 	_setLook(__self.__n0, Look{})
 	cgo.SnglOnClick(__self.__n0, func() {
 	})
@@ -1807,20 +1807,6 @@ func __child1__new(__p0 _page__value, __p1 int, __p2 int) *__child1__inst {
 
 func __child1__set___p0(__self *__child1__inst, __v _page__value) {
 	__self.__prop___p0 = __v
-	var __lt24 string
-	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
-		__lt24 = "showing"
-	} else {
-		__lt24 = "hidden"
-	}
-	cgo.SnglTextSetValue(__self.__n0, __lt24)
-}
-
-func __child1__set___p1(__self *__child1__inst, __v int) {
-	if __self.__prop___p1 == __v {
-		return
-	}
-	__self.__prop___p1 = __v
 	var __lt25 string
 	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
 		__lt25 = "showing"
@@ -1830,11 +1816,11 @@ func __child1__set___p1(__self *__child1__inst, __v int) {
 	cgo.SnglTextSetValue(__self.__n0, __lt25)
 }
 
-func __child1__set___p2(__self *__child1__inst, __v int) {
-	if __self.__prop___p2 == __v {
+func __child1__set___p1(__self *__child1__inst, __v int) {
+	if __self.__prop___p1 == __v {
 		return
 	}
-	__self.__prop___p2 = __v
+	__self.__prop___p1 = __v
 	var __lt26 string
 	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
 		__lt26 = "showing"
@@ -1842,6 +1828,20 @@ func __child1__set___p2(__self *__child1__inst, __v int) {
 		__lt26 = "hidden"
 	}
 	cgo.SnglTextSetValue(__self.__n0, __lt26)
+}
+
+func __child1__set___p2(__self *__child1__inst, __v int) {
+	if __self.__prop___p2 == __v {
+		return
+	}
+	__self.__prop___p2 = __v
+	var __lt27 string
+	if (__self.__prop___p0.Id == 0) && (((len(__self.__prop___p0.Copy) == 2) && (__self.__prop___p0.Copy[0] == __self.__prop___p1)) && (__self.__prop___p0.Copy[1] == __self.__prop___p2)) {
+		__lt27 = "showing"
+	} else {
+		__lt27 = "hidden"
+	}
+	cgo.SnglTextSetValue(__self.__n0, __lt27)
 }
 
 func __child1__destroy(__self *__child1__inst) {
@@ -2118,6 +2118,6 @@ pass sha256:eab7b5528cfe54f143b93d19110ece88
 -- run/go/fyne --
 pass sha256:e7baa3669c56763fe01c4409cc487c7f
 -- run/go/gtk4 --
-pass sha256:05aa587a07434a306a7050498d8be2fa
+pass sha256:b5c27df8c85fc744be708a60b1c41d5f
 -- run/kotlin/android --
 pass sha256:809fe68da24f4f90ae5a726a36919015

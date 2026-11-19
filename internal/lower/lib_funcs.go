@@ -62,6 +62,22 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	// promoted and reached the backend undeclared.
 	var roots []any
 	push := func(v any) { roots = append(roots, v) }
+	// A body arriving here was not optimized ahead of lowering, as the
+	// program's were, and gets the builtin methods the program's had
+	// inlined then -- before its walk, which promotes the helpers they call.
+	bm := newBuiltinMethods(pkg)
+	bm.frozen = true
+	var lowerErr error
+	prepare := func(root any) {
+		made, err := bm.lowerPromoted(root)
+		if err != nil && lowerErr == nil {
+			lowerErr = err
+		}
+		for _, fn := range made {
+			have[fn] = true
+			push(fn.Block)
+		}
+	}
 	// A placed node's protocol functions are spliced by passPlacement, after
 	// this pass, and a helper one calls is promoted here; one no splice
 	// calls is shaken once the build has lowered. A copy is walked, since
@@ -70,7 +86,9 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	// package with no features, and write no SNGL helper.
 	if feats.Placement {
 		for _, fn := range placedProtocols(pkg) {
-			push(ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func.Block)
+			block := ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func.Block
+			prepare(block)
+			push(block)
 		}
 	}
 	var added []*ir.Func
@@ -97,6 +115,7 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 					have[fn], have[c] = true, true
 					promoted[key] = c
 					added = append(added, c)
+					prepare(c)
 					push(c.Block)
 				}
 				if !slices.Contains(pkg.Entries, c) {
@@ -108,12 +127,18 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	foreign := importedVars(pkg)
 	for {
 		push(pkg)
-		promoteFuncs(&roots, push, wanted, have, promoted, &added)
+		promoteFuncs(&roots, push, prepare, wanted, have, promoted, &added)
 		pkg.Funcs = append(pkg.Funcs, added...)
 		added = nil
 		if !promoteVars(pkg, foreign) {
 			break
 		}
+	}
+	if lowerErr != nil {
+		return lowerErr
+	}
+	if len(bm.instances) > 0 {
+		bm.packTypes()
 	}
 	inlineLibConsts(pkg)
 	// The structs those helpers' signatures name are promoted by the shake
@@ -238,7 +263,7 @@ func intrinsicMethod(fn *ir.Func) bool {
 	return ok && comp.Intrinsic != ""
 }
 
-func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, promoted map[string]*ir.Func, added *[]*ir.Func) {
+func promoteFuncs(roots *[]any, push, prepare func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, promoted map[string]*ir.Func, added *[]*ir.Func) {
 	for len(*roots) > 0 {
 		root := (*roots)[0]
 		*roots = (*roots)[1:]
@@ -273,6 +298,7 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 			}
 			promoted[key] = fn
 			*added = append(*added, fn)
+			prepare(fn)
 			// A promoted helper may call a second one.
 			push(fn.Block)
 			return nil

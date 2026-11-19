@@ -1247,50 +1247,50 @@ func __n0_visible_handler(__visible bool) {
 }
 
 func Grow_clicked_handler() {
-	var __lt23 Shape
+	var __lt24 Shape
 	switch {
 	case (m.shape__inst0.tag == 0):
-		__lt23 = Shape{tag: 1, Circle: 1.0}
+		__lt24 = Shape{tag: 1, Circle: 1.0}
 	case (m.shape__inst0.tag == 1):
-		__lt23 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
+		__lt24 = Shape{tag: 1, Circle: (m.shape__inst0.Circle + 1.0)}
 	default:
-		__lt23 = Shape{tag: 0}
+		__lt24 = Shape{tag: 0}
 	}
-	m.shape__inst0 = __lt23
+	m.shape__inst0 = __lt24
 	cgo.SnglTextSetValue(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
-	var __lt24 string
-	if m.shape__inst0.tag == 1 {
-		__lt24 = "round"
-	} else {
-		__lt24 = "not round"
-	}
-	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt24) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 	var __lt25 string
 	if m.shape__inst0.tag == 1 {
-		__lt25 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt25 = "round"
 	} else {
-		__lt25 = "none"
+		__lt25 = "not round"
 	}
-	cgo.SnglTextSetValue(m.radius, __lt25)
+	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt25) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	var __lt26 string
+	if m.shape__inst0.tag == 1 {
+		__lt26 = fmt.Sprint(m.shape__inst0.Circle)
+	} else {
+		__lt26 = "none"
+	}
+	cgo.SnglTextSetValue(m.radius, __lt26)
 	__renderSlot0(m.__n0)
 }
 
 func Odd_clicked_handler() {
 	m.result__inst0 = Result__int{tag: 1, Failed: Failure{Message: "odd", Code: 3}}
-	var __lt26 string
-	if m.result__inst0.tag == 0 {
-		__lt26 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
-	} else {
-		__lt26 = ("failed: " + m.result__inst0.Failed.Message)
-	}
-	cgo.SnglTextSetValue(m.outcome, __lt26)
 	var __lt27 string
-	if m.shape__inst0.tag == 1 {
-		__lt27 = "round"
+	if m.result__inst0.tag == 0 {
+		__lt27 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt27 = "not round"
+		__lt27 = ("failed: " + m.result__inst0.Failed.Message)
 	}
-	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt27) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	cgo.SnglTextSetValue(m.outcome, __lt27)
+	var __lt28 string
+	if m.shape__inst0.tag == 1 {
+		__lt28 = "round"
+	} else {
+		__lt28 = "not round"
+	}
+	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt28) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
 }
 
 func __child0__new(__p0 Shape) *__child0__inst {
@@ -1334,34 +1334,34 @@ func snglBuild() {
 	cgo.SnglTextSetValue(m.shownArea, fmt.Sprint(Area(m.shape__inst0)))
 	_setLook(m.shownArea, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.shownArea)
-	var __lt20 string
+	var __lt21 string
 	if m.result__inst0.tag == 0 {
-		__lt20 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
+		__lt21 = ("ok " + fmt.Sprint(m.result__inst0.Ok))
 	} else {
-		__lt20 = ("failed: " + m.result__inst0.Failed.Message)
+		__lt21 = ("failed: " + m.result__inst0.Failed.Message)
 	}
 	m.outcome = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.outcome, __lt20)
+	cgo.SnglTextSetValue(m.outcome, __lt21)
 	_setLook(m.outcome, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.outcome)
-	var __lt21 string
-	if m.shape__inst0.tag == 1 {
-		__lt21 = "round"
-	} else {
-		__lt21 = "not round"
-	}
-	m.facts = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt21) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
-	_setLook(m.facts, Look{})
-	cgo.SnglToplevelAppend(m.__n0, m.facts)
 	var __lt22 string
 	if m.shape__inst0.tag == 1 {
-		__lt22 = fmt.Sprint(m.shape__inst0.Circle)
+		__lt22 = "round"
 	} else {
-		__lt22 = "none"
+		__lt22 = "not round"
+	}
+	m.facts = cgo.SnglTextNew()
+	cgo.SnglTextSetValue(m.facts, ((((((fmt.Sprint(Area(m.held)) + " ") + fmt.Sprint(OrZero(m.result__inst0))) + " ") + __lt22) + " ") + fmt.Sprint((m.result__inst0 == Result__int{tag: 0, Ok: 2}))))
+	_setLook(m.facts, Look{})
+	cgo.SnglToplevelAppend(m.__n0, m.facts)
+	var __lt23 string
+	if m.shape__inst0.tag == 1 {
+		__lt23 = fmt.Sprint(m.shape__inst0.Circle)
+	} else {
+		__lt23 = "none"
 	}
 	m.radius = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.radius, __lt22)
+	cgo.SnglTextSetValue(m.radius, __lt23)
 	_setLook(m.radius, Look{})
 	cgo.SnglToplevelAppend(m.__n0, m.radius)
 	__renderSlot0(m.__n0)
@@ -1725,7 +1725,7 @@ pass sha256:16104e60b32cf3745942e5f9bd7f6030
 -- run/go/fyne --
 pass sha256:a2aa9e4647134a568fbe61ac8db51221
 -- run/go/gtk4 --
-pass sha256:42e9044b7537a257f68db288e4c05519
+pass sha256:3133cc19230f9651081faac72be10a87
 -- run/kotlin/android --
 pass sha256:07c971f96ecee13b813de0f3ca3e2bed
 -- run/none/html --

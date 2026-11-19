@@ -62,7 +62,7 @@ ui.window {
     styled
 }
 -- testrun/gtk4/go/app.sngl/flips/1 --
-sha256:5aca393240157dfe45e65afb07f7bc5f
+sha256:a932f92f419d975e0c760a1f15bd514c
 {
   "results": [
     {

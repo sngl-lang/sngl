@@ -2431,18 +2431,18 @@ func Card__slot0__destroy(__self *Card__slot0__inst) {
 
 func __child0__new(__p0 __anon_id_elem_c6a818, __p1 string, __p2 int, __on0 func()) *__child0__inst {
 	__self := &__child0__inst{__prop___p0: __p0, __prop___p1: __p1, __prop___p2: __p2, __prop___on0: __on0}
-	var __lt23 string
+	var __lt24 string
 	if __self.__prop___p1 == "" {
-		__lt23 = fmt.Sprint(__self.__prop___p2)
+		__lt24 = fmt.Sprint(__self.__prop___p2)
 	} else {
-		__lt23 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		__lt24 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
 	}
 	__self.Cell = cgo.GtkButtonNew()
 	m.cell__held = snglSome(__self.Cell)
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Cell)), __self.__prop___p0.Elem)
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Cell)), cgo.CGboolean(1))
 	_setLook(__self.Cell, Look{})
-	m.cell__copies[__lt23] = __self.Cell
+	m.cell__copies[__lt24] = __self.Cell
 	cgo.SnglSignalConnect(__self.Cell, "clicked", func() {
 		__self.__prop___on0()
 	})
@@ -2460,27 +2460,6 @@ func __child0__set___p0(__self *__child0__inst, __v __anon_id_elem_c6a818) {
 
 func __child0__set___p1(__self *__child0__inst, __v string) {
 	if __self.__prop___p1 == __v {
-		var __lt21 string
-		if __self.__prop___p1 == "" {
-			__lt21 = fmt.Sprint(__self.__prop___p2)
-		} else {
-			__lt21 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
-		}
-		m.cell__copies[__lt21] = __self.Cell
-		return
-	}
-	__self.__prop___p1 = __v
-	var __lt21 string
-	if __self.__prop___p1 == "" {
-		__lt21 = fmt.Sprint(__self.__prop___p2)
-	} else {
-		__lt21 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
-	}
-	m.cell__copies[__lt21] = __self.Cell
-}
-
-func __child0__set___p2(__self *__child0__inst, __v int) {
-	if __self.__prop___p2 == __v {
 		var __lt22 string
 		if __self.__prop___p1 == "" {
 			__lt22 = fmt.Sprint(__self.__prop___p2)
@@ -2490,7 +2469,7 @@ func __child0__set___p2(__self *__child0__inst, __v int) {
 		m.cell__copies[__lt22] = __self.Cell
 		return
 	}
-	__self.__prop___p2 = __v
+	__self.__prop___p1 = __v
 	var __lt22 string
 	if __self.__prop___p1 == "" {
 		__lt22 = fmt.Sprint(__self.__prop___p2)
@@ -2498,6 +2477,27 @@ func __child0__set___p2(__self *__child0__inst, __v int) {
 		__lt22 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
 	}
 	m.cell__copies[__lt22] = __self.Cell
+}
+
+func __child0__set___p2(__self *__child0__inst, __v int) {
+	if __self.__prop___p2 == __v {
+		var __lt23 string
+		if __self.__prop___p1 == "" {
+			__lt23 = fmt.Sprint(__self.__prop___p2)
+		} else {
+			__lt23 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		}
+		m.cell__copies[__lt23] = __self.Cell
+		return
+	}
+	__self.__prop___p2 = __v
+	var __lt23 string
+	if __self.__prop___p1 == "" {
+		__lt23 = fmt.Sprint(__self.__prop___p2)
+	} else {
+		__lt23 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+	}
+	m.cell__copies[__lt23] = __self.Cell
 }
 
 func __child0__set___on0(__self *__child0__inst, __v func()) {
@@ -2513,18 +2513,18 @@ func __child0__destroy(__self *__child0__inst) {
 
 func __child1__new(__p0 __anon_id_elem_c6a818, __p1 string, __p2 int, __on0 func()) *__child1__inst {
 	__self := &__child1__inst{__prop___p0: __p0, __prop___p1: __p1, __prop___p2: __p2, __prop___on0: __on0}
-	var __lt26 string
+	var __lt27 string
 	if __self.__prop___p1 == "" {
-		__lt26 = fmt.Sprint(__self.__prop___p2)
+		__lt27 = fmt.Sprint(__self.__prop___p2)
 	} else {
-		__lt26 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		__lt27 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
 	}
 	__self.Mark = cgo.GtkButtonNew()
 	m.mark__held = snglSome(__self.Mark)
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Mark)), __self.__prop___p0.Elem)
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Mark)), cgo.CGboolean(1))
 	_setLook(__self.Mark, Look{})
-	m.mark__copies[__lt26] = __self.Mark
+	m.mark__copies[__lt27] = __self.Mark
 	cgo.SnglSignalConnect(__self.Mark, "clicked", func() {
 		__self.__prop___on0()
 	})
@@ -2542,27 +2542,6 @@ func __child1__set___p0(__self *__child1__inst, __v __anon_id_elem_c6a818) {
 
 func __child1__set___p1(__self *__child1__inst, __v string) {
 	if __self.__prop___p1 == __v {
-		var __lt24 string
-		if __self.__prop___p1 == "" {
-			__lt24 = fmt.Sprint(__self.__prop___p2)
-		} else {
-			__lt24 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
-		}
-		m.mark__copies[__lt24] = __self.Mark
-		return
-	}
-	__self.__prop___p1 = __v
-	var __lt24 string
-	if __self.__prop___p1 == "" {
-		__lt24 = fmt.Sprint(__self.__prop___p2)
-	} else {
-		__lt24 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
-	}
-	m.mark__copies[__lt24] = __self.Mark
-}
-
-func __child1__set___p2(__self *__child1__inst, __v int) {
-	if __self.__prop___p2 == __v {
 		var __lt25 string
 		if __self.__prop___p1 == "" {
 			__lt25 = fmt.Sprint(__self.__prop___p2)
@@ -2572,7 +2551,7 @@ func __child1__set___p2(__self *__child1__inst, __v int) {
 		m.mark__copies[__lt25] = __self.Mark
 		return
 	}
-	__self.__prop___p2 = __v
+	__self.__prop___p1 = __v
 	var __lt25 string
 	if __self.__prop___p1 == "" {
 		__lt25 = fmt.Sprint(__self.__prop___p2)
@@ -2580,6 +2559,27 @@ func __child1__set___p2(__self *__child1__inst, __v int) {
 		__lt25 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
 	}
 	m.mark__copies[__lt25] = __self.Mark
+}
+
+func __child1__set___p2(__self *__child1__inst, __v int) {
+	if __self.__prop___p2 == __v {
+		var __lt26 string
+		if __self.__prop___p1 == "" {
+			__lt26 = fmt.Sprint(__self.__prop___p2)
+		} else {
+			__lt26 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+		}
+		m.mark__copies[__lt26] = __self.Mark
+		return
+	}
+	__self.__prop___p2 = __v
+	var __lt26 string
+	if __self.__prop___p1 == "" {
+		__lt26 = fmt.Sprint(__self.__prop___p2)
+	} else {
+		__lt26 = ((__self.__prop___p1 + "/") + fmt.Sprint(__self.__prop___p2))
+	}
+	m.mark__copies[__lt26] = __self.Mark
 }
 
 func __child1__set___on0(__self *__child1__inst, __v func()) {
@@ -3889,7 +3889,7 @@ pass sha256:dbea6c1ed1b1bff6bebbc2915671d3e6
 -- run/go/fyne --
 pass sha256:96abfb5ec0a0dd8c2718d6808e3e58fe
 -- run/go/gtk4 --
-pass sha256:c6f6fd9032531693b937a94405298ca9
+pass sha256:bf8170e27558354d00dad2bdf2992e3b
 -- run/kotlin/android --
 pass sha256:e80981dd088c9496f4b801f6ee3d7973
 -- run/none/html --

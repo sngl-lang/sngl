@@ -374,13 +374,13 @@ func __n2_visible_handler(__visible bool) {
 func __n7_clicked_handler() {
 	m.panels = [][]string{[]string{"z"}}
 	__renderSlot2(m.__n6)
-	var __lt21 []string
+	var __lt22 []string
 	if len(m.names) == 2 {
-		__lt21 = []string{"c"}
+		__lt22 = []string{"c"}
 	} else {
-		__lt21 = []string{"a", "b"}
+		__lt22 = []string{"a", "b"}
 	}
-	m.names = slices.Clone(__lt21)
+	m.names = slices.Clone(__lt22)
 	__renderSlot1(m.__n6)
 }
 
@@ -618,4 +618,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:54feba98a458078e2b3a2bb4396af141
+pass sha256:b1ddea9de1f868df156ba16a7ca6c035

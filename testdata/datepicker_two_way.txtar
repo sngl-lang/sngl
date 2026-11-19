@@ -847,13 +847,13 @@ func __n0_visible_handler(__visible bool) {
 
 func D_daySelected_handler(c cgo.Widget) {
 	m.picked__inst0 = ParseDate(cgo.SnglCalendarDay(c))
-	var __lt21 string
+	var __lt22 string
 	if m.picked__inst0 != nil {
-		__lt21 = (*(m.picked__inst0)).Format("2006-01-02")
+		__lt22 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
-		__lt21 = "none"
+		__lt22 = "none"
 	}
-	cgo.SnglTextSetValue(m.__n1, __lt21)
+	cgo.SnglTextSetValue(m.__n1, __lt22)
 	m.changes__inst0 += 1
 	__effects0_settle()
 }
@@ -887,14 +887,14 @@ func snglBuild() {
 		D_daySelected_handler(m.d)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.d)))
-	var __lt22 string
+	var __lt23 string
 	if m.picked__inst0 != nil {
-		__lt22 = (*(m.picked__inst0)).Format("2006-01-02")
+		__lt23 = (*(m.picked__inst0)).Format("2006-01-02")
 	} else {
-		__lt22 = "none"
+		__lt23 = "none"
 	}
 	m.__n1 = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.__n1, __lt22)
+	cgo.SnglTextSetValue(m.__n1, __lt23)
 	_setLook(m.__n1, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n2)
@@ -1240,7 +1240,7 @@ pass sha256:12eb12b75d7d682e49eeb4edcde90ecb
 -- run/go/fyne --
 pass sha256:7822854c3fe655308a27c97bc8cdc2f8
 -- run/go/gtk4 --
-pass sha256:a8c9a32a562746d8e1d87c41ed263133
+pass sha256:260e208aa869d8898b269f621b23eec5
 -- run/kotlin/android --
 pass sha256:c2c429cadd1446bb0ba7006f34a32530
 -- run/none/html --

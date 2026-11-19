@@ -516,6 +516,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -613,7 +614,8 @@ func _rtSpanStyle(span cgo.Widget, r int, g int, b int, a int, size float64, wei
 		attrs += ((" font_family=\"" + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(family, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&apos;"), "\"", "&quot;")) + "\"")
 	}
 	if a != 0 {
-		attrs += ((((" foreground=\"#" + _hexByte(r)) + _hexByte(g)) + _hexByte(b)) + "\"")
+		color := ((_fill(_baseText(r, 16), 2, "0") + _fill(_baseText(g, 16), 2, "0")) + _fill(_baseText(b, 16), 2, "0"))
+		attrs += ((" foreground=\"#" + strings.ToUpper(color)) + "\"")
 	}
 	if size > 0.0 {
 		attrs += ((" font_desc=\"" + fmt.Sprint(size)) + "px\"")
@@ -744,11 +746,48 @@ func _spanChanged(from cgo.Widget) {
 	cgo.GtkLabelSetMarkup((cgo.PGtkLabel)(unsafe.Pointer(from)), _kidsMarkup(_spanKids(from)))
 }
 
-func _hexByte(n int) string {
-	digits := "0123456789ABCDEF"
-	var high int = ((n / 16) % 16)
-	var low int = (n % 16)
-	return (string([]rune(digits)[high:(high+1)]) + string([]rune(digits)[low:(low+1)]))
+func _fill(text string, width int, pad string) string {
+	var __lt3 string
+	if (pad == "0") && (string([]rune(text)[0:1]) == "-") {
+		__lt3 = "-"
+	} else {
+		__lt3 = ""
+	}
+	sign := __lt3
+	digits := string([]rune(text)[utf8.RuneCountInString(sign):utf8.RuneCountInString(text)])
+	fill := ""
+	for (pad != "") && (((utf8.RuneCountInString(sign) + utf8.RuneCountInString(fill)) + utf8.RuneCountInString(digits)) < width) {
+		fill = (fill + pad)
+	}
+	return ((sign + fill) + digits)
+}
+
+func _baseText(x int, base int) string {
+	if (base < 2) || (base > 36) {
+		return fmt.Sprint(x)
+	}
+	if x == 0 {
+		return "0"
+	}
+	out := ""
+	var m__r3 int = func(x int) int {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}(x)
+	for m__r3 > 0 {
+		var d int = (m__r3 % base)
+		out = (string([]rune("0123456789abcdefghijklmnopqrstuvwxyz")[d:(d+1)]) + out)
+		m__r3 = (m__r3 / base)
+	}
+	var __lt4 string
+	if x < 0 {
+		__lt4 = ("-" + out)
+	} else {
+		__lt4 = out
+	}
+	return __lt4
 }
 
 func _spanKids(parent cgo.Widget) cgo.Store {
@@ -975,7 +1014,7 @@ pass sha256:4fdce193761eaeed9449c468ca68a1ad
 -- run/go/fyne --
 pass sha256:4cb40b2485d7b46ef74a968719b557cc
 -- run/go/gtk4 --
-pass sha256:c541bc52f9acdccc8d83c1df019542c1
+pass sha256:0a1b18e0e00160ce525157dd176cd944
 -- run/kotlin/android --
 pass sha256:87c510780598cdd0670e5695b4a347df
 -- run/none/html --

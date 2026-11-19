@@ -1879,13 +1879,13 @@ func __setsummary_value() {
 			return __out
 		}()) {
 			__out[__i] = func(it MenuItem__record) string {
-				var __lt21 string
+				var __lt22 string
 				if it.Checked {
-					__lt21 = (("[" + it.Label) + "]")
+					__lt22 = (("[" + it.Label) + "]")
 				} else {
-					__lt21 = it.Label
+					__lt22 = it.Label
 				}
-				return __lt21
+				return __lt22
 			}(__item)
 		}
 		return __out
@@ -1943,13 +1943,13 @@ func snglBuild() {
 			return __out
 		}()) {
 			__out[__i] = func(it MenuItem__record) string {
-				var __lt21 string
+				var __lt22 string
 				if it.Checked {
-					__lt21 = (("[" + it.Label) + "]")
+					__lt22 = (("[" + it.Label) + "]")
 				} else {
-					__lt21 = it.Label
+					__lt22 = it.Label
 				}
-				return __lt21
+				return __lt22
 			}(__item)
 		}
 		return __out
@@ -2324,7 +2324,7 @@ pass sha256:40a60caf5c50d01da562e8b50d6da549
 -- run/go/fyne --
 pass sha256:356307ab58c67c65161a5582dd0c6798
 -- run/go/gtk4 --
-pass sha256:247063c828c72fe9250234fbe0548325
+pass sha256:a586a078b01668d7c24a8fd1b1539361
 -- run/go/html --
 pass sha256:5510c033443eae0827f90d3aa3e3e6d0
 -- run/kotlin/android --

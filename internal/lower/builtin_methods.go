@@ -42,10 +42,7 @@ func lowerBuiltinMethods(pkg *ir.Package, _ Features, _ Options) error {
 	if pkg == nil {
 		return nil
 	}
-	b := &builtinMethods{pkg: pkg, names: map[string]bool{}, promoted: map[*ir.Func]bool{}}
-	if pkg.Symbols != nil {
-		b.scope = pkg.Symbols.Root
-	}
+	b := newBuiltinMethods(pkg)
 	// A generic function calling a constraint's function, or formatting a
 	// value of its type parameter, is copied at each binding first: the call
 	// is the bound type's own only once there is one.
@@ -80,6 +77,49 @@ type builtinMethods struct {
 	promoted  map[*ir.Func]bool
 	pending   []*ir.Func
 	packs     map[*ir.Type]*ir.Type
+	// frozen inlines a frozen library's method as well, which a build
+	// otherwise leaves to the optimizer that runs ahead of lowering: set
+	// for a body passLibFuncs promotes, which that optimizer never saw.
+	frozen bool
+}
+
+func newBuiltinMethods(pkg *ir.Package) *builtinMethods {
+	b := &builtinMethods{pkg: pkg, names: map[string]bool{}, promoted: map[*ir.Func]bool{}}
+	if pkg.Symbols != nil {
+		b.scope = pkg.Symbols.Root
+	}
+	return b
+}
+
+// lowerPromoted rewrites root, the body of a library function passLibFuncs
+// makes the package's after this pass has run, as the pass rewrote the
+// program's own, and answers each function the rewrite made the package's.
+//
+// The optimizer ahead of lowering inlines a builtin method in the program's
+// bodies, and the helpers the inlined body calls are promoted with them. A
+// library body promoted later met only the optimizer after lowering, which
+// inlined `r.format(16, 2, "0")` as `_fill(_baseText(r, 16), 2, "0")` once
+// nothing was left to declare either helper: gtk4's `_rtSpanStyle`, which a
+// placed node's protocol calls, emitted an undefined `_fill` in Go and in C.
+func (b *builtinMethods) lowerPromoted(root any) ([]*ir.Func, error) {
+	if len(b.names) == 0 {
+		for _, fn := range b.pkg.Funcs {
+			b.names[fn.Name] = true
+		}
+	}
+	if err := b.visit(root); err != nil {
+		return nil, err
+	}
+	var made []*ir.Func
+	for len(b.pending) > 0 {
+		fn := b.pending[0]
+		b.pending = b.pending[1:]
+		if err := b.visit(fn); err != nil {
+			return nil, err
+		}
+		made = append(made, fn)
+	}
+	return made, nil
 }
 
 // visit rewrites root's calls (rewrite) and makes each builtin method one of
@@ -125,7 +165,7 @@ func (b *builtinMethods) rewrite(e ir.Expr) (ir.Expr, error) {
 	if ir.IsDefaultFormat(call.Func) && len(call.Args) == 1 {
 		return &ir.Conversion{Type: call.Type, Operand: call.Args[0].Value}, nil
 	}
-	if promotableBuiltinMethod(call.Func) {
+	if promotableBuiltinMethod(call.Func) || b.frozen && inlinableBuiltinMethod(call.Func) {
 		if inlined := inlineSettled(call, 0); inlined != nil {
 			return inlined, nil
 		}
@@ -444,7 +484,13 @@ func constValue(e ir.Expr) (any, bool) {
 // a body, for a builtin type that takes no type parameters, in a package this
 // build copied.
 func promotableBuiltinMethod(fn *ir.Func) bool {
-	if fn == nil || fn.Frozen || fn.PkgPath() == "" || fn.Intrinsic != "" || len(fn.Block) == 0 ||
+	return fn != nil && !fn.Frozen && inlinableBuiltinMethod(fn)
+}
+
+// inlinableBuiltinMethod is promotableBuiltinMethod in any package, the
+// library's frozen one included: inlining copies the body and writes none.
+func inlinableBuiltinMethod(fn *ir.Func) bool {
+	if fn == nil || fn.PkgPath() == "" || fn.Intrinsic != "" || len(fn.Block) == 0 ||
 		len(fn.RecvTypeParams) > 0 || len(fn.TypeParams) > 0 || fn.RecvParam != nil {
 		return false
 	}

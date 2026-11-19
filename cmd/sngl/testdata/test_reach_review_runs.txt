@@ -1612,7 +1612,7 @@ sha256:ef334e891590ddeac3e035e2a15942da
   ]
 }
 -- testrun/gtk4/c/sitecall.sngl/main/1 --
-sha256:56d7d7091419767e97e059b20098c5cd
+sha256:47fc5630c5af4732f276278c662a20f6
 {
   "results": [
     {
@@ -1716,7 +1716,7 @@ sha256:4f5c4b4f6dacdd35df72a39455667728
   ]
 }
 -- testrun/gtk4/go/nested.sngl/main/1 --
-sha256:1eaff315089a29e3e076bd10c3e73320
+sha256:c8f21bae594fade344d5b9dbad41c487
 {
   "results": [
     {

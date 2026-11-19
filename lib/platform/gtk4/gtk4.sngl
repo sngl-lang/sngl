@@ -1845,14 +1845,6 @@ func _rtSpanHref(span Span, href string) {
     _spanChanged(w)
 }
 
-// A color's channel as the two digits Pango reads.
-func _hexByte(n int) string {
-    var digits = "0123456789ABCDEF"
-    var high = n / 16 % 16
-    var low = n % 16
-    return digits.substring(high, high + 1) + digits.substring(low, low + 1)
-}
-
 // A style as the Pango a run's words are wrapped in: Pango's own elements
 // for a weight, a slant, a line and a monospace family, and a span's
 // attributes for the rest. What the style leaves alone writes nothing, so
@@ -1884,7 +1876,8 @@ func _rtSpanStyle(
         attrs += " font_family=\"{_markupEscape(family)}\""
     }
     if a != 0 {
-        attrs += " foreground=\"#{_hexByte(r)}{_hexByte(g)}{_hexByte(b)}\""
+        var color = r.format(16, 2, "0") + g.format(16, 2, "0") + b.format(16, 2, "0")
+        attrs += " foreground=\"#{color.upper()}\""
     }
     if size > 0 {
         attrs += " font_desc=\"{size}px\""

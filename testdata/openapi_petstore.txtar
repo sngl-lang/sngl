@@ -2369,13 +2369,13 @@ func __n12_clicked_handler() {
 			switch {
 			case (__match0.tag == 0):
 				r := __match0.Ok
-				var __lt20 string
+				var __lt21 string
 				if r.ParentBreed != nil {
-					__lt20 = (*(r.ParentBreed)).Name
+					__lt21 = (*(r.ParentBreed)).Name
 				} else {
-					__lt20 = "nothing"
+					__lt21 = "nothing"
 				}
-				m.from__inst0 = __lt20
+				m.from__inst0 = __lt21
 				cgo.SnglTextSetValue(m.__n5, m.from__inst0)
 			default:
 				r := __match0.Failed
@@ -4573,7 +4573,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:b5f3baeae86193fe834d670cec639e7f
 -- run/go/gtk4 --
-pass sha256:fa61bca323500f52c527e784531f4b1b
+pass sha256:c4c97c81aa2346acbce5c1098042127a
 -- run/kotlin/android --
 pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --

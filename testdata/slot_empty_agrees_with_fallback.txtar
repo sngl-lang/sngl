@@ -1659,23 +1659,23 @@ func __n1_visible_handler(__visible bool) {
 
 func Show_clicked_handler() {
 	m.b__inst0 = true
-	var __lt24 string
-	if !m.a__inst0 && !m.b__inst0 {
-		__lt24 = "asks: empty"
-	} else {
-		__lt24 = "asks: full"
-	}
-	cgo.SnglTextSetValue(m.two, __lt24)
-	__renderSlot1(m.__n8)
-	__renderSlot2(m.__n8)
-	m.xs__inst0 = []int{7}
 	var __lt25 string
-	if len(__identified0(m.xs__inst0)) == 0 {
+	if !m.a__inst0 && !m.b__inst0 {
 		__lt25 = "asks: empty"
 	} else {
 		__lt25 = "asks: full"
 	}
-	cgo.SnglTextSetValue(m.loop, __lt25)
+	cgo.SnglTextSetValue(m.two, __lt25)
+	__renderSlot1(m.__n8)
+	__renderSlot2(m.__n8)
+	m.xs__inst0 = []int{7}
+	var __lt26 string
+	if len(__identified0(m.xs__inst0)) == 0 {
+		__lt26 = "asks: empty"
+	} else {
+		__lt26 = "asks: full"
+	}
+	cgo.SnglTextSetValue(m.loop, __lt26)
 	__renderSlot3(m.__n9)
 	__renderSlot4(m.__n9)
 }
@@ -1739,14 +1739,14 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n1, "")
 	cgo.SnglToplevelSetVisible(m.__n1, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
-	var __lt21 string
+	var __lt22 string
 	if !m.a__inst0 && !m.b__inst0 {
-		__lt21 = "asks: empty"
+		__lt22 = "asks: empty"
 	} else {
-		__lt21 = "asks: full"
+		__lt22 = "asks: full"
 	}
 	m.two = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.two, __lt21)
+	cgo.SnglTextSetValue(m.two, __lt22)
 	_setLook(m.two, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.two)
 	m.__n8 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -1756,14 +1756,14 @@ func snglBuild() {
 	__renderSlot1(m.__n8)
 	__renderSlot2(m.__n8)
 	cgo.SnglToplevelAppend(m.__n1, m.__n8)
-	var __lt22 string
+	var __lt23 string
 	if len(__identified0(m.xs__inst0)) == 0 {
-		__lt22 = "asks: empty"
+		__lt23 = "asks: empty"
 	} else {
-		__lt22 = "asks: full"
+		__lt23 = "asks: full"
 	}
 	m.loop = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.loop, __lt22)
+	cgo.SnglTextSetValue(m.loop, __lt23)
 	_setLook(m.loop, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.loop)
 	m.__n9 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -1772,9 +1772,9 @@ func snglBuild() {
 	__renderSlot3(m.__n9)
 	__renderSlot4(m.__n9)
 	cgo.SnglToplevelAppend(m.__n1, m.__n9)
-	__lt23 := "asks: empty"
+	__lt24 := "asks: empty"
 	m.lifetime = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.lifetime, __lt23)
+	cgo.SnglTextSetValue(m.lifetime, __lt24)
 	_setLook(m.lifetime, Look{})
 	cgo.SnglToplevelAppend(m.__n1, m.lifetime)
 	m.__n10 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -2470,7 +2470,7 @@ pass sha256:b5255fc74f19dc577624b839bc9a450a
 -- run/go/fyne --
 pass sha256:6db927765f95ba8bacd266748e9b0894
 -- run/go/gtk4 --
-pass sha256:99420087d64a41ce529c0c8287dbbec6
+pass sha256:b9290b0978b5f1ab307bb8f79d7d8bd7
 -- run/kotlin/android --
 pass sha256:c2165c1a967542a66a0139c9b7a3c400
 -- run/none/html --

@@ -809,13 +809,13 @@ func Free_toggled_handler(b cgo.Widget) {
 				return 0
 			}
 		}()))
-		var __lt21 string
+		var __lt22 string
 		if m.checked__inst0 {
-			__lt21 = "on"
+			__lt22 = "on"
 		} else {
-			__lt21 = "off"
+			__lt22 = "off"
 		}
-		cgo.SnglTextSetValue(m.seen, __lt21)
+		cgo.SnglTextSetValue(m.seen, __lt22)
 	}
 }
 
@@ -836,13 +836,13 @@ func Flip_clicked_handler() {
 			return 0
 		}
 	}()))
-	var __lt23 string
+	var __lt24 string
 	if m.checked__inst0 {
-		__lt23 = "on"
+		__lt24 = "on"
 	} else {
-		__lt23 = "off"
+		__lt24 = "off"
 	}
-	cgo.SnglTextSetValue(m.seen, __lt23)
+	cgo.SnglTextSetValue(m.seen, __lt24)
 }
 
 func snglInit() {
@@ -890,14 +890,14 @@ func snglBuild() {
 		Free_toggled_handler(m.free)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.free)))
-	var __lt22 string
+	var __lt23 string
 	if m.checked__inst0 {
-		__lt22 = "on"
+		__lt23 = "on"
 	} else {
-		__lt22 = "off"
+		__lt23 = "off"
 	}
 	m.seen = cgo.SnglTextNew()
-	cgo.SnglTextSetValue(m.seen, __lt22)
+	cgo.SnglTextSetValue(m.seen, __lt23)
 	_setLook(m.seen, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.seen)))
 	m.flip = cgo.GtkButtonNew()
@@ -1201,7 +1201,7 @@ pass sha256:568e32de7d46bf37f93a5b973bf15d3b
 -- run/go/fyne --
 pass sha256:5bb07b8ea50d2deff00180019545355a
 -- run/go/gtk4 --
-pass sha256:e36bf9c0e0952f100eeb8d2bc46a1a5e
+pass sha256:438917a9a4935d64b24f99c5adf2dabb
 -- run/kotlin/android --
 pass sha256:c5fb6e94f29ba19355caa333b18a0bad
 -- run/none/html --

@@ -1549,13 +1549,13 @@ func Field_activate_handler(e cgo.Widget) {
 func Day_daySelected_handler(c cgo.Widget) {
 	__datepicker_value_wrote0 := ParseDate(cgo.SnglCalendarDay(c))
 	m.picked = __datepicker_value_wrote0
-	var __lt21 string
+	var __lt22 string
 	if __datepicker_value_wrote0 == nil {
-		__lt21 = "no day"
+		__lt22 = "no day"
 	} else {
-		__lt21 = "day"
+		__lt22 = "day"
 	}
-	m.seen = __lt21
+	m.seen = __lt22
 	cgo.SnglTextSetValue(m.__n0, m.seen)
 	__effects0_settle()
 }
@@ -2214,7 +2214,7 @@ pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
 pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:e1282cf05a85deaa9d74fee54a69d3bf
+pass sha256:0af95603d9d5a50e8ae2f766051f501a
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

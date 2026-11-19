@@ -1089,7 +1089,7 @@ ui.window {
     time.timer(interval=100ms, @tick { bar.pulse() })
 }
 -- testrun/gtk4/c/level.sngl/meter/1 --
-sha256:04740db07675206c66e7bcc5990ece5f
+sha256:1a9349f8ef571c19675c458116bd0ae4
 {
   "results": [
     {
@@ -1099,7 +1099,7 @@ sha256:04740db07675206c66e7bcc5990ece5f
   ]
 }
 -- testrun/gtk4/go/level.sngl/meter/1 --
-sha256:53801a13b13426e980f23d89e845dc3b
+sha256:ef6e6303c75dd4299d1dfc973bedd008
 {
   "results": [
     {

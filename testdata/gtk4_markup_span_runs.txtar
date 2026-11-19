@@ -182,7 +182,8 @@ static s_platform_gtk4___SpanState s_platform_gtk4___SpanState__keep(s_platform_
 static void s_platform_gtk4___SpanState__drop(s_platform_gtk4___SpanState v);
 static s_platform_gtk4___SpanState s_platform_gtk4___spanSaid(GtkWidget * w);
 static void s_platform_gtk4___spanChanged(GtkWidget * from);
-static sngl_string s_platform_gtk4___hexByte(int64_t n);
+static sngl_string s_builtin___fill(sngl_string text, int64_t width, sngl_string pad);
+static sngl_string s_builtin___baseText(int64_t x, int64_t base);
 static GListStore * s_platform_gtk4___spanKids(GtkWidget * parent);
 static GtkWidget * s_platform_gtk4___spanParent(GtkWidget * w);
 static sngl_string s_platform_gtk4___kidsMarkup(GListStore * kids);
@@ -267,6 +268,10 @@ static void s_platform_gtk4___SpanState__drop(s_platform_gtk4___SpanState v) {
 static void sngl_held_release__SpanState(void *p) {
 	s_platform_gtk4___SpanState__drop((*(s_platform_gtk4___SpanState *)p));
 	free(p);
+}
+
+static int64_t sngl_int_abs(int64_t x) {
+	return x < 0 ? -x : x;
 }
 
 static void s_platform_gtk4___unrefData__fn(void *env, gpointer a0) {
@@ -551,7 +556,8 @@ static void s_platform_gtk4___rtSpanStyle(GtkWidget * span, int64_t r, int64_t g
 		attrs = sngl_concat(attrs, sngl_concat(sngl_concat(SNGL_STR(" font_family=\""), sngl_string_replace(sngl_string_replace(sngl_string_replace(sngl_string_replace(sngl_string_replace(family, SNGL_STR("&"), SNGL_STR("&amp;")), SNGL_STR("<"), SNGL_STR("&lt;")), SNGL_STR(">"), SNGL_STR("&gt;")), SNGL_STR("'"), SNGL_STR("&apos;")), SNGL_STR("\""), SNGL_STR("&quot;"))), SNGL_STR("\"")));
 	}
 	if (a != 0) {
-		attrs = sngl_concat(attrs, sngl_concat(sngl_concat(sngl_concat(sngl_concat(SNGL_STR(" foreground=\"#"), s_platform_gtk4___hexByte(r)), s_platform_gtk4___hexByte(g)), s_platform_gtk4___hexByte(b)), SNGL_STR("\"")));
+		sngl_string color = sngl_concat(sngl_concat(s_builtin___fill(s_builtin___baseText(r, 16), 2, SNGL_STR("0")), s_builtin___fill(s_builtin___baseText(g, 16), 2, SNGL_STR("0"))), s_builtin___fill(s_builtin___baseText(b, 16), 2, SNGL_STR("0")));
+		attrs = sngl_concat(attrs, sngl_concat(sngl_concat(SNGL_STR(" foreground=\"#"), sngl_string_upper(color)), SNGL_STR("\"")));
 	}
 	if (size > 0.0) {
 		attrs = sngl_concat(attrs, sngl_concat(sngl_concat(SNGL_STR(" font_desc=\""), sngl_float_format(size)), SNGL_STR("px\"")));
@@ -669,11 +675,31 @@ static void s_platform_gtk4___spanChanged(GtkWidget * from) {
 	s_x_c__free(__rel4);
 }
 
-static sngl_string s_platform_gtk4___hexByte(int64_t n) {
-	sngl_string digits = SNGL_STR("0123456789ABCDEF");
-	int64_t high = sngl_mod(sngl_div(n, 16), 16);
-	int64_t low = sngl_mod(n, 16);
-	return sngl_concat(sngl_string_substring(digits, high, (high + 1)), sngl_string_substring(digits, low, (low + 1)));
+static sngl_string s_builtin___fill(sngl_string text, int64_t width, sngl_string pad) {
+	sngl_string sign = ((sngl_string_eq(pad, SNGL_STR("0")) && sngl_string_eq(sngl_string_substring(text, 0, 1), SNGL_STR("-"))) ? SNGL_STR("-") : SNGL_STR(""));
+	sngl_string digits = sngl_string_substring(text, sngl_string_length(sign), sngl_string_length(text));
+	sngl_string fill = SNGL_STR("");
+	while (!sngl_string_eq(pad, SNGL_STR("")) && (((sngl_string_length(sign) + sngl_string_length(fill)) + sngl_string_length(digits)) < width)) {
+		fill = sngl_concat(fill, pad);
+	}
+	return sngl_concat(sngl_concat(sign, fill), digits);
+}
+
+static sngl_string s_builtin___baseText(int64_t x, int64_t base) {
+	if ((base < 2) || (base > 36)) {
+		return sngl_int_format((int64_t)(x));
+	}
+	if (x == 0) {
+		return SNGL_STR("0");
+	}
+	sngl_string out = SNGL_STR("");
+	int64_t m = sngl_int_abs(x);
+	while (m > 0) {
+		int64_t d = sngl_mod(m, base);
+		out = sngl_concat(sngl_string_substring(SNGL_STR("0123456789abcdefghijklmnopqrstuvwxyz"), d, (d + 1)), out);
+		m = sngl_div(m, base);
+	}
+	return ((x < 0) ? sngl_concat(SNGL_STR("-"), out) : out);
 }
 
 static GListStore * s_platform_gtk4___spanKids(GtkWidget * parent) {
@@ -1024,6 +1050,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -1106,7 +1133,8 @@ func _rtSpanStyle(span cgo.Widget, r int, g int, b int, a int, size float64, wei
 		attrs += ((" font_family=\"" + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(family, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&apos;"), "\"", "&quot;")) + "\"")
 	}
 	if a != 0 {
-		attrs += ((((" foreground=\"#" + _hexByte(r)) + _hexByte(g)) + _hexByte(b)) + "\"")
+		color := ((_fill(_baseText(r, 16), 2, "0") + _fill(_baseText(g, 16), 2, "0")) + _fill(_baseText(b, 16), 2, "0"))
+		attrs += ((" foreground=\"#" + strings.ToUpper(color)) + "\"")
 	}
 	if size > 0.0 {
 		attrs += ((" font_desc=\"" + fmt.Sprint(size)) + "px\"")
@@ -1237,11 +1265,48 @@ func _spanChanged(from cgo.Widget) {
 	cgo.GtkLabelSetMarkup((cgo.PGtkLabel)(unsafe.Pointer(from)), _kidsMarkup(_spanKids(from)))
 }
 
-func _hexByte(n int) string {
-	digits := "0123456789ABCDEF"
-	var high int = ((n / 16) % 16)
-	var low int = (n % 16)
-	return (string([]rune(digits)[high:(high+1)]) + string([]rune(digits)[low:(low+1)]))
+func _fill(text string, width int, pad string) string {
+	var __lt5 string
+	if (pad == "0") && (string([]rune(text)[0:1]) == "-") {
+		__lt5 = "-"
+	} else {
+		__lt5 = ""
+	}
+	sign := __lt5
+	digits := string([]rune(text)[utf8.RuneCountInString(sign):utf8.RuneCountInString(text)])
+	fill := ""
+	for (pad != "") && (((utf8.RuneCountInString(sign) + utf8.RuneCountInString(fill)) + utf8.RuneCountInString(digits)) < width) {
+		fill = (fill + pad)
+	}
+	return ((sign + fill) + digits)
+}
+
+func _baseText(x int, base int) string {
+	if (base < 2) || (base > 36) {
+		return fmt.Sprint(x)
+	}
+	if x == 0 {
+		return "0"
+	}
+	out := ""
+	var m__r2 int = func(x int) int {
+		if x < 0 {
+			return -x
+		}
+		return x
+	}(x)
+	for m__r2 > 0 {
+		var d int = (m__r2 % base)
+		out = (string([]rune("0123456789abcdefghijklmnopqrstuvwxyz")[d:(d+1)]) + out)
+		m__r2 = (m__r2 / base)
+	}
+	var __lt6 string
+	if x < 0 {
+		__lt6 = ("-" + out)
+	} else {
+		__lt6 = out
+	}
+	return __lt6
 }
 
 func _spanKids(parent cgo.Widget) cgo.Store {
@@ -1542,6 +1607,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:45825610ca4c5a44a31c17ae40f79ae8
+pass sha256:1623bd5c6f03d2b8f3c6d67d3ff1dd8d
 -- run/go/gtk4 --
-pass sha256:4fdaf651dd28e3f3f634e2ce4ee0213d
+pass sha256:ba51106c91fb52864ce412902d58517f
