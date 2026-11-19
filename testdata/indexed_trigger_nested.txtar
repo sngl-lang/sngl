@@ -2882,7 +2882,7 @@ func __identified1(__xs []string) []__anon_id_elem_c6a818 {
 }
 
 func _rtSignalEmit(w cgo.Widget, signal string) {
-	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+	cgo.SignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
 }
 
 func _rtFireFlip(w cgo.Widget, v int) {
@@ -5863,7 +5863,7 @@ pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
 pass sha256:5377422dc1fa781c93a8a0edcb5243cf
 -- run/go/gtk4 --
-pass sha256:7ac237b8823d3d96b99d91d46394246a
+pass sha256:da6c041567fae1ded9371c516b247a56
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --

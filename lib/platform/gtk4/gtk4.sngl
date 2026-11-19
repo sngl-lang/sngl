@@ -1568,26 +1568,28 @@ func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
 // to _keysGoOn, the functions _rtToplevelNew hands it (sngl_keys_hooks).
 
 // A key a window's `@key` names rather than types: a browser's
-// KeyboardEvent.key for its GDK keyval, the keypad's beside the main one's,
-// which it reports the same. Shift+Tab is ISO_Left_Tab to GDK.
+// KeyboardEvent.key for its GDK keyval (gdkkeysyms.h's GDK_KEY_ values, in
+// decimal), the keypad's beside the main one's, which it reports the same:
+// Return, KP_Enter and ISO_Enter are Enter, Tab, KP_Tab and ISO_Left_Tab --
+// Shift+Tab to GDK -- Tab, and so on.
 struct _NamedKey {
     keyval int
     name   string
 }
 
 const _namedKeys = [
-    _NamedKey{keyval=65293, name="Enter"}, // GDK_KEY_Return
-    _NamedKey{keyval=65421, name="Enter"}, // GDK_KEY_KP_Enter
-    _NamedKey{keyval=65076, name="Enter"}, // GDK_KEY_ISO_Enter
-    _NamedKey{keyval=65289, name="Tab"}, // GDK_KEY_Tab
-    _NamedKey{keyval=65417, name="Tab"}, // GDK_KEY_KP_Tab
-    _NamedKey{keyval=65056, name="Tab"}, // GDK_KEY_ISO_Left_Tab
+    _NamedKey{keyval=65293, name="Enter"},
+    _NamedKey{keyval=65421, name="Enter"},
+    _NamedKey{keyval=65076, name="Enter"},
+    _NamedKey{keyval=65289, name="Tab"},
+    _NamedKey{keyval=65417, name="Tab"},
+    _NamedKey{keyval=65056, name="Tab"},
     _NamedKey{keyval=65307, name="Escape"},
     _NamedKey{keyval=65288, name="Backspace"},
     _NamedKey{keyval=65535, name="Delete"},
-    _NamedKey{keyval=65439, name="Delete"}, // GDK_KEY_KP_Delete
+    _NamedKey{keyval=65439, name="Delete"},
     _NamedKey{keyval=65379, name="Insert"},
-    _NamedKey{keyval=65438, name="Insert"}, // GDK_KEY_KP_Insert
+    _NamedKey{keyval=65438, name="Insert"},
     _NamedKey{keyval=65362, name="ArrowUp"},
     _NamedKey{keyval=65431, name="ArrowUp"},
     _NamedKey{keyval=65364, name="ArrowDown"},
@@ -1649,11 +1651,11 @@ func _unicharUpper(c _Unichar) _Unichar
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GUnicharTolower")]
 func _unicharLower(c _Unichar) _Unichar
 
-// What a window's `@key` calls the key keyval is with state held, or null
+// What a window's `@key` calls the key keyval is with state held, or ""
 // for one it hears nothing of: a key its name names, or the character it
 // types -- with Control, Alt or Meta held, the key's own, in the case Shift
 // says.
-func _keyName(keyval int, state int) option[string] {
+func _keyName(keyval int, state int) string {
     for var k = _namedKeys {
         if k.keyval == keyval {
             return k.name
@@ -1661,7 +1663,7 @@ func _keyName(keyval int, state int) option[string] {
     }
     var r = int(_keyvalUnicode(_Count(keyval)))
     if r < 32 || r == 127 || r >= 128 && r < 160 || !_unicharValid(_Unichar(r)) {
-        return null
+        return ""
     }
     if _shortcutHeld(state) {
         r = _held(state, 1) ? int(_unicharUpper(_Unichar(r))) : int(_unicharLower(_Unichar(r)))
@@ -1790,7 +1792,7 @@ func _keysPressed(c _Pointer, keyval int, keycode int, state int, data _Pointer)
         f = _parentOf(f)
     }
     var name = _keyName(keyval, state)
-    if name == null {
+    if name == "" {
         return false
     }
     return _toplevelHear(box, name, _held(state, 4), _held(state, 8), _held(state, 1), _metaHeld(state), editing)

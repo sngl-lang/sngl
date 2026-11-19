@@ -1404,6 +1404,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -1454,6 +1455,11 @@ type Card__slot0__inst struct {
 	__n1         cgo.Widget
 	__n2         cgo.Widget
 	__n11        cgo.Widget
+}
+
+type _NamedKey struct {
+	Keyval int
+	Name   string
 }
 
 type Look struct {
@@ -1612,6 +1618,7 @@ func _main(build func()) int {
 
 func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
+	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
 	return cgo.SnglToplevelNew()
 }
 
@@ -1712,6 +1719,56 @@ func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
 }
 
+func _keysWatch(win cgo.Widget) {
+	c := cgo.GtkEventControllerKeyNew()
+	cgo.GtkEventControllerSetPropagationPhase(c, 1)
+	cgo.ConnectKeyPressed(cgo.Pointer(c), "key-pressed", _keysPressed, cgo.Pointer(win), 0)
+	cgo.GtkWidgetAddController(win, c)
+	b := cgo.GtkEventControllerKeyNew()
+	cgo.GtkEventControllerSetPropagationPhase(b, 2)
+	cgo.ConnectKeyBack(cgo.Pointer(b), "key-pressed", _keysBack, cgo.Pointer(win), 0)
+	cgo.GtkWidgetAddController(win, b)
+}
+
+func _keysGoOn(win cgo.Widget, key string, shift bool) {
+	focus := cgo.GtkRootGetFocus((cgo.Root)(unsafe.Pointer(win)))
+	if ((focus != nil) && (cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(focus))))), cgo.GtkTextGetType()) || cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(focus))))), cgo.GtkTextViewGetType()))) && ((key != "Tab") || (cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(focus))))), cgo.GtkTextViewGetType()) && cgo.GtkTextViewGetAcceptsTab((cgo.TextView)(unsafe.Pointer((*(focus))))))) {
+		_textKey((*(focus)), key, shift)
+		return
+	}
+	if (key == "Enter") || (key == " ") {
+		if focus != nil {
+			_keyActivate((*(focus)))
+		}
+	} else {
+		if key == "Tab" {
+			var __lt2 int
+			if shift {
+				__lt2 = 1
+			} else {
+				__lt2 = 0
+			}
+			_keyMoveFocus(win, __lt2)
+		} else {
+			if key == "ArrowUp" {
+				_keyMoveFocus(win, 2)
+			} else {
+				if key == "ArrowDown" {
+					_keyMoveFocus(win, 3)
+				} else {
+					if key == "ArrowLeft" {
+						_keyMoveFocus(win, 4)
+					} else {
+						if key == "ArrowRight" {
+							_keyMoveFocus(win, 5)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 func _setLookState(w cgo.Widget, l _LookState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-look", l)
 }
@@ -1764,13 +1821,13 @@ func _lookPlace(w cgo.Widget) {
 	var cross int = 0
 	if parent != nil {
 		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(parent))))), cgo.GtkOrientableGetType()) {
-			var __lt5 int
+			var __lt6 int
 			if int(_boxAxis((*(parent)))) == 0 {
-				__lt5 = 0
+				__lt6 = 0
 			} else {
-				__lt5 = 1
+				__lt6 = 1
 			}
-			mainAxis = __lt5
+			mainAxis = __lt6
 		}
 		cross = _lookOf((*(parent))).Cross
 	}
@@ -1795,23 +1852,23 @@ func _lookPlace(w cgo.Widget) {
 		}
 	}
 	l := _lookOf(w)
-	var __lt6 bool
+	var __lt7 bool
 	if mainAxis == 1 {
-		__lt6 = (l.Width > 0)
+		__lt7 = (l.Width > 0)
 	} else {
-		__lt6 = (l.Height > 0)
+		__lt7 = (l.Height > 0)
 	}
-	fixed := __lt6
+	fixed := __lt7
 	if (mainAxis < 0) || ((cross == 0) && !fixed) {
 		_unalign(w)
 	} else {
-		var __lt7 int
+		var __lt8 int
 		if mainAxis == 1 {
-			__lt7 = 0
+			__lt8 = 0
 		} else {
-			__lt7 = 1
+			__lt8 = 1
 		}
-		var axis int = __lt7
+		var axis int = __lt8
 		_lookEnsure(w)
 		_watchParent(w)
 		if _lookOf(w).Aligned && (_lookOf(w).AlignAxis != axis) {
@@ -1824,13 +1881,13 @@ func _lookPlace(w cgo.Widget) {
 			a.Align0 = _alignOn(w, axis)
 			_setLookState(w, a)
 		}
-		var __lt8 int
+		var __lt9 int
 		if cross == 0 {
-			__lt8 = 1
+			__lt9 = 1
 		} else {
-			__lt8 = _crossAlign(cross)
+			__lt9 = _crossAlign(cross)
 		}
-		_setAlignOn(w, axis, __lt8)
+		_setAlignOn(w, axis, __lt9)
 	}
 }
 
@@ -2031,6 +2088,104 @@ func _barForget(box cgo.Widget) {
 	cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-decided", nil)
 }
 
+func _keysPressed(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Pointer) bool {
+	win := (cgo.Widget)(unsafe.Pointer(data))
+	box := cgo.GtkWindowGetChild((cgo.Window)(unsafe.Pointer(win)))
+	if box == nil {
+		return false
+	}
+	editing := false
+	f := cgo.GtkRootGetFocus((cgo.Root)(unsafe.Pointer(win)))
+	for (f != nil) && ((*(f)) != win) {
+		if _composing((*(f))) {
+			return false
+		}
+		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(f))))), cgo.GtkEditableGetType()) || cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(f))))), cgo.GtkTextViewGetType()) {
+			editing = true
+		}
+		f = cgo.GtkWidgetGetParent((*(f)))
+	}
+	name := _keyName(keyval, state)
+	if name == nil {
+		return false
+	}
+	return cgo.SnglToplevelHear((*(box)), (*(name)), (((state / 4) % 2) != 0), (((state / 8) % 2) != 0), (((state / 1) % 2) != 0), ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)), editing)
+}
+
+func _keysBack(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Pointer) bool {
+	box := cgo.GtkWindowGetChild((cgo.Window)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer(data)))))
+	if ((box == nil) || (keyval != 65307)) || (((((state / 4) % 2) != 0) || (((state / 8) % 2) != 0)) || ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0))) {
+		return false
+	}
+	return _windowBack((*(box)))
+}
+
+func _textKey(w cgo.Widget, key string, shift bool) {
+	g := (cgo.PGtkWidget)(unsafe.Pointer(w))
+	typed := key
+	if key == "Tab" {
+		typed = "\t"
+	} else {
+		if key == "Enter" {
+			if !cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkTextViewGetType()) {
+				cgo.SignalEmitByName(g, "activate")
+				return
+			}
+			typed = "\n"
+		} else {
+			if key == "Backspace" {
+				cgo.SignalEmitByName(g, "backspace")
+				return
+			} else {
+				if key == "Delete" {
+					cgo.GSignalEmitByName(g, "delete-from-cursor", 0, 1)
+					return
+				} else {
+					if (key == "ArrowLeft") || (key == "ArrowRight") {
+						var __lt10 int
+						if key == "ArrowLeft" {
+							__lt10 = -1
+						} else {
+							__lt10 = 1
+						}
+						cgo.EmitMove(g, "move-cursor", 1, __lt10, shift)
+						return
+					} else {
+						if (key == "Home") || (key == "End") {
+							var __lt11 int
+							if key == "Home" {
+								__lt11 = -1
+							} else {
+								__lt11 = 1
+							}
+							cgo.EmitMove(g, "move-cursor", 4, __lt11, shift)
+							return
+						}
+					}
+				}
+			}
+		}
+	}
+	if utf8.RuneCountInString(typed) == 1 {
+		cgo.EmitText(g, "insert-at-cursor", typed)
+	}
+}
+
+func _keyActivate(w cgo.Widget) {
+	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkButtonGetType()) {
+		cgo.SignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), "clicked")
+		return
+	}
+	cgo.GtkWidgetActivate(w)
+}
+
+func _keyMoveFocus(win cgo.Widget, direction int) {
+	if !cgo.GtkWidgetChildFocus(win, int(direction)) {
+		cgo.GtkWindowSetFocus((cgo.Window)(unsafe.Pointer(win)), nil)
+		cgo.GtkWidgetChildFocus(win, int(direction))
+	}
+}
+
 func _lookCss(w cgo.Widget, rule string) {
 	css := cgo.DataCss((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css")
 	if rule == "" {
@@ -2077,23 +2232,23 @@ func _restoreExpand(w cgo.Widget) {
 }
 
 func _expand(w cgo.Widget, axis int) bool {
-	var __lt15 bool
+	var __lt18 bool
 	if axis == 0 {
-		__lt15 = cgo.GtkWidgetGetHexpand(w)
+		__lt18 = cgo.GtkWidgetGetHexpand(w)
 	} else {
-		__lt15 = cgo.GtkWidgetGetVexpand(w)
+		__lt18 = cgo.GtkWidgetGetVexpand(w)
 	}
-	return __lt15
+	return __lt18
 }
 
 func _expandSet(w cgo.Widget, axis int) bool {
-	var __lt16 bool
+	var __lt19 bool
 	if axis == 0 {
-		__lt16 = cgo.GtkWidgetGetHexpandSet(w)
+		__lt19 = cgo.GtkWidgetGetHexpandSet(w)
 	} else {
-		__lt16 = cgo.GtkWidgetGetVexpandSet(w)
+		__lt19 = cgo.GtkWidgetGetVexpandSet(w)
 	}
-	return __lt16
+	return __lt19
 }
 
 func _setExpand(w cgo.Widget, axis int, on bool) {
@@ -2141,13 +2296,13 @@ func _lookEnsure(w cgo.Widget) {
 }
 
 func _alignOn(w cgo.Widget, axis int) int {
-	var __lt17 int
+	var __lt20 int
 	if axis == 0 {
-		__lt17 = int(cgo.GtkWidgetGetHalign(w))
+		__lt20 = int(cgo.GtkWidgetGetHalign(w))
 	} else {
-		__lt17 = int(cgo.GtkWidgetGetValign(w))
+		__lt20 = int(cgo.GtkWidgetGetValign(w))
 	}
-	return __lt17
+	return __lt20
 }
 
 func _setAlignOn(w cgo.Widget, axis int, align int) {
@@ -2223,13 +2378,13 @@ func _flexMode(box cgo.Widget) int {
 	if (heightForWidth == 0) && (widthForHeight == 0) {
 		return 2
 	}
-	var __lt18 int
+	var __lt21 int
 	if widthForHeight > heightForWidth {
-		__lt18 = 1
+		__lt21 = 1
 	} else {
-		__lt18 = 0
+		__lt21 = 0
 	}
-	return __lt18
+	return __lt21
 }
 
 func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
@@ -2263,29 +2418,29 @@ func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 		for i < n {
 			var cmin int = 0
 			var cnat int = 0
-			var __lt19 int
+			var __lt22 int
 			if sized {
-				__lt19 = sizes[i]
+				__lt22 = sizes[i]
 			} else {
-				__lt19 = -1
+				__lt22 = -1
 			}
-			__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, __lt19, cmin, cnat, nil, nil))
+			__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, __lt22, cmin, cnat, nil, nil))
 			cmin = __ref2.Out3
 			cnat = __ref2.Out4
-			var __lt20 int
+			var __lt23 int
 			if cmin > minimum {
-				__lt20 = cmin
+				__lt23 = cmin
 			} else {
-				__lt20 = minimum
+				__lt23 = minimum
 			}
-			minimum = __lt20
-			var __lt21 int
+			minimum = __lt23
+			var __lt24 int
 			if cnat > natural {
-				__lt21 = cnat
+				__lt24 = cnat
 			} else {
-				__lt21 = natural
+				__lt24 = natural
 			}
-			natural = __lt21
+			natural = __lt24
 			i += 1
 		}
 	}
@@ -2295,23 +2450,23 @@ func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 func _flexAllocate(box cgo.Widget, width int, height int, baseline int) {
 	var axis int = int(_boxAxis(box))
 	row := (axis == 0)
-	var __lt22 int
+	var __lt25 int
 	if row {
-		__lt22 = width
+		__lt25 = width
 	} else {
-		__lt22 = height
+		__lt25 = height
 	}
-	var along int = __lt22
+	var along int = __lt25
 	kids := _childrenOf(box, true)
 	var n int = len(kids)
 	if n > 0 {
-		var __lt23 int
+		var __lt26 int
 		if row {
-			__lt23 = height
+			__lt26 = height
 		} else {
-			__lt23 = width
+			__lt26 = width
 		}
-		flex := _flexSizes(box, axis, along, __lt23, kids)
+		flex := _flexSizes(box, axis, along, __lt26, kids)
 		sizes := flex.Sizes
 		var spare int = flex.Spare
 		var lead int = 0
@@ -2348,21 +2503,21 @@ func _flexAllocate(box cgo.Widget, width int, height int, baseline int) {
 		var i int = 0
 		for i < n {
 			if i > 0 {
-				var __lt24 int
+				var __lt27 int
 				if i <= rest {
-					__lt24 = 1
+					__lt27 = 1
 				} else {
-					__lt24 = 0
+					__lt27 = 0
 				}
-				pos += ((spacing + between) + __lt24)
+				pos += ((spacing + between) + __lt27)
 			}
-			var __lt25 int
+			var __lt28 int
 			if rtl {
-				__lt25 = ((along - pos) - sizes[i])
+				__lt28 = ((along - pos) - sizes[i])
 			} else {
-				__lt25 = pos
+				__lt28 = pos
 			}
-			var at int = __lt25
+			var at int = __lt28
 			if row {
 				_place(kids[i], at, 0, sizes[i], height)
 			} else {
@@ -2407,66 +2562,66 @@ func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 			__ref3 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, -1, cmin, cnat, nil, nil))
 			cmin = __ref3.Out3
 			cnat = __ref3.Out4
-			var __lt26 int
+			var __lt29 int
 			if cmin > widest {
-				__lt26 = cmin
+				__lt29 = cmin
 			} else {
-				__lt26 = widest
+				__lt29 = widest
 			}
-			widest = __lt26
-			var __lt27 int
+			widest = __lt29
+			var __lt30 int
 			if cnat > widestNatural {
-				__lt27 = cnat
+				__lt30 = cnat
 			} else {
-				__lt27 = widestNatural
+				__lt30 = widestNatural
 			}
-			widestNatural = __lt27
+			widestNatural = __lt30
 			sum += cnat
 			i += 1
 		}
 		if columns > 0 {
-			var __lt28 int
+			var __lt31 int
 			if columns < n {
-				__lt28 = columns
+				__lt31 = columns
 			} else {
-				__lt28 = n
+				__lt31 = n
 			}
-			var across int = __lt28
-			var __lt29 int
+			var across int = __lt31
+			var __lt32 int
 			if across > 1 {
-				__lt29 = (gap * (across - 1))
+				__lt32 = (gap * (across - 1))
 			} else {
-				__lt29 = 0
+				__lt32 = 0
 			}
-			var gaps int = __lt29
+			var gaps int = __lt32
 			minimum = ((widest * across) + gaps)
 			natural = ((widestNatural * across) + gaps)
 		} else {
 			minimum = widest
-			var __lt30 int
+			var __lt33 int
 			if n > 1 {
-				__lt30 = (gap * (n - 1))
+				__lt33 = (gap * (n - 1))
 			} else {
-				__lt30 = 0
+				__lt33 = 0
 			}
-			natural = (sum + __lt30)
+			natural = (sum + __lt33)
 		}
 		var asked int = _lookOf(box).Width
 		if asked > 0 {
-			var __lt31 int
+			var __lt34 int
 			if natural < asked {
-				__lt31 = natural
+				__lt34 = natural
 			} else {
-				__lt31 = asked
+				__lt34 = asked
 			}
-			natural = __lt31
-			var __lt32 int
+			natural = __lt34
+			var __lt35 int
 			if minimum > natural {
-				__lt32 = minimum
+				__lt35 = minimum
 			} else {
-				__lt32 = natural
+				__lt35 = natural
 			}
-			natural = __lt32
+			natural = __lt35
 		}
 	} else {
 		if n > 0 {
@@ -2503,13 +2658,13 @@ func _gridAllocate(box cgo.Widget, width int, height int, baseline int) {
 			var x int = 0
 			var i int = start
 			for i < rows.Ends[r] {
-				var __lt33 int
+				var __lt36 int
 				if rtl {
-					__lt33 = ((width - x) - rows.Widths[i])
+					__lt36 = ((width - x) - rows.Widths[i])
 				} else {
-					__lt33 = x
+					__lt36 = x
 				}
-				_place(kids[i], __lt33, y, rows.Widths[i], heights[r])
+				_place(kids[i], __lt36, y, rows.Widths[i], heights[r])
 				x += (rows.Widths[i] + gap)
 				i += 1
 			}
@@ -2581,33 +2736,33 @@ func _lookText(w cgo.Widget, t cgo.Widget, align int, lines int, wrap int) {
 			lb := (cgo.PGtkLabel)(unsafe.Pointer(t))
 			cgo.GtkLabelSetXalign(lb, cgo.CFloat(x))
 			cgo.GtkLabelSetJustify(lb, int(justify))
-			var __lt34 int
+			var __lt37 int
 			if lines > 0 {
-				__lt34 = lines
+				__lt37 = lines
 			} else {
-				__lt34 = l.Lines0
+				__lt37 = l.Lines0
 			}
-			cgo.GtkLabelSetLines(lb, __lt34)
-			var __lt35 int
+			cgo.GtkLabelSetLines(lb, __lt37)
+			var __lt38 int
 			if lines > 0 {
-				__lt35 = 3
+				__lt38 = 3
 			} else {
-				__lt35 = l.Ellipsize0
+				__lt38 = l.Ellipsize0
 			}
-			cgo.GtkLabelSetEllipsize(lb, int(__lt35))
-			var __lt37 bool
+			cgo.GtkLabelSetEllipsize(lb, int(__lt38))
+			var __lt40 bool
 			if (lines > 0) || (wrap == 2) {
-				__lt37 = true
+				__lt40 = true
 			} else {
-				var __lt36 bool
+				var __lt39 bool
 				if wrap == 1 {
-					__lt36 = false
+					__lt39 = false
 				} else {
-					__lt36 = l.Wrap0
+					__lt39 = l.Wrap0
 				}
-				__lt37 = __lt36
+				__lt40 = __lt39
 			}
-			cgo.GtkLabelSetWrap(lb, __lt37)
+			cgo.GtkLabelSetWrap(lb, __lt40)
 		} else {
 			cgo.GtkEditableSetAlignment((cgo.Editable)(unsafe.Pointer(t)), cgo.CFloat(x))
 		}
@@ -2639,13 +2794,13 @@ func _labelMeasure(w cgo.Widget, orientation int, forSize int) Measured {
 	natural = __ref4.Out5
 	minimumBaseline = __ref4.Out6
 	naturalBaseline = __ref4.Out7
-	var __lt38 int
+	var __lt41 int
 	if orientation == 0 {
-		__lt38 = l.LabelWidth
+		__lt41 = l.LabelWidth
 	} else {
-		__lt38 = l.LabelHeight
+		__lt41 = l.LabelHeight
 	}
-	var want int = __lt38
+	var want int = __lt41
 	if want > 0 {
 		minimum = want
 		natural = want
@@ -2720,6 +2875,55 @@ func _backPress(w cgo.Widget) {
 	if b != nil {
 		(*(b)).Press()
 	}
+}
+
+func _composing(w cgo.Widget) bool {
+	controllers := cgo.GtkWidgetObserveControllers(w)
+	var n int = int(cgo.GListModelGetNItems(controllers))
+	composing := false
+	var i int = 0
+	for (i < n) && !composing {
+		c := cgo.GListModelGetItem(controllers, int(i))
+		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(c)), cgo.GtkEventControllerKeyGetType()) {
+			im := cgo.GtkEventControllerKeyGetImContext((cgo.KeyController)(unsafe.Pointer(c)))
+			if im != nil {
+				text := ""
+				text = cgo.GtkImContextGetPreeditString((*(im)), text, nil, nil)
+				composing = (text != "")
+			}
+		}
+		cgo.GObjectUnref(c)
+		i += 1
+	}
+	cgo.GObjectUnref(cgo.Pointer(controllers))
+	return composing
+}
+
+func _keyName(keyval int, state int) *string {
+	for _, k := range []_NamedKey{_NamedKey{Keyval: 65293, Name: "Enter"}, _NamedKey{Keyval: 65421, Name: "Enter"}, _NamedKey{Keyval: 65076, Name: "Enter"}, _NamedKey{Keyval: 65289, Name: "Tab"}, _NamedKey{Keyval: 65417, Name: "Tab"}, _NamedKey{Keyval: 65056, Name: "Tab"}, _NamedKey{Keyval: 65307, Name: "Escape"}, _NamedKey{Keyval: 65288, Name: "Backspace"}, _NamedKey{Keyval: 65535, Name: "Delete"}, _NamedKey{Keyval: 65439, Name: "Delete"}, _NamedKey{Keyval: 65379, Name: "Insert"}, _NamedKey{Keyval: 65438, Name: "Insert"}, _NamedKey{Keyval: 65362, Name: "ArrowUp"}, _NamedKey{Keyval: 65431, Name: "ArrowUp"}, _NamedKey{Keyval: 65364, Name: "ArrowDown"}, _NamedKey{Keyval: 65433, Name: "ArrowDown"}, _NamedKey{Keyval: 65361, Name: "ArrowLeft"}, _NamedKey{Keyval: 65430, Name: "ArrowLeft"}, _NamedKey{Keyval: 65363, Name: "ArrowRight"}, _NamedKey{Keyval: 65432, Name: "ArrowRight"}, _NamedKey{Keyval: 65360, Name: "Home"}, _NamedKey{Keyval: 65429, Name: "Home"}, _NamedKey{Keyval: 65367, Name: "End"}, _NamedKey{Keyval: 65436, Name: "End"}, _NamedKey{Keyval: 65365, Name: "PageUp"}, _NamedKey{Keyval: 65434, Name: "PageUp"}, _NamedKey{Keyval: 65366, Name: "PageDown"}, _NamedKey{Keyval: 65435, Name: "PageDown"}, _NamedKey{Keyval: 65470, Name: "F1"}, _NamedKey{Keyval: 65471, Name: "F2"}, _NamedKey{Keyval: 65472, Name: "F3"}, _NamedKey{Keyval: 65473, Name: "F4"}, _NamedKey{Keyval: 65474, Name: "F5"}, _NamedKey{Keyval: 65475, Name: "F6"}, _NamedKey{Keyval: 65476, Name: "F7"}, _NamedKey{Keyval: 65477, Name: "F8"}, _NamedKey{Keyval: 65478, Name: "F9"}, _NamedKey{Keyval: 65479, Name: "F10"}, _NamedKey{Keyval: 65480, Name: "F11"}, _NamedKey{Keyval: 65481, Name: "F12"}} {
+		if k.Keyval == keyval {
+			return snglSome(k.Name)
+		}
+	}
+	var r int = int(cgo.GdkKeyvalToUnicode(int(keyval)))
+	if (((r < 32) || (r == 127)) || ((r >= 128) && (r < 160))) || !cgo.GUnicharValidate(int(r)) {
+		return nil
+	}
+	if ((((state / 4) % 2) != 0) || (((state / 8) % 2) != 0)) || ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)) {
+		var __lt42 int
+		if ((state / 1) % 2) != 0 {
+			__lt42 = int(cgo.GUnicharToupper(int(r)))
+		} else {
+			__lt42 = int(cgo.GUnicharTolower(int(r)))
+		}
+		r = __lt42
+	}
+	return snglSome(func(c int) string {
+		if c < 0 || c > utf8.MaxRune {
+			return string(utf8.RuneError)
+		}
+		return string(rune(c))
+	}(r))
 }
 
 func _popoverStyle(w cgo.Widget, css cgo.CssProvider, add bool) {
@@ -2802,20 +3006,20 @@ func _lookWeight(c cgo.Widget, o int) float64 {
 	if l.Grow > 0.0 {
 		return l.Grow
 	}
-	var __lt49 bool
+	var __lt53 bool
 	if int(o) == 0 {
-		__lt49 = cgo.GtkWidgetGetHexpand(c)
+		__lt53 = cgo.GtkWidgetGetHexpand(c)
 	} else {
-		__lt49 = cgo.GtkWidgetGetVexpand(c)
+		__lt53 = cgo.GtkWidgetGetVexpand(c)
 	}
-	own := __lt49
-	var __lt50 float64
+	own := __lt53
+	var __lt54 float64
 	if own {
-		__lt50 = 1.0
+		__lt54 = 1.0
 	} else {
-		__lt50 = 0.0
+		__lt54 = 0.0
 	}
-	return __lt50
+	return __lt54
 }
 
 func _boxSpacing(box cgo.Widget) int {
@@ -2849,13 +3053,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		weights += _lookWeight(kids[i], o)
 		i += 1
 	}
-	var __lt51 int
+	var __lt55 int
 	if spare > 0 {
-		__lt51 = spare
+		__lt55 = spare
 	} else {
-		__lt51 = 0
+		__lt55 = 0
 	}
-	var extra int = __lt51
+	var extra int = __lt55
 	sizes := _distribute(extra, minimums, naturals)
 	spare = extra
 	i = 0
@@ -2868,13 +3072,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		if weights > 0.0 {
 			var w float64 = _lookWeight(kids[i], o)
 			if w > 0.0 {
-				var __lt52 int
+				var __lt56 int
 				if w == weights {
-					__lt52 = spare
+					__lt56 = spare
 				} else {
-					__lt52 = int((((float64(spare) * w) / weights) + 0.5))
+					__lt56 = int((((float64(spare) * w) / weights) + 0.5))
 				}
-				var share int = __lt52
+				var share int = __lt56
 				sizes[i] = (sizes[i] + share)
 				spare -= share
 				weights -= w
@@ -2882,13 +3086,13 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 		}
 		i += 1
 	}
-	var __lt53 int
+	var __lt57 int
 	if weights > 0.0 {
-		__lt53 = 0
+		__lt57 = 0
 	} else {
-		__lt53 = spare
+		__lt57 = spare
 	}
-	return _FlexSizes{Sizes: sizes, Spare: __lt53}
+	return _FlexSizes{Sizes: sizes, Spare: __lt57}
 }
 
 func _place(w cgo.Widget, x int, y int, width int, height int) {
@@ -2909,13 +3113,13 @@ func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
 			__ref6 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
 			minimum = __ref6.Out3
 			natural = __ref6.Out4
-			var __lt54 int
+			var __lt58 int
 			if natural > tall {
-				__lt54 = natural
+				__lt58 = natural
 			} else {
-				__lt54 = tall
+				__lt58 = tall
 			}
-			tall = __lt54
+			tall = __lt58
 			i += 1
 		}
 		heights = append(heights, tall)
@@ -2960,33 +3164,33 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 		natural = __ref7.Out4
 		var w int = natural
 		if width >= 0 {
-			var __lt55 int
+			var __lt59 int
 			if natural < width {
-				__lt55 = natural
+				__lt59 = natural
 			} else {
-				__lt55 = width
+				__lt59 = width
 			}
-			w = __lt55
-			var __lt56 int
+			w = __lt59
+			var __lt60 int
 			if minimum > w {
-				__lt56 = minimum
+				__lt60 = minimum
 			} else {
-				__lt56 = w
+				__lt60 = w
 			}
-			w = __lt56
+			w = __lt60
 		}
 		widths = append(widths, w)
 		if ((run > 0) && (width >= 0)) && (((run + gap) + w) > width) {
 			ends = append(ends, i)
 			run = 0
 		}
-		var __lt57 int
+		var __lt61 int
 		if run > 0 {
-			__lt57 = gap
+			__lt61 = gap
 		} else {
-			__lt57 = 0
+			__lt61 = 0
 		}
-		run += (__lt57 + w)
+		run += (__lt61 + w)
 		i += 1
 	}
 	if n > 0 {
@@ -3159,13 +3363,13 @@ func _distribute(extra int, minimums []int, naturals []int) []int {
 		var k int = order[i]
 		var glue int = ((left + i) / (i + 1))
 		var gap int = (naturals[k] - minimums[k])
-		var __lt58 int
+		var __lt62 int
 		if glue < gap {
-			__lt58 = glue
+			__lt62 = glue
 		} else {
-			__lt58 = gap
+			__lt62 = gap
 		}
-		var add int = __lt58
+		var add int = __lt62
 		sizes[k] = (sizes[k] + add)
 		left -= add
 		i -= 1
@@ -4150,7 +4354,7 @@ pass sha256:4e263e02d9cf87f46c35ab83d086fcbe
 -- run/go/fyne --
 pass sha256:cf7a2bd7587c31acabf70735329a5948
 -- run/go/gtk4 --
-pass sha256:e752e15ba4a4ddd1bee9e6c70d97ae0f
+pass sha256:2f14887e89ab8bd27cb73936c03db0de
 -- run/kotlin/android --
 pass sha256:3fae323ffc3d01b77959bccd2db95710
 -- run/none/html --

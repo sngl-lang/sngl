@@ -204,7 +204,7 @@ type snglState struct {
 var m = &snglState{}
 
 func _rtSignalEmit(w cgo.Widget, signal string) {
-	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+	cgo.SignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
 }
 
 func _rtFireText(e cgo.Widget, text string, signal string) {
@@ -1844,4 +1844,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:709e8600fff3b0ae5bff9191f27a76e9
+pass sha256:9c197a8c508090266a8323ef47b88d45

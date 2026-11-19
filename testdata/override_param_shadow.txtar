@@ -1084,7 +1084,7 @@ type snglState struct {
 var m = &snglState{}
 
 func _rtSignalEmit(w cgo.Widget, signal string) {
-	cgo.GSignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
+	cgo.SignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), signal)
 }
 
 func _rtFireFlip(w cgo.Widget, v int) {
@@ -2971,7 +2971,7 @@ pass sha256:a611283a22da746c92444200354d5e1d
 -- run/go/fyne --
 pass sha256:4668b3c3f20b584a16fa1804963705c0
 -- run/go/gtk4 --
-pass sha256:ea3c7965b2954a768e1f39c10417af33
+pass sha256:856ddf37a0783c0f9c83ea8ed7dbe2d6
 -- run/kotlin/android --
 pass sha256:bac0fcb9f94ff275a4c4a943e3b4725d
 -- run/none/html --
