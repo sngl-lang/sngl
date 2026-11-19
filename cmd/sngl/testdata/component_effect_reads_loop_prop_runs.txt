@@ -169,7 +169,7 @@ sha256:7f74e549566fcd54b540f61417a93131
   ]
 }
 -- testrun/gtk4/go/app.sngl/names/1 --
-sha256:0f044a999e6959b7d0b2a8390cb38e80
+sha256:4c846ccb54838a3368dcc48ce41c13b8
 {
   "results": [
     {
@@ -183,7 +183,7 @@ sha256:0f044a999e6959b7d0b2a8390cb38e80
   ]
 }
 -- testrun/gtk4/go/app.sngl/rows/1 --
-sha256:356cdc38bf161e4715cf2edd3190db75
+sha256:5ea8d93c8b7a04a4d812fbc43d632676
 {
   "results": [
     {

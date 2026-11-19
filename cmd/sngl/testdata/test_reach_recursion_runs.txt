@@ -296,7 +296,7 @@ sha256:a148efb712b4cae60de8012e0bc94bbc
   ]
 }
 -- testrun/gtk4/go/buttons.sngl/main/1 --
-sha256:47d45a2e46deae2acc13f4a9214f1a2c
+sha256:e7879a359a7920bf5319e9bf758b7f63
 {
   "results": [
     {
@@ -306,7 +306,7 @@ sha256:47d45a2e46deae2acc13f4a9214f1a2c
   ]
 }
 -- testrun/gtk4/go/counters.sngl/main/1 --
-sha256:defbdd82c3a39d08836ebe617bec392f
+sha256:defa67d86ac554557a379b1791acdee9
 {
   "results": [
     {
@@ -316,7 +316,7 @@ sha256:defbdd82c3a39d08836ebe617bec392f
   ]
 }
 -- testrun/gtk4/go/recursion.sngl/main/1 --
-sha256:a9533602b091a7904c0a896905121af9
+sha256:e640222c68bd846d5405065bcae830d9
 {
   "results": [
     {

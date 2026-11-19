@@ -971,6 +971,14 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _LookCssState struct {
+	Name string
+}
+
+type _LooksState struct {
+	Count int
+}
+
 type _TabPageState struct {
 	Title    string
 	Disabled bool
@@ -1201,18 +1209,37 @@ func _lookOf(w cgo.Widget) _LookState {
 }
 
 func _lookSetCss(w cgo.Widget, decls string) {
+	css := cgo.DataCss((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css")
+	held := func(h any) *_LookCssState {
+		if v, ok := h.(_LookCssState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-look-class"))
 	if decls == "" {
-		_lookCss(w, "")
+		if (css != nil) && (held != nil) {
+			cgo.GtkWidgetRemoveCssClass(w, (*(held)).Name)
+			cgo.SetData((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css", nil)
+			cgo.SetData((cgo.Object)(unsafe.Pointer(w)), "sngl-look-class", nil)
+		}
+		return
+	}
+	name__r0 := ""
+	if held != nil {
+		name__r0 = (*(held)).Name
 	} else {
-		name__r0 := cgo.GtkWidgetGetCssName(w)
-		rule := (((name__r0 + " { ") + decls) + " }")
-		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkPopoverGetType()) {
-			rule = (("popover > contents, popover > arrow { " + decls) + " }")
-		}
-		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkButtonGetType()) && (strings.Index(decls, "background") >= 0) {
-			rule = (rule + ((((((" " + name__r0) + ":hover { background-image: image(alpha(currentColor, 0.1)); } ") + name__r0) + ":active, ") + name__r0) + ":checked { background-image: image(alpha(currentColor, 0.2)); }"))
-		}
-		_lookCss(w, rule)
+		name__r0 = _lookClass()
+	}
+	rule := _lookRule(w, name__r0, decls)
+	if css != nil {
+		cgo.SnglCssLoad((*(css)), rule)
+	} else {
+		made := cgo.GtkCssProviderNew()
+		cgo.SnglCssLoad(made, rule)
+		cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-look-class", _LookCssState{Name: name__r0})
+		cgo.HoldCss((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css", cgo.Pointer(made), _cssGone)
+		cgo.GtkStyleContextAddProviderForDisplay(cgo.GdkDisplayGetDefault(), (cgo.StyleProvider)(unsafe.Pointer(made)), 600)
+		cgo.GtkWidgetAddCssClass(w, name__r0)
 	}
 }
 
@@ -1552,25 +1579,37 @@ func _menuMoved(box cgo.Widget, child cgo.Widget) {
 	}
 }
 
-func _lookCss(w cgo.Widget, rule string) {
-	css := cgo.DataCss((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css")
-	if rule == "" {
-		if css != nil {
-			cgo.SnglStyleRemove(w, (*(css)))
-			_popoverStyle(w, (*(css)), false)
-			cgo.SetData((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css", nil)
+func _lookClass() string {
+	display := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
+	looks := func(h any) *_LooksState {
+		if v, ok := h.(_LooksState); ok {
+			return &v
 		}
-	} else {
-		if css != nil {
-			cgo.SnglCssLoad((*(css)), rule)
-		} else {
-			made := cgo.GtkCssProviderNew()
-			cgo.HoldData((cgo.Object)(unsafe.Pointer(w)), "sngl-look-css", cgo.Pointer(made), _unrefData)
-			cgo.SnglStyleAdd(w, made)
-			_popoverStyle(w, made, true)
-			cgo.SnglCssLoad(made, rule)
-		}
+		return nil
+	}(cgo.GObjectGetData(display, "sngl-looks"))
+	var n int = 1
+	if looks != nil {
+		n = ((*(looks)).Count + 1)
 	}
+	cgo.GObjectSetDataFull(display, "sngl-looks", _LooksState{Count: n})
+	return ("sngl-look-" + fmt.Sprint(n))
+}
+
+func _lookRule(w cgo.Widget, class string, decls string) string {
+	node := ((cgo.GtkWidgetGetCssName(w) + ".") + class)
+	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkPopoverGetType()) {
+		return (((((node + " > contents, ") + node) + " > arrow { ") + decls) + " }")
+	}
+	rule := (((node + " { ") + decls) + " }")
+	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkButtonGetType()) && (strings.Index(decls, "background") >= 0) {
+		rule = (rule + ((((((" " + node) + ":hover { background-image: image(alpha(currentColor, 0.1)); } ") + node) + ":active, ") + node) + ":checked { background-image: image(alpha(currentColor, 0.2)); }"))
+	}
+	return rule
+}
+
+func _cssGone(p cgo.Pointer) {
+	cgo.GtkStyleContextRemoveProviderForDisplay(cgo.GdkDisplayGetDefault(), (cgo.StyleProvider)(unsafe.Pointer((cgo.CssProvider)(unsafe.Pointer(p)))))
+	cgo.GObjectUnref(p)
 }
 
 func _lookParentChanged(o cgo.Pointer, spec cgo.Pointer, data cgo.Pointer) {
@@ -2331,22 +2370,6 @@ func _entryChanged(w cgo.Widget) {
 	host := _menuHostFrom(cgo.ParentOf(w))
 	if host != nil {
 		_menuApply((*(host)))
-	}
-}
-
-func _popoverStyle(w cgo.Widget, css cgo.CssProvider, add bool) {
-	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkPopoverGetType()) {
-		done := false
-		for _, c := range _childrenOf(w, false) {
-			if !done && (cgo.GtkWidgetGetCssName(c) == "contents") {
-				done = true
-				if add {
-					cgo.SnglStyleAdd(c, css)
-				} else {
-					cgo.SnglStyleRemove(c, css)
-				}
-			}
-		}
 	}
 }
 
@@ -3404,7 +3427,7 @@ pass sha256:4f51e7dcb6c4f2892d0a2ba26d4f6e88
 -- run/go/fyne --
 pass sha256:1d1bb6ffc8d8242e816dbebba16f8364
 -- run/go/gtk4 --
-pass sha256:fdbc294ac8c153041715dc1484040b4c
+pass sha256:eb9cc74f312458d1bd872d71ab7595cf
 -- run/kotlin/android --
 pass sha256:0bbf7d1be5dff9dc17c69f8450d99894
 -- run/none/html --
