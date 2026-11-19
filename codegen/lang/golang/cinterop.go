@@ -130,6 +130,14 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			if !ok || p.Type.Kind != ir.TypeStruct || sd.IsCStruct() || sd.Foreign.C == nil || wrapper(&sd.Foreign, gc.calls()) == nil {
 				continue
 			}
+			// A scalar typedef the wrapper package names (cgo.CGboolean) is
+			// a number, converted to the program's own cgo type as one: a
+			// gir: class's boolean set by name crossed as a pointer.
+			// (cmd/sngl/testdata/gtk4_prop_by_name_runs.txt)
+			if sd.Foreign.C.Ptr == 0 && !sd.Foreign.CPointer {
+				args[off+i] = gc.CType(sd.Foreign.C) + "(" + args[off+i] + ")"
+				continue
+			}
 			gc.RequireImport("unsafe")
 			args[off+i] = "(" + gc.CType(sd.Foreign.C) + ")(unsafe.Pointer(" + args[off+i] + "))"
 		}

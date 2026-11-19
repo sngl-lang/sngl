@@ -604,14 +604,16 @@ func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.
 }
 
 // propSetShape is the C type g_object_set reads a value of p's off its
-// arguments as -- a GValue of the property's type collects a gboolean, an
-// enum and a gint as an int, which gboolean is, and a gfloat as the double C
-// promotes it to -- or "" for a string.
+// arguments as -- a GValue of the property's type collects a gboolean as
+// itself, an enum and a gint as an int, and a gfloat as the double C promotes
+// it to -- or "" for a string.
 func propSetShape(p gir.Prop, kind propValueKind) string {
 	switch kind {
 	case propString:
 		return ""
-	case propBool, propEnum:
+	case propBool:
+		return "gboolean"
+	case propEnum:
 		return "gint"
 	case propFloat:
 		return "gdouble"
