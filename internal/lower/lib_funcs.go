@@ -277,6 +277,15 @@ func promoteFuncs(roots *[]any, push, prepare func(any), wanted func(*ir.Func) b
 			case *ir.Ident:
 				fn, _ = x.Sym.(*ir.Func)
 			}
+			// A call of a library function promoted already names the
+			// promoted copy: a thawed copy's call of itself, which names
+			// the frozen original the walk has seen, too.
+			if fn != nil && fn.PkgPath() != "" {
+				if c := promoted[libFuncKey(fn)]; c != nil && c != fn {
+					repoint(e, c)
+					return nil
+				}
+			}
 			if !wanted(fn) {
 				return nil
 			}

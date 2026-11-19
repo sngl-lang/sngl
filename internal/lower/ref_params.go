@@ -35,22 +35,46 @@ var passRefParams = pass{
 	apply:   func(pkg *ir.Package, _ Features, _ Options) error { return RefParams(pkg) },
 }
 
-// passCRefCalls is passRefParams again for the calls of C functions alone,
-// after passLibFuncs: a library function a build promotes arrives once
-// passRefParams has run, and its call of a C function filling a `ref` still
-// hands it `&x`, which no translator writes. A call lowered already passes
-// no `&`, and is left as it is.
+// passCRefCalls is passRefParams again for what passLibFuncs brought in
+// after it ran: the calls of C functions, and the library functions it
+// promoted that take a `ref`. A promoted body's call of a C function filling
+// a `ref` still hands it `&x`, which no translator writes; a promoted
+// function taking a `ref` -- gtk4's _layoutKidsInto, which pushes onto the
+// caller's list -- is lowered here as a program's own was, copy-in,
+// copy-out, and so are the promoted calls of it. A call lowered already
+// passes no `&`, and is left as it is.
 var passCRefCalls = pass{
 	name:    "CRefCalls",
 	enabled: func(Features) bool { return true },
 	apply: func(pkg *ir.Package, _ Features, _ Options) error {
-		rp := &refParams{pkg: pkg, outs: map[*ir.Func][]int{}, done: map[*ir.Call]bool{}, cOnly: true}
+		if pkg == nil {
+			return nil
+		}
+		rp := &refParams{pkg: pkg, outs: map[*ir.Func][]int{}, done: map[*ir.Call]bool{}, cOnly: true, lib: map[*ir.Func]bool{}}
+		var lib []*ir.Func
+		for _, f := range pkg.Funcs {
+			if f.PkgPath() != "" && !f.IsMethod() && f.Foreign.Name == "" && slices.ContainsFunc(f.Params, func(p *ir.Param) bool { return p.Type != nil && p.Type.Kind == ir.TypeRef }) {
+				lib = append(lib, f)
+				rp.lib[f] = true
+			}
+		}
+		rp.findOuts(lib)
+		if err := rp.refuseValues(lib); err != nil {
+			return err
+		}
+		for _, f := range lib {
+			rp.declareResult(f)
+		}
 		for _, block := range imperativeBlocks(pkg) {
 			out, err := rp.block(*block)
 			if err != nil {
 				return err
 			}
 			*block = out
+		}
+		for _, f := range lib {
+			rp.rewriteBody(f)
+			ownModifiedParams(f)
 		}
 		return nil
 	},
@@ -113,8 +137,10 @@ type refParams struct {
 	// cSeen is each C function cOuts has made the outs of.
 	cSeen map[*ir.Func]bool
 	// cOnly lowers the calls of C functions that still pass an address,
-	// and nothing else (passCRefCalls).
+	// and of the promoted library functions lib holds, and nothing else
+	// (passCRefCalls).
 	cOnly bool
+	lib   map[*ir.Func]bool
 }
 
 func (rp *refParams) funcs() []*ir.Func {
@@ -433,7 +459,7 @@ func (rp *refParams) writesBack(c *ir.Call) bool {
 	if c == nil || c.Func == nil {
 		return false
 	}
-	if rp.cOnly && (c.Func.Foreign.Path != ir.CPath || !slices.ContainsFunc(c.Args, func(a ir.CallArg) bool {
+	if rp.cOnly && !rp.lib[c.Func] && (c.Func.Foreign.Path != ir.CPath || !slices.ContainsFunc(c.Args, func(a ir.CallArg) bool {
 		u, ok := a.Value.(*ir.Unary)
 		return ok && u.Op == ast.UnaryAddr
 	})) {
@@ -550,10 +576,16 @@ func (h *refHoister) expr(e ir.Expr) ir.Expr {
 }
 
 // args rewrites c's arguments: each nested call first, and then each one
-// bound to a by-reference parameter, which passes the value it names.
+// bound to a by-reference parameter, which passes the value it names. Under
+// passCRefCalls that is a C function's or a promoted one's alone: any other
+// call was lowered by passRefParams, and an `&` left in one is an intrinsic's
+// to write.
 func (h *refHoister) args(c *ir.Call) *ir.Call {
 	for i := range c.Args {
 		c.Args[i].Value = h.expr(c.Args[i].Value)
+	}
+	if h.rp.cOnly && c.Func.Foreign.Path != ir.CPath && !h.rp.lib[c.Func] {
+		return c
 	}
 	for i, p := range c.Func.Params {
 		if !byRef(p) {

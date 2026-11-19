@@ -1953,18 +1953,19 @@ func _layoutHooksSet() {
 
 // The children of box a layout places, in order.
 func _layoutKids(box Widget) list[Widget] {
-    return _layoutKidsFrom(_firstChild(box))
+    var kids list[Widget] = []
+    var c = _firstChild(box)
+    _layoutKidsInto(&kids, c)
+    return kids
 }
 
-func _layoutKidsFrom(c option[Widget]) list[Widget] {
+func _layoutKidsInto(kids ref[list[Widget]], c option[Widget]) {
     if c != null {
-        var rest = _layoutKidsFrom(_nextSibling(c))
         if _shouldLayout(c) {
-            rest.insert(0, c)
+            kids.push(c)
         }
-        return rest
+        _layoutKidsInto(kids, _nextSibling(c))
     }
-    return []
 }
 
 // What gtk_distribute_natural_allocation makes of minimums: extra handed

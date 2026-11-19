@@ -356,8 +356,14 @@ declaration itself. Two things about the name that are easy to get wrong:
   takes a pointer to its type (`codegen/lang/c/testdata/run/refs.txtar`). `passRefParams` runs before `passLibFuncs`, so a promoted
   library function's `&x` reached no translator -- gtk4's probe measures
   its child through `gtk_widget_measure` that way -- and `passCRefCalls`,
-  after it, lowers the calls of C functions still handing an address and
-  nothing else (`internal/lower/ref_params.go`).
+  after it, lowers the calls of C functions still handing an address, and
+  each promoted library function taking a `ref` with the calls of it, as
+  `passRefParams` lowers a program's (`internal/lower/ref_params.go`). Any
+  other call it leaves alone: it took the `&` off every call, so gtk4's
+  `_layoutKidsInto(&kids, c)` handed a list where passNoRef's box was
+  declared. A promoted copy's call of itself names the copy
+  (`promoteFuncs`), or the pass met the frozen original, which writes
+  nothing back (`gtk4_look_runs.txtar`).
   A `func` parameter is a callback: C calls a function pointer and hands it
   back a `void *`, which the declaration marks `#[c.context]` (`sngl:x/c`) and
   no caller passes. The mark gives the parameter a placeholder default, so the
