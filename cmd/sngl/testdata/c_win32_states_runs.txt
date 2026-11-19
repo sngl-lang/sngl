@@ -1,0 +1,125 @@
+# A check box and a radio button are checked by BM_SETCHECK and read back by
+# BM_GETCHECK, and a control disabled is drawn grayed: the program sets each
+# state, the snapshot shows it, and a check box's handler reads what Win32
+# checked it to as the test presses it. Each is a Win32 call of
+# sngl:platform/win32's own, through api's declarations, in every way a
+# program calls C: from C, through Go's wrappers, from Go directly, and from
+# C built for 32-bit Windows.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=win32 --language=c states.sngl
+stdout 'ok +2 tests, 0 failures'
+exists states.sngl.snapshots/set.png
+exists states.sngl.snapshots/flipped.png
+! cmp states.sngl.snapshots/set.png states.sngl.snapshots/flipped.png
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=go states.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct states.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=c --opt arch=386 states.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- states.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var on = true
+    var size = 1
+    var off = true
+    ui.vbox {
+        ui.checkbox #flag(label="flag", checked=on, @change(v) { on = v })
+        ui.radio #sizes(:value=size, disabled=off) {
+            ui.choice(label="small", value=1)
+            ui.choice(label="large", value=2)
+        }
+        ui.button #flip(text="flip", @click {
+            on = !on
+            size = 3 - size
+            off = !off
+        })
+    }
+}
+
+ui.window(title="States") {
+    main()
+}
+
+func testHandlersReadTheState(t test.Test, c main) {
+    c.flag.change(false)
+    t.assert(!c.on)
+    c.flag.change(true)
+    t.assert(c.on)
+    c.sizes.change(2)
+    t.assert(c.size == 2)
+}
+
+func testDraws(t test.Test, c main) {
+    t.snapshot("set")
+    c.flip.click()
+    t.assert(!c.on)
+    t.assert(c.size == 2)
+    t.snapshot("flipped")
+}
+-- testrun/win32/c/states.sngl/main/1 --
+sha256:875cc4547e9a95db5a1e87c7fc6fe3e3
+{
+  "results": [
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "flipped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAIAAABM5OhcAAAGHElEQVR4nOycP6/SXhjH25NiMbg0bawOJA78EQajC7wABxNFZCAmLq6+DHVycDExMQ7Eyd0FdxITkZjgpAQ6mIhLTQvegVwKpPwC5Rx6W+BXLuTGS7/fZzl9euKAnzzPuafP8wiDwYCDoH2L0AUE7VMCx3HNZtM0Tdu2qXMpQoiiKLdu3aIOCAok/tOnT5cvX04kEoSsiF62bWuaZhgG2AJbW7FFTNNcR9XsNSHJZNIwDOpYKDaXs6A+CFqK2La9jqparfbw4UNCiCdLxmKxwVzUAUFerUaK47jPnz+Xy+XHjx9TBwRtIcHz7Fi9Xi8Wi+/evSsUCtR3Qk4edActlhOZ050l3TsRsUIUsd6/f9/v9+dL7uvXrw8ePKhUKsVikW7zyp8KB1Ts7EUdA6TC8KbCL1++3Llz5+joqNlsFgqFN2/elEoluieQYlTUgVQY8lQ4T4WvX79+8uTJ7du3f//+/erVq3K5TDcEkhOf2Jq6ofBqEbF4nn/79u3Nmzdfvnz56NEj+haCTinBuU0gc1UqFepfasN9BDN2tNrggYXKBEVRNE1LJpMr6XFu3hVF8UDjX7udHg8ICyFh/GAw+Pbtm2EYe/9WyHjyMwcdvHj8r4fwf/0MRALtAlgAC2ABLIAFsAAWwAJYAAtgASyABbAAFsACWAALYAGsAwRrWUHa7/e73a5pmuPxOBKJyLIcj8clSaLvIWgLzT7pTKfTVqtlmmY6nVZVVRRFy7J0XW+327IsZzIZnufpfggKpBlYP378GI1GuVxOEJYBjOO4yWTSaDREUcxms9S3k5x6QHdVIHSoIv1+v9fr+amapUlByOfzpmmycngYLKCRbrebSqX8VDG2UqlUt9ulDggKpFkntKqq9HGFVFX1RyzaORFbuaa7TryChcqE8XgsiiJ9XKFoNDoajTxUeQ5JziPzswXbxjywkJgQiUQsy7p48SL1eDUcDi9cuECfuK1AQawKYaxapEJZlnVdZ89+03Xdc5vFGlM3c4Oe1TD3rJJ4PN5utyeTCfWc0GQy6XQ68XicOpYCLiHEJbgRSZJkWW40Gn62nHssRVE8EYueyP8nG7KohoQYwoR44uY9lUqpqhqNRofDoa7rnU5HUZTr16/j5h0376e5eWffCn/9+vX371/LskRRlCQJ3wrxrXCnb4V0jbIZlM2gbAZlM/922QzAAlgAC2ABLIAFsAAWwAJYAAtgASyABbAAFsACWOcBLLR/of0L7V9o/zrs9q+A5aOwMNuJ9q9qtZrL5S5dupTL5T5+/Ij2L7R/nbr9i6/X61euXLl27Vq1Wr1//z71z+zDhw+lUunnz5+6rt+4cQMRCxFri4jF2r+eP39OnQu9ePFiXfsXI8xdIMo6wDxv/R76D6D9KwTtX+12mzoXarVaK9u/mLG4xWKYf+EGzr8fOlQRp/2L47h0Ok2dC2UymXXtX+si0GZc/PuhQ9Wy/evZs2fUudDTp09Xtn8xSmhzV9DYQ7ejIezwG8KW7V/37t3z/FV49+7dDe1fuxiC1sEHrcU9lmVZ+Xx+5T1WNBp1ciITOyG5+fDPJ/K8dXsQsQ4+Yp1F+5cHOHTphKtLZ+/tX4hP4YlPm8BC2QzKZlA2g7KZf71sBmABLIAFsAAWwAJYAAtgASyABbAAVpjBEo6Pj79//97r9abTKXVC0CnF87wsy9lslq/ValevXk0kEoQgeiF67Rq9bNvWNO3Pnz+zmndQBar2QtXsaEVIMpk0TZNMp1NQBar2QhVjawYVe4bB9mgAC2ABLIAFsM47WPxczt/P1AewANZuYPE8P52LOoDX1ngR/DZrfxuXcHu87e2xsMIXcs3lhCjGkxPD3HELqG1GDWCtBmsdN8zvoEbdSIVIhadKhbBtDWABLIAFsM4PWAJ+nk0/j8/Y+R2Hdxzetz68u6Fx1szjfoVUiFSIVHjWqRBgbQEWwlXAcAWwtgMLCi7C87xt2/QRgnaVbduEkNlEP03TwBbY2gtbTs27JEm8YRjo0kGXzv67dDDGCGOMMMYIY4wwxghjjDDGCGOMMMYIY4wwxghjjDDGCGOMMMYIY4wwxghjjM7BGKP/BgDTYPeDvxNfzwAAAABJRU5ErkJggg==",
+    "set.png": "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"
+  }
+}
+-- testrun/win32/c/states.sngl/main/2 --
+sha256:97fcad7630dd51cb0e39259ae2856097
+{
+  "results": [
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/states.sngl/main/1 --
+sha256:71fc551c4f52bf3ab67ae1ad60a7ce27
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/states.sngl/main/2 --
+sha256:2f152e34473389fa26626c01aef9525d
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    }
+  ]
+}

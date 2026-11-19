@@ -261,10 +261,35 @@ func _look(w ui.node, look Look)
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetShown")]
 func _rtSetShown(w ui.node, shown bool)
 
+// What a window's paint is asked to cover again: all of it, where NULL.
+// win32gen writes no InvalidateRect, whose rectangle is a `const RECT *`.
+#[c.native("const RECT *")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ConstRect")]
+struct _ConstRect {}
+
+#[c.native("InvalidateRect")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.InvalidateRect")]
+func _invalidateRect(w api.HWND, r option[_ConstRect], erase bool) api.WINBOOL
+
+// The whole of a window painted again, its background erased first.
+func _invalidate(w api.HWND) {
+    _invalidateRect(w, null, true)
+}
+
 // A control disabled is drawn grayed and takes no input.
-#[c.native("sngl_win32_set_enabled")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetEnabled")]
-func _rtSetEnabled(w ui.node, enabled bool)
+func _rtSetEnabled(w ui.node, enabled bool) {
+    api.EnableWindow(_handle(w), enabled)
+    _invalidate(_handle(w))
+}
+
+// A check box's or a radio button's check, set and read as Win32 holds it.
+func _setCheck(w ui.node, checked bool) {
+    api.SendMessage(_handle(w), api.BM_SETCHECK, checked ? api.BST_CHECKED : api.BST_UNCHECKED, 0)
+}
+
+func _check(w ui.node) bool {
+    return api.SendMessage(_handle(w), api.BM_GETCHECK, 0, 0) == api.BST_CHECKED
+}
 
 // --- Windows ---
 
@@ -610,14 +635,14 @@ component CheckBox(label string, checked bool, enabled bool = true, look Look, @
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Checkbox")]
 func _rtCheckBox() CheckBox
 
-#[c.native("sngl_win32_set_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetChecked")]
-func _rtSetChecked(b CheckBox, checked bool)
+func _rtSetChecked(b CheckBox, checked bool) {
+    _setCheck(b, checked)
+}
 
 // Whether a check box is checked, read off it.
-#[c.native("sngl_win32_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Checked")]
-func isChecked(b CheckBox) bool
+func isChecked(b CheckBox) bool {
+    return _check(b)
+}
 
 #[gen.protocol(create)]
 func _create_CheckBox() CheckBox {
@@ -803,13 +828,13 @@ component Radio(label string, checked bool, enabled bool, look Look, @click()) u
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Radio")]
 func _rtRadio() Radio
 
-#[c.native("sngl_win32_set_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetChecked")]
-func _rtSetRadioChecked(b Radio, checked bool)
+func _rtSetRadioChecked(b Radio, checked bool) {
+    _setCheck(b, checked)
+}
 
-#[c.native("sngl_win32_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Checked")]
-func isPicked(b Radio) bool
+func isPicked(b Radio) bool {
+    return _check(b)
+}
 
 #[gen.protocol(create)]
 func _create_Radio() Radio {

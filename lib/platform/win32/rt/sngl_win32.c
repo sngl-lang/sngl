@@ -3271,11 +3271,6 @@ int sngl_win32_is_shown(HWND w) {
 	return c && !c->off_prop && !c->off_look;
 }
 
-void sngl_win32_set_enabled(HWND w, int enabled) {
-	EnableWindow(w, enabled != 0);
-	InvalidateRect(w, NULL, TRUE);
-}
-
 void sngl_win32_set_selected(HWND tabs, int selected) {
 	ctl *c = ctl_of(tabs);
 	if (c && c->selected != selected) {
@@ -4540,10 +4535,6 @@ const char *sngl_win32_selected(HWND w) {
 	return out;
 }
 
-void sngl_win32_set_checked(HWND w, int checked) { SendMessageW(w, BM_SETCHECK, checked ? BST_CHECKED : BST_UNCHECKED, 0); }
-
-int sngl_win32_checked(HWND w) { return SendMessageW(w, BM_GETCHECK, 0, 0) == BST_CHECKED; }
-
 void sngl_win32_set_visible(HWND top, int visible) {
 	int was = IsWindowVisible(top) != 0;
 	if (was == (visible != 0)) {
@@ -4666,7 +4657,7 @@ void sngl_win32_fire_click(HWND w) {
 }
 
 void sngl_win32_fire_check(HWND w, int checked) {
-	sngl_win32_set_checked(w, checked);
+	SendMessageW(w, BM_SETCHECK, checked ? BST_CHECKED : BST_UNCHECKED, 0);
 	notify(w, BN_CLICKED);
 }
 

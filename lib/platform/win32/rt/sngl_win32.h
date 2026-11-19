@@ -317,7 +317,6 @@ const char *sngl_win32_selected(HWND w);
  * or shows it again; sngl_win32_is_shown is whether it is shown. */
 void sngl_win32_set_shown(HWND w, int shown);
 int sngl_win32_is_shown(HWND w);
-void sngl_win32_set_enabled(HWND w, int enabled);
 /* sngl_win32_set_selected is the page a tabs shows. */
 void sngl_win32_set_selected(HWND tabs, int selected);
 void sngl_win32_set_scroll(HWND w, int vertical, int horizontal);
@@ -333,8 +332,6 @@ void sngl_win32_set_closable(HWND m, int closable);
 /* sngl_win32_set_href is what a link opens. */
 void sngl_win32_set_href(HWND w, const unsigned short *href);
 
-void sngl_win32_set_checked(HWND w, int checked);
-int sngl_win32_checked(HWND w);
 void sngl_win32_set_visible(HWND top, int visible);
 /* sngl_win32_shown is the toplevel shown last, while it is, or NULL. */
 HWND sngl_win32_shown(void);

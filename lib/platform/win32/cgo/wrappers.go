@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 65b14598f64ae71d1ed35a39
+// The C sources, as a change to them builds this package again: 589df750d46f385c4c542de5
 
 package cgo
 
@@ -19,6 +19,9 @@ import (
 	"duckfam.us/sngl/pkg/go/cbind"
 	"unsafe"
 )
+
+// ConstRect is C's const RECT *.
+type ConstRect = *C.RECT
 
 // Gfx is C's sngl_win32_gfx *.
 type Gfx = *C.sngl_win32_gfx
@@ -174,6 +177,27 @@ func GetWindowTextLengthW(hWnd HWND) int {
 	return int(C.GetWindowTextLengthW(hWnd))
 }
 
+// InvalidateRect calls InvalidateRect.
+func InvalidateRect(w HWND, r *ConstRect, erase bool) int {
+	if r == nil {
+		var __lt1 int
+		if erase {
+			__lt1 = 1
+		} else {
+			__lt1 = 0
+		}
+		return int(C.InvalidateRect(w, nil, C.int(__lt1)))
+	} else {
+		var __lt2 int
+		if erase {
+			__lt2 = 1
+		} else {
+			__lt2 = 0
+		}
+		return int(C.InvalidateRect(w, (*(r)), C.int(__lt2)))
+	}
+}
+
 // IsWindowEnabled calls IsWindowEnabled.
 func IsWindowEnabled(hWnd HWND) int {
 	return int(C.IsWindowEnabled(hWnd))
@@ -186,13 +210,13 @@ func IsWindowVisible(hWnd HWND) int {
 
 // MoveWindow calls MoveWindow.
 func MoveWindow(hWnd HWND, X int, Y int, nWidth int, nHeight int, bRepaint bool) int {
-	var __lt1 int
+	var __lt3 int
 	if bRepaint {
-		__lt1 = 1
+		__lt3 = 1
 	} else {
-		__lt1 = 0
+		__lt3 = 0
 	}
-	return int(C.MoveWindow(hWnd, C.int(X), C.int(Y), C.int(nWidth), C.int(nHeight), C.int(__lt1)))
+	return int(C.MoveWindow(hWnd, C.int(X), C.int(Y), C.int(nWidth), C.int(nHeight), C.int(__lt3)))
 }
 
 // PostMessageW calls PostMessageW.
@@ -256,13 +280,13 @@ func SnglWin32Attach(n HWND) {
 
 // SnglWin32Box calls sngl_win32_box.
 func SnglWin32Box(vertical bool) HWND {
-	var __lt2 int
+	var __lt4 int
 	if vertical {
-		__lt2 = 1
+		__lt4 = 1
 	} else {
-		__lt2 = 0
+		__lt4 = 0
 	}
-	return C.sngl_win32_box(C.int(__lt2))
+	return C.sngl_win32_box(C.int(__lt4))
 }
 
 // SnglWin32Button calls sngl_win32_button.
@@ -292,11 +316,6 @@ func SnglWin32CarryFile(name string, data string, len int) {
 // SnglWin32Checkbox calls sngl_win32_checkbox.
 func SnglWin32Checkbox() HWND {
 	return C.sngl_win32_checkbox()
-}
-
-// SnglWin32Checked calls sngl_win32_checked.
-func SnglWin32Checked(b HWND) bool {
-	return (C.sngl_win32_checked(b) != 0)
 }
 
 // SnglWin32Choose calls sngl_win32_choose.
@@ -391,13 +410,13 @@ func SnglWin32FireChange(e HWND, text string) {
 
 // SnglWin32FireCheck calls sngl_win32_fire_check.
 func SnglWin32FireCheck(b HWND, checked bool) {
-	var __lt3 int
+	var __lt5 int
 	if checked {
-		__lt3 = 1
+		__lt5 = 1
 	} else {
-		__lt3 = 0
+		__lt5 = 0
 	}
-	C.sngl_win32_fire_check(b, C.int(__lt3))
+	C.sngl_win32_fire_check(b, C.int(__lt5))
 }
 
 // SnglWin32FireClick calls sngl_win32_fire_click.
@@ -467,13 +486,13 @@ func SnglWin32GfxCurveTo(recv Gfx, x1 float64, y1 float64, x2 float64, y2 float6
 
 // SnglWin32GfxFill calls sngl_win32_gfx_fill.
 func SnglWin32GfxFill(recv Gfx, preserve bool) {
-	var __lt4 int
+	var __lt6 int
 	if preserve {
-		__lt4 = 1
+		__lt6 = 1
 	} else {
-		__lt4 = 0
+		__lt6 = 0
 	}
-	C.sngl_win32_gfx_fill(recv, C.int(__lt4))
+	C.sngl_win32_gfx_fill(recv, C.int(__lt6))
 }
 
 // SnglWin32GfxFont calls sngl_win32_gfx_font.
@@ -726,17 +745,6 @@ func SnglWin32SetCanvasWidth(w HWND, width int) {
 	C.sngl_win32_set_canvas_width(w, C.int(width))
 }
 
-// SnglWin32SetChecked calls sngl_win32_set_checked.
-func SnglWin32SetChecked(b HWND, checked bool) {
-	var __lt5 int
-	if checked {
-		__lt5 = 1
-	} else {
-		__lt5 = 0
-	}
-	C.sngl_win32_set_checked(b, C.int(__lt5))
-}
-
 // SnglWin32SetChosen calls sngl_win32_set_chosen.
 func SnglWin32SetChosen(t HWND, label string) {
 	C.sngl_win32_set_chosen(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label))))
@@ -744,13 +752,13 @@ func SnglWin32SetChosen(t HWND, label string) {
 
 // SnglWin32SetClosable calls sngl_win32_set_closable.
 func SnglWin32SetClosable(m HWND, closable bool) {
-	var __lt6 int
+	var __lt7 int
 	if closable {
-		__lt6 = 1
+		__lt7 = 1
 	} else {
-		__lt6 = 0
+		__lt7 = 0
 	}
-	C.sngl_win32_set_closable(m, C.int(__lt6))
+	C.sngl_win32_set_closable(m, C.int(__lt7))
 }
 
 // SnglWin32SetColumns calls sngl_win32_set_columns.
@@ -781,17 +789,6 @@ func SnglWin32SetDrawingWidth(w HWND, width float64) {
 // SnglWin32SetEditText calls sngl_win32_set_edit_text.
 func SnglWin32SetEditText(e HWND, text string) {
 	C.sngl_win32_set_edit_text(e, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
-}
-
-// SnglWin32SetEnabled calls sngl_win32_set_enabled.
-func SnglWin32SetEnabled(w HWND, enabled bool) {
-	var __lt7 int
-	if enabled {
-		__lt7 = 1
-	} else {
-		__lt7 = 0
-	}
-	C.sngl_win32_set_enabled(w, C.int(__lt7))
 }
 
 // SnglWin32SetEntryChecked calls sngl_win32_set_entry_checked.
