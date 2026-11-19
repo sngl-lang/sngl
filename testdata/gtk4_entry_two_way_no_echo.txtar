@@ -548,6 +548,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
 }
@@ -2011,7 +2017,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2305,7 +2311,7 @@ func Search__new() *Search__inst {
 	__self.Box = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Box)), cgo.CGboolean(1))
 	_applyLook(__self.Box, Look{})
-	cgo.SnglSignalConnect(__self.Box, "changed", func() {
+	_rtSignalConnect(__self.Box, "changed", func() {
 		func(e cgo.Widget) {
 			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Search {
 				__self.Search = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
@@ -2314,7 +2320,7 @@ func Search__new() *Search__inst {
 			Search__effects0_settle(__self)
 		}(__self.Box)
 	})
-	cgo.SnglSignalConnect(__self.Box, "activate", func() {
+	_rtSignalConnect(__self.Box, "activate", func() {
 		func(e cgo.Widget) {
 			__self.Search = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Search)
@@ -2448,4 +2454,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:2ac69459b68f10126f1dce31473f37f5
+pass sha256:87ff3f673e39e8e6b766d13ff2ff982f

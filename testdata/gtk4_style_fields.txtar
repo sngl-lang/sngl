@@ -426,6 +426,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
 	var __lt3 float64
 	if s.Flex == nil {
@@ -1806,7 +1812,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2318,7 +2324,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "recolor")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
 	_applyLook(m.__n6, Look{Css: "min-width: 200px; border-radius: 4px; border-color: #ff0000; border-width: 2px; border-style: dashed; ", Height: 32.0})
-	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
+	_rtSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
 	m.__n7 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n7)), "type")
@@ -2388,4 +2394,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:1a02b2b68c9543edd8a6d6bede1e8cfc
+pass sha256:c007088fb2e30d925760243612a2271a

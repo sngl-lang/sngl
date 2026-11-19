@@ -911,6 +911,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _rtCalendarDay(c cgo.Widget) string {
 	t := cgo.GtkCalendarGetDate((cgo.Calendar)(unsafe.Pointer(c)))
 	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
@@ -2221,7 +2227,7 @@ func snglBuild() {
 	m.cal = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal)), cgo.CGboolean(func() int { return 1 }()))
 	_applyLook(m.cal, Look{})
-	cgo.SnglSignalConnect(m.cal, "day-selected", func() {
+	_rtSignalConnect(m.cal, "day-selected", func() {
 		Cal_daySelected_handler(m.cal)
 	})
 	__effects0_settle()
@@ -2482,7 +2488,7 @@ pass sha256:b5f00a6a56bda7b4db1549d5e8037370
 -- run/go/fyne --
 pass sha256:7e016edb83723b14def494ccfd9417d3
 -- run/go/gtk4 --
-pass sha256:c211e9487d3b5718a12882b58d0b0878
+pass sha256:979a1be4bdcd05d25f27bfcbd4064229
 -- run/kotlin/android --
 pass sha256:fd038e8df43a6057cfd3e504ac945be0
 -- run/none/html --

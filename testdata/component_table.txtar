@@ -853,6 +853,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2071,7 +2077,7 @@ func __child0__new(__p0 int, __p1 int, __p2 TableRow__record, __on0 func(cgo.Wid
 			return 0
 		}
 	}()))
-	cgo.SnglSignalConnect(__self.__n0, "toggled", func() {
+	_rtSignalConnect(__self.__n0, "toggled", func() {
 		func(__on0_0 cgo.Widget) {
 			__self.__prop___on0(__on0_0)
 		}(__self.__n0)
@@ -2531,7 +2537,7 @@ pass sha256:5bfc00b7d2334179215bb6aea70b0eae
 -- run/go/fyne --
 pass sha256:b53d42ebc05e54d244e10ff88239ff71
 -- run/go/gtk4 --
-pass sha256:db3f34a3169400c833e8e43387675b48
+pass sha256:e636d23725a402b8df03483091a161e9
 -- run/kotlin/android --
 pass sha256:6f0c6b92e9db9093c588d597be6a4660
 -- run/none/html --

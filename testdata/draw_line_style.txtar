@@ -638,6 +638,12 @@ func _canvasOf(w cgo.Widget) _CanvasState {
 	}}
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func TangentArc(from Point, corner Point, to Point, r float64) Arc {
 	var a1 float64 = math.Atan2((from.Y - corner.Y), (from.X - corner.X))
 	var a2 float64 = math.Atan2((to.Y - corner.Y), (to.X - corner.X))
@@ -965,7 +971,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -1677,7 +1683,7 @@ pass sha256:b0d4105cb0fd961cfb7d8918d6f09f33
 -- run/go/fyne --
 pass sha256:b68b6114bf84643957dbfc33b02c6f19
 -- run/go/gtk4 --
-pass sha256:2ceb705a56b90a5c892fbb1f062b1eea
+pass sha256:d0d509a50d1cd798b7f09603e2c710ea
 -- run/kotlin/android --
 pass sha256:b5484176887e5d7fbeccad03d59bfe29
 -- run/none/html --

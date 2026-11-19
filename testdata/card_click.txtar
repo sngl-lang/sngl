@@ -1262,6 +1262,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2584,7 +2590,7 @@ func snglBuild() {
 		cgo.GtkButtonSetHasFrame((cgo.PGtkButton)(unsafe.Pointer(row)), cgo.CGboolean(func() int { return 0 }()))
 		_applyLook(row, Look{})
 		m.row__copies[fmt.Sprint(__copy0)] = row
-		cgo.SnglSignalConnect(row, "clicked", func() {
+		_rtSignalConnect(row, "clicked", func() {
 			m.opened = name.Elem
 			__renderSlot0(m.__n2)
 		})
@@ -3087,7 +3093,7 @@ pass sha256:54f13aefc0cdcc46f1a31b8b3f9a5c52
 -- run/go/fyne --
 pass sha256:16d4edbfbf427b730980862d2ccbbd00
 -- run/go/gtk4 --
-pass sha256:be418b6daca698e100116712ff1c20d2
+pass sha256:ff3804a979415ef3d8311b4f5639c929
 -- run/kotlin/android --
 pass sha256:eddde20277ba4d550a83f09848c95408
 -- run/none/html --

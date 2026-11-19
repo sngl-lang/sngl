@@ -2663,6 +2663,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -3904,7 +3910,7 @@ func Badge__site0__new(label string) *Badge__site0__inst {
 	_applyLook(__self.Hit__reach0, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Shown)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Hit__reach0)))
-	cgo.SnglSignalConnect(__self.Hit__reach0, "clicked", func() {
+	_rtSignalConnect(__self.Hit__reach0, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 		Badge__site0__renderSlot4(__self, __self.__root)
@@ -4005,7 +4011,7 @@ func Badge__site1__new(label string, __copy string) *Badge__site1__inst {
 	m.hit__reach1__copies[__self.__prop___copy] = __self.Hit__reach1
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Shown)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Hit__reach1)))
-	cgo.SnglSignalConnect(__self.Hit__reach1, "clicked", func() {
+	_rtSignalConnect(__self.Hit__reach1, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 		Badge__site1__renderSlot5(__self, __self.__root)
@@ -4146,7 +4152,7 @@ func Badge__site2__new(label string) *Badge__site2__inst {
 	_applyLook(__self.Hit__reach2, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Shown)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Hit__reach2)))
-	cgo.SnglSignalConnect(__self.Hit__reach2, "clicked", func() {
+	_rtSignalConnect(__self.Hit__reach2, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 		Badge__site2__renderSlot6(__self, __self.__root)
@@ -4609,7 +4615,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.hit__reach3)), "hit")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.hit__reach3)), cgo.CGboolean(1))
 	_applyLook(m.hit__reach3, Look{})
-	cgo.SnglSignalConnect(m.hit__reach3, "clicked", Hit__reach3_clicked_handler)
+	_rtSignalConnect(m.hit__reach3, "clicked", Hit__reach3_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.hit__reach3)))
 	__renderSlot3(m.__n1)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n1)))
@@ -5761,7 +5767,7 @@ pass sha256:f9f193db9f96e2bb52261d0f7b5d3b5e
 -- run/go/fyne --
 pass sha256:e0c41a192c7bce973251bcc7255da4b5
 -- run/go/gtk4 --
-pass sha256:2e21f03305616278161f7907d8043d3b
+pass sha256:9b30128fae58eba16b3666793288a685
 -- run/kotlin/android --
 pass sha256:7aa818aaa9b7d27103a0fecabb1f4ab4
 -- run/none/html --

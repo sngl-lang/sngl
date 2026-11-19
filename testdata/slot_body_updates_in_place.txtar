@@ -1389,6 +1389,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -2556,7 +2562,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3297,13 +3303,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.tick)), "tick")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.tick)), cgo.CGboolean(1))
 	_applyLook(m.tick, Look{})
-	cgo.SnglSignalConnect(m.tick, "clicked", Tick_clicked_handler)
+	_rtSignalConnect(m.tick, "clicked", Tick_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.tick)))
 	m.flip = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.flip)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.flip)), cgo.CGboolean(1))
 	_applyLook(m.flip, Look{})
-	cgo.SnglSignalConnect(m.flip, "clicked", Flip_clicked_handler)
+	_rtSignalConnect(m.flip, "clicked", Flip_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.flip)))
 	__renderSlot0(m.__n5)
 	__renderSlot1(m.__n5)
@@ -3843,7 +3849,7 @@ pass sha256:c62d8f70a86804036e382eeca0265486
 -- run/go/fyne --
 pass sha256:374e594e284aecb17d37c703913b8ef7
 -- run/go/gtk4 --
-pass sha256:64f4b4b40e9e2c4b9c077096a22b70c5
+pass sha256:9e6ceb0e330ee4e5d4081a44a98e2d66
 -- run/kotlin/android --
 pass sha256:2da69b45a79e7ea0e7d91b1a3e0fcd38
 -- run/none/html --

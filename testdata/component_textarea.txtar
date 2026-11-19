@@ -839,6 +839,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2120,10 +2126,10 @@ func snglBuild() {
 	m.entry = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.entry)), cgo.CGboolean(1))
 	_applyLook(m.entry, Look{})
-	cgo.SnglSignalConnect(m.entry, "changed", func() {
+	_rtSignalConnect(m.entry, "changed", func() {
 		Entry_changed_handler(m.entry)
 	})
-	cgo.SnglSignalConnect(m.entry, "activate", func() {
+	_rtSignalConnect(m.entry, "activate", func() {
 		Entry_activate_handler(m.entry)
 	})
 	__effects0_settle()
@@ -2296,7 +2302,7 @@ pass sha256:7a6a147de577c2fd62464256a92fedff
 -- run/go/fyne --
 pass sha256:99858d36f3aa8ccc36962e3491674516
 -- run/go/gtk4 --
-pass sha256:ff7d6508f21517cc1407032eac6fd086
+pass sha256:a6af95e1c5d37e8be574b817d9b22a75
 -- run/kotlin/android --
 pass sha256:983e90438a8bf2381fa4d91ef1b985d0
 -- run/none/html --

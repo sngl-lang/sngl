@@ -376,6 +376,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _rtCalendarDay(c cgo.Widget) string {
 	t := cgo.GtkCalendarGetDate((cgo.Calendar)(unsafe.Pointer(c)))
 	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
@@ -1578,7 +1584,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2124,7 +2130,7 @@ func snglBuild() {
 	m.d = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.d)), cgo.CGboolean(func() int { return 1 }()))
 	_applyLook(m.d, Look{})
-	cgo.SnglSignalConnect(m.d, "day-selected", func() {
+	_rtSignalConnect(m.d, "day-selected", func() {
 		D_daySelected_handler(m.d)
 	})
 	cgo.SnglToplevelAppend(m.__n0, m.d)
@@ -2166,4 +2172,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:0e49ad417c9089257db5c0f45ad5fa41
+pass sha256:c82463627e07cf768e647272f48f91ea

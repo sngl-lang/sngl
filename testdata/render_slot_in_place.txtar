@@ -633,6 +633,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2040,13 +2046,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.flip)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.flip)), cgo.CGboolean(1))
 	_applyLook(m.flip, Look{})
-	cgo.SnglSignalConnect(m.flip, "clicked", Flip_clicked_handler)
+	_rtSignalConnect(m.flip, "clicked", Flip_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.flip)))
 	m.more = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.more)), "more")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.more)), cgo.CGboolean(1))
 	_applyLook(m.more, Look{})
-	cgo.SnglSignalConnect(m.more, "clicked", More_clicked_handler)
+	_rtSignalConnect(m.more, "clicked", More_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.more)))
 	cgo.SnglAppAttach(m.__n3)
 }
@@ -2084,4 +2090,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:6096eb21f97e383f271d3b3cc8f2bb2a
 -- run/go/gtk4 --
-pass sha256:8fa809ac0b5100d5568ac181c0f6edcd
+pass sha256:958e329a8c8bfe942b0d13ee3f7f3972

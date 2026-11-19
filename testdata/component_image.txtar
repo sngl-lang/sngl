@@ -912,7 +912,7 @@ func _imageSourceNew() cgo.Widget {
 	_setImageSource(w, _ImageSourceState{Paint: func(ctx cgo.CairoContext) {
 	}})
 	cgo.GObjectWeakRef((cgo.Object)(unsafe.Pointer(w)), _imageSourceGone, nil)
-	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(w)), "notify::parent", func() {
+	_rtNotifyConnect((cgo.Widget)(unsafe.Pointer(w)), "notify::parent", func() {
 		_imageSourceParented(w)
 	})
 	return w
@@ -1278,6 +1278,12 @@ func _imageHooksSet() {
 
 func _imageSourceGone(data cgo.Pointer, gone cgo.Object) {
 	_imageSourceUnwatch((cgo.Widget)(unsafe.Pointer(gone)))
+}
+
+func _rtNotifyConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _imageSourceParented(w cgo.Widget) {
@@ -3028,7 +3034,7 @@ pass sha256:2dbc2dead625a3509cc8ab5221613c03
 -- run/go/fyne --
 pass sha256:dcfa287e448cefd56ea5e4e4728fa962
 -- run/go/gtk4 --
-pass sha256:060af9ba1f835d5f518ec3f15c79bad9
+pass sha256:9bdb8d12110f40902b4343756d2d5498
 -- run/kotlin/android --
 pass sha256:c17aab8690945f25d9e25193303735e9
 -- run/none/html --

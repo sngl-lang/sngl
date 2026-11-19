@@ -691,6 +691,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -1914,7 +1920,7 @@ func Row__new(label string) *Row__inst {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglSignalConnect(__self.__n0, "toggled", func() {
+	_rtSignalConnect(__self.__n0, "toggled", func() {
 		func(b cgo.Widget) {
 			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked__inst0 {
 				__self.Checked__inst0 = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
@@ -1942,7 +1948,7 @@ func Row__new(label string) *Row__inst {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)), cgo.CGboolean(1))
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglSignalConnect(__self.__n1, "toggled", func() {
+	_rtSignalConnect(__self.__n1, "toggled", func() {
 		func(b cgo.Widget) {
 			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked__inst1 {
 				__self.Checked__inst1 = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
@@ -1960,7 +1966,7 @@ func Row__new(label string) *Row__inst {
 	__self.Entry = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Entry)), cgo.CGboolean(1))
 	_applyLook(__self.Entry, Look{})
-	cgo.SnglSignalConnect(__self.Entry, "changed", func() {
+	_rtSignalConnect(__self.Entry, "changed", func() {
 		func(e cgo.Widget) {
 			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Value__inst0 {
 				__input_value_wrote0 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
@@ -1971,7 +1977,7 @@ func Row__new(label string) *Row__inst {
 			Row__effects0_settle(__self)
 		}(__self.Entry)
 	})
-	cgo.SnglSignalConnect(__self.Entry, "activate", func() {
+	_rtSignalConnect(__self.Entry, "activate", func() {
 		func(e cgo.Widget) {
 			__self.Value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 			Row__effects0_settle(__self)
@@ -2190,4 +2196,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:0746e6044180c7a4a3afe84ce415da29
 -- run/go/gtk4 --
-pass sha256:a49ab430677864335497fb84a2352f0e
+pass sha256:fef765f133d8a799a53a38b0ad756a27

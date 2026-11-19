@@ -565,6 +565,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -1799,7 +1805,7 @@ func __child0__new(__p0 __anon_id_elem_cdfd47, __p1 int, __on0 func()) *__child0
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Off)), cgo.CGboolean(1))
 	_applyLook(__self.Off, Look{})
 	m.off__copies[fmt.Sprint(__self.__prop___p1)] = __self.Off
-	cgo.SnglSignalConnect(__self.Off, "clicked", func() {
+	_rtSignalConnect(__self.Off, "clicked", func() {
 		__self.__prop___on0()
 	})
 	__self.__root = __self.Off
@@ -2027,4 +2033,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:5fcb1b84c89ee303cacb55e77bef3774
 -- run/go/gtk4 --
-pass sha256:86cf3e3853d8e03d30b820259035187c
+pass sha256:8ce43b702a5baa49f7fdb991c6fbfbbf

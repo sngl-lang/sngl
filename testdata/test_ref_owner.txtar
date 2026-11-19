@@ -1945,6 +1945,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -3156,7 +3162,7 @@ func Badge__new(label string) *Badge__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), (__self.__prop_label + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Hit)), cgo.CGboolean(1))
 	_applyLook(__self.Hit, Look{})
-	cgo.SnglSignalConnect(__self.Hit, "clicked", func() {
+	_rtSignalConnect(__self.Hit, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), (__self.__prop_label + fmt.Sprint(__self.Hits)))
 	})
@@ -3324,7 +3330,7 @@ func __child0__new(__p0 int, __on0 func()) *__child0__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.K__own0)), ("pk" + fmt.Sprint(__self.__prop___p0)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.K__own0)), cgo.CGboolean(1))
 	_applyLook(__self.K__own0, Look{})
-	cgo.SnglSignalConnect(__self.K__own0, "clicked", func() {
+	_rtSignalConnect(__self.K__own0, "clicked", func() {
 		__self.__prop___on0()
 	})
 	__self.__root = __self.K__own0
@@ -3354,7 +3360,7 @@ func __child1__new(__p0 int, __on0 func()) *__child1__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.K)), ("mk" + fmt.Sprint(__self.__prop___p0)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.K)), cgo.CGboolean(1))
 	_applyLook(__self.K, Look{})
-	cgo.SnglSignalConnect(__self.K, "clicked", func() {
+	_rtSignalConnect(__self.K, "clicked", func() {
 		__self.__prop___on0()
 	})
 	__self.__root = __self.K
@@ -3609,13 +3615,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.ts)), "s")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.ts)), cgo.CGboolean(1))
 	_applyLook(m.ts, Look{})
-	cgo.SnglSignalConnect(m.ts, "clicked", Ts_clicked_handler)
+	_rtSignalConnect(m.ts, "clicked", Ts_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.ts)))
 	m.to = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.to)), "o")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.to)), cgo.CGboolean(1))
 	_applyLook(m.to, Look{})
-	cgo.SnglSignalConnect(m.to, "clicked", To_clicked_handler)
+	_rtSignalConnect(m.to, "clicked", To_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.to)))
 	__renderSlot1(m.__n4)
 	__renderSlot2(m.__n4)
@@ -4503,7 +4509,7 @@ pass sha256:e0efb4c501799b8d30410fe24ca03379
 -- run/go/fyne --
 pass sha256:65cf794624d619021069b792f7569c76
 -- run/go/gtk4 --
-pass sha256:3c269f40a6556bf4e72d6fcd7955ab94
+pass sha256:790045e4eba15e6fd7bba41dadc44fc9
 -- run/kotlin/android --
 pass sha256:63425cdbfc34bf9fb90e62ac2e364a39
 -- run/none/html --

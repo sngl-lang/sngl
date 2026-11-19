@@ -1231,7 +1231,7 @@ func _rtTabsNew() cgo.Widget {
 	cgo.GtkNotebookSetScrollable((cgo.Notebook)(unsafe.Pointer(nb)), true)
 	cgo.GtkBoxAppend((cgo.PGtkBox)(unsafe.Pointer(box)), nb)
 	_setTabs(box, _TabsState{})
-	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(nb)), "notify::page", func() {
+	_rtNotifyConnect((cgo.Widget)(unsafe.Pointer(nb)), "notify::page", func() {
 		_tabsShown(box)
 	})
 	return (cgo.Widget)(unsafe.Pointer(box))
@@ -1393,6 +1393,12 @@ func _tabsRemove(box cgo.Widget, page cgo.Widget) bool {
 
 func _setTabs(box cgo.Widget, t _TabsState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs", t)
+}
+
+func _rtNotifyConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _tabsShown(box cgo.Widget) {
@@ -2961,4 +2967,4 @@ pass sha256:fb55da9509d8b8fabcb14cf67466fefe
 -- run/go/fyne --
 pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:fc1b6b203819e4aa675443ddb9ed233b
+pass sha256:c6364f7eb67c81896900487a891aa1ef

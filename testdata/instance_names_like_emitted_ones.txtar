@@ -884,6 +884,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2099,7 +2105,7 @@ func Row__new(container string) *Row__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n7)), "hit")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n7)), cgo.CGboolean(1))
 	_applyLook(__self.__n7, Look{})
-	cgo.SnglSignalConnect(__self.__n7, "clicked", func() {
+	_rtSignalConnect(__self.__n7, "clicked", func() {
 		__self.Parent += 1
 		Row__renderSlot0(__self, __self.__n3)
 		__self.__parent += 1
@@ -2434,7 +2440,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.bump)), "bump")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.bump)), cgo.CGboolean(1))
 	_applyLook(m.bump, Look{})
-	cgo.SnglSignalConnect(m.bump, "clicked", Bump_clicked_handler)
+	_rtSignalConnect(m.bump, "clicked", Bump_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(m.bump)))
 	__renderSlot2(m.__n6)
 	cgo.SnglAppAttach(m.__n6)
@@ -2473,4 +2479,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:0c54f56668a35b8a3eeec9fd3b7f33bc
 -- run/go/gtk4 --
-pass sha256:741e1858179505b6a798edc225f646a1
+pass sha256:004bade6664f7bd5631aaf47b0882af4

@@ -987,6 +987,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
 }
@@ -2503,7 +2509,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.add)), "add")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.add)), cgo.CGboolean(1))
 	_applyLook(m.add, Look{})
-	cgo.SnglSignalConnect(m.add, "clicked", Add_clicked_handler)
+	_rtSignalConnect(m.add, "clicked", Add_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.add)))
 	cgo.SnglAppAttach(m.__n2)
 }
@@ -2915,6 +2921,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:e5d277f47430950b6ea29e07f632a3ac
 -- run/go/gtk4 --
-pass sha256:ece2dd294356bc94aba4e0df5082a929
+pass sha256:cd72ad5827c61c56f72aa2cd0db4f06f
 -- run/none/html --
 pass sha256:b54614866a2ca6128a9d623f40e0dc7b

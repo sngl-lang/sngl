@@ -72,10 +72,6 @@ void sngl_gtk_step(void);
  * what a test agent does before the next test builds afresh. */
 void sngl_gtk_reset(void);
 int sngl_gtk_main(SnglFn build, void *ctx, GDestroyNotify release);
-/* A widget's signal and a property's notification, connected through
- * trampolines that hand fn only its context. */
-void sngl_signal_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_notify_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx, GDestroyNotify release);
 /* A GTK property with no setter of its own, set by name through GObject. */
 void sngl_set_prop_string(void *obj, const char *name, const char *v);
 void sngl_set_prop_bool(void *obj, const char *name, int v);

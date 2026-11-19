@@ -3024,6 +3024,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -4245,7 +4251,7 @@ func __checkbox_state0__new(__start_checked bool, label string, __copy string, c
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Mark)), cgo.CGboolean(1))
 	_applyLook(__self.Mark, Look{})
 	m.mark__copies[__self.__prop___copy] = __self.Mark
-	cgo.SnglSignalConnect(__self.Mark, "toggled", func() {
+	_rtSignalConnect(__self.Mark, "toggled", func() {
 		func(b cgo.Widget) {
 			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
 				__checkbox_checked_wrote0 := cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
@@ -4316,7 +4322,7 @@ func __child0__new(__p0 int, __p1 int, __on0 func()) *__child0__inst {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Even)), cgo.CGboolean(1))
 	_applyLook(__self.Even, Look{})
 	m.even__copies[fmt.Sprint(__self.__prop___p1)] = __self.Even
-	cgo.SnglSignalConnect(__self.Even, "clicked", func() {
+	_rtSignalConnect(__self.Even, "clicked", func() {
 		__self.__prop___on0()
 	})
 	__self.__root = __self.Even
@@ -4374,7 +4380,7 @@ func __child1__new(__p0 int, __on0 func()) *__child1__inst {
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Dot)), cgo.CGboolean(1))
 	_applyLook(__self.Dot, Look{})
 	m.dot__copies[fmt.Sprint(__self.__prop___p0)] = __self.Dot
-	cgo.SnglSignalConnect(__self.Dot, "clicked", func() {
+	_rtSignalConnect(__self.Dot, "clicked", func() {
 		__self.__prop___on0()
 	})
 	__self.__root = __self.Dot
@@ -4448,7 +4454,7 @@ func __renderSlot0(parent cgo.Widget) {
 						cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(cell)), cgo.CGboolean(1))
 						_applyLook(cell, Look{})
 						m.cell__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = cell
-						cgo.SnglSignalConnect(cell, "clicked", func() {
+						_rtSignalConnect(cell, "clicked", func() {
 							m.log = it.Elem
 							cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 						})
@@ -4753,7 +4759,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.swap)), "swap")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.swap)), cgo.CGboolean(1))
 	_applyLook(m.swap, Look{})
-	cgo.SnglSignalConnect(m.swap, "clicked", Swap_clicked_handler)
+	_rtSignalConnect(m.swap, "clicked", Swap_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.swap)))
 	__renderSlot0(m.__n5)
 	for __copy0, row := range grid {
@@ -4767,7 +4773,7 @@ func snglBuild() {
 			cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(pin)), cgo.CGboolean(1))
 			_applyLook(pin, Look{})
 			m.pin__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = pin
-			cgo.SnglSignalConnect(pin, "clicked", func() {
+			_rtSignalConnect(pin, "clicked", func() {
 				m.log = it.Elem
 				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 			})
@@ -4786,7 +4792,7 @@ func snglBuild() {
 			cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(tick)), cgo.CGboolean(1))
 			_applyLook(tick, Look{})
 			m.tick__copies[((fmt.Sprint(__copy0) + "/") + fmt.Sprint(__copy1))] = tick
-			cgo.SnglSignalConnect(tick, "clicked", func() {
+			_rtSignalConnect(tick, "clicked", func() {
 				m.log = (fmt.Sprint(r) + fmt.Sprint(k))
 				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.log)
 			})
@@ -5869,7 +5875,7 @@ pass sha256:f8fc8e5a396be2d756d373839554c532
 -- run/go/fyne --
 pass sha256:5377422dc1fa781c93a8a0edcb5243cf
 -- run/go/gtk4 --
-pass sha256:5fa8f128f0bf3cfed2d5b4f71e0ff927
+pass sha256:b8572f902e9d81c17109938cc65da3d7
 -- run/kotlin/android --
 pass sha256:719b708d82da33fc9bd8b07cc13d75f3
 -- run/none/html --

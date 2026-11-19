@@ -294,27 +294,51 @@ func typedNull(p gir.ConstructorParam) string {
 	return base
 }
 
-// connectPlaced declares how a handler is connected: through the runtime's
-// trampolines, which hand the handler only its context whatever GLib hands
-// them, so every handler crosses as one callback shape.
+// connectPlaced declares how a handler is connected: g_signal_connect_data
+// handed a callback taking what GLib hands a handler before its context --
+// the instance, and a notification's GParamSpec -- which it drops, so every
+// event's handler is a func(). Its types are its own, since a gir: package
+// declaring the same widgets has none of gtk4.sngl's.
 const connectPlaced = `
-#[c.native("sngl_signal_connect")]
-func _rtSignalConnect(
-    w ui.node,
-    signal string,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+#[c.native("gpointer", pointer)]
+struct _SignalPointer {}
 
-#[c.native("sngl_notify_connect")]
-func _rtNotifyConnect(
-    w ui.node,
+#[c.native("gpointer", cast)]
+func _signalPointer(p c.pointer) _SignalPointer
+
+#[c.native("gulong")]
+struct _SignalHandler = int
+
+#[c.native("GConnectFlags")]
+struct _SignalFlags = int
+
+#[c.native("g_signal_connect_data")]
+func _signalConnectData(
+    instance _SignalPointer,
     signal string,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+    #[c.type("GCallback")] fn func(self _SignalPointer),
+    #[c.context] ctx _SignalPointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags _SignalFlags,
+) _SignalHandler
+
+#[c.native("g_signal_connect_data")]
+func _notifyConnectData(
+    instance _SignalPointer,
+    signal string,
+    #[c.type("GCallback")] fn func(self _SignalPointer, spec _SignalPointer),
+    #[c.context] ctx _SignalPointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags _SignalFlags,
+) _SignalHandler
+
+func _rtSignalConnect(w ui.node, signal string, fn func()) {
+    _signalConnectData(_signalPointer(_widget(w)), signal, func(self _SignalPointer) { fn() }, _SignalFlags(0))
+}
+
+func _rtNotifyConnect(w ui.node, signal string, fn func()) {
+    _notifyConnectData(_signalPointer(_widget(w)), signal, func(self _SignalPointer, spec _SignalPointer) { fn() }, _SignalFlags(0))
+}
 
 // Emits w's signal as GTK would, which a test fires an event with.
 func _rtSignalEmit(w ui.node, signal string) {

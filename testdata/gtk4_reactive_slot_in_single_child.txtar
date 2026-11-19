@@ -446,7 +446,7 @@ func _rtScrollNew(layout cgo.LayoutManager) cgo.Widget {
 	_setProbe(probe, _ProbeState{Content: -1})
 	cgo.GObjectRefSink(cgo.Pointer(probe))
 	cgo.HoldData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
-	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
+	_rtNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
 		_scrollChild(sw)
 	})
 	down := cgo.Pointer(cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
@@ -651,6 +651,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtNotifyConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _scrollChild(sw cgo.Widget) {
 	_scrollPolicies(sw)
 	probe := cgo.DataWidget((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
@@ -745,6 +751,12 @@ func _probeMeasured(w cgo.Widget, natural int) {
 
 func _setLookState(w cgo.Widget, l _LookState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-look", l)
+}
+
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _lookOf(w cgo.Widget) _LookState {
@@ -2195,7 +2207,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.flip)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.flip)), cgo.CGboolean(1))
 	_applyLook(m.flip, Look{})
-	cgo.SnglSignalConnect(m.flip, "clicked", Flip_clicked_handler)
+	_rtSignalConnect(m.flip, "clicked", Flip_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n4)), (cgo.PGtkWidget)(unsafe.Pointer(m.flip)))
 	cgo.SnglAppAttach(m.__n4)
 }
@@ -2232,4 +2244,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:a6f4bffd1a14693e31f9e4dcd93a7fa2
+pass sha256:23d089290a4e39427d7339e7d7d24a02

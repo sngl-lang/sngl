@@ -1673,6 +1673,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
 	var __lt3 float64
 	if s.Flex == nil {
@@ -3053,7 +3059,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3693,13 +3699,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "swap")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
 	_applyLook(m.__n6, Look{})
-	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
+	_rtSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n6)
 	m.__n7 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n7)), "tint")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), cgo.CGboolean(1))
 	_applyLook(m.__n7, Look{})
-	cgo.SnglSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
+	_rtSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n7)
 	m.__n2 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n2)), "styled")
@@ -4526,7 +4532,7 @@ pass sha256:aa6af4182a68958e8229de1875a31091
 -- run/go/fyne --
 pass sha256:c61e669a06f5b9ad4accd954cb7670ab
 -- run/go/gtk4 --
-pass sha256:75f7074ad2294c50e991aff4e3384d30
+pass sha256:7d438eb0e984620370ada09eac1ef369
 -- run/kotlin/android --
 pass sha256:b76f92b388604f774a86191396c56aad
 -- run/none/html --

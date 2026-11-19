@@ -1331,6 +1331,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2636,22 +2642,22 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.inHandler)), "Handler")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.inHandler)), cgo.CGboolean(1))
 	_applyLook(m.inHandler, Look{})
-	cgo.SnglSignalConnect(m.inHandler, "clicked", InHandler_clicked_handler)
+	_rtSignalConnect(m.inHandler, "clicked", InHandler_clicked_handler)
 	m.inFunc = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.inFunc)), "Func")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.inFunc)), cgo.CGboolean(1))
 	_applyLook(m.inFunc, Look{})
-	cgo.SnglSignalConnect(m.inFunc, "clicked", InFunc_clicked_handler)
+	_rtSignalConnect(m.inFunc, "clicked", InFunc_clicked_handler)
 	m.deep = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.deep)), "Deep")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.deep)), cgo.CGboolean(1))
 	_applyLook(m.deep, Look{})
-	cgo.SnglSignalConnect(m.deep, "clicked", Deep_clicked_handler)
+	_rtSignalConnect(m.deep, "clicked", Deep_clicked_handler)
 	m.fine = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.fine)), "Fine")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.fine)), cgo.CGboolean(1))
 	_applyLook(m.fine, Look{})
-	cgo.SnglSignalConnect(m.fine, "clicked", Fine_clicked_handler)
+	_rtSignalConnect(m.fine, "clicked", Fine_clicked_handler)
 	m.__n0 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	_applyLook(m.__n0, Look{})
@@ -3054,7 +3060,7 @@ pass sha256:99b3dcd8671d39e7e03f644521100d14
 -- run/go/fyne --
 pass sha256:e20307feead2362fec0efd1f1883448d
 -- run/go/gtk4 --
-pass sha256:a64c8d166830c309db5257444dddc010
+pass sha256:74d2b284828c98c721bfc0602739a7bb
 -- run/go/html --
 pass sha256:f2377d5d68c73a7bf1329c1084725253
 -- run/kotlin/android --

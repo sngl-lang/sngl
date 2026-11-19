@@ -1646,6 +1646,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2857,7 +2863,7 @@ func Badge__new(label string) *Badge__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), ((("hit " + __self.__prop_label) + " ") + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Hit)), cgo.CGboolean(1))
 	_applyLook(__self.Hit, Look{})
-	cgo.SnglSignalConnect(__self.Hit, "clicked", func() {
+	_rtSignalConnect(__self.Hit, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), ((("hit " + __self.__prop_label) + " ") + fmt.Sprint(__self.Hits)))
 	})
@@ -3104,13 +3110,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.move)), "m")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.move)), cgo.CGboolean(1))
 	_applyLook(m.move, Look{})
-	cgo.SnglSignalConnect(m.move, "clicked", Move_clicked_handler)
+	_rtSignalConnect(m.move, "clicked", Move_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.move)))
 	m.shut = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.shut)), "c")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.shut)), cgo.CGboolean(1))
 	_applyLook(m.shut, Look{})
-	cgo.SnglSignalConnect(m.shut, "clicked", Shut_clicked_handler)
+	_rtSignalConnect(m.shut, "clicked", Shut_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.shut)))
 	__renderSlot0(m.__n1)
 	cgo.SnglAppAttach(m.__n1)
@@ -3760,7 +3766,7 @@ pass sha256:23cbd0368097c1560923a941671a2692
 -- run/go/fyne --
 pass sha256:2131e105cdd0eda7f5d55f9838302754
 -- run/go/gtk4 --
-pass sha256:60da618b6bdc3ab69863547a66064458
+pass sha256:bf083c32a6030599667e09156f68fe20
 -- run/kotlin/android --
 pass sha256:9e0556e101b3e2f581401ec5baebd537
 -- run/none/html --

@@ -747,7 +747,7 @@ func _rtScrollNew(layout cgo.LayoutManager) cgo.Widget {
 	_setProbe(probe, _ProbeState{Content: -1})
 	cgo.GObjectRefSink(cgo.Pointer(probe))
 	cgo.HoldData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
-	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
+	_rtNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
 		_scrollChild(sw)
 	})
 	down := cgo.Pointer(cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
@@ -852,6 +852,12 @@ func _setProbe(probe cgo.Widget, s _ProbeState) {
 
 func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
+}
+
+func _rtNotifyConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _scrollChild(sw cgo.Widget) {
@@ -1041,6 +1047,12 @@ func _applyLook(w cgo.Widget, look Look) {
 
 func _setLookState(w cgo.Widget, l _LookState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-look", l)
+}
+
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _scrollTake(sw cgo.Widget, probe cgo.Widget, content cgo.Widget) {
@@ -2380,7 +2392,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.tap)), "tap")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.tap)), cgo.CGboolean(1))
 	_applyLook(m.tap, Look{})
-	cgo.SnglSignalConnect(m.tap, "clicked", Tap_clicked_handler)
+	_rtSignalConnect(m.tap, "clicked", Tap_clicked_handler)
 	_rtScrollSetChild(m.__n0, m.tap)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -2803,7 +2815,7 @@ pass sha256:0761ab0fcbfa7b0733f0e0d7421bc076
 -- run/go/fyne --
 pass sha256:4a409d09e48f6d87f2f29a2d0722b84d
 -- run/go/gtk4 --
-pass sha256:be95645a363f30e1c1009a3e23cb0258
+pass sha256:904e63f8639fddb9817f516cfc7ae4b7
 -- run/kotlin/android --
 pass sha256:1e3789aec45e6b00d6e67122ecebc846
 -- run/none/html --

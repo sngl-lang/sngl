@@ -357,42 +357,6 @@ typedef struct {
     GDestroyNotify release;
 } SnglHandler;
 
-static void sngl_handler_free(gpointer data, GClosure *closure) {
-    SnglHandler *h = data;
-    if (h->release) h->release(h->ctx);
-    g_free(h);
-}
-
-/* A GLib signal's handler and a property's notification, each handed only
- * its context: every signal a widget declares an event for is
- * (instance, user_data), and a notification (instance, pspec, user_data). */
-static void sngl_signal_tramp(gpointer self, gpointer data) {
-    SnglHandler *h = data;
-    h->fn(h->ctx);
-}
-
-static void sngl_notify_tramp(gpointer self, GParamSpec *pspec, gpointer data) {
-    SnglHandler *h = data;
-    h->fn(h->ctx);
-}
-
-static void sngl_connect_with(GtkWidget *w, const char *signal, GCallback tramp, SnglFn fn, void *ctx,
-                              GDestroyNotify release) {
-    SnglHandler *h = g_new0(SnglHandler, 1);
-    h->fn = fn;
-    h->ctx = ctx;
-    h->release = release;
-    g_signal_connect_data(w, signal, tramp, h, sngl_handler_free, 0);
-}
-
-void sngl_signal_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx, GDestroyNotify release) {
-    sngl_connect_with(w, signal, G_CALLBACK(sngl_signal_tramp), fn, ctx, release);
-}
-
-void sngl_notify_connect(GtkWidget *w, const char *signal, SnglFn fn, void *ctx, GDestroyNotify release) {
-    sngl_connect_with(w, signal, G_CALLBACK(sngl_notify_tramp), fn, ctx, release);
-}
-
 static gboolean sngl_idle_run(gpointer data) {
     SnglHandler *h = data;
     h->fn(h->ctx);

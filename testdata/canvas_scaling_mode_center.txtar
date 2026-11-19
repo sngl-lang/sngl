@@ -389,6 +389,12 @@ func _canvasOf(w cgo.Widget) _CanvasState {
 	}}
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func Source(ctx cgo.CairoContext, c snglcolor.Color) {
 	cgo.CairoSetSourceRgba(ctx, (float64(c.R) / 255.0), (float64(c.G) / 255.0), (float64(c.B) / 255.0), (float64(c.A) / 255.0))
 }
@@ -699,7 +705,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -1228,7 +1234,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:270cf44ca04ebd31cd73a28f04b2dac1
 -- run/go/gtk4 --
-pass sha256:ee58a45bcfe5463a54ab5b75b827faef
+pass sha256:64717186420f14b10716621629778bbe
 -- run/kotlin/android --
 pass sha256:ec0a55771ac523739433aa6069e1cb13
 -- run/none/html --

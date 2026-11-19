@@ -2278,7 +2278,7 @@ func _rtTabsNew() cgo.Widget {
 	cgo.GtkNotebookSetScrollable((cgo.Notebook)(unsafe.Pointer(nb)), true)
 	cgo.GtkBoxAppend((cgo.PGtkBox)(unsafe.Pointer(box)), nb)
 	_setTabs(box, _TabsState{})
-	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(nb)), "notify::page", func() {
+	_rtNotifyConnect((cgo.Widget)(unsafe.Pointer(nb)), "notify::page", func() {
 		_tabsShown(box)
 	})
 	return (cgo.Widget)(unsafe.Pointer(box))
@@ -2530,6 +2530,12 @@ func _setTabs(box cgo.Widget, t _TabsState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs", t)
 }
 
+func _rtNotifyConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _tabsShown(box cgo.Widget) {
 	t := func(h any) *_TabsState {
 		if v, ok := h.(_TabsState); ok {
@@ -2624,6 +2630,12 @@ func _setLookState(w cgo.Widget, l _LookState) {
 
 func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
+}
+
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _lookOf(w cgo.Widget) _LookState {
@@ -3850,7 +3862,7 @@ func Counter__new() *Counter__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Press)), fmt.Sprint(__self.Hits))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Press)), cgo.CGboolean(1))
 	_applyLook(__self.Press, Look{})
-	cgo.SnglSignalConnect(__self.Press, "clicked", func() {
+	_rtSignalConnect(__self.Press, "clicked", func() {
 		__self.Hits += 1
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Press)), fmt.Sprint(__self.Hits))
 	})
@@ -3935,7 +3947,7 @@ func __block_state0__new(seen int, __on_seen func(int)) *__block_state0__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Tap)), fmt.Sprint(__self.Taps))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Tap)), cgo.CGboolean(1))
 	_applyLook(__self.Tap, Look{})
-	cgo.SnglSignalConnect(__self.Tap, "clicked", func() {
+	_rtSignalConnect(__self.Tap, "clicked", func() {
 		__self.Taps += 1
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Tap)), fmt.Sprint(__self.Taps))
 		__self.__prop___on_seen(__self.Taps)
@@ -5554,7 +5566,7 @@ pass sha256:4421ef135162069748340f9230ecf99e
 -- run/go/fyne --
 pass sha256:1643b8603111f34b09b6f358ad454d99
 -- run/go/gtk4 --
-pass sha256:39a6b0adcaa167f58f5412ce31b0caef
+pass sha256:0496c9de5580e03f5c5ba392ba0d4976
 -- run/kotlin/android --
 pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --

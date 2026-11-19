@@ -892,6 +892,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -2059,7 +2065,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2558,7 +2564,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.inc)), "+")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.inc)), cgo.CGboolean(1))
 	_applyLook(m.inc, Look{})
-	cgo.SnglSignalConnect(m.inc, "clicked", Inc_clicked_handler)
+	_rtSignalConnect(m.inc, "clicked", Inc_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.inc)))
 	cgo.SnglToplevelAppend(m.home, m.__n1)
 	cgo.SnglAppAttach(m.home)
@@ -2818,7 +2824,7 @@ pass sha256:04ad50ee657a4fc39af89b192c7d4155
 -- run/go/fyne --
 pass sha256:24fc0dcbaeefe885c7f15047a927d30b
 -- run/go/gtk4 --
-pass sha256:929df81cc86dc4e50068dcbaa278497d
+pass sha256:10da6d133788b735c04a88b58eafe4b9
 -- run/kotlin/android --
 pass sha256:a6ad615b09083b9035377c180210acdc
 -- run/none/html --

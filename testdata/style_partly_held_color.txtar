@@ -720,6 +720,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
 	var __lt3 float64
 	if s.Flex == nil {
@@ -2110,7 +2116,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2700,6 +2706,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:0eb5e573bc2878dc5116560008939790
 -- run/go/gtk4 --
-pass sha256:84c0095ebe53de4653a51155444341a0
+pass sha256:97e9d253b0033f5d2065044742cb5bc5
 -- run/none/html --
 pass sha256:9b54f70edec4a3b3508d43ba7554bdba

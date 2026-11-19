@@ -1475,6 +1475,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -2642,7 +2648,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3295,19 +3301,19 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.toFirst)), "First")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.toFirst)), cgo.CGboolean(1))
 	_applyLook(m.toFirst, Look{})
-	cgo.SnglSignalConnect(m.toFirst, "clicked", ToFirst_clicked_handler)
+	_rtSignalConnect(m.toFirst, "clicked", ToFirst_clicked_handler)
 	cgo.SnglToplevelAppend(m.main__r0, m.toFirst)
 	m.toSecond = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.toSecond)), "Second")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.toSecond)), cgo.CGboolean(1))
 	_applyLook(m.toSecond, Look{})
-	cgo.SnglSignalConnect(m.toSecond, "clicked", ToSecond_clicked_handler)
+	_rtSignalConnect(m.toSecond, "clicked", ToSecond_clicked_handler)
 	cgo.SnglToplevelAppend(m.main__r0, m.toSecond)
 	m.back = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.back)), "Back")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.back)), cgo.CGboolean(1))
 	_applyLook(m.back, Look{})
-	cgo.SnglSignalConnect(m.back, "clicked", Back_clicked_handler)
+	_rtSignalConnect(m.back, "clicked", Back_clicked_handler)
 	cgo.SnglToplevelAppend(m.main__r0, m.back)
 	cgo.SnglAppAttach(m.main__r0)
 }
@@ -3556,6 +3562,6 @@ pass sha256:eec83a9541a8242a81878432c54b6aae
 -- run/go/fyne --
 pass sha256:cc92d1559a39dfe4ca349132c6d5aa77
 -- run/go/gtk4 --
-pass sha256:6fb1f8f7f93f62bbc6792e6d5e402c7a
+pass sha256:fc3d71f4a8b4d97be3c692fc2e01a8aa
 -- run/kotlin/android --
 pass sha256:652ad206fad10e2c9cef43e02b5a0014

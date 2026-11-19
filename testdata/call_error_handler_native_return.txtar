@@ -918,6 +918,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2174,7 +2180,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.bad)), "Bad")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.bad)), cgo.CGboolean(1))
 	_applyLook(m.bad, Look{})
-	cgo.SnglSignalConnect(m.bad, "clicked", Bad_clicked_handler)
+	_rtSignalConnect(m.bad, "clicked", Bad_clicked_handler)
 	m.__n0 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), ((m.caught + "|") + m.after))
 	_applyLook(m.__n0, Look{})
@@ -2217,4 +2223,4 @@ pass sha256:4e94fa1f2de34840322c0d1c1bbfe3c6
 -- run/go/fyne --
 pass sha256:e887d53597d0ae4d067880cbbe510d1f
 -- run/go/gtk4 --
-pass sha256:3d904cbdd82c3fc7fae413b8a3803167
+pass sha256:39b2a7fa02dd7db6212e614fbf2aac85

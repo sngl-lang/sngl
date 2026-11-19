@@ -1233,6 +1233,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2560,17 +2566,17 @@ func snglBuild() {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.box)), cgo.CGboolean(1))
 	_applyLook(m.box, Look{})
-	cgo.SnglSignalConnect(m.box, "toggled", func() {
+	_rtSignalConnect(m.box, "toggled", func() {
 		Box_toggled_handler(m.box)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.box)))
 	m.field = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.field)), cgo.CGboolean(1))
 	_applyLook(m.field, Look{})
-	cgo.SnglSignalConnect(m.field, "changed", func() {
+	_rtSignalConnect(m.field, "changed", func() {
 		Field_changed_handler(m.field)
 	})
-	cgo.SnglSignalConnect(m.field, "activate", func() {
+	_rtSignalConnect(m.field, "activate", func() {
 		Field_activate_handler(m.field)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.field)))
@@ -2585,9 +2591,11 @@ func snglBuild() {
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int { return 1 }()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(1))
 	_applyLook(m.sw, Look{})
-	cgo.SnglNotifyConnect(m.sw, "notify::active", func() {
-		Sw_notifyActive_handler(m.sw)
-	})
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(m.sw)), "notify::active", func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		func() {
+			Sw_notifyActive_handler(m.sw)
+		}()
+	}, 0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.sw)))
 	__effects0_settle()
 	cgo.SnglAppAttach(m.__n0)
@@ -2979,7 +2987,7 @@ pass sha256:a611283a22da746c92444200354d5e1d
 -- run/go/fyne --
 pass sha256:4668b3c3f20b584a16fa1804963705c0
 -- run/go/gtk4 --
-pass sha256:24a00e026cfb3d58707f30ce0eedf1f8
+pass sha256:452f275cd9e1c901198ba7417b051577
 -- run/kotlin/android --
 pass sha256:bac0fcb9f94ff275a4c4a943e3b4725d
 -- run/none/html --

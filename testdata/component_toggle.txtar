@@ -2030,9 +2030,11 @@ func snglBuild() {
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), cgo.CGboolean(func() int { return 1 }()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), cgo.CGboolean(1))
 	_applyLook(m.__n0, Look{})
-	cgo.SnglNotifyConnect(m.__n0, "notify::active", func() {
-		__n0_notifyActive_handler(m.__n0)
-	})
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(m.__n0)), "notify::active", func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		func() {
+			__n0_notifyActive_handler(m.__n0)
+		}()
+	}, 0)
 	cgo.SnglAppAttach(m.__n0)
 }
 
@@ -2219,7 +2221,7 @@ pass sha256:c1ce2cc2e06c9bdc31013866b555cee9
 -- run/go/fyne --
 pass sha256:c89f4f5ba88e86c3af1d45b68b690545
 -- run/go/gtk4 --
-pass sha256:4587daba2d08baef1bec1b6e9ada651f
+pass sha256:59ba3a60bcf4d7619a754e8de8f2d93d
 -- run/kotlin/android --
 pass sha256:b75e36a6494010727c449f2b3543ddb5
 -- run/none/html --

@@ -1066,6 +1066,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -2233,7 +2239,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2729,13 +2735,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.b)), "a")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.b)), cgo.CGboolean(1))
 	_applyLook(m.b, Look{})
-	cgo.SnglSignalConnect(m.b, "clicked", B_clicked_handler)
+	_rtSignalConnect(m.b, "clicked", B_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.b)
 	m.b__own0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.b__own0)), "z")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.b__own0)), cgo.CGboolean(1))
 	_applyLook(m.b__own0, Look{})
-	cgo.SnglSignalConnect(m.b__own0, "clicked", B__own0_clicked_handler)
+	_rtSignalConnect(m.b__own0, "clicked", B__own0_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n0, m.b__own0)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -2957,7 +2963,7 @@ pass sha256:4086139184bf7c0970f9c795592fc9d7
 -- run/go/fyne --
 pass sha256:b9f333b472a31e76fc6c5824a0ff0c3b
 -- run/go/gtk4 --
-pass sha256:9ee9f8e160c4543c3bc1bbe89fccee94
+pass sha256:114bb35e07754ed2549749d0a5c0354d
 -- run/kotlin/android --
 pass sha256:66e0fcb793473068914ca282c18f38fb
 -- run/none/html --

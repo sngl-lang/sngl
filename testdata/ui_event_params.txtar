@@ -1634,6 +1634,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _rtCalendarDay(c cgo.Widget) string {
 	t := cgo.GtkCalendarGetDate((cgo.Calendar)(unsafe.Pointer(c)))
 	day__r1 := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
@@ -3052,7 +3058,7 @@ func snglBuild() {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.box)), cgo.CGboolean(1))
 	_applyLook(m.box, Look{})
-	cgo.SnglSignalConnect(m.box, "toggled", func() {
+	_rtSignalConnect(m.box, "toggled", func() {
 		Box_toggled_handler(m.box)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.box)))
@@ -3067,24 +3073,26 @@ func snglBuild() {
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int { return 1 }()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(1))
 	_applyLook(m.sw, Look{})
-	cgo.SnglNotifyConnect(m.sw, "notify::active", func() {
-		Sw_notifyActive_handler(m.sw)
-	})
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(m.sw)), "notify::active", func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		func() {
+			Sw_notifyActive_handler(m.sw)
+		}()
+	}, 0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.sw)))
 	m.field = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.field)), cgo.CGboolean(1))
 	_applyLook(m.field, Look{})
-	cgo.SnglSignalConnect(m.field, "changed", func() {
+	_rtSignalConnect(m.field, "changed", func() {
 		Field_changed_handler(m.field)
 	})
-	cgo.SnglSignalConnect(m.field, "activate", func() {
+	_rtSignalConnect(m.field, "activate", func() {
 		Field_activate_handler(m.field)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.field)))
 	m.day = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.day)), cgo.CGboolean(func() int { return 1 }()))
 	_applyLook(m.day, Look{})
-	cgo.SnglSignalConnect(m.day, "day-selected", func() {
+	_rtSignalConnect(m.day, "day-selected", func() {
 		Day_daySelected_handler(m.day)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.day)))
@@ -3092,7 +3100,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.press)), "go")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.press)), cgo.CGboolean(1))
 	_applyLook(m.press, Look{})
-	cgo.SnglSignalConnect(m.press, "clicked", Press_clicked_handler)
+	_rtSignalConnect(m.press, "clicked", Press_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.press)))
 	m.__n0 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
@@ -3666,7 +3674,7 @@ pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
 pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
-pass sha256:da9375c0551c19b3256e427ac6e83960
+pass sha256:c3c0753065d0a8713f5d97d59564f1d7
 -- run/kotlin/android --
 pass sha256:07c2198b57ea0611e25cc77908d6b4dd
 -- run/none/html --

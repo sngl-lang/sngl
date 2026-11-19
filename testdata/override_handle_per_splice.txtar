@@ -350,6 +350,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _rtCalendarDay(c cgo.Widget) string {
 	t := cgo.GtkCalendarGetDate((cgo.Calendar)(unsafe.Pointer(c)))
 	day := ((((_padded(cgo.GDateTimeGetYear(t), 4) + "-") + _padded(cgo.GDateTimeGetMonth(t), 2)) + "-") + _padded(cgo.GDateTimeGetDayOfMonth(t), 2))
@@ -1787,34 +1793,34 @@ func snglBuild() {
 	m.first = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.first)), cgo.CGboolean(1))
 	_applyLook(m.first, Look{})
-	cgo.SnglSignalConnect(m.first, "changed", func() {
+	_rtSignalConnect(m.first, "changed", func() {
 		First_changed_handler(m.first)
 	})
-	cgo.SnglSignalConnect(m.first, "activate", func() {
+	_rtSignalConnect(m.first, "activate", func() {
 		First_activate_handler(m.first)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.first)))
 	m.second = cgo.GtkEntryNew()
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.second)), cgo.CGboolean(1))
 	_applyLook(m.second, Look{})
-	cgo.SnglSignalConnect(m.second, "changed", func() {
+	_rtSignalConnect(m.second, "changed", func() {
 		Second_changed_handler(m.second)
 	})
-	cgo.SnglSignalConnect(m.second, "activate", func() {
+	_rtSignalConnect(m.second, "activate", func() {
 		Second_activate_handler(m.second)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.second)))
 	m.cal = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal)), cgo.CGboolean(func() int { return 1 }()))
 	_applyLook(m.cal, Look{})
-	cgo.SnglSignalConnect(m.cal, "day-selected", func() {
+	_rtSignalConnect(m.cal, "day-selected", func() {
 		Cal_daySelected_handler(m.cal)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.cal)))
 	m.cal__1 = cgo.GtkCalendarNew()
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.cal__1)), cgo.CGboolean(func() int { return 1 }()))
 	_applyLook(m.cal__1, Look{})
-	cgo.SnglSignalConnect(m.cal__1, "day-selected", func() {
+	_rtSignalConnect(m.cal__1, "day-selected", func() {
 		Cal__1_daySelected_handler(m.cal__1)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n0)), (cgo.PGtkWidget)(unsafe.Pointer(m.cal__1)))
@@ -1852,4 +1858,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:4e53484cbdd6c87eba22046564e44b2f
+pass sha256:38bc2541a5750cecce2a95a992c792d7

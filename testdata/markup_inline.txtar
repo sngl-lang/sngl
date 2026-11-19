@@ -1410,6 +1410,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -2633,7 +2639,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3840,7 +3846,7 @@ pass sha256:a68fbbe9abd45a8ae168c8a9da3b18a7
 -- run/go/fyne --
 pass sha256:df897aaadae788893c50d9ac94ca8e8a
 -- run/go/gtk4 --
-pass sha256:14aef144e86ada9d4db9eb17297038f6
+pass sha256:6c1de4059f30b91be24504483722c012
 -- run/go/html --
 pass sha256:53ed55b98b2e38eca4b42793a849bc0a
 -- run/kotlin/android --

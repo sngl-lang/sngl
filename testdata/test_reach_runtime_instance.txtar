@@ -2352,6 +2352,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -3593,7 +3599,7 @@ func Badge__new(label string) *Badge__inst {
 	_applyLook(__self.Hit, Look{})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Shown)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Hit)))
-	cgo.SnglSignalConnect(__self.Hit, "clicked", func() {
+	_rtSignalConnect(__self.Hit, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Shown)), (((("[" + __self.__prop_label) + ":") + fmt.Sprint(__self.Hits)) + "]"))
 		Badge__renderSlot0(__self, __self.__root)
@@ -3694,7 +3700,7 @@ func Tile__new(label string, __copy string, tapped func(int)) *Tile__inst {
 	m.tap__copies[__self.__prop___copy] = __self.Tap
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Face)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__root)), (cgo.PGtkWidget)(unsafe.Pointer(__self.Tap)))
-	cgo.SnglSignalConnect(__self.Tap, "clicked", func() {
+	_rtSignalConnect(__self.Tap, "clicked", func() {
 		__self.Taps = (__self.Taps + 1)
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.Face)), (((("<" + __self.__prop_label) + ":") + fmt.Sprint(__self.Taps)) + ">"))
 		Tile__renderSlot1(__self, __self.__root)
@@ -4080,7 +4086,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.toggle)), "t")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.toggle)), cgo.CGboolean(1))
 	_applyLook(m.toggle, Look{})
-	cgo.SnglSignalConnect(m.toggle, "clicked", Toggle_clicked_handler)
+	_rtSignalConnect(m.toggle, "clicked", Toggle_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.toggle)))
 	cgo.SnglAppAttach(m.__n1)
 }
@@ -5022,7 +5028,7 @@ pass sha256:b16162b15de60306c9eba6ab14ef1852
 -- run/go/fyne --
 pass sha256:8cc1e52fad46a0645f60fc495c4d512c
 -- run/go/gtk4 --
-pass sha256:c6dbae3eb46db07f8c8792319fb98d6a
+pass sha256:63b748aab0349d1f96f791e1c488315d
 -- run/kotlin/android --
 pass sha256:282c53c30ebf0f79bb1ad4e8f45cda84
 -- run/none/html --

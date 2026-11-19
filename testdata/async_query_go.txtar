@@ -1294,6 +1294,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2745,7 +2751,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3392,20 +3398,20 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "fig")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
 	_applyLook(m.__n6, Look{})
-	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
+	_rtSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n6)
 	m.__n7 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n7)), "again")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), cgo.CGboolean(1))
 	_applyLook(m.__n7, Look{})
-	cgo.SnglSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
+	_rtSignalConnect(m.__n7, "clicked", __n7_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n7)
 	__renderSlot0(m.__n1)
 	m.__n8 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n8)), "add")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), cgo.CGboolean(1))
 	_applyLook(m.__n8, Look{})
-	cgo.SnglSignalConnect(m.__n8, "clicked", __n8_clicked_handler)
+	_rtSignalConnect(m.__n8, "clicked", __n8_clicked_handler)
 	cgo.SnglToplevelAppend(m.__n1, m.__n8)
 	cgo.SnglAppAttach(m.__n1)
 	__effects0_settle()
@@ -3448,4 +3454,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:2621a4492fb706768f9612243d70105c
 -- run/go/gtk4 --
-pass sha256:7a0de4c4458168dcc05d8f9fc0b3f7de
+pass sha256:a2ccea445c8638d5a79dc5e415cbcf28

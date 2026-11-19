@@ -184,7 +184,7 @@ sha256:77f396d3e3ee82540e717d2000f47fb4
   }
 }
 -- testrun/gtk4/go/cgo.sngl/centered/1 --
-sha256:90d8b3ea28823ca29afe41e729e837fa
+sha256:75e5b595e6618c479a4502d6df5e3e6d
 {
   "results": [
     {
@@ -197,7 +197,7 @@ sha256:90d8b3ea28823ca29afe41e729e837fa
   }
 }
 -- testrun/gtk4/go/cgo.sngl/plain/1 --
-sha256:ae281ddcc407668cf2aa985c11117b4a
+sha256:e8847af05158070010fcdf48f30a1758
 {
   "results": [
     {

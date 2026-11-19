@@ -1811,6 +1811,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -3283,7 +3289,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3686,7 +3692,7 @@ func __block_state0__new() *__block_state0__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n11)), "hit")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n11)), cgo.CGboolean(1))
 	_applyLook(__self.__n11, Look{})
-	cgo.SnglSignalConnect(__self.__n11, "clicked", func() {
+	_rtSignalConnect(__self.__n11, "clicked", func() {
 		__self.Hits += 1
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), ("hits " + fmt.Sprint(__self.Hits)))
 		m.visits += 1
@@ -3713,7 +3719,7 @@ func __block_state1__new(it string, total int, __on_total func(int)) *__block_st
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n1)), __self.__prop_it)
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)), cgo.CGboolean(1))
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglSignalConnect(__self.__n1, "clicked", func() {
+	_rtSignalConnect(__self.__n1, "clicked", func() {
 		__self.N += 1
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n2)), ((__self.__prop_it + " ") + fmt.Sprint(__self.N)))
 		__self.__prop___on_total((__self.__prop_total + 1))
@@ -3821,7 +3827,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n13)), "open")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n13)), cgo.CGboolean(1))
 	_applyLook(m.__n13, Look{})
-	cgo.SnglSignalConnect(m.__n13, "clicked", __n13_clicked_handler)
+	_rtSignalConnect(m.__n13, "clicked", __n13_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n13)))
 	m.__n5 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n5)), ((("opened " + fmt.Sprint(m.opened)) + " visits ") + fmt.Sprint(m.visits)))
@@ -3837,7 +3843,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n14)), "about")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n14)), cgo.CGboolean(1))
 	_applyLook(m.__n14, Look{})
-	cgo.SnglSignalConnect(m.__n14, "clicked", __n14_clicked_handler)
+	_rtSignalConnect(m.__n14, "clicked", __n14_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n10)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n14)))
 	cgo.SnglToplevelAppend(m.__n4, m.__n10)
 	cgo.SnglAppAttach(m.__n4)
@@ -4688,7 +4694,7 @@ pass sha256:0ee50d6ae4f995d0657a08e5f29e8c37
 -- run/go/fyne --
 pass sha256:112d2b51f5a1f1d8b6355f9a3ef6a328
 -- run/go/gtk4 --
-pass sha256:6785ea0d915c637c76fbb9e29c5092ce
+pass sha256:0fa853d1474f852dcac5a17ff146692d
 -- run/kotlin/android --
 pass sha256:1ecc8767485daffba77a93fc0b51fc5f
 -- run/none/html --

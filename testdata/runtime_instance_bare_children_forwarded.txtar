@@ -1116,6 +1116,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2567,7 +2573,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2942,7 +2948,7 @@ func Card__slot3__new() *Card__slot3__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ("hit " + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglSignalConnect(__self.__n0, "clicked", func() {
+	_rtSignalConnect(__self.__n0, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ("hit " + fmt.Sprint(__self.Hits)))
 	})
@@ -2951,7 +2957,7 @@ func Card__slot3__new() *Card__slot3__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n12)), "BETA")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n12)), cgo.CGboolean(1))
 	_applyLook(__self.__n12, Look{})
-	cgo.SnglSignalConnect(__self.__n12, "clicked", func() {
+	_rtSignalConnect(__self.__n12, "clicked", func() {
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(__self.__n11)), (cgo.PGtkWidget)(unsafe.Pointer(__self.__n12)))
 	__self.__root = __self.__n11
@@ -2971,7 +2977,7 @@ func Card__slot2__new(__p0 __anon_id_elem_c6a818) *Card__slot2__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n1)), ("hit " + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n1)), cgo.CGboolean(1))
 	_applyLook(__self.__n1, Look{})
-	cgo.SnglSignalConnect(__self.__n1, "clicked", func() {
+	_rtSignalConnect(__self.__n1, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n1)), ("hit " + fmt.Sprint(__self.Hits)))
 	})
@@ -3764,6 +3770,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:9ab76569daeadaec8b461531301387cf
 -- run/go/gtk4 --
-pass sha256:f3678d5120d57b412a3196b89317b129
+pass sha256:11bd664d393b9486f8bc79cc6bd3ea58
 -- run/none/html --
 pass sha256:732103103c4d724e5241ff6a8eb865bd

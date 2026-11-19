@@ -1618,6 +1618,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2829,7 +2835,7 @@ func Badge__new(label string) *Badge__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), (__self.__prop_label + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Hit)), cgo.CGboolean(1))
 	_applyLook(__self.Hit, Look{})
-	cgo.SnglSignalConnect(__self.Hit, "clicked", func() {
+	_rtSignalConnect(__self.Hit, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Hit)), (__self.__prop_label + fmt.Sprint(__self.Hits)))
 	})
@@ -2858,7 +2864,7 @@ func Panel__new() *Panel__inst {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.Flip)), "f")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.Flip)), cgo.CGboolean(1))
 	_applyLook(__self.Flip, Look{})
-	cgo.SnglSignalConnect(__self.Flip, "clicked", func() {
+	_rtSignalConnect(__self.Flip, "clicked", func() {
 		__self.On = !__self.On
 		Panel__renderSlot0(__self, __self.__n0)
 	})
@@ -3121,13 +3127,13 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.ts)), "s")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.ts)), cgo.CGboolean(1))
 	_applyLook(m.ts, Look{})
-	cgo.SnglSignalConnect(m.ts, "clicked", Ts_clicked_handler)
+	_rtSignalConnect(m.ts, "clicked", Ts_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.ts)))
 	m.to = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.to)), "o")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.to)), cgo.CGboolean(1))
 	_applyLook(m.to, Look{})
-	cgo.SnglSignalConnect(m.to, "clicked", To_clicked_handler)
+	_rtSignalConnect(m.to, "clicked", To_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), (cgo.PGtkWidget)(unsafe.Pointer(m.to)))
 	__renderSlot1(m.__n2)
 	__renderSlot2(m.__n2)
@@ -3811,7 +3817,7 @@ pass sha256:6eb92ffc7287aae4398bba394b974443
 -- run/go/fyne --
 pass sha256:c8b3359b93e70b50e67b568bd9af9704
 -- run/go/gtk4 --
-pass sha256:c8186183f096614685fad3747330013f
+pass sha256:4afb6f068fa7f3d7d5698da4ef35e1a2
 -- run/kotlin/android --
 pass sha256:4781f3bd0ce030025d422bcec487fbb0
 -- run/none/html --

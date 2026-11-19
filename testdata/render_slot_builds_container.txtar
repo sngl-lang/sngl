@@ -770,6 +770,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -1989,7 +1995,7 @@ func __checkbox_state0__new(__start_checked bool, disabled bool) *__checkbox_sta
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglSignalConnect(__self.__n0, "toggled", func() {
+	_rtSignalConnect(__self.__n0, "toggled", func() {
 		func(b cgo.Widget) {
 			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
 				__self.Checked = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
@@ -2289,7 +2295,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.more)), "more")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.more)), cgo.CGboolean(1))
 	_applyLook(m.more, Look{})
-	cgo.SnglSignalConnect(m.more, "clicked", More_clicked_handler)
+	_rtSignalConnect(m.more, "clicked", More_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.more)))
 	cgo.SnglAppAttach(m.__n5)
 }
@@ -2327,4 +2333,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:283ea108dceefdc115e8b7b1970f4b1b
 -- run/go/gtk4 --
-pass sha256:1c4d49cd28fa4ebdf080170366cc31ac
+pass sha256:f40f9216d3bb68dee2dec5a3b3a69c75

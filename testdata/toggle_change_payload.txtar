@@ -1105,6 +1105,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2366,7 +2372,7 @@ func snglBuild() {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.box)), cgo.CGboolean(1))
 	_applyLook(m.box, Look{})
-	cgo.SnglSignalConnect(m.box, "toggled", func() {
+	_rtSignalConnect(m.box, "toggled", func() {
 		Box_toggled_handler(m.box)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.box)))
@@ -2381,9 +2387,11 @@ func snglBuild() {
 	cgo.GtkWidgetSetSensitive((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(func() int { return 1 }()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.sw)), cgo.CGboolean(1))
 	_applyLook(m.sw, Look{})
-	cgo.SnglNotifyConnect(m.sw, "notify::active", func() {
-		Sw_notifyActive_handler(m.sw)
-	})
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(m.sw)), "notify::active", func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		func() {
+			Sw_notifyActive_handler(m.sw)
+		}()
+	}, 0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n1)), (cgo.PGtkWidget)(unsafe.Pointer(m.sw)))
 	m.__n0 = _rtTextNew()
 	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
@@ -2811,7 +2819,7 @@ pass sha256:1e2635ade3355bdd6ee5a7e1fe7269c2
 -- run/go/fyne --
 pass sha256:05f334ab69a3387686b076c22ab40163
 -- run/go/gtk4 --
-pass sha256:b7034856c6be08323d4f196ae9bed001
+pass sha256:bdff500351ddc1893e5bb9d9f7900266
 -- run/go/html --
 pass sha256:106c1d24cc879a6a15f423068ca44bfa
 -- run/kotlin/android --

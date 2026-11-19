@@ -340,6 +340,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -1507,7 +1513,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2006,7 +2012,7 @@ func snglBuild() {
 	m.__n3 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetHasFrame((cgo.PGtkButton)(unsafe.Pointer(m.__n3)), cgo.CGboolean(func() int { return 0 }()))
 	_applyLook(m.__n3, Look{Css: "padding-top: 8px; padding-right: 8px; padding-bottom: 8px; padding-left: 8px; border: 2px solid #cc0000; "})
-	cgo.SnglSignalConnect(m.__n3, "clicked", __n3_clicked_handler)
+	_rtSignalConnect(m.__n3, "clicked", __n3_clicked_handler)
 	m.__n4 = cgo.GtkFrameNew(nil)
 	_applyLook(m.__n4, Look{Css: "border-style: none; "})
 	m.__n1 = _rtTextNew()
@@ -2018,7 +2024,7 @@ func snglBuild() {
 	m.__n5 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetHasFrame((cgo.PGtkButton)(unsafe.Pointer(m.__n5)), cgo.CGboolean(func() int { return 0 }()))
 	_applyLook(m.__n5, Look{Css: "padding-top: 8px; padding-right: 8px; padding-bottom: 8px; padding-left: 8px; "})
-	cgo.SnglSignalConnect(m.__n5, "clicked", __n5_clicked_handler)
+	_rtSignalConnect(m.__n5, "clicked", __n5_clicked_handler)
 	m.__n6 = cgo.GtkFrameNew(nil)
 	_applyLook(m.__n6, Look{})
 	m.__n7 = _rtTextNew()
@@ -2065,4 +2071,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:c03192301e169dd08357ca448506273e
+pass sha256:814290344cd3e35771ee8b024017099b

@@ -911,7 +911,7 @@ func _imageSourceNew() cgo.Widget {
 	_setImageSource(w, _ImageSourceState{Paint: func(ctx cgo.CairoContext) {
 	}})
 	cgo.GObjectWeakRef((cgo.Object)(unsafe.Pointer(w)), _imageSourceGone, nil)
-	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(w)), "notify::parent", func() {
+	_rtNotifyConnect((cgo.Widget)(unsafe.Pointer(w)), "notify::parent", func() {
 		_imageSourceParented(w)
 	})
 	return w
@@ -964,6 +964,12 @@ func _contentsKids(m__r0 cgo.Pointer, at int, removed int, added int, box cgo.Po
 
 func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
+}
+
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _setPictureState(pic cgo.Object, s _PictureState) {
@@ -1454,6 +1460,12 @@ func _imageHooksSet() {
 
 func _imageSourceGone(data cgo.Pointer, gone cgo.Object) {
 	_imageSourceUnwatch((cgo.Widget)(unsafe.Pointer(gone)))
+}
+
+func _rtNotifyConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.NotifyConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer, spec cgo.SignalPointer) {
+		fn()
+	}, 0)
 }
 
 func _imageSourceParented(w cgo.Widget) {
@@ -2506,7 +2518,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3341,7 +3353,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n6)), "More")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), cgo.CGboolean(1))
 	_applyLook(m.__n6, Look{})
-	cgo.SnglSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
+	_rtSignalConnect(m.__n6, "clicked", __n6_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n6)))
 	cgo.SnglToplevelAppend(m.__n0, m.__n3)
 	cgo.SnglAppAttach(m.__n0)
@@ -3385,4 +3397,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:798663df66e1a3c4fff11d209cab3f15
 -- run/go/gtk4 --
-pass sha256:2aef3b4711823100e11fb77fd2822901
+pass sha256:738a44026404dce27157a0bb6491f5a0

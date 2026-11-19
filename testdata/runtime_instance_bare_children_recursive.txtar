@@ -787,6 +787,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2238,7 +2244,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -2672,7 +2678,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n9)), "deeper")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n9)), cgo.CGboolean(1))
 	_applyLook(m.__n9, Look{})
-	cgo.SnglSignalConnect(m.__n9, "clicked", __n9_clicked_handler)
+	_rtSignalConnect(m.__n9, "clicked", __n9_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n9)))
 	cgo.SnglToplevelAppend(m.__n1, m.__n8)
 	cgo.SnglAppAttach(m.__n1)
@@ -2994,6 +3000,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:fae4e48a8c497508dbacf10328ea7404
 -- run/go/gtk4 --
-pass sha256:583c99648eaf8905e286ed9343ea8553
+pass sha256:0f804cd1be5132e74056a67feaeb3bde
 -- run/none/html --
 pass sha256:39a5410336619b9c43f53b927def2d71

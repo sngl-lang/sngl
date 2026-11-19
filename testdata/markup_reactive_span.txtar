@@ -681,6 +681,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2029,7 +2035,7 @@ func snglBuild() {
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.flip)), "flip")
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.flip)), cgo.CGboolean(1))
 	_applyLook(m.flip, Look{})
-	cgo.SnglSignalConnect(m.flip, "clicked", Flip_clicked_handler)
+	_rtSignalConnect(m.flip, "clicked", Flip_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n7)), (cgo.PGtkWidget)(unsafe.Pointer(m.flip)))
 	cgo.SnglAppAttach(m.__n7)
 }
@@ -2179,6 +2185,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:1a8da2581f3355e85a5c4da8982ec75e
 -- run/go/gtk4 --
-pass sha256:115c7bc189ff68739af88b60e1217a17
+pass sha256:52ef4af8a2a5188e472eab919fe6ec0c
 -- run/none/html --
 pass sha256:c7cfab655e9f2a36df0882c9a8a9fc55

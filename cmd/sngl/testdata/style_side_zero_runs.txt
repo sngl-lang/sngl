@@ -326,7 +326,7 @@ sha256:99f2186cfe436a975254d0a15bc647bd
   }
 }
 -- testrun/gtk4/go/app.sngl/kept/1 --
-sha256:bbd76b32f69696096e61fb97da8dd19d
+sha256:b69fdc75b4dc62a7bd589a8255ef4b64
 {
   "results": [
     {

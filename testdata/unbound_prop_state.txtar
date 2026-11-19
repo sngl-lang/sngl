@@ -1461,6 +1461,12 @@ func _unrefData(p cgo.Pointer) {
 	cgo.GObjectUnref(p)
 }
 
+func _rtSignalConnect(w cgo.Widget, signal string, fn func()) {
+	cgo.GSignalConnectData(cgo.SignalPointer(unsafe.Pointer(w)), signal, func(self cgo.SignalPointer) {
+		fn()
+	}, 0)
+}
+
 func _lookOf(w cgo.Widget) _LookState {
 	l := func(h any) *_LookState {
 		if v, ok := h.(_LookState); ok {
@@ -2912,7 +2918,7 @@ func _barApplyTo(box cgo.Widget, win cgo.Window) {
 	if (cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
 		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
 		_setBarPart(box, "sngl-header-back", button)
-		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+		_rtSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
 			_windowBack(box)
 		})
 		header := cgo.DataWidget((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
@@ -3238,7 +3244,7 @@ func __checkbox_state3__new(__start_checked bool, label string) *__checkbox_stat
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
 	_applyLook(__self.__n0, Look{})
-	cgo.SnglSignalConnect(__self.__n0, "toggled", func() {
+	_rtSignalConnect(__self.__n0, "toggled", func() {
 		func(b cgo.Widget) {
 			if cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b))) != __self.Checked {
 				__self.Checked = cgo.GtkCheckButtonGetActive((cgo.PGtkCheckButton)(unsafe.Pointer(b)))
@@ -3299,7 +3305,7 @@ func snglBuild() {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.box)), cgo.CGboolean(1))
 	_applyLook(m.box, Look{})
-	cgo.SnglSignalConnect(m.box, "toggled", func() {
+	_rtSignalConnect(m.box, "toggled", func() {
 		Box_toggled_handler(m.box)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.box)))
@@ -3324,7 +3330,7 @@ func snglBuild() {
 	}()))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n3)), cgo.CGboolean(1))
 	_applyLook(m.__n3, Look{})
-	cgo.SnglSignalConnect(m.__n3, "toggled", func() {
+	_rtSignalConnect(m.__n3, "toggled", func() {
 		__n3_toggled_handler(m.__n3)
 	})
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n5)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
@@ -3815,7 +3821,7 @@ pass sha256:fedfa288766d32c24583714d19235189
 -- run/go/fyne --
 pass sha256:9eb331b83b6dbbad029f3990126e6867
 -- run/go/gtk4 --
-pass sha256:13583ea7f0203f9a292c20d270e5436b
+pass sha256:056d60abf8452fc52ce225e1a36c9e5a
 -- run/kotlin/android --
 pass sha256:ddc65caf1c45c088c67db687554f5fb4
 -- run/none/html --
