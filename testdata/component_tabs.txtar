@@ -1053,8 +1053,7 @@ func _tabsShown(box cgo.Widget) {
 			if s != nil {
 				if !(*(s)).Disabled {
 					_setTabs(box, _TabsState{Selected: k, Quiet: (*(t)).Quiet})
-					run := (*(s)).Shown
-					run()
+					(*(s)).Shown()
 					chosen = true
 				}
 			}
@@ -2001,7 +2000,7 @@ pass sha256:cfaab8ea5c58d24837c2c8c8dda05629
 -- run/go/fyne --
 pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --
-pass sha256:95103fe4b2d28bf33a30a43cde631ade
+pass sha256:9871f1a0ee0a6f8b770d8a33e6649157
 -- run/kotlin/android --
 pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --

@@ -383,8 +383,7 @@ func _backPress(w *C.GtkWidget) {
 		return nil
 	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel10))))
 	if b != nil {
-		run := (*(b)).Press
-		run()
+		(*(b)).Press()
 	}
 }
 
@@ -614,8 +613,7 @@ func _menuEntrySelect(w *C.GtkWidget) {
 	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel12))))
 	if e != nil {
 		if !(*(e)).Disabled {
-			run := (*(e)).Select
-			run()
+			(*(e)).Select()
 		}
 	}
 }
@@ -1054,4 +1052,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:361c67f22196dd64595991f2cf3888f9
+pass sha256:a7503bdf38e25a5b6fa464ad8292639e

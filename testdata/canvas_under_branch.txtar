@@ -890,8 +890,7 @@ static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c) {
 static void s_platform_gtk4___backPress(GtkWidget * w) {
 	sngl_opt__BackState b = sngl_held__BackState(g_object_get_data((GObject *)(w), s___rel10));
 	if ((b).ok) {
-		sngl_fn_void__void run = (b).value.press;
-		(run).fn((run).env);
+		((b).value.press).fn(((b).value.press).env);
 	}
 }
 
@@ -1017,8 +1016,7 @@ static void s_platform_gtk4___menuEntrySelect(GtkWidget * w) {
 	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel12));
 	if ((e).ok) {
 		if (!(e).value.disabled) {
-			sngl_fn_void__void run = (e).value.select;
-			(run).fn((run).env);
+			((e).value.select).fn(((e).value.select).env);
 		}
 	}
 }
@@ -2641,8 +2639,7 @@ func _backPress(w cgo.Widget) {
 		return nil
 	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(w)), "sngl-back"))
 	if b != nil {
-		run := (*(b)).Press
-		run()
+		(*(b)).Press()
 	}
 }
 
@@ -2790,8 +2787,7 @@ func _menuEntrySelect(w cgo.Widget) {
 	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
 	if e != nil {
 		if !(*(e)).Disabled {
-			run := (*(e)).Select
-			run()
+			(*(e)).Select()
 		}
 	}
 }
@@ -3160,12 +3156,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:5123a8f050745dc7c6f74703aec3bc73
+pass sha256:3a86d4ca2a64cf03faf07944c4f39518
 -- run/c/win32 --
 pass sha256:e254869f7e25f4636add2d30d2d05f99
 -- run/go/fyne --
 pass sha256:d4fcbe1607e64da4cbe835a1a43a8871
 -- run/go/gtk4 --
-pass sha256:6adf48aad9626b4281176c32c8ffe529
+pass sha256:4a6cd2b0a01aee31e008220655a753f7
 -- run/none/html --
 pass sha256:81032b57fce60a42f1f5a5719a65b7f2

@@ -569,8 +569,7 @@ static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c) {
 static void s_platform_gtk4___backPress(GtkWidget * w) {
 	sngl_opt__BackState b = sngl_held__BackState(g_object_get_data((GObject *)(w), s___rel11));
 	if ((b).ok) {
-		sngl_fn_void__void run = (b).value.press;
-		(run).fn((run).env);
+		((b).value.press).fn(((b).value.press).env);
 	}
 }
 
@@ -696,8 +695,7 @@ static void s_platform_gtk4___menuEntrySelect(GtkWidget * w) {
 	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel13));
 	if ((e).ok) {
 		if (!(e).value.disabled) {
-			sngl_fn_void__void run = (e).value.select;
-			(run).fn((run).env);
+			((e).value.select).fn(((e).value.select).env);
 		}
 	}
 }
@@ -809,4 +807,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:9969bc389a985efb95fc4a1b2e3fd0e1
+pass sha256:821e88676da7d40a4e4042ef77eb4a6e

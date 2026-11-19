@@ -895,8 +895,7 @@ func _rtScrollReachEnd(scroll cgo.Widget) {
 		return nil
 	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(scroll)), "sngl-scroll"))
 	if s != nil {
-		run := (*(s)).ReachEnd
-		run()
+		(*(s)).ReachEnd()
 	}
 }
 
@@ -1106,8 +1105,7 @@ func _scrollReport(data cgo.Pointer) bool {
 		return nil
 	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
-		run := (*(s)).ReachEnd
-		run()
+		(*(s)).ReachEnd()
 	}
 	return false
 }
@@ -2066,7 +2064,7 @@ pass sha256:5a4034cb1163c2f3082b2aecd48bbcba
 -- run/go/fyne --
 pass sha256:0d9758631027613ea989befecc162950
 -- run/go/gtk4 --
-pass sha256:ad652a743f327317b6c2629219b7db80
+pass sha256:30cfbde77518e54e48d2580e0c93d123
 -- run/kotlin/android --
 pass sha256:4bee11b91272d47ac6ea1f1709ef170c
 -- run/none/html --

@@ -1256,8 +1256,7 @@ func _rtTabPageShow(p cgo.Widget) {
 	}(cgo.HeldTabPage((cgo.Object)(unsafe.Pointer(p)), "sngl-tab-page"))
 	if s != nil {
 		if !(*(s)).Disabled {
-			run := (*(s)).Shown
-			run()
+			(*(s)).Shown()
 		}
 	}
 }
@@ -1341,8 +1340,7 @@ func _tabsShown(box cgo.Widget) {
 			if s != nil {
 				if !(*(s)).Disabled {
 					_setTabs(box, _TabsState{Selected: k, Quiet: (*(t)).Quiet})
-					run := (*(s)).Shown
-					run()
+					(*(s)).Shown()
 					chosen = true
 				}
 			}
@@ -1560,4 +1558,4 @@ pass sha256:fb55da9509d8b8fabcb14cf67466fefe
 -- run/go/fyne --
 pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:52beff135284ebe15a4f86d736eec3b0
+pass sha256:398927106127bf74c85e70d13980429e

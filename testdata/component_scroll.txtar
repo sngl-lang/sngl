@@ -1005,8 +1005,7 @@ func _scrollReport(data cgo.Pointer) bool {
 		return nil
 	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
-		run := (*(s)).ReachEnd
-		run()
+		(*(s)).ReachEnd()
 	}
 	return false
 }
@@ -1462,7 +1461,7 @@ pass sha256:0761ab0fcbfa7b0733f0e0d7421bc076
 -- run/go/fyne --
 pass sha256:4a409d09e48f6d87f2f29a2d0722b84d
 -- run/go/gtk4 --
-pass sha256:ddb2a3d80db7d563f555d75dc0c63d9f
+pass sha256:e56556dd85ccc23f00c31acc1f602216
 -- run/kotlin/android --
 pass sha256:1e3789aec45e6b00d6e67122ecebc846
 -- run/none/html --

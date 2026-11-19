@@ -1,0 +1,34 @@
+import . "sngl:test"
+
+// A func field of an option a null test narrowed is called as the struct's
+// own is, in a nested branch and after another call, as gtk4's runtime calls
+// a held page's handler.
+struct Page {
+    disabled bool = false
+    shown    func() int = func() => 0
+}
+
+func pageOf(n int) option[Page] {
+    if n > 0 {
+        return Page{shown=func() => n * 10}
+    }
+    return null
+}
+
+func note(n int) => n
+
+func show(n int) int {
+    var p = pageOf(n)
+    if p != null {
+        if !p.disabled {
+            note(n)
+            return p.shown()
+        }
+    }
+    return -1
+}
+
+func testCallsNarrowedField(t Test) {
+    t.assert(show(2) == 20)
+    t.assert(show(0) == -1)
+}

@@ -667,8 +667,7 @@ func _scrollReport(data cgo.Pointer) bool {
 		return nil
 	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
-		run := (*(s)).ReachEnd
-		run()
+		(*(s)).ReachEnd()
 	}
 	return false
 }
@@ -849,4 +848,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:dd5a475d48ccdcc51674dc6f8d0d6393
+pass sha256:acba4152d845727124676e9738c6ecb5

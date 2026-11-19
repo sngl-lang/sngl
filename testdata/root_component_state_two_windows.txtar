@@ -457,8 +457,7 @@ func _backPress(w cgo.Widget) {
 		return nil
 	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(w)), "sngl-back"))
 	if b__r1 != nil {
-		run := (*(b__r1)).Press
-		run()
+		(*(b__r1)).Press()
 	}
 }
 
@@ -606,8 +605,7 @@ func _menuEntrySelect(w cgo.Widget) {
 	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
 	if e != nil {
 		if !(*(e)).Disabled {
-			run := (*(e)).Select
-			run()
+			(*(e)).Select()
 		}
 	}
 }
@@ -759,6 +757,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:a19e38071fc8cdb9ca23b5cf4484c9f9
 -- run/go/gtk4 --
-pass sha256:2b7d037571a017cdfeeb80eaf7013222
+pass sha256:107213717521e5df7ea45a8b3d38d913
 -- run/none/html --
 pass sha256:91fafb7112a24a203e818530fe6ef38d

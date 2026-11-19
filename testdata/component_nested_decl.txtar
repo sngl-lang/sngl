@@ -725,8 +725,7 @@ func _backPress(w cgo.Widget) {
 		return nil
 	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(w)), "sngl-back"))
 	if b != nil {
-		run := (*(b)).Press
-		run()
+		(*(b)).Press()
 	}
 }
 
@@ -874,8 +873,7 @@ func _menuEntrySelect(w cgo.Widget) {
 	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
 	if e != nil {
 		if !(*(e)).Disabled {
-			run := (*(e)).Select
-			run()
+			(*(e)).Select()
 		}
 	}
 }
@@ -1160,7 +1158,7 @@ pass sha256:62cd95e19fd515959c2efa5abc2b91d0
 -- run/go/fyne --
 pass sha256:9fdea091ffac25ec17ec3c820d111657
 -- run/go/gtk4 --
-pass sha256:d863e40f93e80eda131e964df7a88078
+pass sha256:e3ec94b7060a769c5351850a1b15bc28
 -- run/kotlin/android --
 pass sha256:52798d976b83dc083f953fdd34ae5634
 -- run/none/html --

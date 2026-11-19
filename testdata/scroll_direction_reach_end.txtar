@@ -1168,8 +1168,7 @@ func _rtScrollReachEnd(scroll cgo.Widget) {
 		return nil
 	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(scroll)), "sngl-scroll"))
 	if s != nil {
-		run := (*(s)).ReachEnd
-		run()
+		(*(s)).ReachEnd()
 	}
 }
 
@@ -1490,8 +1489,7 @@ func _backPress(w cgo.Widget) {
 		return nil
 	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(w)), "sngl-back"))
 	if b != nil {
-		run := (*(b)).Press
-		run()
+		(*(b)).Press()
 	}
 }
 
@@ -1517,8 +1515,7 @@ func _scrollReport(data cgo.Pointer) bool {
 		return nil
 	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
-		run := (*(s)).ReachEnd
-		run()
+		(*(s)).ReachEnd()
 	}
 	return false
 }
@@ -1676,8 +1673,7 @@ func _menuEntrySelect(w cgo.Widget) {
 	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
 	if e != nil {
 		if !(*(e)).Disabled {
-			run := (*(e)).Select
-			run()
+			(*(e)).Select()
 		}
 	}
 }
@@ -2934,7 +2930,7 @@ pass sha256:9acdbc41ec1fc0d21c56136e044b7f1d
 -- run/go/fyne --
 pass sha256:4749d73fe5fa467e53081de1f3c1008b
 -- run/go/gtk4 --
-pass sha256:838d6d439f406fd37a5a05142290bd3a
+pass sha256:89cf03301972ce44d4a55195de7224e6
 -- run/kotlin/android --
 pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --

@@ -954,8 +954,7 @@ func _menuEntrySelect(w Widget) {
     var e = _menuEntryOf(w)
     if e != null {
         if !e.disabled {
-            var run = e.select
-            run()
+            e.select()
         }
     }
 }
@@ -978,8 +977,7 @@ func _rtBackOnPress(back Back, press func()) {
 func _backPress(w Widget) {
     var b = _backOf(w)
     if b != null {
-        var run = b.press
-        run()
+        b.press()
     }
 }
 
@@ -2143,8 +2141,7 @@ func _scrollReport(data _Pointer) bool {
     _setData(_object(sw), "sngl-asked", null)
     var s = _scrollOf(sw)
     if s != null {
-        var run = s.reachEnd
-        run()
+        s.reachEnd()
     }
     return false
 }
@@ -2355,8 +2352,7 @@ func _rtScrollOnReachEnd(scroll Scroll, reachEnd func()) {
 func _rtScrollReachEnd(scroll Scroll) {
     var s = _scrollOf(_handle(scroll))
     if s != null {
-        var run = s.reachEnd
-        run()
+        s.reachEnd()
     }
 }
 
@@ -2633,8 +2629,7 @@ func _tabsShown(box Widget) {
             if s != null {
                 if !s.disabled {
                     _setTabs(box, _TabsState{selected=k, quiet=t.quiet})
-                    var run = s.shown
-                    run()
+                    s.shown()
                     chosen = true
                 }
             }
@@ -2760,8 +2755,7 @@ func _rtTabPageShow(p TabPage) {
     var s = _tabPageOf(_handle(p))
     if s != null {
         if !s.disabled {
-            var run = s.shown
-            run()
+            s.shown()
         }
     }
 }

@@ -2342,8 +2342,7 @@ static void s_platform_gtk4___tabsShown(GtkWidget * box) {
 			if ((s).ok) {
 				if (!(s).value.disabled) {
 					s_platform_gtk4___setTabs(box, (s_platform_gtk4___TabsState){.selected = k, .quiet = (t).value.quiet});
-					sngl_fn_void__void run = (s).value.shown;
-					(run).fn((run).env);
+					((s).value.shown).fn(((s).value.shown).env);
 					chosen = true;
 				}
 			}
@@ -2543,8 +2542,7 @@ static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c) {
 static void s_platform_gtk4___backPress(GtkWidget * w) {
 	sngl_opt__BackState b = sngl_held__BackState(g_object_get_data((GObject *)(w), s___rel18));
 	if ((b).ok) {
-		sngl_fn_void__void run = (b).value.press;
-		(run).fn((run).env);
+		((b).value.press).fn(((b).value.press).env);
 	}
 }
 
@@ -2670,8 +2668,7 @@ static void s_platform_gtk4___menuEntrySelect(GtkWidget * w) {
 	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel20));
 	if ((e).ok) {
 		if (!(e).value.disabled) {
-			sngl_fn_void__void run = (e).value.select;
-			(run).fn((run).env);
+			((e).value.select).fn(((e).value.select).env);
 		}
 	}
 }
@@ -6224,8 +6221,7 @@ func _tabsShown(box cgo.Widget) {
 			if s != nil {
 				if !(*(s)).Disabled {
 					_setTabs(box, _TabsState{Selected: k, Quiet: (*(t)).Quiet})
-					run := (*(s)).Shown
-					run()
+					(*(s)).Shown()
 					chosen = true
 				}
 			}
@@ -6461,8 +6457,7 @@ func _backPress(w cgo.Widget) {
 		return nil
 	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(w)), "sngl-back"))
 	if b != nil {
-		run := (*(b)).Press
-		run()
+		(*(b)).Press()
 	}
 }
 
@@ -6610,8 +6605,7 @@ func _menuEntrySelect(w cgo.Widget) {
 	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
 	if e != nil {
 		if !(*(e)).Disabled {
-			run := (*(e)).Select
-			run()
+			(*(e)).Select()
 		}
 	}
 }
@@ -8073,10 +8067,10 @@ func snglWin32Snapshot(path string, w, h int) int    { return cgo.SnglWin32Snaps
 func snglWin32CarryFile(name, data string, n int)    { cgo.SnglWin32CarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:8d6c69e9d876eea76eecd130b234202d
+pass sha256:12987d9e2d5b6bc48548019e3e4a232b
 -- run/c/win32 --
 pass sha256:21baf8e9463ebb9d0fa1d4b490ca843b
 -- run/go/gtk4 --
-pass sha256:ba9bcfa45dbdb37cda5630243078da3d
+pass sha256:8975a0fd9de41092a2938cdb86a99241
 -- run/go/win32 --
 pass sha256:6cb31c8fbbad73fc1141b09da7b5a95f
