@@ -78,7 +78,7 @@ sha256:32be0551eb1953624fd4be7c9a5904d8
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:cf861421e3275908195a015843398353
+sha256:187a625d4cd51344c7e081a5c78b3669
 {
   "results": [
     {

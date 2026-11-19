@@ -201,6 +201,7 @@ func _rtSetLook(
 
 // Gives w its look, each widget's `look` set.
 func _setLook(w ui.node, l Look) {
+    _layoutHooksSet()
     _rtSetLook(w, l.css, int(l.width + 0.5), int(l.height + 0.5), l.grow, l.cross, l.textAlign, l.lines, l.wrap, l.hidden ? 1 : 0, l.cursor, l.justify, l.spaced ? 1 : 0, l.spacing, l.grid ? 1 : 0, l.columns)
 }
 
@@ -1849,6 +1850,514 @@ func _measureWidget(w Widget, orientation Orientation, forSize int, minimum ref[
 #[c.native("gtk_widget_allocate")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetAllocate")]
 func _allocateWidget(w Widget, width int, height int, baseline int, transform option[Transform])
+
+// --- A box laid out by the runtime ---
+//
+// A GtkBox packs its children from the start and splits its spare room
+// evenly between the ones that expand. CSS places them as justify-content
+// says and shares the room by each one's flex, so a box whose look
+// justifies, or whose growing children ask for unequal shares, is laid out
+// by _flexMode, _flexMeasure and _flexAllocate instead, and given GTK's own
+// layout back when it asks for neither (rt's look.c decides which). Its
+// spacing is then its look's, which is why the overrides hand a box's
+// spacing to the look: GtkBox's own setter would reach a layout that is not
+// GTK's.
+//
+// sngl:ui's grid is a GtkBox laid out by _gridMode, _gridMeasure and
+// _gridAllocate: its children are the box's, so they come and go as any
+// box's do, and it places them a row at a time. With columns, each takes an
+// equal share of the width less the gaps between them; without, each is its
+// natural width, no wider than the grid, and a row ends where the next would
+// not fit, as CSS's wrapping row does. A row is as tall as its tallest child
+// at the width it is given, and the box's spacing is both the gap within a
+// row and the one between two.
+//
+// What the look says of a box -- its justification, its columns, its width
+// and its spacing -- and each child's share are look.c's, read through the
+// functions below.
+
+// The share of the spare room a child of a box along o takes (look.c).
+#[c.native("sngl_look_weight")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglLookWeight")]
+func _lookWeight(w Widget, o Orientation) float
+
+// Where a box puts what its children leave of it: 0 the start, 1 the
+// center, 2 the end, 3 between them, 4 around them and 5 evenly.
+#[c.native("sngl_look_justify")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglLookJustify")]
+func _lookJustify(box Widget) int
+
+// A grid's columns, 0 where it flows.
+#[c.native("sngl_look_columns")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglLookColumns")]
+func _lookColumns(box Widget) int
+
+// The width a box's look asks for, 0 for none.
+#[c.native("sngl_look_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglLookWidth")]
+func _lookWidth(box Widget) int
+
+// The space between a box's children.
+#[c.native("sngl_box_spacing")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxSpacing")]
+func _boxSpacing(box Widget) int
+
+// A box's axis, which its own layout knows while the runtime's lays it out.
+#[c.native("sngl_box_axis")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxAxis")]
+func _boxAxis(box Widget) Orientation
+
+#[c.native("GtkTextDirection")]
+struct _TextDirection = int
+
+#[c.native("gtk_widget_get_direction")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetDirection")]
+func _direction(w Widget) _TextDirection
+
+#[c.native("graphene_point_t *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Point")]
+struct _Point {}
+
+#[c.native("graphene_point_alloc")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GraphenePointAlloc")]
+func _pointAlloc() _Point
+
+#[c.native("graphene_point_init")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GraphenePointInit")]
+func _pointInit(p _Point, x _c_float, y _c_float) _Point
+
+#[c.native("graphene_point_free")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GraphenePointFree")]
+func _pointFree(p _Point)
+
+#[c.native("gsk_transform_translate")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GskTransformTranslate")]
+func _translate(next option[Transform], point _Point) option[Transform]
+
+// Allocates w width by height at x, y in its parent, as
+// gtk_widget_size_allocate does: a translation, handed to
+// gtk_widget_allocate, which takes it. That one takes a GtkAllocation by
+// pointer, which the C target hands C no struct of the program's as.
+func _place(w Widget, x int, y int, width int, height int) {
+    var p = _pointAlloc()
+    _pointInit(p, _to_float(float(x)), _to_float(float(y)))
+    _allocateWidget(w, width, height, -1, _translate(null, p))
+    _pointFree(p)
+}
+
+// Hands look.c the functions a box it lays out flexing and a grid are laid
+// out by.
+#[c.native("sngl_layout_hooks")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglLayoutHooks")]
+func _layoutHooks(
+    #[c.type("GtkCustomRequestModeFunc")] #[c.static] flexMode func(w Widget) int,
+    #[c.type("GtkCustomMeasureFunc")] #[c.static] #[c.outs] flexMeasure func(w Widget, orientation int, forSize int) Measured,
+    #[c.type("GtkCustomAllocateFunc")] #[c.static] flexAllocate func(w Widget, width int, height int, baseline int),
+    #[c.type("GtkCustomRequestModeFunc")] #[c.static] gridMode func(w Widget) int,
+    #[c.type("GtkCustomMeasureFunc")] #[c.static] #[c.outs] gridMeasure func(w Widget, orientation int, forSize int) Measured,
+    #[c.type("GtkCustomAllocateFunc")] #[c.static] gridAllocate func(w Widget, width int, height int, baseline int),
+)
+
+func _layoutHooksSet() {
+    _layoutHooks(_flexMode, _flexMeasure, _flexAllocate, _gridMode, _gridMeasure, _gridAllocate)
+}
+
+// The children of box a layout places, in order.
+func _layoutKids(box Widget) list[Widget] {
+    return _layoutKidsFrom(_firstChild(box))
+}
+
+func _layoutKidsFrom(c option[Widget]) list[Widget] {
+    if c != null {
+        var rest = _layoutKidsFrom(_nextSibling(c))
+        if _shouldLayout(c) {
+            rest.insert(0, c)
+        }
+        return rest
+    }
+    return []
+}
+
+// What gtk_distribute_natural_allocation makes of minimums: extra handed
+// out up to each one's natural size, the ones furthest from it last, so
+// each takes an even share as far as it goes. GTK's takes an array of C
+// structs, which no SNGL declaration spells, so this is its loop: the
+// order is by the gap, largest first, and the later of two equal gaps
+// first.
+func _distribute(extra int, minimums list[int], naturals list[int]) list[int] {
+    var n = minimums.length()
+    var order list[int] = []
+    var i = 0
+    for i < n {
+        var at = 0
+        for at < order.length() && _spreadsBefore(order[at], i, minimums, naturals) {
+            at += 1
+        }
+        order.insert(at, i)
+        i += 1
+    }
+    var sizes list[int] = []
+    i = 0
+    for i < n {
+        sizes.push(minimums[i])
+        i += 1
+    }
+    var left = extra
+    i = n - 1
+    for left > 0 && i >= 0 {
+        var k = order[i]
+        var glue = (left + i) / (i + 1)
+        var gap = naturals[k] - minimums[k]
+        var add = glue < gap ? glue : gap
+        sizes[k] = sizes[k] + add
+        left -= add
+        i -= 1
+    }
+    return sizes
+}
+
+// Whether a comes ahead of b in _distribute's order.
+func _spreadsBefore(a int, b int, minimums list[int], naturals list[int]) bool {
+    var ga = naturals[a] - minimums[a]
+    var gb = naturals[b] - minimums[b]
+    if ga < 0 {
+        ga = 0
+    }
+    if gb < 0 {
+        gb = 0
+    }
+    return ga > gb || ga == gb && a > b
+}
+
+// Each child's extent along a box, of along in all, at across: its
+// minimum, then up to its natural size, then the spare room's share its
+// weight asks for; and what no child takes, for justifying.
+struct _FlexSizes {
+    sizes list[int]
+    spare int
+}
+
+func _flexSizes(box Widget, o int, along int, across int, kids list[Widget]) _FlexSizes {
+    var n = kids.length()
+    var spare = along - _boxSpacing(box) * (n - 1)
+    var weights = 0.0
+    var minimums list[int] = []
+    var naturals list[int] = []
+    var i = 0
+    for i < n {
+        var minimum = 0
+        var natural = 0
+        _measureWidget(kids[i], o, across, &minimum, &natural, null, null)
+        minimums.push(minimum)
+        naturals.push(natural)
+        spare -= minimum
+        weights += _lookWeight(kids[i], o)
+        i += 1
+    }
+    var extra = spare > 0 ? spare : 0
+    var sizes = _distribute(extra, minimums, naturals)
+    spare = extra
+    i = 0
+    for i < n {
+        spare -= sizes[i] - minimums[i]
+        i += 1
+    }
+    i = 0
+    for i < n {
+        if weights > 0.0 {
+            var w = _lookWeight(kids[i], o)
+            if w > 0.0 {
+                // The last grower takes what rounding left.
+                var share = w == weights ? spare : int(float(spare) * w / weights + 0.5)
+                sizes[i] = sizes[i] + share
+                spare -= share
+                weights -= w
+            }
+        }
+        i += 1
+    }
+    return _FlexSizes{sizes=sizes, spare=weights > 0.0 ? 0 : spare}
+}
+
+// As GtkBoxLayout asks: of constant size where every child is, else the
+// way most of them trade one length for the other.
+// GTK_SIZE_REQUEST_HEIGHT_FOR_WIDTH is 0, _WIDTH_FOR_HEIGHT 1 and
+// _CONSTANT_SIZE 2.
+func _flexMode(box Widget) int {
+    var heightForWidth = 0
+    var widthForHeight = 0
+    var kids = _layoutKids(box)
+    var i = 0
+    for i < kids.length() {
+        var mode = _requestMode(kids[i])
+        if mode == 0 {
+            heightForWidth += 1
+        } else if mode == 1 {
+            widthForHeight += 1
+        }
+        i += 1
+    }
+    if heightForWidth == 0 && widthForHeight == 0 {
+        return 2
+    }
+    return widthForHeight > heightForWidth ? 1 : 0
+}
+
+func _flexMeasure(box Widget, orientation int, forSize int) Measured {
+    var axis = int(_boxAxis(box))
+    var kids = _layoutKids(box)
+    var n = kids.length()
+    var minimum = 0
+    var natural = 0
+    var i = 0
+    if orientation == axis {
+        for i < n {
+            var cmin = 0
+            var cnat = 0
+            _measureWidget(kids[i], orientation, forSize, &cmin, &cnat, null, null)
+            minimum += cmin
+            natural += cnat
+            i += 1
+        }
+        if n > 1 {
+            minimum += _boxSpacing(box) * (n - 1)
+            natural += _boxSpacing(box) * (n - 1)
+        }
+    } else {
+        var sized = forSize >= 0 && n > 0
+        var sizes list[int] = []
+        if sized {
+            sizes = _flexSizes(box, axis, forSize, -1, kids).sizes
+        }
+        for i < n {
+            var cmin = 0
+            var cnat = 0
+            _measureWidget(kids[i], orientation, sized ? sizes[i] : -1, &cmin, &cnat, null, null)
+            minimum = cmin > minimum ? cmin : minimum
+            natural = cnat > natural ? cnat : natural
+            i += 1
+        }
+    }
+    return Measured{minimum=minimum, natural=natural, minimumBaseline=-1, naturalBaseline=-1}
+}
+
+// Each child along the box, across all of it: GTK aligns a child within
+// what it is allocated, as its halign and valign say. GTK_TEXT_DIR_RTL is
+// 2.
+func _flexAllocate(box Widget, width int, height int, baseline int) {
+    var axis = int(_boxAxis(box))
+    var row = axis == 0
+    var along = row ? width : height
+    var kids = _layoutKids(box)
+    var n = kids.length()
+    if n > 0 {
+        var flex = _flexSizes(box, axis, along, row ? height : width, kids)
+        var sizes = flex.sizes
+        var spare = flex.spare
+        var lead = 0
+        var between = 0
+        var rest = 0
+        var justify = _lookJustify(box)
+        if justify == 1 {
+            lead = spare / 2
+        } else if justify == 2 {
+            lead = spare
+        } else if justify == 3 {
+            if n > 1 {
+                between = spare / (n - 1)
+                rest = spare % (n - 1)
+            }
+        } else if justify == 4 {
+            lead = spare / (2 * n)
+            between = spare / n
+        } else if justify == 5 {
+            lead = spare / (n + 1)
+            between = lead
+        }
+        var rtl = row && int(_direction(box)) == 2
+        var spacing = _boxSpacing(box)
+        var pos = lead
+        var i = 0
+        for i < n {
+            if i > 0 {
+                pos += spacing + between + (i <= rest ? 1 : 0)
+            }
+            var at = rtl ? along - pos - sizes[i] : pos
+            if row {
+                _place(kids[i], at, 0, sizes[i], height)
+            } else {
+                _place(kids[i], 0, at, width, sizes[i])
+            }
+            pos += sizes[i]
+            i += 1
+        }
+    }
+}
+
+// The width each child of a grid width wide takes, and the index each row
+// runs to.
+struct _GridRows {
+    widths list[int]
+    ends   list[int]
+}
+
+func _gridRows(box Widget, room int, kids list[Widget]) _GridRows {
+    var width = room
+    var n = kids.length()
+    var columns = _lookColumns(box)
+    var gap = _boxSpacing(box)
+    var widths list[int] = []
+    var ends list[int] = []
+    // A width the look asks for is the grid's, as CSS's is, though GTK
+    // takes a size request as the least it may allocate.
+    var asked = _lookWidth(box)
+    if asked > 0 && (width < 0 || width > asked) {
+        width = asked
+    }
+    var i = 0
+    if columns > 0 {
+        var column = (width - gap * (columns - 1)) / columns
+        if column < 0 {
+            column = 0
+        }
+        for i < n {
+            widths.push(column)
+            if (i + 1) % columns == 0 || i == n - 1 {
+                ends.push(i + 1)
+            }
+            i += 1
+        }
+        return _GridRows{widths=widths, ends=ends}
+    }
+    var run = 0
+    for i < n {
+        var minimum = 0
+        var natural = 0
+        _measureWidget(kids[i], 0, -1, &minimum, &natural, null, null)
+        var w = natural
+        if width >= 0 {
+            w = natural < width ? natural : width
+            w = minimum > w ? minimum : w
+        }
+        widths.push(w)
+        if run > 0 && width >= 0 && run + gap + w > width {
+            ends.push(i)
+            run = 0
+        }
+        run += (run > 0 ? gap : 0) + w
+        i += 1
+    }
+    if n > 0 {
+        ends.push(n)
+    }
+    return _GridRows{widths=widths, ends=ends}
+}
+
+// Each row's height, the tallest of its children at their widths.
+func _gridHeights(kids list[Widget], rows _GridRows) list[int] {
+    var heights list[int] = []
+    var start = 0
+    var r = 0
+    for r < rows.ends.length() {
+        var tall = 0
+        var i = start
+        for i < rows.ends[r] {
+            var minimum = 0
+            var natural = 0
+            _measureWidget(kids[i], 1, rows.widths[i], &minimum, &natural, null, null)
+            tall = natural > tall ? natural : tall
+            i += 1
+        }
+        heights.push(tall)
+        start = rows.ends[r]
+        r += 1
+    }
+    return heights
+}
+
+func _gridMode(box Widget) int {
+    return 0
+}
+
+func _gridMeasure(box Widget, orientation int, forSize int) Measured {
+    var kids = _layoutKids(box)
+    var n = kids.length()
+    var columns = _lookColumns(box)
+    var gap = _boxSpacing(box)
+    var minimum = 0
+    var natural = 0
+    if orientation == 0 {
+        // A flow is as narrow as its widest child and naturally a row.
+        var widest = 0
+        var widestNatural = 0
+        var sum = 0
+        var i = 0
+        for i < n {
+            var cmin = 0
+            var cnat = 0
+            _measureWidget(kids[i], orientation, -1, &cmin, &cnat, null, null)
+            widest = cmin > widest ? cmin : widest
+            widestNatural = cnat > widestNatural ? cnat : widestNatural
+            sum += cnat
+            i += 1
+        }
+        if columns > 0 {
+            var across = columns < n ? columns : n
+            var gaps = across > 1 ? gap * (across - 1) : 0
+            minimum = widest * across + gaps
+            natural = widestNatural * across + gaps
+        } else {
+            minimum = widest
+            natural = sum + (n > 1 ? gap * (n - 1) : 0)
+        }
+        var asked = _lookWidth(box)
+        if asked > 0 {
+            natural = natural < asked ? natural : asked
+            natural = minimum > natural ? minimum : natural
+        }
+    } else if n > 0 {
+        var width = forSize
+        if width < 0 {
+            width = _gridMeasure(box, 0, -1).natural
+        }
+        var heights = _gridHeights(kids, _gridRows(box, width, kids))
+        var r = 0
+        for r < heights.length() {
+            minimum += heights[r]
+            r += 1
+        }
+        if heights.length() > 1 {
+            minimum += gap * (heights.length() - 1)
+        }
+        natural = minimum
+    }
+    return Measured{minimum=minimum, natural=natural, minimumBaseline=-1, naturalBaseline=-1}
+}
+
+func _gridAllocate(box Widget, width int, height int, baseline int) {
+    var kids = _layoutKids(box)
+    if kids.length() > 0 {
+        var rows = _gridRows(box, width, kids)
+        var heights = _gridHeights(kids, rows)
+        var rtl = int(_direction(box)) == 2
+        var gap = _boxSpacing(box)
+        var y = 0
+        var start = 0
+        var r = 0
+        for r < rows.ends.length() {
+            var x = 0
+            var i = start
+            for i < rows.ends[r] {
+                _place(kids[i], rtl ? width - x - rows.widths[i] : x, y, rows.widths[i], heights[r])
+                x += rows.widths[i] + gap
+                i += 1
+            }
+            y += heights[r] + gap
+            start = rows.ends[r]
+            r += 1
+        }
+    }
+}
 
 // A scroll's probe is laid out as its one child is, the scroll's content,
 // and tells the scroll the content's natural length along the axis its end

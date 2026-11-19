@@ -39,17 +39,28 @@ ui.window(title="t") {
 #include "sngl.h"
 #include "sngl_gtk.h"
 #include <string.h>
+#include <stdlib.h>
 
 typedef struct s___ref_int s___ref_int;
 typedef struct s___ref_bool s___ref_bool;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
+typedef struct s_platform_gtk4__Look s_platform_gtk4__Look;
 typedef struct sngl_fn_GtkWidget_p__void sngl_fn_GtkWidget_p__void;
 typedef struct sngl_fn_GtkWidget_p_GtkWidget_p__void sngl_fn_GtkWidget_p_GtkWidget_p__void;
 typedef struct sngl_fn_GtkWidget_p__bool sngl_fn_GtkWidget_p__bool;
+typedef struct sngl_fn_GtkWidget_p__int sngl_fn_GtkWidget_p__int;
+typedef struct s_platform_gtk4__Measured s_platform_gtk4__Measured;
+typedef struct sngl_fn_GtkWidget_p_int_int__Measured sngl_fn_GtkWidget_p_int_int__Measured;
+typedef struct sngl_fn_GtkWidget_p_int_int_int__void sngl_fn_GtkWidget_p_int_int_int__void;
 typedef struct s_platform_gtk4___BackState s_platform_gtk4___BackState;
 typedef struct sngl_opt__BackState sngl_opt__BackState;
 typedef struct s_platform_gtk4___MenuEntryState s_platform_gtk4___MenuEntryState;
 typedef struct sngl_opt__MenuEntryState sngl_opt__MenuEntryState;
+typedef struct sngl_list_GtkWidget_p sngl_list_GtkWidget_p;
+typedef struct s__measureWidget__result s__measureWidget__result;
+typedef struct sngl_list_int sngl_list_int;
+typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
+typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
 typedef struct sngl_lambda1_env sngl_lambda1_env;
 typedef struct sngl_fn_gpointer_gpointer_gpointer__void sngl_fn_gpointer_gpointer_gpointer__void;
 typedef struct s___lambda0_caps s___lambda0_caps;
@@ -71,6 +82,24 @@ typedef struct sngl_fn_void__void {
 	void *env;
 } sngl_fn_void__void;
 
+typedef struct s_platform_gtk4__Look {
+	sngl_string css;
+	double width;
+	double height;
+	double grow;
+	int64_t cross;
+	int64_t textAlign;
+	int64_t lines;
+	int64_t wrap;
+	bool hidden;
+	sngl_string cursor;
+	int64_t justify;
+	bool spaced;
+	int64_t spacing;
+	bool grid;
+	int64_t columns;
+} s_platform_gtk4__Look;
+
 typedef struct sngl_fn_GtkWidget_p__void {
 	void (*fn)(void *env, GtkWidget *);
 	void *env;
@@ -85,6 +114,28 @@ typedef struct sngl_fn_GtkWidget_p__bool {
 	bool (*fn)(void *env, GtkWidget *);
 	void *env;
 } sngl_fn_GtkWidget_p__bool;
+
+typedef struct sngl_fn_GtkWidget_p__int {
+	int64_t (*fn)(void *env, GtkWidget *);
+	void *env;
+} sngl_fn_GtkWidget_p__int;
+
+typedef struct s_platform_gtk4__Measured {
+	int64_t minimum;
+	int64_t natural;
+	int64_t minimumBaseline;
+	int64_t naturalBaseline;
+} s_platform_gtk4__Measured;
+
+typedef struct sngl_fn_GtkWidget_p_int_int__Measured {
+	s_platform_gtk4__Measured (*fn)(void *env, GtkWidget *, int64_t, int64_t);
+	void *env;
+} sngl_fn_GtkWidget_p_int_int__Measured;
+
+typedef struct sngl_fn_GtkWidget_p_int_int_int__void {
+	void (*fn)(void *env, GtkWidget *, int64_t, int64_t, int64_t);
+	void *env;
+} sngl_fn_GtkWidget_p_int_int_int__void;
 
 typedef struct s_platform_gtk4___BackState {
 	sngl_fn_void__void press;
@@ -107,6 +158,33 @@ typedef struct sngl_opt__MenuEntryState {
 	bool ok;
 	s_platform_gtk4___MenuEntryState value;
 } sngl_opt__MenuEntryState;
+
+typedef struct sngl_list_GtkWidget_p {
+	GtkWidget * *data;
+	int64_t len;
+	int64_t cap;
+} sngl_list_GtkWidget_p;
+
+typedef struct s__measureWidget__result {
+	int64_t out3;
+	int64_t out4;
+} s__measureWidget__result;
+
+typedef struct sngl_list_int {
+	int64_t *data;
+	int64_t len;
+	int64_t cap;
+} sngl_list_int;
+
+typedef struct s_platform_gtk4___FlexSizes {
+	sngl_list_int sizes;
+	int64_t spare;
+} s_platform_gtk4___FlexSizes;
+
+typedef struct s_platform_gtk4___GridRows {
+	sngl_list_int widths;
+	sngl_list_int ends;
+} s_platform_gtk4___GridRows;
 
 typedef struct sngl_lambda1_env {
 	sngl_env hdr;
@@ -147,17 +225,29 @@ static void s_Widget_setText(GtkWidget * w, sngl_string str);
 static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static GtkWidget * s_platform_gtk4___rtToplevelNew(void);
+static void s_platform_gtk4___setLook(GtkWidget * w, s_platform_gtk4__Look l);
 static void s_platform_gtk4___menuHooksSet(void);
+static void s_platform_gtk4___layoutHooksSet(void);
 static void s_platform_gtk4___menuApply(GtkWidget * box);
 static void s_platform_gtk4___menuMoved(GtkWidget * box, GtkWidget * child);
 static bool s_platform_gtk4___windowBack(GtkWidget * box);
 static void s_platform_gtk4___barForget(GtkWidget * box);
+static int64_t s_platform_gtk4___flexMode(GtkWidget * box);
+static s_platform_gtk4__Measured s_platform_gtk4___flexMeasure(GtkWidget * box, int64_t orientation, int64_t forSize);
+static void s_platform_gtk4___flexAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline);
+static int64_t s_platform_gtk4___gridMode(GtkWidget * box);
+static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, int64_t orientation, int64_t forSize);
+static void s_platform_gtk4___gridAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline);
 static void s_platform_gtk4___barApply(GtkWidget * box);
 static GtkWidget * s_platform_gtk4___barPart(GtkWidget * box, sngl_string key);
 static int64_t s_platform_gtk4___menuItemsFrom(GtkWidget * c, GMenu * menu, GSimpleActionGroup * group, int64_t n);
 static void s_platform_gtk4___entryChanged(GtkWidget * w);
 static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c);
 static void s_platform_gtk4___backPress(GtkWidget * w);
+static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, int64_t o, int64_t along, int64_t across, sngl_list_GtkWidget_p kids);
+static void s_platform_gtk4___place(GtkWidget * w, int64_t x, int64_t y, int64_t width, int64_t height);
+static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s_platform_gtk4___GridRows rows);
+static s_platform_gtk4___GridRows s_platform_gtk4___gridRows(GtkWidget * box, int64_t room, sngl_list_GtkWidget_p kids);
 static void s_platform_gtk4___barApplyTo(GtkWidget * box, GtkWindow * win);
 static void *sngl_lambda1_env__keep(const void *p);
 static void sngl_lambda1_env__release(void *p);
@@ -168,8 +258,11 @@ static int64_t s_platform_gtk4___menuAdd(GMenu * menu, GSimpleActionGroup * grou
 static int64_t s_platform_gtk4___menuLeavesFrom(GtkWidget * c, GMenu * sub, GSimpleActionGroup * group, int64_t n, bool checkable);
 static bool s_platform_gtk4___checkedFrom(GtkWidget * c);
 static GtkWidget * s_platform_gtk4___menuHostFrom(GtkWidget * p);
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsFrom(GtkWidget * c);
+static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int minimums, sngl_list_int naturals);
 static void s_platform_gtk4___setBarPart(GtkWidget * box, sngl_string key, GtkWidget * w);
 static void s_platform_gtk4___menuActivate(gpointer action, gpointer parameter, gpointer entry);
+static bool s_platform_gtk4___spreadsBefore(int64_t a, int64_t b, sngl_list_int minimums, sngl_list_int naturals);
 static void s_platform_gtk4___menuEntrySelect(GtkWidget * w);
 static void s___snglTeardown(void);
 static void s_x_c__free(char * s);
@@ -252,6 +345,92 @@ static void sngl_static_s_platform_gtk4___barForget(GtkWidget * a0) {
 	sngl_call_leave(m);
 }
 
+static int64_t s_platform_gtk4___flexMode__fn(void *env, GtkWidget * a0) {
+	return s_platform_gtk4___flexMode(a0);
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___flexMeasure__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2) {
+	return s_platform_gtk4___flexMeasure(a0, a1, a2);
+}
+
+static void s_platform_gtk4___flexAllocate__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2, int64_t a3) {
+	s_platform_gtk4___flexAllocate(a0, a1, a2, a3);
+}
+
+static int64_t s_platform_gtk4___gridMode__fn(void *env, GtkWidget * a0) {
+	return s_platform_gtk4___gridMode(a0);
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2) {
+	return s_platform_gtk4___gridMeasure(a0, a1, a2);
+}
+
+static void s_platform_gtk4___gridAllocate__fn(void *env, GtkWidget * a0, int64_t a1, int64_t a2, int64_t a3) {
+	s_platform_gtk4___gridAllocate(a0, a1, a2, a3);
+}
+
+static int sngl_static_s_platform_gtk4___flexMode(GtkWidget * a0) {
+	sngl_mark m = sngl_call_enter();
+	int r = (int)s_platform_gtk4___flexMode(a0);
+	sngl_call_leave(m);
+	return r;
+}
+
+static void sngl_static_s_platform_gtk4___flexMeasure(GtkWidget * a0, int a1, int a2, int *o0, int *o1, int *o2, int *o3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4__Measured r = s_platform_gtk4___flexMeasure(a0, (int64_t)a1, (int64_t)a2);
+	if (o0 != NULL) {
+		*o0 = (int)r.minimum;
+	}
+	if (o1 != NULL) {
+		*o1 = (int)r.natural;
+	}
+	if (o2 != NULL) {
+		*o2 = (int)r.minimumBaseline;
+	}
+	if (o3 != NULL) {
+		*o3 = (int)r.naturalBaseline;
+	}
+	sngl_call_leave(m);
+}
+
+static void sngl_static_s_platform_gtk4___flexAllocate(GtkWidget * a0, int a1, int a2, int a3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4___flexAllocate(a0, (int64_t)a1, (int64_t)a2, (int64_t)a3);
+	sngl_call_leave(m);
+}
+
+static int sngl_static_s_platform_gtk4___gridMode(GtkWidget * a0) {
+	sngl_mark m = sngl_call_enter();
+	int r = (int)s_platform_gtk4___gridMode(a0);
+	sngl_call_leave(m);
+	return r;
+}
+
+static void sngl_static_s_platform_gtk4___gridMeasure(GtkWidget * a0, int a1, int a2, int *o0, int *o1, int *o2, int *o3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4__Measured r = s_platform_gtk4___gridMeasure(a0, (int64_t)a1, (int64_t)a2);
+	if (o0 != NULL) {
+		*o0 = (int)r.minimum;
+	}
+	if (o1 != NULL) {
+		*o1 = (int)r.natural;
+	}
+	if (o2 != NULL) {
+		*o2 = (int)r.minimumBaseline;
+	}
+	if (o3 != NULL) {
+		*o3 = (int)r.naturalBaseline;
+	}
+	sngl_call_leave(m);
+}
+
+static void sngl_static_s_platform_gtk4___gridAllocate(GtkWidget * a0, int a1, int a2, int a3) {
+	sngl_mark m = sngl_call_enter();
+	s_platform_gtk4___gridAllocate(a0, (int64_t)a1, (int64_t)a2, (int64_t)a3);
+	sngl_call_leave(m);
+}
+
 static sngl_opt__BackState sngl_held__BackState(void *p) {
 	sngl_opt__BackState o = {0};
 	if (p != NULL) {
@@ -268,6 +447,54 @@ static sngl_opt__MenuEntryState sngl_held__MenuEntryState(void *p) {
 		o.value = *(s_platform_gtk4___MenuEntryState *)p;
 	}
 	return o;
+}
+
+static GtkWidget * *sngl_list_GtkWidget_p_at(sngl_list_GtkWidget_p l, int64_t i) {
+	if (i < 0 || i >= l.len) {
+		sngl_panic("index out of range");
+	}
+	return &l.data[i];
+}
+
+static s__measureWidget__result sngl_ccall_gtk_widget_measure__measureWidget(GtkWidget * a0, GtkOrientation a1, int a2, int64_t a3, int64_t a4, int * a5, int * a6) {
+	int t3 = (int)a3;
+	int t4 = (int)a4;
+	s__measureWidget__result r;
+	gtk_widget_measure(a0, a1, a2, &t3, &t4, a5, a6);
+	r.out3 = (int64_t)t3;
+	r.out4 = (int64_t)t4;
+	return r;
+}
+
+static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
+	if (i < 0 || i >= l.len) {
+		sngl_panic("index out of range");
+	}
+	return &l.data[i];
+}
+
+static void sngl_list_int_grow(sngl_list_int *l, int64_t n) {
+	if (l->len + n <= l->cap) {
+		return;
+	}
+	int64_t cap = l->cap * 2;
+	if (cap < l->len + n) {
+		cap = l->len + n;
+	}
+	if (cap < 4) {
+		cap = 4;
+	}
+	int64_t *data = sngl_alloc(sizeof(int64_t) * (size_t)cap);
+	if (l->len > 0) {
+		memcpy(data, l->data, sizeof(int64_t) * (size_t)l->len);
+	}
+	l->data = data;
+	l->cap = cap;
+}
+
+static void sngl_list_int_push(sngl_list_int *l, int64_t v) {
+	sngl_list_int_grow(l, 1);
+	l->data[l->len++] = v;
 }
 
 static void sngl_lambda1_env__release(void *p) {
@@ -295,6 +522,45 @@ static void sngl_static_s_platform_gtk4___menuActivate(gpointer a0, gpointer a1,
 	sngl_mark m = sngl_call_enter();
 	s_platform_gtk4___menuActivate(a0, a1, a2);
 	sngl_call_leave(m);
+}
+
+static void sngl_list_GtkWidget_p_grow(sngl_list_GtkWidget_p *l, int64_t n) {
+	if (l->len + n <= l->cap) {
+		return;
+	}
+	int64_t cap = l->cap * 2;
+	if (cap < l->len + n) {
+		cap = l->len + n;
+	}
+	if (cap < 4) {
+		cap = 4;
+	}
+	GtkWidget * *data = sngl_alloc(sizeof(GtkWidget *) * (size_t)cap);
+	if (l->len > 0) {
+		memcpy(data, l->data, sizeof(GtkWidget *) * (size_t)l->len);
+	}
+	l->data = data;
+	l->cap = cap;
+}
+
+static void sngl_list_GtkWidget_p_insert(sngl_list_GtkWidget_p *l, int64_t i, GtkWidget * v) {
+	if (i < 0 || i > l->len) {
+		return;
+	}
+	sngl_list_GtkWidget_p_grow(l, 1);
+	memmove(&l->data[i + 1], &l->data[i], sizeof(GtkWidget *) * (size_t)(l->len - i));
+	l->data[i] = v;
+	l->len++;
+}
+
+static void sngl_list_int_insert(sngl_list_int *l, int64_t i, int64_t v) {
+	if (i < 0 || i > l->len) {
+		return;
+	}
+	sngl_list_int_grow(l, 1);
+	memmove(&l->data[i + 1], &l->data[i], sizeof(int64_t) * (size_t)(l->len - i));
+	l->data[i] = v;
+	l->len++;
 }
 
 static void s___ref_int__release(void *p) {
@@ -431,7 +697,7 @@ static char * s___rel17;
 static char * s___rel20;
 static char * s___rel24;
 static char * s___rel25;
-static char * s___rel28;
+static char * s___rel26;
 static s___ref_int * s_n;
 static s___ref_bool * s_visible__inst0;
 static GtkWidget * s___n0;
@@ -457,8 +723,21 @@ static GtkWidget * s_platform_gtk4___rtToplevelNew(void) {
 	return sngl_toplevel_new();
 }
 
+static void s_platform_gtk4___setLook(GtkWidget * w, s_platform_gtk4__Look l) {
+	s_platform_gtk4___layoutHooksSet();
+	char * __rel1 = sngl_cstring(l.css);
+	char * __rel2 = sngl_cstring(l.cursor);
+	sngl_set_look(w, __rel1, (int)(sngl_float_int((l.width + 0.5))), (int)(sngl_float_int((l.height + 0.5))), (double)(l.grow), (int)(l.cross), (int)(l.textAlign), (int)(l.lines), (int)(l.wrap), (int)((l.hidden ? 1 : 0)), __rel2, (int)(l.justify), (int)((l.spaced ? 1 : 0)), (int)(l.spacing), (int)((l.grid ? 1 : 0)), (int)(l.columns));
+	s_x_c__free(__rel2);
+	s_x_c__free(__rel1);
+}
+
 static void s_platform_gtk4___menuHooksSet(void) {
 	sngl_menu_hooks((SnglMenuHook)(void (*)(void))sngl_static_s_platform_gtk4___menuApply, (SnglMenuMovedHook)(void (*)(void))sngl_static_s_platform_gtk4___menuMoved, (SnglMenuBackHook)(void (*)(void))sngl_static_s_platform_gtk4___windowBack, (SnglMenuHook)(void (*)(void))sngl_static_s_platform_gtk4___barForget);
+}
+
+static void s_platform_gtk4___layoutHooksSet(void) {
+	sngl_layout_hooks((GtkCustomRequestModeFunc)(void (*)(void))sngl_static_s_platform_gtk4___flexMode, (GtkCustomMeasureFunc)(void (*)(void))sngl_static_s_platform_gtk4___flexMeasure, (GtkCustomAllocateFunc)(void (*)(void))sngl_static_s_platform_gtk4___flexAllocate, (GtkCustomRequestModeFunc)(void (*)(void))sngl_static_s_platform_gtk4___gridMode, (GtkCustomMeasureFunc)(void (*)(void))sngl_static_s_platform_gtk4___gridMeasure, (GtkCustomAllocateFunc)(void (*)(void))sngl_static_s_platform_gtk4___gridAllocate);
 }
 
 static void s_platform_gtk4___menuApply(GtkWidget * box) {
@@ -512,6 +791,215 @@ static void s_platform_gtk4___barForget(GtkWidget * box) {
 	g_object_set_data((GObject *)(box), s___rel6, NULL);
 	g_object_set_data((GObject *)(box), s___rel7, NULL);
 	g_object_set_data((GObject *)(box), s___rel8, NULL);
+}
+
+static int64_t s_platform_gtk4___flexMode(GtkWidget * box) {
+	int64_t heightForWidth = 0;
+	int64_t widthForHeight = 0;
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	int64_t i = 0;
+	while (i < (kids).len) {
+		int64_t mode = (int64_t)gtk_widget_get_request_mode((*sngl_list_GtkWidget_p_at(kids, i)));
+		if (mode == 0) {
+			heightForWidth += 1;
+		} else {
+			if (mode == 1) {
+				widthForHeight += 1;
+			}
+		}
+		i += 1;
+	}
+	if ((heightForWidth == 0) && (widthForHeight == 0)) {
+		return 2;
+	}
+	return ((widthForHeight > heightForWidth) ? 1 : 0);
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___flexMeasure(GtkWidget * box, int64_t orientation, int64_t forSize) {
+	int64_t axis = (int64_t)sngl_box_axis(box);
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	int64_t n__r0 = (kids).len;
+	int64_t minimum = 0;
+	int64_t natural = 0;
+	int64_t i = 0;
+	if (orientation == axis) {
+		while (i < n__r0) {
+			int64_t cmin = 0;
+			int64_t cnat = 0;
+			s__measureWidget__result __ref0 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(orientation), (int)(forSize), cmin, cnat, NULL, NULL);
+			cmin = __ref0.out3;
+			cnat = __ref0.out4;
+			minimum += cmin;
+			natural += cnat;
+			i += 1;
+		}
+		if (n__r0 > 1) {
+			minimum += ((int64_t)sngl_box_spacing(box) * (n__r0 - 1));
+			natural += ((int64_t)sngl_box_spacing(box) * (n__r0 - 1));
+		}
+	} else {
+		bool sized = ((forSize >= 0) && (n__r0 > 0));
+		sngl_list_int sizes = ((sngl_list_int){0});
+		if (sized) {
+			sizes = s_platform_gtk4___flexSizes(box, axis, forSize, -1, kids).sizes;
+		}
+		while (i < n__r0) {
+			int64_t cmin = 0;
+			int64_t cnat = 0;
+			s__measureWidget__result __ref1 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(orientation), (int)((sized ? (*sngl_list_int_at(sizes, i)) : -1)), cmin, cnat, NULL, NULL);
+			cmin = __ref1.out3;
+			cnat = __ref1.out4;
+			minimum = ((cmin > minimum) ? cmin : minimum);
+			natural = ((cnat > natural) ? cnat : natural);
+			i += 1;
+		}
+	}
+	return (s_platform_gtk4__Measured){.minimum = minimum, .natural = natural, .minimumBaseline = -1, .naturalBaseline = -1};
+}
+
+static void s_platform_gtk4___flexAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline) {
+	int64_t axis = (int64_t)sngl_box_axis(box);
+	bool row = (axis == 0);
+	int64_t along = (row ? width : height);
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	int64_t n__r1 = (kids).len;
+	if (n__r1 > 0) {
+		s_platform_gtk4___FlexSizes flex = s_platform_gtk4___flexSizes(box, axis, along, (row ? height : width), kids);
+		sngl_list_int sizes = flex.sizes;
+		int64_t spare = flex.spare;
+		int64_t lead = 0;
+		int64_t between = 0;
+		int64_t rest = 0;
+		int64_t justify = (int64_t)sngl_look_justify(box);
+		if (justify == 1) {
+			lead = sngl_div(spare, 2);
+		} else {
+			if (justify == 2) {
+				lead = spare;
+			} else {
+				if (justify == 3) {
+					if (n__r1 > 1) {
+						between = sngl_div(spare, (n__r1 - 1));
+						rest = sngl_mod(spare, (n__r1 - 1));
+					}
+				} else {
+					if (justify == 4) {
+						lead = sngl_div(spare, (2 * n__r1));
+						between = sngl_div(spare, n__r1);
+					} else {
+						if (justify == 5) {
+							lead = sngl_div(spare, (n__r1 + 1));
+							between = lead;
+						}
+					}
+				}
+			}
+		}
+		bool rtl = (row && ((int64_t)gtk_widget_get_direction(box) == 2));
+		int64_t spacing = (int64_t)sngl_box_spacing(box);
+		int64_t pos = lead;
+		int64_t i = 0;
+		while (i < n__r1) {
+			if (i > 0) {
+				pos += ((spacing + between) + ((i <= rest) ? 1 : 0));
+			}
+			int64_t at = (rtl ? ((along - pos) - (*sngl_list_int_at(sizes, i))) : pos);
+			if (row) {
+				s_platform_gtk4___place((*sngl_list_GtkWidget_p_at(kids, i)), at, 0, (*sngl_list_int_at(sizes, i)), height);
+			} else {
+				s_platform_gtk4___place((*sngl_list_GtkWidget_p_at(kids, i)), 0, at, width, (*sngl_list_int_at(sizes, i)));
+			}
+			pos += (*sngl_list_int_at(sizes, i));
+			i += 1;
+		}
+	}
+}
+
+static int64_t s_platform_gtk4___gridMode(GtkWidget * box) {
+	return 0;
+}
+
+static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, int64_t orientation, int64_t forSize) {
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	int64_t n__r2 = (kids).len;
+	int64_t columns = (int64_t)sngl_look_columns(box);
+	int64_t gap = (int64_t)sngl_box_spacing(box);
+	int64_t minimum = 0;
+	int64_t natural = 0;
+	if (orientation == 0) {
+		int64_t widest = 0;
+		int64_t widestNatural = 0;
+		int64_t sum = 0;
+		int64_t i = 0;
+		while (i < n__r2) {
+			int64_t cmin = 0;
+			int64_t cnat = 0;
+			s__measureWidget__result __ref2 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(orientation), (int)(-1), cmin, cnat, NULL, NULL);
+			cmin = __ref2.out3;
+			cnat = __ref2.out4;
+			widest = ((cmin > widest) ? cmin : widest);
+			widestNatural = ((cnat > widestNatural) ? cnat : widestNatural);
+			sum += cnat;
+			i += 1;
+		}
+		if (columns > 0) {
+			int64_t across = ((columns < n__r2) ? columns : n__r2);
+			int64_t gaps = ((across > 1) ? (gap * (across - 1)) : 0);
+			minimum = ((widest * across) + gaps);
+			natural = ((widestNatural * across) + gaps);
+		} else {
+			minimum = widest;
+			natural = (sum + ((n__r2 > 1) ? (gap * (n__r2 - 1)) : 0));
+		}
+		int64_t asked = (int64_t)sngl_look_width(box);
+		if (asked > 0) {
+			natural = ((natural < asked) ? natural : asked);
+			natural = ((minimum > natural) ? minimum : natural);
+		}
+	} else {
+		if (n__r2 > 0) {
+			int64_t width = forSize;
+			if (width < 0) {
+				width = s_platform_gtk4___gridMeasure(box, 0, -1).natural;
+			}
+			sngl_list_int heights = s_platform_gtk4___gridHeights(kids, s_platform_gtk4___gridRows(box, width, kids));
+			int64_t r = 0;
+			while (r < (heights).len) {
+				minimum += (*sngl_list_int_at(heights, r));
+				r += 1;
+			}
+			if ((heights).len > 1) {
+				minimum += (gap * ((heights).len - 1));
+			}
+			natural = minimum;
+		}
+	}
+	return (s_platform_gtk4__Measured){.minimum = minimum, .natural = natural, .minimumBaseline = -1, .naturalBaseline = -1};
+}
+
+static void s_platform_gtk4___gridAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline) {
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	if ((kids).len > 0) {
+		s_platform_gtk4___GridRows rows = s_platform_gtk4___gridRows(box, width, kids);
+		sngl_list_int heights = s_platform_gtk4___gridHeights(kids, rows);
+		bool rtl = ((int64_t)gtk_widget_get_direction(box) == 2);
+		int64_t gap = (int64_t)sngl_box_spacing(box);
+		int64_t y = 0;
+		int64_t start = 0;
+		int64_t r = 0;
+		while (r < (rows.ends).len) {
+			int64_t x = 0;
+			int64_t i = start;
+			while (i < (*sngl_list_int_at(rows.ends, r))) {
+				s_platform_gtk4___place((*sngl_list_GtkWidget_p_at(kids, i)), (rtl ? ((width - x) - (*sngl_list_int_at(rows.widths, i))) : x), y, (*sngl_list_int_at(rows.widths, i)), (*sngl_list_int_at(heights, r)));
+				x += ((*sngl_list_int_at(rows.widths, i)) + gap);
+				i += 1;
+			}
+			y += ((*sngl_list_int_at(heights, r)) + gap);
+			start = (*sngl_list_int_at(rows.ends, r));
+			r += 1;
+		}
+	}
 }
 
 static void s_platform_gtk4___barApply(GtkWidget * box) {
@@ -571,6 +1059,131 @@ static void s_platform_gtk4___backPress(GtkWidget * w) {
 	if ((b).ok) {
 		((b).value.press).fn(((b).value.press).env);
 	}
+}
+
+static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, int64_t o, int64_t along, int64_t across, sngl_list_GtkWidget_p kids) {
+	int64_t n__r3 = (kids).len;
+	int64_t spare = (along - ((int64_t)sngl_box_spacing(box) * (n__r3 - 1)));
+	double weights = 0.0;
+	sngl_list_int minimums = ((sngl_list_int){0});
+	sngl_list_int naturals = ((sngl_list_int){0});
+	int64_t i = 0;
+	while (i < n__r3) {
+		int64_t minimum = 0;
+		int64_t natural = 0;
+		s__measureWidget__result __ref3 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o), (int)(across), minimum, natural, NULL, NULL);
+		minimum = __ref3.out3;
+		natural = __ref3.out4;
+		sngl_list_int_push(&(minimums), minimum);
+		sngl_list_int_push(&(naturals), natural);
+		spare -= minimum;
+		weights += (double)sngl_look_weight((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o));
+		i += 1;
+	}
+	int64_t extra = ((spare > 0) ? spare : 0);
+	sngl_list_int sizes = s_platform_gtk4___distribute(extra, minimums, naturals);
+	spare = extra;
+	i = 0;
+	while (i < n__r3) {
+		spare -= ((*sngl_list_int_at(sizes, i)) - (*sngl_list_int_at(minimums, i)));
+		i += 1;
+	}
+	i = 0;
+	while (i < n__r3) {
+		if (weights > 0.0) {
+			double w = (double)sngl_look_weight((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(o));
+			if (w > 0.0) {
+				int64_t share = ((w == weights) ? spare : sngl_float_int(((((double)(spare) * w) / weights) + 0.5)));
+				(*sngl_list_int_at(sizes, i)) = ((*sngl_list_int_at(sizes, i)) + share);
+				spare -= share;
+				weights -= w;
+			}
+		}
+		i += 1;
+	}
+	return (s_platform_gtk4___FlexSizes){.sizes = sizes, .spare = ((weights > 0.0) ? 0 : spare)};
+}
+
+static void s_platform_gtk4___place(GtkWidget * w, int64_t x, int64_t y, int64_t width, int64_t height) {
+	graphene_point_t * p = graphene_point_alloc();
+	(void)graphene_point_init(p, (float)((double)((double)(x))), (float)((double)((double)(y))));
+	gtk_widget_allocate(w, (int)(width), (int)(height), (int)(-1), gsk_transform_translate(NULL, p));
+	graphene_point_free(p);
+}
+
+static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s_platform_gtk4___GridRows rows) {
+	sngl_list_int heights = ((sngl_list_int){0});
+	int64_t start = 0;
+	int64_t r = 0;
+	while (r < (rows.ends).len) {
+		int64_t tall = 0;
+		int64_t i = start;
+		while (i < (*sngl_list_int_at(rows.ends, r))) {
+			int64_t minimum = 0;
+			int64_t natural = 0;
+			s__measureWidget__result __ref4 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(1), (int)((*sngl_list_int_at(rows.widths, i))), minimum, natural, NULL, NULL);
+			minimum = __ref4.out3;
+			natural = __ref4.out4;
+			tall = ((natural > tall) ? natural : tall);
+			i += 1;
+		}
+		sngl_list_int_push(&(heights), tall);
+		start = (*sngl_list_int_at(rows.ends, r));
+		r += 1;
+	}
+	return heights;
+}
+
+static s_platform_gtk4___GridRows s_platform_gtk4___gridRows(GtkWidget * box, int64_t room, sngl_list_GtkWidget_p kids) {
+	int64_t width = room;
+	int64_t n__r4 = (kids).len;
+	int64_t columns = (int64_t)sngl_look_columns(box);
+	int64_t gap = (int64_t)sngl_box_spacing(box);
+	sngl_list_int widths = ((sngl_list_int){0});
+	sngl_list_int ends = ((sngl_list_int){0});
+	int64_t asked = (int64_t)sngl_look_width(box);
+	if ((asked > 0) && ((width < 0) || (width > asked))) {
+		width = asked;
+	}
+	int64_t i = 0;
+	if (columns > 0) {
+		int64_t column = sngl_div((width - (gap * (columns - 1))), columns);
+		if (column < 0) {
+			column = 0;
+		}
+		while (i < n__r4) {
+			sngl_list_int_push(&(widths), column);
+			if ((sngl_mod((i + 1), columns) == 0) || (i == (n__r4 - 1))) {
+				sngl_list_int_push(&(ends), (i + 1));
+			}
+			i += 1;
+		}
+		return (s_platform_gtk4___GridRows){.widths = widths, .ends = ends};
+	}
+	int64_t run = 0;
+	while (i < n__r4) {
+		int64_t minimum = 0;
+		int64_t natural = 0;
+		s__measureWidget__result __ref5 = sngl_ccall_gtk_widget_measure__measureWidget((*sngl_list_GtkWidget_p_at(kids, i)), (GtkOrientation)(0), (int)(-1), minimum, natural, NULL, NULL);
+		minimum = __ref5.out3;
+		natural = __ref5.out4;
+		int64_t w = natural;
+		if (width >= 0) {
+			w = ((natural < width) ? natural : width);
+			w = ((minimum > w) ? minimum : w);
+		}
+		sngl_list_int_push(&(widths), w);
+		if (((run > 0) && (width >= 0)) && (((run + gap) + w) > width)) {
+			sngl_list_int_push(&(ends), i);
+			run = 0;
+		}
+		run += (((run > 0) ? gap : 0) + w);
+		i += 1;
+	}
+	if (n__r4 > 0) {
+		sngl_list_int_push(&(ends), n__r4);
+	}
+	return (s_platform_gtk4___GridRows){.widths = widths, .ends = ends};
 }
 
 static void s_platform_gtk4___barApplyTo(GtkWidget * box, GtkWindow * win) {
@@ -681,6 +1294,49 @@ static GtkWidget * s_platform_gtk4___menuHostFrom(GtkWidget * p) {
 	return NULL;
 }
 
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsFrom(GtkWidget * c) {
+	if (c != NULL) {
+		sngl_list_GtkWidget_p rest = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_next_sibling(c));
+		if (gtk_widget_should_layout(c) != 0) {
+			sngl_list_GtkWidget_p_insert(&(rest), 0, c);
+		}
+		return rest;
+	}
+	return ((sngl_list_GtkWidget_p){0});
+}
+
+static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int minimums, sngl_list_int naturals) {
+	int64_t n__r5 = (minimums).len;
+	sngl_list_int order = ((sngl_list_int){0});
+	int64_t i = 0;
+	while (i < n__r5) {
+		int64_t at = 0;
+		while ((at < (order).len) && s_platform_gtk4___spreadsBefore((*sngl_list_int_at(order, at)), i, minimums, naturals)) {
+			at += 1;
+		}
+		sngl_list_int_insert(&(order), at, i);
+		i += 1;
+	}
+	sngl_list_int sizes = ((sngl_list_int){0});
+	i = 0;
+	while (i < n__r5) {
+		sngl_list_int_push(&(sizes), (*sngl_list_int_at(minimums, i)));
+		i += 1;
+	}
+	int64_t left = extra;
+	i = (n__r5 - 1);
+	while ((left > 0) && (i >= 0)) {
+		int64_t k = (*sngl_list_int_at(order, i));
+		int64_t glue = sngl_div((left + i), (i + 1));
+		int64_t gap = ((*sngl_list_int_at(naturals, k)) - (*sngl_list_int_at(minimums, k)));
+		int64_t add = ((glue < gap) ? glue : gap);
+		(*sngl_list_int_at(sizes, k)) = ((*sngl_list_int_at(sizes, k)) + add);
+		left -= add;
+		i -= 1;
+	}
+	return sizes;
+}
+
 static void s_platform_gtk4___setBarPart(GtkWidget * box, sngl_string key, GtkWidget * w) {
 	char * __rel23 = sngl_cstring(key);
 	g_object_set_data((GObject *)(box), __rel23, (gpointer)(w));
@@ -689,6 +1345,18 @@ static void s_platform_gtk4___setBarPart(GtkWidget * box, sngl_string key, GtkWi
 
 static void s_platform_gtk4___menuActivate(gpointer action, gpointer parameter, gpointer entry) {
 	s_platform_gtk4___menuEntrySelect((GtkWidget *)(entry));
+}
+
+static bool s_platform_gtk4___spreadsBefore(int64_t a, int64_t b, sngl_list_int minimums, sngl_list_int naturals) {
+	int64_t ga = ((*sngl_list_int_at(naturals, a)) - (*sngl_list_int_at(minimums, a)));
+	int64_t gb = ((*sngl_list_int_at(naturals, b)) - (*sngl_list_int_at(minimums, b)));
+	if (ga < 0) {
+		ga = 0;
+	}
+	if (gb < 0) {
+		gb = 0;
+	}
+	return ((ga > gb) || ((ga == gb) && (a > b)));
 }
 
 static void s_platform_gtk4___menuEntrySelect(GtkWidget * w) {
@@ -715,7 +1383,7 @@ static void s___snglTeardown(void) {
 	s_x_c__free(s___rel20);
 	s_x_c__free(s___rel24);
 	s_x_c__free(s___rel25);
-	s_x_c__free(s___rel28);
+	s_x_c__free(s___rel26);
 }
 
 static void s_x_c__free(char * s) {
@@ -748,14 +1416,14 @@ static void sngl_init(void) {
 	s___rel20 = sngl_cstring(SNGL_STR("activate"));
 	s___rel24 = sngl_cstring(SNGL_STR(""));
 	s___rel25 = sngl_cstring(SNGL_STR("go"));
-	s___rel28 = sngl_cstring(SNGL_STR("t"));
+	s___rel26 = sngl_cstring(SNGL_STR("t"));
 	s_n = ((s___ref_int *)sngl_counted_retain(((s___ref_int *)sngl_counted_new(&(s___ref_int[]){(s___ref_int){.value = 0}}, sizeof(s___ref_int), s___ref_int__release, s___ref_int__rekeep, NULL))));
 	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
 }
 
 static void sngl_build(void) {
 	s___n0 = s_platform_gtk4___rtToplevelNew();
-	sngl_toplevel_set_title(s___n0, s___rel28);
+	sngl_toplevel_set_title(s___n0, s___rel26);
 	sngl_toplevel_set_visible(s___n0, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n0, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s_l = gtk_label_new(NULL);
@@ -764,11 +1432,7 @@ static void sngl_build(void) {
 	s___n1 = gtk_button_new();
 	gtk_button_set_label((GtkButton *)((void *)(s___n1)), s___rel25);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(s___n1)), (gboolean)((int)(1)));
-	char * __rel26 = sngl_cstring(SNGL_STR(""));
-	char * __rel27 = sngl_cstring(SNGL_STR(""));
-	sngl_set_look(s___n1, __rel26, (int)(0), (int)(0), (double)(0.0), (int)(0), (int)(0), (int)(0), (int)(0), (int)(0), __rel27, (int)(0), (int)(0), (int)(0), (int)(0), (int)(0));
-	s_x_c__free(__rel27);
-	s_x_c__free(__rel26);
+	s_platform_gtk4___setLook(s___n1, (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
 	sngl_signal_connect(s___n1, s___rel17, (SnglFn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.n = s_n}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_void__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	sngl_toplevel_append(s___n0, s___n1);
 	sngl_app_attach(s___n0);
@@ -807,4 +1471,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:74f74cdb7030cf8c57a0701802ed7871
+pass sha256:b8aa3ef2197877d8a8041f423ae3eb86

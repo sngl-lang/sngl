@@ -2097,6 +2097,11 @@ type __anon_id_elem_c6a818 struct {
 	Elem string
 }
 
+type _measureWidget__result struct {
+	Out3 int
+	Out4 int
+}
+
 type Avatar__inst struct {
 	__prop_initials string
 	__prop_size     string
@@ -2108,6 +2113,24 @@ type Avatar__inst struct {
 	Hits            int
 	__root          cgo.Widget
 	__n0            cgo.Widget
+}
+
+type Look struct {
+	Css       string
+	Width     float64
+	Height    float64
+	Grow      float64
+	Cross     int
+	TextAlign int
+	Lines     int
+	Wrap      int
+	Hidden    bool
+	Cursor    string
+	Justify   int
+	Spaced    bool
+	Spacing   int
+	Grid      bool
+	Columns   int
 }
 
 type Style struct {
@@ -2164,22 +2187,21 @@ type Style struct {
 	ListStyleType  string
 }
 
-type Look struct {
-	Css       string
-	Width     float64
-	Height    float64
-	Grow      float64
-	Cross     int
-	TextAlign int
-	Lines     int
-	Wrap      int
-	Hidden    bool
-	Cursor    string
-	Justify   int
-	Spaced    bool
-	Spacing   int
-	Grid      bool
-	Columns   int
+type Measured struct {
+	Minimum         int
+	Natural         int
+	MinimumBaseline int
+	NaturalBaseline int
+}
+
+type _FlexSizes struct {
+	Sizes []int
+	Spare int
+}
+
+type _GridRows struct {
+	Widths []int
+	Ends   []int
 }
 
 type _MenuEntryState struct {
@@ -2240,6 +2262,29 @@ func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
 }
 
+func _setLook(w cgo.Widget, l Look) {
+	_layoutHooksSet()
+	var __lt0 int
+	if l.Hidden {
+		__lt0 = 1
+	} else {
+		__lt0 = 0
+	}
+	var __lt1 int
+	if l.Spaced {
+		__lt1 = 1
+	} else {
+		__lt1 = 0
+	}
+	var __lt2 int
+	if l.Grid {
+		__lt2 = 1
+	} else {
+		__lt2 = 0
+	}
+	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
+}
+
 func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
 	return cgo.SnglToplevelNew()
@@ -2248,6 +2293,14 @@ func _rtToplevelNew() cgo.Widget {
 func LookOf(s Style) Look {
 	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
+}
+
+func _layoutHooksSet() {
+	cgo.SnglLayoutHooks(_flexMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.SnglLayoutHooksFlexMeasure {
+		return cgo.SnglLayoutHooksFlexMeasure(_flexMeasure(a0, a1, a2))
+	}, _flexAllocate, _gridMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.SnglLayoutHooksGridMeasure {
+		return cgo.SnglLayoutHooksGridMeasure(_gridMeasure(a0, a1, a2))
+	}, _gridAllocate)
 }
 
 func _menuHooksSet() {
@@ -2333,6 +2386,311 @@ func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
 	return look
 }
 
+func _flexMode(box cgo.Widget) int {
+	var heightForWidth int = 0
+	var widthForHeight int = 0
+	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	var i int = 0
+	for i < len(kids) {
+		var mode int = cgo.GtkWidgetGetRequestMode(kids[i])
+		if mode == 0 {
+			heightForWidth += 1
+		} else {
+			if mode == 1 {
+				widthForHeight += 1
+			}
+		}
+		i += 1
+	}
+	if (heightForWidth == 0) && (widthForHeight == 0) {
+		return 2
+	}
+	var __lt13 int
+	if widthForHeight > heightForWidth {
+		__lt13 = 1
+	} else {
+		__lt13 = 0
+	}
+	return __lt13
+}
+
+func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
+	var axis int = int(cgo.SnglBoxAxis(box))
+	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	var n int = len(kids)
+	var minimum int = 0
+	var natural int = 0
+	var i int = 0
+	if orientation == axis {
+		for i < n {
+			var cmin int = 0
+			var cnat int = 0
+			__ref0 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, forSize, cmin, cnat, nil, nil))
+			cmin = __ref0.Out3
+			cnat = __ref0.Out4
+			minimum += cmin
+			natural += cnat
+			i += 1
+		}
+		if n > 1 {
+			minimum += (cgo.SnglBoxSpacing(box) * (n - 1))
+			natural += (cgo.SnglBoxSpacing(box) * (n - 1))
+		}
+	} else {
+		sized := ((forSize >= 0) && (n > 0))
+		sizes := []int{}
+		if sized {
+			sizes = _flexSizes(box, axis, forSize, -1, kids).Sizes
+		}
+		for i < n {
+			var cmin int = 0
+			var cnat int = 0
+			var __lt14 int
+			if sized {
+				__lt14 = sizes[i]
+			} else {
+				__lt14 = -1
+			}
+			__ref1 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, __lt14, cmin, cnat, nil, nil))
+			cmin = __ref1.Out3
+			cnat = __ref1.Out4
+			var __lt15 int
+			if cmin > minimum {
+				__lt15 = cmin
+			} else {
+				__lt15 = minimum
+			}
+			minimum = __lt15
+			var __lt16 int
+			if cnat > natural {
+				__lt16 = cnat
+			} else {
+				__lt16 = natural
+			}
+			natural = __lt16
+			i += 1
+		}
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: -1, NaturalBaseline: -1}
+}
+
+func _flexAllocate(box cgo.Widget, width int, height int, baseline int) {
+	var axis int = int(cgo.SnglBoxAxis(box))
+	row := (axis == 0)
+	var __lt17 int
+	if row {
+		__lt17 = width
+	} else {
+		__lt17 = height
+	}
+	var along int = __lt17
+	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	var n int = len(kids)
+	if n > 0 {
+		var __lt18 int
+		if row {
+			__lt18 = height
+		} else {
+			__lt18 = width
+		}
+		flex := _flexSizes(box, axis, along, __lt18, kids)
+		sizes := flex.Sizes
+		var spare int = flex.Spare
+		var lead int = 0
+		var between int = 0
+		var rest int = 0
+		var justify int = cgo.SnglLookJustify(box)
+		if justify == 1 {
+			lead = (spare / 2)
+		} else {
+			if justify == 2 {
+				lead = spare
+			} else {
+				if justify == 3 {
+					if n > 1 {
+						between = (spare / (n - 1))
+						rest = (spare % (n - 1))
+					}
+				} else {
+					if justify == 4 {
+						lead = (spare / (2 * n))
+						between = (spare / n)
+					} else {
+						if justify == 5 {
+							lead = (spare / (n + 1))
+							between = lead
+						}
+					}
+				}
+			}
+		}
+		rtl := (row && (int(cgo.GtkWidgetGetDirection(box)) == 2))
+		var spacing int = cgo.SnglBoxSpacing(box)
+		var pos int = lead
+		var i int = 0
+		for i < n {
+			if i > 0 {
+				var __lt19 int
+				if i <= rest {
+					__lt19 = 1
+				} else {
+					__lt19 = 0
+				}
+				pos += ((spacing + between) + __lt19)
+			}
+			var __lt20 int
+			if rtl {
+				__lt20 = ((along - pos) - sizes[i])
+			} else {
+				__lt20 = pos
+			}
+			var at int = __lt20
+			if row {
+				_place(kids[i], at, 0, sizes[i], height)
+			} else {
+				_place(kids[i], 0, at, width, sizes[i])
+			}
+			pos += sizes[i]
+			i += 1
+		}
+	}
+}
+
+func _gridMode(box cgo.Widget) int {
+	return 0
+}
+
+func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
+	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	var n int = len(kids)
+	var columns int = cgo.SnglLookColumns(box)
+	var gap int = cgo.SnglBoxSpacing(box)
+	var minimum int = 0
+	var natural int = 0
+	if orientation == 0 {
+		var widest int = 0
+		var widestNatural int = 0
+		var sum int = 0
+		var i int = 0
+		for i < n {
+			var cmin int = 0
+			var cnat int = 0
+			__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, -1, cmin, cnat, nil, nil))
+			cmin = __ref2.Out3
+			cnat = __ref2.Out4
+			var __lt21 int
+			if cmin > widest {
+				__lt21 = cmin
+			} else {
+				__lt21 = widest
+			}
+			widest = __lt21
+			var __lt22 int
+			if cnat > widestNatural {
+				__lt22 = cnat
+			} else {
+				__lt22 = widestNatural
+			}
+			widestNatural = __lt22
+			sum += cnat
+			i += 1
+		}
+		if columns > 0 {
+			var __lt23 int
+			if columns < n {
+				__lt23 = columns
+			} else {
+				__lt23 = n
+			}
+			var across int = __lt23
+			var __lt24 int
+			if across > 1 {
+				__lt24 = (gap * (across - 1))
+			} else {
+				__lt24 = 0
+			}
+			var gaps int = __lt24
+			minimum = ((widest * across) + gaps)
+			natural = ((widestNatural * across) + gaps)
+		} else {
+			minimum = widest
+			var __lt25 int
+			if n > 1 {
+				__lt25 = (gap * (n - 1))
+			} else {
+				__lt25 = 0
+			}
+			natural = (sum + __lt25)
+		}
+		var asked int = cgo.SnglLookWidth(box)
+		if asked > 0 {
+			var __lt26 int
+			if natural < asked {
+				__lt26 = natural
+			} else {
+				__lt26 = asked
+			}
+			natural = __lt26
+			var __lt27 int
+			if minimum > natural {
+				__lt27 = minimum
+			} else {
+				__lt27 = natural
+			}
+			natural = __lt27
+		}
+	} else {
+		if n > 0 {
+			var width int = forSize
+			if width < 0 {
+				width = _gridMeasure(box, 0, -1).Natural
+			}
+			heights := _gridHeights(kids, _gridRows(box, width, kids))
+			var r int = 0
+			for r < len(heights) {
+				minimum += heights[r]
+				r += 1
+			}
+			if len(heights) > 1 {
+				minimum += (gap * (len(heights) - 1))
+			}
+			natural = minimum
+		}
+	}
+	return Measured{Minimum: minimum, Natural: natural, MinimumBaseline: -1, NaturalBaseline: -1}
+}
+
+func _gridAllocate(box cgo.Widget, width int, height int, baseline int) {
+	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	if len(kids) > 0 {
+		rows__r0 := _gridRows(box, width, kids)
+		heights := _gridHeights(kids, rows__r0)
+		rtl := (int(cgo.GtkWidgetGetDirection(box)) == 2)
+		var gap int = cgo.SnglBoxSpacing(box)
+		var y int = 0
+		var start int = 0
+		var r int = 0
+		for r < len(rows__r0.Ends) {
+			var x int = 0
+			var i int = start
+			for i < rows__r0.Ends[r] {
+				var __lt28 int
+				if rtl {
+					__lt28 = ((width - x) - rows__r0.Widths[i])
+				} else {
+					__lt28 = x
+				}
+				_place(kids[i], __lt28, y, rows__r0.Widths[i], heights[r])
+				x += (rows__r0.Widths[i] + gap)
+				i += 1
+			}
+			y += (heights[r] + gap)
+			start = rows__r0.Ends[r]
+			r += 1
+		}
+	}
+}
+
 func _menuApply(box cgo.Widget) {
 	_barApply(box)
 	win := cgo.SnglToplevelWindow(box)
@@ -2402,245 +2760,412 @@ func _barForget(box cgo.Widget) {
 }
 
 func CssOf(s Style) string {
-	var __lt14 *Measurement
+	var __lt30 *Measurement
 	if s.MarginTop != nil {
-		__lt14 = s.MarginTop
+		__lt30 = s.MarginTop
 	} else {
-		var __lt13 *Measurement
+		var __lt29 *Measurement
 		if s.MarginY != nil {
-			__lt13 = s.MarginY
+			__lt29 = s.MarginY
 		} else {
-			__lt13 = s.Margin
+			__lt29 = s.Margin
 		}
-		__lt14 = __lt13
+		__lt30 = __lt29
 	}
-	var __lt16 *Measurement
+	var __lt32 *Measurement
 	if s.MarginRight != nil {
-		__lt16 = s.MarginRight
+		__lt32 = s.MarginRight
 	} else {
-		var __lt15 *Measurement
+		var __lt31 *Measurement
 		if s.MarginX != nil {
-			__lt15 = s.MarginX
+			__lt31 = s.MarginX
 		} else {
-			__lt15 = s.Margin
+			__lt31 = s.Margin
 		}
-		__lt16 = __lt15
+		__lt32 = __lt31
 	}
-	var __lt18 *Measurement
+	var __lt34 *Measurement
 	if s.MarginBottom != nil {
-		__lt18 = s.MarginBottom
+		__lt34 = s.MarginBottom
 	} else {
-		var __lt17 *Measurement
+		var __lt33 *Measurement
 		if s.MarginY != nil {
-			__lt17 = s.MarginY
+			__lt33 = s.MarginY
 		} else {
-			__lt17 = s.Margin
+			__lt33 = s.Margin
 		}
-		__lt18 = __lt17
+		__lt34 = __lt33
 	}
-	var __lt20 *Measurement
+	var __lt36 *Measurement
 	if s.MarginLeft != nil {
-		__lt20 = s.MarginLeft
+		__lt36 = s.MarginLeft
 	} else {
-		var __lt19 *Measurement
+		var __lt35 *Measurement
 		if s.MarginX != nil {
-			__lt19 = s.MarginX
+			__lt35 = s.MarginX
 		} else {
-			__lt19 = s.Margin
+			__lt35 = s.Margin
 		}
-		__lt20 = __lt19
+		__lt36 = __lt35
 	}
-	var __lt22 *Measurement
+	var __lt38 *Measurement
 	if s.PaddingTop != nil {
-		__lt22 = s.PaddingTop
+		__lt38 = s.PaddingTop
 	} else {
-		var __lt21 *Measurement
+		var __lt37 *Measurement
 		if s.PaddingY != nil {
-			__lt21 = s.PaddingY
+			__lt37 = s.PaddingY
 		} else {
-			__lt21 = s.Padding
+			__lt37 = s.Padding
 		}
-		__lt22 = __lt21
+		__lt38 = __lt37
 	}
-	var __lt24 *Measurement
+	var __lt40 *Measurement
 	if s.PaddingRight != nil {
-		__lt24 = s.PaddingRight
+		__lt40 = s.PaddingRight
 	} else {
-		var __lt23 *Measurement
+		var __lt39 *Measurement
 		if s.PaddingX != nil {
-			__lt23 = s.PaddingX
+			__lt39 = s.PaddingX
 		} else {
-			__lt23 = s.Padding
+			__lt39 = s.Padding
 		}
-		__lt24 = __lt23
+		__lt40 = __lt39
 	}
-	var __lt26 *Measurement
+	var __lt42 *Measurement
 	if s.PaddingBottom != nil {
-		__lt26 = s.PaddingBottom
+		__lt42 = s.PaddingBottom
 	} else {
-		var __lt25 *Measurement
+		var __lt41 *Measurement
 		if s.PaddingY != nil {
-			__lt25 = s.PaddingY
+			__lt41 = s.PaddingY
 		} else {
-			__lt25 = s.Padding
+			__lt41 = s.Padding
 		}
-		__lt26 = __lt25
+		__lt42 = __lt41
 	}
-	var __lt28 *Measurement
+	var __lt44 *Measurement
 	if s.PaddingLeft != nil {
-		__lt28 = s.PaddingLeft
+		__lt44 = s.PaddingLeft
 	} else {
-		var __lt27 *Measurement
+		var __lt43 *Measurement
 		if s.PaddingX != nil {
-			__lt27 = s.PaddingX
+			__lt43 = s.PaddingX
 		} else {
-			__lt27 = s.Padding
+			__lt43 = s.Padding
 		}
-		__lt28 = __lt27
-	}
-	var __lt30 string
-	if s.MinWidth == nil {
-		__lt30 = ""
-	} else {
-		var __lt29 float64
-		if s.MinWidth == nil {
-			__lt29 = 0.0
-		} else {
-			__lt29 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
-		}
-		__lt30 = (fmt.Sprint(__lt29) + "px")
-	}
-	var __lt31 string
-	if s.Color == nil {
-		__lt31 = ""
-	} else {
-		__lt31 = (*(s.Color)).Hex()
-	}
-	var __lt33 string
-	if s.FontSize == nil {
-		__lt33 = ""
-	} else {
-		var __lt32 float64
-		if s.FontSize == nil {
-			__lt32 = 0.0
-		} else {
-			__lt32 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
-		}
-		__lt33 = (fmt.Sprint(__lt32) + "px")
-	}
-	var __lt34 string
-	if s.FontFamily == "" {
-		__lt34 = ""
-	} else {
-		__lt34 = (("font-family: " + s.FontFamily) + "; ")
-	}
-	var __lt35 string
-	switch s.FontWeight {
-	case "normal":
-		__lt35 = "normal"
-	case "bold":
-		__lt35 = "bold"
-	case "bolder":
-		__lt35 = "bolder"
-	case "lighter":
-		__lt35 = "lighter"
-	default:
-		__lt35 = ""
-	}
-	var __lt36 string
-	switch s.FontStyle {
-	case "normal":
-		__lt36 = "normal"
-	case "italic":
-		__lt36 = "italic"
-	case "oblique":
-		__lt36 = "oblique"
-	default:
-		__lt36 = ""
-	}
-	var __lt37 string
-	if s.Background == nil {
-		__lt37 = ""
-	} else {
-		__lt37 = (*(s.Background)).Hex()
-	}
-	var __lt39 string
-	if s.BorderRadius == nil {
-		__lt39 = ""
-	} else {
-		var __lt38 float64
-		if s.BorderRadius == nil {
-			__lt38 = 0.0
-		} else {
-			__lt38 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
-		}
-		__lt39 = (fmt.Sprint(__lt38) + "px")
-	}
-	var __lt40 string
-	if s.BorderColor == nil {
-		__lt40 = ""
-	} else {
-		__lt40 = (*(s.BorderColor)).Hex()
-	}
-	var __lt42 string
-	if s.BorderWidth == nil {
-		__lt42 = ""
-	} else {
-		var __lt41 float64
-		if s.BorderWidth == nil {
-			__lt41 = 0.0
-		} else {
-			__lt41 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
-		}
-		__lt42 = (fmt.Sprint(__lt41) + "px")
-	}
-	var __lt43 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt43 = "solid"
-	case "dashed":
-		__lt43 = "dashed"
-	case "dotted":
-		__lt43 = "dotted"
-	case "double":
-		__lt43 = "double"
-	case "none":
-		__lt43 = "none"
-	default:
-		var __lt44 string
-		if s.BorderWidth != nil {
-			__lt44 = "solid"
-		} else {
-			__lt44 = ""
-		}
-		__lt43 = __lt44
-	}
-	var __lt45 string
-	if s.Border == "" {
-		__lt45 = ""
-	} else {
-		__lt45 = (("border: " + s.Border) + "; ")
+		__lt44 = __lt43
 	}
 	var __lt46 string
-	if s.BorderBottom == "" {
+	if s.MinWidth == nil {
 		__lt46 = ""
 	} else {
-		__lt46 = (("border-bottom: " + s.BorderBottom) + "; ")
+		var __lt45 float64
+		if s.MinWidth == nil {
+			__lt45 = 0.0
+		} else {
+			__lt45 = max(((*(s.MinWidth)).Px + (16.0 * ((*(s.MinWidth)).Em + (*(s.MinWidth)).Rem))), 0.0)
+		}
+		__lt46 = (fmt.Sprint(__lt45) + "px")
 	}
 	var __lt47 string
-	if s.BorderLeft == "" {
+	if s.Color == nil {
 		__lt47 = ""
 	} else {
-		__lt47 = (("border-left: " + s.BorderLeft) + "; ")
+		__lt47 = (*(s.Color)).Hex()
 	}
-	var __lt48 string
-	if s.Opacity == nil {
-		__lt48 = ""
+	var __lt49 string
+	if s.FontSize == nil {
+		__lt49 = ""
 	} else {
-		__lt48 = fmt.Sprint((*(s.Opacity)))
+		var __lt48 float64
+		if s.FontSize == nil {
+			__lt48 = 0.0
+		} else {
+			__lt48 = max(((*(s.FontSize)).Px + (16.0 * ((*(s.FontSize)).Em + (*(s.FontSize)).Rem))), 0.0)
+		}
+		__lt49 = (fmt.Sprint(__lt48) + "px")
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt14)) + Decl("margin-right", Length(__lt16))) + Decl("margin-bottom", Length(__lt18))) + Decl("margin-left", Length(__lt20))) + Decl("padding-top", Length(__lt22))) + Decl("padding-right", Length(__lt24))) + Decl("padding-bottom", Length(__lt26))) + Decl("padding-left", Length(__lt28))) + Decl("min-width", __lt30)) + Decl("color", __lt31)) + Decl("font-size", __lt33)) + __lt34) + Decl("font-weight", __lt35)) + Decl("font-style", __lt36)) + Decl("background", __lt37)) + Decl("border-radius", __lt39)) + Decl("border-color", __lt40)) + Decl("border-width", __lt42)) + Decl("border-style", __lt43)) + __lt45) + __lt46) + __lt47) + Decl("opacity", __lt48))
+	var __lt50 string
+	if s.FontFamily == "" {
+		__lt50 = ""
+	} else {
+		__lt50 = (("font-family: " + s.FontFamily) + "; ")
+	}
+	var __lt51 string
+	switch s.FontWeight {
+	case "normal":
+		__lt51 = "normal"
+	case "bold":
+		__lt51 = "bold"
+	case "bolder":
+		__lt51 = "bolder"
+	case "lighter":
+		__lt51 = "lighter"
+	default:
+		__lt51 = ""
+	}
+	var __lt52 string
+	switch s.FontStyle {
+	case "normal":
+		__lt52 = "normal"
+	case "italic":
+		__lt52 = "italic"
+	case "oblique":
+		__lt52 = "oblique"
+	default:
+		__lt52 = ""
+	}
+	var __lt53 string
+	if s.Background == nil {
+		__lt53 = ""
+	} else {
+		__lt53 = (*(s.Background)).Hex()
+	}
+	var __lt55 string
+	if s.BorderRadius == nil {
+		__lt55 = ""
+	} else {
+		var __lt54 float64
+		if s.BorderRadius == nil {
+			__lt54 = 0.0
+		} else {
+			__lt54 = max(((*(s.BorderRadius)).Px + (16.0 * ((*(s.BorderRadius)).Em + (*(s.BorderRadius)).Rem))), 0.0)
+		}
+		__lt55 = (fmt.Sprint(__lt54) + "px")
+	}
+	var __lt56 string
+	if s.BorderColor == nil {
+		__lt56 = ""
+	} else {
+		__lt56 = (*(s.BorderColor)).Hex()
+	}
+	var __lt58 string
+	if s.BorderWidth == nil {
+		__lt58 = ""
+	} else {
+		var __lt57 float64
+		if s.BorderWidth == nil {
+			__lt57 = 0.0
+		} else {
+			__lt57 = max(((*(s.BorderWidth)).Px + (16.0 * ((*(s.BorderWidth)).Em + (*(s.BorderWidth)).Rem))), 0.0)
+		}
+		__lt58 = (fmt.Sprint(__lt57) + "px")
+	}
+	var __lt59 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt59 = "solid"
+	case "dashed":
+		__lt59 = "dashed"
+	case "dotted":
+		__lt59 = "dotted"
+	case "double":
+		__lt59 = "double"
+	case "none":
+		__lt59 = "none"
+	default:
+		var __lt60 string
+		if s.BorderWidth != nil {
+			__lt60 = "solid"
+		} else {
+			__lt60 = ""
+		}
+		__lt59 = __lt60
+	}
+	var __lt61 string
+	if s.Border == "" {
+		__lt61 = ""
+	} else {
+		__lt61 = (("border: " + s.Border) + "; ")
+	}
+	var __lt62 string
+	if s.BorderBottom == "" {
+		__lt62 = ""
+	} else {
+		__lt62 = (("border-bottom: " + s.BorderBottom) + "; ")
+	}
+	var __lt63 string
+	if s.BorderLeft == "" {
+		__lt63 = ""
+	} else {
+		__lt63 = (("border-left: " + s.BorderLeft) + "; ")
+	}
+	var __lt64 string
+	if s.Opacity == nil {
+		__lt64 = ""
+	} else {
+		__lt64 = fmt.Sprint((*(s.Opacity)))
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Length(__lt30)) + Decl("margin-right", Length(__lt32))) + Decl("margin-bottom", Length(__lt34))) + Decl("margin-left", Length(__lt36))) + Decl("padding-top", Length(__lt38))) + Decl("padding-right", Length(__lt40))) + Decl("padding-bottom", Length(__lt42))) + Decl("padding-left", Length(__lt44))) + Decl("min-width", __lt46)) + Decl("color", __lt47)) + Decl("font-size", __lt49)) + __lt50) + Decl("font-weight", __lt51)) + Decl("font-style", __lt52)) + Decl("background", __lt53)) + Decl("border-radius", __lt55)) + Decl("border-color", __lt56)) + Decl("border-width", __lt58)) + Decl("border-style", __lt59)) + __lt61) + __lt62) + __lt63) + Decl("opacity", __lt64))
 	return css
+}
+
+func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget) _FlexSizes {
+	var n int = len(kids)
+	var spare int = (along - (cgo.SnglBoxSpacing(box) * (n - 1)))
+	var weights float64 = 0.0
+	minimums := []int{}
+	naturals := []int{}
+	var i int = 0
+	for i < n {
+		var minimum int = 0
+		var natural int = 0
+		__ref3 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
+		minimum = __ref3.Out3
+		natural = __ref3.Out4
+		minimums = append(minimums, minimum)
+		naturals = append(naturals, natural)
+		spare -= minimum
+		weights += cgo.SnglLookWeight(kids[i], o)
+		i += 1
+	}
+	var __lt65 int
+	if spare > 0 {
+		__lt65 = spare
+	} else {
+		__lt65 = 0
+	}
+	var extra int = __lt65
+	sizes := _distribute(extra, minimums, naturals)
+	spare = extra
+	i = 0
+	for i < n {
+		spare -= (sizes[i] - minimums[i])
+		i += 1
+	}
+	i = 0
+	for i < n {
+		if weights > 0.0 {
+			var w float64 = cgo.SnglLookWeight(kids[i], o)
+			if w > 0.0 {
+				var __lt66 int
+				if w == weights {
+					__lt66 = spare
+				} else {
+					__lt66 = int((((float64(spare) * w) / weights) + 0.5))
+				}
+				var share int = __lt66
+				sizes[i] = (sizes[i] + share)
+				spare -= share
+				weights -= w
+			}
+		}
+		i += 1
+	}
+	var __lt67 int
+	if weights > 0.0 {
+		__lt67 = 0
+	} else {
+		__lt67 = spare
+	}
+	return _FlexSizes{Sizes: sizes, Spare: __lt67}
+}
+
+func _place(w cgo.Widget, x int, y int, width int, height int) {
+	p := cgo.GraphenePointAlloc()
+	cgo.GraphenePointInit(p, cgo.CFloat(float64(x)), cgo.CFloat(float64(y)))
+	cgo.GtkWidgetAllocate(w, width, height, -1, cgo.GskTransformTranslate(nil, p))
+	cgo.GraphenePointFree(p)
+}
+
+func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
+	heights := []int{}
+	var start int = 0
+	var r int = 0
+	for r < len(rows.Ends) {
+		var tall int = 0
+		var i int = start
+		for i < rows.Ends[r] {
+			var minimum int = 0
+			var natural int = 0
+			__ref4 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
+			minimum = __ref4.Out3
+			natural = __ref4.Out4
+			var __lt68 int
+			if natural > tall {
+				__lt68 = natural
+			} else {
+				__lt68 = tall
+			}
+			tall = __lt68
+			i += 1
+		}
+		heights = append(heights, tall)
+		start = rows.Ends[r]
+		r += 1
+	}
+	return heights
+}
+
+func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
+	var width int = room
+	var n int = len(kids)
+	var columns int = cgo.SnglLookColumns(box)
+	var gap int = cgo.SnglBoxSpacing(box)
+	widths := []int{}
+	ends := []int{}
+	var asked int = cgo.SnglLookWidth(box)
+	if (asked > 0) && ((width < 0) || (width > asked)) {
+		width = asked
+	}
+	var i int = 0
+	if columns > 0 {
+		var column int = ((width - (gap * (columns - 1))) / columns)
+		if column < 0 {
+			column = 0
+		}
+		for i < n {
+			widths = append(widths, column)
+			if (((i + 1) % columns) == 0) || (i == (n - 1)) {
+				ends = append(ends, (i + 1))
+			}
+			i += 1
+		}
+		return _GridRows{Widths: widths, Ends: ends}
+	}
+	var run int = 0
+	for i < n {
+		var minimum int = 0
+		var natural int = 0
+		__ref5 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
+		minimum = __ref5.Out3
+		natural = __ref5.Out4
+		var w int = natural
+		if width >= 0 {
+			var __lt69 int
+			if natural < width {
+				__lt69 = natural
+			} else {
+				__lt69 = width
+			}
+			w = __lt69
+			var __lt70 int
+			if minimum > w {
+				__lt70 = minimum
+			} else {
+				__lt70 = w
+			}
+			w = __lt70
+		}
+		widths = append(widths, w)
+		if ((run > 0) && (width >= 0)) && (((run + gap) + w) > width) {
+			ends = append(ends, i)
+			run = 0
+		}
+		var __lt71 int
+		if run > 0 {
+			__lt71 = gap
+		} else {
+			__lt71 = 0
+		}
+		run += (__lt71 + w)
+		i += 1
+	}
+	if n > 0 {
+		ends = append(ends, n)
+	}
+	return _GridRows{Widths: widths, Ends: ends}
 }
 
 func _barApply(box cgo.Widget) {
@@ -2709,29 +3234,82 @@ func _backPress(w cgo.Widget) {
 }
 
 func Decl(name string, value string) string {
-	var __lt49 string
+	var __lt72 string
 	if value == "" {
-		__lt49 = ""
+		__lt72 = ""
 	} else {
-		__lt49 = (((name + ": ") + value) + "; ")
+		__lt72 = (((name + ": ") + value) + "; ")
 	}
-	return __lt49
+	return __lt72
 }
 
 func Length(m__r0 *Measurement) string {
-	var __lt51 string
+	var __lt74 string
 	if m__r0 == nil {
-		__lt51 = ""
+		__lt74 = ""
 	} else {
-		var __lt50 float64
+		var __lt73 float64
 		if m__r0 == nil {
-			__lt50 = 0.0
+			__lt73 = 0.0
 		} else {
-			__lt50 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
+			__lt73 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 		}
-		__lt51 = (fmt.Sprint(__lt50) + "px")
+		__lt74 = (fmt.Sprint(__lt73) + "px")
 	}
-	return __lt51
+	return __lt74
+}
+
+func _layoutKidsFrom(c *cgo.Widget) []cgo.Widget {
+	if c != nil {
+		rest := _layoutKidsFrom(cgo.GtkWidgetGetNextSibling((*(c))))
+		if cgo.GtkWidgetShouldLayout((*(c))) {
+			if __i := 0; __i >= 0 && __i <= len(rest) {
+				rest = slices.Insert(rest, __i, (*(c)))
+			}
+		}
+		return rest
+	}
+	return []cgo.Widget{}
+}
+
+func _distribute(extra int, minimums []int, naturals []int) []int {
+	var n int = len(minimums)
+	order := []int{}
+	var i int = 0
+	for i < n {
+		var at int = 0
+		for (at < len(order)) && _spreadsBefore(order[at], i, minimums, naturals) {
+			at += 1
+		}
+		if __i := at; __i >= 0 && __i <= len(order) {
+			order = slices.Insert(order, __i, i)
+		}
+		i += 1
+	}
+	sizes := []int{}
+	i = 0
+	for i < n {
+		sizes = append(sizes, minimums[i])
+		i += 1
+	}
+	var left int = extra
+	i = (n - 1)
+	for (left > 0) && (i >= 0) {
+		var k int = order[i]
+		var glue int = ((left + i) / (i + 1))
+		var gap int = (naturals[k] - minimums[k])
+		var __lt75 int
+		if glue < gap {
+			__lt75 = glue
+		} else {
+			__lt75 = gap
+		}
+		var add int = __lt75
+		sizes[k] = (sizes[k] + add)
+		left -= add
+		i -= 1
+	}
+	return sizes
 }
 
 func _barApplyTo(box cgo.Widget, win cgo.Window) {
@@ -2859,6 +3437,18 @@ func _menuHostFrom(p *cgo.Widget) *cgo.Widget {
 		return _menuHostFrom(cgo.GtkWidgetGetParent((*(p))))
 	}
 	return nil
+}
+
+func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
+	var ga int = (naturals[a] - minimums[a])
+	var gb int = (naturals[b] - minimums[b])
+	if ga < 0 {
+		ga = 0
+	}
+	if gb < 0 {
+		gb = 0
+	}
+	return ((ga > gb) || ((ga == gb) && (a > b)))
 }
 
 func _setBarPart(box cgo.Widget, key string, w cgo.Widget) {
@@ -3027,7 +3617,7 @@ func __renderSlot1(parent cgo.Widget) {
 					__n5 := cgo.GtkButtonNew()
 					cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__n5)), "hide")
 					cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__n5)), cgo.CGboolean(1))
-					cgo.SnglSetLook(__n5, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+					_setLook(__n5, Look{})
 					cgo.SnglSignalConnect(__n5, "clicked", func() {
 						m.shown = false
 						__renderSlot1(m.__n6)
@@ -3091,25 +3681,7 @@ func Avatar__new(initials string, size string, variant string, alt string, style
 	__self.__n0 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((__self.__prop_initials + " ") + fmt.Sprint(__self.Hits)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(__self.__n0)), cgo.CGboolean(1))
-	cgo.SnglSetLook(__self.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Css, int((LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Width + 0.5)), int((LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Height + 0.5)), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Grow, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Cross, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).TextAlign, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Lines, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Wrap, func() int {
-		if LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Cursor, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Justify, func() int {
-		if LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Spacing, func() int {
-		if LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Columns)
+	_setLook(__self.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)))
 	cgo.SnglSignalConnect(__self.__n0, "clicked", func() {
 		__self.Hits = (__self.Hits + 1)
 		cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(__self.__n0)), ((__self.__prop_initials + " ") + fmt.Sprint(__self.Hits)))
@@ -3149,25 +3721,7 @@ func Avatar__set_alt(__self *Avatar__inst, __v string) {
 
 func Avatar__set_style(__self *Avatar__inst, __v Style) {
 	__self.__prop_style = __v
-	cgo.SnglSetLook(__self.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Css, int((LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Width + 0.5)), int((LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Height + 0.5)), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Grow, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Cross, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).TextAlign, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Lines, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Wrap, func() int {
-		if LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Hidden {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Cursor, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Justify, func() int {
-		if LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Spaced {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Spacing, func() int {
-		if LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Grid {
-			return 1
-		} else {
-			return 0
-		}
-	}(), LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)).Columns)
+	_setLook(__self.__n0, LookOf(__merge_Style(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, __self.__prop_style)))
 }
 
 func Avatar__destroy(__self *Avatar__inst) {
@@ -3197,11 +3751,11 @@ func snglBuild() {
 	cgo.SnglToplevelOnVisible(m.__n1, __n1_visible_handler)
 	m.__n6 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n6)), cgo.CGtkOrientation(1))
-	cgo.SnglSetLook(m.__n6, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 1 }(), 6, func() int { return 0 }(), 0)
+	_setLook(m.__n6, Look{Spaced: true, Spacing: 6})
 	m.__n2 = cgo.GtkButtonNew()
 	cgo.GtkButtonSetLabel((cgo.PGtkButton)(unsafe.Pointer(m.__n2)), ("top " + fmt.Sprint(m.hits__inst0)))
 	cgo.GtkWidgetSetCanFocus((cgo.PGtkWidget)(unsafe.Pointer(m.__n2)), cgo.CGboolean(1))
-	cgo.SnglSetLook(m.__n2, "", 0, 0, 0.0, 0, 0, 0, 0, func() int { return 0 }(), "", 0, func() int { return 0 }(), 0, func() int { return 0 }(), 0)
+	_setLook(m.__n2, Look{})
 	cgo.SnglSignalConnect(m.__n2, "clicked", __n2_clicked_handler)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n6)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
 	__renderSlot0(m.__n6)
@@ -4207,7 +4761,7 @@ pass sha256:4c20ce59a916ad615577afac63c41f22
 -- run/go/fyne --
 pass sha256:78bfcf12c5ebea579ac8d19af84c5c86
 -- run/go/gtk4 --
-pass sha256:a585eacbc0abb60b8a80282d94ce554e
+pass sha256:a2b889890521c7d7f481cdd0d2cfb59c
 -- run/kotlin/android --
 pass sha256:200bf45967b65b09fb943c19e15a8cbd
 -- run/none/html --

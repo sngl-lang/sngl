@@ -83,7 +83,7 @@ window {
     main
 }
 -- testrun/gtk4/go/nosnap.sngl/main/1 --
-sha256:12ef29fa064cf885dc0a47fe996dd728
+sha256:68d243dacda5ec2109ed8c1ec6fe99ce
 {
   "results": [
     {

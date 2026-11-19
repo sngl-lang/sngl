@@ -33,6 +33,20 @@ void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double 
                    int cross, int align, int lines, int wrap, int hidden, const char *cursor,
                    int justify, int spaced, int spacing, int grid, int columns);
 
+/* What a look says that the layouts gtk4.sngl lays a box and a grid out by
+ * read (look.c): a child's share of its box's spare room along o, a box's
+ * justification, a grid's columns, the width a look asks for, a box's
+ * spacing and its axis. sngl_layout_hooks hands look.c the layouts'
+ * functions, before the first look is set. */
+double sngl_look_weight(GtkWidget *c, GtkOrientation o);
+int sngl_look_justify(GtkWidget *box);
+int sngl_look_columns(GtkWidget *box);
+int sngl_look_width(GtkWidget *box);
+int sngl_box_spacing(GtkWidget *box);
+GtkOrientation sngl_box_axis(GtkWidget *box);
+void sngl_layout_hooks(GtkCustomRequestModeFunc flex_mode, GtkCustomMeasureFunc flex_measure, GtkCustomAllocateFunc flex_allocate,
+                       GtkCustomRequestModeFunc grid_mode, GtkCustomMeasureFunc grid_measure, GtkCustomAllocateFunc grid_allocate);
+
 /* A toplevel is a ui.window: a box its content is appended to, which the
  * application shows in a window of its own once it is attached and the
  * application runs. */
