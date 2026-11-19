@@ -8,8 +8,8 @@
 // the SNGL declaration takes as Go spells it. Its body is the call a Go
 // program in direct mode would make: the tool runs lower.CMarshal over a call
 // of the declaration and writes it with the Go language's own emitter, so a
-// string, a struct and a callback cross exactly as they do there. A handle
-// type the functions cross is an alias of cgo's (`type HWND = C.HWND`), and
+// string, a struct and a callback cross exactly as they do there. Each handle
+// type the package declares is an alias of cgo's (`type HWND = C.HWND`), and
 // each C struct with fields the package declares is a Go struct declared
 // here, which a program's own literal of one names too.
 //
@@ -156,10 +156,12 @@ func (g *gen) collect(p *ir.Package) {
 			g.links = append(g.links, l)
 		}
 	}
-	// Each C struct with fields, crossed or not: a Go program's own literal
-	// of one names the wrapper package's, as a call crossing it does.
+	// Each C struct with fields and each handle, crossed or not: a Go
+	// program's own literal of a struct names the wrapper package's, as a
+	// call crossing it does, and a program holding a handle no wrapper
+	// crosses spells it by its mark, or as cgo's type it has no `C` for.
 	for _, sd := range p.Structs {
-		if sd.Foreign.Path == ir.CPath && sd.IsCStruct() {
+		if sd.Foreign.Path == ir.CPath && sd.Foreign.C != nil {
 			g.goType(&ir.Type{Kind: ir.TypeStruct, Decl: sd})
 		}
 	}
