@@ -74,6 +74,21 @@ func marshalC(pkg *ir.Package, language string) error {
 	return nil
 }
 
+// marshalFuncs is passCMarshal over fns alone, functions promoted after it
+// ran. What they call was walked by then, or is among them.
+func marshalFuncs(fns []*ir.Func, language string) error {
+	m := newCMarshal(language)
+	for _, fn := range fns {
+		m.index(fn.Pkg)
+	}
+	for _, fn := range fns {
+		if err := m.walkFunc(fn); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func newCMarshal(language string) *cMarshal {
 	return &cMarshal{language: language, done: map[*ir.Call]bool{}, walked: map[*ir.Func]bool{}, indexed: map[*ir.Package]bool{}}
 }

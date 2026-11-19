@@ -34,8 +34,22 @@ var passReleaseTemps = pass{
 		}
 		st.local = false
 		st.packageVars()
-		if st.promote {
-			return lowerLibFuncs(pkg, feats, opts)
+		// What this run of LibFuncs promotes arrived after CMarshal and this
+		// pass ran, so each is marshaled and its temps released here: a
+		// promoted body calling C with a string handed C the SNGL string.
+		for st.promote {
+			st.promote = false
+			n := len(pkg.Funcs)
+			if err := lowerLibFuncs(pkg, feats, opts); err != nil {
+				return err
+			}
+			fresh := pkg.Funcs[n:]
+			if err := marshalFuncs(fresh, feats.language); err != nil {
+				return err
+			}
+			for _, fn := range fresh {
+				st.block(&fn.Block)
+			}
 		}
 		return nil
 	},
