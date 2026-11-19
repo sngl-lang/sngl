@@ -3524,7 +3524,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:9b2c9676d253371b6bc8258e2327e121
+pass sha256:08d0dbb437b8b6e59801b43d5fed46ec
 -- run/go/fyne --
 pass sha256:4e647ae627ca47089e53b52582210ae2
 -- run/kotlin/android --

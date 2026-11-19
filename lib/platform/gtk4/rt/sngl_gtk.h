@@ -6,6 +6,7 @@
 
 #include <gtk/gtk.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "sngl_http.h"
 
@@ -136,16 +137,19 @@ typedef void (*SnglMenuMovedHook)(GtkWidget *box, GtkWidget *child);
 typedef int (*SnglMenuBackHook)(GtkWidget *box);
 void sngl_menu_hooks(SnglMenuHook apply, SnglMenuMovedHook moved, SnglMenuBackHook back, SnglMenuHook forget);
 
-/* An image is a box holding the source it shows (image.c), a GtkPicture
- * showing a picture or what a drawing paints, which reports to the image
- * whether it arrived. A picture is what a URL names, decoded once and
- * counted by its holders; sngl_picture_paint paints one into a drawing. A
- * file a program carries is one of the table its entry hands sngl_gtk_carry,
- * ending at a NULL name, or one sngl_gtk_carry_file was handed, as a Go
- * program hands each it embeds. sngl_image_adopt and sngl_image_unadopt are a
- * window's append and remove of a source, its icon, and are whether they
- * were. */
-typedef struct SnglPicture SnglPicture;
+/* An image is a box holding the source it shows, a GtkPicture showing a
+ * picture or what a drawing paints: gtk4.sngl's. A picture is what a URL
+ * names, read by sngl_picture_read (image.c), which hands done the bytes
+ * read, or NULL and why not, now or, for one fetched, from the main loop,
+ * holding pic until then. A file a program carries is one of the table its
+ * entry hands sngl_gtk_carry, ending at a NULL name, or one
+ * sngl_gtk_carry_file was handed, as a Go program hands each it embeds.
+ * sngl_icon_dir is the directory of the icon theme's search path a window's
+ * icon is written into, made the first time it is asked for, or "".
+ *
+ * The box calls hand a window's append and remove of a source, its icon, to
+ * the functions sngl_image_hooks was last handed, which answer whether they
+ * were, and a window made has refresh read its icon. */
 typedef struct {
     const char *name;
     const unsigned char *data;
@@ -154,27 +158,11 @@ typedef struct {
 extern const SnglAsset sngl_assets[];
 void sngl_gtk_carry(const SnglAsset *assets);
 void sngl_gtk_carry_file(const char *name, const char *data, int len);
-GtkWidget *sngl_image_new(void);
-void sngl_image_set_fit(GtkWidget *box, const char *fit);
-void sngl_image_on_click(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_image_on_load(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_image_on_failed(GtkWidget *box, SnglFn fn, void *ctx, GDestroyNotify release);
-const char *sngl_image_failure(GtkWidget *box);
-void sngl_image_click(GtkWidget *box);
-GtkWidget *sngl_image_source_new(void);
-void sngl_image_source_set_url(GtkWidget *w, const char *url);
-void sngl_image_source_set_picture(GtkWidget *w, SnglPicture *pic);
-void sngl_drawing_set_width(GtkWidget *w, double width);
-void sngl_drawing_set_height(GtkWidget *w, double height);
-void sngl_drawing_on_paint(GtkWidget *w, SnglDrawFn draw, void *ctx, GDestroyNotify release);
-void sngl_drawing_redraw(GtkWidget *w);
-SnglPicture *sngl_picture_load(const char *url);
-SnglPicture *sngl_picture_ref(SnglPicture *pic);
-void sngl_picture_unref(SnglPicture *pic);
-void sngl_picture_paint(cairo_t *cr, SnglPicture *pic, double x, double y, double w, double h);
-bool sngl_image_adopt(GtkWidget *box, GtkWidget *child);
-bool sngl_image_unadopt(GtkWidget *box, GtkWidget *child);
-void sngl_toplevel_icon_refresh(GtkWidget *toplevel);
+typedef void (*SnglPictureRead)(GObject *pic, GBytes *bytes, const char *err);
+void sngl_picture_read(const char *url, GObject *pic, SnglPictureRead done);
+const char *sngl_icon_dir(void);
+typedef void (*SnglIconHook)(GtkWidget *box);
+void sngl_image_hooks(SnglTabsHook adopt, SnglTabsHook unadopt, SnglIconHook refresh);
 
 /* A canvas is a GtkDrawingArea whose drawing is the handler of its paint,
  * handed the context, in a space of width by height that the scaling mode

@@ -36,6 +36,13 @@ static void sngl_bar_forget(GtkWidget *box) {
     if (sngl_bar_forget_hook != NULL) sngl_bar_forget_hook(box);
 }
 
+/* A window made shows the icon its source holds, gtk4.sngl's. */
+static SnglIconHook sngl_icon_refresh_hook;
+
+static void sngl_toplevel_icon_refresh(GtkWidget *box) {
+    if (sngl_icon_refresh_hook != NULL) sngl_icon_refresh_hook(box);
+}
+
 /* A toplevel's state, held on its box. */
 typedef struct {
     GtkWidget *box;
@@ -798,10 +805,28 @@ static GtkWidget *sngl_slot_host(GtkWidget *w) {
 }
 
 static SnglTabsHook sngl_tabs_add_hook, sngl_tabs_remove_hook;
+static SnglTabsHook sngl_image_adopt_hook, sngl_image_unadopt_hook;
 
 void sngl_tabs_hooks(SnglTabsHook add, SnglTabsHook remove) {
     sngl_tabs_add_hook = add;
     sngl_tabs_remove_hook = remove;
+}
+
+void sngl_image_hooks(SnglTabsHook adopt, SnglTabsHook unadopt, SnglIconHook refresh) {
+    sngl_image_adopt_hook = adopt;
+    sngl_image_unadopt_hook = unadopt;
+    sngl_icon_refresh_hook = refresh;
+}
+
+/* sngl_image_adopt and sngl_image_unadopt are a window's append and remove
+ * of a source, its icon, and whether they were: none is before the first
+ * source is made. */
+static bool sngl_image_adopt(GtkWidget *box, GtkWidget *child) {
+    return sngl_image_adopt_hook != NULL && sngl_image_adopt_hook(box, child);
+}
+
+static bool sngl_image_unadopt(GtkWidget *box, GtkWidget *child) {
+    return sngl_image_unadopt_hook != NULL && sngl_image_unadopt_hook(box, child);
 }
 
 /* sngl_tabs_add and sngl_tabs_remove are a box's append and remove where it

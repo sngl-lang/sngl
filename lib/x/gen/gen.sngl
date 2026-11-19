@@ -227,9 +227,9 @@ enum Protocol {
 // A platform author writes one unexported function per operation, over the
 // host's own calls, as gtk4 writes its image:
 //
-//     #[c.native("sngl_image_new")]
-//     #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
-//     func _rtImageNew() Image
+//     func _rtImageNew() Image {
+//         ...
+//     }
 //
 //     #[gen.protocol(create)]
 //     func _create_Image() Image {

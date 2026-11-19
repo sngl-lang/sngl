@@ -560,7 +560,8 @@ func _on_MenuEntry(e MenuEntry, select func()) {
 // window whose call site gives it no `canGoBack` writes no Back, the `if`
 // folding away, and nor does one with no menu write an entry.
 //
-// Its favicon is a source the window takes as its icon (rt's image.c).
+// Its favicon is a source the window takes as its icon (see "An image, with
+// no struct of its own").
 //
 // The window's `@error` is the outermost boundary of what it renders, and
 // catches whether or not the call site handles one.
@@ -3666,8 +3667,9 @@ const component markup.image[platform](alt) {
 
 // --- Images ---
 
-// An image is the runtime's box holding the source it shows, fitted as `fit`
-// says, or the placeholder where it holds none (rt's image.c). A source is a
+// An image is a box holding the source it shows, fitted as `fit` says, or
+// the placeholder where it holds none (see "An image, with no struct of its
+// own" below). A source is a
 // GtkPicture showing the texture its picture or its drawing make, and
 // reporting to the image holding it whether the picture arrived: `@load` is
 // its picture shown, and `@failed` its picture failing, why being
@@ -3682,50 +3684,6 @@ component Image(
     @failed(),
     content ...component option[ui.imageSource],
 ) ui.node
-
-#[c.native("sngl_image_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
-func _rtImageNew() Image
-
-#[c.native("sngl_image_set_fit")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSetFit")]
-func _rtImageSetFit(w Image, fit string)
-
-// Why an image's picture failed, or "".
-#[c.native("sngl_image_failure")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageFailure")]
-func imageFailure(w Image) string
-
-#[c.native("sngl_image_on_click")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnClick")]
-func _rtImageOnClick(
-    w Image,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_image_on_load")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnLoad")]
-func _rtImageOnLoad(
-    w Image,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_image_on_failed")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageOnFailed")]
-func _rtImageOnFailed(
-    w Image,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_image_click")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageClick")]
-func _rtImageClick(w Image)
 
 #[gen.protocol(create)]
 func _create_Image() Image {
@@ -3782,22 +3740,10 @@ func _fire_Image_click(w Image) {
 // once per URL and given back when the URL changes or the source unmounts.
 // The runtime counts its holders, so a program keeping one in a second var
 // holds a reference, not a second decode.
-#[c.native("SnglPicture *")]
+#[c.native("GObject *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Picture")]
 #[macro.owned(unrefPicture, retain=refPicture)]
 struct Picture {}
-
-#[c.native("sngl_picture_load")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureLoad")]
-func loadPicture(url string) Picture
-
-#[c.native("sngl_picture_ref")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureRef")]
-func refPicture(p Picture) Picture
-
-#[c.native("sngl_picture_unref")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureUnref")]
-func unrefPicture(p Picture)
 
 // A source showing what a URL names. The URL is what the source says it
 // shows, which a test reads and a drawing paints through; what it shows is
@@ -3805,22 +3751,10 @@ func unrefPicture(p Picture)
 #[marks.intrinsic("gtk4:ImageUrl")]
 component ImageUrl(url string, picture Picture) ui.imageSource
 
-#[c.native("sngl_image_source_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceNew")]
-func _rtImageUrlNew() ImageUrl
-
-#[c.native("sngl_image_source_set_picture")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceSetPicture")]
-func _rtImageUrlSetPicture(w ImageUrl, picture Picture)
-
 #[gen.protocol(create)]
 func _create_ImageUrl() ImageUrl {
     return _rtImageUrlNew()
 }
-
-#[c.native("sngl_image_source_set_url")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceSetUrl")]
-func _rtImageUrlSetUrl(w ImageUrl, url string)
 
 #[gen.protocol(set)]
 func _set_ImageUrl_url(w ImageUrl, url string) {
@@ -3842,31 +3776,6 @@ component ImageDrawing(
     @paint(ctx CairoContext),
     shapes ...component draw.shape,
 ) ui.imageSource
-
-#[c.native("sngl_image_source_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageSourceNew")]
-func _rtImageDrawingNew() ImageDrawing
-
-#[c.native("sngl_drawing_set_width")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingSetWidth")]
-func _rtDrawingSetWidth(w ImageDrawing, width float)
-
-#[c.native("sngl_drawing_set_height")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingSetHeight")]
-func _rtDrawingSetHeight(w ImageDrawing, height float)
-
-#[c.native("sngl_drawing_on_paint")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingOnPaint")]
-func _rtDrawingOnPaint(
-    w ImageDrawing,
-    #[c.type("SnglDrawFn")] fn func(ctx CairoContext),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_drawing_redraw")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawingRedraw")]
-func _rtDrawingRedraw(w ImageDrawing)
 
 #[gen.protocol(create)]
 func _create_ImageDrawing() ImageDrawing {
@@ -3891,6 +3800,1080 @@ func _on_ImageDrawing_paint(w ImageDrawing, paint func(ctx CairoContext)) {
 #[gen.protocol(redraw)]
 func _redraw_ImageDrawing(w ImageDrawing) {
     _rtDrawingRedraw(w)
+}
+
+// --- An image, with no struct of its own ---
+//
+// An image is a horizontal box: a GtkPicture measures its height for the
+// width it is given, and a vertical box gives each child its own whole
+// width, so the picture asked for as much height as that width implies; a
+// horizontal box measures it at its own width. What the program says of the
+// image -- its fit, what runs as it is clicked, as its picture arrives and
+// as it fails -- and why its last picture failed are a value C holds on it.
+//
+// A source is a GtkPicture, and what it says -- whether what it shows
+// arrived, why not, whether the image holding it was told, and a drawing's
+// size and paint -- a value held on it. The texture it shows it holds under
+// "sngl-texture"; the picture it watches, the image it last told and the
+// window whose icon it is are pointers it keeps and does not hold, under
+// "sngl-picture", "sngl-frame" and "sngl-icon-of".
+//
+// A picture is a GObject of its own: what the program says of it -- its
+// URL, whether it arrived and why not, how many hold it -- held on it, its
+// texture held under "sngl-texture", and the sources watching it a GList
+// under "sngl-watching", each taken out as it goes. Its holders share one
+// reference on the object and a fetch still on its way another, so a
+// picture given back before its fetch arrives goes once it does.
+//
+// A window's icon is a source appended to it, kept under "sngl-icon-widget"
+// and pointed to under "sngl-icon": the runtime's box calls and its window
+// hand these to the three functions sngl_image_hooks is handed.
+
+#[c.native("GtkWidget *", cast)]
+func _asImage(w Widget) Image
+
+#[c.native("GtkWidget *", cast)]
+func _asImageUrl(w Widget) ImageUrl
+
+#[c.native("GtkWidget *", cast)]
+func _asImageDrawing(w Widget) ImageDrawing
+
+#[c.native("GtkWidget *", cast)]
+func _widgetNode(w Widget) ui.node
+
+#[c.native("GtkWidget *", cast)]
+func _imageUrlWidget(s ImageUrl) Widget
+
+#[c.native("GtkWidget *", cast)]
+func _imageDrawingWidget(d ImageDrawing) Widget
+
+#[c.native("GtkWidget *", cast)]
+func _objectWidget(o _Object) Widget
+
+#[c.native("GObject *", cast)]
+func _pictureObject(p Picture) _Object
+
+#[c.native("GObject *", cast)]
+func _asPicture(o _Object) Picture
+
+#[c.native("GObject *", cast)]
+func _objectAt(p _Pointer) _Object
+
+#[c.native("gpointer", cast)]
+func _objectPointer(o _Object) _Pointer
+
+#[c.native("gconstpointer", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConstPointer")]
+struct _ConstPointer {}
+
+#[c.native("gconstpointer", cast)]
+func _constPointer(p _Pointer) _ConstPointer
+
+#[c.native("GtkPicture *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPicture")]
+struct _GtkPicture {}
+
+#[c.native("GtkPicture *", cast)]
+func _gtkPictureOf(w Widget) _GtkPicture
+
+#[c.native("GdkPaintable *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Paintable")]
+struct _Paintable {}
+
+#[c.native("GdkPaintable *", cast)]
+func _texturePaintable(t _Texture) _Paintable
+
+#[c.native("GdkTexture *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Texture")]
+struct _Texture {}
+
+#[c.native("GdkTexture *", cast)]
+func _textureAt(p _Pointer) _Texture
+
+#[c.native("gpointer", cast)]
+func _texturePointer(t _Texture) _Pointer
+
+#[c.native("GtkContentFit")]
+struct _ContentFit = int
+
+#[c.native("GtkGesture *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Gesture")]
+struct _Gesture {}
+
+#[c.native("gpointer", cast)]
+func _gesturePointer(g _Gesture) _Pointer
+
+#[c.native("GtkEventController *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Controller")]
+struct _Controller {}
+
+#[c.native("GtkEventController *", cast)]
+func _gestureController(g _Gesture) _Controller
+
+#[c.native("GBytes *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Bytes")]
+struct _Bytes {}
+
+#[c.native("gsize")]
+struct _Size = int
+
+#[c.native("gsize *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SizeOut")]
+struct _SizeOut {}
+
+#[c.native("GError **")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ErrorOut")]
+struct _ErrorOut {}
+
+#[c.native("cairo_surface_t *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Surface")]
+struct _Surface {}
+
+#[c.native("cairo_surface_t *", cast)]
+func _surfaceAt(p _Pointer) _Surface
+
+#[c.native("gpointer", cast)]
+func _surfacePointer(s _Surface) _Pointer
+
+#[c.native("cairo_format_t")]
+struct _CairoFormat = int
+
+#[c.native("unsigned char *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Pixels")]
+struct _Pixels {}
+
+#[c.native("gconstpointer", cast)]
+func _pixelsPointer(p _Pixels) _ConstPointer
+
+#[c.native("const guchar *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Buffer")]
+struct _Buffer {}
+
+#[c.native("const guchar *", cast)]
+func _bufferAt(p _ConstPointer) _Buffer
+
+#[c.native("guchar *", cast)]
+func _pixelsOut(p _Pixels) _GPixels
+
+#[c.native("guchar *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GPixels")]
+struct _GPixels {}
+
+#[c.native("GdkMemoryFormat")]
+struct _MemoryFormat = int
+
+#[c.native("GdkPixbufLoader *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.PixbufLoader")]
+struct _PixbufLoader {}
+
+#[c.native("gpointer", cast)]
+func _loaderPointer(l _PixbufLoader) _Pointer
+
+#[c.native("GdkPixbuf *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Pixbuf")]
+struct _Pixbuf {}
+
+#[c.native("GdkDisplay *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Display")]
+struct _Display {}
+
+#[c.native("GObject *", cast)]
+func _displayObject(d _Display) _Object
+
+#[c.native("GList *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.List")]
+struct _List {}
+
+#[c.native("gtk_picture_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPictureNew")]
+func _gtkPictureNew() Widget
+
+#[c.native("gtk_picture_set_paintable")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPictureSetPaintable")]
+func _gtkPictureShow(p _GtkPicture, paintable _Paintable)
+
+#[c.native("gtk_picture_set_paintable")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPictureClear")]
+func _gtkPictureClear(p _GtkPicture, paintable option[_Paintable])
+
+#[c.native("gtk_picture_set_content_fit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPictureSetContentFit")]
+func _gtkPictureSetFit(p _GtkPicture, fit _ContentFit)
+
+#[c.native("gtk_gesture_click_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkGestureClickNew")]
+func _clickGestureNew() _Gesture
+
+#[c.native("gtk_widget_add_controller")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetAddController")]
+func _addController(w Widget, controller _Controller)
+
+// Connects an image's click gesture's press to handler for as long as the
+// image lives, handing it the image.
+#[c.native("g_signal_connect_object")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectPressed")]
+func _connectPressed(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(gesture _Pointer, presses int, x float, y float, image _Pointer), image _Pointer, flags _ConnectFlags)
+
+// A source going, which a weak reference tells as GTK disposes it.
+#[c.native("g_object_weak_ref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectWeakRef")]
+func _weakRef(o _Object, #[c.type("GWeakNotify")] #[c.static] notify func(data _Pointer, gone _Object), data option[_Pointer])
+
+#[c.native("g_object_new", variadic)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectNew")]
+func _objectNew(of _Type, firstProperty option[string]) _Pointer
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DataObject")]
+func _dataObject(o _Object, key string) option[_Object]
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DataList")]
+func _dataList(o _Object, key string) option[_List]
+
+#[c.native("gpointer", cast)]
+func _listPointer(l _List) _Pointer
+
+#[c.native("g_list_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListAppend")]
+func _listAppend(l option[_List], data _Pointer) _List
+
+#[c.native("g_list_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListRemove")]
+func _listRemove(l option[_List], data _ConstPointer) option[_List]
+
+#[c.native("g_list_find")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListFind")]
+func _listFind(l option[_List], data _ConstPointer) option[_List]
+
+#[c.native("g_list_length")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListLength")]
+func _listLength(l option[_List]) _Count
+
+#[c.native("g_list_nth_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListNthData")]
+func _listNth(l option[_List], at _Count) _Pointer
+
+#[c.native("g_list_copy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListCopy")]
+func _listCopy(l option[_List]) option[_List]
+
+#[c.native("g_list_free")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GListFree")]
+func _listFree(l option[_List])
+
+#[c.native("g_bytes_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesNew")]
+func _bytesNew(data _ConstPointer, size _Size) _Bytes
+
+#[c.native("g_bytes_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesGetData")]
+func _bytesData(b _Bytes, size option[_SizeOut]) _ConstPointer
+
+#[c.native("g_bytes_get_size")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesGetSize")]
+func _bytesSize(b _Bytes) _Size
+
+#[c.native("g_bytes_unref")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GBytesUnref")]
+func _bytesUnref(b _Bytes)
+
+#[c.native("gdk_memory_texture_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkMemoryTextureNew")]
+func _memoryTextureNew(width int, height int, format _MemoryFormat, bytes _Bytes, stride _Size) _Texture
+
+#[c.native("gdk_texture_get_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkTextureGetWidth")]
+func _textureWidth(t _Texture) int
+
+#[c.native("gdk_texture_get_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkTextureGetHeight")]
+func _textureHeight(t _Texture) int
+
+#[c.native("gdk_texture_download")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkTextureDownload")]
+func _textureDownload(t _Texture, data _GPixels, stride _Size)
+
+#[c.native("gdk_texture_save_to_png")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkTextureSaveToPng")]
+func _textureSavePng(t _Texture, path string) bool
+
+#[c.native("gdk_pixbuf_loader_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufLoaderNew")]
+func _loaderNew() _PixbufLoader
+
+#[c.native("gdk_pixbuf_loader_write")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufLoaderWrite")]
+func _loaderWrite(l _PixbufLoader, buf _Buffer, count _Size, error option[_ErrorOut]) bool
+
+#[c.native("gdk_pixbuf_loader_close")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufLoaderClose")]
+func _loaderClose(l _PixbufLoader, error option[_ErrorOut]) bool
+
+#[c.native("gdk_pixbuf_loader_get_pixbuf")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufLoaderGetPixbuf")]
+func _loaderPixbuf(l _PixbufLoader) option[_Pixbuf]
+
+#[c.native("gdk_pixbuf_read_pixel_bytes")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufReadPixelBytes")]
+func _pixbufBytes(pb _Pixbuf) _Bytes
+
+#[c.native("gdk_pixbuf_get_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufGetWidth")]
+func _pixbufWidth(pb _Pixbuf) int
+
+#[c.native("gdk_pixbuf_get_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufGetHeight")]
+func _pixbufHeight(pb _Pixbuf) int
+
+#[c.native("gdk_pixbuf_get_has_alpha")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufGetHasAlpha")]
+func _pixbufHasAlpha(pb _Pixbuf) bool
+
+#[c.native("gdk_pixbuf_get_rowstride")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkPixbufGetRowstride")]
+func _pixbufRowstride(pb _Pixbuf) int
+
+#[c.native("cairo_image_surface_create")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoImageSurfaceCreate")]
+func _surfaceNew(format _CairoFormat, width int, height int) _Surface
+
+#[c.native("cairo_image_surface_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoImageSurfaceGetData")]
+func _surfaceData(s _Surface) _Pixels
+
+#[c.native("cairo_image_surface_get_stride")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoImageSurfaceGetStride")]
+func _surfaceStride(s _Surface) int
+
+#[c.native("cairo_image_surface_get_width")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoImageSurfaceGetWidth")]
+func _surfaceWidth(s _Surface) int
+
+#[c.native("cairo_image_surface_get_height")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoImageSurfaceGetHeight")]
+func _surfaceHeight(s _Surface) int
+
+#[c.native("cairo_surface_flush")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSurfaceFlush")]
+func _surfaceFlush(s _Surface)
+
+#[c.native("cairo_surface_mark_dirty")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSurfaceMarkDirty")]
+func _surfaceMarkDirty(s _Surface)
+
+#[c.native("cairo_surface_destroy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSurfaceDestroy")]
+func _surfaceDestroy(s _Surface)
+
+#[c.native("cairo_create")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoCreate")]
+func _cairoCreate(s _Surface) CairoContext
+
+#[c.native("cairo_destroy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoDestroy")]
+func _cairoDestroy(cr CairoContext)
+
+#[c.native("cairo_set_source_surface")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoSetSourceSurface")]
+func _cairoSetSourceSurface(cr CairoContext, s _Surface, x float, y float)
+
+#[c.native("cairo_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.CairoPaint")]
+func _cairoPaint(cr CairoContext)
+
+#[c.native("gdk_display_get_default")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GdkDisplayGetDefault")]
+func _defaultDisplay() _Display
+
+#[c.native("gtk_window_set_icon_name")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetIconName")]
+func _windowSetIconName(win _Window, name string)
+
+#[c.native("getpid")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Getpid")]
+func _processId() int
+
+// Reads the bytes url names, handing done them, or why not, now or, for
+// one fetched, once it arrives: a file the program carries, one beside it,
+// or one fetched.
+#[c.native("sngl_picture_read")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPictureRead")]
+func _pictureRead(url string, pic Picture, #[c.type("SnglPictureRead")] #[c.static] done func(pic _Object, bytes _Bytes, err string))
+
+#[c.native("sngl_icon_dir")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglIconDir")]
+func _iconDir() string
+
+// Hands the runtime's box calls and its window the functions a window's
+// icon is: taking a source appended to it as its icon, and letting it go,
+// each answering whether it did, and showing it on the window made.
+#[c.native("sngl_image_hooks")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageHooks")]
+func _imageHooks(
+    #[c.type("SnglTabsHook")] #[c.static] adopt func(box Widget, child Widget) bool,
+    #[c.type("SnglTabsHook")] #[c.static] unadopt func(box Widget, child Widget) bool,
+    #[c.type("SnglIconHook")] #[c.static] refresh func(box Widget),
+)
+
+// What the program says of an image: its fit, as a GtkContentFit -- 0 fill,
+// 1 contain, 2 cover and 3 scale down -- what runs as it is clicked, as its
+// picture arrives and as it fails, and why the last failed.
+struct _ImageState {
+    fit     int = 1
+    click   func() = func() {}
+    load    func() = func() {}
+    failed  func() = func() {}
+    failure string = ""
+}
+
+// What a source says: the URL it shows, kept for what reads it, whether
+// what it shows arrived and why not, whether the image holding it was told,
+// and a drawing's width, height and paint, which it has once painted is set.
+struct _ImageSourceState {
+    url     string = ""
+    ready   bool = false
+    err     string = ""
+    told    bool = false
+    width   int = 0
+    height  int = 0
+    painted bool = false
+    paint   func(ctx CairoContext) = func(ctx CairoContext) {}
+}
+
+// What a picture says: its URL, whether it arrived and why not, how many
+// hold it and whether the last let go, and the size it was last scaled to.
+struct _PictureState {
+    url      string = ""
+    arrived  bool = false
+    err      string = ""
+    holders  int = 1
+    released bool = false
+    width    int = 0
+    height   int = 0
+}
+
+// How many icons the display's windows were given.
+struct _IconsState {
+    count int = 0
+}
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdImage(o _Object, key string, #[c.type("gpointer")] s c.held[_ImageState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldImage")]
+func _heldImage(o _Object, key string) option[c.held[_ImageState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdImageSource(o _Object, key string, #[c.type("gpointer")] s c.held[_ImageSourceState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldImageSource")]
+func _heldImageSource(o _Object, key string) option[c.held[_ImageSourceState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdPicture(o _Object, key string, #[c.type("gpointer")] s c.held[_PictureState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldPicture")]
+func _heldPicture(o _Object, key string) option[c.held[_PictureState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdIcons(o _Object, key string, #[c.type("gpointer")] s c.held[_IconsState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldIcons")]
+func _heldIcons(o _Object, key string) option[c.held[_IconsState]]
+
+func _imageOf(box Widget) option[_ImageState] {
+    return _heldImage(_object(box), "sngl-image")
+}
+
+func _setImage(box Widget, s _ImageState) {
+    _holdImage(_object(box), "sngl-image", s)
+}
+
+func _imageSourceOf(w Widget) option[_ImageSourceState] {
+    return _heldImageSource(_object(w), "sngl-source")
+}
+
+func _setImageSource(w Widget, s _ImageSourceState) {
+    _holdImageSource(_object(w), "sngl-source", s)
+}
+
+func _pictureStateOf(pic _Object) option[_PictureState] {
+    return _heldPicture(pic, "sngl-picture")
+}
+
+func _setPictureState(pic _Object, s _PictureState) {
+    _holdPicture(pic, "sngl-picture", s)
+}
+
+// The least whole number f is no more than: what C's ceil makes of a size.
+func _ceil(f float) int {
+    var i = int(f)
+    if float(i) < f {
+        return i + 1
+    }
+    return i
+}
+
+func _imageHooksSet() {
+    _imageHooks(_imageAdopt, _imageUnadopt, _iconRefresh)
+}
+
+func _rtImageNew() Image {
+    var box = _boxNew(0, 0)
+    _setImage(box, _ImageState{fit=1, click=func() {}, load=func() {}, failed=func() {}, failure=""})
+    var g = _clickGestureNew()
+    _connectPressed(_gesturePointer(g), "pressed", _imagePressed, _pointer(box), _ConnectFlags(0))
+    _addController(box, _gestureController(g))
+    return _asImage(box)
+}
+
+// The image's click gesture was pressed: image is the image, which the
+// connection lives no longer than.
+func _imagePressed(gesture _Pointer, presses int, x float, y float, image _Pointer) {
+    _imageClick(_pointed(image))
+}
+
+func _imageClick(box Widget) {
+    var img = _imageOf(box)
+    if img != null {
+        var run = img.click
+        run()
+    }
+}
+
+// `none` is `scaleDown`: GTK has no picture that keeps its own size
+// whatever room it is given.
+func _rtImageSetFit(image Image, fit string) {
+    var box = _handle(image)
+    var img = _imageOf(box)
+    if img != null {
+        var f = 1
+        if fit == "cover" {
+            f = 2
+        } else if fit == "fill" {
+            f = 0
+        } else if fit == "none" || fit == "scaleDown" {
+            f = 3
+        }
+        _setImage(box, _ImageState{fit=f, click=img.click, load=img.load, failed=img.failed, failure=img.failure})
+        _fitFrom(_firstChild(box), f)
+    }
+}
+
+// Fits each source from c on among its siblings.
+func _fitFrom(c option[Widget], fit int) {
+    if c != null {
+        if _imageSourceOf(c) != null {
+            _gtkPictureSetFit(_gtkPictureOf(c), _ContentFit(fit))
+        }
+        _fitFrom(_nextSibling(c), fit)
+    }
+}
+
+func _rtImageOnClick(image Image, click func()) {
+    var box = _handle(image)
+    var img = _imageOf(box)
+    if img != null {
+        _setImage(box, _ImageState{fit=img.fit, click=click, load=img.load, failed=img.failed, failure=img.failure})
+    }
+}
+
+func _rtImageOnLoad(image Image, load func()) {
+    var box = _handle(image)
+    var img = _imageOf(box)
+    if img != null {
+        _setImage(box, _ImageState{fit=img.fit, click=img.click, load=load, failed=img.failed, failure=img.failure})
+    }
+}
+
+func _rtImageOnFailed(image Image, failed func()) {
+    var box = _handle(image)
+    var img = _imageOf(box)
+    if img != null {
+        _setImage(box, _ImageState{fit=img.fit, click=img.click, load=img.load, failed=failed, failure=img.failure})
+    }
+}
+
+// Why an image's picture failed, or "".
+func imageFailure(w Image) string {
+    var img = _imageOf(_handle(w))
+    if img != null {
+        return img.failure
+    }
+    return ""
+}
+
+func _rtImageClick(w Image) {
+    _imageClick(_handle(w))
+}
+
+// Tells the image holding the source, once per picture, whether it
+// arrived.
+func _imageSourceReport(w Widget) {
+    var parent = _parentOf(w)
+    if parent != null {
+        var img = _imageOf(parent)
+        var s = _imageSourceOf(w)
+        if img != null && s != null {
+            if s.ready && !s.told {
+                _setImageSource(w, _ImageSourceState{url=s.url, ready=s.ready, err=s.err, told=true, width=s.width, height=s.height, painted=s.painted, paint=s.paint})
+                if s.err != "" {
+                    _setImage(parent, _ImageState{fit=img.fit, click=img.click, load=img.load, failed=img.failed, failure=s.err})
+                    var run = img.failed
+                    run()
+                } else {
+                    var run = img.load
+                    run()
+                }
+            }
+        }
+    }
+}
+
+// Shows tex, which the source holds a reference of its own on, err being
+// why what it shows did not arrive.
+func _imageSourceShow(w Widget, tex _Texture, err string) {
+    _holdData(_object(w), "sngl-texture", _texturePointer(tex), _unrefData)
+    _gtkPictureShow(_gtkPictureOf(w), _texturePaintable(tex))
+    _imageSourceShown(w, err)
+}
+
+// Shows nothing, err being why.
+func _imageSourceShowNone(w Widget, err string) {
+    _setData(_object(w), "sngl-texture", null)
+    _gtkPictureClear(_gtkPictureOf(w), null)
+    _imageSourceShown(w, err)
+}
+
+// What the source shows arrived: the image holding it is told, and the
+// window whose icon it is shows it.
+func _imageSourceShown(w Widget, err string) {
+    var s = _imageSourceOf(w)
+    if s != null {
+        _setImageSource(w, _ImageSourceState{url=s.url, ready=true, err=err, told=false, width=s.width, height=s.height, painted=s.painted, paint=s.paint})
+    }
+    _imageSourceReport(w)
+    var icon = _dataWidget(_object(w), "sngl-icon-of")
+    if icon != null {
+        _iconApply(icon, w)
+    }
+}
+
+// Shows the picture as it arrived.
+func _imageSourceTake(w Widget, pic _Object) {
+    var err = ""
+    var p = _pictureStateOf(pic)
+    if p != null {
+        err = p.err
+    }
+    var tex = _data(pic, "sngl-texture")
+    if tex != null {
+        _ref(tex)
+        _imageSourceShow(w, _textureAt(tex), err)
+    } else {
+        _imageSourceShowNone(w, err)
+    }
+}
+
+// Makes the source watch no picture.
+func _imageSourceUnwatch(w Widget) {
+    var old = _dataObject(_object(w), "sngl-picture")
+    if old != null {
+        _setWatching(old, _listRemove(_dataList(old, "sngl-watching"), _constPointer(_pointer(w))))
+    }
+    _setData(_object(w), "sngl-picture", null)
+}
+
+// Makes pic the picture the source is told about.
+func _imageSourceWatch(w Widget, pic _Object) {
+    _imageSourceUnwatch(w)
+    _setDataTo(_object(w), "sngl-picture", _objectPointer(pic))
+    _setDataTo(pic, "sngl-watching", _listPointer(_listAppend(_dataList(pic, "sngl-watching"), _pointer(w))))
+}
+
+// Keeps l as the sources watching pic.
+func _setWatching(pic _Object, l option[_List]) {
+    if l != null {
+        _setDataTo(pic, "sngl-watching", _listPointer(l))
+    } else {
+        _setData(pic, "sngl-watching", null)
+    }
+}
+
+// A source going is watching no picture.
+func _imageSourceGone(data _Pointer, gone _Object) {
+    _imageSourceUnwatch(_objectWidget(gone))
+}
+
+// The source having been put somewhere: it fits itself to the image it is
+// in, and reports to it.
+func _imageSourceParented(w Widget) {
+    var parent = _parentOf(w)
+    if parent != null {
+        var img = _imageOf(parent)
+        if img != null {
+            _gtkPictureSetFit(_gtkPictureOf(w), _ContentFit(img.fit))
+            var frame = _dataWidget(_object(w), "sngl-frame")
+            var same = false
+            if frame != null {
+                same = frame == parent
+            }
+            if !same {
+                _setDataTo(_object(w), "sngl-frame", _pointer(parent))
+                var s = _imageSourceOf(w)
+                if s != null {
+                    _setImageSource(w, _ImageSourceState{url=s.url, ready=s.ready, err=s.err, told=false, width=s.width, height=s.height, painted=s.painted, paint=s.paint})
+                }
+            }
+            _imageSourceReport(w)
+            return
+        }
+    }
+    _setData(_object(w), "sngl-frame", null)
+}
+
+func _imageSourceNew() Widget {
+    _imageHooksSet()
+    var w = _gtkPictureNew()
+    _setImageSource(w, _ImageSourceState{url="", ready=false, err="", told=false, width=0, height=0, painted=false, paint=func(ctx CairoContext) {}})
+    _weakRef(_object(w), _imageSourceGone, null)
+    _rtNotifyConnect(_widgetNode(w), "notify::parent", func() { _imageSourceParented(w) })
+    return w
+}
+
+func _rtImageUrlNew() ImageUrl {
+    return _asImageUrl(_imageSourceNew())
+}
+
+// The URL a source says it shows, kept on it for what reads it: it shows
+// the picture it is handed, not one it fetches itself.
+func _rtImageUrlSetUrl(source ImageUrl, url string) {
+    var w = _imageUrlWidget(source)
+    var s = _imageSourceOf(w)
+    if s != null {
+        _setImageSource(w, _ImageSourceState{url=url, ready=s.ready, err=s.err, told=s.told, width=s.width, height=s.height, painted=s.painted, paint=s.paint})
+    }
+}
+
+func _rtImageUrlSetPicture(source ImageUrl, picture Picture) {
+    var w = _imageUrlWidget(source)
+    if _imageSourceOf(w) != null {
+        var pic = _pictureObject(picture)
+        _imageSourceWatch(w, pic)
+        var p = _pictureStateOf(pic)
+        if p != null {
+            if p.arrived {
+                _imageSourceTake(w, pic)
+            }
+        }
+    }
+}
+
+func _rtImageDrawingNew() ImageDrawing {
+    return _asImageDrawing(_imageSourceNew())
+}
+
+// A drawing paints its picture again whenever it is asked, once it knows
+// its size and what to paint: a texture of what the handler draws on a
+// surface of that size. GDK_MEMORY_DEFAULT, 0 here, is cairo's ARGB32, 0
+// too, so the surface's pixels are the texture's as they stand.
+func _drawingPaint(w Widget) {
+    var s = _imageSourceOf(w)
+    if s != null {
+        if s.painted && s.width > 0 && s.height > 0 {
+            var width = s.width
+            var height = s.height
+            var surface = _surfaceNew(_CairoFormat(0), width, height)
+            var cr = _cairoCreate(surface)
+            var paint = s.paint
+            paint(cr)
+            _cairoDestroy(cr)
+            _surfaceFlush(surface)
+            var stride = _surfaceStride(surface)
+            var px = _bytesNew(_pixelsPointer(_surfaceData(surface)), _Size(stride * height))
+            var tex = _memoryTextureNew(width, height, _MemoryFormat(0), px, _Size(stride))
+            _bytesUnref(px)
+            _surfaceDestroy(surface)
+            _imageSourceUnwatch(w)
+            _imageSourceShow(w, tex, "")
+        }
+    }
+}
+
+func _rtDrawingSetWidth(drawing ImageDrawing, width float) {
+    var w = _imageDrawingWidget(drawing)
+    var s = _imageSourceOf(w)
+    if s != null {
+        _setImageSource(w, _ImageSourceState{url=s.url, ready=s.ready, err=s.err, told=s.told, width=_ceil(width), height=s.height, painted=s.painted, paint=s.paint})
+        _drawingPaint(w)
+    }
+}
+
+func _rtDrawingSetHeight(drawing ImageDrawing, height float) {
+    var w = _imageDrawingWidget(drawing)
+    var s = _imageSourceOf(w)
+    if s != null {
+        _setImageSource(w, _ImageSourceState{url=s.url, ready=s.ready, err=s.err, told=s.told, width=s.width, height=_ceil(height), painted=s.painted, paint=s.paint})
+        _drawingPaint(w)
+    }
+}
+
+func _rtDrawingOnPaint(drawing ImageDrawing, paint func(ctx CairoContext)) {
+    var w = _imageDrawingWidget(drawing)
+    var s = _imageSourceOf(w)
+    if s != null {
+        _setImageSource(w, _ImageSourceState{url=s.url, ready=s.ready, err=s.err, told=s.told, width=s.width, height=s.height, painted=true, paint=paint})
+        _drawingPaint(w)
+    }
+}
+
+func _rtDrawingRedraw(drawing ImageDrawing) {
+    _drawingPaint(_imageDrawingWidget(drawing))
+}
+
+// Makes a texture of the bytes, held on the picture, and whether it could.
+// GdkPixbuf rather than gdk_texture_new_from_bytes: its loaders read SVG as
+// well as PNG and JPEG. GDK_MEMORY_R8G8B8A8 is 5 and GDK_MEMORY_R8G8B8 7.
+func _pictureDecode(pic _Object, bytes _Bytes) bool {
+    var l = _loaderNew()
+    var wrote = _loaderWrite(l, _bufferAt(_bytesData(bytes, null)), _bytesSize(bytes), null)
+    var closed = _loaderClose(l, null)
+    var made = false
+    if wrote && closed {
+        var pb = _loaderPixbuf(l)
+        if pb != null {
+            var px = _pixbufBytes(pb)
+            var tex = _memoryTextureNew(_pixbufWidth(pb), _pixbufHeight(pb), _MemoryFormat(_pixbufHasAlpha(pb) ? 5 : 7), px, _Size(_pixbufRowstride(pb)))
+            _bytesUnref(px)
+            _holdData(pic, "sngl-texture", _texturePointer(tex), _unrefData)
+            made = true
+        }
+    }
+    _unref(_loaderPointer(l))
+    return made
+}
+
+// What a picture's URL named arrived, as bytes or as why not: a picture
+// given back before it did goes as its reading lets go of it.
+func _pictureArrived(pic _Object, bytes _Bytes, err string) {
+    var p = _pictureStateOf(pic)
+    if p != null {
+        if !p.released {
+            var why = ""
+            if err != "" {
+                why = "{p.url}: {err}"
+            } else if int(_bytesSize(bytes)) == 0 {
+                why = "{p.url}: empty"
+            } else if !_pictureDecode(pic, bytes) {
+                why = "{p.url}: not an image GTK can read"
+            }
+            _setPictureState(pic, _PictureState{url=p.url, arrived=true, err=why, holders=p.holders, released=p.released, width=p.width, height=p.height})
+            _pictureTell(pic)
+        }
+    }
+}
+
+// Telling a source runs the program's @load or @error, which may give the
+// picture back or show another in a source: the picture is held until each
+// is told, and each is told from a copy of the list, if it is still
+// watching.
+func _pictureTell(pic _Object) {
+    _pictureHold(pic)
+    var told = _listCopy(_dataList(pic, "sngl-watching"))
+    var n = int(_listLength(told))
+    var i = 0
+    for i < n {
+        var w = _listNth(told, _Count(i))
+        var p = _pictureStateOf(pic)
+        if p != null {
+            if !p.released && _listFind(_dataList(pic, "sngl-watching"), _constPointer(w)) != null {
+                _imageSourceTake(_pointed(w), pic)
+            }
+        }
+        i += 1
+    }
+    _listFree(told)
+    _pictureLetGo(pic)
+}
+
+// A file the program carries is read at once, from those it was handed or
+// else beside it; one fetched arrives from the main loop.
+func loadPicture(url string) Picture {
+    var pic = _objectAt(_objectNew(_objectType(), null))
+    _setPictureState(pic, _PictureState{url=url, arrived=false, err="", holders=1, released=false, width=0, height=0})
+    var picture = _asPicture(pic)
+    _pictureRead(url, picture, _pictureArrived)
+    return picture
+}
+
+func _pictureHold(pic _Object) {
+    var p = _pictureStateOf(pic)
+    if p != null {
+        if !p.released {
+            _setPictureState(pic, _PictureState{url=p.url, arrived=p.arrived, err=p.err, holders=p.holders + 1, released=false, width=p.width, height=p.height})
+        }
+    }
+}
+
+// The sources showing a picture given back keep what they show.
+func _pictureLetGo(pic _Object) {
+    var p = _pictureStateOf(pic)
+    if p != null {
+        if !p.released {
+            if p.holders > 1 {
+                _setPictureState(pic, _PictureState{url=p.url, arrived=p.arrived, err=p.err, holders=p.holders - 1, released=false, width=p.width, height=p.height})
+            } else {
+                _setPictureState(pic, _PictureState{url=p.url, arrived=p.arrived, err=p.err, holders=0, released=true, width=p.width, height=p.height})
+                var watching = _dataList(pic, "sngl-watching")
+                var n = int(_listLength(watching))
+                var i = 0
+                for i < n {
+                    _setData(_object(_pointed(_listNth(watching, _Count(i)))), "sngl-picture", null)
+                    i += 1
+                }
+                _listFree(watching)
+                _setData(pic, "sngl-watching", null)
+                _unref(_objectPointer(pic))
+            }
+        }
+    }
+}
+
+func refPicture(p Picture) Picture {
+    _pictureHold(_pictureObject(p))
+    return p
+}
+
+func unrefPicture(p Picture) {
+    _pictureLetGo(_pictureObject(p))
+}
+
+// Scales the picture's texture to sw by sh, and whether it has one to: from
+// its pixels for cairo, made the first time.
+func _pictureScale(pic _Object, tex _Texture, sw int, sh int) bool {
+    if _data(pic, "sngl-surface") == null {
+        var tw = _textureWidth(tex)
+        var th = _textureHeight(tex)
+        if tw <= 0 || th <= 0 {
+            return false
+        }
+        var made = _surfaceNew(_CairoFormat(0), tw, th)
+        _textureDownload(tex, _pixelsOut(_surfaceData(made)), _Size(_surfaceStride(made)))
+        _surfaceMarkDirty(made)
+        _holdData(pic, "sngl-surface", _surfacePointer(made), _surfaceGone)
+    }
+    var full = _data(pic, "sngl-surface")
+    if full != null {
+        var surface = _surfaceAt(full)
+        var scaled = _surfaceNew(_CairoFormat(0), sw, sh)
+        var sc = _cairoCreate(scaled)
+        sc.scale(float(sw) / float(_surfaceWidth(surface)), float(sh) / float(_surfaceHeight(surface)))
+        _cairoSetSourceSurface(sc, surface, 0.0, 0.0)
+        _cairoPaint(sc)
+        _cairoDestroy(sc)
+        _holdData(pic, "sngl-scaled", _surfacePointer(scaled), _surfaceGone)
+        var p = _pictureStateOf(pic)
+        if p != null {
+            _setPictureState(pic, _PictureState{url=p.url, arrived=p.arrived, err=p.err, holders=p.holders, released=p.released, width=sw, height=sh})
+        }
+    }
+    return true
+}
+
+func _surfaceGone(p _Pointer) {
+    _surfaceDestroy(_surfaceAt(p))
+}
+
+// Paints a picture into a box, scaled to the box once and painted from that
+// until the box changes size; one still on its way paints nothing, and is
+// there the next time the drawing paints after it arrives.
+func paintPicture(cr CairoContext, p Picture, x float, y float, w float, h float) {
+    var pic = _pictureObject(p)
+    var tex = _data(pic, "sngl-texture")
+    var st = _pictureStateOf(pic)
+    if tex != null && st != null && w > 0.0 && h > 0.0 {
+        var sw = _ceil(w)
+        var sh = _ceil(h)
+        var ready = true
+        if _data(pic, "sngl-scaled") == null || st.width != sw || st.height != sh {
+            ready = _pictureScale(pic, _textureAt(tex), sw, sh)
+        }
+        var scaled = _data(pic, "sngl-scaled")
+        if ready && scaled != null {
+            cr.save()
+            _cairoSetSourceSurface(cr, _surfaceAt(scaled), x, y)
+            _cairoPaint(cr)
+            cr.restore()
+        }
+    }
+}
+
+// GTK 4 takes a window's icon by name only, so the source's picture is
+// written into a directory of the icon theme's search path under a name of
+// its own, a new one each time it changes.
+func _iconApply(toplevel Widget, source Widget) {
+    var win = _toplevelWindow(toplevel)
+    var tex = _data(_object(source), "sngl-texture")
+    if win != null && tex != null {
+        var dir = _iconDir()
+        if dir != "" {
+            var display = _displayObject(_defaultDisplay())
+            var count = 1
+            var icons = _heldIcons(display, "sngl-icons")
+            if icons != null {
+                count = icons.count + 1
+            }
+            _holdIcons(display, "sngl-icons", _IconsState{count=count})
+            var name = "sngl-icon-{_processId()}-{count}"
+            if _textureSavePng(_textureAt(tex), "{dir}/{name}.png") {
+                _windowSetIconName(win, name)
+            }
+        }
+    }
+}
+
+// A window made shows the icon it holds.
+func _iconRefresh(box Widget) {
+    var source = _dataWidget(_object(box), "sngl-icon")
+    if source != null {
+        _iconApply(box, source)
+    }
+}
+
+// A window takes a source appended to it as its icon rather than as a
+// widget.
+func _imageAdopt(box Widget, child Widget) bool {
+    if _imageSourceOf(child) == null || !_isToplevel(box) {
+        return false
+    }
+    _ref(_pointer(child))
+    _holdData(_object(box), "sngl-icon-widget", _pointer(child), _unrefData)
+    _setDataTo(_object(box), "sngl-icon", _pointer(child))
+    _setDataTo(_object(child), "sngl-icon-of", _pointer(box))
+    _iconApply(box, child)
+    return true
+}
+
+func _imageUnadopt(box Widget, child Widget) bool {
+    var icon = _dataWidget(_object(box), "sngl-icon")
+    if icon != null && _imageSourceOf(child) != null {
+        if icon == child {
+            _setData(_object(child), "sngl-icon-of", null)
+            _setData(_object(box), "sngl-icon", null)
+            _setData(_object(box), "sngl-icon-widget", null)
+            return true
+        }
+    }
+    return false
 }
 
 const component ui.image[platform](fit, style, @click, @load, @error, src) {
@@ -4183,13 +5166,6 @@ func arcTo(ctx CairoContext, from draw.Point, corner draw.Point, to draw.Point, 
     }
     return a.tangent2
 }
-
-// Paints a picture into a box, scaled once per box size rather than per
-// frame; one still on its way paints nothing, and is there the next time the
-// drawing paints after it arrives.
-#[c.native("sngl_picture_paint")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglPicturePaint")]
-func paintPicture(cr CairoContext, p Picture, x float, y float, w float, h float)
 
 // What a `drawSource` paints a carried or fetched image with: the context,
 // the URL its source names and the picture the source holds.

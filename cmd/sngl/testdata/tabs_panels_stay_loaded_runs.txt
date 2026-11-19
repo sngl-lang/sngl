@@ -272,7 +272,7 @@ sha256:33c7d767c60d40c087be0cc9b71e2466
   ]
 }
 -- testrun/gtk4/c/app.sngl/panels/1 --
-sha256:14f6cdb19ebb0c424df3c5a5a955d1ae
+sha256:37f22432895a9933b54aa2f7a2cf5c54
 {
   "results": [
     {

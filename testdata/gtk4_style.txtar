@@ -172,6 +172,35 @@ type Look struct {
 	Columns   int
 }
 
+type _ImageState struct {
+	Fit     int
+	Click   func()
+	Load    func()
+	Failed  func()
+	Failure string
+}
+
+type _ImageSourceState struct {
+	Url     string
+	Ready   bool
+	Err     string
+	Told    bool
+	Width   int
+	Height  int
+	Painted bool
+	Paint   func(cgo.CairoContext)
+}
+
+type _PictureState struct {
+	Url      string
+	Arrived  bool
+	Err      string
+	Holders  int
+	Released bool
+	Width    int
+	Height   int
+}
+
 type _MenuEntryState struct {
 	Label    string
 	Labeled  bool
@@ -182,6 +211,10 @@ type _MenuEntryState struct {
 
 type _BackState struct {
 	Press func()
+}
+
+type _IconsState struct {
+	Count int
 }
 
 type snglState struct {
@@ -267,13 +300,208 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtImageNew() cgo.Widget {
+	box := cgo.BoxNew(0, 0)
+	_setImage(box, _ImageState{Fit: 1, Click: func() {
+	}, Load: func() {
+	}, Failed: func() {
+	}})
+	g := cgo.GtkGestureClickNew()
+	cgo.ConnectPressed(cgo.Pointer(g), "pressed", _imagePressed, cgo.Pointer(box), 0)
+	cgo.GtkWidgetAddController(box, (cgo.Controller)(unsafe.Pointer(g)))
+	return (cgo.Widget)(unsafe.Pointer(box))
+}
+
+func _rtImageSetFit(image cgo.Widget, fit string) {
+	box := image
+	img := func(h any) *_ImageState {
+		if v, ok := h.(_ImageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImage((cgo.Object)(unsafe.Pointer(box)), "sngl-image"))
+	if img != nil {
+		var f int = 1
+		if fit == "cover" {
+			f = 2
+		} else {
+			if fit == "fill" {
+				f = 0
+			} else {
+				if (fit == "none") || (fit == "scaleDown") {
+					f = 3
+				}
+			}
+		}
+		_setImage(box, _ImageState{Fit: f, Click: (*(img)).Click, Load: (*(img)).Load, Failed: (*(img)).Failed, Failure: (*(img)).Failure})
+		_fitFrom(cgo.GtkWidgetGetFirstChild(box), f)
+	}
+}
+
+func _rtImageUrlSetPicture(source cgo.Widget, picture cgo.Picture) {
+	w := source
+	if func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(w)), "sngl-source")) != nil {
+		pic := (cgo.Object)(unsafe.Pointer(picture))
+		_imageSourceWatch(w, pic)
+		p := func(h any) *_PictureState {
+			if v, ok := h.(_PictureState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldPicture(pic, "sngl-picture"))
+		if p != nil {
+			if (*(p)).Arrived {
+				_imageSourceTake(w, pic)
+			}
+		}
+	}
+}
+
+func _rtImageUrlSetUrl(source cgo.Widget, url__r0 string) {
+	w := source
+	s := func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(w)), "sngl-source"))
+	if s != nil {
+		_setImageSource(w, _ImageSourceState{Url: url__r0, Ready: (*(s)).Ready, Err: (*(s)).Err, Told: (*(s)).Told, Width: (*(s)).Width, Height: (*(s)).Height, Painted: (*(s)).Painted, Paint: (*(s)).Paint})
+	}
+}
+
+func LoadPicture(url__r1 string) cgo.Picture {
+	pic := (cgo.Object)(unsafe.Pointer(cgo.GObjectNew(cgo.GObjectGetType(), nil)))
+	_setPictureState(pic, _PictureState{Url: url__r1, Holders: 1})
+	picture := (cgo.Picture)(unsafe.Pointer(pic))
+	cgo.SnglPictureRead(url__r1, picture, _pictureArrived)
+	return picture
+}
+
 func LookOf(s Style) Look {
 	look := LookHidden(s, (s.Display == "none"), false, 0)
 	return look
 }
 
+func UnrefPicture(p cgo.Picture) {
+	_pictureLetGo((cgo.Object)(unsafe.Pointer(p)))
+}
+
 func _menuHooksSet() {
 	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
+}
+
+func _setImage(box cgo.Widget, s _ImageState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(box)), "sngl-image", s)
+}
+
+func _imagePressed(gesture cgo.Pointer, presses int, x float64, y float64, image cgo.Pointer) {
+	_imageClick((cgo.Widget)(unsafe.Pointer(image)))
+}
+
+func _fitFrom(c *cgo.Widget, fit int) {
+	if c != nil {
+		if func(h any) *_ImageSourceState {
+			if v, ok := h.(_ImageSourceState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer((*(c)))), "sngl-source")) != nil {
+			cgo.GtkPictureSetContentFit((cgo.GtkPicture)(unsafe.Pointer((*(c)))), int(fit))
+		}
+		_fitFrom(cgo.GtkWidgetGetNextSibling((*(c))), fit)
+	}
+}
+
+func _imageClick(box cgo.Widget) {
+	img := func(h any) *_ImageState {
+		if v, ok := h.(_ImageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImage((cgo.Object)(unsafe.Pointer(box)), "sngl-image"))
+	if img != nil {
+		run := (*(img)).Click
+		run()
+	}
+}
+
+func _imageSourceNew() cgo.Widget {
+	_imageHooksSet()
+	w := cgo.GtkPictureNew()
+	_setImageSource(w, _ImageSourceState{Paint: func(ctx cgo.CairoContext) {
+	}})
+	cgo.GObjectWeakRef((cgo.Object)(unsafe.Pointer(w)), _imageSourceGone, nil)
+	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(w)), "notify::parent", func() {
+		_imageSourceParented(w)
+	})
+	return w
+}
+
+func _imageSourceWatch(w cgo.Widget, pic cgo.Object) {
+	_imageSourceUnwatch(w)
+	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(w)), "sngl-picture", cgo.Pointer(pic))
+	cgo.GObjectSetData(pic, "sngl-watching", cgo.Pointer(cgo.GListAppend(cgo.DataList(pic, "sngl-watching"), cgo.Pointer(w))))
+}
+
+func _imageSourceTake(w cgo.Widget, pic cgo.Object) {
+	err := ""
+	p := func(h any) *_PictureState {
+		if v, ok := h.(_PictureState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldPicture(pic, "sngl-picture"))
+	if p != nil {
+		err = (*(p)).Err
+	}
+	tex := cgo.Data(pic, "sngl-texture")
+	if tex != nil {
+		cgo.GObjectRef((*(tex)))
+		_imageSourceShow(w, (cgo.Texture)(unsafe.Pointer((*(tex)))), err)
+	} else {
+		_imageSourceShowNone(w, err)
+	}
+}
+
+func _setImageSource(w cgo.Widget, s _ImageSourceState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-source", s)
+}
+
+func _setPictureState(pic cgo.Object, s _PictureState) {
+	cgo.GObjectSetDataFull(pic, "sngl-picture", s)
+}
+
+func _pictureArrived(pic cgo.Object, bytes cgo.Bytes, err string) {
+	p := func(h any) *_PictureState {
+		if v, ok := h.(_PictureState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldPicture(pic, "sngl-picture"))
+	if p != nil {
+		if !(*(p)).Released {
+			why := ""
+			if err != "" {
+				why = (((*(p)).Url + ": ") + err)
+			} else {
+				if int(cgo.GBytesGetSize(bytes)) == 0 {
+					why = ((*(p)).Url + ": empty")
+				} else {
+					if !_pictureDecode(pic, bytes) {
+						why = ((*(p)).Url + ": not an image GTK can read")
+					}
+				}
+			}
+			_setPictureState(pic, _PictureState{Url: (*(p)).Url, Arrived: true, Err: why, Holders: (*(p)).Holders, Released: (*(p)).Released, Width: (*(p)).Width, Height: (*(p)).Height})
+			_pictureTell(pic)
+		}
+	}
 }
 
 func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
@@ -291,6 +519,34 @@ func LookHidden(s Style, hidden bool, spaced bool, spacing int) Look {
 	}
 	look := Look{Css: CssOf(s), Width: Inset(s.Width), Height: Inset(s.Height), Grow: __lt3, Cross: CrossOf(s.AlignItems), TextAlign: TextAlignOf(s.TextAlign), Lines: __lt4, Wrap: WrapOf(s.WhiteSpace), Hidden: hidden, Cursor: s.Cursor, Justify: JustifyOf(s.JustifyContent), Spaced: spaced, Spacing: spacing}
 	return look
+}
+
+func _pictureLetGo(pic cgo.Object) {
+	p := func(h any) *_PictureState {
+		if v, ok := h.(_PictureState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldPicture(pic, "sngl-picture"))
+	if p != nil {
+		if !(*(p)).Released {
+			if (*(p)).Holders > 1 {
+				_setPictureState(pic, _PictureState{Url: (*(p)).Url, Arrived: (*(p)).Arrived, Err: (*(p)).Err, Holders: ((*(p)).Holders - 1), Width: (*(p)).Width, Height: (*(p)).Height})
+			} else {
+				_setPictureState(pic, _PictureState{Url: (*(p)).Url, Arrived: (*(p)).Arrived, Err: (*(p)).Err, Released: true, Width: (*(p)).Width, Height: (*(p)).Height})
+				watching := cgo.DataList(pic, "sngl-watching")
+				var n int = int(cgo.GListLength(watching))
+				var i int = 0
+				for i < n {
+					cgo.SetData((cgo.Object)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer(cgo.GListNthData(watching, int(i)))))), "sngl-picture", nil)
+					i += 1
+				}
+				cgo.GListFree(watching)
+				cgo.SetData(pic, "sngl-watching", nil)
+				cgo.GObjectUnref(cgo.Pointer(pic))
+			}
+		}
+	}
 }
 
 func _menuApply(box cgo.Widget) {
@@ -361,54 +617,149 @@ func _barForget(box cgo.Widget) {
 	cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-decided", nil)
 }
 
-func CssOf(s Style) string {
-	var __lt6 string
-	if s.Opacity == nil {
-		__lt6 = ""
-	} else {
-		__lt6 = fmt.Sprint((*(s.Opacity)))
+func _imageHooksSet() {
+	cgo.SnglImageHooks(_imageAdopt, _imageUnadopt, _iconRefresh)
+}
+
+func _imageSourceGone(data cgo.Pointer, gone cgo.Object) {
+	_imageSourceUnwatch((cgo.Widget)(unsafe.Pointer(gone)))
+}
+
+func _imageSourceParented(w cgo.Widget) {
+	parent := cgo.GtkWidgetGetParent(w)
+	if parent != nil {
+		img := func(h any) *_ImageState {
+			if v, ok := h.(_ImageState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldImage((cgo.Object)(unsafe.Pointer((*(parent)))), "sngl-image"))
+		if img != nil {
+			cgo.GtkPictureSetContentFit((cgo.GtkPicture)(unsafe.Pointer(w)), int((*(img)).Fit))
+			frame__r0 := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-frame")
+			same := false
+			if frame__r0 != nil {
+				same = ((*(frame__r0)) == (*(parent)))
+			}
+			if !same {
+				cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(w)), "sngl-frame", cgo.Pointer((*(parent))))
+				s := func(h any) *_ImageSourceState {
+					if v, ok := h.(_ImageSourceState); ok {
+						return &v
+					}
+					return nil
+				}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(w)), "sngl-source"))
+				if s != nil {
+					_setImageSource(w, _ImageSourceState{Url: (*(s)).Url, Ready: (*(s)).Ready, Err: (*(s)).Err, Width: (*(s)).Width, Height: (*(s)).Height, Painted: (*(s)).Painted, Paint: (*(s)).Paint})
+				}
+			}
+			_imageSourceReport(w)
+			return
+		}
 	}
-	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Length(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt6))
+	cgo.SetData((cgo.Object)(unsafe.Pointer(w)), "sngl-frame", nil)
+}
+
+func _imageSourceUnwatch(w cgo.Widget) {
+	old := cgo.DataObject((cgo.Object)(unsafe.Pointer(w)), "sngl-picture")
+	if old != nil {
+		_setWatching((*(old)), cgo.GListRemove(cgo.DataList((*(old)), "sngl-watching"), cgo.ConstPointer(cgo.Pointer(w))))
+	}
+	cgo.SetData((cgo.Object)(unsafe.Pointer(w)), "sngl-picture", nil)
+}
+
+func _imageSourceShow(w cgo.Widget, tex cgo.Texture, err string) {
+	cgo.HoldData((cgo.Object)(unsafe.Pointer(w)), "sngl-texture", cgo.Pointer(tex), _unrefData)
+	cgo.GtkPictureSetPaintable((cgo.GtkPicture)(unsafe.Pointer(w)), (cgo.Paintable)(unsafe.Pointer(tex)))
+	_imageSourceShown(w, err)
+}
+
+func _imageSourceShowNone(w cgo.Widget, err string) {
+	cgo.SetData((cgo.Object)(unsafe.Pointer(w)), "sngl-texture", nil)
+	cgo.GtkPictureClear((cgo.GtkPicture)(unsafe.Pointer(w)), nil)
+	_imageSourceShown(w, err)
+}
+
+func _pictureDecode(pic cgo.Object, bytes cgo.Bytes) bool {
+	l := cgo.GdkPixbufLoaderNew()
+	wrote := cgo.GdkPixbufLoaderWrite(l, (cgo.Buffer)(unsafe.Pointer(cgo.GBytesGetData(bytes, nil))), cgo.GBytesGetSize(bytes), nil)
+	closed := cgo.GdkPixbufLoaderClose(l, nil)
+	made := false
+	if wrote && closed {
+		pb := cgo.GdkPixbufLoaderGetPixbuf(l)
+		if pb != nil {
+			px__r0 := cgo.GdkPixbufReadPixelBytes((*(pb)))
+			var __lt6 int
+			if cgo.GdkPixbufGetHasAlpha((*(pb))) {
+				__lt6 = 5
+			} else {
+				__lt6 = 7
+			}
+			tex := cgo.GdkMemoryTextureNew(cgo.GdkPixbufGetWidth((*(pb))), cgo.GdkPixbufGetHeight((*(pb))), int(__lt6), px__r0, int(cgo.GdkPixbufGetRowstride((*(pb)))))
+			cgo.GBytesUnref(px__r0)
+			cgo.HoldData(pic, "sngl-texture", cgo.Pointer(tex), _unrefData)
+			made = true
+		}
+	}
+	cgo.GObjectUnref(cgo.Pointer(l))
+	return made
+}
+
+func _pictureTell(pic cgo.Object) {
+	_pictureHold(pic)
+	told := cgo.GListCopy(cgo.DataList(pic, "sngl-watching"))
+	var n int = int(cgo.GListLength(told))
+	var i int = 0
+	for i < n {
+		w := cgo.GListNthData(told, int(i))
+		p := func(h any) *_PictureState {
+			if v, ok := h.(_PictureState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldPicture(pic, "sngl-picture"))
+		if p != nil {
+			if !(*(p)).Released && (cgo.GListFind(cgo.DataList(pic, "sngl-watching"), cgo.ConstPointer(w)) != nil) {
+				_imageSourceTake((cgo.Widget)(unsafe.Pointer(w)), pic)
+			}
+		}
+		i += 1
+	}
+	cgo.GListFree(told)
+	_pictureLetGo(pic)
+}
+
+func CssOf(s Style) string {
+	var __lt7 string
+	if s.Opacity == nil {
+		__lt7 = ""
+	} else {
+		__lt7 = fmt.Sprint((*(s.Opacity)))
+	}
+	css := ((((((((((((((((((((((Decl("margin-top", Side(s.Margin, s.MarginY, s.MarginTop)) + Decl("margin-right", Side(s.Margin, s.MarginX, s.MarginRight))) + Decl("margin-bottom", Side(s.Margin, s.MarginY, s.MarginBottom))) + Decl("margin-left", Side(s.Margin, s.MarginX, s.MarginLeft))) + Decl("padding-top", Side(s.Padding, s.PaddingY, s.PaddingTop))) + Decl("padding-right", Side(s.Padding, s.PaddingX, s.PaddingRight))) + Decl("padding-bottom", Side(s.Padding, s.PaddingY, s.PaddingBottom))) + Decl("padding-left", Side(s.Padding, s.PaddingX, s.PaddingLeft))) + Decl("min-width", Length(s.MinWidth))) + Decl("color", CssColor(s.Color))) + Decl("font-size", Length(s.FontSize))) + Decl("font-family", s.FontFamily)) + Decl("font-weight", WeightOf(s.FontWeight))) + Decl("font-style", SlantOf(s.FontStyle))) + Decl("background", CssColor(s.Background))) + Decl("border-radius", Length(s.BorderRadius))) + Decl("border-color", CssColor(s.BorderColor))) + Decl("border-width", Length(s.BorderWidth))) + Decl("border-style", LineOf(s))) + Decl("border", s.Border)) + Decl("border-bottom", s.BorderBottom)) + Decl("border-left", s.BorderLeft)) + Decl("opacity", __lt7))
 	return css
 }
 
 func Inset(m__r0 *Measurement) float64 {
-	var __lt7 float64
+	var __lt8 float64
 	if m__r0 == nil {
-		__lt7 = 0.0
+		__lt8 = 0.0
 	} else {
-		__lt7 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
-	}
-	return __lt7
-}
-
-func CrossOf(a string) int {
-	var __lt8 int
-	switch a {
-	case "start":
-		__lt8 = 1
-	case "center":
-		__lt8 = 2
-	case "end":
-		__lt8 = 3
-	case "baseline":
-		__lt8 = 4
-	default:
-		__lt8 = 0
+		__lt8 = max(((*(m__r0)).Px + (16.0 * ((*(m__r0)).Em + (*(m__r0)).Rem))), 0.0)
 	}
 	return __lt8
 }
 
-func TextAlignOf(a string) int {
+func CrossOf(a string) int {
 	var __lt9 int
 	switch a {
-	case "center":
+	case "start":
 		__lt9 = 1
-	case "right":
+	case "center":
 		__lt9 = 2
-	case "justify":
+	case "end":
 		__lt9 = 3
-	case "left":
+	case "baseline":
 		__lt9 = 4
 	default:
 		__lt9 = 0
@@ -416,36 +767,53 @@ func TextAlignOf(a string) int {
 	return __lt9
 }
 
-func WrapOf(w string) int {
+func TextAlignOf(a string) int {
 	var __lt10 int
-	switch w {
-	case "pre", "nowrap":
+	switch a {
+	case "center":
 		__lt10 = 1
-	case "preWrap", "preLine":
+	case "right":
 		__lt10 = 2
+	case "justify":
+		__lt10 = 3
+	case "left":
+		__lt10 = 4
 	default:
 		__lt10 = 0
 	}
 	return __lt10
 }
 
-func JustifyOf(j string) int {
+func WrapOf(w string) int {
 	var __lt11 int
-	switch j {
-	case "center":
+	switch w {
+	case "pre", "nowrap":
 		__lt11 = 1
-	case "end":
+	case "preWrap", "preLine":
 		__lt11 = 2
-	case "spaceBetween":
-		__lt11 = 3
-	case "spaceAround":
-		__lt11 = 4
-	case "spaceEvenly":
-		__lt11 = 5
 	default:
 		__lt11 = 0
 	}
 	return __lt11
+}
+
+func JustifyOf(j string) int {
+	var __lt12 int
+	switch j {
+	case "center":
+		__lt12 = 1
+	case "end":
+		__lt12 = 2
+	case "spaceBetween":
+		__lt12 = 3
+	case "spaceAround":
+		__lt12 = 4
+	case "spaceEvenly":
+		__lt12 = 5
+	default:
+		__lt12 = 0
+	}
+	return __lt12
 }
 
 func _barApply(box cgo.Widget) {
@@ -513,113 +881,229 @@ func _backPress(w cgo.Widget) {
 	}
 }
 
-func Decl(name string, value string) string {
-	var __lt12 string
-	if value == "" {
-		__lt12 = ""
-	} else {
-		__lt12 = (((name + ": ") + value) + "; ")
+func _imageAdopt(box cgo.Widget, child cgo.Widget) bool {
+	if (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) == nil) || !(cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil) {
+		return false
 	}
-	return __lt12
+	cgo.GObjectRef(cgo.Pointer(child))
+	cgo.HoldData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon-widget", cgo.Pointer(child), _unrefData)
+	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon", cgo.Pointer(child))
+	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(child)), "sngl-icon-of", cgo.Pointer(box))
+	_iconApply(box, child)
+	return true
+}
+
+func _imageUnadopt(box cgo.Widget, child cgo.Widget) bool {
+	icon := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon")
+	if (icon != nil) && (func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(child)), "sngl-source")) != nil) {
+		if (*(icon)) == child {
+			cgo.SetData((cgo.Object)(unsafe.Pointer(child)), "sngl-icon-of", nil)
+			cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon", nil)
+			cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon-widget", nil)
+			return true
+		}
+	}
+	return false
+}
+
+func _iconRefresh(box cgo.Widget) {
+	source := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-icon")
+	if source != nil {
+		_iconApply(box, (*(source)))
+	}
+}
+
+func _imageSourceReport(w cgo.Widget) {
+	parent := cgo.GtkWidgetGetParent(w)
+	if parent != nil {
+		img := func(h any) *_ImageState {
+			if v, ok := h.(_ImageState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldImage((cgo.Object)(unsafe.Pointer((*(parent)))), "sngl-image"))
+		s := func(h any) *_ImageSourceState {
+			if v, ok := h.(_ImageSourceState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(w)), "sngl-source"))
+		if (img != nil) && (s != nil) {
+			if (*(s)).Ready && !(*(s)).Told {
+				_setImageSource(w, _ImageSourceState{Url: (*(s)).Url, Ready: (*(s)).Ready, Err: (*(s)).Err, Told: true, Width: (*(s)).Width, Height: (*(s)).Height, Painted: (*(s)).Painted, Paint: (*(s)).Paint})
+				if (*(s)).Err != "" {
+					_setImage((*(parent)), _ImageState{Fit: (*(img)).Fit, Click: (*(img)).Click, Load: (*(img)).Load, Failed: (*(img)).Failed, Failure: (*(s)).Err})
+					run := (*(img)).Failed
+					run()
+				} else {
+					run := (*(img)).Load
+					run()
+				}
+			}
+		}
+	}
+}
+
+func _setWatching(pic cgo.Object, l *cgo.List) {
+	if l != nil {
+		cgo.GObjectSetData(pic, "sngl-watching", cgo.Pointer((*(l))))
+	} else {
+		cgo.SetData(pic, "sngl-watching", nil)
+	}
+}
+
+func _unrefData(p cgo.Pointer) {
+	cgo.GObjectUnref(p)
+}
+
+func _imageSourceShown(w cgo.Widget, err string) {
+	s := func(h any) *_ImageSourceState {
+		if v, ok := h.(_ImageSourceState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldImageSource((cgo.Object)(unsafe.Pointer(w)), "sngl-source"))
+	if s != nil {
+		_setImageSource(w, _ImageSourceState{Url: (*(s)).Url, Ready: true, Err: err, Width: (*(s)).Width, Height: (*(s)).Height, Painted: (*(s)).Painted, Paint: (*(s)).Paint})
+	}
+	_imageSourceReport(w)
+	icon := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-icon-of")
+	if icon != nil {
+		_iconApply((*(icon)), w)
+	}
+}
+
+func _pictureHold(pic cgo.Object) {
+	p := func(h any) *_PictureState {
+		if v, ok := h.(_PictureState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldPicture(pic, "sngl-picture"))
+	if p != nil {
+		if !(*(p)).Released {
+			_setPictureState(pic, _PictureState{Url: (*(p)).Url, Arrived: (*(p)).Arrived, Err: (*(p)).Err, Holders: ((*(p)).Holders + 1), Width: (*(p)).Width, Height: (*(p)).Height})
+		}
+	}
+}
+
+func Decl(name string, value string) string {
+	var __lt13 string
+	if value == "" {
+		__lt13 = ""
+	} else {
+		__lt13 = (((name + ": ") + value) + "; ")
+	}
+	return __lt13
 }
 
 func Side(all *Measurement, axis *Measurement, own *Measurement) string {
-	var __lt14 *Measurement
+	var __lt15 *Measurement
 	if own != nil {
-		__lt14 = own
+		__lt15 = own
 	} else {
-		var __lt13 *Measurement
+		var __lt14 *Measurement
 		if axis != nil {
-			__lt13 = axis
+			__lt14 = axis
 		} else {
-			__lt13 = all
+			__lt14 = all
 		}
-		__lt14 = __lt13
+		__lt15 = __lt14
 	}
-	return Length(__lt14)
+	return Length(__lt15)
 }
 
 func Length(m__r1 *Measurement) string {
-	var __lt16 string
-	if m__r1 == nil {
-		__lt16 = ""
-	} else {
-		var __lt15 float64
-		if m__r1 == nil {
-			__lt15 = 0.0
-		} else {
-			__lt15 = max(((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem))), 0.0)
-		}
-		__lt16 = (fmt.Sprint(__lt15) + "px")
-	}
-	return __lt16
-}
-
-func CssColor(c *snglcolor.Color) string {
 	var __lt17 string
-	if c == nil {
+	if m__r1 == nil {
 		__lt17 = ""
 	} else {
-		__lt17 = (*(c)).Hex()
+		var __lt16 float64
+		if m__r1 == nil {
+			__lt16 = 0.0
+		} else {
+			__lt16 = max(((*(m__r1)).Px + (16.0 * ((*(m__r1)).Em + (*(m__r1)).Rem))), 0.0)
+		}
+		__lt17 = (fmt.Sprint(__lt16) + "px")
 	}
 	return __lt17
 }
 
-func WeightOf(w string) string {
+func CssColor(c *snglcolor.Color) string {
 	var __lt18 string
-	switch w {
-	case "normal":
-		__lt18 = "normal"
-	case "bold":
-		__lt18 = "bold"
-	case "bolder":
-		__lt18 = "bolder"
-	case "lighter":
-		__lt18 = "lighter"
-	default:
+	if c == nil {
 		__lt18 = ""
+	} else {
+		__lt18 = (*(c)).Hex()
 	}
 	return __lt18
 }
 
-func SlantOf(s string) string {
+func WeightOf(w string) string {
 	var __lt19 string
-	switch s {
+	switch w {
 	case "normal":
 		__lt19 = "normal"
-	case "italic":
-		__lt19 = "italic"
-	case "oblique":
-		__lt19 = "oblique"
+	case "bold":
+		__lt19 = "bold"
+	case "bolder":
+		__lt19 = "bolder"
+	case "lighter":
+		__lt19 = "lighter"
 	default:
 		__lt19 = ""
 	}
 	return __lt19
 }
 
-func LineOf(s Style) string {
+func SlantOf(s string) string {
 	var __lt20 string
-	switch s.BorderStyle {
-	case "solid":
-		__lt20 = "solid"
-	case "dashed":
-		__lt20 = "dashed"
-	case "dotted":
-		__lt20 = "dotted"
-	case "double":
-		__lt20 = "double"
-	case "none":
-		__lt20 = "none"
+	switch s {
+	case "normal":
+		__lt20 = "normal"
+	case "italic":
+		__lt20 = "italic"
+	case "oblique":
+		__lt20 = "oblique"
 	default:
-		var __lt21 string
-		if s.BorderWidth != nil {
-			__lt21 = "solid"
-		} else {
-			__lt21 = ""
-		}
-		__lt20 = __lt21
+		__lt20 = ""
 	}
 	return __lt20
+}
+
+func LineOf(s Style) string {
+	var __lt21 string
+	switch s.BorderStyle {
+	case "solid":
+		__lt21 = "solid"
+	case "dashed":
+		__lt21 = "dashed"
+	case "dotted":
+		__lt21 = "dotted"
+	case "double":
+		__lt21 = "double"
+	case "none":
+		__lt21 = "none"
+	default:
+		var __lt22 string
+		if s.BorderWidth != nil {
+			__lt22 = "solid"
+		} else {
+			__lt22 = ""
+		}
+		__lt21 = __lt22
+	}
+	return __lt21
 }
 
 func _barApplyTo(box cgo.Widget, win cgo.Window) {
@@ -749,6 +1233,32 @@ func _menuHostFrom(p *cgo.Widget) *cgo.Widget {
 	return nil
 }
 
+func _iconApply(toplevel cgo.Widget, source cgo.Widget) {
+	win := cgo.SnglToplevelWindow(toplevel)
+	tex := cgo.Data((cgo.Object)(unsafe.Pointer(source)), "sngl-texture")
+	if (win != nil) && (tex != nil) {
+		dir := cgo.SnglIconDir()
+		if dir != "" {
+			display := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
+			var count int = 1
+			icons := func(h any) *_IconsState {
+				if v, ok := h.(_IconsState); ok {
+					return &v
+				}
+				return nil
+			}(cgo.HeldIcons(display, "sngl-icons"))
+			if icons != nil {
+				count = ((*(icons)).Count + 1)
+			}
+			cgo.GObjectSetDataFull(display, "sngl-icons", _IconsState{Count: count})
+			name := ((("sngl-icon-" + fmt.Sprint(cgo.Getpid())) + "-") + fmt.Sprint(count))
+			if cgo.GdkTextureSaveToPng((cgo.Texture)(unsafe.Pointer((*(tex)))), (((dir + "/") + name) + ".png")) {
+				cgo.GtkWindowSetIconName((*(win)), name)
+			}
+		}
+	}
+}
+
 func _setBarPart(box cgo.Widget, key string, w cgo.Widget) {
 	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(box)), key, cgo.Pointer(w))
 }
@@ -772,7 +1282,7 @@ func _menuEntrySelect(w cgo.Widget) {
 }
 
 func __effect0_unmount() {
-	cgo.SnglPictureUnref(m.picture__inst0)
+	UnrefPicture(m.picture__inst0)
 }
 
 func __effect0_down() {
@@ -802,11 +1312,11 @@ func __effect0_teardown() {
 }
 
 func __effect1_update() {
-	__new0 := cgo.SnglPictureLoad("https://example.com/dot.png")
+	__new0 := LoadPicture("https://example.com/dot.png")
 	__old1 := m.picture__inst0
 	m.picture__inst0 = __new0
-	cgo.SnglImageSourceSetPicture(m.__n5, m.picture__inst0)
-	cgo.SnglPictureUnref(__old1)
+	_rtImageUrlSetPicture(m.__n5, m.picture__inst0)
+	UnrefPicture(__old1)
 }
 
 func __effects0_settle() {
@@ -936,20 +1446,20 @@ func __n1_visible_handler(__visible bool) {
 
 func __n9_clicked_handler() {
 	m.on = !m.on
-	var __lt24 snglcolor.Color
-	if m.on {
-		__lt24 = snglcolor.Color{R: 204, A: 255}
-	} else {
-		__lt24 = snglcolor.Color{B: 204, A: 255}
-	}
-	_setLook(m.__n2, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt24), FontSize: snglSome(Measurement{Px: 28}), FontWeight: "bold", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	var __lt25 snglcolor.Color
 	if m.on {
-		__lt25 = snglcolor.Color{R: 255, A: 255}
+		__lt25 = snglcolor.Color{R: 204, A: 255}
 	} else {
-		__lt25 = snglcolor.Color{G: 170, A: 255}
+		__lt25 = snglcolor.Color{B: 204, A: 255}
 	}
-	_setLook(m.__n3, LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt25), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", ListStyleType: "unset"}))
+	_setLook(m.__n2, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt25), FontSize: snglSome(Measurement{Px: 28}), FontWeight: "bold", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
+	var __lt26 snglcolor.Color
+	if m.on {
+		__lt26 = snglcolor.Color{R: 255, A: 255}
+	} else {
+		__lt26 = snglcolor.Color{G: 170, A: 255}
+	}
+	_setLook(m.__n3, LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt26), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", ListStyleType: "unset"}))
 	m.held = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontSize: snglSome(Measurement{Em: 1}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	_setLook(m.__n4, LookOf(m.held))
 }
@@ -982,7 +1492,7 @@ func snglInit() {
 	m.on = false
 	m.held = Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 170, A: 255}), FontSize: snglSome(Measurement{Px: 20}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}
 	m.names = []string{"a", "b"}
-	m.picture__inst0 = cgo.SnglPictureLoad("https://example.com/dot.png")
+	m.picture__inst0 = LoadPicture("https://example.com/dot.png")
 	m.visible__inst0 = true
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
@@ -1006,36 +1516,36 @@ func snglBuild() {
 	m.__n8 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
 	cgo.GtkOrientableSetOrientation((cgo.PGtkOrientable)(unsafe.Pointer(m.__n8)), cgo.CGtkOrientation(1))
 	_setLook(m.__n8, Look{Css: "padding-top: 16px; padding-right: 16px; padding-bottom: 16px; padding-left: 16px; ", Spaced: true, Spacing: 12})
-	var __lt22 snglcolor.Color
+	var __lt23 snglcolor.Color
 	if m.on {
-		__lt22 = snglcolor.Color{R: 204, A: 255}
+		__lt23 = snglcolor.Color{R: 204, A: 255}
 	} else {
-		__lt22 = snglcolor.Color{B: 204, A: 255}
+		__lt23 = snglcolor.Color{B: 204, A: 255}
 	}
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, "title")
-	_setLook(m.__n2, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt22), FontSize: snglSome(Measurement{Px: 28}), FontWeight: "bold", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
+	_setLook(m.__n2, LookOf(Style{FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(__lt23), FontSize: snglSome(Measurement{Px: 28}), FontWeight: "bold", FontStyle: "unset", TextAlign: "center", WhiteSpace: "unset", BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n2)))
-	var __lt23 snglcolor.Color
+	var __lt24 snglcolor.Color
 	if m.on {
-		__lt23 = snglcolor.Color{R: 255, A: 255}
+		__lt24 = snglcolor.Color{R: 255, A: 255}
 	} else {
-		__lt23 = snglcolor.Color{G: 170, A: 255}
+		__lt24 = snglcolor.Color{G: 170, A: 255}
 	}
 	m.__n3 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n3, "badge")
-	_setLook(m.__n3, LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt23), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", ListStyleType: "unset"}))
+	_setLook(m.__n3, LookOf(Style{PaddingX: snglSome(Measurement{Px: 8}), PaddingY: snglSome(Measurement{Px: 2}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", Color: snglSome(snglcolor.Color{R: 255, G: 255, B: 255, A: 255}), FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(__lt24), BorderRadius: snglSome(Measurement{Px: 12}), BorderStyle: "unset", Display: "inlineBlock", ListStyleType: "unset"}))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n3)))
 	m.__n4 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n4, "held")
 	_setLook(m.__n4, LookOf(m.held))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n4)))
-	m.frame = cgo.SnglImageNew()
-	cgo.SnglImageSetFit(m.frame, "contain")
+	m.frame = _rtImageNew()
+	_rtImageSetFit(m.frame, "contain")
 	_setLook(m.frame, Look{Width: 96.0, Height: 96.0})
-	m.__n5 = cgo.SnglImageSourceNew()
-	cgo.SnglImageSourceSetUrl(m.__n5, "https://example.com/dot.png")
-	cgo.SnglImageSourceSetPicture(m.__n5, m.picture__inst0)
+	m.__n5 = (cgo.Widget)(unsafe.Pointer(_imageSourceNew()))
+	_rtImageUrlSetUrl(m.__n5, "https://example.com/dot.png")
+	_rtImageUrlSetPicture(m.__n5, m.picture__inst0)
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.frame)), (cgo.PGtkWidget)(unsafe.Pointer(m.__n5)))
 	cgo.SnglBoxAppend((cgo.PGtkWidget)(unsafe.Pointer(m.__n8)), (cgo.PGtkWidget)(unsafe.Pointer(m.frame)))
 	m.__n7 = cgo.GtkBoxNew(cgo.CGtkOrientation(0), 0)
@@ -1089,4 +1599,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:f721f45a81554f802fdc5bf6da345d1c
+pass sha256:f4ceb904811e409dbeb8ffdb6c68d31b
