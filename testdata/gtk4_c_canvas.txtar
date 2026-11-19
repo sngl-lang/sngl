@@ -1854,4 +1854,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:b7f75121ab6e86454d1ad1290890d883
+pass sha256:ffda490643e7aa26fff4d2219d51e1af

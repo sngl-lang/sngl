@@ -409,7 +409,7 @@ func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(child)), "sngl-span"))
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(child)), "sngl-span"))
 	if s != nil {
 		if (*(s)).Sunk {
 			cgo.GObjectRef(cgo.Pointer(child))
@@ -426,7 +426,7 @@ func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
 			cgo.GListStoreRemove(from, at)
 		}
 	}
-	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(child)), "sngl-parent", snglSome(cgo.Pointer(parent)))
+	cgo.SetData((cgo.Object)(unsafe.Pointer(child)), "sngl-parent", snglSome(cgo.Pointer(parent)))
 	placed := false
 	if before != nil {
 		__ref1 := _storeFind__result(cgo.GListStoreFind(kids, cgo.Pointer((*(before))), at))
@@ -444,7 +444,7 @@ func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
 }
 
 func _setSpan(w cgo.Widget, s _SpanState) {
-	cgo.HoldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
 }
 
 func _spanSaid(w cgo.Widget) _SpanState {
@@ -453,7 +453,7 @@ func _spanSaid(w cgo.Widget) _SpanState {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-span"))
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span"))
 	if s != nil {
 		return (*(s))
 	}
@@ -466,7 +466,7 @@ func _spanChanged(from cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(from)), "sngl-span")) != nil {
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(from)), "sngl-span")) != nil {
 		up := _spanParent(from)
 		if up != nil {
 			_spanChanged((*(up)))
@@ -526,7 +526,7 @@ func _spanKids(parent cgo.Widget) cgo.Store {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(parent)), "sngl-span")) != nil {
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(parent)), "sngl-span")) != nil {
 		return (cgo.Store)(unsafe.Pointer(parent))
 	}
 	held := cgo.Data((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans")
@@ -534,7 +534,7 @@ func _spanKids(parent cgo.Widget) cgo.Store {
 		return (cgo.Store)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer((*(held))))))
 	}
 	made := cgo.GListStoreNew(cgo.GObjectGetType())
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
+	cgo.HoldData((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
 	return made
 }
 
@@ -569,7 +569,7 @@ func _spanMarkup(w cgo.Widget) string {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-span"))
+	}(cgo.HeldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span"))
 	if s != nil {
 		inner := ((((*(s)).Open + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll((*(s)).Words, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "'", "&apos;"), "\"", "&quot;")) + _kidsMarkup((cgo.Store)(unsafe.Pointer(w)))) + (*(s)).Close)
 		if (*(s)).Href != "" {
@@ -817,6 +817,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:1a8da2581f3355e85a5c4da8982ec75e
 -- run/go/gtk4 --
-pass sha256:f02dcfed69ea6c2d2f2e0db60741c1cb
+pass sha256:6b58021ad045db2ac3bdd6142acd4669
 -- run/none/html --
 pass sha256:c7cfab655e9f2a36df0882c9a8a9fc55

@@ -7,6 +7,35 @@
 #include <signal.h>
 #endif
 
+static SnglMenuHook sngl_menu_apply_hook, sngl_bar_forget_hook;
+static SnglMenuMovedHook sngl_menu_moved_hook;
+static SnglMenuBackHook sngl_window_back_hook;
+
+void sngl_menu_hooks(SnglMenuHook apply, SnglMenuMovedHook moved, SnglMenuBackHook back, SnglMenuHook forget) {
+    sngl_menu_apply_hook = apply;
+    sngl_menu_moved_hook = moved;
+    sngl_window_back_hook = back;
+    sngl_bar_forget_hook = forget;
+}
+
+/* A window's menu and its way back are gtk4.sngl's, which hands them over
+ * as the first window, entry or way back is made: before, there is none. */
+static void sngl_menu_apply(GtkWidget *box) {
+    if (sngl_menu_apply_hook != NULL) sngl_menu_apply_hook(box);
+}
+
+static void sngl_menu_moved(GtkWidget *box, GtkWidget *child) {
+    if (sngl_menu_moved_hook != NULL) sngl_menu_moved_hook(box, child);
+}
+
+static bool sngl_window_back(GtkWidget *box) {
+    return sngl_window_back_hook != NULL && sngl_window_back_hook(box);
+}
+
+static void sngl_bar_forget(GtkWidget *box) {
+    if (sngl_bar_forget_hook != NULL) sngl_bar_forget_hook(box);
+}
+
 /* A toplevel's state, held on its box. */
 typedef struct {
     GtkWidget *box;

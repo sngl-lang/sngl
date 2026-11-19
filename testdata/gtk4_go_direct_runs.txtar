@@ -87,6 +87,18 @@ type Style struct {
 	FontFamily  string
 }
 
+type _MenuEntryState struct {
+	Label    string
+	Labeled  bool
+	Disabled bool
+	Checked  bool
+	Select   func()
+}
+
+type _BackState struct {
+	Press func()
+}
+
 type snglState struct {
 	ticks               int
 	handle__inst0       *C.SnglSchedule
@@ -98,7 +110,19 @@ type snglState struct {
 	__effects0_pending  bool
 	__effects0_torn     bool
 	__effects0_steps    int
-	__rel9              *C.char
+	__rel2              *C.char
+	__rel3              *C.char
+	__rel4              *C.char
+	__rel5              *C.char
+	__rel6              *C.char
+	__rel10             *C.char
+	__rel11             *C.char
+	__rel12             *C.char
+	__rel13             *C.char
+	__rel14             *C.char
+	__rel15             *C.char
+	__rel18             *C.char
+	__rel29             *C.char
 	__n0                *C.GtkWidget
 	__n1                *C.GtkWidget
 	__drawing0          *C.GtkWidget
@@ -110,6 +134,11 @@ var m = &snglState{}
 
 func _main(build func()) int {
 	return int(C.sngl_gtk_main(snglCallback_void__voidPtr(), snglContext(build), snglReleasePtr()))
+}
+
+func _rtToplevelNew() *C.GtkWidget {
+	_menuHooksSet()
+	return C.sngl_toplevel_new()
 }
 
 func Paint(ctx *C.cairo_t, style Style) {
@@ -130,16 +159,473 @@ func Paint(ctx *C.cairo_t, style Style) {
 	}
 }
 
+func _menuHooksSet() {
+	C.sngl_menu_hooks(func() *[0]byte { snglStatic__menuApplyFn = _menuApply; return snglStatic__menuApplyPtr() }(), func() *[0]byte { snglStatic__menuMovedFn = _menuMoved; return snglStatic__menuMovedPtr() }(), func() *[0]byte { snglStatic__windowBackFn = _windowBack; return snglStatic__windowBackPtr() }(), func() *[0]byte { snglStatic__barForgetFn = _barForget; return snglStatic__barForgetPtr() }())
+}
+
 func Source(ctx *C.cairo_t, c snglcolor.Color) {
 	C.cairo_set_source_rgba(ctx, C.double((float64(c.R) / 255.0)), C.double((float64(c.G) / 255.0)), C.double((float64(c.B) / 255.0)), C.double((float64(c.A) / 255.0)))
+}
+
+func _menuApply(box *C.GtkWidget) {
+	_barApply(box)
+	win := func() **C.GtkWindow {
+		p := (*C.GtkWindow)(C.sngl_toplevel_window(box))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+	if win != nil {
+		button := _barPart(box, "sngl-header-menu")
+		if button != nil {
+			menu := C.g_menu_new()
+			group := C.g_simple_action_group_new()
+			_menuItemsFrom(func() **C.GtkWidget {
+				p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
+				if p == nil {
+					return nil
+				}
+				return &p
+			}(), menu, group, 0)
+			C.gtk_widget_insert_action_group((*C.GtkWidget)(unsafe.Pointer((*(win)))), m.__rel2, (*C.GActionGroup)(unsafe.Pointer(group)))
+			C.gtk_menu_button_set_popover((*C.GtkMenuButton)(unsafe.Pointer((*(button)))), C.gtk_popover_menu_new_from_model((*C.GMenuModel)(unsafe.Pointer(menu))))
+			C.g_object_unref(C.gpointer(group))
+			C.g_object_unref(C.gpointer(menu))
+		}
+	}
+}
+
+func _menuMoved(box *C.GtkWidget, child *C.GtkWidget) {
+	if func(h any) *_BackState {
+		if v, ok := h.(_BackState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(child)), m.__rel10)))) != nil {
+		if func() *C.gpointer {
+			p := (C.gpointer)(C.g_object_get_data((*C.GObject)(unsafe.Pointer(box)), m.__rel11))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}() != nil {
+			_barApply(box)
+		}
+	} else {
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(child)), m.__rel12)))) != nil {
+			if func() *C.gpointer {
+				p := (C.gpointer)(C.g_object_get_data((*C.GObject)(unsafe.Pointer(box)), m.__rel11))
+				if p == nil {
+					return nil
+				}
+				return &p
+			}() != nil {
+				_menuApply(box)
+			} else {
+				if func(h any) *_MenuEntryState {
+					if v, ok := h.(_MenuEntryState); ok {
+						return &v
+					}
+					return nil
+				}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(box)), m.__rel12)))) != nil {
+					_entryChanged(box)
+				}
+			}
+		}
+	}
+}
+
+func _windowBack(box *C.GtkWidget) bool {
+	b := _backFrom(func() **C.GtkWidget {
+		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}())
+	if b != nil {
+		_backPress((*(b)))
+		return true
+	}
+	return false
+}
+
+func _barForget(box *C.GtkWidget) {
+	if _barPart(box, "sngl-header") != nil {
+		C.g_object_set_data((*C.GObject)(unsafe.Pointer(box)), m.__rel3, nil)
+	}
+	C.g_object_set_data((*C.GObject)(unsafe.Pointer(box)), m.__rel4, nil)
+	C.g_object_set_data((*C.GObject)(unsafe.Pointer(box)), m.__rel5, nil)
+	C.g_object_set_data((*C.GObject)(unsafe.Pointer(box)), m.__rel6, nil)
+}
+
+func _barApply(box *C.GtkWidget) {
+	win := func() **C.GtkWindow {
+		p := (*C.GtkWindow)(C.sngl_toplevel_window(box))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+	if win != nil {
+		_barApplyTo(box, (*(win)))
+	}
+}
+
+func _barPart(box *C.GtkWidget, key string) **C.GtkWidget {
+	__rel7 := C.CString(key)
+	__ret8 := func() **C.GtkWidget {
+		p := (*C.GtkWidget)(C.g_object_get_data((*C.GObject)(unsafe.Pointer(box)), __rel7))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+	Free(__rel7)
+	return __ret8
+}
+
+func _menuItemsFrom(c **C.GtkWidget, menu *C.GMenu, group *C.GSimpleActionGroup, n int) int {
+	if c != nil {
+		var next int = n
+		e := func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(c)))), m.__rel12))))
+		if e != nil {
+			if _entriesFrom(func() **C.GtkWidget {
+				p := (*C.GtkWidget)(C.gtk_widget_get_first_child((*(c))))
+				if p == nil {
+					return nil
+				}
+				return &p
+			}()) == 0 {
+				next = _menuAdd(menu, group, n, (*(c)), (*(e)).Checked)
+			} else {
+				sub := C.g_menu_new()
+				next = _menuLeavesFrom(func() **C.GtkWidget {
+					p := (*C.GtkWidget)(C.gtk_widget_get_first_child((*(c))))
+					if p == nil {
+						return nil
+					}
+					return &p
+				}(), sub, group, n, _checkedFrom(func() **C.GtkWidget {
+					p := (*C.GtkWidget)(C.gtk_widget_get_first_child((*(c))))
+					if p == nil {
+						return nil
+					}
+					return &p
+				}()))
+				__rel9 := C.CString((*(e)).Label)
+				C.g_menu_append_submenu(menu, __rel9, (*C.GMenuModel)(unsafe.Pointer(sub)))
+				Free(__rel9)
+				C.g_object_unref(C.gpointer(sub))
+			}
+		}
+		return _menuItemsFrom(func() **C.GtkWidget {
+			p := (*C.GtkWidget)(C.gtk_widget_get_next_sibling((*(c))))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}(), menu, group, next)
+	}
+	return n
+}
+
+func _entryChanged(w *C.GtkWidget) {
+	host := _menuHostFrom(func() **C.GtkWidget {
+		p := (*C.GtkWidget)(C.gtk_widget_get_parent(w))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}())
+	if host != nil {
+		_menuApply((*(host)))
+	}
+}
+
+func _backFrom(c **C.GtkWidget) **C.GtkWidget {
+	if c != nil {
+		if func(h any) *_BackState {
+			if v, ok := h.(_BackState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(c)))), m.__rel10)))) != nil {
+			return c
+		}
+		return _backFrom(func() **C.GtkWidget {
+			p := (*C.GtkWidget)(C.gtk_widget_get_next_sibling((*(c))))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}())
+	}
+	return nil
+}
+
+func _backPress(w *C.GtkWidget) {
+	b := func(h any) *_BackState {
+		if v, ok := h.(_BackState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel10))))
+	if b != nil {
+		run := (*(b)).Press
+		run()
+	}
+}
+
+func _barApplyTo(box *C.GtkWidget, win *C.GtkWindow) {
+	var entries int = _entriesFrom(func() **C.GtkWidget {
+		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}())
+	canBack := (_backFrom(func() **C.GtkWidget {
+		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()) != nil)
+	if func() *C.gpointer {
+		p := (C.gpointer)(C.g_object_get_data((*C.GObject)(unsafe.Pointer(box)), m.__rel6))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}() == nil {
+		C.g_object_set_data((*C.GObject)(unsafe.Pointer(box)), m.__rel6, C.gpointer(box))
+		if (entries > 0) || canBack {
+			made := C.gtk_header_bar_new()
+			_setBarPart(box, "sngl-header", made)
+			C.gtk_window_set_titlebar(win, made)
+			button := C.gtk_menu_button_new()
+			_setBarPart(box, "sngl-header-menu", button)
+			C.gtk_menu_button_set_icon_name((*C.GtkMenuButton)(unsafe.Pointer(button)), m.__rel13)
+			C.gtk_header_bar_pack_end((*C.GtkHeaderBar)(unsafe.Pointer(made)), button)
+		}
+	}
+	if (_barPart(box, "sngl-header-back") == nil) && canBack {
+		button := C.gtk_button_new_from_icon_name(m.__rel14)
+		_setBarPart(box, "sngl-header-back", button)
+		C.sngl_signal_connect((*C.GtkWidget)(unsafe.Pointer(button)), m.__rel15, snglCallback_void__voidPtr(), snglContext(func() {
+			_windowBack(box)
+		}), snglReleasePtr())
+		header := _barPart(box, "sngl-header")
+		if header != nil {
+			C.gtk_header_bar_pack_start((*C.GtkHeaderBar)(unsafe.Pointer((*(header)))), button)
+		} else {
+			C.gtk_widget_set_halign(button, C.GtkAlign(1))
+			C.gtk_box_prepend((*C.GtkBox)(unsafe.Pointer(box)), button)
+		}
+	}
+	back := _barPart(box, "sngl-header-back")
+	if back != nil {
+		var __lt50 int
+		if canBack {
+			__lt50 = 1
+		} else {
+			__lt50 = 0
+		}
+		C.gtk_widget_set_visible((*(back)), C.int(__lt50))
+	}
+	menu := _barPart(box, "sngl-header-menu")
+	if menu != nil {
+		var __lt51 int
+		if entries > 0 {
+			__lt51 = 1
+		} else {
+			__lt51 = 0
+		}
+		C.gtk_widget_set_visible((*(menu)), C.int(__lt51))
+	}
+}
+
+func _entriesFrom(c **C.GtkWidget) int {
+	if c != nil {
+		var rest int = _entriesFrom(func() **C.GtkWidget {
+			p := (*C.GtkWidget)(C.gtk_widget_get_next_sibling((*(c))))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}())
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(c)))), m.__rel12)))) != nil {
+			return (rest + 1)
+		}
+		return rest
+	}
+	return 0
+}
+
+func _menuAdd(menu *C.GMenu, group *C.GSimpleActionGroup, n int, w *C.GtkWidget, checkable bool) int {
+	e := func(h any) *_MenuEntryState {
+		if v, ok := h.(_MenuEntryState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel12))))
+	if e != nil {
+		name := ("e" + fmt.Sprint(n))
+		__rel17 := C.CString(name)
+		a := C.g_simple_action_new(__rel17, nil)
+		Free(__rel17)
+		if checkable {
+			var __lt52 int
+			if (*(e)).Checked {
+				__lt52 = 1
+			} else {
+				__lt52 = 0
+			}
+			__rel16 := C.CString(name)
+			a = C.g_simple_action_new_stateful(__rel16, nil, C.g_variant_new_boolean(C.int(__lt52)))
+			Free(__rel16)
+		}
+		var __lt53 int
+		if !(*(e)).Disabled {
+			__lt53 = 1
+		} else {
+			__lt53 = 0
+		}
+		C.g_simple_action_set_enabled(a, C.int(__lt53))
+		C.g_signal_connect_object(C.gpointer(a), m.__rel18, func() *[0]byte { snglStatic__menuActivateFn = _menuActivate; return snglStatic__menuActivatePtr() }(), C.gpointer(w), C.GConnectFlags(0))
+		C.g_action_map_add_action((*C.GActionMap)(unsafe.Pointer(group)), (*C.GAction)(unsafe.Pointer(a)))
+		C.g_object_unref(C.gpointer(a))
+		__rel19 := C.CString((*(e)).Label)
+		__rel20 := C.CString(("sngl." + name))
+		C.g_menu_append(menu, __rel19, __rel20)
+		Free(__rel20)
+		Free(__rel19)
+	}
+	return (n + 1)
+}
+
+func _menuLeavesFrom(c **C.GtkWidget, sub *C.GMenu, group *C.GSimpleActionGroup, n int, checkable bool) int {
+	if c != nil {
+		var next int = n
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(c)))), m.__rel12)))) != nil {
+			next = _menuAdd(sub, group, n, (*(c)), checkable)
+		}
+		return _menuLeavesFrom(func() **C.GtkWidget {
+			p := (*C.GtkWidget)(C.gtk_widget_get_next_sibling((*(c))))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}(), sub, group, next, checkable)
+	}
+	return n
+}
+
+func _checkedFrom(c **C.GtkWidget) bool {
+	if c != nil {
+		e := func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(c)))), m.__rel12))))
+		if (e != nil) && (*(e)).Checked {
+			return true
+		}
+		return _checkedFrom(func() **C.GtkWidget {
+			p := (*C.GtkWidget)(C.gtk_widget_get_next_sibling((*(c))))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}())
+	}
+	return false
+}
+
+func _menuHostFrom(p **C.GtkWidget) **C.GtkWidget {
+	if p != nil {
+		if func() *C.gpointer {
+			p := (C.gpointer)(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(p)))), m.__rel11))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}() != nil {
+			return p
+		}
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer((*(p)))), m.__rel12)))) == nil {
+			return nil
+		}
+		return _menuHostFrom(func() **C.GtkWidget {
+			p := (*C.GtkWidget)(C.gtk_widget_get_parent((*(p))))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}())
+	}
+	return nil
+}
+
+func _setBarPart(box *C.GtkWidget, key string, w *C.GtkWidget) {
+	__rel21 := C.CString(key)
+	C.g_object_set_data((*C.GObject)(unsafe.Pointer(box)), __rel21, C.gpointer(w))
+	Free(__rel21)
+}
+
+func _menuActivate(action C.gpointer, parameter C.gpointer, entry C.gpointer) {
+	_menuEntrySelect((*C.GtkWidget)(unsafe.Pointer(entry)))
+}
+
+func _menuEntrySelect(w *C.GtkWidget) {
+	e := func(h any) *_MenuEntryState {
+		if v, ok := h.(_MenuEntryState); ok {
+			return &v
+		}
+		return nil
+	}(snglClosure(unsafe.Pointer(C.g_object_get_data((*C.GObject)(unsafe.Pointer(w)), m.__rel12))))
+	if e != nil {
+		if !(*(e)).Disabled {
+			run := (*(e)).Select
+			run()
+		}
+	}
 }
 
 func __effect0_mount() {
 	m.handle__inst0 = C.sngl_every(C.int(int(m.__effect0_key/time.Millisecond)), snglCallback_void__voidPtr(), snglContext(func() {
 		m.ticks += 1
-		__rel2 := C.CString(fmt.Sprint(m.ticks))
-		C.sngl_text_set_value(m.__n1, __rel2)
-		Free(__rel2)
+		__rel22 := C.CString(fmt.Sprint(m.ticks))
+		C.sngl_text_set_value(m.__n1, __rel22)
+		Free(__rel22)
 		if m.ticks == 3 {
 			fmt.Println(("ticked " + fmt.Sprint(m.ticks)))
 			C.sngl_gtk_quit()
@@ -217,7 +703,19 @@ func __effects0_settle() {
 func __snglTeardown() {
 	m.__effects0_torn = true
 	__effect0_teardown()
-	Free(m.__rel9)
+	Free(m.__rel2)
+	Free(m.__rel3)
+	Free(m.__rel4)
+	Free(m.__rel5)
+	Free(m.__rel6)
+	Free(m.__rel10)
+	Free(m.__rel11)
+	Free(m.__rel12)
+	Free(m.__rel13)
+	Free(m.__rel14)
+	Free(m.__rel15)
+	Free(m.__rel18)
+	Free(m.__rel29)
 }
 
 func __n0_visible_handler(__visible bool) {
@@ -261,12 +759,24 @@ func snglInit() {
 	m.__effects0_pending = false
 	m.__effects0_torn = false
 	m.__effects0_steps = 0
-	m.__rel9 = C.CString("t")
+	m.__rel2 = C.CString("sngl")
+	m.__rel3 = C.CString("sngl-header-back")
+	m.__rel4 = C.CString("sngl-header")
+	m.__rel5 = C.CString("sngl-header-menu")
+	m.__rel6 = C.CString("sngl-header-decided")
+	m.__rel10 = C.CString("sngl-back")
+	m.__rel11 = C.CString("sngl-toplevel")
+	m.__rel12 = C.CString("sngl-menu-entry")
+	m.__rel13 = C.CString("open-menu-symbolic")
+	m.__rel14 = C.CString("go-previous-symbolic")
+	m.__rel15 = C.CString("clicked")
+	m.__rel18 = C.CString("activate")
+	m.__rel29 = C.CString("t")
 }
 
 func snglBuild() {
-	m.__n0 = C.sngl_toplevel_new()
-	C.sngl_toplevel_set_title(m.__n0, m.__rel9)
+	m.__n0 = _rtToplevelNew()
+	C.sngl_toplevel_set_title(m.__n0, m.__rel29)
 	C.sngl_toplevel_set_visible(m.__n0, C.int(func() int {
 		if m.visible__inst0 {
 			return 1
@@ -276,14 +786,14 @@ func snglBuild() {
 	}()))
 	C.sngl_toplevel_on_visible(m.__n0, snglCallback_bool__voidPtr(), snglContext(__n0_visible_handler), snglReleasePtr())
 	m.__n1 = C.sngl_text_new()
-	__rel3 := C.CString(fmt.Sprint(m.ticks))
-	C.sngl_text_set_value(m.__n1, __rel3)
-	Free(__rel3)
-	__rel4 := C.CString("")
-	__rel5 := C.CString("")
-	C.sngl_set_look(m.__n1, __rel4, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel5, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
-	Free(__rel5)
-	Free(__rel4)
+	__rel23 := C.CString(fmt.Sprint(m.ticks))
+	C.sngl_text_set_value(m.__n1, __rel23)
+	Free(__rel23)
+	__rel24 := C.CString("")
+	__rel25 := C.CString("")
+	C.sngl_set_look(m.__n1, __rel24, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel25, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	Free(__rel25)
+	Free(__rel24)
 	C.sngl_toplevel_append(m.__n0, m.__n1)
 	m.__drawing0 = C.sngl_canvas_new()
 	C.sngl_canvas_set_width(m.__drawing0, C.int(40))
@@ -292,14 +802,14 @@ func snglBuild() {
 	C.sngl_canvas_on_paint(m.__drawing0, snglCallback_cairo_t_p__voidPtr(), snglContext(__drawing0_paint_handler), snglReleasePtr())
 	C.sngl_toplevel_append(m.__n0, m.__drawing0)
 	m.frame = C.sngl_image_new()
-	__rel6 := C.CString("contain")
-	C.sngl_image_set_fit(m.frame, __rel6)
-	Free(__rel6)
-	__rel7 := C.CString("")
-	__rel8 := C.CString("")
-	C.sngl_set_look(m.frame, __rel7, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel8, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
-	Free(__rel8)
-	Free(__rel7)
+	__rel26 := C.CString("contain")
+	C.sngl_image_set_fit(m.frame, __rel26)
+	Free(__rel26)
+	__rel27 := C.CString("")
+	__rel28 := C.CString("")
+	C.sngl_set_look(m.frame, __rel27, C.int(0), C.int(0), C.double(0.0), C.int(0), C.int(0), C.int(0), C.int(0), C.int(func() int { return 0 }()), __rel28, C.int(0), C.int(func() int { return 0 }()), C.int(0), C.int(func() int { return 0 }()), C.int(0))
+	Free(__rel28)
+	Free(__rel27)
 	m.__drawing1 = C.sngl_image_source_new()
 	C.sngl_drawing_set_width(m.__drawing1, C.double(20.0))
 	C.sngl_drawing_set_height(m.__drawing1, C.double(20.0))
@@ -341,6 +851,11 @@ package main
 extern void snglCallback_bool__void(int, void *);
 extern void snglCallback_cairo_t_p__void(cairo_t *, void *);
 extern void snglCallback_void__void(void *);
+extern void snglStatic__menuApply(GtkWidget *);
+extern void snglStatic__menuMoved(GtkWidget *, GtkWidget *);
+extern int snglStatic__windowBack(GtkWidget *);
+extern void snglStatic__barForget(GtkWidget *);
+extern void snglStatic__menuActivate(gpointer, gpointer, gpointer);
 extern void snglRelease(void *);
 
 static void *sngl_context(uintptr_t i) { return (void *)i; }
@@ -412,6 +927,64 @@ func snglCallback_void__void(ctx unsafe.Pointer) {
 
 // snglCallback_void__voidPtr is snglCallback_void__void as the function pointer C calls.
 func snglCallback_void__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_void__void) }
+
+// snglStatic__menuApplyFn is the program's function C calls snglStatic__menuApply for, which the call handing it to C sets.
+var snglStatic__menuApplyFn func(*C.GtkWidget)
+
+//export snglStatic__menuApply
+func snglStatic__menuApply(a0 *C.GtkWidget) {
+	snglStatic__menuApplyFn(a0)
+}
+
+// snglStatic__menuApplyPtr is snglStatic__menuApply as the function pointer C calls.
+func snglStatic__menuApplyPtr() *[0]byte { return (*[0]byte)(C.snglStatic__menuApply) }
+
+// snglStatic__menuMovedFn is the program's function C calls snglStatic__menuMoved for, which the call handing it to C sets.
+var snglStatic__menuMovedFn func(*C.GtkWidget, *C.GtkWidget)
+
+//export snglStatic__menuMoved
+func snglStatic__menuMoved(a0 *C.GtkWidget, a1 *C.GtkWidget) {
+	snglStatic__menuMovedFn(a0, a1)
+}
+
+// snglStatic__menuMovedPtr is snglStatic__menuMoved as the function pointer C calls.
+func snglStatic__menuMovedPtr() *[0]byte { return (*[0]byte)(C.snglStatic__menuMoved) }
+
+// snglStatic__windowBackFn is the program's function C calls snglStatic__windowBack for, which the call handing it to C sets.
+var snglStatic__windowBackFn func(*C.GtkWidget) bool
+
+//export snglStatic__windowBack
+func snglStatic__windowBack(a0 *C.GtkWidget) C.int {
+	if snglStatic__windowBackFn(a0) {
+		return 1
+	}
+	return 0
+}
+
+// snglStatic__windowBackPtr is snglStatic__windowBack as the function pointer C calls.
+func snglStatic__windowBackPtr() *[0]byte { return (*[0]byte)(C.snglStatic__windowBack) }
+
+// snglStatic__barForgetFn is the program's function C calls snglStatic__barForget for, which the call handing it to C sets.
+var snglStatic__barForgetFn func(*C.GtkWidget)
+
+//export snglStatic__barForget
+func snglStatic__barForget(a0 *C.GtkWidget) {
+	snglStatic__barForgetFn(a0)
+}
+
+// snglStatic__barForgetPtr is snglStatic__barForget as the function pointer C calls.
+func snglStatic__barForgetPtr() *[0]byte { return (*[0]byte)(C.snglStatic__barForget) }
+
+// snglStatic__menuActivateFn is the program's function C calls snglStatic__menuActivate for, which the call handing it to C sets.
+var snglStatic__menuActivateFn func(C.gpointer, C.gpointer, C.gpointer)
+
+//export snglStatic__menuActivate
+func snglStatic__menuActivate(a0 C.gpointer, a1 C.gpointer, a2 C.gpointer) {
+	snglStatic__menuActivateFn(a0, a1, a2)
+}
+
+// snglStatic__menuActivatePtr is snglStatic__menuActivate as the function pointer C calls.
+func snglStatic__menuActivatePtr() *[0]byte { return (*[0]byte)(C.snglStatic__menuActivate) }
 -- out/go/gtk4/sngl_rt.go --
 // Code generated by sngl (gtk4). DO NOT EDIT.
 
@@ -481,4 +1054,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:23ade5d945e3166405bcad2371a0098a
+pass sha256:361c67f22196dd64595991f2cf3888f9

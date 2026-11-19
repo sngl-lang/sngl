@@ -981,6 +981,18 @@ type _ProbeState struct {
 	Content int
 }
 
+type _MenuEntryState struct {
+	Label    string
+	Labeled  bool
+	Disabled bool
+	Checked  bool
+	Select   func()
+}
+
+type _BackState struct {
+	Press func()
+}
+
 type snglState struct {
 	shown__inst0   int
 	shown__inst1   int
@@ -1004,6 +1016,11 @@ type snglState struct {
 
 var m = &snglState{}
 
+func _rtToplevelNew() cgo.Widget {
+	_menuHooksSet()
+	return cgo.SnglToplevelNew()
+}
+
 func _rtScrollNew(layout cgo.LayoutManager) cgo.Widget {
 	sw := cgo.GtkScrolledWindowNew()
 	_setScroll(sw, _ScrollState{Content: -1, ReachEnd: func() {
@@ -1012,16 +1029,16 @@ func _rtScrollNew(layout cgo.LayoutManager) cgo.Widget {
 	cgo.GtkWidgetSetLayoutManager(probe, layout)
 	_setProbe(probe, _ProbeState{Content: -1})
 	cgo.GObjectRefSink(cgo.Pointer(probe))
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
+	cgo.HoldData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
 	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
 		_scrollChild(sw)
 	})
 	down := cgo.Pointer(cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
 	across := cgo.Pointer(cgo.GtkScrolledWindowGetHadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
-	cgo.GSignalConnectObject(down, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
-	cgo.GSignalConnectObject(down, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
-	cgo.GSignalConnectObject(across, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
-	cgo.GSignalConnectObject(across, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(down, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(down, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(across, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(across, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
 	_scrollPolicies(sw)
 	return (cgo.Widget)(unsafe.Pointer(sw))
 }
@@ -1071,7 +1088,7 @@ func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
 
 func _rtScrollSetChild(scroll cgo.Widget, child cgo.Widget) {
 	sw := scroll
-	probe := _probeIn(sw)
+	probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 	up := cgo.GtkWidgetGetParent(child)
 	if (probe != nil) && (up != nil) {
 		if (*(up)) == (*(probe)) {
@@ -1096,12 +1113,12 @@ func _rtScrollSetDirection(scroll cgo.Widget, direction string) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		_setScroll(sw, _ScrollState{Axis: axis, Content: -1, ReachEnd: (*(s)).ReachEnd})
 	}
 	_scrollPolicies(sw)
-	probe := _probeIn(sw)
+	probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 	if probe != nil {
 		_setProbe((*(probe)), _ProbeState{Across: (axis == 1), Content: -1})
 		cgo.GtkWidgetQueueAllocate((*(probe)))
@@ -1137,7 +1154,7 @@ func _rtScrollOnReachEnd(scroll cgo.Widget, reachEnd func()) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: (*(s)).Near, Content: (*(s)).Content, ReachEnd: reachEnd})
 	}
@@ -1149,19 +1166,23 @@ func _rtScrollReachEnd(scroll cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(scroll)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(scroll)), "sngl-scroll"))
 	if s != nil {
 		run := (*(s)).ReachEnd
 		run()
 	}
 }
 
+func _menuHooksSet() {
+	cgo.SnglMenuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
+}
+
 func _setScroll(sw cgo.Widget, s _ScrollState) {
-	cgo.HoldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll", s)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll", s)
 }
 
 func _setProbe(probe cgo.Widget, s _ProbeState) {
-	cgo.HoldProbe((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state", s)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state", s)
 }
 
 func _unrefData(p cgo.Pointer) {
@@ -1170,7 +1191,7 @@ func _unrefData(p cgo.Pointer) {
 
 func _scrollChild(sw cgo.Widget) {
 	_scrollPolicies(sw)
-	probe := _probeIn(sw)
+	probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 	set := cgo.GtkScrolledWindowGetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
 	if (probe != nil) && (set != nil) {
 		if (*(set)) != (*(probe)) {
@@ -1199,7 +1220,7 @@ func _scrollPolicies(sw cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		axis = (*(s)).Axis
 	}
@@ -1238,7 +1259,7 @@ func _probeAcross(w cgo.Widget) bool {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
+	}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
 	return ((p != nil) && (*(p)).Across)
 }
 
@@ -1248,7 +1269,7 @@ func _probeMeasured(w cgo.Widget, natural int) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
+	}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
 	if p != nil {
 		if natural != (*(p)).Content {
 			_setProbe(w, _ProbeState{Across: (*(p)).Across, Content: natural})
@@ -1260,12 +1281,72 @@ func _probeMeasured(w cgo.Widget, natural int) {
 	}
 }
 
-func _probeIn(sw cgo.Widget) *cgo.Widget {
-	p := cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
-	if p != nil {
-		return snglSome((cgo.Widget)(unsafe.Pointer((*(p)))))
+func _menuApply(box cgo.Widget) {
+	_barApply(box)
+	win := cgo.SnglToplevelWindow(box)
+	if win != nil {
+		button := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-menu")
+		if button != nil {
+			menu := cgo.GMenuNew()
+			group := cgo.GSimpleActionGroupNew()
+			_menuItemsFrom(cgo.GtkWidgetGetFirstChild(box), menu, group, 0)
+			cgo.GtkWidgetInsertActionGroup((cgo.Widget)(unsafe.Pointer((*(win)))), "sngl", (cgo.Actions)(unsafe.Pointer(group)))
+			cgo.GtkMenuButtonSetPopover((cgo.MenuButton)(unsafe.Pointer((*(button)))), cgo.GtkPopoverMenuNewFromModel((cgo.MenuModel)(unsafe.Pointer(menu))))
+			cgo.GObjectUnref(cgo.Pointer(group))
+			cgo.GObjectUnref(cgo.Pointer(menu))
+		}
 	}
-	return nil
+}
+
+func _menuMoved(box cgo.Widget, child cgo.Widget) {
+	if func(h any) *_BackState {
+		if v, ok := h.(_BackState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(child)), "sngl-back")) != nil {
+		if cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil {
+			_barApply(box)
+		}
+	} else {
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(child)), "sngl-menu-entry")) != nil {
+			if cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-toplevel") != nil {
+				_menuApply(box)
+			} else {
+				if func(h any) *_MenuEntryState {
+					if v, ok := h.(_MenuEntryState); ok {
+						return &v
+					}
+					return nil
+				}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(box)), "sngl-menu-entry")) != nil {
+					_entryChanged(box)
+				}
+			}
+		}
+	}
+}
+
+func _windowBack(box cgo.Widget) bool {
+	b := _backFrom(cgo.GtkWidgetGetFirstChild(box))
+	if b != nil {
+		_backPress((*(b)))
+		return true
+	}
+	return false
+}
+
+func _barForget(box cgo.Widget) {
+	if cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header") != nil {
+		cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back", nil)
+	}
+	cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header", nil)
+	cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-menu", nil)
+	cgo.SetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-decided", nil)
 }
 
 func _scrollTake(sw cgo.Widget, probe cgo.Widget, content cgo.Widget) {
@@ -1291,7 +1372,7 @@ func _scrollChanged(sw cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		var __lt8 cgo.Adjustment
 		if (*(s)).Axis == 1 {
@@ -1308,14 +1389,14 @@ func _scrollChanged(sw cgo.Widget) {
 		}
 		near := ((upper - (value + page)) <= (page / 2.0))
 		var content int = -1
-		probe := _probeIn(sw)
+		probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 		if probe != nil {
 			p := func(h any) *_ProbeState {
 				if v, ok := h.(_ProbeState); ok {
 					return &v
 				}
 				return nil
-			}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer((*(probe)))), "sngl-probe-state"))
+			}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer((*(probe)))), "sngl-probe-state"))
 			if p != nil {
 				content = (*(p)).Content
 			}
@@ -1326,7 +1407,7 @@ func _scrollChanged(sw cgo.Widget) {
 			source := cgo.GIdleSourceNew()
 			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), _scrollReported)
 			cgo.GSourceAttach(source, nil)
-			cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
+			cgo.HoldSource((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
 		}
 	}
 }
@@ -1348,13 +1429,79 @@ func _scrollablePolicies(w cgo.Widget, axis int) {
 	cgo.GtkScrollableSetHscrollPolicy((cgo.Scrollable)(unsafe.Pointer(w)), int(__lt10))
 }
 
+func _barApply(box cgo.Widget) {
+	win := cgo.SnglToplevelWindow(box)
+	if win != nil {
+		_barApplyTo(box, (*(win)))
+	}
+}
+
+func _menuItemsFrom(c *cgo.Widget, menu cgo.Menu, group cgo.ActionGroup, n int) int {
+	if c != nil {
+		var next int = n
+		e := func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer((*(c)))), "sngl-menu-entry"))
+		if e != nil {
+			if _entriesFrom(cgo.GtkWidgetGetFirstChild((*(c)))) == 0 {
+				next = _menuAdd(menu, group, n, (*(c)), (*(e)).Checked)
+			} else {
+				sub := cgo.GMenuNew()
+				next = _menuLeavesFrom(cgo.GtkWidgetGetFirstChild((*(c))), sub, group, n, _checkedFrom(cgo.GtkWidgetGetFirstChild((*(c)))))
+				cgo.GMenuAppendSubmenu(menu, (*(e)).Label, (cgo.MenuModel)(unsafe.Pointer(sub)))
+				cgo.GObjectUnref(cgo.Pointer(sub))
+			}
+		}
+		return _menuItemsFrom(cgo.GtkWidgetGetNextSibling((*(c))), menu, group, next)
+	}
+	return n
+}
+
+func _entryChanged(w cgo.Widget) {
+	host := _menuHostFrom(cgo.GtkWidgetGetParent(w))
+	if host != nil {
+		_menuApply((*(host)))
+	}
+}
+
+func _backFrom(c *cgo.Widget) *cgo.Widget {
+	if c != nil {
+		if func(h any) *_BackState {
+			if v, ok := h.(_BackState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldBack((cgo.Object)(unsafe.Pointer((*(c)))), "sngl-back")) != nil {
+			return c
+		}
+		return _backFrom(cgo.GtkWidgetGetNextSibling((*(c))))
+	}
+	return nil
+}
+
+func _backPress(w cgo.Widget) {
+	b := func(h any) *_BackState {
+		if v, ok := h.(_BackState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldBack((cgo.Object)(unsafe.Pointer(w)), "sngl-back"))
+	if b != nil {
+		run := (*(b)).Press
+		run()
+	}
+}
+
 func _probeForget(probe cgo.Widget) {
 	p := func(h any) *_ProbeState {
 		if v, ok := h.(_ProbeState); ok {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state"))
+	}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state"))
 	if p != nil {
 		_setProbe(probe, _ProbeState{Across: (*(p)).Across, Content: -1})
 	}
@@ -1362,13 +1509,13 @@ func _probeForget(probe cgo.Widget) {
 
 func _scrollReport(data cgo.Pointer) bool {
 	sw := (cgo.Widget)(unsafe.Pointer(data))
-	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", nil)
+	cgo.SetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", nil)
 	s := func(h any) *_ScrollState {
 		if v, ok := h.(_ScrollState); ok {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		run := (*(s)).ReachEnd
 		run()
@@ -1384,6 +1531,156 @@ func _sourceGone(p cgo.Pointer) {
 	s := (cgo.Source)(unsafe.Pointer(p))
 	cgo.GSourceDestroy(s)
 	cgo.GSourceUnref(s)
+}
+
+func _barApplyTo(box cgo.Widget, win cgo.Window) {
+	var entries int = _entriesFrom(cgo.GtkWidgetGetFirstChild(box))
+	canBack := (_backFrom(cgo.GtkWidgetGetFirstChild(box)) != nil)
+	if cgo.Data((cgo.Object)(unsafe.Pointer(box)), "sngl-header-decided") == nil {
+		cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-decided", cgo.Pointer(box))
+		if (entries > 0) || canBack {
+			made := cgo.GtkHeaderBarNew()
+			_setBarPart(box, "sngl-header", made)
+			cgo.GtkWindowSetTitlebar(win, made)
+			button := cgo.GtkMenuButtonNew()
+			_setBarPart(box, "sngl-header-menu", button)
+			cgo.GtkMenuButtonSetIconName((cgo.MenuButton)(unsafe.Pointer(button)), "open-menu-symbolic")
+			cgo.GtkHeaderBarPackEnd((cgo.HeaderBar)(unsafe.Pointer(made)), button)
+		}
+	}
+	if (cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back") == nil) && canBack {
+		button := cgo.GtkButtonNewFromIconName("go-previous-symbolic")
+		_setBarPart(box, "sngl-header-back", button)
+		cgo.SnglSignalConnect((cgo.Widget)(unsafe.Pointer(button)), "clicked", func() {
+			_windowBack(box)
+		})
+		header := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header")
+		if header != nil {
+			cgo.GtkHeaderBarPackStart((cgo.HeaderBar)(unsafe.Pointer((*(header)))), button)
+		} else {
+			cgo.GtkWidgetSetHalign(button, 1)
+			cgo.GtkBoxPrepend((cgo.PGtkBox)(unsafe.Pointer(box)), button)
+		}
+	}
+	back := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-back")
+	if back != nil {
+		cgo.SetVisible((*(back)), canBack)
+	}
+	menu := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-header-menu")
+	if menu != nil {
+		cgo.SetVisible((*(menu)), (entries > 0))
+	}
+}
+
+func _entriesFrom(c *cgo.Widget) int {
+	if c != nil {
+		var rest int = _entriesFrom(cgo.GtkWidgetGetNextSibling((*(c))))
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer((*(c)))), "sngl-menu-entry")) != nil {
+			return (rest + 1)
+		}
+		return rest
+	}
+	return 0
+}
+
+func _menuAdd(menu cgo.Menu, group cgo.ActionGroup, n int, w cgo.Widget, checkable bool) int {
+	e := func(h any) *_MenuEntryState {
+		if v, ok := h.(_MenuEntryState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
+	if e != nil {
+		name := ("e" + fmt.Sprint(n))
+		a := cgo.GSimpleActionNew(name, nil)
+		if checkable {
+			a = cgo.GSimpleActionNewStateful(name, nil, cgo.GVariantNewBoolean((*(e)).Checked))
+		}
+		cgo.GSimpleActionSetEnabled(a, !(*(e)).Disabled)
+		cgo.GSignalConnectObject(cgo.Pointer(a), "activate", _menuActivate, cgo.Pointer(w), 0)
+		cgo.GActionMapAddAction((cgo.ActionMap)(unsafe.Pointer(group)), (cgo.Action)(unsafe.Pointer(a)))
+		cgo.GObjectUnref(cgo.Pointer(a))
+		cgo.GMenuAppend(menu, (*(e)).Label, ("sngl." + name))
+	}
+	return (n + 1)
+}
+
+func _menuLeavesFrom(c *cgo.Widget, sub cgo.Menu, group cgo.ActionGroup, n int, checkable bool) int {
+	if c != nil {
+		var next int = n
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer((*(c)))), "sngl-menu-entry")) != nil {
+			next = _menuAdd(sub, group, n, (*(c)), checkable)
+		}
+		return _menuLeavesFrom(cgo.GtkWidgetGetNextSibling((*(c))), sub, group, next, checkable)
+	}
+	return n
+}
+
+func _checkedFrom(c *cgo.Widget) bool {
+	if c != nil {
+		e := func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer((*(c)))), "sngl-menu-entry"))
+		if (e != nil) && (*(e)).Checked {
+			return true
+		}
+		return _checkedFrom(cgo.GtkWidgetGetNextSibling((*(c))))
+	}
+	return false
+}
+
+func _menuHostFrom(p *cgo.Widget) *cgo.Widget {
+	if p != nil {
+		if cgo.Data((cgo.Object)(unsafe.Pointer((*(p)))), "sngl-toplevel") != nil {
+			return p
+		}
+		if func(h any) *_MenuEntryState {
+			if v, ok := h.(_MenuEntryState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer((*(p)))), "sngl-menu-entry")) == nil {
+			return nil
+		}
+		return _menuHostFrom(cgo.GtkWidgetGetParent((*(p))))
+	}
+	return nil
+}
+
+func _setBarPart(box cgo.Widget, key string, w cgo.Widget) {
+	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(box)), key, cgo.Pointer(w))
+}
+
+func _menuActivate(action cgo.Pointer, parameter cgo.Pointer, entry cgo.Pointer) {
+	_menuEntrySelect((cgo.Widget)(unsafe.Pointer(entry)))
+}
+
+func _menuEntrySelect(w cgo.Widget) {
+	e := func(h any) *_MenuEntryState {
+		if v, ok := h.(_MenuEntryState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.HeldMenuEntry((cgo.Object)(unsafe.Pointer(w)), "sngl-menu-entry"))
+	if e != nil {
+		if !(*(e)).Disabled {
+			run := (*(e)).Select
+			run()
+		}
+	}
 }
 
 func __renderSlot0(parent cgo.Widget) {
@@ -1646,7 +1943,7 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.__n2 = cgo.SnglToplevelNew()
+	m.__n2 = _rtToplevelNew()
 	cgo.SnglToplevelSetTitle(m.__n2, "")
 	cgo.SnglToplevelSetVisible(m.__n2, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n2, __n2_visible_handler)
@@ -2638,7 +2935,7 @@ pass sha256:9acdbc41ec1fc0d21c56136e044b7f1d
 -- run/go/fyne --
 pass sha256:4749d73fe5fa467e53081de1f3c1008b
 -- run/go/gtk4 --
-pass sha256:0cf827ded64499a19f039e6a80978356
+pass sha256:9bf28dff4e3670a4646b08f84ed93bd5
 -- run/kotlin/android --
 pass sha256:c62ce5786f3272e72b053f15a41f3ff0
 -- run/none/html --

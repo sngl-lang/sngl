@@ -14,7 +14,7 @@ import markup "sngl:ui/markup"
 // The runtime every gtk4 program links: the toplevels and the application,
 // the look and the layout of a box's children, in C, which each language
 // compiles into the program.
-c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/keys.c", "rt/choose.c", "rt/menu.c", "rt/image.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
+c.link(include="sngl_gtk.h", pkgConfig=["gtk4", "libcurl"], ldflags=["-lm"], library="gtk-4", sources=["rt/sngl_gtk.c", "rt/sngl_gtk.h", "rt/look.c", "rt/keys.c", "rt/choose.c", "rt/image.c", "sngl:language/c/rt/sngl_http.c", "sngl:language/c/rt/sngl_http.h"])
 
 // The `gtk4` node of a build directive: `output { c { gtk4() } }`.
 //
@@ -335,7 +335,7 @@ component Toplevel(title string, :visible bool = true, @closed(), @key(), conten
 
 #[c.native("sngl_toplevel_new")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelNew")]
-func _rtToplevelNew() Toplevel
+func _rtToplevelMake() Toplevel
 
 #[c.native("sngl_toplevel_set_title")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetTitle")]
@@ -475,26 +475,9 @@ func _on_Toplevel_key(w Toplevel, key func()) {
 
 // A window's way back, while it can go back: a widget the runtime keeps
 // hidden among the window's content, which has the window show a back button
-// that presses it (rt's menu.c).
+// that presses it (see "A window's menu" below).
 #[marks.intrinsic("gtk4:Back")]
 component Back(@press()) ui.node
-
-#[c.native("sngl_back_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackNew")]
-func _rtBackNew() Back
-
-#[c.native("sngl_back_on_press")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackOnPress")]
-func _rtBackOnPress(
-    b Back,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
-
-#[c.native("sngl_back_press")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBackPress")]
-func _rtBackPress(b Back)
 
 #[gen.protocol(create)]
 func _create_Back() Back {
@@ -513,7 +496,7 @@ func _fire_Back_press(b Back) {
 
 // One entry of a window's menu, and its submenu's entries: a box the runtime
 // keeps hidden among the window's content, from which the window builds the
-// GMenu behind its header bar's menu button (rt's menu.c). Picking one is no
+// GMenu behind its header bar's menu button (see "A window's menu" below). Picking one is no
 // GTK signal on it but the action the runtime makes for it.
 #[marks.intrinsic("gtk4:MenuEntry")]
 component MenuEntry(
@@ -523,31 +506,6 @@ component MenuEntry(
     @select(),
     entries  ...component ui.node,
 ) ui.node
-
-#[c.native("sngl_menu_entry_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryNew")]
-func _rtMenuEntryNew() MenuEntry
-
-#[c.native("sngl_menu_entry_set_label")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetLabel")]
-func _rtMenuEntrySetLabel(e MenuEntry, label string)
-
-#[c.native("sngl_menu_entry_set_disabled")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetDisabled")]
-func _rtMenuEntrySetDisabled(e MenuEntry, v bool)
-
-#[c.native("sngl_menu_entry_set_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntrySetChecked")]
-func _rtMenuEntrySetChecked(e MenuEntry, v bool)
-
-#[c.native("sngl_menu_entry_on_select")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuEntryOnSelect")]
-func _rtMenuEntryOnSelect(
-    e MenuEntry,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
 
 #[gen.protocol(create)]
 func _create_MenuEntry() MenuEntry {
@@ -627,6 +585,608 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
         }
     }
 }
+
+// --- A window's menu and its way back, with no struct of their own ---
+//
+// A menu entry is a hidden box among the window's content, where it takes
+// no room, holding its submenu's entries as its children, and what it says
+// -- its label, whether it is disabled or checked, what runs as it is picked
+// -- a value C holds on it. A way back is a hidden label among the content,
+// what runs as it is pressed held on it. The window builds its menu from the
+// entries it holds -- a GMenu behind the header bar's menu button --
+// whenever one comes, goes or changes, and shows a back button while a way
+// back is among its content. The runtime's box calls and its window hand
+// these to the four functions sngl_menu_hooks is handed.
+
+#[c.native("GtkWindow *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Window")]
+struct _Window {}
+
+#[c.native("GtkWidget *", cast)]
+func _windowWidget(w _Window) Widget
+
+#[c.native("GtkHeaderBar *", cast)]
+func _headerBarOf(w Widget) _HeaderBar
+
+#[c.native("GtkHeaderBar *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeaderBar")]
+struct _HeaderBar {}
+
+#[c.native("GtkMenuButton *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.MenuButton")]
+struct _MenuButton {}
+
+#[c.native("GtkMenuButton *", cast)]
+func _menuButtonOf(w Widget) _MenuButton
+
+#[c.native("GMenu *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Menu")]
+struct _Menu {}
+
+#[c.native("GMenuModel *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.MenuModel")]
+struct _MenuModel {}
+
+#[c.native("GMenuModel *", cast)]
+func _menuModel(m _Menu) _MenuModel
+
+#[c.native("gpointer", cast)]
+func _menuPointer(m _Menu) _Pointer
+
+#[c.native("GSimpleActionGroup *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ActionGroup")]
+struct _ActionGroup {}
+
+#[c.native("GActionMap *", cast)]
+func _actionMap(g _ActionGroup) _ActionMap
+
+#[c.native("GActionMap *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ActionMap")]
+struct _ActionMap {}
+
+#[c.native("GActionGroup *", cast)]
+func _actionGroup(g _ActionGroup) _Actions
+
+#[c.native("GActionGroup *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Actions")]
+struct _Actions {}
+
+#[c.native("gpointer", cast)]
+func _groupPointer(g _ActionGroup) _Pointer
+
+#[c.native("GSimpleAction *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SimpleAction")]
+struct _SimpleAction {}
+
+#[c.native("GAction *", cast)]
+func _action(a _SimpleAction) _Action
+
+#[c.native("GAction *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Action")]
+struct _Action {}
+
+#[c.native("gpointer", cast)]
+func _actionPointer(a _SimpleAction) _Pointer
+
+#[c.native("GVariant *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Variant")]
+struct _Variant {}
+
+#[c.native("GVariantType *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.VariantType")]
+struct _VariantType {}
+
+#[c.native("GtkAlign")]
+struct _Align = int
+
+#[c.native("sngl_toplevel_window")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelWindow")]
+func _toplevelWindow(box Widget) option[_Window]
+
+#[c.native("gtk_window_set_titlebar")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetTitlebar")]
+func _setTitlebar(win _Window, titlebar Widget)
+
+#[c.native("gtk_header_bar_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkHeaderBarNew")]
+func _headerBarNew() Widget
+
+#[c.native("gtk_header_bar_pack_start")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkHeaderBarPackStart")]
+func _headerBarPackStart(bar _HeaderBar, child Widget)
+
+#[c.native("gtk_header_bar_pack_end")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkHeaderBarPackEnd")]
+func _headerBarPackEnd(bar _HeaderBar, child Widget)
+
+#[c.native("gtk_menu_button_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkMenuButtonNew")]
+func _menuButtonNew() Widget
+
+#[c.native("gtk_menu_button_set_icon_name")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkMenuButtonSetIconName")]
+func _menuButtonSetIcon(b _MenuButton, icon string)
+
+#[c.native("gtk_menu_button_set_popover")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkMenuButtonSetPopover")]
+func _menuButtonSetPopover(b _MenuButton, popover Widget)
+
+#[c.native("gtk_popover_menu_new_from_model")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkPopoverMenuNewFromModel")]
+func _popoverMenuNew(model _MenuModel) Widget
+
+#[c.native("gtk_button_new_from_icon_name")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkButtonNewFromIconName")]
+func _buttonFromIcon(icon string) Widget
+
+#[c.native("gtk_widget_set_halign")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetSetHalign")]
+func _setHalign(w Widget, align _Align)
+
+#[c.native("gtk_widget_set_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SetVisible")]
+func _setVisible(w Widget, visible bool)
+
+#[c.native("gtk_widget_get_next_sibling")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetGetNextSibling")]
+func _nextSibling(w Widget) option[Widget]
+
+#[c.native("gtk_box_prepend")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxPrepend")]
+func _boxPrepend(box _p_GtkBox, child Widget)
+
+#[c.native("gtk_label_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkLabelNew")]
+func _labelNew(text option[string]) Widget
+
+#[c.native("gtk_widget_insert_action_group")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWidgetInsertActionGroup")]
+func _insertActions(w Widget, prefix string, group _Actions)
+
+#[c.native("g_menu_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMenuNew")]
+func _menuNew() _Menu
+
+#[c.native("g_menu_append")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMenuAppend")]
+func _menuAppend(m _Menu, label string, action string)
+
+#[c.native("g_menu_append_submenu")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMenuAppendSubmenu")]
+func _menuAppendSubmenu(m _Menu, label string, sub _MenuModel)
+
+#[c.native("g_simple_action_group_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionGroupNew")]
+func _actionGroupNew() _ActionGroup
+
+#[c.native("g_simple_action_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionNew")]
+func _simpleAction(name string, parameter option[_VariantType]) _SimpleAction
+
+#[c.native("g_simple_action_new_stateful")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionNewStateful")]
+func _statefulAction(name string, parameter option[_VariantType], state _Variant) _SimpleAction
+
+#[c.native("g_variant_new_boolean")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GVariantNewBoolean")]
+func _variantBool(b bool) _Variant
+
+#[c.native("g_simple_action_set_enabled")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSimpleActionSetEnabled")]
+func _actionSetEnabled(a _SimpleAction, enabled bool)
+
+#[c.native("g_action_map_add_action")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GActionMapAddAction")]
+func _actionMapAdd(m _ActionMap, a _Action)
+
+// Connects an action's activate to handler for as long as the entry it
+// picks lives, handing it the entry.
+#[c.native("g_signal_connect_object")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectObject")]
+func _connectActivate(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(action _Pointer, parameter _Pointer, entry _Pointer), entry _Pointer, flags _ConnectFlags)
+
+// Hands the runtime's box calls and its window the functions a window's
+// menu and way back are: building the window's menu afresh, telling a box
+// an entry or a way back came or went, pressing the window's way back,
+// answering whether there was one, and forgetting the bar of a window
+// destroyed.
+#[c.native("sngl_menu_hooks")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuHooks")]
+func _menuHooks(
+    #[c.type("SnglMenuHook")] #[c.static] apply func(box Widget),
+    #[c.type("SnglMenuMovedHook")] #[c.static] moved func(box Widget, child Widget),
+    #[c.type("SnglMenuBackHook")] #[c.static] back func(box Widget) bool,
+    #[c.type("SnglMenuHook")] #[c.static] forget func(box Widget),
+)
+
+// What a menu entry says: its label, set or not, whether it is disabled or
+// checked, and what runs as it is picked.
+struct _MenuEntryState {
+    label    string = ""
+    labeled  bool = false
+    disabled bool = false
+    checked  bool = false
+    select   func() = func() {}
+}
+
+// What runs as a way back is pressed.
+struct _BackState {
+    press func() = func() {}
+}
+
+// A window's bar: the header bar holding the back button and the menu
+// button, decided once as the window is made, since GTK sets a title bar
+// only on a window not yet shown. Each is a pointer the box keeps and does
+// not hold, under "sngl-header", "sngl-header-back" and
+// "sngl-header-menu", and "sngl-header-decided" is set once it is decided.
+// A widget kept on o under key, which o does not hold.
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _dataWidget(o _Object, key string) option[Widget]
+
+#[c.native("g_object_set_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetData")]
+func _setDataTo(o _Object, key string, data _Pointer)
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdMenuEntry(o _Object, key string, #[c.type("gpointer")] s c.held[_MenuEntryState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldMenuEntry")]
+func _heldMenuEntry(o _Object, key string) option[c.held[_MenuEntryState]]
+
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdBack(o _Object, key string, #[c.type("gpointer")] s c.held[_BackState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldBack")]
+func _heldBack(o _Object, key string) option[c.held[_BackState]]
+
+func _menuEntryOf(w Widget) option[_MenuEntryState] {
+    return _heldMenuEntry(_object(w), "sngl-menu-entry")
+}
+
+func _setMenuEntry(w Widget, e _MenuEntryState) {
+    _holdMenuEntry(_object(w), "sngl-menu-entry", e)
+}
+
+func _backOf(w Widget) option[_BackState] {
+    return _heldBack(_object(w), "sngl-back")
+}
+
+// The bar's widget the box keeps under key.
+func _barPart(box Widget, key string) option[Widget] {
+    return _dataWidget(_object(box), key)
+}
+
+func _setBarPart(box Widget, key string, w Widget) {
+    _setDataTo(_object(box), key, _pointer(w))
+}
+
+func _isToplevel(box Widget) bool {
+    return _data(_object(box), "sngl-toplevel") != null
+}
+
+func _menuHooksSet() {
+    _menuHooks(_menuApply, _menuMoved, _windowBack, _barForget)
+}
+
+func _rtToplevelNew() Toplevel {
+    _menuHooksSet()
+    return _rtToplevelMake()
+}
+
+func _rtMenuEntryNew() MenuEntry {
+    _menuHooksSet()
+    var box = _boxNew(1, 0)
+    _setVisible(box, false)
+    _setMenuEntry(box, _MenuEntryState{label="", labeled=false, disabled=false, checked=false, select=func() {}})
+    return _asMenuEntry(box)
+}
+
+// The window whose menu the entry holding p is in, through the entries
+// holding it, from p up.
+func _menuHostFrom(p option[Widget]) option[Widget] {
+    if p != null {
+        if _isToplevel(p) {
+            return p
+        }
+        if _menuEntryOf(p) == null {
+            return null
+        }
+        return _menuHostFrom(_parentOf(p))
+    }
+    return null
+}
+
+func _entryChanged(w Widget) {
+    var host = _menuHostFrom(_parentOf(w))
+    if host != null {
+        _menuApply(host)
+    }
+}
+
+func _rtMenuEntrySetLabel(entry MenuEntry, label string) {
+    var w = _handle(entry)
+    var e = _menuEntryOf(w)
+    if e != null {
+        if !e.labeled || e.label != label {
+            _setMenuEntry(w, _MenuEntryState{label=label, labeled=true, disabled=e.disabled, checked=e.checked, select=e.select})
+            _entryChanged(w)
+        }
+    }
+}
+
+func _rtMenuEntrySetDisabled(entry MenuEntry, disabled bool) {
+    var w = _handle(entry)
+    var e = _menuEntryOf(w)
+    if e != null {
+        if e.disabled != disabled {
+            _setMenuEntry(w, _MenuEntryState{label=e.label, labeled=e.labeled, disabled=disabled, checked=e.checked, select=e.select})
+            _entryChanged(w)
+        }
+    }
+}
+
+func _rtMenuEntrySetChecked(entry MenuEntry, checked bool) {
+    var w = _handle(entry)
+    var e = _menuEntryOf(w)
+    if e != null {
+        if e.checked != checked {
+            _setMenuEntry(w, _MenuEntryState{label=e.label, labeled=e.labeled, disabled=e.disabled, checked=checked, select=e.select})
+            _entryChanged(w)
+        }
+    }
+}
+
+func _rtMenuEntryOnSelect(entry MenuEntry, select func()) {
+    var w = _handle(entry)
+    var e = _menuEntryOf(w)
+    if e != null {
+        _setMenuEntry(w, _MenuEntryState{label=e.label, labeled=e.labeled, disabled=e.disabled, checked=e.checked, select=select})
+    }
+}
+
+// Picks the entry, as the user's picking it in the menu does.
+func _menuEntrySelect(w Widget) {
+    var e = _menuEntryOf(w)
+    if e != null {
+        if !e.disabled {
+            var run = e.select
+            run()
+        }
+    }
+}
+
+func _rtBackNew() Back {
+    _menuHooksSet()
+    var w = _labelNew(null)
+    _setVisible(w, false)
+    _holdBack(_object(w), "sngl-back", _BackState{press=func() {}})
+    return _asBack(w)
+}
+
+func _rtBackOnPress(back Back, press func()) {
+    var w = _handle(back)
+    if _backOf(w) != null {
+        _holdBack(_object(w), "sngl-back", _BackState{press=press})
+    }
+}
+
+func _backPress(w Widget) {
+    var b = _backOf(w)
+    if b != null {
+        var run = b.press
+        run()
+    }
+}
+
+func _rtBackPress(back Back) {
+    _backPress(_handle(back))
+}
+
+// The first way back from c on among its siblings.
+func _backFrom(c option[Widget]) option[Widget] {
+    if c != null {
+        if _backOf(c) != null {
+            return c
+        }
+        return _backFrom(_nextSibling(c))
+    }
+    return null
+}
+
+// Presses the first way back among a window's content, and whether there
+// was one.
+func _windowBack(box Widget) bool {
+    var b = _backFrom(_firstChild(box))
+    if b != null {
+        _backPress(b)
+        return true
+    }
+    return false
+}
+
+// How many menu entries there are from c on among its siblings.
+func _entriesFrom(c option[Widget]) int {
+    if c != null {
+        var rest = _entriesFrom(_nextSibling(c))
+        if _menuEntryOf(c) != null {
+            return rest + 1
+        }
+        return rest
+    }
+    return 0
+}
+
+// A window destroyed takes its bar with it, and a back button in it: the
+// next window decides its own. One over the content stays there.
+func _barForget(box Widget) {
+    if _barPart(box, "sngl-header") != null {
+        _setData(_object(box), "sngl-header-back", null)
+    }
+    _setData(_object(box), "sngl-header", null)
+    _setData(_object(box), "sngl-header-menu", null)
+    _setData(_object(box), "sngl-header-decided", null)
+}
+
+// The back button goes in the bar, or over the content of a window made
+// without one, and shows while a way back is among the content.
+func _barApply(box Widget) {
+    var win = _toplevelWindow(box)
+    if win != null {
+        _barApplyTo(box, win)
+    }
+}
+
+func _barApplyTo(box Widget, win _Window) {
+    var entries = _entriesFrom(_firstChild(box))
+    var canBack = _backFrom(_firstChild(box)) != null
+    if _data(_object(box), "sngl-header-decided") == null {
+        _setDataTo(_object(box), "sngl-header-decided", _pointer(box))
+        if entries > 0 || canBack {
+            var made = _headerBarNew()
+            _setBarPart(box, "sngl-header", made)
+            _setTitlebar(win, made)
+            var button = _menuButtonNew()
+            _setBarPart(box, "sngl-header-menu", button)
+            _menuButtonSetIcon(_menuButtonOf(button), "open-menu-symbolic")
+            _headerBarPackEnd(_headerBarOf(made), button)
+        }
+    }
+    if _barPart(box, "sngl-header-back") == null && canBack {
+        var button = _buttonFromIcon("go-previous-symbolic")
+        _setBarPart(box, "sngl-header-back", button)
+        _rtSignalConnect(_asBack(button), "clicked", func() { _windowBack(box) })
+        var header = _barPart(box, "sngl-header")
+        if header != null {
+            _headerBarPackStart(_headerBarOf(header), button)
+        } else {
+            _setHalign(button, _Align(1))
+            _boxPrepend(_boxOf(box), button)
+        }
+    }
+    var back = _barPart(box, "sngl-header-back")
+    if back != null {
+        _setVisible(back, canBack)
+    }
+    var menu = _barPart(box, "sngl-header-menu")
+    if menu != null {
+        _setVisible(menu, entries > 0)
+    }
+}
+
+func _menuActivate(action _Pointer, parameter _Pointer, entry _Pointer) {
+    _menuEntrySelect(_pointed(entry))
+}
+
+// Adds the entry w to menu as the action named for n in group, and answers
+// the next n.
+func _menuAdd(menu _Menu, group _ActionGroup, n int, w Widget, checkable bool) int {
+    var e = _menuEntryOf(w)
+    if e != null {
+        var name = "e{n}"
+        var a = _simpleAction(name, null)
+        if checkable {
+            a = _statefulAction(name, null, _variantBool(e.checked))
+        }
+        _actionSetEnabled(a, !e.disabled)
+        _connectActivate(_actionPointer(a), "activate", _menuActivate, _pointer(w), _ConnectFlags(0))
+        _actionMapAdd(_actionMap(group), _action(a))
+        _unref(_actionPointer(a))
+        _menuAppend(menu, e.label, "sngl.{name}")
+    }
+    return n + 1
+}
+
+// Whether an entry from c on among its siblings is checked.
+func _checkedFrom(c option[Widget]) bool {
+    if c != null {
+        var e = _menuEntryOf(c)
+        if e != null && e.checked {
+            return true
+        }
+        return _checkedFrom(_nextSibling(c))
+    }
+    return false
+}
+
+// Adds each entry from c on among its siblings to sub, from n on.
+func _menuLeavesFrom(c option[Widget], sub _Menu, group _ActionGroup, n int, checkable bool) int {
+    if c != null {
+        var next = n
+        if _menuEntryOf(c) != null {
+            next = _menuAdd(sub, group, n, c, checkable)
+        }
+        return _menuLeavesFrom(_nextSibling(c), sub, group, next, checkable)
+    }
+    return n
+}
+
+// A submenu per top-level entry holding entries, or the entry itself where
+// it holds none, from c on among its siblings. A submenu where one entry is
+// checked draws them all as checks.
+func _menuItemsFrom(c option[Widget], menu _Menu, group _ActionGroup, n int) int {
+    if c != null {
+        var next = n
+        var e = _menuEntryOf(c)
+        if e != null {
+            if _entriesFrom(_firstChild(c)) == 0 {
+                next = _menuAdd(menu, group, n, c, e.checked)
+            } else {
+                var sub = _menuNew()
+                next = _menuLeavesFrom(_firstChild(c), sub, group, n, _checkedFrom(_firstChild(c)))
+                _menuAppendSubmenu(menu, e.label, _menuModel(sub))
+                _unref(_menuPointer(sub))
+            }
+        }
+        return _menuItemsFrom(_nextSibling(c), menu, group, next)
+    }
+    return n
+}
+
+// Builds the window's menu afresh, a popover of its own each time: one
+// handed a new model keeps each submenu's page of the last and adds another
+// of the same name.
+func _menuApply(box Widget) {
+    _barApply(box)
+    var win = _toplevelWindow(box)
+    if win != null {
+        var button = _barPart(box, "sngl-header-menu")
+        if button != null {
+            var menu = _menuNew()
+            var group = _actionGroupNew()
+            _menuItemsFrom(_firstChild(box), menu, group, 0)
+            _insertActions(_windowWidget(win), "sngl", _actionGroup(group))
+            _menuButtonSetPopover(_menuButtonOf(button), _popoverMenuNew(_menuModel(menu)))
+            _unref(_groupPointer(group))
+            _unref(_menuPointer(menu))
+        }
+    }
+}
+
+// An entry or a way back came to box or left it.
+func _menuMoved(box Widget, child Widget) {
+    if _backOf(child) != null {
+        if _isToplevel(box) {
+            _barApply(box)
+        }
+    } else if _menuEntryOf(child) != null {
+        if _isToplevel(box) {
+            _menuApply(box)
+        } else if _menuEntryOf(box) != null {
+            _entryChanged(box)
+        }
+    }
+}
+
+#[c.native("GtkWidget *", cast)]
+func _asBack(w Widget) Back
+
+#[c.native("GtkWidget *", cast)]
+func _asMenuEntry(w Widget) MenuEntry
 
 // --- Leaf widgets ---
 
@@ -1475,7 +2035,7 @@ func _refSink(p _Pointer)
 // Connects handler to instance's signal for as long as gobject lives,
 // handing it gobject.
 #[c.native("g_signal_connect_object")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectObject")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectObject")]
 func _connectObject(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(instance _Pointer, gobject _Pointer), gobject _Pointer, flags _ConnectFlags)
 
 #[c.native("g_idle_source_new")]
@@ -1501,7 +2061,7 @@ func _sourceUnref(s _Source)
 // A scroll's report posted and not run: the idle source, held on the scroll
 // and destroyed as it is let go.
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldSource")]
 func _holdSource(o _Object, key string, data _Pointer, #[c.type("GDestroyNotify")] #[c.static] gone func(p _Pointer))
 
 // What the program says of a scroll -- the axis its end is read on, 0 down,
@@ -1524,19 +2084,19 @@ struct _ProbeState {
 }
 
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldScroll")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
 func _holdScroll(o _Object, key string, #[c.type("gpointer")] s c.held[_ScrollState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
 
 #[c.native("g_object_get_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldScroll")]
 func _heldScroll(o _Object, key string) option[c.held[_ScrollState]]
 
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldProbe")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
 func _holdProbe(o _Object, key string, #[c.type("gpointer")] s c.held[_ProbeState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
 
 #[c.native("g_object_get_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldProbe")]
 func _heldProbe(o _Object, key string) option[c.held[_ProbeState]]
 
 func _scrollOf(sw Widget) option[_ScrollState] {
@@ -1557,11 +2117,7 @@ func _setProbe(probe Widget, s _ProbeState) {
 
 // The probe a scroll holds.
 func _probeIn(sw Widget) option[Widget] {
-    var p = _data(_object(sw), "sngl-probe")
-    if p != null {
-        return _pointed(p)
-    }
-    return null
+    return _dataWidget(_object(sw), "sngl-probe")
 }
 
 // Forgets what the probe measured: its content is new, or read another way.
@@ -1912,19 +2468,19 @@ struct _TabPageState {
 }
 
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldTabs")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
 func _holdTabs(o _Object, key string, #[c.type("gpointer")] s c.held[_TabsState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
 
 #[c.native("g_object_get_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldTabs")]
 func _heldTabs(o _Object, key string) option[c.held[_TabsState]]
 
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldTabPage")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
 func _holdTabPage(o _Object, key string, #[c.type("gpointer")] s c.held[_TabPageState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
 
 #[c.native("g_object_get_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldTabPage")]
 func _heldTabPage(o _Object, key string) option[c.held[_TabPageState]]
 
 #[c.native("gtk_box_new")]
@@ -2729,7 +3285,7 @@ func _ref(p _Pointer)
 func _unref(p _Pointer)
 
 #[c.native("g_object_set_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetData")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SetData")]
 func _setData(o _Object, key string, data option[_Pointer])
 
 #[c.native("g_object_get_data")]
@@ -2739,15 +3295,15 @@ func _data(o _Object, key string) option[_Pointer]
 // A flow's store, let go with the label through a function of this
 // package's: GTK hands it the store and nothing else.
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldData")]
 func _holdData(o _Object, key string, data _Pointer, #[c.type("GDestroyNotify")] #[c.static] gone func(p _Pointer))
 
 #[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HoldSpan")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
 func _holdSpan(o _Object, key string, #[c.type("gpointer")] s c.held[_SpanState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
 
 #[c.native("g_object_get_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.HeldSpan")]
 func _heldSpan(o _Object, key string) option[c.held[_SpanState]]
 
 #[c.native("GtkLabel *", cast)]

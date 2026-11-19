@@ -681,16 +681,16 @@ func _rtScrollNew(layout cgo.LayoutManager) cgo.Widget {
 	cgo.GtkWidgetSetLayoutManager(probe, layout)
 	_setProbe(probe, _ProbeState{Content: -1})
 	cgo.GObjectRefSink(cgo.Pointer(probe))
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
+	cgo.HoldData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
 	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
 		_scrollChild(sw)
 	})
 	down := cgo.Pointer(cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
 	across := cgo.Pointer(cgo.GtkScrolledWindowGetHadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
-	cgo.GSignalConnectObject(down, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
-	cgo.GSignalConnectObject(down, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
-	cgo.GSignalConnectObject(across, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
-	cgo.GSignalConnectObject(across, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(down, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(down, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(across, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.ConnectObject(across, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
 	_scrollPolicies(sw)
 	return (cgo.Widget)(unsafe.Pointer(sw))
 }
@@ -740,7 +740,7 @@ func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
 
 func _rtScrollSetChild(scroll cgo.Widget, child cgo.Widget) {
 	sw := scroll
-	probe := _probeIn(sw)
+	probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 	up := cgo.GtkWidgetGetParent(child)
 	if (probe != nil) && (up != nil) {
 		if (*(up)) == (*(probe)) {
@@ -765,12 +765,12 @@ func _rtScrollSetDirection(scroll cgo.Widget, direction string) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		_setScroll(sw, _ScrollState{Axis: axis, Content: -1, ReachEnd: (*(s)).ReachEnd})
 	}
 	_scrollPolicies(sw)
-	probe := _probeIn(sw)
+	probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 	if probe != nil {
 		_setProbe((*(probe)), _ProbeState{Across: (axis == 1), Content: -1})
 		cgo.GtkWidgetQueueAllocate((*(probe)))
@@ -800,11 +800,11 @@ func _setLook(w cgo.Widget, l Look) {
 }
 
 func _setScroll(sw cgo.Widget, s _ScrollState) {
-	cgo.HoldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll", s)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll", s)
 }
 
 func _setProbe(probe cgo.Widget, s _ProbeState) {
-	cgo.HoldProbe((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state", s)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state", s)
 }
 
 func _unrefData(p cgo.Pointer) {
@@ -813,7 +813,7 @@ func _unrefData(p cgo.Pointer) {
 
 func _scrollChild(sw cgo.Widget) {
 	_scrollPolicies(sw)
-	probe := _probeIn(sw)
+	probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 	set := cgo.GtkScrolledWindowGetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
 	if (probe != nil) && (set != nil) {
 		if (*(set)) != (*(probe)) {
@@ -842,7 +842,7 @@ func _scrollPolicies(sw cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		axis = (*(s)).Axis
 	}
@@ -881,7 +881,7 @@ func _probeAcross(w cgo.Widget) bool {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
+	}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
 	return ((p != nil) && (*(p)).Across)
 }
 
@@ -891,7 +891,7 @@ func _probeMeasured(w cgo.Widget, natural int) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
+	}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
 	if p != nil {
 		if natural != (*(p)).Content {
 			_setProbe(w, _ProbeState{Across: (*(p)).Across, Content: natural})
@@ -901,14 +901,6 @@ func _probeMeasured(w cgo.Widget, natural int) {
 			}
 		}
 	}
-}
-
-func _probeIn(sw cgo.Widget) *cgo.Widget {
-	p := cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
-	if p != nil {
-		return snglSome((cgo.Widget)(unsafe.Pointer((*(p)))))
-	}
-	return nil
 }
 
 func _scrollTake(sw cgo.Widget, probe cgo.Widget, content cgo.Widget) {
@@ -934,7 +926,7 @@ func _scrollChanged(sw cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		var __lt7 cgo.Adjustment
 		if (*(s)).Axis == 1 {
@@ -951,14 +943,14 @@ func _scrollChanged(sw cgo.Widget) {
 		}
 		near := ((upper - (value + page)) <= (page / 2.0))
 		var content int = -1
-		probe := _probeIn(sw)
+		probe := cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
 		if probe != nil {
 			p := func(h any) *_ProbeState {
 				if v, ok := h.(_ProbeState); ok {
 					return &v
 				}
 				return nil
-			}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer((*(probe)))), "sngl-probe-state"))
+			}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer((*(probe)))), "sngl-probe-state"))
 			if p != nil {
 				content = (*(p)).Content
 			}
@@ -969,7 +961,7 @@ func _scrollChanged(sw cgo.Widget) {
 			source := cgo.GIdleSourceNew()
 			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), _scrollReported)
 			cgo.GSourceAttach(source, nil)
-			cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
+			cgo.HoldSource((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
 		}
 	}
 }
@@ -997,7 +989,7 @@ func _probeForget(probe cgo.Widget) {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state"))
+	}(cgo.HeldProbe((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state"))
 	if p != nil {
 		_setProbe(probe, _ProbeState{Across: (*(p)).Across, Content: -1})
 	}
@@ -1005,13 +997,13 @@ func _probeForget(probe cgo.Widget) {
 
 func _scrollReport(data cgo.Pointer) bool {
 	sw := (cgo.Widget)(unsafe.Pointer(data))
-	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", nil)
+	cgo.SetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", nil)
 	s := func(h any) *_ScrollState {
 		if v, ok := h.(_ScrollState); ok {
 			return &v
 		}
 		return nil
-	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	}(cgo.HeldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
 	if s != nil {
 		run := (*(s)).ReachEnd
 		run()
@@ -1471,7 +1463,7 @@ pass sha256:0761ab0fcbfa7b0733f0e0d7421bc076
 -- run/go/fyne --
 pass sha256:4a409d09e48f6d87f2f29a2d0722b84d
 -- run/go/gtk4 --
-pass sha256:b8691717568f8887c82b17e7804cd2d9
+pass sha256:11e6cb6665dc0ecf68ec52180f9c8817
 -- run/kotlin/android --
 pass sha256:1e3789aec45e6b00d6e67122ecebc846
 -- run/none/html --

@@ -125,27 +125,17 @@ void sngl_box_append(GtkWidget *box, GtkWidget *child);
 typedef int (*SnglTabsHook)(GtkWidget *box, GtkWidget *page);
 void sngl_tabs_hooks(SnglTabsHook add, SnglTabsHook remove);
 
-/* A window's menu entries and its way back (menu.c): hidden widgets among
- * its content, from which the window builds its header bar's menu and back
- * button. sngl_menu_entry_select and sngl_back_press pick one as a test
- * does. sngl_menu_moved tells box an entry or a way back came or went;
- * sngl_menu_apply builds a window's menu afresh, and sngl_bar_forget drops
- * the bar of a window destroyed. sngl_window_back presses the first way back
- * among a window's content, and is whether there was one. */
-GtkWidget *sngl_menu_entry_new(void);
-void sngl_menu_entry_set_label(GtkWidget *w, const char *label);
-void sngl_menu_entry_set_disabled(GtkWidget *w, int v);
-void sngl_menu_entry_set_checked(GtkWidget *w, int v);
-void sngl_menu_entry_on_select(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_menu_entry_select(GtkWidget *w);
-GtkWidget *sngl_back_new(void);
-void sngl_back_on_press(GtkWidget *w, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_back_press(GtkWidget *w);
-bool sngl_window_back(GtkWidget *box);
-void sngl_menu_moved(GtkWidget *box, GtkWidget *child);
-void sngl_menu_apply(GtkWidget *box);
-void sngl_bar_apply(GtkWidget *box);
-void sngl_bar_forget(GtkWidget *box);
+/* A window's menu entries and its way back: hidden widgets among its
+ * content, from which the window builds its header bar's menu and back
+ * button, gtk4.sngl's. The box calls and the window hand them to the
+ * functions sngl_menu_hooks was last handed: apply builds a window's menu
+ * afresh, moved tells box an entry or a way back came or went, back presses
+ * the first way back among a window's content and answers whether there
+ * was one, and forget drops the bar of a window destroyed. */
+typedef void (*SnglMenuHook)(GtkWidget *box);
+typedef void (*SnglMenuMovedHook)(GtkWidget *box, GtkWidget *child);
+typedef int (*SnglMenuBackHook)(GtkWidget *box);
+void sngl_menu_hooks(SnglMenuHook apply, SnglMenuMovedHook moved, SnglMenuBackHook back, SnglMenuHook forget);
 
 /* An image is a box holding the source it shows (image.c), a GtkPicture
  * showing a picture or what a drawing paints, which reports to the image

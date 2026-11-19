@@ -546,7 +546,7 @@ making it its wrapper's prop. Each target:
   the literal, as a node's `if` around the content could not: content is
   inserted once.
 - gtk4 and fyne keep the entries as hidden nodes among the window's content
-  (the runtime's `MenuEntry`, `rt/menu.c`, and fynelayout's), which a render
+  (gtk4.sngl's `MenuEntry`, `_menuApply`, and fynelayout's), which a render
   slot inserts and removes like any node; the box's append, insert and remove
   (`sngl_box_append` and its kin, fyne's `InsertBefore` and `Remove`) tell the
   window, which builds a GMenu behind a header bar's menu button, or fyne's
