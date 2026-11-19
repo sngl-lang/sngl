@@ -31,7 +31,7 @@ func keysPress(w ui.window, field ui.node)
 func keysGoOn(w ui.window, field ui.node, button ui.node, #[c.type("KeyFn")] #[c.static] key func(w gtk4.Widget, k string, shift bool))
 
 // A key pressed as a test presses it.
-func typeKey(w gtk4.Widget, k string, shift bool) {
+func pressKey(w gtk4.Widget, k string, shift bool) {
     gtk4.pressKey(w, k, shift)
 }
 
@@ -48,7 +48,7 @@ time.timer(interval=100ms, @tick {
         keysPress(win, field)
     }
     if ticks == 3 {
-        keysGoOn(win, field, button, typeKey)
+        keysGoOn(win, field, button, pressKey)
     }
     if ticks == 4 {
         gtk4.quit()
@@ -710,11 +710,11 @@ typedef struct s___lambda2_caps__env {
 } s___lambda2_caps__env;
 
 
-static void s_typeKey(GtkWidget * w, sngl_string k, bool shift);
+static void s_pressKey(GtkWidget * w, sngl_string k, bool shift);
 static int64_t s_platform_gtk4___main(sngl_fn_void__void build);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static GtkWidget * s_platform_gtk4___rtToplevelNew(void);
-static void s_platform_gtk4__pressKey(GtkWidget * w, sngl_string key, bool shift);
+static void s_platform_gtk4__pressKey__r0(GtkWidget * w, sngl_string key, bool shift);
 static void sngl_lambda1(void *env_);
 static sngl_string s_platform_gtk4___rtKeyHeard(void);
 static bool s_platform_gtk4___rtKeyHeld(int64_t which);
@@ -1528,13 +1528,13 @@ static void sngl_list_int_insert(sngl_list_int *l, int64_t i, int64_t v) {
 	l->len++;
 }
 
-static void s_typeKey__fn(void *env, GtkWidget * a0, sngl_string a1, bool a2) {
-	s_typeKey(a0, a1, a2);
+static void s_pressKey__fn(void *env, GtkWidget * a0, sngl_string a1, bool a2) {
+	s_pressKey(a0, a1, a2);
 }
 
-static void sngl_static_s_typeKey(GtkWidget * a0, const char * a1, int a2) {
+static void sngl_static_s_pressKey(GtkWidget * a0, const char * a1, int a2) {
 	sngl_mark m = sngl_call_enter();
-	s_typeKey(a0, sngl_string_copy(a1), (a2 != 0));
+	s_pressKey(a0, sngl_string_copy(a1), (a2 != 0));
 	sngl_call_leave(m);
 }
 
@@ -1932,8 +1932,8 @@ static GtkWidget * s___n0;
 static GtkWidget * s_field;
 static GtkWidget * s_button;
 
-static void s_typeKey(GtkWidget * w, sngl_string k, bool shift) {
-	s_platform_gtk4__pressKey(w, k, shift);
+static void s_pressKey(GtkWidget * w, sngl_string k, bool shift) {
+	s_platform_gtk4__pressKey__r0(w, k, shift);
 }
 
 static int64_t s_platform_gtk4___main(sngl_fn_void__void build) {
@@ -1946,7 +1946,7 @@ static GtkWidget * s_platform_gtk4___rtToplevelNew(void) {
 	return sngl_toplevel_new();
 }
 
-static void s_platform_gtk4__pressKey(GtkWidget * w, sngl_string key, bool shift) {
+static void s_platform_gtk4__pressKey__r0(GtkWidget * w, sngl_string key, bool shift) {
 	s_platform_gtk4___testKey(w, key, false, false, shift, false, false, ((sngl_fn_void__void){sngl_lambda1, NULL}));
 }
 
@@ -4133,7 +4133,7 @@ static void sngl_lambda13(void *env_) {
 		keys_press(s_win, s_field);
 	}
 	if (s_ticks == 3) {
-		keys_go_on(s_win, s_field, s_button, (KeyFn)(void (*)(void))sngl_static_s_typeKey);
+		keys_go_on(s_win, s_field, s_button, (KeyFn)(void (*)(void))sngl_static_s_pressKey);
 	}
 	if (s_ticks == 4) {
 		sngl_gtk_quit();
@@ -4358,8 +4358,8 @@ type snglState struct {
 
 var m = &snglState{}
 
-func TypeKey(w cgo.Widget, k string, shift bool) {
-	PressKey(w, k, shift)
+func PressKey(w cgo.Widget, k string, shift bool) {
+	PressKey__r0(w, k, shift)
 }
 
 func _main(build func()) int {
@@ -4372,7 +4372,7 @@ func _rtToplevelNew() cgo.Widget {
 	return cgo.SnglToplevelNew()
 }
 
-func PressKey(w cgo.Widget, key string, shift bool) {
+func PressKey__r0(w cgo.Widget, key string, shift bool) {
 	_testKey(w, key, false, false, shift, false, false, func() {
 	})
 }
@@ -6597,7 +6597,7 @@ func __effect0_mount() {
 			C.keys_press((*C.GtkWidget)(unsafe.Pointer(m.win)), (*C.GtkWidget)(unsafe.Pointer(m.field)))
 		}
 		if m.ticks == 3 {
-			C.keys_go_on((*C.GtkWidget)(unsafe.Pointer(m.win)), (*C.GtkWidget)(unsafe.Pointer(m.field)), (*C.GtkWidget)(unsafe.Pointer(m.button)), func() *[0]byte { snglStatic_TypeKeyFn = TypeKey; return snglStatic_TypeKeyPtr() }())
+			C.keys_go_on((*C.GtkWidget)(unsafe.Pointer(m.win)), (*C.GtkWidget)(unsafe.Pointer(m.field)), (*C.GtkWidget)(unsafe.Pointer(m.button)), func() *[0]byte { snglStatic_PressKeyFn = PressKey; return snglStatic_PressKeyPtr() }())
 		}
 		if m.ticks == 4 {
 			cgo.SnglGtkQuit()
@@ -6824,7 +6824,7 @@ package main
 #include "peek.h"
 #include <stdint.h>
 
-extern void snglStatic_TypeKey(GtkWidget *, char *, int);
+extern void snglStatic_PressKey(GtkWidget *, char *, int);
 */
 import "C"
 
@@ -6835,16 +6835,16 @@ import (
 
 var _ unsafe.Pointer
 
-// snglStatic_TypeKeyFn is the program's function C calls snglStatic_TypeKey for, which the call handing it to C sets.
-var snglStatic_TypeKeyFn func(cgo.Widget, string, bool)
+// snglStatic_PressKeyFn is the program's function C calls snglStatic_PressKey for, which the call handing it to C sets.
+var snglStatic_PressKeyFn func(cgo.Widget, string, bool)
 
-//export snglStatic_TypeKey
-func snglStatic_TypeKey(a0 *C.GtkWidget, a1 *C.char, a2 C.int) {
-	snglStatic_TypeKeyFn(cgo.Widget(unsafe.Pointer(a0)), C.GoString(a1), a2 != 0)
+//export snglStatic_PressKey
+func snglStatic_PressKey(a0 *C.GtkWidget, a1 *C.char, a2 C.int) {
+	snglStatic_PressKeyFn(cgo.Widget(unsafe.Pointer(a0)), C.GoString(a1), a2 != 0)
 }
 
-// snglStatic_TypeKeyPtr is snglStatic_TypeKey as the function pointer C calls.
-func snglStatic_TypeKeyPtr() *[0]byte { return (*[0]byte)(C.snglStatic_TypeKey) }
+// snglStatic_PressKeyPtr is snglStatic_PressKey as the function pointer C calls.
+func snglStatic_PressKeyPtr() *[0]byte { return (*[0]byte)(C.snglStatic_PressKey) }
 -- out/go/gtk4/sngl_rt.go --
 // Code generated by sngl (gtk4). DO NOT EDIT.
 
@@ -6863,6 +6863,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:bc567c31079248f5404ab7ac5086d024
+pass sha256:65831ce156b73fa56286da57d166df82
 -- run/go/gtk4 --
-pass sha256:988f5643446b77de4fa90d2123dc0ff6
+pass sha256:526247004d7ebb07e2c399273c18c8e6
