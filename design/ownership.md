@@ -548,7 +548,8 @@ below). The entry points, and where each calls it:
   holds nothing the activity made.
 
 A loop exits when the last window closes or when the process is asked to
-stop: gtk4's runtime (`sngl_app_run`) and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
+stop: gtk4's application (gtk4.sngl's `_appRun`, through rt's
+`sngl_signal_watch`) and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
 ctrl+c does, so a terminal's ctrl+c or i3 restarting a bar tears down rather
 than killing the process mid-loop. fyne's driver quits on both already, but
 registers from a goroutine `Run` starts and missed a signal sent during

@@ -25,6 +25,6 @@ func init() {
 		if len(args) != 3 {
 			return "", nil
 		}
-		return "for __snglWait, __snglEnd := " + tr(args[1]) + ", time.Now().Add(time.Duration(" + tr(args[2]) + ")*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { snglGtkStep() }", []string{"time"}
+		return "for __snglWait, __snglEnd := " + tr(args[1]) + ", time.Now().Add(time.Duration(" + tr(args[2]) + ")*time.Millisecond); !__snglWait() && time.Now().Before(__snglEnd); { snglEntryStep() }", []string{"time"}
 	})
 }

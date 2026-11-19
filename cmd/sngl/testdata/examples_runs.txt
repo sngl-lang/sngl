@@ -1460,7 +1460,7 @@ sha256:8d1c10948b7f35857dbc46811c676154
   ]
 }
 -- testrun/gtk4/go/app.sngl/Calculator/1 --
-sha256:e8dc2f29f787fb712b514ab37127bfc9
+sha256:892ed6b8a0598ee729ab59dfa9a96fb8
 {
   "results": [
     {
@@ -1478,7 +1478,7 @@ sha256:e8dc2f29f787fb712b514ab37127bfc9
   ]
 }
 -- testrun/gtk4/go/app.sngl/Tour/1 --
-sha256:cd8b829e66f17efa352810d99859199b
+sha256:6c5423ad33b7901e78a37d3092371651
 {
   "results": [
     {
@@ -1492,7 +1492,7 @@ sha256:cd8b829e66f17efa352810d99859199b
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:a57b13a8311bedf09e4e3891be6281c6
+sha256:41f03243b8c56ac4d784fe377f0af00b
 {
   "results": [
     {
@@ -1586,7 +1586,7 @@ sha256:a57b13a8311bedf09e4e3891be6281c6
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/2 --
-sha256:08fd27823dec52f94b516e6b3e5a6b1b
+sha256:61420ba6b0853730d8d607189239ccaa
 {
   "results": [
     {
@@ -1596,7 +1596,7 @@ sha256:08fd27823dec52f94b516e6b3e5a6b1b
   ]
 }
 -- testrun/gtk4/go/app.sngl/back/1 --
-sha256:fefa5d55d46234493e55f9f632a5b568
+sha256:7f3ed516943d60d1d4b78cbf413b0497
 {
   "results": [
     {
@@ -1606,7 +1606,7 @@ sha256:fefa5d55d46234493e55f9f632a5b568
   ]
 }
 -- testrun/gtk4/go/app.sngl/chains/1 --
-sha256:4ce00d8c184e1db5d643978c71e04e5a
+sha256:3eae96dc92cb39e566f39a689cc39e46
 {
   "results": [
     {
@@ -1616,7 +1616,7 @@ sha256:4ce00d8c184e1db5d643978c71e04e5a
   ]
 }
 -- testrun/gtk4/go/app.sngl/detailPage/1 --
-sha256:aa84becc9fca3f1a0d75f66511b0b98b
+sha256:5915ce2bc0d06096a32f1ad0b5f4b9ca
 {
   "results": [
     {
@@ -1770,7 +1770,7 @@ sha256:aa84becc9fca3f1a0d75f66511b0b98b
   ]
 }
 -- testrun/gtk4/go/app.sngl/dexes/1 --
-sha256:2cb70c6d15070ebe8a9c393d131c3c34
+sha256:7d5f20de368031a1ea65dc8dbdccc38b
 {
   "results": [
     {
@@ -1780,7 +1780,7 @@ sha256:2cb70c6d15070ebe8a9c393d131c3c34
   ]
 }
 -- testrun/gtk4/go/app.sngl/home/1 --
-sha256:50ee82bf0eea68f27d68c8a28eb37d2b
+sha256:fd354f4dc71c45f069fc00c3254cfb84
 {
   "results": [
     {
@@ -1822,7 +1822,7 @@ sha256:50ee82bf0eea68f27d68c8a28eb37d2b
   ]
 }
 -- testrun/gtk4/go/app.sngl/mons/1 --
-sha256:9de7d867f1c9f8199bc4cf096527a6ec
+sha256:dac8161afb2317fb52329d21ced8dda8
 {
   "results": [
     {
@@ -1832,7 +1832,7 @@ sha256:9de7d867f1c9f8199bc4cf096527a6ec
   ]
 }
 -- testrun/gtk4/go/app.sngl/named/1 --
-sha256:e17e5c23a07d81c10641ea38e1825b36
+sha256:5e921ec9b471f1d79539b91027e05813
 {
   "results": [
     {
@@ -1842,7 +1842,7 @@ sha256:e17e5c23a07d81c10641ea38e1825b36
   ]
 }
 -- testrun/gtk4/go/app.sngl/roam/1 --
-sha256:d39f5dd42f1e68b3de79607cce47a07d
+sha256:0687939a439ff89986f04ade0886ef20
 {
   "results": [
     {
@@ -1852,7 +1852,7 @@ sha256:d39f5dd42f1e68b3de79607cce47a07d
   ]
 }
 -- testrun/gtk4/go/app.sngl/shapes/1 --
-sha256:b497b8fbd74bc5853d86c8b300ba5ce2
+sha256:db0667773ed995b359077342b8bb0474
 {
   "results": [
     {
@@ -1862,7 +1862,7 @@ sha256:b497b8fbd74bc5853d86c8b300ba5ce2
   ]
 }
 -- testrun/gtk4/go/app.sngl/shell/1 --
-sha256:cbae133b632ee3471547ee047560bb3c
+sha256:9f39f5fe8bb66fdc000171b477c213f5
 {
   "results": [
     {
@@ -1884,7 +1884,7 @@ sha256:cbae133b632ee3471547ee047560bb3c
   ]
 }
 -- testrun/gtk4/go/app.sngl/spark/1 --
-sha256:6a19ca225bbdb571d3510f3da3560135
+sha256:98831b9176a031229d1ac1ca3903c813
 {
   "results": [
     {
@@ -1894,7 +1894,7 @@ sha256:6a19ca225bbdb571d3510f3da3560135
   ]
 }
 -- testrun/gtk4/go/app.sngl/species/1 --
-sha256:a42040e6ee67a8f2fafa72f4ad3c6fa2
+sha256:5cdf7076edc032e193d33673438579e2
 {
   "results": [
     {
@@ -1904,7 +1904,7 @@ sha256:a42040e6ee67a8f2fafa72f4ad3c6fa2
   ]
 }
 -- testrun/gtk4/go/app.sngl/spray/1 --
-sha256:0bf86910b9ffec1669d9274696b1d2b7
+sha256:9e5e0029d38303389edc21d5da606b03
 {
   "results": [
     {
@@ -1914,7 +1914,7 @@ sha256:0bf86910b9ffec1669d9274696b1d2b7
   ]
 }
 -- testrun/gtk4/go/app.sngl/trip/1 --
-sha256:a03e549c87452f5bd71a0abb04d7ab63
+sha256:af315987a3ffdeb5ea979dd8a0b28dd1
 {
   "results": [
     {
@@ -1924,7 +1924,7 @@ sha256:a03e549c87452f5bd71a0abb04d7ab63
   ]
 }
 -- testrun/gtk4/go/app.sngl/walk/1 --
-sha256:bcad90b455cab8589ede1b26784fe56a
+sha256:d76234b9abfca8e912b419999a742386
 {
   "results": [
     {

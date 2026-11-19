@@ -211,7 +211,7 @@ sha256:91172a46fce6b2d70f89f4608ff5b92f
   ]
 }
 -- testrun/gtk4/go/entry.sngl/main/1 --
-sha256:e83c89633dc7170443784a86fcc1734c
+sha256:ad3a6ab0a06ecaf5083514ae549aec29
 {
   "results": [
     {
@@ -221,7 +221,7 @@ sha256:e83c89633dc7170443784a86fcc1734c
   ]
 }
 -- testrun/gtk4/go/fallback.sngl/main/1 --
-sha256:d313ba9f1ecd95dda19f68d16014fce8
+sha256:79b03ee07a6e26ff081cb509900524ad
 {
   "results": [
     {

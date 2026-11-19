@@ -2,10 +2,10 @@ package gtk4
 
 import "strings"
 
-// shimFile is the Go file holding the runtime calls a Go program's entry, its
-// test agent, its posting and its carried files make, each a function of the
-// program's own: the entry and the hooks are written once, and the language's
-// `cgo` option decides what the functions call. gtk4.sngl's reservedNames
+// shimFile is the Go file holding the runtime calls a Go program's posting
+// and its carried files make, each a function of the program's own, written
+// once, whose language's `cgo` option decides what they call; what its entry
+// and test agent call is the platform's #[gen.entry] SNGL. gtk4.sngl's reservedNames
 // holds each name, so no program's declaration takes one.
 const shimFile = "sngl_rt.go"
 
@@ -17,16 +17,8 @@ package main
 
 import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 
-func snglGtkMain(build func()) int                   { return cgo.SnglGtkMain(build) }
-func snglGtkInit()                                   { cgo.SnglGtkInit() }
-func snglGtkHold()                                   { cgo.SnglGtkHold() }
-func snglGtkPresent()                                { cgo.SnglGtkPresent() }
-func snglGtkRun() int                                { return cgo.SnglGtkRun() }
-func snglGtkStep()                                   { cgo.SnglGtkStep() }
-func snglGtkReset()                                  { cgo.SnglGtkReset() }
-func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCaptureFile(path, w, h) }
-func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
-func snglPost(fn func())                             { cgo.SnglPost(fn) }
+func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
+func snglPost(fn func())                        { cgo.SnglPost(fn) }
 `
 
 // shimDirect is shimFile where the program calls C itself (`cgo=direct`): a
@@ -72,25 +64,8 @@ func snglShimCall(ctx unsafe.Pointer) {
 //export snglShimRelease
 func snglShimRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglShimBase) }
 
-func snglGtkMain(build func()) int {
-	return int(C.sngl_gtk_main((*[0]byte)(C.snglShimCall), snglShimContext(build), (*[0]byte)(C.snglShimRelease)))
-}
-
 func snglPost(fn func()) {
 	C.sngl_post((*[0]byte)(C.snglShimCall), snglShimContext(fn), (*[0]byte)(C.snglShimRelease))
-}
-
-func snglGtkInit()    { C.sngl_gtk_init() }
-func snglGtkHold()    { C.sngl_gtk_hold() }
-func snglGtkPresent() { C.sngl_gtk_present() }
-func snglGtkRun() int { return int(C.sngl_gtk_run()) }
-func snglGtkStep()    { C.sngl_gtk_step() }
-func snglGtkReset()   { C.sngl_gtk_reset() }
-
-func snglGtkCaptureFile(path string, w, h int) int {
-	p := C.CString(path)
-	defer C.free(unsafe.Pointer(p))
-	return int(C.sngl_gtk_capture_file(p, C.int(w), C.int(h)))
 }
 
 func snglGtkCarryFile(name, data string, n int) {

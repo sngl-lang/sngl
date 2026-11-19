@@ -93,10 +93,10 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	}
 	var added []*ir.Func
 	// What the target's generated entry calls (sngl:x/gen's #[entry]) no
-	// SNGL code names: each is promoted as a root of its own, where the
-	// program starts as the target's own entry does -- not under a test
-	// agent's, nor an `@run` handler's.
-	if pkg.Run == nil && !opts.Tests && opts.Platform != "" {
+	// SNGL code names: each is promoted as a root of its own, whichever
+	// entry the build writes -- an application's, an `@run` handler's, a
+	// test agent's or a snapshot's -- since each calls its own of them.
+	if opts.Platform != "" {
 		for _, tp := range ir.TargetPackages(pkg) {
 			if tp.Path != "platform/"+opts.Platform && tp.Path != "sngl:platform/"+opts.Platform {
 				continue

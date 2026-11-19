@@ -56,14 +56,6 @@ component platform(
         "sngl_build",
         "sngl_main",
         "main",
-        "snglGtkMain",
-        "snglGtkInit",
-        "snglGtkHold",
-        "snglGtkPresent",
-        "snglGtkRun",
-        "snglGtkStep",
-        "snglGtkReset",
-        "snglGtkCaptureFile",
         "snglGtkCarryFile",
         "snglPost",
     ],
@@ -95,7 +87,7 @@ func _detach(n ui.node) {
 // What a component renders several nodes, or a slot, at its top into: a box
 // down the page. A window among them is no child of it but a toplevel the
 // application shows, which the box keeps, so a root component's windows come
-// and go with it (rt's sngl_box_append).
+// and go with it (_rtBoxAppend).
 #[marks.intrinsic("gtk4:Contents")]
 component Contents(content ...component ui.node) ui.node
 
@@ -1398,74 +1390,334 @@ func setLook(w ui.node, l Look) {
     _setLook(w, l)
 }
 
-// Runs the application: the program built once GTK is ready, and the loop
-// until the last window closes: what _main, the entry both languages'
-// generated main calls, runs.
-#[c.native("sngl_gtk_main")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkMain")]
-func _rtMain(
-    #[c.type("SnglFn")] build func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-) int
+// --- The application ---
+//
+// The application is a GtkApplication the loop runs, GLib's default from
+// the moment it is made until it is let go (g_application_get_default), and
+// each window a toplevel attached to it ("A toplevel" below). Beside it the
+// process keeps three vars: the toplevels attached, in the order they came,
+// whose first a snapshot draws; whether the application has started, after
+// which a toplevel attached is shown at once; and whether an `@run` handler
+// holds the windows hidden as the loop starts. The program's sngl_init sets
+// each as its build begins, so an entry that writes one is called after it.
+
+var _attached list[Widget] = []
+
+var _started = false
+
+var _holding = false
+
+#[c.native("GtkApplication *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Application")]
+struct _Application {}
+
+#[c.native("GApplication *")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GApplication")]
+struct _GApplication {}
+
+#[c.native("GApplication *", cast)]
+func _gapp(a _Application) _GApplication
+
+#[c.native("GtkApplication *", cast)]
+func _gtkApp(a _GApplication) _Application
+
+#[c.native("gpointer", cast)]
+func _appPointer(a _Application) _Pointer
+
+#[c.native("void *", cast)]
+const func _appVoid(a _Application) c.pointer
+
+#[c.native("GApplicationFlags")]
+struct _AppFlags = int
+
+#[c.native("char **")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Argv")]
+struct _Argv {}
+
+#[c.native("gtk_application_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkApplicationNew")]
+func _applicationNew(id option[string], flags _AppFlags) _Application
+
+#[c.native("g_application_get_default")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GApplicationGetDefault")]
+func _appDefault() option[_GApplication]
+
+#[c.native("g_application_hold")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GApplicationHold")]
+func _appHold(a _GApplication)
+
+#[c.native("g_application_quit")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GApplicationQuit")]
+func _appStop(a _GApplication)
+
+#[c.native("g_application_run")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GApplicationRun")]
+func _appLoop(a _GApplication, argc int, argv option[_Argv]) int
+
+#[c.native("gtk_application_window_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkApplicationWindowNew")]
+func _applicationWindowNew(a _Application) Widget
+
+// The window a toplevel is shown in: the application's, where one runs.
+func _windowFor(app option[_GApplication]) Widget {
+    if app != null {
+        return _applicationWindowNew(_gtkApp(app))
+    }
+    return _windowNew()
+}
+
+#[c.native("guint")]
+struct _SourceId = int
+
+// Has fn run on the loop as the process is sent SIGINT (which 0) or SIGTERM
+// (which 1), until the source it answers is removed; 0 where the system
+// sends neither (rt's, which glib-unix.h declares the watch for).
+#[c.native("sngl_signal_watch")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSignalWatch")]
+func _signalWatch(which int, #[c.type("GSourceFunc")] #[c.static] fn func(data _Pointer) bool, data option[_Pointer]) _SourceId
+
+#[c.native("g_source_remove")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSourceRemove")]
+func _sourceRemove(id _SourceId) bool
+
+// SIGINT and SIGTERM end the loop, so the application tears down as it does
+// when its last window closes: ctrl+c, or a process asked to stop.
+func _onSignal(data _Pointer) bool {
+    _appQuit()
+    return true
+}
+
+// Ends the loop, once there is an application running one.
+func _appQuit() {
+    var app = _appDefault()
+    if app != null {
+        _appStop(app)
+    }
+}
+
+// Ends the loop, and with it the application, which tears down before the
+// entry returns: how a program whose windows are all hidden, or one an
+// `@run` handler started without calling run, stops.
+func quit() {
+    _appQuit()
+}
+
+// The application, made and run, not unique: build makes the program's
+// tree, its toplevels attached, once GTK is up, and the windows of the
+// visible ones are put on screen. The status is the application's.
+func _appRun(build func()) int {
+    var app = _applicationNew(null, _AppFlags(32))
+    _signalConnectData(
+        _signalPointer(_appVoid(app)),
+        "activate",
+        func(self _SignalPointer) {
+            _appActivated(app, build)
+        },
+        _SignalFlags(0),
+    )
+    var sigint = _signalWatch(0, _onSignal, null)
+    var sigterm = _signalWatch(1, _onSignal, null)
+    var status = _appLoop(_gapp(app), 0, null)
+    if int(sigint) != 0 {
+        _sourceRemove(sigint)
+    }
+    if int(sigterm) != 0 {
+        _sourceRemove(sigterm)
+    }
+    _unref(_appPointer(app))
+    return status
+}
+
+func _appActivated(app _Application, build func()) {
+    _appHold(_gapp(app))
+    build()
+    _started = true
+    var i = 0
+    for i < _attached.length() {
+        var box = _attached[i]
+        _toplevelCreate(box)
+        if _holding {
+            // Held, which the window's `visible` hears.
+            _toplevelHidden(box)
+        }
+        _toplevelShow(box)
+        i += 1
+    }
+}
+
+#[c.native("gtk_init")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkInit")]
+func _gtkInit()
+
+#[c.native("g_main_context_iteration")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GMainContextIteration")]
+func _iterate(context option[_MainContext], mayBlock bool) bool
+
+#[c.native("gulong")]
+struct _Micros = int
+
+#[c.native("g_usleep")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GUsleep")]
+func _usleep(micros _Micros)
+
+// --- What the generated entry calls ---
 
 // The application, as the generated entry runs it: the program's build
 // handed to the loop, which builds once GTK is ready.
 #[gen.entry]
 func _main(build func()) int {
-    return _rtMain(build)
+    return _appRun(build)
 }
 
-// What an entry whose platform node wrote `@run` starts with, Go's through
-// the wrappers these give it: the windows the build attaches held hidden
-// until the handler's `run` presents them, and the loop run over the tree
-// already built.
-#[c.native("sngl_gtk_hold")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkHold")]
-func _rtHold()
+// GTK made ready without an application: how an entry that builds before
+// the loop, a snapshot's and a test agent start.
+#[gen.entry]
+func _init() {
+    _gtkInit()
+}
 
-#[c.native("sngl_gtk_present")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkPresent")]
-func _rtPresent()
+// What an entry whose platform node wrote `@run` calls once the program's
+// state is set: the windows the build attaches held hidden until the
+// handler's `run` presents them, and the loop run over the tree already
+// built.
+#[gen.entry]
+func _hold() {
+    _holding = true
+}
 
-#[c.native("sngl_gtk_run")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkRun")]
-func _rtRun() int
+#[gen.entry]
+func _present() {
+    _holding = false
+}
 
-// GTK made ready without an application, and the loop run once: how a Go
-// test agent starts, and lets the loop run while a test waits.
-#[c.native("sngl_gtk_init")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkInit")]
-func _rtInit()
+#[gen.entry]
+func _run() int {
+    return _appRun(func() {})
+}
 
-#[c.native("sngl_gtk_step")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkStep")]
-func _rtStep()
+// Runs what the loop has ready, or waits up to a millisecond for it: how a
+// Go test lets the loop run while it waits.
+#[gen.entry]
+func _step() {
+    if !_iterate(null, false) {
+        _usleep(_Micros(1000))
+    }
+}
 
 // Every window taken down, as a test agent starts each test after the
 // first: the last test's build put them up.
-#[c.native("sngl_gtk_reset")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkReset")]
-func _rtReset()
+#[gen.entry]
+func _reset() {
+    for _attached.length() > 0 {
+        var box = _attached[0]
+        _toplevelDetach(box)
+        if _attached.length() > 0 && _attached[0] == box {
+            _attached.remove(0)
+        }
+    }
+}
 
-// The first window shown, drawn at width by height into the file at path as
-// its size and pixels (rt's sngl_gtk_capture_file): a Go test's snapshot.
-#[c.native("sngl_gtk_capture_file")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkCaptureFile")]
-func _rtCaptureFile(path string, width int, height int) int
+// --- A snapshot ---
+//
+// What is drawn is the first window attached, as BuildUI shows the first
+// toplevel: a root component's first, or the package body's. A node shown
+// in a toplevel of its own, a test's component, is drawn as a window's
+// whole content, as it is where it is a window's only child, and put back
+// after; a window of the program's own is drawn as it is shown, its bar and
+// all, made now where nothing showed it yet: a test's. _captureWindow
+// answers the window to draw, presented, or null where nothing is shown;
+// the drawing is C's (rt's sngl_draw), and _captureDone puts back what the
+// window took.
+
+#[gen.entry]
+func _captureWindow(width int, height int) option[Widget] {
+    if _attached.length() == 0 {
+        return null
+    }
+    var box = _attached[0]
+    var wrapped = _dataWidget(_object(box), "sngl-wraps")
+    if wrapped == null {
+        if _toplevelWindow(box) == null {
+            _toplevelCreate(box)
+            var made = _toplevelWindow(box)
+            if made != null {
+                _setDefaultSize(made, width, height)
+            }
+        }
+        var win = _toplevelWindow(box)
+        if win != null {
+            _windowPresent(win)
+        }
+        return _dataWidget(_object(box), "sngl-window")
+    }
+    if _isWidget(_parentWidget(box)) {
+        return null
+    }
+    _ref(_pointer(wrapped))
+    _boxRemove(_boxOf(box), wrapped)
+    _captureAlone(width, height, wrapped, box)
+    return _dataWidget(_object(wrapped), "sngl-capture-window")
+}
+
+#[c.native("g_object_is_floating")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectIsFloating")]
+func _isFloating(p _Pointer) bool
+
+// root drawn as the whole content of a window of the capture's own, which
+// keeps it once, and what to put it back in. The window is kept on root, as
+// a toplevel's is on its box, which _captureWindow answers it from: C's
+// NULL-or-window, which a window made here would be boxed into.
+func _captureAlone(width int, height int, root Widget, wrapper Widget) {
+    if _isFloating(_pointer(root)) {
+        _refSink(_pointer(root))
+    }
+    var win = _asWindow(_windowNew())
+    _setDefaultSize(win, width, height)
+    _windowSetChild(win, root)
+    _setDataTo(_object(_windowWidget(win)), "sngl-capture-root", _pointer(root))
+    _setDataTo(_object(_windowWidget(win)), "sngl-capture-wrapper", _pointer(wrapper))
+    _setDataTo(_object(root), "sngl-capture-window", _windowPointer(win))
+    _windowPresent(win)
+}
+
+#[gen.entry]
+func _captureDone(win Widget) {
+    var root = _dataWidget(_object(win), "sngl-capture-root")
+    if root != null {
+        var wrapper = _dataWidget(_object(win), "sngl-capture-wrapper")
+        _setData(_object(root), "sngl-capture-window", null)
+        _windowUnsetChild(_asWindow(win), null)
+        _windowDestroy(_asWindow(win))
+        if wrapper != null {
+            _boxAppend(_boxOf(wrapper), root)
+            _unref(_pointer(root))
+        }
+    }
+}
+
+// What _captureWindow answers drawn at width by height into the file at
+// path as its size, each four bytes little-endian, and its pixels, or why
+// not on stderr (rt's): how a Go test agent, which takes no pointer back,
+// and a snapshot's build read one. Not zero where nothing could be drawn.
+#[c.native("sngl_draw_file")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglDrawFile")]
+func _drawFile(win option[Widget], path string, width int, height int) int
+
+#[gen.entry]
+func _captureFile(path string, width int, height int) int {
+    var win = _captureWindow(width, height)
+    var status = _drawFile(win, path, width, height)
+    if win != null {
+        _captureDone(win)
+    }
+    return status
+}
 
 // A file a Go program embeds, handed to the runtime before it runs, which
 // its images read as C's read the table its entry hands it.
 #[c.native("sngl_gtk_carry_file")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkCarryFile")]
 func _rtCarryFile(name string, data string, len int)
-
-// Ends the loop, and with it the application, which tears down before the
-// entry returns: how a program whose windows are all hidden, or one an
-// `@run` handler started without calling run, stops.
-#[c.native("sngl_gtk_quit")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkQuit")]
-func quit()
 
 // --- A box's and a slot's children ---
 //
@@ -1585,16 +1837,6 @@ struct _LogLevel = int
 #[c.native("g_log", variadic)]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GLog")]
 func _log(domain option[string], level _LogLevel, format string, message string)
-
-// A toplevel attached to the application, shown once it runs, and taken
-// off it, its window destroyed (rt's, which keeps the application).
-#[c.native("sngl_toplevel_attach")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelAttach")]
-func _toplevelAttach(top Widget)
-
-#[c.native("sngl_toplevel_detach")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelDetach")]
-func _toplevelDetach(top Widget)
 
 // Whether w is a widget: the application, and what a getter answers where
 // there is none, is NULL.
@@ -2010,35 +2252,257 @@ const component time.timer[platform](interval, enabled, @tick) {
 #[marks.intrinsic("gtk4:Toplevel")]
 component Toplevel(title string, :visible bool = true, @closed(), @key(), content ...component ui.node) root
 
-#[c.native("sngl_toplevel_new")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelNew")]
-func _rtToplevelMake() Toplevel
+// What a toplevel says, held on its box: its title, set or not, whether the
+// program wants it on screen, whether it is attached to the application,
+// and what runs as the window manager closes it and as it goes off screen.
+// The window it is shown in is kept on the box, not held, under
+// "sngl-window" (_toplevelWindow).
+struct _ToplevelState {
+    title    string = ""
+    titled   bool = false
+    visible  bool = true
+    attached bool = false
+    closed   func() = func() {}
+    shown    func(visible bool) = func(visible bool) {}
+}
 
-#[c.native("sngl_toplevel_set_title")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetTitle")]
-func _rtToplevelSetTitle(w Toplevel, title string)
+#[c.native("g_object_set_data_full")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
+func _holdToplevel(o _Object, key string, #[c.type("gpointer")] s c.held[_ToplevelState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
 
-#[c.native("sngl_toplevel_set_visible")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelSetVisible")]
-func _rtToplevelSetVisible(w Toplevel, visible bool)
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
+func _heldToplevel(o _Object, key string) option[c.held[_ToplevelState]]
 
-#[c.native("sngl_toplevel_on_closed")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnClosed")]
-func _rtToplevelOnClosed(
-    w Toplevel,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+func _toplevelOf(box Widget) option[_ToplevelState] {
+    return _heldToplevel(_object(box), "sngl-toplevel")
+}
 
-#[c.native("sngl_toplevel_on_visible")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelOnVisible")]
-func _rtToplevelOnVisible(
-    w Toplevel,
-    #[c.type("SnglBoolFn")] fn func(visible bool),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+func _setToplevel(box Widget, t _ToplevelState) {
+    _holdToplevel(_object(box), "sngl-toplevel", t)
+}
+
+func _isToplevel(box Widget) bool {
+    return _data(_object(box), "sngl-toplevel") != null
+}
+
+#[c.native("GtkWidget *", cast)]
+func _asToplevel(w Widget) Toplevel
+
+func _rtToplevelNew() Toplevel {
+    var box = _boxNew(1, 6)
+    _setToplevel(box, _ToplevelState{title="", titled=false, visible=true, attached=false, closed=func() {}, shown=func(visible bool) {}})
+    return _asToplevel(box)
+}
+
+func _rtToplevelSetTitle(w Toplevel, title string) {
+    var box = _toplevelWidget(w)
+    var t = _toplevelOf(box)
+    if t != null {
+        _setToplevel(box, _ToplevelState{title=title, titled=true, visible=t.visible, attached=t.attached, closed=t.closed, shown=t.shown})
+        var win = _toplevelWindow(box)
+        if win != null {
+            _setTitle(win, title)
+        }
+    }
+}
+
+func _rtToplevelSetVisible(w Toplevel, visible bool) {
+    var box = _toplevelWidget(w)
+    var t = _toplevelOf(box)
+    if t != null {
+        if t.visible != visible {
+            _setToplevel(box, _ToplevelState{title=t.title, titled=t.titled, visible=visible, attached=t.attached, closed=t.closed, shown=t.shown})
+            var win = _toplevelWindow(box)
+            if win != null {
+                if visible {
+                    _windowPresent(win)
+                } else {
+                    _setVisible(_windowWidget(win), false)
+                }
+            }
+        }
+    }
+}
+
+func _rtToplevelOnClosed(w Toplevel, fn func()) {
+    var box = _toplevelWidget(w)
+    var t = _toplevelOf(box)
+    if t != null {
+        _setToplevel(box, _ToplevelState{title=t.title, titled=t.titled, visible=t.visible, attached=t.attached, closed=fn, shown=t.shown})
+    }
+}
+
+func _rtToplevelOnVisible(w Toplevel, fn func(visible bool)) {
+    var box = _toplevelWidget(w)
+    var t = _toplevelOf(box)
+    if t != null {
+        _setToplevel(box, _ToplevelState{title=t.title, titled=t.titled, visible=t.visible, attached=t.attached, closed=t.closed, shown=fn})
+    }
+}
+
+// A toplevel the program wants on screen goes off it: its `visible` is told
+// so.
+func _toplevelHidden(box Widget) {
+    var t = _toplevelOf(box)
+    if t != null {
+        if t.visible {
+            _setToplevel(box, _ToplevelState{title=t.title, titled=t.titled, visible=false, attached=t.attached, closed=t.closed, shown=t.shown})
+            var shown = t.shown
+            shown(false)
+        }
+    }
+}
+
+// Puts a toplevel's window on screen where the program wants it there.
+func _toplevelShow(box Widget) {
+    var t = _toplevelOf(box)
+    var win = _toplevelWindow(box)
+    if t != null && win != null {
+        if t.visible {
+            _windowPresent(win)
+        }
+    }
+}
+
+#[c.native("g_object_get_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.DataWindow")]
+func _dataWindow(o _Object, key string) option[_Window]
+
+// The window a toplevel is shown in, or null while it has none.
+func _toplevelWindow(box Widget) option[_Window] {
+    return _dataWindow(_object(box), "sngl-window")
+}
+
+#[c.native("gpointer", cast)]
+func _windowPointer(w _Window) _Pointer
+
+#[c.native("GtkWindow *", cast)]
+func _asWindow(w Widget) _Window
+
+#[c.native("gtk_window_new")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowNew")]
+func _windowNew() Widget
+
+#[c.native("gtk_window_set_title")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetTitle")]
+func _setTitle(win _Window, title string)
+
+#[c.native("gtk_window_present")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowPresent")]
+func _windowPresent(win _Window)
+
+#[c.native("gtk_window_set_default_size")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetDefaultSize")]
+func _setDefaultSize(win _Window, width int, height int)
+
+#[c.native("gtk_window_set_child")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.WindowUnsetChild")]
+func _windowUnsetChild(win _Window, child option[Widget])
+
+#[c.native("gtk_window_destroy")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowDestroy")]
+func _windowDestroy(win _Window)
+
+#[c.native("g_signal_connect_object")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectCloseRequest")]
+func _connectCloseRequest(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(win _Pointer, box _Pointer) bool, gobject _Pointer, flags _ConnectFlags) _Handler
+
+// The window manager's close: reported as the window going off screen,
+// then as `@closed`; a close that leaves nothing on screen ends the
+// application. True stops GTK destroying the window, which the program's
+// tree decides.
+func _closeRequest(win _Pointer, box _Pointer) bool {
+    _setVisible(_pointed(win), false)
+    _toplevelHidden(_pointed(box))
+    var t = _toplevelOf(_pointed(box))
+    if t != null {
+        var closed = t.closed
+        closed()
+    }
+    if !_anyOnScreen() {
+        _appQuit()
+    }
+    return true
+}
+
+// Makes the window a toplevel is shown in, once: the application's, or one
+// of its own where none runs, as a test draws one.
+func _toplevelCreate(box Widget) {
+    if _toplevelWindow(box) == null {
+        var win = _asWindow(_windowFor(_appDefault()))
+        _setDefaultSize(win, 480, 640)
+        var t = _toplevelOf(box)
+        if t != null {
+            if t.titled {
+                _setTitle(win, t.title)
+            }
+        }
+        _windowSetChild(win, box)
+        _setDataTo(_object(box), "sngl-window", _windowPointer(win))
+        _connectCloseRequest(_windowPointer(win), "close-request", _closeRequest, _pointer(box), _ConnectFlags(0))
+        _keysWatch(_windowWidget(win))
+        _menuApply(box)
+        _iconRefresh(box)
+    }
+}
+
+// Attaches a toplevel to the application, which shows it at once once it
+// runs.
+func _toplevelAttach(box Widget) {
+    var t = _toplevelOf(box)
+    if t != null {
+        if !t.attached {
+            _setToplevel(box, _ToplevelState{title=t.title, titled=t.titled, visible=t.visible, attached=true, closed=t.closed, shown=t.shown})
+            _attached.push(box)
+            if _started {
+                _toplevelCreate(box)
+                _toplevelShow(box)
+            }
+        }
+    }
+}
+
+// Takes a toplevel off the application, its window destroyed: a slot at the
+// package's root no longer renders it.
+func _toplevelDetach(box Widget) {
+    var t = _toplevelOf(box)
+    if t != null {
+        if t.attached {
+            _setToplevel(box, _ToplevelState{title=t.title, titled=t.titled, visible=t.visible, attached=false, closed=t.closed, shown=t.shown})
+            var at = _attached.indexOf(box)
+            if at >= 0 {
+                _attached.remove(at)
+            }
+            var win = _toplevelWindow(box)
+            if win != null {
+                _setData(_object(box), "sngl-window", null)
+                // A reference across the unparent, so the box is freed by
+                // its last holder rather than mid-call.
+                _ref(_pointer(box))
+                _windowUnsetChild(win, null)
+                _windowDestroy(win)
+                _barForget(box)
+                _unref(_pointer(box))
+            }
+        }
+    }
+}
+
+// Whether any toplevel attached has a window on screen.
+func _anyOnScreen() bool {
+    var i = 0
+    for i < _attached.length() {
+        var win = _toplevelWindow(_attached[i])
+        if win != null {
+            if _visible(_windowWidget(win)) {
+                return true
+            }
+        }
+        i += 1
+    }
+    return false
+}
 
 // What a window's `@key` runs, held on its toplevel's box, which a second
 // replaces.
@@ -2165,9 +2629,8 @@ func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
 //
 // What a window's `@key` calls each key, the controllers that hear the
 // window's keys, and what a key nothing stopped does when a test presses it
-// by name. The handler is held on the toplevel's box (_KeyState), and the
-// runtime's toplevel hands the window it makes to _keysWatch, the function
-// _rtToplevelNew hands it (sngl_keys_hooks).
+// by name. The handler is held on the toplevel's box (_KeyState), and a
+// window made for a toplevel is handed to _keysWatch (_toplevelCreate).
 
 // A key a window's `@key` names rather than types: a browser's
 // KeyboardEvent.key for its GDK keyval (gdkkeysyms.h's GDK_KEY_ value, in
@@ -2571,12 +3034,6 @@ func _keysGoOn(win Widget, key string, shift bool) {
     }
 }
 
-// Hands the runtime's toplevel the functions a window's keys are: watching
-// the window it makes, and a key a test pressed that nothing stopped.
-#[c.native("sngl_keys_hooks")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglKeysHooks")]
-func _keysHooks(#[c.type("SnglKeysWatch")] #[c.static] watch func(win Widget))
-
 // A toplevel's content is a box's, whose append hands the window an entry of
 // its menu or its way back (_boxPut).
 func _rtToplevelAppend(w Toplevel, child ui.node) {
@@ -2762,8 +3219,8 @@ const component ui.window[platform](title, visible, canGoBack, @error, @closed, 
 // what runs as it is pressed held on it. The window builds its menu from the
 // entries it holds -- a GMenu behind the header bar's menu button --
 // whenever one comes, goes or changes, and shows a back button while a way
-// back is among its content. The runtime's box calls and its window hand
-// these to the four functions sngl_menu_hooks is handed.
+// back is among its content: the box's calls tell the window, and a window
+// made builds its menu (_toplevelCreate's _menuApply).
 
 #[c.native("GtkWindow *")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Window")]
@@ -2845,10 +3302,6 @@ struct _VariantType {}
 
 #[c.native("GtkAlign")]
 struct _Align = int
-
-#[c.native("sngl_toplevel_window")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglToplevelWindow")]
-func _toplevelWindow(box Widget) option[_Window]
 
 #[c.native("gtk_window_set_titlebar")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkWindowSetTitlebar")]
@@ -2952,18 +3405,6 @@ func _actionMapAdd(m _ActionMap, a _Action)
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.ConnectActivate")]
 func _connectActivate(instance _Pointer, signal string, #[c.type("GCallback")] #[c.static] handler func(action _Pointer, parameter _Pointer, entry _Pointer), entry _Pointer, flags _ConnectFlags)
 
-// Hands the runtime's window the functions a window's menu and way back
-// are: building the window's menu afresh, pressing the window's way back,
-// answering whether there was one, and forgetting the bar of a window
-// destroyed.
-#[c.native("sngl_menu_hooks")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglMenuHooks")]
-func _menuHooks(
-    #[c.type("SnglMenuHook")] #[c.static] apply func(box Widget),
-    #[c.type("SnglMenuBackHook")] #[c.static] back func(box Widget) bool,
-    #[c.type("SnglMenuHook")] #[c.static] forget func(box Widget),
-)
-
 // What a menu entry says: its label, set or not, whether it is disabled or
 // checked, and what runs as it is picked.
 struct _MenuEntryState {
@@ -3030,22 +3471,7 @@ func _setBarPart(box Widget, key string, w Widget) {
     _setDataTo(_object(box), key, _pointer(w))
 }
 
-func _isToplevel(box Widget) bool {
-    return _data(_object(box), "sngl-toplevel") != null
-}
-
-func _menuHooksSet() {
-    _menuHooks(_menuApply, _windowBack, _barForget)
-}
-
-func _rtToplevelNew() Toplevel {
-    _menuHooksSet()
-    _keysHooks(_keysWatch)
-    return _rtToplevelMake()
-}
-
 func _rtMenuEntryNew() MenuEntry {
-    _menuHooksSet()
     var box = _boxNew(1, 0)
     _setVisible(box, false)
     _setMenuEntry(box, _MenuEntryState{})
@@ -3126,7 +3552,6 @@ func _menuEntrySelect(w Widget) {
 }
 
 func _rtBackNew() Back {
-    _menuHooksSet()
     var w = _labelNew(null)
     _setVisible(w, false)
     _holdBack(_object(w), "sngl-back", _BackState{})
@@ -6972,12 +7397,6 @@ func _iconDir(display _Object) string {
     return dir
 }
 
-// Hands the runtime's window the function that shows a window's icon on
-// the window made.
-#[c.native("sngl_icon_hook")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglIconHook")]
-func _iconHook(#[c.type("SnglIconHook")] #[c.static] refresh func(box Widget))
-
 // What the program says of an image: its fit, as a GtkContentFit -- 0 fill,
 // 1 contain, 2 cover and 3 scale down -- what runs as it is clicked, as its
 // picture arrives and as it fails, and why the last failed.
@@ -7085,10 +7504,6 @@ func _ceil(f float) int {
         return i + 1
     }
     return i
-}
-
-func _imageHooksSet() {
-    _iconHook(_iconRefresh)
 }
 
 func _rtImageNew() Image {
@@ -7306,7 +7721,6 @@ func _imageSourceParented(w Widget) {
 }
 
 func _imageSourceNew() Widget {
-    _imageHooksSet()
     var w = _gtkPictureNew()
     _setImageSource(w, _ImageSourceState{url="", ready=false, err="", told=false, width=0, height=0, painted=false, paint=func(ctx CairoContext) {}})
     _weakRef(_object(w), _imageSourceGone, null)

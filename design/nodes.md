@@ -1054,9 +1054,8 @@ displayed none (design/instances.md's *A stop that draws nothing is passed
 over*; `TestTabPassesOverAHiddenTabPanel`).
 
 A page reaches the stack, or the AppTabs, however the render slot of the
-strip's loop hands it to the tabs: the runtime's `sngl_box_append`, `sngl_box_insert_before` and
-`sngl_box_remove` route a child of a `Tabs` to its stack, through the functions gtk4.sngl hands
-`sngl_tabs_hooks` (`testdata/gtk4_tabs_runs.txtar`), and fynelayout's `Tabs`
+strip's loop hands it to the tabs: gtk4.sngl's box append, insert and remove
+(`_rtBoxAppend` and its kin) route a child of a `Tabs` to its stack (`testdata/gtk4_tabs_runs.txtar`), and fynelayout's `Tabs`
 is a widget drawing the AppTabs whose `Container` -- the box the slot inserts
 into, drawn nowhere -- holds the pages, its layout making their items the
 AppTabs'. A `Tabs` that embedded the box drew nothing, since Fyne walks into a
