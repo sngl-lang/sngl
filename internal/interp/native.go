@@ -1,6 +1,9 @@
 package interp
 
 import (
+	"slices"
+
+	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
 
@@ -18,11 +21,22 @@ func isCNative(fn *ir.Func) bool {
 // #[retains] one may not be released until the lifetime making the call ends.
 func (env *Env) callCNative(call *ir.Call) (any, error) {
 	fn := call.Func
-	values, err := env.evalCallArgs(call.Args)
+	// A library's call of a C function filling a `ref` still hands it `&x`
+	// -- RefParams lowers the program's calls alone -- and the stub writes
+	// nothing back, so it is handed what x holds.
+	callArgs := call.Args
+	if slices.ContainsFunc(callArgs, func(a ir.CallArg) bool { return isAddr(a.Value) }) {
+		callArgs = slices.Clone(callArgs)
+		for i, a := range callArgs {
+			if u, ok := a.Value.(*ir.Unary); ok && isAddr(u) {
+				callArgs[i].Value = u.Operand
+			}
+		}
+	}
+	values, err := env.evalCallArgs(callArgs)
 	if err != nil {
 		return nil, err
 	}
-	callArgs := call.Args
 	if fn.IsMethod() && len(values) == len(fn.Params)+1 {
 		callArgs, values = callArgs[1:], values[1:]
 	}
@@ -48,6 +62,11 @@ func (env *Env) callCNative(call *ir.Call) (any, error) {
 		}
 	}
 	return env.nativeResult(fn.Return)
+}
+
+func isAddr(e ir.Expr) bool {
+	u, ok := e.(*ir.Unary)
+	return ok && u.Op == ast.UnaryAddr
 }
 
 // evalCConvert stubs a conversion to C as callCNative stubs a call: the
