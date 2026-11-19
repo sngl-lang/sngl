@@ -1689,15 +1689,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _ClickState struct {
-	Run func()
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -1706,6 +1699,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _ClickState struct {
+	Run func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -1768,6 +1769,7 @@ type snglState struct {
 	refreshes__inst1    int
 	asked__inst1        int
 	life__inst1         Lifetime
+	_heard              _HeardState
 	__effect0_key       __anon_key_n_92242e
 	__effect0_live      []__anon_key_n_92242e
 	__effect0_desired   []__anon_key_n_92242e
@@ -2511,28 +2513,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -4888,6 +4874,8 @@ func snglInit() {
 	m.refreshes__inst1 = 0
 	m.asked__inst1 = -1
 	m.life__inst1 = Lifetime{}
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__effect0_key = __anon_key_n_92242e{Key: __anon_limit_offset_7e7555{}}
 	m.__effect0_live = []__anon_key_n_92242e{}
 	m.__effect0_desired = []__anon_key_n_92242e{}
@@ -6967,7 +6955,7 @@ component petBreedRetrieve[F any](
 -- run/go/fyne --
 pass sha256:b5f3baeae86193fe834d670cec639e7f
 -- run/go/gtk4 --
-pass sha256:2a7b6c9a203ac724d149396d1f8ef5bf
+pass sha256:3a9ef48ca23ca6ef678132a971671b67
 -- run/kotlin/android --
 pass sha256:4b34d5c8b9926fd13bad501ee9b2a0b3
 -- run/none/html --

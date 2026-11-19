@@ -2452,6 +2452,18 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _ClickState struct {
 	Run func()
 }
@@ -2491,17 +2503,6 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type _ImageSourceState struct {
 	Url     string
 	Ready   bool
@@ -2514,6 +2515,7 @@ type _ImageSourceState struct {
 }
 
 type snglState struct {
+	_heard               _HeardState
 	r__copies            map[string]*Badge__site1__inst
 	hit__reach1__copies  map[string]cgo.Widget
 	done__reach0__copies map[string]cgo.Widget
@@ -4841,28 +4843,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -5558,6 +5544,8 @@ func Hit__reach3_clicked_handler() {
 
 func snglInit() {
 	m = &snglState{}
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.r__copies = map[string]*Badge__site1__inst{}
 	m.hit__reach1__copies = map[string]cgo.Widget{}
 	m.done__reach0__copies = map[string]cgo.Widget{}
@@ -6752,7 +6740,7 @@ pass sha256:f9f193db9f96e2bb52261d0f7b5d3b5e
 -- run/go/fyne --
 pass sha256:e0c41a192c7bce973251bcc7255da4b5
 -- run/go/gtk4 --
-pass sha256:077d32f08974690d25a64240c1e160ce
+pass sha256:86e743c0b85bac88fa3d6556b4e760c5
 -- run/kotlin/android --
 pass sha256:7aa818aaa9b7d27103a0fecabb1f4ab4
 -- run/none/html --

@@ -599,15 +599,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _ClickState struct {
-	Run func()
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -616,6 +609,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _ClickState struct {
+	Run func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -665,6 +666,7 @@ type snglState struct {
 	n              int
 	shown          int
 	visible__inst0 bool
+	_heard         _HeardState
 	__slot0        []cgo.Widget
 	__anchor0      cgo.Widget
 	__inst1_live   []*__window_state1__slot0__inst
@@ -1223,28 +1225,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3155,6 +3141,8 @@ func snglInit() {
 	m.n = 0
 	m.shown = 0
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__slot0 = []cgo.Widget{}
 	m.__inst1_live = []*__window_state1__slot0__inst{}
 	m.__rendering0 = false
@@ -3501,6 +3489,6 @@ dialog { margin: auto; padding: 1em; }
 -- run/go/fyne --
 pass sha256:a5a5e5c3b3e084b34671b57076ac5e26
 -- run/go/gtk4 --
-pass sha256:120fad63525df82fcf999ce6c96c8d51
+pass sha256:efebc7a861e28aff6d3b883a214cc226
 -- run/none/html --
 pass sha256:1e62224ca0ae515db3412b7a5d9dd6c4

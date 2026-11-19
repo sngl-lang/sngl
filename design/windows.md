@@ -318,13 +318,13 @@ the loop, the windows attached with no GtkWindow made yet; the loop
 reports each window's `visible` false, which `run`'s `sngl_gtk_present` lifts
 first. `gtk4.quit()` ends the loop (`testdata/gtk4_run_handler_runs.txtar`).
 
-**A window's `@key` on gtk4 takes nothing.** The runtime's key controller
-hears the key (`rt/keys.c`), but C hands a callback no
+**A window's `@key` on gtk4 takes nothing.** A key controller on the
+window hears the key (gtk4.sngl's `_keysWatch`), but C hands a callback no
 function to call, so the Toplevel's `@key` passes no `stop`: the override
-reads the key off the runtime while its handler runs (`sngl_key_heard`,
-`sngl_key_held`) and hands the program's handler a stop that is the runtime's
-(`sngl_key_stop`), which also calls a test's own. A test presses a key
-through `sngl_toplevel_key` (`cmd/sngl/testdata/gtk4_test_runs.txt`,
+reads the key the package holds in a var while its handler runs
+(`_rtKeyHeard`, `_rtKeyHeld`) and hands the program's handler a stop that is
+the platform's (`_rtKeyStop`), which also calls a test's own. A test presses
+a key through `_rtToplevelKey` (`cmd/sngl/testdata/gtk4_test_runs.txt`,
 `keys.sngl`).
 
 **The package body is the application's view, and a window is a component.**

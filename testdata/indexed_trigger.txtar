@@ -2185,6 +2185,18 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _LookCssState struct {
 	Name string
 }
@@ -2220,17 +2232,6 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type _ImageSourceState struct {
 	Url     string
 	Ready   bool
@@ -2243,6 +2244,7 @@ type _ImageSourceState struct {
 }
 
 type snglState struct {
+	_heard         _HeardState
 	box__copies    map[string]cgo.Widget
 	field__copies  map[string]cgo.Widget
 	tap__copies    map[string]cgo.Widget
@@ -4425,28 +4427,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -4965,6 +4951,8 @@ func Swap_clicked_handler() {
 
 func snglInit() {
 	m = &snglState{}
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.box__copies = map[string]cgo.Widget{}
 	m.field__copies = map[string]cgo.Widget{}
 	m.tap__copies = map[string]cgo.Widget{}
@@ -5837,7 +5825,7 @@ pass sha256:e1a72c829c02188219eb833790b39cb7
 -- run/go/fyne --
 pass sha256:c9f935673287d281a9c156184baaefee
 -- run/go/gtk4 --
-pass sha256:58dccb6e7a1bb833e05e614d6d98eb5e
+pass sha256:ce3da39e1ab622ee6970bc1d477dd4f7
 -- run/kotlin/android --
 pass sha256:ea3887296929cf6f2aa99a0d3947bb7a
 -- run/none/html --

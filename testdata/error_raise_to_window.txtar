@@ -384,11 +384,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -397,6 +394,10 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -445,6 +446,7 @@ type snglState struct {
 	problem        string
 	age            int
 	visible__inst0 bool
+	_heard         _HeardState
 	home           cgo.Widget
 	__n1           cgo.Widget
 	__n2           cgo.Widget
@@ -817,28 +819,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -2597,6 +2583,8 @@ func snglInit() {
 	m.problem = "none"
 	m.age = 0
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 }
 
 func snglBuild() {
@@ -2669,4 +2657,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:1ae9c17e056fdf9086a8d9dc2f3033ea
 -- run/go/gtk4 --
-pass sha256:de1a28d859da2e9ba6622127e3a69d4b
+pass sha256:cd9811f63e56e580e95f502dbc516540

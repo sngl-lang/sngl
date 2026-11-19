@@ -583,15 +583,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _ClickState struct {
-	Run func()
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -600,6 +593,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _ClickState struct {
+	Run func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -647,6 +648,7 @@ type _ImageSourceState struct {
 type snglState struct {
 	xs__inst0      []int
 	visible__inst0 bool
+	_heard         _HeardState
 	__slot0        []cgo.Widget
 	__anchor0      cgo.Widget
 	__inst1_live   map[string]*__child0__inst
@@ -1123,28 +1125,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -2990,6 +2976,8 @@ func snglInit() {
 	m = &snglState{}
 	m.xs__inst0 = []int{}
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__slot0 = []cgo.Widget{}
 	m.__inst1_live = map[string]*__child0__inst{}
 	m.__rendering0 = false
@@ -3205,6 +3193,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:2560d451920ee7647ae95dbb846ab958
 -- run/go/gtk4 --
-pass sha256:16ed642f5c02d7b4fa45537182c28d69
+pass sha256:589847950da812137cf726de5a2e7215
 -- run/none/html --
 pass sha256:86df68ad37dadfd4655aec3013872c9c

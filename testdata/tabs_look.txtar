@@ -1216,6 +1216,18 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _ClickState struct {
 	Run func()
 }
@@ -1249,17 +1261,6 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type _ImageSourceState struct {
 	Url     string
 	Ready   bool
@@ -1272,6 +1273,7 @@ type _ImageSourceState struct {
 }
 
 type snglState struct {
+	_heard               _HeardState
 	tabs__change__copies map[string]cgo.Widget
 	idx                  int
 	changed              int
@@ -3674,28 +3676,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3791,6 +3777,8 @@ func __wrote_extra() {
 
 func snglInit() {
 	m = &snglState{}
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.tabs__change__copies = map[string]cgo.Widget{}
 	m.idx = 0
 	m.changed = -1
@@ -3842,4 +3830,4 @@ pass sha256:fb55da9509d8b8fabcb14cf67466fefe
 -- run/go/fyne --
 pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:a2efd2e24853bdf0d37edaa65315a99f
+pass sha256:b63cdde059c2641c1cae7070f35e427e

@@ -679,6 +679,18 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _LookCssState struct {
 	Name string
 }
@@ -714,18 +726,8 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type snglState struct {
+	_heard              _HeardState
 	src                 string
 	picture__inst0      cgo.Picture
 	__effect0_live      []bool
@@ -3296,28 +3298,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3401,6 +3387,8 @@ func __wrote_src() {
 
 func snglInit() {
 	m = &snglState{}
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.src = "https://example.com/a.png"
 	m.picture__inst0 = LoadPicture(m.src)
 	m.__effect0_live = []bool{}
@@ -3749,7 +3737,7 @@ pass sha256:2dbc2dead625a3509cc8ab5221613c03
 -- run/go/fyne --
 pass sha256:dcfa287e448cefd56ea5e4e4728fa962
 -- run/go/gtk4 --
-pass sha256:bebd3977b0cb249f6a1e6ced6029ce53
+pass sha256:7f7249e0d1a9853def1585a1b3853afa
 -- run/kotlin/android --
 pass sha256:c17aab8690945f25d9e25193303735e9
 -- run/none/html --

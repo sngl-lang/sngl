@@ -2638,6 +2638,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				AST:  decl,
 				Name: name,
 				Type: typ,
+				Pkg:  c.declPkg(),
 			}
 			c.applyMarks(decl, v)
 			c.refuseVarHandlers(spec, name)

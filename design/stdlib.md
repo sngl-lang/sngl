@@ -251,6 +251,20 @@ write. TestGolden fingerprints the checked package, and the library it
 reaches, around `Emit`. A target's copy keeps other targets' override entries
 emptied, since a build still asks whether a declaration is overridden for
 *some* target (`cmd/sngl/testdata/emit_family_refused.txt`).
+A package var names the package that declares it (`Var.Pkg`), and
+`promoteVars` takes each top-level var of another package a body names --
+an import's, or a target package's, which the program imports none of --
+into the program's `Vars`. As a promoted function stands for every
+declaration of its name (`repointPromoted`), so does a promoted var
+(`libVarKey`): a body thawed from the frozen library -- a placed node's
+protocol function, a `#[gen.entry]` -- names the library's declaration where
+the program's copy names the build's, and ReleaseTemps' second run of
+LibFuncs meets one already promoted. Each reference is repointed at one
+declaration, the build's copy, or a copy of the frozen one where the build
+made none; two had C declare the var twice and write a thawed body's write
+to an undeclared local, since C matches a package var by pointer
+(`testdata/gtk4_keys_runs.txtar`, whose `@key` state is a gtk4 package var
+that every gtk4 golden's program, importing no gtk4, also reaches).
 A library declaration is folded only where the build reached it as it copied
 the library, and a protocol function lowering splices in later reaches a
 struct whose declaration nothing folded: frozen, or copied and not folded for

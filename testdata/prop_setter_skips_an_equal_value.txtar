@@ -91,11 +91,12 @@ typedef struct sngl_map_string__int sngl_map_string__int;
 typedef struct s_Link s_Link;
 typedef struct sngl_list_Link sngl_list_Link;
 typedef struct s___ref_bool s___ref_bool;
+typedef struct s_platform_gtk4___HeardState s_platform_gtk4___HeardState;
+typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_list_GtkWidget_p sngl_list_GtkWidget_p;
 typedef struct s___child0__inst s___child0__inst;
 typedef struct s___anon_id_elem_c6a818 s___anon_id_elem_c6a818;
 typedef struct s___ref_func s___ref_func;
-typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_map_string____child0__inst sngl_map_string____child0__inst;
 typedef struct sngl_list___anon_id_elem_c6a818 sngl_list___anon_id_elem_c6a818;
 typedef struct sngl_fn_GtkWidget_p__void sngl_fn_GtkWidget_p__void;
@@ -117,8 +118,6 @@ typedef struct s_platform_gtk4___MenuEntryState s_platform_gtk4___MenuEntryState
 typedef struct sngl_opt__MenuEntryState sngl_opt__MenuEntryState;
 typedef struct s_platform_gtk4___KeyState s_platform_gtk4___KeyState;
 typedef struct sngl_opt__KeyState sngl_opt__KeyState;
-typedef struct s_platform_gtk4___HeardState s_platform_gtk4___HeardState;
-typedef struct sngl_opt__HeardState sngl_opt__HeardState;
 typedef struct s_platform_gtk4___LookCssState s_platform_gtk4___LookCssState;
 typedef struct sngl_opt__LookCssState sngl_opt__LookCssState;
 typedef struct sngl_fn_gpointer_gpointer_gpointer__void sngl_fn_gpointer_gpointer_gpointer__void;
@@ -143,18 +142,19 @@ typedef struct sngl_list_int sngl_list_int;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
 typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
 typedef struct s__classMeasure__result s__classMeasure__result;
-typedef struct sngl_lambda11_env sngl_lambda11_env;
+typedef struct sngl_lambda13_env sngl_lambda13_env;
 typedef struct s_platform_gtk4___IconsState s_platform_gtk4___IconsState;
 typedef struct sngl_opt__IconsState sngl_opt__IconsState;
 typedef struct s_platform_gtk4___Allocation s_platform_gtk4___Allocation;
 typedef struct sngl_opt_string sngl_opt_string;
-typedef struct sngl_lambda17_env sngl_lambda17_env;
-typedef struct sngl_lambda20_env sngl_lambda20_env;
-typedef struct sngl_lambda37_env sngl_lambda37_env;
+typedef struct sngl_lambda19_env sngl_lambda19_env;
+typedef struct sngl_lambda22_env sngl_lambda22_env;
+typedef struct sngl_lambda39_env sngl_lambda39_env;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
 typedef struct s___lambda1_caps s___lambda1_caps;
 typedef struct s___lambda2_caps s___lambda2_caps;
+typedef struct sngl_lambda86_env sngl_lambda86_env;
 typedef struct sngl_fn_bool__void sngl_fn_bool__void;
 typedef struct s___lambda1_caps__env s___lambda1_caps__env;
 typedef struct s___lambda2_caps__env s___lambda2_caps__env;
@@ -191,6 +191,23 @@ typedef struct s___ref_bool {
 	bool value;
 } s___ref_bool;
 
+typedef struct sngl_fn_void__void {
+	void (*fn)(void *env);
+	void *env;
+} sngl_fn_void__void;
+
+typedef struct s_platform_gtk4___HeardState {
+	bool hearing;
+	sngl_string key;
+	bool ctrl;
+	bool alt;
+	bool shift;
+	bool meta;
+	bool editing;
+	bool stopped;
+	sngl_fn_void__void then;
+} s_platform_gtk4___HeardState;
+
 typedef struct sngl_list_GtkWidget_p {
 	GtkWidget * *data;
 	int64_t len;
@@ -214,11 +231,6 @@ typedef struct s___child0__inst {
 	GtkWidget * __n0;
 	GtkWidget * __n6;
 } s___child0__inst;
-
-typedef struct sngl_fn_void__void {
-	void (*fn)(void *env);
-	void *env;
-} sngl_fn_void__void;
 
 typedef struct s___ref_func {
 	sngl_fn_void__void value;
@@ -380,22 +392,6 @@ typedef struct sngl_opt__KeyState {
 	s_platform_gtk4___KeyState value;
 } sngl_opt__KeyState;
 
-typedef struct s_platform_gtk4___HeardState {
-	sngl_string key;
-	bool ctrl;
-	bool alt;
-	bool shift;
-	bool meta;
-	bool editing;
-	bool stopped;
-	sngl_fn_void__void then;
-} s_platform_gtk4___HeardState;
-
-typedef struct sngl_opt__HeardState {
-	bool ok;
-	s_platform_gtk4___HeardState value;
-} sngl_opt__HeardState;
-
 typedef struct s_platform_gtk4___LookCssState {
 	sngl_string name;
 } s_platform_gtk4___LookCssState;
@@ -527,10 +523,10 @@ typedef struct s__classMeasure__result {
 	int64_t out7;
 } s__classMeasure__result;
 
-typedef struct sngl_lambda11_env {
+typedef struct sngl_lambda13_env {
 	sngl_env hdr;
 	GtkWidget * box;
-} sngl_lambda11_env;
+} sngl_lambda13_env;
 
 typedef struct s_platform_gtk4___IconsState {
 	int64_t count;
@@ -554,19 +550,19 @@ typedef struct sngl_opt_string {
 	sngl_string value;
 } sngl_opt_string;
 
-typedef struct sngl_lambda17_env {
+typedef struct sngl_lambda19_env {
 	sngl_env hdr;
 	s___anon_id_elem_c6a818 n;
-} sngl_lambda17_env;
+} sngl_lambda19_env;
 
-typedef struct sngl_lambda20_env {
+typedef struct sngl_lambda22_env {
 	sngl_env hdr;
 	s___anon_id_elem_c6a818 n;
-} sngl_lambda20_env;
+} sngl_lambda22_env;
 
-typedef struct sngl_lambda37_env {
+typedef struct sngl_lambda39_env {
 	sngl_env hdr;
-} sngl_lambda37_env;
+} sngl_lambda39_env;
 
 typedef struct s___lambda0_caps {
 	s___ref_func * __prop___on0;
@@ -584,6 +580,10 @@ typedef struct s___lambda1_caps {
 typedef struct s___lambda2_caps {
 	s___ref_list_string * names__inst0;
 } s___lambda2_caps;
+
+typedef struct sngl_lambda86_env {
+	sngl_env hdr;
+} sngl_lambda86_env;
 
 typedef struct sngl_fn_bool__void {
 	void (*fn)(void *env, bool);
@@ -708,10 +708,10 @@ static int64_t s_platform_gtk4___labelMode(GtkWidget * w);
 static s_platform_gtk4__Measured s_platform_gtk4___labelMeasure(GtkWidget * w, int64_t orientation, int64_t forSize);
 static void s_platform_gtk4___labelAllocate(GtkWidget * w, int64_t width, int64_t height, int64_t baseline);
 static void s_platform_gtk4___barApplyTo(GtkWidget * box, GtkWindow * win);
-static void *sngl_lambda11_env__keep(const void *p);
-static void sngl_lambda11_env__release(void *p);
-static void sngl_lambda11_env__rekeep(void *p);
-static void sngl_lambda11(void *env_);
+static void *sngl_lambda13_env__keep(const void *p);
+static void sngl_lambda13_env__release(void *p);
+static void sngl_lambda13_env__rekeep(void *p);
+static void sngl_lambda13(void *env_);
 static int64_t s_platform_gtk4___entriesFrom(GtkWidget * c);
 static int64_t s_platform_gtk4___menuAdd(GMenu * menu, GSimpleActionGroup * group, int64_t n, GtkWidget * w, bool checkable);
 static int64_t s_platform_gtk4___menuLeavesFrom(GtkWidget * c, GMenu * sub, GSimpleActionGroup * group, int64_t n, bool checkable);
@@ -743,14 +743,14 @@ static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v
 static void sngl_list_GtkWidget_p__drop(sngl_list_GtkWidget_p v);
 static s___anon_id_elem_c6a818 s___anon_id_elem_c6a818__keep(s___anon_id_elem_c6a818 v);
 static void s___anon_id_elem_c6a818__drop(s___anon_id_elem_c6a818 v);
-static void *sngl_lambda17_env__keep(const void *p);
-static void sngl_lambda17_env__release(void *p);
-static void sngl_lambda17_env__rekeep(void *p);
-static void sngl_lambda17(void *env_);
-static void *sngl_lambda20_env__keep(const void *p);
-static void sngl_lambda20_env__release(void *p);
-static void sngl_lambda20_env__rekeep(void *p);
-static void sngl_lambda20(void *env_);
+static void *sngl_lambda19_env__keep(const void *p);
+static void sngl_lambda19_env__release(void *p);
+static void sngl_lambda19_env__rekeep(void *p);
+static void sngl_lambda19(void *env_);
+static void *sngl_lambda22_env__keep(const void *p);
+static void sngl_lambda22_env__release(void *p);
+static void sngl_lambda22_env__rekeep(void *p);
+static void sngl_lambda22(void *env_);
 static void sngl_list_GtkWidget_p__unshare(sngl_list_GtkWidget_p *l);
 static sngl_map_string____child0__inst sngl_map_string____child0__inst__keep(sngl_map_string____child0__inst v);
 static void sngl_map_string____child0__inst__drop(sngl_map_string____child0__inst v);
@@ -765,7 +765,7 @@ static s_Link s_Link__keep(s_Link v);
 static sngl_list_Link sngl_list_Link__keep(sngl_list_Link v);
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v);
 static void sngl_list_string__unshare(sngl_list_string *l);
-static void sngl_lambda37(void *env_);
+static void sngl_lambda39(void *env_);
 static s___lambda0_caps s___lambda0_caps__keep(s___lambda0_caps v);
 static void s___lambda0_caps__drop(s___lambda0_caps v);
 static void s___lambda0_caps__visit(s___lambda0_caps v, sngl_visit fn);
@@ -792,6 +792,7 @@ static void s___ref_list_string__release(void *p);
 static void s___ref_list_string__rekeep(void *p);
 static void s___ref_bool__release(void *p);
 static void s___ref_bool__rekeep(void *p);
+static void sngl_lambda86(void *env_);
 static s___lambda1_caps s___lambda1_caps__keep(s___lambda1_caps v);
 static void s___lambda1_caps__drop(s___lambda1_caps v);
 static void s___lambda1_caps__visit(s___lambda1_caps v, sngl_visit fn);
@@ -1099,15 +1100,6 @@ static sngl_opt__KeyState sngl_held__KeyState(void *p) {
 	return o;
 }
 
-static sngl_opt__HeardState sngl_held__HeardState(void *p) {
-	sngl_opt__HeardState o = {0};
-	if (p != NULL) {
-		o.ok = true;
-		o.value = *(s_platform_gtk4___HeardState *)p;
-	}
-	return o;
-}
-
 static s_platform_gtk4___HeardState s_platform_gtk4___HeardState__keep(s_platform_gtk4___HeardState v) {
 	v.key = sngl_string_keep(v.key);
 	v.then = sngl_fn_void__void__keep(v.then);
@@ -1117,11 +1109,6 @@ static s_platform_gtk4___HeardState s_platform_gtk4___HeardState__keep(s_platfor
 static void s_platform_gtk4___HeardState__drop(s_platform_gtk4___HeardState v) {
 	sngl_drop((v.key).ptr);
 	sngl_fn_void__void__drop(v.then);
-}
-
-static void sngl_held_release__HeardState(void *p) {
-	s_platform_gtk4___HeardState__drop((*(s_platform_gtk4___HeardState *)p));
-	free(p);
 }
 
 static sngl_opt__LookCssState sngl_held__LookCssState(void *p) {
@@ -1443,20 +1430,20 @@ static s__classMeasure__result sngl_ccall_GtkWidgetClass_measure__classMeasure(G
 	return r;
 }
 
-static void sngl_lambda11_env__release(void *p) {
-	sngl_lambda11_env *e = p;
+static void sngl_lambda13_env__release(void *p) {
+	sngl_lambda13_env *e = p;
 	(void)e;
 }
 
-static void sngl_lambda11_env__rekeep(void *p) {
-	sngl_lambda11_env *e = p;
+static void sngl_lambda13_env__rekeep(void *p) {
+	sngl_lambda13_env *e = p;
 	(void)e;
 }
 
-static void *sngl_lambda11_env__keep(const void *p) {
-	sngl_lambda11_env *e = sngl_counted_new(p, sizeof(sngl_lambda11_env), sngl_lambda11_env__release, sngl_lambda11_env__rekeep, NULL);
+static void *sngl_lambda13_env__keep(const void *p) {
+	sngl_lambda13_env *e = sngl_counted_new(p, sizeof(sngl_lambda13_env), sngl_lambda13_env__release, sngl_lambda13_env__rekeep, NULL);
 	e->hdr.counted = true;
-	sngl_lambda11_env__rekeep(e);
+	sngl_lambda13_env__rekeep(e);
 	return e;
 }
 
@@ -1632,41 +1619,41 @@ static void s___anon_id_elem_c6a818__drop(s___anon_id_elem_c6a818 v) {
 	sngl_drop((v.elem).ptr);
 }
 
-static void sngl_lambda17_env__release(void *p) {
-	sngl_lambda17_env *e = p;
+static void sngl_lambda19_env__release(void *p) {
+	sngl_lambda19_env *e = p;
 	s___anon_id_elem_c6a818__drop(e->n);
 	(void)e;
 }
 
-static void sngl_lambda17_env__rekeep(void *p) {
-	sngl_lambda17_env *e = p;
+static void sngl_lambda19_env__rekeep(void *p) {
+	sngl_lambda19_env *e = p;
 	e->n = s___anon_id_elem_c6a818__keep(e->n);
 	(void)e;
 }
 
-static void *sngl_lambda17_env__keep(const void *p) {
-	sngl_lambda17_env *e = sngl_counted_new(p, sizeof(sngl_lambda17_env), sngl_lambda17_env__release, sngl_lambda17_env__rekeep, NULL);
+static void *sngl_lambda19_env__keep(const void *p) {
+	sngl_lambda19_env *e = sngl_counted_new(p, sizeof(sngl_lambda19_env), sngl_lambda19_env__release, sngl_lambda19_env__rekeep, NULL);
 	e->hdr.counted = true;
-	sngl_lambda17_env__rekeep(e);
+	sngl_lambda19_env__rekeep(e);
 	return e;
 }
 
-static void sngl_lambda20_env__release(void *p) {
-	sngl_lambda20_env *e = p;
+static void sngl_lambda22_env__release(void *p) {
+	sngl_lambda22_env *e = p;
 	s___anon_id_elem_c6a818__drop(e->n);
 	(void)e;
 }
 
-static void sngl_lambda20_env__rekeep(void *p) {
-	sngl_lambda20_env *e = p;
+static void sngl_lambda22_env__rekeep(void *p) {
+	sngl_lambda22_env *e = p;
 	e->n = s___anon_id_elem_c6a818__keep(e->n);
 	(void)e;
 }
 
-static void *sngl_lambda20_env__keep(const void *p) {
-	sngl_lambda20_env *e = sngl_counted_new(p, sizeof(sngl_lambda20_env), sngl_lambda20_env__release, sngl_lambda20_env__rekeep, NULL);
+static void *sngl_lambda22_env__keep(const void *p) {
+	sngl_lambda22_env *e = sngl_counted_new(p, sizeof(sngl_lambda22_env), sngl_lambda22_env__release, sngl_lambda22_env__rekeep, NULL);
 	e->hdr.counted = true;
-	sngl_lambda20_env__rekeep(e);
+	sngl_lambda22_env__rekeep(e);
 	return e;
 }
 
@@ -2162,16 +2149,16 @@ static char * s___rel19;
 static char * s___rel20;
 static char * s___rel21;
 static char * s___rel22;
-static char * s___rel24;
+static char * s___rel25;
 static char * s___rel26;
-static char * s___rel27;
+static char * s___rel30;
 static char * s___rel31;
 static char * s___rel32;
 static char * s___rel33;
-static char * s___rel34;
+static char * s___rel36;
 static char * s___rel37;
 static char * s___rel38;
-static char * s___rel39;
+static char * s___rel43;
 static char * s___rel44;
 static char * s___rel45;
 static char * s___rel46;
@@ -2181,18 +2168,17 @@ static char * s___rel49;
 static char * s___rel50;
 static char * s___rel51;
 static char * s___rel52;
-static char * s___rel53;
+static char * s___rel54;
 static char * s___rel55;
 static char * s___rel56;
 static char * s___rel57;
-static char * s___rel58;
-static char * s___rel63;
-static char * s___rel65;
-static char * s___rel68;
-static char * s___rel70;
-static char * s___rel77;
-static char * s___rel79;
-static char * s___rel81;
+static char * s___rel62;
+static char * s___rel64;
+static char * s___rel67;
+static char * s___rel69;
+static char * s___rel76;
+static char * s___rel78;
+static char * s___rel80;
 static s___ref_list_string * s_names__inst0;
 static sngl_list_string s_tags__inst0;
 static sngl_map_string__int s_seen__inst0;
@@ -2200,6 +2186,7 @@ static sngl_string s_picked__inst0;
 static s_Link s_chain__inst0;
 static s_Link s_other__inst0;
 static s___ref_bool * s_visible__inst0;
+static s_platform_gtk4___HeardState s_platform_gtk4___heard;
 static sngl_list_GtkWidget_p s___slot0;
 static GtkWidget * s___anchor0;
 static sngl_map_string____child0__inst s___inst1_live;
@@ -2333,7 +2320,7 @@ static void s_platform_gtk4___applyLook(GtkWidget * w, s_platform_gtk4__Look loo
 		s_platform_gtk4___watchParent(w);
 	}
 	s_platform_gtk4___lookPlace(w);
-	GtkWidget * box = sngl_weak((GObject *)(w), s___rel32);
+	GtkWidget * box = sngl_weak((GObject *)(w), s___rel31);
 	if (box != NULL) {
 		s_platform_gtk4___boxUpdate(box);
 	}
@@ -2422,11 +2409,11 @@ static void s_platform_gtk4___rtSignalConnect(GtkWidget * w, sngl_string signal,
 }
 
 static void s_platform_gtk4___appAttach(GtkWidget * box) {
-	if (g_object_get_data((GObject *)(box), s___rel37) != NULL) {
+	if (g_object_get_data((GObject *)(box), s___rel36) != NULL) {
 		sngl_toplevel_attach(box);
 		return;
 	}
-	GListStore * ws = g_object_get_data((GObject *)(box), s___rel38);
+	GListStore * ws = g_object_get_data((GObject *)(box), s___rel37);
 	if (ws != NULL) {
 		if (g_object_get_data((GObject *)(box), s___rel12) == NULL) {
 			g_object_ref_sink((gpointer)(box));
@@ -2589,16 +2576,16 @@ static GtkWidget * s_platform_gtk4___slotHost(GtkWidget * w) {
 }
 
 static void s_platform_gtk4___menuMoved(GtkWidget * box, GtkWidget * child) {
-	if ((sngl_held__BackState(g_object_get_data((GObject *)(child), s___rel47))).ok) {
-		if (g_object_get_data((GObject *)(box), s___rel37) != NULL) {
+	if ((sngl_held__BackState(g_object_get_data((GObject *)(child), s___rel46))).ok) {
+		if (g_object_get_data((GObject *)(box), s___rel36) != NULL) {
 			s_platform_gtk4___barApply(box);
 		}
 	} else {
-		if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(child), s___rel48))).ok) {
-			if (g_object_get_data((GObject *)(box), s___rel37) != NULL) {
+		if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(child), s___rel47))).ok) {
+			if (g_object_get_data((GObject *)(box), s___rel36) != NULL) {
 				s_platform_gtk4___menuApply(box);
 			} else {
-				if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(box), s___rel48))).ok) {
+				if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(box), s___rel47))).ok) {
 					s_platform_gtk4___entryChanged(box);
 				}
 			}
@@ -2634,18 +2621,22 @@ static bool s_platform_gtk4___hear(GtkWidget * box, sngl_string key, bool ctrl, 
 	if (!(k).ok) {
 		return false;
 	}
-	GObject * d = (GObject *)(gdk_display_get_default());
-	sngl_opt__HeardState outer = sngl_held__HeardState(g_object_get_data(d, s___rel24));
-	g_object_set_data_full(d, s___rel24, sngl_heap_copy(&(s_platform_gtk4___HeardState[]){s_platform_gtk4___HeardState__keep((s_platform_gtk4___HeardState){.key = key, .ctrl = ctrl, .alt = alt, .shift = shift, .meta = meta, .editing = editing, .stopped = false, .then = then})}, sizeof(s_platform_gtk4___HeardState)), (GDestroyNotify)(void (*)(void))sngl_held_release__HeardState);
+	s_platform_gtk4___HeardState outer = s_platform_gtk4___heard;
+	{
+	s_platform_gtk4___HeardState __kept5 = s_platform_gtk4___HeardState__keep((s_platform_gtk4___HeardState){.hearing = true, .key = key, .ctrl = ctrl, .alt = alt, .shift = shift, .meta = meta, .editing = editing, .stopped = false, .then = then});
+	s_platform_gtk4___HeardState *__slot5 = &(s_platform_gtk4___heard);
+	s_platform_gtk4___HeardState__drop(*__slot5);
+	*__slot5 = __kept5;
+}
 	sngl_fn_void__void run = (k).value.run;
 	(run).fn((run).env);
-	sngl_opt__HeardState mine = sngl_held__HeardState(g_object_get_data(d, s___rel24));
-	bool stopped = ((mine).ok && (mine).value.stopped);
-	if ((outer).ok) {
-		g_object_set_data_full(d, s___rel24, sngl_heap_copy(&(s_platform_gtk4___HeardState[]){s_platform_gtk4___HeardState__keep((outer).value)}, sizeof(s_platform_gtk4___HeardState)), (GDestroyNotify)(void (*)(void))sngl_held_release__HeardState);
-	} else {
-		g_object_set_data(d, s___rel24, NULL);
-	}
+	bool stopped = s_platform_gtk4___heard.stopped;
+	{
+	s_platform_gtk4___HeardState __kept6 = s_platform_gtk4___HeardState__keep(outer);
+	s_platform_gtk4___HeardState *__slot6 = &(s_platform_gtk4___heard);
+	s_platform_gtk4___HeardState__drop(*__slot6);
+	*__slot6 = __kept6;
+}
 	return stopped;
 }
 
@@ -2658,15 +2649,15 @@ static s_platform_gtk4___LookState s_platform_gtk4___lookOf(GtkWidget * w) {
 }
 
 static void s_platform_gtk4___lookSetCss(GtkWidget * w, sngl_string decls) {
-	GtkCssProvider * css = g_object_get_data((GObject *)(w), s___rel26);
-	sngl_opt__LookCssState held = sngl_held__LookCssState(g_object_get_data((GObject *)(w), s___rel27));
+	GtkCssProvider * css = g_object_get_data((GObject *)(w), s___rel25);
+	sngl_opt__LookCssState held = sngl_held__LookCssState(g_object_get_data((GObject *)(w), s___rel26));
 	if (sngl_string_eq(decls, SNGL_STR(""))) {
 		if ((css != NULL) && (held).ok) {
-			char * __rel25 = sngl_cstring((held).value.name);
-			gtk_widget_remove_css_class(w, __rel25);
-			s_x_c__free(__rel25);
+			char * __rel24 = sngl_cstring((held).value.name);
+			gtk_widget_remove_css_class(w, __rel24);
+			s_x_c__free(__rel24);
+			g_object_set_data((GObject *)(w), s___rel25, NULL);
 			g_object_set_data((GObject *)(w), s___rel26, NULL);
-			g_object_set_data((GObject *)(w), s___rel27, NULL);
 		}
 		return;
 	}
@@ -2678,20 +2669,20 @@ static void s_platform_gtk4___lookSetCss(GtkWidget * w, sngl_string decls) {
 	}
 	sngl_string rule = s_platform_gtk4___lookRule(w, name, decls);
 	if (css != NULL) {
-		char * __rel28 = sngl_cstring(rule);
-		sngl_css_load(css, __rel28);
-		s_x_c__free(__rel28);
+		char * __rel27 = sngl_cstring(rule);
+		sngl_css_load(css, __rel27);
+		s_x_c__free(__rel27);
 	} else {
 		GtkCssProvider * made = gtk_css_provider_new();
-		char * __rel29 = sngl_cstring(rule);
-		sngl_css_load(made, __rel29);
-		s_x_c__free(__rel29);
-		g_object_set_data_full((GObject *)(w), s___rel27, sngl_heap_copy(&(s_platform_gtk4___LookCssState[]){s_platform_gtk4___LookCssState__keep((s_platform_gtk4___LookCssState){.name = name})}, sizeof(s_platform_gtk4___LookCssState)), (GDestroyNotify)(void (*)(void))sngl_held_release__LookCssState);
-		g_object_set_data_full((GObject *)(w), s___rel26, (gpointer)(made), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___cssGone);
+		char * __rel28 = sngl_cstring(rule);
+		sngl_css_load(made, __rel28);
+		s_x_c__free(__rel28);
+		g_object_set_data_full((GObject *)(w), s___rel26, sngl_heap_copy(&(s_platform_gtk4___LookCssState[]){s_platform_gtk4___LookCssState__keep((s_platform_gtk4___LookCssState){.name = name})}, sizeof(s_platform_gtk4___LookCssState)), (GDestroyNotify)(void (*)(void))sngl_held_release__LookCssState);
+		g_object_set_data_full((GObject *)(w), s___rel25, (gpointer)(made), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___cssGone);
 		gtk_style_context_add_provider_for_display(gdk_display_get_default(), (GtkStyleProvider *)(made), (guint)(600));
-		char * __rel30 = sngl_cstring(name);
-		gtk_widget_add_css_class(w, __rel30);
-		s_x_c__free(__rel30);
+		char * __rel29 = sngl_cstring(name);
+		gtk_widget_add_css_class(w, __rel29);
+		s_x_c__free(__rel29);
 	}
 }
 
@@ -2700,7 +2691,7 @@ static void s_platform_gtk4___watchParent(GtkWidget * w) {
 	if (!l.watching) {
 		l.watching = true;
 		s_platform_gtk4___setLookState(w, l);
-		(void)(int64_t)g_signal_connect_object((gpointer)(w), s___rel31, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___lookParentChanged, (gpointer)(w), (GConnectFlags)(0));
+		(void)(int64_t)g_signal_connect_object((gpointer)(w), s___rel30, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___lookParentChanged, (gpointer)(w), (GConnectFlags)(0));
 	}
 }
 
@@ -2754,7 +2745,7 @@ static void s_platform_gtk4___lookPlace(GtkWidget * w) {
 static void s_platform_gtk4___boxUpdate(GtkWidget * box) {
 	if (g_type_check_instance_is_a((GTypeInstance *)((gpointer)(box)), (GType)((int64_t)gtk_box_get_type())) != 0) {
 		s_platform_gtk4___LookState l = s_platform_gtk4___lookOf(box);
-		bool ours = (g_object_get_data((GObject *)(box), s___rel33) != NULL);
+		bool ours = (g_object_get_data((GObject *)(box), s___rel32) != NULL);
 		if (l.grid) {
 			gtk_widget_queue_resize(box);
 		} else {
@@ -2787,7 +2778,7 @@ static void s_platform_gtk4___lookSetSpacing(GtkWidget * w, bool spaced, int64_t
 		l.spaced = true;
 		l.spacing = spacing;
 		s_platform_gtk4___setLookState(w, l);
-		if (g_object_get_data((GObject *)(w), s___rel33) != NULL) {
+		if (g_object_get_data((GObject *)(w), s___rel32) != NULL) {
 			gtk_widget_queue_resize(w);
 		} else {
 			gtk_box_set_spacing((GtkBox *)(w), (int)(spacing));
@@ -2804,7 +2795,7 @@ static void s_platform_gtk4___lookSetGrid(GtkWidget * box, bool grid, int64_t co
 		l.grid = true;
 		s_platform_gtk4___setLookState(box, l);
 		if (!was) {
-			if (g_object_get_data((GObject *)(box), s___rel33) == NULL) {
+			if (g_object_get_data((GObject *)(box), s___rel32) == NULL) {
 				GtkLayoutManager * own = gtk_widget_get_layout_manager(box);
 				if (own != NULL) {
 					if (g_type_check_instance_is_a((GTypeInstance *)((gpointer)(own)), (GType)((int64_t)gtk_box_layout_get_type())) != 0) {
@@ -2825,15 +2816,15 @@ static void s_platform_gtk4___lookSetCross(GtkWidget * w, int64_t cross) {
 	s_platform_gtk4___LookState l = s_platform_gtk4___lookOf(w);
 	if (cross != l.cross) {
 		l.cross = cross;
-		gpointer kids = g_object_get_data((GObject *)(w), s___rel34);
+		gpointer kids = g_object_get_data((GObject *)(w), s___rel33);
 		if ((cross != 0) && (kids == NULL)) {
 			GListModel * m = gtk_widget_observe_children(w);
 			l.kidsHandler = (int64_t)g_signal_connect_object((gpointer)(m), s___rel5, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___lookKidsChanged, (gpointer)(w), (GConnectFlags)(0));
-			g_object_set_data_full((GObject *)(w), s___rel34, (gpointer)(m), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
+			g_object_set_data_full((GObject *)(w), s___rel33, (gpointer)(m), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
 		} else {
 			if ((cross == 0) && (kids != NULL)) {
 				g_signal_handler_disconnect(kids, (gulong)(l.kidsHandler));
-				g_object_set_data((GObject *)(w), s___rel34, NULL);
+				g_object_set_data((GObject *)(w), s___rel33, NULL);
 			}
 		}
 		s_platform_gtk4___setLookState(w, l);
@@ -2847,7 +2838,7 @@ static void s_platform_gtk4___lookSetText(GtkWidget * w, int64_t align, int64_t 
 	} else {
 		if ((g_type_check_instance_is_a((GTypeInstance *)((gpointer)(w)), (GType)((int64_t)gtk_button_get_type())) != 0) || (g_type_check_instance_is_a((GTypeInstance *)((gpointer)(w)), (GType)((int64_t)gtk_check_button_get_type())) != 0)) {
 			bool done = false;
-			for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop5 = {s_platform_gtk4___childrenOf(w, false), 0}; __loop5.i < __loop5.l.len; __loop5.i++) { GtkWidget * c = __loop5.l.data[__loop5.i];
+			for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop7 = {s_platform_gtk4___childrenOf(w, false), 0}; __loop7.i < __loop7.l.len; __loop7.i++) { GtkWidget * c = __loop7.l.data[__loop7.i];
 				if (!done && (g_type_check_instance_is_a((GTypeInstance *)((gpointer)(c)), (GType)((int64_t)gtk_label_get_type())) != 0)) {
 					done = true;
 					s_platform_gtk4___lookText(w, c, align, lines, wrap);
@@ -2875,10 +2866,10 @@ static void s_platform_gtk4___lookSizeLabel(GtkWidget * w, int64_t wrap) {
 }
 
 static GtkWidget * s_platform_gtk4___dataPlain(GObject * o, sngl_string key) {
-	char * __rel35 = sngl_cstring(key);
-	GtkWidget * __ret36 = (GtkWidget *)(g_object_get_data(o, __rel35));
-	s_x_c__free(__rel35);
-	return __ret36;
+	char * __rel34 = sngl_cstring(key);
+	GtkWidget * __ret35 = (GtkWidget *)(g_object_get_data(o, __rel34));
+	s_x_c__free(__rel34);
+	return __ret35;
 }
 
 static bool s_platform_gtk4___stackPutLast(GtkWidget * box, GtkWidget * child) {
@@ -2896,7 +2887,7 @@ static GtkWidget * s_platform_gtk4___wrapNew(GtkWidget * box) {
 	GtkWidget * top = (GtkWidget *)(s_platform_gtk4___rtToplevelNew());
 	s_platform_gtk4___rtBoxAppend(top, box);
 	g_object_set_data((GObject *)(box), s___rel13, (gpointer)(top));
-	g_object_set_data((GObject *)(top), s___rel39, (gpointer)(box));
+	g_object_set_data((GObject *)(top), s___rel38, (gpointer)(box));
 	return top;
 }
 
@@ -2908,25 +2899,25 @@ static void s_platform_gtk4___barApply(GtkWidget * box) {
 }
 
 static GtkWidget * s_platform_gtk4___barPart(GtkWidget * box, sngl_string key) {
-	char * __rel40 = sngl_cstring(key);
-	GtkWidget * __ret41 = g_object_get_data((GObject *)(box), __rel40);
-	s_x_c__free(__rel40);
-	return __ret41;
+	char * __rel39 = sngl_cstring(key);
+	GtkWidget * __ret40 = g_object_get_data((GObject *)(box), __rel39);
+	s_x_c__free(__rel39);
+	return __ret40;
 }
 
 static int64_t s_platform_gtk4___menuItemsFrom(GtkWidget * c, GMenu * menu, GSimpleActionGroup * group, int64_t n) {
 	if (c != NULL) {
 		int64_t next = n;
-		sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel48));
+		sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel47));
 		if ((e).ok) {
 			if (s_platform_gtk4___entriesFrom(gtk_widget_get_first_child(c)) == 0) {
 				next = s_platform_gtk4___menuAdd(menu, group, n, c, (e).value.checked);
 			} else {
 				GMenu * sub = g_menu_new();
 				next = s_platform_gtk4___menuLeavesFrom(gtk_widget_get_first_child(c), sub, group, n, s_platform_gtk4___checkedFrom(gtk_widget_get_first_child(c)));
-				char * __rel42 = sngl_cstring((e).value.label);
-				g_menu_append_submenu(menu, __rel42, (GMenuModel *)(sub));
-				s_x_c__free(__rel42);
+				char * __rel41 = sngl_cstring((e).value.label);
+				g_menu_append_submenu(menu, __rel41, (GMenuModel *)(sub));
+				s_x_c__free(__rel41);
 				g_object_unref((gpointer)(sub));
 			}
 		}
@@ -2937,7 +2928,7 @@ static int64_t s_platform_gtk4___menuItemsFrom(GtkWidget * c, GMenu * menu, GSim
 
 static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c) {
 	if (c != NULL) {
-		if ((sngl_held__BackState(g_object_get_data((GObject *)(c), s___rel47))).ok) {
+		if ((sngl_held__BackState(g_object_get_data((GObject *)(c), s___rel46))).ok) {
 			return c;
 		}
 		return s_platform_gtk4___backFrom(gtk_widget_get_next_sibling(c));
@@ -2946,7 +2937,7 @@ static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c) {
 }
 
 static void s_platform_gtk4___backPress(GtkWidget * w) {
-	sngl_opt__BackState b = sngl_held__BackState(g_object_get_data((GObject *)(w), s___rel47));
+	sngl_opt__BackState b = sngl_held__BackState(g_object_get_data((GObject *)(w), s___rel46));
 	if ((b).ok) {
 		((b).value.press).fn(((b).value.press).env);
 	}
@@ -2975,7 +2966,7 @@ static bool s_platform_gtk4___composing(GtkWidget * w) {
 }
 
 static sngl_string s_platform_gtk4___keyName(int64_t keyval, int64_t state) {
-	for (struct { sngl_list__NamedKey l; int64_t i; } __loop6 = {sngl_list__NamedKey_of(40, (s_platform_gtk4___NamedKey[]){(s_platform_gtk4___NamedKey){.keyval = 65293, .name = SNGL_STR("Enter")}, (s_platform_gtk4___NamedKey){.keyval = 65421, .name = SNGL_STR("Enter")}, (s_platform_gtk4___NamedKey){.keyval = 65076, .name = SNGL_STR("Enter")}, (s_platform_gtk4___NamedKey){.keyval = 65289, .name = SNGL_STR("Tab")}, (s_platform_gtk4___NamedKey){.keyval = 65417, .name = SNGL_STR("Tab")}, (s_platform_gtk4___NamedKey){.keyval = 65056, .name = SNGL_STR("Tab")}, (s_platform_gtk4___NamedKey){.keyval = 65307, .name = SNGL_STR("Escape")}, (s_platform_gtk4___NamedKey){.keyval = 65288, .name = SNGL_STR("Backspace")}, (s_platform_gtk4___NamedKey){.keyval = 65535, .name = SNGL_STR("Delete")}, (s_platform_gtk4___NamedKey){.keyval = 65439, .name = SNGL_STR("Delete")}, (s_platform_gtk4___NamedKey){.keyval = 65379, .name = SNGL_STR("Insert")}, (s_platform_gtk4___NamedKey){.keyval = 65438, .name = SNGL_STR("Insert")}, (s_platform_gtk4___NamedKey){.keyval = 65362, .name = SNGL_STR("ArrowUp")}, (s_platform_gtk4___NamedKey){.keyval = 65431, .name = SNGL_STR("ArrowUp")}, (s_platform_gtk4___NamedKey){.keyval = 65364, .name = SNGL_STR("ArrowDown")}, (s_platform_gtk4___NamedKey){.keyval = 65433, .name = SNGL_STR("ArrowDown")}, (s_platform_gtk4___NamedKey){.keyval = 65361, .name = SNGL_STR("ArrowLeft")}, (s_platform_gtk4___NamedKey){.keyval = 65430, .name = SNGL_STR("ArrowLeft")}, (s_platform_gtk4___NamedKey){.keyval = 65363, .name = SNGL_STR("ArrowRight")}, (s_platform_gtk4___NamedKey){.keyval = 65432, .name = SNGL_STR("ArrowRight")}, (s_platform_gtk4___NamedKey){.keyval = 65360, .name = SNGL_STR("Home")}, (s_platform_gtk4___NamedKey){.keyval = 65429, .name = SNGL_STR("Home")}, (s_platform_gtk4___NamedKey){.keyval = 65367, .name = SNGL_STR("End")}, (s_platform_gtk4___NamedKey){.keyval = 65436, .name = SNGL_STR("End")}, (s_platform_gtk4___NamedKey){.keyval = 65365, .name = SNGL_STR("PageUp")}, (s_platform_gtk4___NamedKey){.keyval = 65434, .name = SNGL_STR("PageUp")}, (s_platform_gtk4___NamedKey){.keyval = 65366, .name = SNGL_STR("PageDown")}, (s_platform_gtk4___NamedKey){.keyval = 65435, .name = SNGL_STR("PageDown")}, (s_platform_gtk4___NamedKey){.keyval = 65470, .name = SNGL_STR("F1")}, (s_platform_gtk4___NamedKey){.keyval = 65471, .name = SNGL_STR("F2")}, (s_platform_gtk4___NamedKey){.keyval = 65472, .name = SNGL_STR("F3")}, (s_platform_gtk4___NamedKey){.keyval = 65473, .name = SNGL_STR("F4")}, (s_platform_gtk4___NamedKey){.keyval = 65474, .name = SNGL_STR("F5")}, (s_platform_gtk4___NamedKey){.keyval = 65475, .name = SNGL_STR("F6")}, (s_platform_gtk4___NamedKey){.keyval = 65476, .name = SNGL_STR("F7")}, (s_platform_gtk4___NamedKey){.keyval = 65477, .name = SNGL_STR("F8")}, (s_platform_gtk4___NamedKey){.keyval = 65478, .name = SNGL_STR("F9")}, (s_platform_gtk4___NamedKey){.keyval = 65479, .name = SNGL_STR("F10")}, (s_platform_gtk4___NamedKey){.keyval = 65480, .name = SNGL_STR("F11")}, (s_platform_gtk4___NamedKey){.keyval = 65481, .name = SNGL_STR("F12")}}), 0}; __loop6.i < __loop6.l.len; __loop6.i++) { s_platform_gtk4___NamedKey k = __loop6.l.data[__loop6.i];
+	for (struct { sngl_list__NamedKey l; int64_t i; } __loop8 = {sngl_list__NamedKey_of(40, (s_platform_gtk4___NamedKey[]){(s_platform_gtk4___NamedKey){.keyval = 65293, .name = SNGL_STR("Enter")}, (s_platform_gtk4___NamedKey){.keyval = 65421, .name = SNGL_STR("Enter")}, (s_platform_gtk4___NamedKey){.keyval = 65076, .name = SNGL_STR("Enter")}, (s_platform_gtk4___NamedKey){.keyval = 65289, .name = SNGL_STR("Tab")}, (s_platform_gtk4___NamedKey){.keyval = 65417, .name = SNGL_STR("Tab")}, (s_platform_gtk4___NamedKey){.keyval = 65056, .name = SNGL_STR("Tab")}, (s_platform_gtk4___NamedKey){.keyval = 65307, .name = SNGL_STR("Escape")}, (s_platform_gtk4___NamedKey){.keyval = 65288, .name = SNGL_STR("Backspace")}, (s_platform_gtk4___NamedKey){.keyval = 65535, .name = SNGL_STR("Delete")}, (s_platform_gtk4___NamedKey){.keyval = 65439, .name = SNGL_STR("Delete")}, (s_platform_gtk4___NamedKey){.keyval = 65379, .name = SNGL_STR("Insert")}, (s_platform_gtk4___NamedKey){.keyval = 65438, .name = SNGL_STR("Insert")}, (s_platform_gtk4___NamedKey){.keyval = 65362, .name = SNGL_STR("ArrowUp")}, (s_platform_gtk4___NamedKey){.keyval = 65431, .name = SNGL_STR("ArrowUp")}, (s_platform_gtk4___NamedKey){.keyval = 65364, .name = SNGL_STR("ArrowDown")}, (s_platform_gtk4___NamedKey){.keyval = 65433, .name = SNGL_STR("ArrowDown")}, (s_platform_gtk4___NamedKey){.keyval = 65361, .name = SNGL_STR("ArrowLeft")}, (s_platform_gtk4___NamedKey){.keyval = 65430, .name = SNGL_STR("ArrowLeft")}, (s_platform_gtk4___NamedKey){.keyval = 65363, .name = SNGL_STR("ArrowRight")}, (s_platform_gtk4___NamedKey){.keyval = 65432, .name = SNGL_STR("ArrowRight")}, (s_platform_gtk4___NamedKey){.keyval = 65360, .name = SNGL_STR("Home")}, (s_platform_gtk4___NamedKey){.keyval = 65429, .name = SNGL_STR("Home")}, (s_platform_gtk4___NamedKey){.keyval = 65367, .name = SNGL_STR("End")}, (s_platform_gtk4___NamedKey){.keyval = 65436, .name = SNGL_STR("End")}, (s_platform_gtk4___NamedKey){.keyval = 65365, .name = SNGL_STR("PageUp")}, (s_platform_gtk4___NamedKey){.keyval = 65434, .name = SNGL_STR("PageUp")}, (s_platform_gtk4___NamedKey){.keyval = 65366, .name = SNGL_STR("PageDown")}, (s_platform_gtk4___NamedKey){.keyval = 65435, .name = SNGL_STR("PageDown")}, (s_platform_gtk4___NamedKey){.keyval = 65470, .name = SNGL_STR("F1")}, (s_platform_gtk4___NamedKey){.keyval = 65471, .name = SNGL_STR("F2")}, (s_platform_gtk4___NamedKey){.keyval = 65472, .name = SNGL_STR("F3")}, (s_platform_gtk4___NamedKey){.keyval = 65473, .name = SNGL_STR("F4")}, (s_platform_gtk4___NamedKey){.keyval = 65474, .name = SNGL_STR("F5")}, (s_platform_gtk4___NamedKey){.keyval = 65475, .name = SNGL_STR("F6")}, (s_platform_gtk4___NamedKey){.keyval = 65476, .name = SNGL_STR("F7")}, (s_platform_gtk4___NamedKey){.keyval = 65477, .name = SNGL_STR("F8")}, (s_platform_gtk4___NamedKey){.keyval = 65478, .name = SNGL_STR("F9")}, (s_platform_gtk4___NamedKey){.keyval = 65479, .name = SNGL_STR("F10")}, (s_platform_gtk4___NamedKey){.keyval = 65480, .name = SNGL_STR("F11")}, (s_platform_gtk4___NamedKey){.keyval = 65481, .name = SNGL_STR("F12")}}), 0}; __loop8.i < __loop8.l.len; __loop8.i++) { s_platform_gtk4___NamedKey k = __loop8.l.data[__loop8.i];
 		if (k.keyval == keyval) {
 			return k.name;
 		}
@@ -2991,7 +2982,7 @@ static sngl_string s_platform_gtk4___keyName(int64_t keyval, int64_t state) {
 }
 
 static bool s_platform_gtk4___windowAdd(GtkWidget * box, GtkWidget * child) {
-	if (!(g_type_check_instance_is_a((GTypeInstance *)((gpointer)(box)), (GType)((int64_t)gtk_widget_get_type())) != 0) || !(g_object_get_data((GObject *)(child), s___rel37) != NULL)) {
+	if (!(g_type_check_instance_is_a((GTypeInstance *)((gpointer)(box)), (GType)((int64_t)gtk_widget_get_type())) != 0) || !(g_object_get_data((GObject *)(child), s___rel36) != NULL)) {
 		return false;
 	}
 	GListStore * ws = s_platform_gtk4___windowsMade(box);
@@ -3004,16 +2995,16 @@ static bool s_platform_gtk4___windowAdd(GtkWidget * box, GtkWidget * child) {
 
 static bool s_platform_gtk4___tabsAdd(GtkWidget * box, GtkWidget * page) {
 	GtkWidget * nb = gtk_widget_get_first_child(box);
-	if ((sngl_held__TabsState(g_object_get_data((GObject *)(box), s___rel44))).ok && (nb != NULL)) {
-		sngl_opt__TabPageState s = sngl_held__TabPageState(g_object_get_data((GObject *)(page), s___rel63));
+	if ((sngl_held__TabsState(g_object_get_data((GObject *)(box), s___rel43))).ok && (nb != NULL)) {
+		sngl_opt__TabPageState s = sngl_held__TabPageState(g_object_get_data((GObject *)(page), s___rel62));
 		if ((s).ok) {
 			if ((int64_t)gtk_notebook_page_num((GtkNotebook *)(nb), page) < 0) {
 				s_platform_gtk4___tabsQuiet(box, true);
 				(void)(int64_t)gtk_notebook_append_page((GtkNotebook *)(nb), page, NULL);
 				s_platform_gtk4___tabsQuiet(box, false);
-				char * __rel43 = sngl_cstring((s).value.title);
-				gtk_notebook_set_tab_label_text((GtkNotebook *)(nb), page, __rel43);
-				s_x_c__free(__rel43);
+				char * __rel42 = sngl_cstring((s).value.title);
+				gtk_notebook_set_tab_label_text((GtkNotebook *)(nb), page, __rel42);
+				s_x_c__free(__rel42);
 				s_platform_gtk4___tabsSensitive((GtkNotebook *)(nb));
 				s_platform_gtk4___tabsShow(box);
 			}
@@ -3024,7 +3015,7 @@ static bool s_platform_gtk4___tabsAdd(GtkWidget * box, GtkWidget * page) {
 }
 
 static bool s_platform_gtk4___imageAdopt(GtkWidget * box, GtkWidget * child) {
-	if (!(sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel45))).ok || !(g_object_get_data((GObject *)(box), s___rel37) != NULL)) {
+	if (!(sngl_held__ImageSourceState(g_object_get_data((GObject *)(child), s___rel44))).ok || !(g_object_get_data((GObject *)(box), s___rel36) != NULL)) {
 		return false;
 	}
 	g_object_ref((gpointer)(child));
@@ -3036,7 +3027,7 @@ static bool s_platform_gtk4___imageAdopt(GtkWidget * box, GtkWidget * child) {
 }
 
 static void s_platform_gtk4___tabsQuiet(GtkWidget * box, bool quiet) {
-	sngl_opt__TabsState t = sngl_held__TabsState(g_object_get_data((GObject *)(box), s___rel44));
+	sngl_opt__TabsState t = sngl_held__TabsState(g_object_get_data((GObject *)(box), s___rel43));
 	if ((t).ok) {
 		s_platform_gtk4___setTabs(box, (s_platform_gtk4___TabsState){.selected = (t).value.selected, .quiet = quiet});
 	}
@@ -3048,7 +3039,7 @@ static void s_platform_gtk4___tabsSensitive(GtkNotebook * nb) {
 	while (i < n) {
 		GtkWidget * page = gtk_notebook_get_nth_page(nb, (int)(i));
 		if (page != NULL) {
-			sngl_opt__TabPageState s = sngl_held__TabPageState(g_object_get_data((GObject *)(page), s___rel63));
+			sngl_opt__TabPageState s = sngl_held__TabPageState(g_object_get_data((GObject *)(page), s___rel62));
 			GtkWidget * label = gtk_notebook_get_tab_label(nb, page);
 			if (label != NULL) {
 				gtk_widget_set_sensitive(label, (int)((!((s).ok && (s).value.disabled) ? 1 : 0)));
@@ -3059,7 +3050,7 @@ static void s_platform_gtk4___tabsSensitive(GtkNotebook * nb) {
 }
 
 static void s_platform_gtk4___tabsShow(GtkWidget * box) {
-	sngl_opt__TabsState t = sngl_held__TabsState(g_object_get_data((GObject *)(box), s___rel44));
+	sngl_opt__TabsState t = sngl_held__TabsState(g_object_get_data((GObject *)(box), s___rel43));
 	GtkWidget * nb = gtk_widget_get_first_child(box);
 	if ((t).ok && (nb != NULL)) {
 		if (((t).value.selected >= 0) && ((t).value.selected < (int64_t)gtk_notebook_get_n_pages((GtkNotebook *)(nb)))) {
@@ -3071,13 +3062,13 @@ static void s_platform_gtk4___tabsShow(GtkWidget * box) {
 }
 
 static GtkWidget * s_platform_gtk4___slotBox(GtkWidget * w) {
-	GtkWidget * made = g_object_get_data((GObject *)(w), s___rel46);
+	GtkWidget * made = g_object_get_data((GObject *)(w), s___rel45);
 	if (made != NULL) {
 		return made;
 	}
 	GtkWidget * b = gtk_box_new((GtkOrientation)(1), (int)(6));
 	g_object_ref_sink((gpointer)(b));
-	g_object_set_data_full((GObject *)(w), s___rel46, (gpointer)(b), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
+	g_object_set_data_full((GObject *)(w), s___rel45, (gpointer)(b), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
 	return b;
 }
 
@@ -3103,19 +3094,19 @@ static bool s_platform_gtk4___stackPut(GtkWidget * box, GtkWidget * child, GtkWi
 
 static sngl_string s_platform_gtk4___lookClass(void) {
 	GObject * display = (GObject *)(gdk_display_get_default());
-	sngl_opt__LooksState looks = sngl_held__LooksState(g_object_get_data(display, s___rel56));
+	sngl_opt__LooksState looks = sngl_held__LooksState(g_object_get_data(display, s___rel55));
 	int64_t n = 1;
 	if ((looks).ok) {
 		n = ((looks).value.count + 1);
 	}
-	g_object_set_data_full(display, s___rel56, sngl_heap_copy(&(s_platform_gtk4___LooksState[]){(s_platform_gtk4___LooksState){.count = n}}, sizeof(s_platform_gtk4___LooksState)), (GDestroyNotify)(void (*)(void))sngl_held_release__LooksState);
+	g_object_set_data_full(display, s___rel55, sngl_heap_copy(&(s_platform_gtk4___LooksState[]){(s_platform_gtk4___LooksState){.count = n}}, sizeof(s_platform_gtk4___LooksState)), (GDestroyNotify)(void (*)(void))sngl_held_release__LooksState);
 	return sngl_concat(SNGL_STR("sngl-look-"), sngl_int_format((int64_t)(n)));
 }
 
 static sngl_string s_platform_gtk4___lookRule(GtkWidget * w, sngl_string class, sngl_string decls) {
-	sngl_string __snglPart7;
-	sngl_string __snglPart8;
-	sngl_string node = (__snglPart7 = sngl_concat(sngl_string_copy(gtk_widget_get_css_name(w)), SNGL_STR(".")), __snglPart8 = class, sngl_concat(__snglPart7, __snglPart8));
+	sngl_string __snglPart9;
+	sngl_string __snglPart10;
+	sngl_string node = (__snglPart9 = sngl_concat(sngl_string_copy(gtk_widget_get_css_name(w)), SNGL_STR(".")), __snglPart10 = class, sngl_concat(__snglPart9, __snglPart10));
 	if (g_type_check_instance_is_a((GTypeInstance *)((gpointer)(w)), (GType)((int64_t)gtk_popover_get_type())) != 0) {
 		return sngl_concat(sngl_concat(sngl_concat(sngl_concat(sngl_concat(node, SNGL_STR(" > contents, ")), node), SNGL_STR(" > arrow { ")), decls), SNGL_STR(" }"));
 	}
@@ -3136,7 +3127,7 @@ static void s_platform_gtk4___lookParentChanged(gpointer o, gpointer spec, gpoin
 }
 
 static int64_t s_platform_gtk4___boxAxis(GtkWidget * box) {
-	GtkLayoutManager * own = g_object_get_data((GObject *)(box), s___rel33);
+	GtkLayoutManager * own = g_object_get_data((GObject *)(box), s___rel32);
 	if (own != NULL) {
 		return (int64_t)gtk_orientable_get_orientation((GtkOrientable *)(own));
 	}
@@ -3174,7 +3165,7 @@ static void s_platform_gtk4___pin(GtkWidget * box, GtkWidget * w, int64_t axis) 
 	}
 	bl.growers += 1;
 	s_platform_gtk4___setLookState(box, bl);
-	sngl_weak_set((GObject *)(w), s___rel32, box);
+	sngl_weak_set((GObject *)(w), s___rel31, box);
 	s_platform_gtk4___boxUpdate(box);
 	s_platform_gtk4___contentsUpdate(box);
 }
@@ -3226,7 +3217,7 @@ static bool s_platform_gtk4___weightsUneven(GtkWidget * box) {
 	double first = 0.0;
 	bool carried = false;
 	bool uneven = false;
-	for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop9 = {s_platform_gtk4___childrenOf(box, true), 0}; __loop9.i < __loop9.l.len; __loop9.i++) { GtkWidget * c = __loop9.l.data[__loop9.i];
+	for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop11 = {s_platform_gtk4___childrenOf(box, true), 0}; __loop11.i < __loop11.l.len; __loop11.i++) { GtkWidget * c = __loop11.l.data[__loop11.i];
 		double w = s_platform_gtk4___lookWeight(c, o);
 		if (w <= 0.0) {
 			carried = (carried || (gtk_widget_compute_expand(c, (GtkOrientation)(o)) != 0));
@@ -3245,7 +3236,7 @@ static bool s_platform_gtk4___weightsUneven(GtkWidget * box) {
 
 static void s_platform_gtk4___keepBoxLayout(GtkWidget * box, GtkLayoutManager * own) {
 	g_object_ref((gpointer)(own));
-	g_object_set_data_full((GObject *)(box), s___rel33, (gpointer)(own), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
+	g_object_set_data_full((GObject *)(box), s___rel32, (gpointer)(own), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
 }
 
 static int64_t s_platform_gtk4___flexMode(GtkWidget * box) {
@@ -3371,7 +3362,7 @@ static void s_platform_gtk4___flexAllocate(GtkWidget * box, int64_t width, int64
 }
 
 static void s_platform_gtk4___boxRelease(GtkWidget * box) {
-	GtkLayoutManager * own = g_object_steal_data((GObject *)(box), s___rel33);
+	GtkLayoutManager * own = g_object_steal_data((GObject *)(box), s___rel32);
 	if (own != NULL) {
 		s_platform_gtk4___LookState l = s_platform_gtk4___lookOf(box);
 		if (l.spaced) {
@@ -3475,7 +3466,7 @@ static void s_platform_gtk4___lookKidsChanged(gpointer m, int64_t at, int64_t re
 }
 
 static void s_platform_gtk4___placeKids(GtkWidget * box) {
-	for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop10 = {s_platform_gtk4___childrenOf(box, false), 0}; __loop10.i < __loop10.l.len; __loop10.i++) { GtkWidget * c = __loop10.l.data[__loop10.i];
+	for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop12 = {s_platform_gtk4___childrenOf(box, false), 0}; __loop12.i < __loop12.l.len; __loop12.i++) { GtkWidget * c = __loop12.l.data[__loop12.i];
 		s_platform_gtk4___lookPlace(c);
 	}
 }
@@ -3586,14 +3577,14 @@ static void s_platform_gtk4___barApplyTo(GtkWidget * box, GtkWindow * win) {
 			gtk_window_set_titlebar(win, made);
 			GtkWidget * button = gtk_menu_button_new();
 			s_platform_gtk4___setBarPart(box, SNGL_STR("sngl-header-menu"), button);
-			gtk_menu_button_set_icon_name((GtkMenuButton *)(button), s___rel57);
+			gtk_menu_button_set_icon_name((GtkMenuButton *)(button), s___rel56);
 			gtk_header_bar_pack_end((GtkHeaderBar *)(made), button);
 		}
 	}
 	if ((s_platform_gtk4___barPart(box, SNGL_STR("sngl-header-back")) == NULL) && canBack) {
-		GtkWidget * button = gtk_button_new_from_icon_name(s___rel58);
+		GtkWidget * button = gtk_button_new_from_icon_name(s___rel57);
 		s_platform_gtk4___setBarPart(box, SNGL_STR("sngl-header-back"), button);
-		s_platform_gtk4___rtSignalConnect((GtkWidget *)(button), SNGL_STR("clicked"), ((sngl_fn_void__void){sngl_lambda11, sngl_alloc_copy(&(sngl_lambda11_env[]){{.hdr = {sngl_lambda11_env__keep, false}, .box = box}}, sizeof(sngl_lambda11_env))}));
+		s_platform_gtk4___rtSignalConnect((GtkWidget *)(button), SNGL_STR("clicked"), ((sngl_fn_void__void){sngl_lambda13, sngl_alloc_copy(&(sngl_lambda13_env[]){{.hdr = {sngl_lambda13_env__keep, false}, .box = box}}, sizeof(sngl_lambda13_env))}));
 		GtkWidget * header = s_platform_gtk4___barPart(box, SNGL_STR("sngl-header"));
 		if (header != NULL) {
 			gtk_header_bar_pack_start((GtkHeaderBar *)(header), button);
@@ -3615,7 +3606,7 @@ static void s_platform_gtk4___barApplyTo(GtkWidget * box, GtkWindow * win) {
 static int64_t s_platform_gtk4___entriesFrom(GtkWidget * c) {
 	if (c != NULL) {
 		int64_t rest = s_platform_gtk4___entriesFrom(gtk_widget_get_next_sibling(c));
-		if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel48))).ok) {
+		if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel47))).ok) {
 			return (rest + 1);
 		}
 		return rest;
@@ -3624,26 +3615,26 @@ static int64_t s_platform_gtk4___entriesFrom(GtkWidget * c) {
 }
 
 static int64_t s_platform_gtk4___menuAdd(GMenu * menu, GSimpleActionGroup * group, int64_t n, GtkWidget * w, bool checkable) {
-	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel48));
+	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel47));
 	if ((e).ok) {
 		sngl_string name = sngl_concat(SNGL_STR("e"), sngl_int_format((int64_t)(n)));
-		char * __rel60 = sngl_cstring(name);
-		GSimpleAction * a = g_simple_action_new(__rel60, NULL);
-		s_x_c__free(__rel60);
+		char * __rel59 = sngl_cstring(name);
+		GSimpleAction * a = g_simple_action_new(__rel59, NULL);
+		s_x_c__free(__rel59);
 		if (checkable) {
-			char * __rel59 = sngl_cstring(name);
-			a = g_simple_action_new_stateful(__rel59, NULL, g_variant_new_boolean((int)(((e).value.checked ? 1 : 0))));
-			s_x_c__free(__rel59);
+			char * __rel58 = sngl_cstring(name);
+			a = g_simple_action_new_stateful(__rel58, NULL, g_variant_new_boolean((int)(((e).value.checked ? 1 : 0))));
+			s_x_c__free(__rel58);
 		}
 		g_simple_action_set_enabled(a, (int)((!(e).value.disabled ? 1 : 0)));
-		g_signal_connect_object((gpointer)(a), s___rel49, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___menuActivate, (gpointer)(w), (GConnectFlags)(0));
+		g_signal_connect_object((gpointer)(a), s___rel48, (GCallback)(void (*)(void))sngl_static_s_platform_gtk4___menuActivate, (gpointer)(w), (GConnectFlags)(0));
 		g_action_map_add_action((GActionMap *)(group), (GAction *)(a));
 		g_object_unref((gpointer)(a));
-		char * __rel61 = sngl_cstring((e).value.label);
-		char * __rel62 = sngl_cstring(sngl_concat(SNGL_STR("sngl."), name));
-		g_menu_append(menu, __rel61, __rel62);
-		s_x_c__free(__rel62);
+		char * __rel60 = sngl_cstring((e).value.label);
+		char * __rel61 = sngl_cstring(sngl_concat(SNGL_STR("sngl."), name));
+		g_menu_append(menu, __rel60, __rel61);
 		s_x_c__free(__rel61);
+		s_x_c__free(__rel60);
 	}
 	return (n + 1);
 }
@@ -3651,7 +3642,7 @@ static int64_t s_platform_gtk4___menuAdd(GMenu * menu, GSimpleActionGroup * grou
 static int64_t s_platform_gtk4___menuLeavesFrom(GtkWidget * c, GMenu * sub, GSimpleActionGroup * group, int64_t n, bool checkable) {
 	if (c != NULL) {
 		int64_t next = n;
-		if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel48))).ok) {
+		if ((sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel47))).ok) {
 			next = s_platform_gtk4___menuAdd(sub, group, n, c, checkable);
 		}
 		return s_platform_gtk4___menuLeavesFrom(gtk_widget_get_next_sibling(c), sub, group, next, checkable);
@@ -3661,7 +3652,7 @@ static int64_t s_platform_gtk4___menuLeavesFrom(GtkWidget * c, GMenu * sub, GSim
 
 static bool s_platform_gtk4___checkedFrom(GtkWidget * c) {
 	if (c != NULL) {
-		sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel48));
+		sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(c), s___rel47));
 		if ((e).ok && (e).value.checked) {
 			return true;
 		}
@@ -3671,53 +3662,53 @@ static bool s_platform_gtk4___checkedFrom(GtkWidget * c) {
 }
 
 static GListStore * s_platform_gtk4___windowsMade(GtkWidget * box) {
-	GListStore * ws = g_object_get_data((GObject *)(box), s___rel38);
+	GListStore * ws = g_object_get_data((GObject *)(box), s___rel37);
 	if (ws != NULL) {
 		return ws;
 	}
 	GListStore * made = g_list_store_new((GType)((int64_t)g_object_get_type()));
-	g_object_set_data_full((GObject *)(box), s___rel38, (gpointer)((GtkWidget *)(made)), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
+	g_object_set_data_full((GObject *)(box), s___rel37, (gpointer)((GtkWidget *)(made)), (GDestroyNotify)(void (*)(void))sngl_static_s_platform_gtk4___unrefData);
 	return made;
 }
 
 static void s_platform_gtk4___iconApply(GtkWidget * toplevel, GtkWidget * source) {
 	GtkWindow * win = sngl_toplevel_window(toplevel);
-	gpointer tex = g_object_get_data((GObject *)(source), s___rel68);
+	gpointer tex = g_object_get_data((GObject *)(source), s___rel67);
 	if ((win != NULL) && (tex != NULL)) {
 		GObject * display = (GObject *)(gdk_display_get_default());
 		sngl_string dir = s_platform_gtk4___iconDir(display);
 		if (!sngl_string_eq(dir, SNGL_STR(""))) {
 			int64_t count = 1;
-			sngl_opt__IconsState icons = sngl_held__IconsState(g_object_get_data(display, s___rel65));
+			sngl_opt__IconsState icons = sngl_held__IconsState(g_object_get_data(display, s___rel64));
 			if ((icons).ok) {
 				count = ((icons).value.count + 1);
 			}
-			g_object_set_data_full(display, s___rel65, sngl_heap_copy(&(s_platform_gtk4___IconsState[]){s_platform_gtk4___IconsState__keep((s_platform_gtk4___IconsState){.count = count, .dir = dir})}, sizeof(s_platform_gtk4___IconsState)), (GDestroyNotify)(void (*)(void))sngl_held_release__IconsState);
-			sngl_string __snglPart12;
-			sngl_string __snglPart13;
-			sngl_string name = (__snglPart12 = sngl_concat(sngl_concat(SNGL_STR("sngl-icon-"), sngl_int_format((int64_t)((int64_t)getpid()))), SNGL_STR("-")), __snglPart13 = sngl_int_format((int64_t)(count)), sngl_concat(__snglPart12, __snglPart13));
-			char * __rel66 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(dir, SNGL_STR("/")), name), SNGL_STR(".png")));
-			bool __cond67 = (gdk_texture_save_to_png((GdkTexture *)(tex), __rel66) != 0);
-			s_x_c__free(__rel66);
-			if (__cond67) {
-				char * __rel64 = sngl_cstring(name);
-				gtk_window_set_icon_name(win, __rel64);
-				s_x_c__free(__rel64);
+			g_object_set_data_full(display, s___rel64, sngl_heap_copy(&(s_platform_gtk4___IconsState[]){s_platform_gtk4___IconsState__keep((s_platform_gtk4___IconsState){.count = count, .dir = dir})}, sizeof(s_platform_gtk4___IconsState)), (GDestroyNotify)(void (*)(void))sngl_held_release__IconsState);
+			sngl_string __snglPart14;
+			sngl_string __snglPart15;
+			sngl_string name = (__snglPart14 = sngl_concat(sngl_concat(SNGL_STR("sngl-icon-"), sngl_int_format((int64_t)((int64_t)getpid()))), SNGL_STR("-")), __snglPart15 = sngl_int_format((int64_t)(count)), sngl_concat(__snglPart14, __snglPart15));
+			char * __rel65 = sngl_cstring(sngl_concat(sngl_concat(sngl_concat(dir, SNGL_STR("/")), name), SNGL_STR(".png")));
+			bool __cond66 = (gdk_texture_save_to_png((GdkTexture *)(tex), __rel65) != 0);
+			s_x_c__free(__rel65);
+			if (__cond66) {
+				char * __rel63 = sngl_cstring(name);
+				gtk_window_set_icon_name(win, __rel63);
+				s_x_c__free(__rel63);
 			}
 		}
 	}
 }
 
 static void s_platform_gtk4___setTabs(GtkWidget * box, s_platform_gtk4___TabsState t) {
-	g_object_set_data_full((GObject *)(box), s___rel44, sngl_heap_copy(&(s_platform_gtk4___TabsState[]){t}, sizeof(s_platform_gtk4___TabsState)), (GDestroyNotify)(void (*)(void))sngl_held_release__TabsState);
+	g_object_set_data_full((GObject *)(box), s___rel43, sngl_heap_copy(&(s_platform_gtk4___TabsState[]){t}, sizeof(s_platform_gtk4___TabsState)), (GDestroyNotify)(void (*)(void))sngl_held_release__TabsState);
 }
 
 static GtkWidget * s_platform_gtk4___menuHostFrom(GtkWidget * p) {
 	if (p != NULL) {
-		if (g_object_get_data((GObject *)(p), s___rel37) != NULL) {
+		if (g_object_get_data((GObject *)(p), s___rel36) != NULL) {
 			return p;
 		}
-		if (!(sngl_held__MenuEntryState(g_object_get_data((GObject *)(p), s___rel48))).ok) {
+		if (!(sngl_held__MenuEntryState(g_object_get_data((GObject *)(p), s___rel47))).ok) {
 			return NULL;
 		}
 		return s_platform_gtk4___menuHostFrom(gtk_widget_get_parent(p));
@@ -3726,9 +3717,9 @@ static GtkWidget * s_platform_gtk4___menuHostFrom(GtkWidget * p) {
 }
 
 static void s_platform_gtk4___unpin(GtkWidget * w, int64_t axis) {
-	GtkWidget * box = sngl_weak((GObject *)(w), s___rel32);
+	GtkWidget * box = sngl_weak((GObject *)(w), s___rel31);
 	if (box != NULL) {
-		g_object_set_data((GObject *)(w), s___rel32, NULL);
+		g_object_set_data((GObject *)(w), s___rel31, NULL);
 		if ((sngl_held__LookState(g_object_get_data((GObject *)(box), s___rel9))).ok) {
 			s_platform_gtk4___boxUpdate(box);
 			s_platform_gtk4___LookState bl = s_platform_gtk4___lookOf(box);
@@ -3755,9 +3746,9 @@ static void s_platform_gtk4___contentsUpdate(GtkWidget * box) {
 	s_platform_gtk4___LookState l = s_platform_gtk4___lookOf(box);
 	if (l.contents) {
 		double grow = 0.0;
-		for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop14 = {s_platform_gtk4___childrenOf(box, false), 0}; __loop14.i < __loop14.l.len; __loop14.i++) { GtkWidget * c = __loop14.l.data[__loop14.i];
+		for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop16 = {s_platform_gtk4___childrenOf(box, false), 0}; __loop16.i < __loop16.l.len; __loop16.i++) { GtkWidget * c = __loop16.l.data[__loop16.i];
 			s_platform_gtk4___LookState cl = s_platform_gtk4___lookOf(c);
-			GtkWidget * in = sngl_weak((GObject *)(c), s___rel32);
+			GtkWidget * in = sngl_weak((GObject *)(c), s___rel31);
 			if (in != NULL) {
 				if ((in == box) && (cl.grow > grow)) {
 					grow = cl.grow;
@@ -3771,7 +3762,7 @@ static void s_platform_gtk4___contentsUpdate(GtkWidget * box) {
 				s_platform_gtk4___watchParent(box);
 			}
 			s_platform_gtk4___lookPlace(box);
-			GtkWidget * up = sngl_weak((GObject *)(box), s___rel32);
+			GtkWidget * up = sngl_weak((GObject *)(box), s___rel31);
 			if (up != NULL) {
 				s_platform_gtk4___boxUpdate(up);
 			}
@@ -3793,7 +3784,7 @@ static int64_t s_platform_gtk4___boxSpacing(GtkWidget * box) {
 	if (l.spaced) {
 		return l.spacing;
 	}
-	GtkLayoutManager * own = g_object_get_data((GObject *)(box), s___rel33);
+	GtkLayoutManager * own = g_object_get_data((GObject *)(box), s___rel32);
 	if (own != NULL) {
 		return (int64_t)gtk_box_layout_get_spacing((GtkBoxLayout *)(own));
 	}
@@ -3935,9 +3926,9 @@ static sngl_list_GtkWidget_p s_platform_gtk4___childrenInto(sngl_list_GtkWidget_
 }
 
 static void s_platform_gtk4___setBarPart(GtkWidget * box, sngl_string key, GtkWidget * w) {
-	char * __rel69 = sngl_cstring(key);
-	g_object_set_data((GObject *)(box), __rel69, (gpointer)(w));
-	s_x_c__free(__rel69);
+	char * __rel68 = sngl_cstring(key);
+	g_object_set_data((GObject *)(box), __rel68, (gpointer)(w));
+	s_x_c__free(__rel68);
 }
 
 static void s_platform_gtk4___menuActivate(gpointer action, gpointer parameter, gpointer entry) {
@@ -3945,7 +3936,7 @@ static void s_platform_gtk4___menuActivate(gpointer action, gpointer parameter, 
 }
 
 static sngl_string s_platform_gtk4___iconDir(GObject * display) {
-	sngl_opt__IconsState icons = sngl_held__IconsState(g_object_get_data(display, s___rel65));
+	sngl_opt__IconsState icons = sngl_held__IconsState(g_object_get_data(display, s___rel64));
 	int64_t count = 0;
 	if ((icons).ok) {
 		if (!sngl_string_eq((icons).value.dir, SNGL_STR(""))) {
@@ -3953,14 +3944,14 @@ static sngl_string s_platform_gtk4___iconDir(GObject * display) {
 		}
 		count = (icons).value.count;
 	}
-	sngl_opt_string dir = sngl_freed_opt_g_free(g_dir_make_tmp(s___rel70, NULL));
+	sngl_opt_string dir = sngl_freed_opt_g_free(g_dir_make_tmp(s___rel69, NULL));
 	if (!(dir).ok) {
 		return SNGL_STR("");
 	}
-	char * __rel71 = sngl_cstring((dir).value);
-	gtk_icon_theme_add_search_path(gtk_icon_theme_get_for_display(gdk_display_get_default()), __rel71);
-	s_x_c__free(__rel71);
-	g_object_set_data_full(display, s___rel65, sngl_heap_copy(&(s_platform_gtk4___IconsState[]){s_platform_gtk4___IconsState__keep((s_platform_gtk4___IconsState){.count = count, .dir = (dir).value})}, sizeof(s_platform_gtk4___IconsState)), (GDestroyNotify)(void (*)(void))sngl_held_release__IconsState);
+	char * __rel70 = sngl_cstring((dir).value);
+	gtk_icon_theme_add_search_path(gtk_icon_theme_get_for_display(gdk_display_get_default()), __rel70);
+	s_x_c__free(__rel70);
+	g_object_set_data_full(display, s___rel64, sngl_heap_copy(&(s_platform_gtk4___IconsState[]){s_platform_gtk4___IconsState__keep((s_platform_gtk4___IconsState){.count = count, .dir = (dir).value})}, sizeof(s_platform_gtk4___IconsState)), (GDestroyNotify)(void (*)(void))sngl_held_release__IconsState);
 	return (dir).value;
 }
 
@@ -3997,7 +3988,7 @@ static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int m
 }
 
 static void s_platform_gtk4___menuEntrySelect(GtkWidget * w) {
-	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel48));
+	sngl_opt__MenuEntryState e = sngl_held__MenuEntryState(g_object_get_data((GObject *)(w), s___rel47));
 	if ((e).ok) {
 		if (!(e).value.disabled) {
 			((e).value.select).fn(((e).value.select).env);
@@ -4024,23 +4015,23 @@ static void s___renderSlot0(GtkWidget * parent) {
 		s___rendering0 = true;
 		s___renderAgain0 = true;
 		{
-			sngl_catch __finally26 = {.up = sngl_catching};
-			sngl_catching = &__finally26;
-			if (setjmp(__finally26.at) == 0) {
+			sngl_catch __finally28 = {.up = sngl_catching};
+			sngl_catching = &__finally28;
+			if (setjmp(__finally28.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
 					s___anchor0 = (GtkWidget *)(s_platform_gtk4___slotAnchor((GtkWidget *)(parent), (GtkWidget *)(s___anchor0)));
 					sngl_list_GtkWidget_p __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
-	sngl_list_GtkWidget_p __kept15 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
-	sngl_list_GtkWidget_p *__slot15 = &(s___slot0);
-	sngl_list_GtkWidget_p__drop(*__slot15);
-	*__slot15 = __kept15;
+	sngl_list_GtkWidget_p __kept17 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
+	sngl_list_GtkWidget_p *__slot17 = &(s___slot0);
+	sngl_list_GtkWidget_p__drop(*__slot17);
+	*__slot17 = __kept17;
 }
 					sngl_map_string____child0__inst __inst1_next = ((sngl_map_string____child0__inst){0});
 					sngl_map_string__int __inst1_seen = ((sngl_map_string__int){0});
-					for (struct { sngl_list___anon_id_elem_c6a818 l; int64_t i; } __loop16 = {s___identified0(s_names__inst0->value), 0}; __loop16.i < __loop16.l.len; __loop16.i++) { s___anon_id_elem_c6a818 n = __loop16.l.data[__loop16.i];
+					for (struct { sngl_list___anon_id_elem_c6a818 l; int64_t i; } __loop18 = {s___identified0(s_names__inst0->value), 0}; __loop18.i < __loop18.l.len; __loop18.i++) { s___anon_id_elem_c6a818 n = __loop18.l.data[__loop18.i];
 						s___child0__inst * __n3 = NULL;
 						sngl_string __key2 = n.id;
 						int64_t __key2_n = sngl_map_string__int_get(__inst1_seen, __key2, 0);
@@ -4050,7 +4041,7 @@ static void s___renderSlot0(GtkWidget * parent) {
 						}
 						if (sngl_map_string____child0__inst_find(s___inst1_live, __key2) >= 0) {
 							__n3 = sngl_map_string____child0__inst_get(s___inst1_live, __key2, NULL);
-							s___child0__set___on0(__n3, ((sngl_fn_void__void){sngl_lambda17, sngl_alloc_copy(&(sngl_lambda17_env[]){{.hdr = {sngl_lambda17_env__keep, false}, .n = n}}, sizeof(sngl_lambda17_env))}));
+							s___child0__set___on0(__n3, ((sngl_fn_void__void){sngl_lambda19, sngl_alloc_copy(&(sngl_lambda19_env[]){{.hdr = {sngl_lambda19_env__keep, false}, .n = n}}, sizeof(sngl_lambda19_env))}));
 							s___child0__set___p0(__n3, n);
 							s___child0__set___p1(__n3, s_tags__inst0);
 							s___child0__set___p2(__n3, s_picked__inst0);
@@ -4060,7 +4051,7 @@ static void s___renderSlot0(GtkWidget * parent) {
 							if (sngl_map_string____child0__inst_find(s___inst1_live, __key2) >= 0) {
 								s___child0__destroy(sngl_map_string____child0__inst_get(s___inst1_live, __key2, NULL));
 							}
-							s___child0__inst * __n3__made = s___child0__new(n, s_tags__inst0, s_picked__inst0, s_chain__inst0, s_seen__inst0, ((sngl_fn_void__void){sngl_lambda20, sngl_alloc_copy(&(sngl_lambda20_env[]){{.hdr = {sngl_lambda20_env__keep, false}, .n = n}}, sizeof(sngl_lambda20_env))}));
+							s___child0__inst * __n3__made = s___child0__new(n, s_tags__inst0, s_picked__inst0, s_chain__inst0, s_seen__inst0, ((sngl_fn_void__void){sngl_lambda22, sngl_alloc_copy(&(sngl_lambda22_env[]){{.hdr = {sngl_lambda22_env__keep, false}, .n = n}}, sizeof(sngl_lambda22_env))}));
 							__n3 = __n3__made;
 						}
 						(*sngl_map_string____child0__inst_slot(&(__inst1_next), __key2)) = __n3;
@@ -4080,44 +4071,44 @@ static void s___renderSlot0(GtkWidget * parent) {
 						}
 						sngl_list_GtkWidget_p_push_kept(&(s___slot0), __n3__el);
 					}
-					for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop23 = {s___inst1_live, 0}; __loop23.i < __loop23.m.len; __loop23.i++) { sngl_string __inst1_live_k = __loop23.m.keys[__loop23.i]; s___child0__inst * __inst1_live_v = __loop23.m.vals[__loop23.i];
+					for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop25 = {s___inst1_live, 0}; __loop25.i < __loop25.m.len; __loop25.i++) { sngl_string __inst1_live_k = __loop25.m.keys[__loop25.i]; s___child0__inst * __inst1_live_v = __loop25.m.vals[__loop25.i];
 						if (!(sngl_map_string____child0__inst_find(__inst1_next, __inst1_live_k) >= 0)) {
 							s___child0__destroy(__inst1_live_v);
 						}
 					}
 					{
-	sngl_map_string____child0__inst __kept24 = sngl_map_string____child0__inst__keep(__inst1_next);
-	sngl_map_string____child0__inst *__slot24 = &(s___inst1_live);
-	sngl_map_string____child0__inst__drop(*__slot24);
-	*__slot24 = __kept24;
+	sngl_map_string____child0__inst __kept26 = sngl_map_string____child0__inst__keep(__inst1_next);
+	sngl_map_string____child0__inst *__slot26 = &(s___inst1_live);
+	sngl_map_string____child0__inst__drop(*__slot26);
+	*__slot26 = __kept26;
 }
-					for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop25 = {__place0_prev, 0}; __loop25.i < __loop25.l.len; __loop25.i++) { GtkWidget * __place0_prev_e = __loop25.l.data[__loop25.i];
+					for (struct { sngl_list_GtkWidget_p l; int64_t i; } __loop27 = {__place0_prev, 0}; __loop27.i < __loop27.l.len; __loop27.i++) { GtkWidget * __place0_prev_e = __loop27.l.data[__loop27.i];
 						if (sngl_list_GtkWidget_p_index_of(s___slot0, __place0_prev_e) < 0) {
 							gtk_box_remove((GtkBox *)((void *)(parent)), (GtkWidget *)((void *)(__place0_prev_e)));
 						}
 					}
 				}
-				sngl_catching = __finally26.up;
+				sngl_catching = __finally28.up;
 				s___rendering0 = false;
 			} else {
-				__finally26.message = sngl_raised.message;
-				__finally26.kind = sngl_raised.kind;
+				__finally28.message = sngl_raised.message;
+				__finally28.kind = sngl_raised.kind;
 				s___rendering0 = false;
-				sngl_raise(__finally26.message, __finally26.kind);
+				sngl_raise(__finally28.message, __finally28.kind);
 			}
 		}
 	}
 }
 
 static void s___snglTeardown(void) {
-	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop27 = {s___inst1_live, 0}; __loop27.i < __loop27.m.len; __loop27.i++) { sngl_string __inst1_live_dk = __loop27.m.keys[__loop27.i]; s___child0__inst * __inst1_live_dv = __loop27.m.vals[__loop27.i];
+	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop29 = {s___inst1_live, 0}; __loop29.i < __loop29.m.len; __loop29.i++) { sngl_string __inst1_live_dk = __loop29.m.keys[__loop29.i]; s___child0__inst * __inst1_live_dv = __loop29.m.vals[__loop29.i];
 		s___child0__destroy(__inst1_live_dv);
 	}
 	{
-	sngl_map_string____child0__inst __kept28 = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
-	sngl_map_string____child0__inst *__slot28 = &(s___inst1_live);
-	sngl_map_string____child0__inst__drop(*__slot28);
-	*__slot28 = __kept28;
+	sngl_map_string____child0__inst __kept30 = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
+	sngl_map_string____child0__inst *__slot30 = &(s___inst1_live);
+	sngl_map_string____child0__inst__drop(*__slot30);
+	*__slot30 = __kept30;
 }
 	s_x_c__free(s___rel0);
 	s_x_c__free(s___rel3);
@@ -4138,16 +4129,16 @@ static void s___snglTeardown(void) {
 	s_x_c__free(s___rel20);
 	s_x_c__free(s___rel21);
 	s_x_c__free(s___rel22);
-	s_x_c__free(s___rel24);
+	s_x_c__free(s___rel25);
 	s_x_c__free(s___rel26);
-	s_x_c__free(s___rel27);
+	s_x_c__free(s___rel30);
 	s_x_c__free(s___rel31);
 	s_x_c__free(s___rel32);
 	s_x_c__free(s___rel33);
-	s_x_c__free(s___rel34);
+	s_x_c__free(s___rel36);
 	s_x_c__free(s___rel37);
 	s_x_c__free(s___rel38);
-	s_x_c__free(s___rel39);
+	s_x_c__free(s___rel43);
 	s_x_c__free(s___rel44);
 	s_x_c__free(s___rel45);
 	s_x_c__free(s___rel46);
@@ -4157,18 +4148,17 @@ static void s___snglTeardown(void) {
 	s_x_c__free(s___rel50);
 	s_x_c__free(s___rel51);
 	s_x_c__free(s___rel52);
-	s_x_c__free(s___rel53);
+	s_x_c__free(s___rel54);
 	s_x_c__free(s___rel55);
 	s_x_c__free(s___rel56);
 	s_x_c__free(s___rel57);
-	s_x_c__free(s___rel58);
-	s_x_c__free(s___rel63);
-	s_x_c__free(s___rel65);
-	s_x_c__free(s___rel68);
-	s_x_c__free(s___rel70);
-	s_x_c__free(s___rel77);
-	s_x_c__free(s___rel79);
-	s_x_c__free(s___rel81);
+	s_x_c__free(s___rel62);
+	s_x_c__free(s___rel64);
+	s_x_c__free(s___rel67);
+	s_x_c__free(s___rel69);
+	s_x_c__free(s___rel76);
+	s_x_c__free(s___rel78);
+	s_x_c__free(s___rel80);
 }
 
 static void s_x_c__free(char * s) {
@@ -4181,22 +4171,22 @@ static s___child0__inst * s___child0__new(s___anon_id_elem_c6a818 __p0, sngl_lis
 	gtk_orientable_set_orientation((GtkOrientable *)((void *)(__self->__n5)), (GtkOrientation)((int)(1)));
 	s_platform_gtk4___applyLook((GtkWidget *)(__self->__n5), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = true, .spacing = 6, .grid = false, .columns = 0});
 	__self->__n0 = s_platform_gtk4___rtTextNew();
-	sngl_string __snglPart29;
-	sngl_string __snglPart30;
 	sngl_string __snglPart31;
 	sngl_string __snglPart32;
 	sngl_string __snglPart33;
 	sngl_string __snglPart34;
 	sngl_string __snglPart35;
 	sngl_string __snglPart36;
-	char * __rel80 = sngl_cstring((__snglPart35 = sngl_concat((__snglPart33 = sngl_concat((__snglPart31 = sngl_concat((__snglPart29 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart30 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart29, __snglPart30)), SNGL_STR(" ")), __snglPart32 = __self->__prop___p2, sngl_concat(__snglPart31, __snglPart32)), SNGL_STR(" ")), __snglPart34 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart33, __snglPart34)), SNGL_STR(" ")), __snglPart36 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart35, __snglPart36)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel80);
-	s_x_c__free(__rel80);
+	sngl_string __snglPart37;
+	sngl_string __snglPart38;
+	char * __rel79 = sngl_cstring((__snglPart37 = sngl_concat((__snglPart35 = sngl_concat((__snglPart33 = sngl_concat((__snglPart31 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart32 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart31, __snglPart32)), SNGL_STR(" ")), __snglPart34 = __self->__prop___p2, sngl_concat(__snglPart33, __snglPart34)), SNGL_STR(" ")), __snglPart36 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart35, __snglPart36)), SNGL_STR(" ")), __snglPart38 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart37, __snglPart38)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel79);
+	s_x_c__free(__rel79);
 	s_platform_gtk4___applyLook((GtkWidget *)(__self->__n0), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
-	s_platform_gtk4___rtOnClick(__self->__n0, ((sngl_fn_void__void){sngl_lambda37, NULL}));
+	s_platform_gtk4___rtOnClick(__self->__n0, ((sngl_fn_void__void){sngl_lambda39, NULL}));
 	s_platform_gtk4___rtBoxAppend((GtkWidget *)(__self->__n5), (GtkWidget *)(__self->__n0));
 	__self->__n6 = gtk_button_new();
-	gtk_button_set_label((GtkButton *)((void *)(__self->__n6)), s___rel81);
+	gtk_button_set_label((GtkButton *)((void *)(__self->__n6)), s___rel80);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(__self->__n6)), (gboolean)((int)(1)));
 	s_platform_gtk4___applyLook((GtkWidget *)(__self->__n6), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
 	s_platform_gtk4___rtSignalConnect(__self->__n6, SNGL_STR("clicked"), ((sngl_fn_void__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.__prop___on0 = __self->__prop___on0}}}, sizeof(s___lambda0_caps__env))}));
@@ -4214,42 +4204,42 @@ static void s___child0__set___p0(s___child0__inst * __self, s___anon_id_elem_c6a
 		return;
 	}
 	{
-	s___anon_id_elem_c6a818 __kept38 = s___anon_id_elem_c6a818__keep(__v);
-	s___anon_id_elem_c6a818 *__slot38 = &(__self->__prop___p0);
-	s___anon_id_elem_c6a818__drop(*__slot38);
-	*__slot38 = __kept38;
+	s___anon_id_elem_c6a818 __kept40 = s___anon_id_elem_c6a818__keep(__v);
+	s___anon_id_elem_c6a818 *__slot40 = &(__self->__prop___p0);
+	s___anon_id_elem_c6a818__drop(*__slot40);
+	*__slot40 = __kept40;
 }
-	sngl_string __snglPart39;
-	sngl_string __snglPart40;
 	sngl_string __snglPart41;
 	sngl_string __snglPart42;
 	sngl_string __snglPart43;
 	sngl_string __snglPart44;
 	sngl_string __snglPart45;
 	sngl_string __snglPart46;
-	char * __rel72 = sngl_cstring((__snglPart45 = sngl_concat((__snglPart43 = sngl_concat((__snglPart41 = sngl_concat((__snglPart39 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart40 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart39, __snglPart40)), SNGL_STR(" ")), __snglPart42 = __self->__prop___p2, sngl_concat(__snglPart41, __snglPart42)), SNGL_STR(" ")), __snglPart44 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart43, __snglPart44)), SNGL_STR(" ")), __snglPart46 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart45, __snglPart46)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel72);
-	s_x_c__free(__rel72);
+	sngl_string __snglPart47;
+	sngl_string __snglPart48;
+	char * __rel71 = sngl_cstring((__snglPart47 = sngl_concat((__snglPart45 = sngl_concat((__snglPart43 = sngl_concat((__snglPart41 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart42 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart41, __snglPart42)), SNGL_STR(" ")), __snglPart44 = __self->__prop___p2, sngl_concat(__snglPart43, __snglPart44)), SNGL_STR(" ")), __snglPart46 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart45, __snglPart46)), SNGL_STR(" ")), __snglPart48 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart47, __snglPart48)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel71);
+	s_x_c__free(__rel71);
 }
 
 static void s___child0__set___p1(s___child0__inst * __self, sngl_list_string __v) {
 	{
-	sngl_list_string __kept47 = sngl_list_string__keep(__v);
-	sngl_list_string *__slot47 = &(__self->__prop___p1);
-	sngl_list_string__drop(*__slot47);
-	*__slot47 = __kept47;
+	sngl_list_string __kept49 = sngl_list_string__keep(__v);
+	sngl_list_string *__slot49 = &(__self->__prop___p1);
+	sngl_list_string__drop(*__slot49);
+	*__slot49 = __kept49;
 }
-	sngl_string __snglPart48;
-	sngl_string __snglPart49;
 	sngl_string __snglPart50;
 	sngl_string __snglPart51;
 	sngl_string __snglPart52;
 	sngl_string __snglPart53;
 	sngl_string __snglPart54;
 	sngl_string __snglPart55;
-	char * __rel73 = sngl_cstring((__snglPart54 = sngl_concat((__snglPart52 = sngl_concat((__snglPart50 = sngl_concat((__snglPart48 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart49 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart48, __snglPart49)), SNGL_STR(" ")), __snglPart51 = __self->__prop___p2, sngl_concat(__snglPart50, __snglPart51)), SNGL_STR(" ")), __snglPart53 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart52, __snglPart53)), SNGL_STR(" ")), __snglPart55 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart54, __snglPart55)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel73);
-	s_x_c__free(__rel73);
+	sngl_string __snglPart56;
+	sngl_string __snglPart57;
+	char * __rel72 = sngl_cstring((__snglPart56 = sngl_concat((__snglPart54 = sngl_concat((__snglPart52 = sngl_concat((__snglPart50 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart51 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart50, __snglPart51)), SNGL_STR(" ")), __snglPart53 = __self->__prop___p2, sngl_concat(__snglPart52, __snglPart53)), SNGL_STR(" ")), __snglPart55 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart54, __snglPart55)), SNGL_STR(" ")), __snglPart57 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart56, __snglPart57)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel72);
+	s_x_c__free(__rel72);
 }
 
 static void s___child0__set___p2(s___child0__inst * __self, sngl_string __v) {
@@ -4257,70 +4247,70 @@ static void s___child0__set___p2(s___child0__inst * __self, sngl_string __v) {
 		return;
 	}
 	{
-	sngl_string __kept56 = sngl_string_keep(__v);
-	sngl_string *__slot56 = &(__self->__prop___p2);
-	sngl_drop((*__slot56).ptr);
-	*__slot56 = __kept56;
+	sngl_string __kept58 = sngl_string_keep(__v);
+	sngl_string *__slot58 = &(__self->__prop___p2);
+	sngl_drop((*__slot58).ptr);
+	*__slot58 = __kept58;
 }
-	sngl_string __snglPart57;
-	sngl_string __snglPart58;
 	sngl_string __snglPart59;
 	sngl_string __snglPart60;
 	sngl_string __snglPart61;
 	sngl_string __snglPart62;
 	sngl_string __snglPart63;
 	sngl_string __snglPart64;
-	char * __rel74 = sngl_cstring((__snglPart63 = sngl_concat((__snglPart61 = sngl_concat((__snglPart59 = sngl_concat((__snglPart57 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart58 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart57, __snglPart58)), SNGL_STR(" ")), __snglPart60 = __self->__prop___p2, sngl_concat(__snglPart59, __snglPart60)), SNGL_STR(" ")), __snglPart62 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart61, __snglPart62)), SNGL_STR(" ")), __snglPart64 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart63, __snglPart64)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel74);
-	s_x_c__free(__rel74);
+	sngl_string __snglPart65;
+	sngl_string __snglPart66;
+	char * __rel73 = sngl_cstring((__snglPart65 = sngl_concat((__snglPart63 = sngl_concat((__snglPart61 = sngl_concat((__snglPart59 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart60 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart59, __snglPart60)), SNGL_STR(" ")), __snglPart62 = __self->__prop___p2, sngl_concat(__snglPart61, __snglPart62)), SNGL_STR(" ")), __snglPart64 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart63, __snglPart64)), SNGL_STR(" ")), __snglPart66 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart65, __snglPart66)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel73);
+	s_x_c__free(__rel73);
 }
 
 static void s___child0__set___p3(s___child0__inst * __self, s_Link __v) {
 	{
-	s_Link __kept65 = s_Link__keep(__v);
-	s_Link *__slot65 = &(__self->__prop___p3);
-	s_Link__drop(*__slot65);
-	*__slot65 = __kept65;
+	s_Link __kept67 = s_Link__keep(__v);
+	s_Link *__slot67 = &(__self->__prop___p3);
+	s_Link__drop(*__slot67);
+	*__slot67 = __kept67;
 }
-	sngl_string __snglPart66;
-	sngl_string __snglPart67;
 	sngl_string __snglPart68;
 	sngl_string __snglPart69;
 	sngl_string __snglPart70;
 	sngl_string __snglPart71;
 	sngl_string __snglPart72;
 	sngl_string __snglPart73;
-	char * __rel75 = sngl_cstring((__snglPart72 = sngl_concat((__snglPart70 = sngl_concat((__snglPart68 = sngl_concat((__snglPart66 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart67 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart66, __snglPart67)), SNGL_STR(" ")), __snglPart69 = __self->__prop___p2, sngl_concat(__snglPart68, __snglPart69)), SNGL_STR(" ")), __snglPart71 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart70, __snglPart71)), SNGL_STR(" ")), __snglPart73 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart72, __snglPart73)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel75);
-	s_x_c__free(__rel75);
+	sngl_string __snglPart74;
+	sngl_string __snglPart75;
+	char * __rel74 = sngl_cstring((__snglPart74 = sngl_concat((__snglPart72 = sngl_concat((__snglPart70 = sngl_concat((__snglPart68 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart69 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart68, __snglPart69)), SNGL_STR(" ")), __snglPart71 = __self->__prop___p2, sngl_concat(__snglPart70, __snglPart71)), SNGL_STR(" ")), __snglPart73 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart72, __snglPart73)), SNGL_STR(" ")), __snglPart75 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart74, __snglPart75)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel74);
+	s_x_c__free(__rel74);
 }
 
 static void s___child0__set___p4(s___child0__inst * __self, sngl_map_string__int __v) {
 	{
-	sngl_map_string__int __kept74 = sngl_map_string__int__keep(__v);
-	sngl_map_string__int *__slot74 = &(__self->__prop___p4);
-	sngl_map_string__int__drop(*__slot74);
-	*__slot74 = __kept74;
+	sngl_map_string__int __kept76 = sngl_map_string__int__keep(__v);
+	sngl_map_string__int *__slot76 = &(__self->__prop___p4);
+	sngl_map_string__int__drop(*__slot76);
+	*__slot76 = __kept76;
 }
-	sngl_string __snglPart75;
-	sngl_string __snglPart76;
 	sngl_string __snglPart77;
 	sngl_string __snglPart78;
 	sngl_string __snglPart79;
 	sngl_string __snglPart80;
 	sngl_string __snglPart81;
 	sngl_string __snglPart82;
-	char * __rel76 = sngl_cstring((__snglPart81 = sngl_concat((__snglPart79 = sngl_concat((__snglPart77 = sngl_concat((__snglPart75 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart76 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart75, __snglPart76)), SNGL_STR(" ")), __snglPart78 = __self->__prop___p2, sngl_concat(__snglPart77, __snglPart78)), SNGL_STR(" ")), __snglPart80 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart79, __snglPart80)), SNGL_STR(" ")), __snglPart82 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart81, __snglPart82)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel76);
-	s_x_c__free(__rel76);
+	sngl_string __snglPart83;
+	sngl_string __snglPart84;
+	char * __rel75 = sngl_cstring((__snglPart83 = sngl_concat((__snglPart81 = sngl_concat((__snglPart79 = sngl_concat((__snglPart77 = sngl_concat(__self->__prop___p0.elem, SNGL_STR(" ")), __snglPart78 = sngl_list_string_join(__self->__prop___p1, SNGL_STR(", ")), sngl_concat(__snglPart77, __snglPart78)), SNGL_STR(" ")), __snglPart80 = __self->__prop___p2, sngl_concat(__snglPart79, __snglPart80)), SNGL_STR(" ")), __snglPart82 = sngl_int_format((int64_t)(s_depth(__self->__prop___p3))), sngl_concat(__snglPart81, __snglPart82)), SNGL_STR(" ")), __snglPart84 = sngl_int_format((int64_t)((__self->__prop___p4).len)), sngl_concat(__snglPart83, __snglPart84)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(__self->__n0)), __rel75);
+	s_x_c__free(__rel75);
 }
 
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v) {
 	{
-	sngl_fn_void__void __kept83 = sngl_fn_void__void__keep(__v);
-	sngl_fn_void__void *__slot83 = &(__self->__prop___on0->value);
-	sngl_fn_void__void__drop(*__slot83);
-	*__slot83 = __kept83;
+	sngl_fn_void__void __kept85 = sngl_fn_void__void__keep(__v);
+	sngl_fn_void__void *__slot85 = &(__self->__prop___on0->value);
+	sngl_fn_void__void__drop(*__slot85);
+	*__slot85 = __kept85;
 }
 }
 
@@ -4364,37 +4354,36 @@ static void sngl_init(void) {
 	s___rel20 = sngl_cstring(SNGL_STR("sngl-icon"));
 	s___rel21 = sngl_cstring(SNGL_STR("sngl-icon-widget"));
 	s___rel22 = sngl_cstring(SNGL_STR("%s"));
-	s___rel24 = sngl_cstring(SNGL_STR("sngl-heard"));
-	s___rel26 = sngl_cstring(SNGL_STR("sngl-look-css"));
-	s___rel27 = sngl_cstring(SNGL_STR("sngl-look-class"));
-	s___rel31 = sngl_cstring(SNGL_STR("notify::parent"));
-	s___rel32 = sngl_cstring(SNGL_STR("sngl-grow-box"));
-	s___rel33 = sngl_cstring(SNGL_STR("sngl-box-layout"));
-	s___rel34 = sngl_cstring(SNGL_STR("sngl-look-kids"));
-	s___rel37 = sngl_cstring(SNGL_STR("sngl-toplevel"));
-	s___rel38 = sngl_cstring(SNGL_STR("sngl-windows"));
-	s___rel39 = sngl_cstring(SNGL_STR("sngl-wraps"));
-	s___rel44 = sngl_cstring(SNGL_STR("sngl-tabs"));
-	s___rel45 = sngl_cstring(SNGL_STR("sngl-source"));
-	s___rel46 = sngl_cstring(SNGL_STR("sngl-slot-box"));
-	s___rel47 = sngl_cstring(SNGL_STR("sngl-back"));
-	s___rel48 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
-	s___rel49 = sngl_cstring(SNGL_STR("activate"));
-	s___rel50 = sngl_cstring(SNGL_STR("backspace"));
-	s___rel51 = sngl_cstring(SNGL_STR("delete-from-cursor"));
-	s___rel52 = sngl_cstring(SNGL_STR("move-cursor"));
-	s___rel53 = sngl_cstring(SNGL_STR("insert-at-cursor"));
-	s___rel55 = sngl_cstring(SNGL_STR("clicked"));
-	s___rel56 = sngl_cstring(SNGL_STR("sngl-looks"));
-	s___rel57 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
-	s___rel58 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
-	s___rel63 = sngl_cstring(SNGL_STR("sngl-tab-page"));
-	s___rel65 = sngl_cstring(SNGL_STR("sngl-icons"));
-	s___rel68 = sngl_cstring(SNGL_STR("sngl-texture"));
-	s___rel70 = sngl_cstring(SNGL_STR("sngl-icons-XXXXXX"));
-	s___rel77 = sngl_cstring(SNGL_STR("more"));
-	s___rel79 = sngl_cstring(SNGL_STR(""));
-	s___rel81 = sngl_cstring(SNGL_STR("pick"));
+	s___rel25 = sngl_cstring(SNGL_STR("sngl-look-css"));
+	s___rel26 = sngl_cstring(SNGL_STR("sngl-look-class"));
+	s___rel30 = sngl_cstring(SNGL_STR("notify::parent"));
+	s___rel31 = sngl_cstring(SNGL_STR("sngl-grow-box"));
+	s___rel32 = sngl_cstring(SNGL_STR("sngl-box-layout"));
+	s___rel33 = sngl_cstring(SNGL_STR("sngl-look-kids"));
+	s___rel36 = sngl_cstring(SNGL_STR("sngl-toplevel"));
+	s___rel37 = sngl_cstring(SNGL_STR("sngl-windows"));
+	s___rel38 = sngl_cstring(SNGL_STR("sngl-wraps"));
+	s___rel43 = sngl_cstring(SNGL_STR("sngl-tabs"));
+	s___rel44 = sngl_cstring(SNGL_STR("sngl-source"));
+	s___rel45 = sngl_cstring(SNGL_STR("sngl-slot-box"));
+	s___rel46 = sngl_cstring(SNGL_STR("sngl-back"));
+	s___rel47 = sngl_cstring(SNGL_STR("sngl-menu-entry"));
+	s___rel48 = sngl_cstring(SNGL_STR("activate"));
+	s___rel49 = sngl_cstring(SNGL_STR("backspace"));
+	s___rel50 = sngl_cstring(SNGL_STR("delete-from-cursor"));
+	s___rel51 = sngl_cstring(SNGL_STR("move-cursor"));
+	s___rel52 = sngl_cstring(SNGL_STR("insert-at-cursor"));
+	s___rel54 = sngl_cstring(SNGL_STR("clicked"));
+	s___rel55 = sngl_cstring(SNGL_STR("sngl-looks"));
+	s___rel56 = sngl_cstring(SNGL_STR("open-menu-symbolic"));
+	s___rel57 = sngl_cstring(SNGL_STR("go-previous-symbolic"));
+	s___rel62 = sngl_cstring(SNGL_STR("sngl-tab-page"));
+	s___rel64 = sngl_cstring(SNGL_STR("sngl-icons"));
+	s___rel67 = sngl_cstring(SNGL_STR("sngl-texture"));
+	s___rel69 = sngl_cstring(SNGL_STR("sngl-icons-XXXXXX"));
+	s___rel76 = sngl_cstring(SNGL_STR("more"));
+	s___rel78 = sngl_cstring(SNGL_STR(""));
+	s___rel80 = sngl_cstring(SNGL_STR("pick"));
 	s_names__inst0 = ((s___ref_list_string *)sngl_counted_retain(((s___ref_list_string *)sngl_counted_new(&(s___ref_list_string[]){(s___ref_list_string){.value = sngl_list_string__keep(sngl_list_string_of(2, (sngl_string[]){SNGL_STR("a"), SNGL_STR("b")}))}}, sizeof(s___ref_list_string), s___ref_list_string__release, s___ref_list_string__rekeep, NULL))));
 	s_tags__inst0 = sngl_list_string__keep(sngl_list_string_of(1, (sngl_string[]){SNGL_STR("x")}));
 	s_seen__inst0 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
@@ -4402,6 +4391,7 @@ static void sngl_init(void) {
 	s_chain__inst0 = s_Link__keep((s_Link){.name = SNGL_STR("a"), .next = sngl_list_Link_of(1, (s_Link[]){(s_Link){.name = SNGL_STR("b"), .next = ((sngl_list_Link){0})}})});
 	s_other__inst0 = s_Link__keep((s_Link){.name = SNGL_STR("a"), .next = ((sngl_list_Link){0})});
 	s_visible__inst0 = ((s___ref_bool *)sngl_counted_retain(((s___ref_bool *)sngl_counted_new(&(s___ref_bool[]){(s___ref_bool){.value = true}}, sizeof(s___ref_bool), s___ref_bool__release, s___ref_bool__rekeep, NULL))));
+	s_platform_gtk4___heard = s_platform_gtk4___HeardState__keep((s_platform_gtk4___HeardState){.hearing = false, .key = SNGL_STR(""), .ctrl = false, .alt = false, .shift = false, .meta = false, .editing = false, .stopped = false, .then = ((sngl_fn_void__void){sngl_lambda86, NULL})});
 	s___slot0 = sngl_list_GtkWidget_p__keep(((sngl_list_GtkWidget_p){0}));
 	s___inst1_live = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
 	s___rendering0 = false;
@@ -4410,7 +4400,7 @@ static void sngl_init(void) {
 
 static void sngl_build(void) {
 	s___n1 = s_platform_gtk4___rtToplevelNew();
-	sngl_toplevel_set_title(s___n1, s___rel79);
+	sngl_toplevel_set_title(s___n1, s___rel78);
 	sngl_toplevel_set_visible(s___n1, (int)((s_visible__inst0->value ? 1 : 0)));
 	sngl_toplevel_on_visible(s___n1, (SnglBoolFn)(void (*)(void))sngl_dispatch_bool__void, (void *)sngl_heap_copy(&(sngl_fn_bool__void[]){sngl_fn_bool__void__keep(((sngl_fn_bool__void){s___lambda1__fn, sngl_alloc_copy(&(s___lambda1_caps__env[]){{{s___lambda1_caps__env__keep, false}, (s___lambda1_caps){.visible__inst0 = s_visible__inst0}}}, sizeof(s___lambda1_caps__env))}))}, sizeof(sngl_fn_bool__void)), (GDestroyNotify)(void (*)(void))sngl_release);
 	s___n4 = gtk_box_new((GtkOrientation)((int)(0)), (int)(0));
@@ -4418,15 +4408,15 @@ static void sngl_build(void) {
 	s_platform_gtk4___applyLook((GtkWidget *)(s___n4), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = true, .spacing = 6, .grid = false, .columns = 0});
 	s___renderSlot0(s___n4);
 	s___n7 = gtk_button_new();
-	gtk_button_set_label((GtkButton *)((void *)(s___n7)), s___rel77);
+	gtk_button_set_label((GtkButton *)((void *)(s___n7)), s___rel76);
 	gtk_widget_set_can_focus((GtkWidget *)((void *)(s___n7)), (gboolean)((int)(1)));
 	s_platform_gtk4___applyLook((GtkWidget *)(s___n7), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
 	s_platform_gtk4___rtSignalConnect(s___n7, SNGL_STR("clicked"), ((sngl_fn_void__void){s___lambda2__fn, sngl_alloc_copy(&(s___lambda2_caps__env[]){{{s___lambda2_caps__env__keep, false}, (s___lambda2_caps){.names__inst0 = s_names__inst0}}}, sizeof(s___lambda2_caps__env))}));
 	s_platform_gtk4___rtBoxAppend((GtkWidget *)(s___n4), (GtkWidget *)(s___n7));
 	s___n2 = s_platform_gtk4___rtTextNew();
-	char * __rel78 = sngl_cstring(sngl_bool_format(s_Link__eq(s_chain__inst0, s_other__inst0)));
-	gtk_label_set_label((GtkLabel *)((GtkWidget *)(s___n2)), __rel78);
-	s_x_c__free(__rel78);
+	char * __rel77 = sngl_cstring(sngl_bool_format(s_Link__eq(s_chain__inst0, s_other__inst0)));
+	gtk_label_set_label((GtkLabel *)((GtkWidget *)(s___n2)), __rel77);
+	s_x_c__free(__rel77);
 	s_platform_gtk4___applyLook((GtkWidget *)(s___n2), (s_platform_gtk4__Look){.css = SNGL_STR(""), .width = 0.0, .height = 0.0, .grow = 0.0, .cross = 0, .textAlign = 0, .lines = 0, .wrap = 0, .hidden = false, .cursor = SNGL_STR(""), .justify = 0, .spaced = false, .spacing = 0, .grid = false, .columns = 0});
 	s_platform_gtk4___rtBoxAppend((GtkWidget *)(s___n4), (GtkWidget *)(s___n2));
 	s_platform_gtk4___rtBoxAppend((GtkWidget *)(s___n1), (GtkWidget *)(s___n4));
@@ -4457,41 +4447,44 @@ static void sngl_lambda3(void *env_, gpointer self) {
 static void sngl_lambda4(void *env_) {
 }
 
-static void sngl_lambda11(void *env_) {
-	sngl_lambda11_env *env = env_;
+static void sngl_lambda13(void *env_) {
+	sngl_lambda13_env *env = env_;
 	GtkWidget * box = env->box;
 	s_platform_gtk4___windowBack(box);
 }
 
-static void sngl_lambda17(void *env_) {
-	sngl_lambda17_env *env = env_;
+static void sngl_lambda19(void *env_) {
+	sngl_lambda19_env *env = env_;
 	s___anon_id_elem_c6a818 n = env->n;
 	{
-	sngl_string __kept18 = sngl_string_keep(n.elem);
-	sngl_string *__slot18 = &(s_picked__inst0);
-	sngl_drop((*__slot18).ptr);
-	*__slot18 = __kept18;
+	sngl_string __kept20 = sngl_string_keep(n.elem);
+	sngl_string *__slot20 = &(s_picked__inst0);
+	sngl_drop((*__slot20).ptr);
+	*__slot20 = __kept20;
 }
-	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop19 = {s___inst1_live, 0}; __loop19.i < __loop19.m.len; __loop19.i++) { sngl_string __inst1_live_uk = __loop19.m.keys[__loop19.i]; s___child0__inst * __inst1_live_uv = __loop19.m.vals[__loop19.i];
+	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop21 = {s___inst1_live, 0}; __loop21.i < __loop21.m.len; __loop21.i++) { sngl_string __inst1_live_uk = __loop21.m.keys[__loop21.i]; s___child0__inst * __inst1_live_uv = __loop21.m.vals[__loop21.i];
 		s___child0__set___p2(__inst1_live_uv, s_picked__inst0);
 	}
 }
 
-static void sngl_lambda20(void *env_) {
-	sngl_lambda20_env *env = env_;
+static void sngl_lambda22(void *env_) {
+	sngl_lambda22_env *env = env_;
 	s___anon_id_elem_c6a818 n = env->n;
 	{
-	sngl_string __kept21 = sngl_string_keep(n.elem);
-	sngl_string *__slot21 = &(s_picked__inst0);
-	sngl_drop((*__slot21).ptr);
-	*__slot21 = __kept21;
+	sngl_string __kept23 = sngl_string_keep(n.elem);
+	sngl_string *__slot23 = &(s_picked__inst0);
+	sngl_drop((*__slot23).ptr);
+	*__slot23 = __kept23;
 }
-	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop22 = {s___inst1_live, 0}; __loop22.i < __loop22.m.len; __loop22.i++) { sngl_string __inst1_live_uk = __loop22.m.keys[__loop22.i]; s___child0__inst * __inst1_live_uv = __loop22.m.vals[__loop22.i];
+	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop24 = {s___inst1_live, 0}; __loop24.i < __loop24.m.len; __loop24.i++) { sngl_string __inst1_live_uk = __loop24.m.keys[__loop24.i]; s___child0__inst * __inst1_live_uv = __loop24.m.vals[__loop24.i];
 		s___child0__set___p2(__inst1_live_uv, s_picked__inst0);
 	}
 }
 
-static void sngl_lambda37(void *env_) {
+static void sngl_lambda39(void *env_) {
+}
+
+static void sngl_lambda86(void *env_) {
 }
 -- out/c/gtk4/sngl.build --
 # What this program links, which `sngl build` reads.
@@ -4667,15 +4660,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _ClickState struct {
-	Run func()
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -4684,6 +4670,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _ClickState struct {
+	Run func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -4736,6 +4730,7 @@ type snglState struct {
 	chain__inst0   Link
 	other__inst0   Link
 	visible__inst0 bool
+	_heard         _HeardState
 	__slot0        []cgo.Widget
 	__anchor0      cgo.Widget
 	__inst1_live   map[string]*__child0__inst
@@ -5222,28 +5217,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -7131,6 +7110,8 @@ func snglInit() {
 	m.chain__inst0 = Link{Name: "a", Next: []Link{Link{Name: "b", Next: []Link{}}}}
 	m.other__inst0 = Link{Name: "a", Next: []Link{}}
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__slot0 = []cgo.Widget{}
 	m.__inst1_live = map[string]*__child0__inst{}
 	m.__rendering0 = false
@@ -7445,8 +7426,8 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:9bc6b9bb72e619c5794e84ee2ea5a8fd
+pass sha256:1b74d7418df720817f0975fcd8ba65f7
 -- run/go/gtk4 --
-pass sha256:fccc4cbc73a5244326fa114037063b22
+pass sha256:0c599d0d7e57dfec27fa2a0bf7eb98cd
 -- run/none/html --
 pass sha256:0da2198f6bcf3a43924bae1affe2f6e6

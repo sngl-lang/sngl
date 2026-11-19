@@ -2236,6 +2236,18 @@ type _GridRows struct {
 	Ends   []int
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _ClickState struct {
 	Run func()
 }
@@ -2269,17 +2281,6 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type _ImageSourceState struct {
 	Url     string
 	Ready   bool
@@ -2293,6 +2294,7 @@ type _ImageSourceState struct {
 
 type snglState struct {
 	mounts                int
+	_heard                _HeardState
 	strip__change__copies map[string]cgo.Widget
 	idx                   int
 	seen                  int
@@ -4699,28 +4701,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -5194,6 +5180,8 @@ func __snglTeardown() {
 func snglInit() {
 	m = &snglState{}
 	m.mounts = 0
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.strip__change__copies = map[string]cgo.Widget{}
 	m.idx = 0
 	m.seen = 0
@@ -6435,7 +6423,7 @@ pass sha256:4421ef135162069748340f9230ecf99e
 -- run/go/fyne --
 pass sha256:1643b8603111f34b09b6f358ad454d99
 -- run/go/gtk4 --
-pass sha256:841cbfe9eb98b254572357904bfab475
+pass sha256:4d8125c475ab34e52446bd7393bda16f
 -- run/kotlin/android --
 pass sha256:26c9905308a1fc6b5bfeeedc49e9aab9
 -- run/none/html --

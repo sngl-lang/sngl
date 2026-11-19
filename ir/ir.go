@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"maps"
 	"slices"
 	"strings"
 
@@ -1086,6 +1087,27 @@ type NodeProtocol struct {
 	// what the test hands the event, put where the host reads it, and the
 	// host's report raised (passPlacement).
 	Fire map[string]*Func
+}
+
+// Funcs is every function declared for an operation, in a stable order: the
+// operations', then each prop's set, event's connect and event's fire by
+// name.
+func (p *NodeProtocol) Funcs() []*Func {
+	if p == nil {
+		return nil
+	}
+	var out []*Func
+	for _, fn := range []*Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw, p.Connect, p.Handle, p.Attach, p.Detach} {
+		if fn != nil {
+			out = append(out, fn)
+		}
+	}
+	for _, m := range []map[string]*Func{p.Set, p.On, p.Fire} {
+		for _, k := range slices.Sorted(maps.Keys(m)) {
+			out = append(out, m[k])
+		}
+	}
+	return out
 }
 
 // Handler is the function declared to connect event, nil where none is.

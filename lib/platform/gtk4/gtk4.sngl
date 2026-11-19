@@ -2060,10 +2060,12 @@ func _rtToplevelOnKey(w Toplevel, fn func()) {
 
 // The key a window's `@key` handler is hearing, while it runs: its name,
 // what was held, whether the handler has stopped it, and what a stop runs
-// beside -- a test's own. It is held on the display, the one object every
-// window shares, since the handler reads it with nothing to find a window
-// by; a key heard while another is heard puts the outer one back after.
+// beside -- a test's own. The process hears one key at a time, and the
+// handler reads it with nothing to find a window by; a key heard while
+// another is heard puts the outer one back after. None is heard where
+// `hearing` is false.
 struct _HeardState {
+    hearing bool = false
     key     string = ""
     ctrl    bool = false
     alt     bool = false
@@ -2074,33 +2076,23 @@ struct _HeardState {
     then    func() = func() {}
 }
 
-#[c.native("g_object_set_data_full")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectSetDataFull")]
-func _holdHeard(o _Object, key string, #[c.type("gpointer")] s c.held[_HeardState], #[c.type("GDestroyNotify")] #[c.release] rel c.pointer)
-
-#[c.native("g_object_get_data")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GObjectGetData")]
-func _heldHeard(o _Object, key string) option[c.held[_HeardState]]
-
-func _heard() option[_HeardState] {
-    return _heldHeard(_displayObject(_defaultDisplay()), "sngl-heard")
-}
+var _heard = _HeardState{hearing=false, key="", ctrl=false, alt=false, shift=false, meta=false, editing=false, stopped=false, then=func() {}}
 
 // The key a window's `@key` handler is hearing: its name, and whether a
 // modifier was held -- 0 Control, 1 Alt, 2 Shift, 3 Super or Meta -- or, at
 // 4, whether the focused field's text was being edited. Read while the
 // handler runs, and nothing after.
 func _rtKeyHeard() string {
-    var h = _heard()
-    if h != null {
+    var h = _heard
+    if h.hearing {
         return h.key
     }
     return ""
 }
 
 func _rtKeyHeld(which int) bool {
-    var h = _heard()
-    if h != null {
+    var h = _heard
+    if h.hearing {
         if which == 0 {
             return h.ctrl
         } else if which == 1 {
@@ -2120,9 +2112,9 @@ func _rtKeyHeld(which int) bool {
 // entry types none of it, a focused button is not activated and Tab moves
 // no focus.
 func _rtKeyStop() {
-    var h = _heard()
-    if h != null {
-        _holdHeard(_displayObject(_defaultDisplay()), "sngl-heard", _HeardState{key=h.key, ctrl=h.ctrl, alt=h.alt, shift=h.shift, meta=h.meta, editing=h.editing, stopped=true, then=h.then})
+    var h = _heard
+    if h.hearing {
+        _heard = _HeardState{hearing=true, key=h.key, ctrl=h.ctrl, alt=h.alt, shift=h.shift, meta=h.meta, editing=h.editing, stopped=true, then=h.then}
         var then = h.then
         then()
     }
@@ -2134,18 +2126,12 @@ func _hear(box Widget, key string, ctrl bool, alt bool, shift bool, meta bool, e
     if k == null {
         return false
     }
-    var d = _displayObject(_defaultDisplay())
-    var outer = _heldHeard(d, "sngl-heard")
-    _holdHeard(d, "sngl-heard", _HeardState{key=key, ctrl=ctrl, alt=alt, shift=shift, meta=meta, editing=editing, stopped=false, then=then})
+    var outer = _heard
+    _heard = _HeardState{hearing=true, key=key, ctrl=ctrl, alt=alt, shift=shift, meta=meta, editing=editing, stopped=false, then=then}
     var run = k.run
     run()
-    var mine = _heldHeard(d, "sngl-heard")
-    var stopped = mine != null && mine.stopped
-    if outer != null {
-        _holdHeard(d, "sngl-heard", outer)
-    } else {
-        _setData(d, "sngl-heard", null)
-    }
+    var stopped = _heard.stopped
+    _heard = outer
     return stopped
 }
 

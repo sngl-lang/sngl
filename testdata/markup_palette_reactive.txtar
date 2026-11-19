@@ -838,11 +838,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -851,6 +848,10 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -898,6 +899,7 @@ type _ImageSourceState struct {
 type snglState struct {
 	pal            Palette
 	visible__inst0 bool
+	_heard         _HeardState
 	home           cgo.Widget
 	__n1           cgo.Widget
 	__n2           cgo.Widget
@@ -1502,28 +1504,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3281,6 +3267,8 @@ func snglInit() {
 	m = &snglState{}
 	m.pal = Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{R: 207, G: 34, B: 46, A: 255}, Type: snglcolor.Color{R: 149, G: 56, A: 255}, Function: snglcolor.Color{R: 130, G: 80, B: 223, A: 255}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, String: snglcolor.Color{R: 10, G: 48, B: 105, A: 255}, Number: snglcolor.Color{R: 5, G: 80, B: 174, A: 255}, Comment: snglcolor.Color{R: 110, G: 119, B: 129, A: 255}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 }
 
 func snglBuild() {
@@ -3711,7 +3699,7 @@ pass sha256:aac86dd8227e0c91eca6cc3692a5a97e
 -- run/go/fyne --
 pass sha256:45339472bcd74c9827716ff5d97aa1fd
 -- run/go/gtk4 --
-pass sha256:c73b8149bd759a2069a72c5fa0442b32
+pass sha256:adb57844bc3320aeb11e33a58e4a5e19
 -- run/kotlin/android --
 pass sha256:b8a6033a9f972b83a292eb94f94cb726
 -- run/none/html --

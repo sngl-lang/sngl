@@ -864,15 +864,8 @@ type _TabsState struct {
 	Quiet    bool
 }
 
-type _LookCssState struct {
-	Name string
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -881,6 +874,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _LookCssState struct {
+	Name string
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LooksState struct {
@@ -929,6 +930,7 @@ type snglState struct {
 	shown          bool
 	n              int
 	visible__inst0 bool
+	_heard         _HeardState
 	__slot0        []cgo.Widget
 	__anchor0      cgo.Widget
 	__inst1_live   map[string]*Show__int__inst
@@ -1757,28 +1759,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3623,6 +3609,8 @@ func snglInit() {
 	m.shown = true
 	m.n = 0
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__slot0 = []cgo.Widget{}
 	m.__inst1_live = map[string]*Show__int__inst{}
 	m.__rendering0 = false
@@ -4251,7 +4239,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:c31f9ab180ee846f8c2d5fcadab4029d
 -- run/go/gtk4 --
-pass sha256:5c536efb5b73b07878d223eaff9f6410
+pass sha256:cfe28d250457807c87f0ab3b011aac63
 -- run/kotlin/android --
 pass sha256:3a1906d14d5dffb89af453afa9f6386e
 -- run/none/html --

@@ -2048,11 +2048,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -2061,6 +2058,10 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -2111,6 +2112,7 @@ type snglState struct {
 	k__inst0            int
 	k__inst1            int
 	visible__inst0      bool
+	_heard              _HeardState
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effect1_live      []bool
@@ -2635,28 +2637,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -4893,6 +4879,8 @@ func snglInit() {
 	m.k__inst0 = 0
 	m.k__inst1 = 0
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effect1_live = []bool{}
@@ -5540,6 +5528,6 @@ pass sha256:65b9f3a1d3b725d3eb480f2b11afd5c7
 -- run/go/fyne --
 pass sha256:e74245516ba6f980aae1530347cf090f
 -- run/go/gtk4 --
-pass sha256:44375eeb4dec9636e33905f4e77bb50f
+pass sha256:508817757faa447176d2e911c8e82291
 -- run/none/html --
 pass sha256:46c4197f1cd92ace14f590bb5a9c76bc

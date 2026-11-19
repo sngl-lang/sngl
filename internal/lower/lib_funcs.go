@@ -124,13 +124,14 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 			}
 		}
 	}
-	foreign := importedVars(pkg)
+	// A var an earlier run promoted is the program's now: ReleaseTemps runs
+	// this pass again, which declared a library's var a second time in C.
 	for {
 		push(pkg)
 		promoteFuncs(&roots, push, prepare, wanted, have, promoted, &added)
 		pkg.Funcs = append(pkg.Funcs, added...)
 		added = nil
-		if !promoteVars(pkg, foreign) {
+		if !promoteVars(pkg) {
 			break
 		}
 	}
@@ -208,14 +209,8 @@ func placedProtocols(pkg *ir.Package) []*ir.Func {
 		}
 	}
 	for _, c := range comps {
-		p := c.Protocol
-		for _, fn := range []*ir.Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw, p.Connect, p.Attach, p.Detach} {
+		for _, fn := range c.Protocol.Funcs() {
 			add(fn)
-		}
-		for _, m := range []map[string]*ir.Func{p.Set, p.On, p.Fire} {
-			for _, k := range slices.Sorted(maps.Keys(m)) {
-				add(m[k])
-			}
 		}
 	}
 	return fns
@@ -414,33 +409,8 @@ func inlineLibConsts(pkg *ir.Package) {
 	rewrite(pkg)
 }
 
-// importedVars is every var an imported SNGL package declares, directly or
-// through its own imports. A const is not one: inlineLibConsts answers those
-// with their value.
-func importedVars(pkg *ir.Package) map[*ir.Var]bool {
-	out := map[*ir.Var]bool{}
-	seen := map[*ir.Package]bool{pkg: true}
-	var visit func(p *ir.Package)
-	visit = func(p *ir.Package) {
-		for _, imp := range p.Imports {
-			if imp == nil || imp.Pkg == nil || seen[imp.Pkg] {
-				continue
-			}
-			seen[imp.Pkg] = true
-			for _, v := range imp.Pkg.Vars {
-				if !v.IsConst {
-					out[v] = true
-				}
-			}
-			visit(imp.Pkg)
-		}
-	}
-	visit(pkg)
-	return out
-}
-
-// promoteVars adds to pkg.Vars each imported var this build's bodies read or
-// write, and reports whether it added one.
+// promoteVars adds to pkg.Vars each var another package declares that this
+// build's bodies read or write, and reports whether it added one.
 //
 // The funcs another package declares are promoted above, and a func reading
 // its own package's state took that state with it nowhere: `calls += 1` in a
@@ -448,32 +418,80 @@ func importedVars(pkg *ir.Package) map[*ir.Var]bool {
 // target, a ReferenceError on html, and the text reading it drawn empty. A
 // read through the package's alias, `doc.calls`, becomes the bare name the
 // declaration now has here.
-func promoteVars(pkg *ir.Package, foreign map[*ir.Var]bool) bool {
-	if len(foreign) == 0 {
-		return false
+//
+// A var is another package's by the package it names as its own: one the
+// program imports, or a target's, whose overrides and protocol functions
+// keep state the program imports none of. As a promoted function stands for
+// every declaration of its name (repointPromoted), so does a promoted var:
+// a body thawed from the frozen library names the library's declaration,
+// where the program's copy names the build's, and one ReleaseTemps' second
+// run of LibFuncs meets is promoted already. Each names the one declaration
+// here, a copy of the frozen one where the build made none, since the passes
+// after this one rename and fold what the program declares.
+func promoteVars(pkg *ir.Package) bool {
+	decl := map[string]*ir.Var{}
+	for _, v := range pkg.Vars {
+		if packageVarOf(v, pkg) {
+			decl[libVarKey(v)] = v
+		}
 	}
-	var added []*ir.Var
-	taken := map[*ir.Var]bool{}
-	take := func(v *ir.Var) {
-		if foreign[v] {
-			delete(foreign, v)
-			added = append(added, v)
-			taken[v] = true
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && packageVarOf(v, pkg) {
+				k := libVarKey(v)
+				if d := decl[k]; d == nil || d.Frozen && !v.Frozen && !slices.Contains(pkg.Vars, d) {
+					decl[k] = v
+				}
+			}
+		}
+		return nil
+	})
+	for k, v := range decl {
+		if v.Frozen {
+			decl[k] = thawVar(v)
 		}
 	}
 	_ = ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		// A read through the package's alias, `doc.calls`, is of the
-		// declaration this package now holds, named bare.
-		if e, ok := n.(*ir.Ident); ok {
-			if v, ok := e.Sym.(*ir.Var); ok {
-				take(v)
-				if taken[v] {
-					e.Qualifier = nil
-				}
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && packageVarOf(v, pkg) {
+				id.Sym = decl[libVarKey(v)]
+				id.Qualifier = nil
 			}
 		}
 		return n, nil
 	})
-	pkg.Vars = append(pkg.Vars, added...)
-	return len(added) > 0
+	added := false
+	for _, k := range slices.Sorted(maps.Keys(decl)) {
+		if v := decl[k]; !slices.Contains(pkg.Vars, v) {
+			pkg.Vars = append(pkg.Vars, v)
+			added = true
+		}
+	}
+	return added
+}
+
+// libVarKey names a package var whatever copy of its package declares it.
+func libVarKey(v *ir.Var) string {
+	return v.PkgPath() + "\x00" + v.Name
+}
+
+// thawVar is a copy of the frozen v the build may write, its initializer
+// copied with it.
+func thawVar(v *ir.Var) *ir.Var {
+	c := *v
+	c.Frozen = false
+	c.Init = ir.CloneExprSharingDecls(v.Init)
+	return &c
+}
+
+// packageVarOf reports whether v is a var another package than pkg declares
+// at its top: one its list names, or a build's copy of one, which the
+// package's list names by the same name. A var lowering made of an
+// instance's names the package of the component it came from, and is in no
+// package's list.
+func packageVarOf(v *ir.Var, pkg *ir.Package) bool {
+	if v.IsConst || v.Pkg == nil || v.Pkg == pkg {
+		return false
+	}
+	return slices.ContainsFunc(v.Pkg.Vars, func(o *ir.Var) bool { return o == v || o.Name == v.Name })
 }

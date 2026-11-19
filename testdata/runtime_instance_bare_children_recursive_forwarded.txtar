@@ -806,6 +806,18 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _ClickState struct {
 	Run func()
 }
@@ -816,17 +828,6 @@ type _LookCssState struct {
 
 type _KeyState struct {
 	Run func()
-}
-
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
 }
 
 type _TabPageState struct {
@@ -870,6 +871,7 @@ type _ImageSourceState struct {
 type snglState struct {
 	depth          int
 	visible__inst0 bool
+	_heard         _HeardState
 	__n0           cgo.Widget
 	__n15          cgo.Widget
 	__n1           *Frame__slot0__inst
@@ -1588,28 +1590,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3483,6 +3469,8 @@ func snglInit() {
 	m = &snglState{}
 	m.depth = 2
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 }
 
 func snglBuild() {
@@ -4045,6 +4033,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:3cf21b8a006f89d6c7cea5fad8b11003
 -- run/go/gtk4 --
-pass sha256:b25017240b8acb82d8edcc6a3a1ec230
+pass sha256:0cddcb51d47a2e99d33e4612492fb98f
 -- run/none/html --
 pass sha256:cd8df6827b147c9a304436adb4cdcd87

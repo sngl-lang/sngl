@@ -911,6 +911,18 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _LookCssState struct {
 	Name string
 }
@@ -946,17 +958,6 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type _ImageSourceState struct {
 	Url     string
 	Ready   bool
@@ -969,6 +970,7 @@ type _ImageSourceState struct {
 }
 
 type snglState struct {
+	_heard              _HeardState
 	log                 string
 	total               int
 	__effect0_live      []bool
@@ -3015,28 +3017,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer__r0 := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer__r0 := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer__r0 != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer__r0)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer__r0
 	return stopped
 }
 
@@ -3126,6 +3112,8 @@ func __effects0_settle() {
 
 func snglInit() {
 	m = &snglState{}
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.log = ""
 	m.total = 0
 	m.__effect0_live = []bool{}
@@ -3416,7 +3404,7 @@ pass sha256:5d879bc4b807e13f8370a163c34f6183
 -- run/go/fyne --
 pass sha256:24d88d295148fd8f908044f152cc4f1c
 -- run/go/gtk4 --
-pass sha256:2694ddeba0ac4574a56972cba7bef3f8
+pass sha256:8e07ccfd5ad8e77d7b8e1b4eeab9bba0
 -- run/kotlin/android --
 pass sha256:9bbe3d70fb663223799228f4fc5b799a
 -- run/none/html --

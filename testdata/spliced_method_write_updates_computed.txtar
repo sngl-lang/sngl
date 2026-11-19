@@ -672,6 +672,18 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _ClickState struct {
 	Run func()
 }
@@ -682,17 +694,6 @@ type _LookCssState struct {
 
 type _KeyState struct {
 	Run func()
-}
-
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
 }
 
 type _TabPageState struct {
@@ -737,6 +738,7 @@ type snglState struct {
 	items__inst0        []string
 	visible__inst0      bool
 	hits__inst0         int
+	_heard              _HeardState
 	__effect0_live      []bool
 	__effect0_desired   []bool
 	__effects0_settling bool
@@ -1506,28 +1508,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3197,6 +3183,8 @@ func snglInit() {
 	m.items__inst0 = []string{"a", "b"}
 	m.visible__inst0 = true
 	m.hits__inst0 = 0
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__effect0_live = []bool{}
 	m.__effect0_desired = []bool{}
 	m.__effects0_settling = false
@@ -3550,6 +3538,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:8f5e4319178cae89223a6e22fc0af936
 -- run/go/gtk4 --
-pass sha256:61f955bb1235e9f4d37619e0f2442f0a
+pass sha256:0cae1b8cbc9e6d86b9eb11fd87335302
 -- run/none/html --
 pass sha256:911c76a2b508d0be195cfaca1a4947c0

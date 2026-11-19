@@ -458,15 +458,8 @@ type _GridRows struct {
 	Ends   []int
 }
 
-type _ClickState struct {
-	Run func()
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -475,6 +468,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _ClickState struct {
+	Run func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LookCssState struct {
@@ -523,6 +524,7 @@ type snglState struct {
 	tick__inst0    int
 	rows__inst0    [][]string
 	visible__inst0 bool
+	_heard         _HeardState
 	__slot1        []cgo.Widget
 	__anchor1      cgo.Widget
 	__inst2_live   []*__child0__inst
@@ -1000,28 +1002,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -2892,6 +2878,8 @@ func snglInit() {
 	m.tick__inst0 = 0
 	m.rows__inst0 = [][]string{[]string{"a", "b"}, []string{"c", "d"}}
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__slot1 = []cgo.Widget{}
 	m.__inst2_live = []*__child0__inst{}
 	m.__rendering1 = false
@@ -3159,6 +3147,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/fyne --
 pass sha256:9cf360659f4aa8650cae3b359b657ab8
 -- run/go/gtk4 --
-pass sha256:54bfc422c7ea5711c9f5e8aa1639f243
+pass sha256:c0f87da10f4931a0ded67e96011ef8e7
 -- run/none/html --
 pass sha256:ce8f105064c78f29a98aece58e125379

@@ -430,11 +430,8 @@ type _TabsState struct {
 	Quiet    bool
 }
 
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -443,6 +440,10 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _MenuEntryState struct {
@@ -481,6 +482,7 @@ type _ImageSourceState struct {
 
 type snglState struct {
 	visible__inst0 bool
+	_heard         _HeardState
 	__n0           cgo.Widget
 	__drawing0     cgo.Widget
 }
@@ -893,28 +895,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -1430,6 +1416,8 @@ func __drawing0_paint_handler(ctx cgo.CairoContext) {
 func snglInit() {
 	m = &snglState{}
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 }
 
 func snglBuild() {
@@ -1967,7 +1955,7 @@ pass sha256:b0d4105cb0fd961cfb7d8918d6f09f33
 -- run/go/fyne --
 pass sha256:b68b6114bf84643957dbfc33b02c6f19
 -- run/go/gtk4 --
-pass sha256:eacf5c891cd556147a2770b420a497ed
+pass sha256:11fb648da4598ca6249e7a9de8eb2b8a
 -- run/kotlin/android --
 pass sha256:b5484176887e5d7fbeccad03d59bfe29
 -- run/none/html --

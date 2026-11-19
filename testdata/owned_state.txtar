@@ -1305,15 +1305,8 @@ type _TabsState struct {
 	Quiet    bool
 }
 
-type _LookCssState struct {
-	Name string
-}
-
-type _KeyState struct {
-	Run func()
-}
-
 type _HeardState struct {
+	Hearing bool
 	Key     string
 	Ctrl    bool
 	Alt     bool
@@ -1322,6 +1315,14 @@ type _HeardState struct {
 	Editing bool
 	Stopped bool
 	Then    func()
+}
+
+type _LookCssState struct {
+	Name string
+}
+
+type _KeyState struct {
+	Run func()
 }
 
 type _LooksState struct {
@@ -1367,6 +1368,7 @@ type snglState struct {
 	shown          bool
 	n              int
 	visible__inst0 bool
+	_heard         _HeardState
 	__slot0        []cgo.Widget
 	__anchor0      cgo.Widget
 	__inst1_live   []*Holder__inst
@@ -2151,28 +2153,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3811,6 +3797,8 @@ func snglInit() {
 	m.shown = true
 	m.n = 1
 	m.visible__inst0 = true
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.__slot0 = []cgo.Widget{}
 	m.__inst1_live = []*Holder__inst{}
 	m.__rendering0 = false
@@ -4259,7 +4247,7 @@ pass sha256:502f0dabd7fa81e371f89386cfac785c
 -- run/go/fyne --
 pass sha256:83b1f3cc4a6e0cd26858e514213819b8
 -- run/go/gtk4 --
-pass sha256:e49c78610baf24ce7a4e9298e51b0a1f
+pass sha256:03f590e5f49ca7f289c06b96dacbc154
 -- run/kotlin/android --
 pass sha256:fdc9cbd75242eda716648a1ee8facf56
 -- run/none/html --

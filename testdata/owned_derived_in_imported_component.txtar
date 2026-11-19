@@ -177,9 +177,9 @@ type Model struct {
 
 // modelState is what every copy of a Model shares.
 type modelState struct {
-	opened              int
 	closed              int
 	lastClosed          int
+	opened              int
 	n                   int
 	picture__inst0      Pic
 	__effect0_live      []bool
@@ -200,14 +200,14 @@ func New() Model {
 }
 
 func (m Model) __mount(preset map[string]bool) Model {
-	if !preset["opened"] {
-		m.opened = 0
-	}
 	if !preset["closed"] {
 		m.closed = 0
 	}
 	if !preset["lastClosed"] {
 		m.lastClosed = 0
+	}
+	if !preset["opened"] {
+		m.opened = 0
 	}
 	if !preset["n"] {
 		m.n = 1
@@ -504,21 +504,6 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m Model) Opened() int {
-	return m.opened
-}
-
-func (m Model) SetOpened(v int) Model {
-	m.opened = v
-	return m
-}
-
-type setOpenedMsg struct{ value int }
-
-func SetOpenedCmd(v int) tea.Cmd {
-	return func() tea.Msg { return setOpenedMsg{value: v} }
-}
-
 func (m Model) Closed() int {
 	return m.closed
 }
@@ -549,6 +534,21 @@ func SetLastClosedCmd(v int) tea.Cmd {
 	return func() tea.Msg { return setLastClosedMsg{value: v} }
 }
 
+func (m Model) Opened() int {
+	return m.opened
+}
+
+func (m Model) SetOpened(v int) Model {
+	m.opened = v
+	return m
+}
+
+type setOpenedMsg struct{ value int }
+
+func SetOpenedCmd(v int) tea.Cmd {
+	return func() tea.Msg { return setOpenedMsg{value: v} }
+}
+
 func (m Model) N() int {
 	return m.n
 }
@@ -573,12 +573,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	_ = cmd
 	switch msg := msg.(type) {
-	case setOpenedMsg:
-		m = m.SetOpened(msg.value)
 	case setClosedMsg:
 		m = m.SetClosed(msg.value)
 	case setLastClosedMsg:
 		m = m.SetLastClosed(msg.value)
+	case setOpenedMsg:
+		m = m.SetOpened(msg.value)
 	case setNMsg:
 		m = m.SetN(msg.value)
 	case tea.WindowSizeMsg:
@@ -682,9 +682,9 @@ type Pic struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	opened              int
 	closed              int
 	lastClosed          int
+	opened              int
 	n                   int
 	picture__inst0      Pic
 	__effect0_live      []bool
@@ -708,14 +708,14 @@ func New() *Model {
 }
 
 func (m *Model) __init(preset map[string]bool) {
-	if !preset["opened"] {
-		m.opened = 0
-	}
 	if !preset["closed"] {
 		m.closed = 0
 	}
 	if !preset["lastClosed"] {
 		m.lastClosed = 0
+	}
+	if !preset["opened"] {
+		m.opened = 0
 	}
 	if !preset["n"] {
 		m.n = 1
@@ -833,14 +833,6 @@ func (m *Model) __snglTeardown() {
 	m.__effect0_teardown()
 }
 
-func (m *Model) Opened() int {
-	return m.opened
-}
-
-func (m *Model) SetOpened(v int) {
-	m.opened = v
-}
-
 func (m *Model) Closed() int {
 	return m.closed
 }
@@ -855,6 +847,14 @@ func (m *Model) LastClosed() int {
 
 func (m *Model) SetLastClosed(v int) {
 	m.lastClosed = v
+}
+
+func (m *Model) Opened() int {
+	return m.opened
+}
+
+func (m *Model) SetOpened(v int) {
+	m.opened = v
 }
 
 func (m *Model) N() int {
@@ -1066,6 +1066,18 @@ type _TabsState struct {
 	Quiet    bool
 }
 
+type _HeardState struct {
+	Hearing bool
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type _LookCssState struct {
 	Name string
 }
@@ -1101,17 +1113,6 @@ type _KeyState struct {
 	Run func()
 }
 
-type _HeardState struct {
-	Key     string
-	Ctrl    bool
-	Alt     bool
-	Shift   bool
-	Meta    bool
-	Editing bool
-	Stopped bool
-	Then    func()
-}
-
 type _ImageSourceState struct {
 	Url     string
 	Ready   bool
@@ -1124,9 +1125,10 @@ type _ImageSourceState struct {
 }
 
 type snglState struct {
-	opened              int
 	closed              int
 	lastClosed          int
+	opened              int
+	_heard              _HeardState
 	n                   int
 	picture__inst0      Pic
 	__effect0_live      []bool
@@ -3174,28 +3176,12 @@ func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta boo
 	if k == nil {
 		return false
 	}
-	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
-	outer := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	outer := m._heard
+	m._heard = _HeardState{Hearing: true, Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then}
 	run := (*(k)).Run
 	run()
-	mine := func(h any) *_HeardState {
-		if v, ok := h.(_HeardState); ok {
-			return &v
-		}
-		return nil
-	}(cgo.GObjectGetData(d, "sngl-heard"))
-	stopped := ((mine != nil) && (*(mine)).Stopped)
-	if outer != nil {
-		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
-	} else {
-		cgo.SetData(d, "sngl-heard", nil)
-	}
+	stopped := m._heard.Stopped
+	m._heard = outer
 	return stopped
 }
 
@@ -3289,9 +3275,11 @@ func __snglTeardown() {
 
 func snglInit() {
 	m = &snglState{}
-	m.opened = 0
 	m.closed = 0
 	m.lastClosed = 0
+	m.opened = 0
+	m._heard = _HeardState{Then: func() {
+	}}
 	m.n = 1
 	m.picture__inst0 = Load(m.n)
 	m.__effect0_live = []bool{}
@@ -3382,7 +3370,7 @@ window.__sngl_reset = (pre) => {
 window.__sngl_boot = () => {
 (() => {
   // sngl-entry.js
-  var state = { opened: 0, closed: 0, lastClosed: 0, n: 1 };
+  var state = { closed: 0, lastClosed: 0, opened: 0, n: 1 };
   var __snglPre = window.__snglPre ?? {};
   Object.assign(state, __snglPre);
   if (typeof window !== "undefined") {
@@ -3491,10 +3479,10 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:f7d77e77840a75fecc0dd55717e207bd
+pass sha256:f7662a6bd304c45f1b6e4afc31e97c92
 -- run/go/fyne --
-pass sha256:bb4d93e48ea4c1a7e66ec620e7c4e6d7
+pass sha256:364b0973f6ba01b47c3ad48dad2ca492
 -- run/go/gtk4 --
-pass sha256:9c6816e2240d7f63f7f1196f716d5d45
+pass sha256:f21a9c02fb399c19581f3f94da35443c
 -- run/none/html --
-pass sha256:b14dd95c5ba3bb4a7ee61987b114bf8f
+pass sha256:1cdc0a97269532912a6c58204c524efe
