@@ -162,6 +162,13 @@ type _IconsState struct {
 	Count int
 }
 
+type _Allocation struct {
+	X      int
+	Y      int
+	Width  int
+	Height int
+}
+
 type snglState struct {
 	__rel2              *C.char
 	__rel3              *C.char
@@ -556,13 +563,7 @@ func _barForget(box *C.GtkWidget) {
 func _flexMode(box *C.GtkWidget) int {
 	var heightForWidth int = 0
 	var widthForHeight int = 0
-	kids := _layoutKidsFrom(func() **C.GtkWidget {
-		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
-		if p == nil {
-			return nil
-		}
-		return &p
-	}())
+	kids := _layoutKids(box)
 	var i int = 0
 	for i < len(kids) {
 		var mode int = int(C.gtk_widget_get_request_mode(kids[i]))
@@ -589,13 +590,7 @@ func _flexMode(box *C.GtkWidget) int {
 
 func _flexMeasure(box *C.GtkWidget, orientation int, forSize int) Measured {
 	var axis int = int(int(C.sngl_box_axis(box)))
-	kids := _layoutKidsFrom(func() **C.GtkWidget {
-		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
-		if p == nil {
-			return nil
-		}
-		return &p
-	}())
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	var minimum int = 0
 	var natural int = 0
@@ -673,13 +668,7 @@ func _flexAllocate(box *C.GtkWidget, width int, height int, baseline int) {
 		__lt15 = height
 	}
 	var along int = __lt15
-	kids := _layoutKidsFrom(func() **C.GtkWidget {
-		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
-		if p == nil {
-			return nil
-		}
-		return &p
-	}())
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	if n > 0 {
 		var __lt16 int
@@ -756,13 +745,7 @@ func _gridMode(box *C.GtkWidget) int {
 }
 
 func _gridMeasure(box *C.GtkWidget, orientation int, forSize int) Measured {
-	kids := _layoutKidsFrom(func() **C.GtkWidget {
-		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
-		if p == nil {
-			return nil
-		}
-		return &p
-	}())
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	var columns int = int(C.sngl_look_columns(box))
 	var gap int = int(C.sngl_box_spacing(box))
@@ -867,13 +850,7 @@ func _gridMeasure(box *C.GtkWidget, orientation int, forSize int) Measured {
 }
 
 func _gridAllocate(box *C.GtkWidget, width int, height int, baseline int) {
-	kids := _layoutKidsFrom(func() **C.GtkWidget {
-		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
-		if p == nil {
-			return nil
-		}
-		return &p
-	}())
+	kids := _layoutKids(box)
 	if len(kids) > 0 {
 		rows := _gridRows(box, width, kids)
 		heights := _gridHeights(kids, rows)
@@ -1117,6 +1094,19 @@ func _backPress(w *C.GtkWidget) {
 	}
 }
 
+func _layoutKids(box *C.GtkWidget) []*C.GtkWidget {
+	kids := []*C.GtkWidget{}
+	c := func() **C.GtkWidget {
+		p := (*C.GtkWidget)(C.gtk_widget_get_first_child(box))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+	kids = _layoutKidsInto(kids, c)
+	return kids
+}
+
 func _flexSizes(box *C.GtkWidget, o int, along int, across int, kids []*C.GtkWidget) _FlexSizes {
 	var n int = len(kids)
 	var spare int = (along - (int(C.sngl_box_spacing(box)) * (n - 1)))
@@ -1184,21 +1174,16 @@ func _flexSizes(box *C.GtkWidget, o int, along int, across int, kids []*C.GtkWid
 }
 
 func _place(w *C.GtkWidget, x int, y int, width int, height int) {
-	p := C.graphene_point_alloc()
-	_ = C.graphene_point_init(p, C.float(C.double(float64(x))), C.float(C.double(float64(y))))
-	C.gtk_widget_allocate(w, C.int(width), C.int(height), C.int(-1), func() *C.GskTransform {
-		if p := func() **C.GskTransform {
-			p := (*C.GskTransform)(C.gsk_transform_translate(nil, p))
-			if p == nil {
-				return nil
-			}
-			return &p
-		}(); p != nil {
-			return (*C.GskTransform)(unsafe.Pointer(*p))
-		}
-		return nil
-	}())
-	C.graphene_point_free(p)
+	a := _Allocation{X: x, Y: y, Width: width, Height: height}
+	a = func() _Allocation {
+		__snglOut1 := func(v _Allocation) C.GtkAllocation {
+			return C.GtkAllocation{x: C.int(v.X), y: C.int(v.Y), width: C.int(v.Width), height: C.int(v.Height)}
+		}(a)
+		C.gtk_widget_size_allocate(w, &__snglOut1, C.int(-1))
+		return func(c C.GtkAllocation) _Allocation {
+			return _Allocation{X: int(c.x), Y: int(c.y), Width: int(c.width), Height: int(c.height)}
+		}(__snglOut1)
+	}()
 }
 
 func _gridHeights(kids []*C.GtkWidget, rows _GridRows) []int {
@@ -1649,23 +1634,21 @@ func _menuHostFrom(p **C.GtkWidget) **C.GtkWidget {
 	return nil
 }
 
-func _layoutKidsFrom(c **C.GtkWidget) []*C.GtkWidget {
+func _layoutKidsInto(kids []*C.GtkWidget, c **C.GtkWidget) []*C.GtkWidget {
+	kids__own := slices.Clone(kids)
 	if c != nil {
-		rest := _layoutKidsFrom(func() **C.GtkWidget {
+		if C.gtk_widget_should_layout((*(c))) != 0 {
+			kids__own = append(kids__own, (*(c)))
+		}
+		kids__own = _layoutKidsInto(kids__own, func() **C.GtkWidget {
 			p := (*C.GtkWidget)(C.gtk_widget_get_next_sibling((*(c))))
 			if p == nil {
 				return nil
 			}
 			return &p
 		}())
-		if C.gtk_widget_should_layout((*(c))) != 0 {
-			if __i := 0; __i >= 0 && __i <= len(rest) {
-				rest = slices.Insert(rest, __i, (*(c)))
-			}
-		}
-		return rest
 	}
-	return []*C.GtkWidget{}
+	return kids__own
 }
 
 func _distribute(extra int, minimums []int, naturals []int) []int {
@@ -2409,4 +2392,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:e157bffde4b7f57a27563adc701f9725
+pass sha256:c0c982c388fcc5c1e3b8f11be19a4f75

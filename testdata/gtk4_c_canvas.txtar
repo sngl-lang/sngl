@@ -123,6 +123,7 @@ typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct sngl_list_int sngl_list_int;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
 typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
+typedef struct s_platform_gtk4___Allocation s_platform_gtk4___Allocation;
 typedef struct s_ui_draw___step__record s_ui_draw___step__record;
 typedef struct sngl_list__step__record sngl_list__step__record;
 typedef struct sngl_lambda3_env sngl_lambda3_env;
@@ -328,6 +329,13 @@ typedef struct s_platform_gtk4___GridRows {
 	sngl_list_int ends;
 } s_platform_gtk4___GridRows;
 
+typedef struct s_platform_gtk4___Allocation {
+	int64_t x;
+	int64_t y;
+	int64_t width;
+	int64_t height;
+} s_platform_gtk4___Allocation;
+
 typedef struct s_ui_draw___step__record {
 	int64_t op;
 	double x;
@@ -453,11 +461,12 @@ static int64_t s_platform_gtk4___gridMode(GtkWidget * box);
 static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, int64_t orientation, int64_t forSize);
 static void s_platform_gtk4___gridAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline);
 static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double radius, double angle);
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKids(GtkWidget * box);
 static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, int64_t o, int64_t along, int64_t across, sngl_list_GtkWidget_p kids);
 static void s_platform_gtk4___place(GtkWidget * w, int64_t x, int64_t y, int64_t width, int64_t height);
 static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s_platform_gtk4___GridRows rows);
 static s_platform_gtk4___GridRows s_platform_gtk4___gridRows(GtkWidget * box, int64_t room, sngl_list_GtkWidget_p kids);
-static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsFrom(GtkWidget * c);
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsInto(sngl_list_GtkWidget_p kids, GtkWidget * c);
 static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int minimums, sngl_list_int naturals);
 static bool s_platform_gtk4___spreadsBefore(int64_t a, int64_t b, sngl_list_int minimums, sngl_list_int naturals);
 static void s_x_c__free(char * s);
@@ -757,6 +766,28 @@ static void sngl_list_int_push(sngl_list_int *l, int64_t v) {
 	l->data[l->len++] = v;
 }
 
+static GtkAllocation sngl_to_platform_gtk4___Allocation(s_platform_gtk4___Allocation v) {
+	return (GtkAllocation){.x = (int)v.x, .y = (int)v.y, .width = (int)v.width, .height = (int)v.height};
+}
+
+static s_platform_gtk4___Allocation sngl_from_platform_gtk4___Allocation(GtkAllocation v) {
+	return (s_platform_gtk4___Allocation){.x = (int64_t)v.x, .y = (int64_t)v.y, .width = (int64_t)v.width, .height = (int64_t)v.height};
+}
+
+static s_platform_gtk4___Allocation sngl_ccall_gtk_widget_size_allocate__sizeAllocate(GtkWidget * a0, s_platform_gtk4___Allocation a1, int a2) {
+	GtkAllocation t1 = sngl_to_platform_gtk4___Allocation(a1);
+	gtk_widget_size_allocate(a0, &t1, a2);
+	return sngl_from_platform_gtk4___Allocation(t1);
+}
+
+static sngl_list_GtkWidget_p sngl_list_GtkWidget_p_copy(sngl_list_GtkWidget_p l) {
+	sngl_list_GtkWidget_p out = {sngl_alloc(sizeof(GtkWidget *) * (size_t)(l.len + 1)), l.len, l.len};
+	for (int64_t i = 0; i < l.len; i++) {
+		out.data[i] = l.data[i];
+	}
+	return out;
+}
+
 static void sngl_list_GtkWidget_p_grow(sngl_list_GtkWidget_p *l, int64_t n) {
 	if (l->len + n <= l->cap) {
 		return;
@@ -776,14 +807,9 @@ static void sngl_list_GtkWidget_p_grow(sngl_list_GtkWidget_p *l, int64_t n) {
 	l->cap = cap;
 }
 
-static void sngl_list_GtkWidget_p_insert(sngl_list_GtkWidget_p *l, int64_t i, GtkWidget * v) {
-	if (i < 0 || i > l->len) {
-		return;
-	}
+static void sngl_list_GtkWidget_p_push(sngl_list_GtkWidget_p *l, GtkWidget * v) {
 	sngl_list_GtkWidget_p_grow(l, 1);
-	memmove(&l->data[i + 1], &l->data[i], sizeof(GtkWidget *) * (size_t)(l->len - i));
-	l->data[i] = v;
-	l->len++;
+	l->data[l->len++] = v;
 }
 
 static void sngl_list_int_insert(sngl_list_int *l, int64_t i, int64_t v) {
@@ -1598,7 +1624,7 @@ static s_ui_draw__Arc s_ui_draw__tangentArc(s_ui_draw__Point from, s_ui_draw__Po
 static int64_t s_platform_gtk4___flexMode(GtkWidget * box) {
 	int64_t heightForWidth = 0;
 	int64_t widthForHeight = 0;
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t i = 0;
 	while (i < (kids).len) {
 		int64_t mode = (int64_t)gtk_widget_get_request_mode((*sngl_list_GtkWidget_p_at(kids, i)));
@@ -1619,7 +1645,7 @@ static int64_t s_platform_gtk4___flexMode(GtkWidget * box) {
 
 static s_platform_gtk4__Measured s_platform_gtk4___flexMeasure(GtkWidget * box, int64_t orientation, int64_t forSize) {
 	int64_t axis = (int64_t)sngl_box_axis(box);
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t n = (kids).len;
 	int64_t minimum = 0;
 	int64_t natural = 0;
@@ -1663,7 +1689,7 @@ static void s_platform_gtk4___flexAllocate(GtkWidget * box, int64_t width, int64
 	int64_t axis = (int64_t)sngl_box_axis(box);
 	bool row = (axis == 0);
 	int64_t along = (row ? width : height);
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t n = (kids).len;
 	if (n > 0) {
 		s_platform_gtk4___FlexSizes flex = s_platform_gtk4___flexSizes(box, axis, along, (row ? height : width), kids);
@@ -1722,7 +1748,7 @@ static int64_t s_platform_gtk4___gridMode(GtkWidget * box) {
 }
 
 static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, int64_t orientation, int64_t forSize) {
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t n = (kids).len;
 	int64_t columns = (int64_t)sngl_look_columns(box);
 	int64_t gap = (int64_t)sngl_box_spacing(box);
@@ -1780,7 +1806,7 @@ static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, 
 }
 
 static void s_platform_gtk4___gridAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline) {
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	if ((kids).len > 0) {
 		s_platform_gtk4___GridRows rows = s_platform_gtk4___gridRows(box, width, kids);
 		sngl_list_int heights = s_platform_gtk4___gridHeights(kids, rows);
@@ -1806,6 +1832,13 @@ static void s_platform_gtk4___gridAllocate(GtkWidget * box, int64_t width, int64
 
 static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double radius, double angle) {
 	return (s_ui_draw__Point){.x = (center.x + (radius * cos(angle))), .y = (center.y + (radius * sin(angle)))};
+}
+
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKids(GtkWidget * box) {
+	sngl_list_GtkWidget_p kids = ((sngl_list_GtkWidget_p){0});
+	GtkWidget * c = gtk_widget_get_first_child(box);
+	kids = s_platform_gtk4___layoutKidsInto(kids, c);
+	return kids;
 }
 
 static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, int64_t o, int64_t along, int64_t across, sngl_list_GtkWidget_p kids) {
@@ -1852,10 +1885,8 @@ static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, 
 }
 
 static void s_platform_gtk4___place(GtkWidget * w, int64_t x, int64_t y, int64_t width, int64_t height) {
-	graphene_point_t * p = graphene_point_alloc();
-	(void)graphene_point_init(p, (float)((double)((double)(x))), (float)((double)((double)(y))));
-	gtk_widget_allocate(w, (int)(width), (int)(height), (int)(-1), gsk_transform_translate(NULL, p));
-	graphene_point_free(p);
+	s_platform_gtk4___Allocation a = (s_platform_gtk4___Allocation){.x = x, .y = y, .width = width, .height = height};
+	a = sngl_ccall_gtk_widget_size_allocate__sizeAllocate(w, a, (int)(-1));
 }
 
 static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s_platform_gtk4___GridRows rows) {
@@ -1933,15 +1964,15 @@ static s_platform_gtk4___GridRows s_platform_gtk4___gridRows(GtkWidget * box, in
 	return (s_platform_gtk4___GridRows){.widths = widths, .ends = ends};
 }
 
-static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsFrom(GtkWidget * c) {
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsInto(sngl_list_GtkWidget_p kids, GtkWidget * c) {
+	sngl_list_GtkWidget_p kids__own = sngl_list_GtkWidget_p_copy(kids);
 	if (c != NULL) {
-		sngl_list_GtkWidget_p rest = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_next_sibling(c));
 		if (gtk_widget_should_layout(c) != 0) {
-			sngl_list_GtkWidget_p_insert(&(rest), 0, c);
+			sngl_list_GtkWidget_p_push(&(kids__own), c);
 		}
-		return rest;
+		kids__own = s_platform_gtk4___layoutKidsInto(kids__own, gtk_widget_get_next_sibling(c));
 	}
-	return ((sngl_list_GtkWidget_p){0});
+	return kids__own;
 }
 
 static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int minimums, sngl_list_int naturals) {
@@ -2498,4 +2529,4 @@ const SnglAsset sngl_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/gtk4 --
-pass sha256:00b8fd719af62f36b2bac1346a13502a
+pass sha256:67bfd359cd34a413b68b79fce0b8fcfb

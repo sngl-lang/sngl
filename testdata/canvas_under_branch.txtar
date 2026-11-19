@@ -91,6 +91,7 @@ typedef struct s__measureWidget__result s__measureWidget__result;
 typedef struct sngl_list_int sngl_list_int;
 typedef struct s_platform_gtk4___FlexSizes s_platform_gtk4___FlexSizes;
 typedef struct s_platform_gtk4___GridRows s_platform_gtk4___GridRows;
+typedef struct s_platform_gtk4___Allocation s_platform_gtk4___Allocation;
 typedef struct sngl_lambda1_env sngl_lambda1_env;
 typedef struct sngl_fn_gpointer_gpointer_gpointer__void sngl_fn_gpointer_gpointer_gpointer__void;
 typedef struct sngl_lambda3_env sngl_lambda3_env;
@@ -240,6 +241,13 @@ typedef struct s_platform_gtk4___GridRows {
 	sngl_list_int ends;
 } s_platform_gtk4___GridRows;
 
+typedef struct s_platform_gtk4___Allocation {
+	int64_t x;
+	int64_t y;
+	int64_t width;
+	int64_t height;
+} s_platform_gtk4___Allocation;
+
 typedef struct sngl_lambda1_env {
 	sngl_env hdr;
 	GtkWidget * box;
@@ -330,6 +338,7 @@ static int64_t s_platform_gtk4___menuItemsFrom(GtkWidget * c, GMenu * menu, GSim
 static void s_platform_gtk4___entryChanged(GtkWidget * w);
 static GtkWidget * s_platform_gtk4___backFrom(GtkWidget * c);
 static void s_platform_gtk4___backPress(GtkWidget * w);
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKids(GtkWidget * box);
 static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, int64_t o, int64_t along, int64_t across, sngl_list_GtkWidget_p kids);
 static void s_platform_gtk4___place(GtkWidget * w, int64_t x, int64_t y, int64_t width, int64_t height);
 static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s_platform_gtk4___GridRows rows);
@@ -344,7 +353,7 @@ static int64_t s_platform_gtk4___menuAdd(GMenu * menu, GSimpleActionGroup * grou
 static int64_t s_platform_gtk4___menuLeavesFrom(GtkWidget * c, GMenu * sub, GSimpleActionGroup * group, int64_t n, bool checkable);
 static bool s_platform_gtk4___checkedFrom(GtkWidget * c);
 static GtkWidget * s_platform_gtk4___menuHostFrom(GtkWidget * p);
-static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsFrom(GtkWidget * c);
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsInto(sngl_list_GtkWidget_p kids, GtkWidget * c);
 static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int minimums, sngl_list_int naturals);
 static void s_platform_gtk4___setBarPart(GtkWidget * box, sngl_string key, GtkWidget * w);
 static void s_platform_gtk4___menuActivate(gpointer action, gpointer parameter, gpointer entry);
@@ -606,6 +615,20 @@ static void sngl_list_int_push(sngl_list_int *l, int64_t v) {
 	l->data[l->len++] = v;
 }
 
+static GtkAllocation sngl_to_platform_gtk4___Allocation(s_platform_gtk4___Allocation v) {
+	return (GtkAllocation){.x = (int)v.x, .y = (int)v.y, .width = (int)v.width, .height = (int)v.height};
+}
+
+static s_platform_gtk4___Allocation sngl_from_platform_gtk4___Allocation(GtkAllocation v) {
+	return (s_platform_gtk4___Allocation){.x = (int64_t)v.x, .y = (int64_t)v.y, .width = (int64_t)v.width, .height = (int64_t)v.height};
+}
+
+static s_platform_gtk4___Allocation sngl_ccall_gtk_widget_size_allocate__sizeAllocate(GtkWidget * a0, s_platform_gtk4___Allocation a1, int a2) {
+	GtkAllocation t1 = sngl_to_platform_gtk4___Allocation(a1);
+	gtk_widget_size_allocate(a0, &t1, a2);
+	return sngl_from_platform_gtk4___Allocation(t1);
+}
+
 static void sngl_lambda1_env__release(void *p) {
 	sngl_lambda1_env *e = p;
 	(void)e;
@@ -633,6 +656,14 @@ static void sngl_static_s_platform_gtk4___menuActivate(gpointer a0, gpointer a1,
 	sngl_call_leave(m);
 }
 
+static sngl_list_GtkWidget_p sngl_list_GtkWidget_p_copy(sngl_list_GtkWidget_p l) {
+	sngl_list_GtkWidget_p out = {sngl_alloc(sizeof(GtkWidget *) * (size_t)(l.len + 1)), l.len, l.len};
+	for (int64_t i = 0; i < l.len; i++) {
+		out.data[i] = l.data[i];
+	}
+	return out;
+}
+
 static void sngl_list_GtkWidget_p_grow(sngl_list_GtkWidget_p *l, int64_t n) {
 	if (l->len + n <= l->cap) {
 		return;
@@ -652,14 +683,9 @@ static void sngl_list_GtkWidget_p_grow(sngl_list_GtkWidget_p *l, int64_t n) {
 	l->cap = cap;
 }
 
-static void sngl_list_GtkWidget_p_insert(sngl_list_GtkWidget_p *l, int64_t i, GtkWidget * v) {
-	if (i < 0 || i > l->len) {
-		return;
-	}
+static void sngl_list_GtkWidget_p_push(sngl_list_GtkWidget_p *l, GtkWidget * v) {
 	sngl_list_GtkWidget_p_grow(l, 1);
-	memmove(&l->data[i + 1], &l->data[i], sizeof(GtkWidget *) * (size_t)(l->len - i));
-	l->data[i] = v;
-	l->len++;
+	l->data[l->len++] = v;
 }
 
 static void sngl_list_int_insert(sngl_list_int *l, int64_t i, int64_t v) {
@@ -1102,7 +1128,7 @@ static void s_platform_gtk4___barForget(GtkWidget * box) {
 static int64_t s_platform_gtk4___flexMode(GtkWidget * box) {
 	int64_t heightForWidth = 0;
 	int64_t widthForHeight = 0;
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t i = 0;
 	while (i < (kids).len) {
 		int64_t mode = (int64_t)gtk_widget_get_request_mode((*sngl_list_GtkWidget_p_at(kids, i)));
@@ -1123,7 +1149,7 @@ static int64_t s_platform_gtk4___flexMode(GtkWidget * box) {
 
 static s_platform_gtk4__Measured s_platform_gtk4___flexMeasure(GtkWidget * box, int64_t orientation, int64_t forSize) {
 	int64_t axis = (int64_t)sngl_box_axis(box);
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t n = (kids).len;
 	int64_t minimum = 0;
 	int64_t natural = 0;
@@ -1167,7 +1193,7 @@ static void s_platform_gtk4___flexAllocate(GtkWidget * box, int64_t width, int64
 	int64_t axis = (int64_t)sngl_box_axis(box);
 	bool row = (axis == 0);
 	int64_t along = (row ? width : height);
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t n = (kids).len;
 	if (n > 0) {
 		s_platform_gtk4___FlexSizes flex = s_platform_gtk4___flexSizes(box, axis, along, (row ? height : width), kids);
@@ -1226,7 +1252,7 @@ static int64_t s_platform_gtk4___gridMode(GtkWidget * box) {
 }
 
 static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, int64_t orientation, int64_t forSize) {
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	int64_t n = (kids).len;
 	int64_t columns = (int64_t)sngl_look_columns(box);
 	int64_t gap = (int64_t)sngl_box_spacing(box);
@@ -1284,7 +1310,7 @@ static s_platform_gtk4__Measured s_platform_gtk4___gridMeasure(GtkWidget * box, 
 }
 
 static void s_platform_gtk4___gridAllocate(GtkWidget * box, int64_t width, int64_t height, int64_t baseline) {
-	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_first_child(box));
+	sngl_list_GtkWidget_p kids = s_platform_gtk4___layoutKids(box);
 	if ((kids).len > 0) {
 		s_platform_gtk4___GridRows rows = s_platform_gtk4___gridRows(box, width, kids);
 		sngl_list_int heights = s_platform_gtk4___gridHeights(kids, rows);
@@ -1367,6 +1393,13 @@ static void s_platform_gtk4___backPress(GtkWidget * w) {
 	}
 }
 
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKids(GtkWidget * box) {
+	sngl_list_GtkWidget_p kids = ((sngl_list_GtkWidget_p){0});
+	GtkWidget * c = gtk_widget_get_first_child(box);
+	kids = s_platform_gtk4___layoutKidsInto(kids, c);
+	return kids;
+}
+
 static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, int64_t o, int64_t along, int64_t across, sngl_list_GtkWidget_p kids) {
 	int64_t n = (kids).len;
 	int64_t spare = (along - ((int64_t)sngl_box_spacing(box) * (n - 1)));
@@ -1411,10 +1444,8 @@ static s_platform_gtk4___FlexSizes s_platform_gtk4___flexSizes(GtkWidget * box, 
 }
 
 static void s_platform_gtk4___place(GtkWidget * w, int64_t x, int64_t y, int64_t width, int64_t height) {
-	graphene_point_t * p = graphene_point_alloc();
-	(void)graphene_point_init(p, (float)((double)((double)(x))), (float)((double)((double)(y))));
-	gtk_widget_allocate(w, (int)(width), (int)(height), (int)(-1), gsk_transform_translate(NULL, p));
-	graphene_point_free(p);
+	s_platform_gtk4___Allocation a = (s_platform_gtk4___Allocation){.x = x, .y = y, .width = width, .height = height};
+	a = sngl_ccall_gtk_widget_size_allocate__sizeAllocate(w, a, (int)(-1));
 }
 
 static sngl_list_int s_platform_gtk4___gridHeights(sngl_list_GtkWidget_p kids, s_platform_gtk4___GridRows rows) {
@@ -1600,15 +1631,15 @@ static GtkWidget * s_platform_gtk4___menuHostFrom(GtkWidget * p) {
 	return NULL;
 }
 
-static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsFrom(GtkWidget * c) {
+static sngl_list_GtkWidget_p s_platform_gtk4___layoutKidsInto(sngl_list_GtkWidget_p kids, GtkWidget * c) {
+	sngl_list_GtkWidget_p kids__own = sngl_list_GtkWidget_p_copy(kids);
 	if (c != NULL) {
-		sngl_list_GtkWidget_p rest = s_platform_gtk4___layoutKidsFrom(gtk_widget_get_next_sibling(c));
 		if (gtk_widget_should_layout(c) != 0) {
-			sngl_list_GtkWidget_p_insert(&(rest), 0, c);
+			sngl_list_GtkWidget_p_push(&(kids__own), c);
 		}
-		return rest;
+		kids__own = s_platform_gtk4___layoutKidsInto(kids__own, gtk_widget_get_next_sibling(c));
 	}
-	return ((sngl_list_GtkWidget_p){0});
+	return kids__own;
 }
 
 static sngl_list_int s_platform_gtk4___distribute(int64_t extra, sngl_list_int minimums, sngl_list_int naturals) {
@@ -3253,7 +3284,7 @@ func _barForget(box cgo.Widget) {
 func _flexMode(box cgo.Widget) int {
 	var heightForWidth int = 0
 	var widthForHeight int = 0
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var i int = 0
 	for i < len(kids) {
 		var mode int = cgo.GtkWidgetGetRequestMode(kids[i])
@@ -3280,7 +3311,7 @@ func _flexMode(box cgo.Widget) int {
 
 func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 	var axis int = int(cgo.SnglBoxAxis(box))
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	var minimum int = 0
 	var natural int = 0
@@ -3348,7 +3379,7 @@ func _flexAllocate(box cgo.Widget, width int, height int, baseline int) {
 		__lt10 = height
 	}
 	var along int = __lt10
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	if n > 0 {
 		var __lt11 int
@@ -3425,7 +3456,7 @@ func _gridMode(box cgo.Widget) int {
 }
 
 func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	var columns int = cgo.SnglLookColumns(box)
 	var gap int = cgo.SnglBoxSpacing(box)
@@ -3525,7 +3556,7 @@ func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 }
 
 func _gridAllocate(box cgo.Widget, width int, height int, baseline int) {
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	if len(kids) > 0 {
 		rows := _gridRows(box, width, kids)
 		heights := _gridHeights(kids, rows)
@@ -3620,6 +3651,13 @@ func _backPress(w cgo.Widget) {
 	}
 }
 
+func _layoutKids(box cgo.Widget) []cgo.Widget {
+	kids := []cgo.Widget{}
+	c := cgo.GtkWidgetGetFirstChild(box)
+	kids = _layoutKidsInto(kids, c)
+	return kids
+}
+
 func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget) _FlexSizes {
 	var n int = len(kids)
 	var spare int = (along - (cgo.SnglBoxSpacing(box) * (n - 1)))
@@ -3682,10 +3720,8 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 }
 
 func _place(w cgo.Widget, x int, y int, width int, height int) {
-	p := cgo.GraphenePointAlloc()
-	cgo.GraphenePointInit(p, cgo.CFloat(float64(x)), cgo.CFloat(float64(y)))
-	cgo.GtkWidgetAllocate(w, width, height, -1, cgo.GskTransformTranslate(nil, p))
-	cgo.GraphenePointFree(p)
+	a := cgo.Allocation{X: x, Y: y, Width: width, Height: height}
+	a = cgo.GtkWidgetSizeAllocate(w, a, -1)
 }
 
 func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
@@ -3914,17 +3950,15 @@ func _menuHostFrom(p *cgo.Widget) *cgo.Widget {
 	return nil
 }
 
-func _layoutKidsFrom(c *cgo.Widget) []cgo.Widget {
+func _layoutKidsInto(kids []cgo.Widget, c *cgo.Widget) []cgo.Widget {
+	kids__own := slices.Clone(kids)
 	if c != nil {
-		rest := _layoutKidsFrom(cgo.GtkWidgetGetNextSibling((*(c))))
 		if cgo.GtkWidgetShouldLayout((*(c))) {
-			if __i := 0; __i >= 0 && __i <= len(rest) {
-				rest = slices.Insert(rest, __i, (*(c)))
-			}
+			kids__own = append(kids__own, (*(c)))
 		}
-		return rest
+		kids__own = _layoutKidsInto(kids__own, cgo.GtkWidgetGetNextSibling((*(c))))
 	}
-	return []cgo.Widget{}
+	return kids__own
 }
 
 func _distribute(extra int, minimums []int, naturals []int) []int {
@@ -4365,12 +4399,12 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:f91f403aa98ac7a02024847fdda3c636
+pass sha256:f0a2f53346c2ae14aa23160c260c0f13
 -- run/c/win32 --
 pass sha256:e254869f7e25f4636add2d30d2d05f99
 -- run/go/fyne --
 pass sha256:d4fcbe1607e64da4cbe835a1a43a8871
 -- run/go/gtk4 --
-pass sha256:a308ac02399675b9aef9c4679988dfe4
+pass sha256:21bc416deb9e9a4cbb0922ac5051ceec
 -- run/none/html --
 pass sha256:81032b57fce60a42f1f5a5719a65b7f2

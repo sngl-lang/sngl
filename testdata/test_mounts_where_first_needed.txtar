@@ -956,7 +956,7 @@ func _layoutHooksSet() {
 func _flexMode(box cgo.Widget) int {
 	var heightForWidth int = 0
 	var widthForHeight int = 0
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var i int = 0
 	for i < len(kids) {
 		var mode int = cgo.GtkWidgetGetRequestMode(kids[i])
@@ -983,7 +983,7 @@ func _flexMode(box cgo.Widget) int {
 
 func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 	var axis int = int(cgo.SnglBoxAxis(box))
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	var minimum int = 0
 	var natural int = 0
@@ -1051,7 +1051,7 @@ func _flexAllocate(box cgo.Widget, width int, height int, baseline int) {
 		__lt9 = height
 	}
 	var along int = __lt9
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	if n > 0 {
 		var __lt10 int
@@ -1128,7 +1128,7 @@ func _gridMode(box cgo.Widget) int {
 }
 
 func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	var n int = len(kids)
 	var columns int = cgo.SnglLookColumns(box)
 	var gap int = cgo.SnglBoxSpacing(box)
@@ -1228,7 +1228,7 @@ func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 }
 
 func _gridAllocate(box cgo.Widget, width int, height int, baseline int) {
-	kids := _layoutKidsFrom(cgo.GtkWidgetGetFirstChild(box))
+	kids := _layoutKids(box)
 	if len(kids) > 0 {
 		rows := _gridRows(box, width, kids)
 		heights := _gridHeights(kids, rows)
@@ -1256,6 +1256,13 @@ func _gridAllocate(box cgo.Widget, width int, height int, baseline int) {
 			r += 1
 		}
 	}
+}
+
+func _layoutKids(box cgo.Widget) []cgo.Widget {
+	kids := []cgo.Widget{}
+	c := cgo.GtkWidgetGetFirstChild(box)
+	kids = _layoutKidsInto(kids, c)
+	return kids
 }
 
 func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget) _FlexSizes {
@@ -1320,10 +1327,8 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 }
 
 func _place(w cgo.Widget, x int, y int, width int, height int) {
-	p := cgo.GraphenePointAlloc()
-	cgo.GraphenePointInit(p, cgo.CFloat(float64(x)), cgo.CFloat(float64(y)))
-	cgo.GtkWidgetAllocate(w, width, height, -1, cgo.GskTransformTranslate(nil, p))
-	cgo.GraphenePointFree(p)
+	a := cgo.Allocation{X: x, Y: y, Width: width, Height: height}
+	a = cgo.GtkWidgetSizeAllocate(w, a, -1)
 }
 
 func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
@@ -1425,17 +1430,15 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 	return _GridRows{Widths: widths, Ends: ends}
 }
 
-func _layoutKidsFrom(c *cgo.Widget) []cgo.Widget {
+func _layoutKidsInto(kids []cgo.Widget, c *cgo.Widget) []cgo.Widget {
+	kids__own := slices.Clone(kids)
 	if c != nil {
-		rest := _layoutKidsFrom(cgo.GtkWidgetGetNextSibling((*(c))))
 		if cgo.GtkWidgetShouldLayout((*(c))) {
-			if __i := 0; __i >= 0 && __i <= len(rest) {
-				rest = slices.Insert(rest, __i, (*(c)))
-			}
+			kids__own = append(kids__own, (*(c)))
 		}
-		return rest
+		kids__own = _layoutKidsInto(kids__own, cgo.GtkWidgetGetNextSibling((*(c))))
 	}
-	return []cgo.Widget{}
+	return kids__own
 }
 
 func _distribute(extra int, minimums []int, naturals []int) []int {
@@ -1811,7 +1814,7 @@ pass sha256:4f51e7dcb6c4f2892d0a2ba26d4f6e88
 -- run/go/fyne --
 pass sha256:1d1bb6ffc8d8242e816dbebba16f8364
 -- run/go/gtk4 --
-pass sha256:3a648a97f01d6e6c707239aa6bfad8d4
+pass sha256:e5145f98e9433a8b2ba40a3a448e2951
 -- run/kotlin/android --
 pass sha256:0bbf7d1be5dff9dc17c69f8450d99894
 -- run/none/html --
