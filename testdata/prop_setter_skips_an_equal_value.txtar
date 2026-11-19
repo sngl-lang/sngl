@@ -7285,7 +7285,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:0664c104b00d809d1de3ef9eee363e69
+pass sha256:4b784c2435366ef05ba4a3470eb396f6
 -- run/go/gtk4 --
 pass sha256:406128732dec30d84000a432f865c723
 -- run/none/html --

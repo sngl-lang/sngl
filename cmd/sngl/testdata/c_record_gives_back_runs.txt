@@ -232,7 +232,7 @@ ui.window(title="t") {
     rows
 }
 -- testrun/gtk4/c/anchor.sngl/rows/1 --
-sha256:f5bebffab6d7574bf239f2f95b16e04c
+sha256:895bf4195516da8f50008aee2f0a43bd
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:f5bebffab6d7574bf239f2f95b16e04c
   ]
 }
 -- testrun/gtk4/c/app.sngl/rows/1 --
-sha256:d502d33b1ea6e6b76fb5e7db5e4d962e
+sha256:1fface59d1e7b45584de2ced5e74cff5
 {
   "results": [
     {
@@ -252,7 +252,7 @@ sha256:d502d33b1ea6e6b76fb5e7db5e4d962e
   ]
 }
 -- testrun/gtk4/c/closure.sngl/rows/1 --
-sha256:0202e77d34b8d609c574989970b6ce9f
+sha256:5948321cb420094ad65c61c379674068
 {
   "results": [
     {

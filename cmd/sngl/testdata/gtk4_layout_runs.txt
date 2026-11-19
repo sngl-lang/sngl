@@ -120,7 +120,7 @@ ui.window(title="t") {
     pictures()
 }
 -- testrun/gtk4/c/flex.sngl/main/1 --
-sha256:3c2371cf3cd79cd5cb837f4cd40ca58d
+sha256:860f2555b71ad227fbb2068e371c8c69
 {
   "results": [
     {
@@ -133,7 +133,7 @@ sha256:3c2371cf3cd79cd5cb837f4cd40ca58d
   }
 }
 -- testrun/gtk4/c/pictures.sngl/pictures/1 --
-sha256:bf19bb00392af550fe3925a5cca6f359
+sha256:304ff5a5524022dc42bfec26480e9f3d
 {
   "results": [
     {
