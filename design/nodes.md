@@ -75,8 +75,8 @@ prop, whose report reaches the node as an event of its name (`bindOn`,
 one per event. `passDeclarative` splices it in place of the platform's
 connect, with the node bound and the handler left for the platform as
 `connect` leaves it. gtk4's scroll is the first: GTK raises no signal for
-the end of the content arriving, so `@reachEnd` is the runtime's
-`sngl_scroll_on_reach_end`, not a `g_signal_connect`.
+the end of the content arriving, so `@reachEnd` is gtk4.sngl's
+`_rtScrollOnReachEnd`, not a `g_signal_connect`.
 
 `set` writes one prop: a function of the widget, typed as the component, and
 the value, whose parameter is named as the prop it sets (`bindSet`,
@@ -792,7 +792,7 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 **An event no host widget reports is a primitive of the platform's own.**
 `ui.scroll`'s `@reachEnd` has no signal on any target, so each answers it with
 something it ships: android's `SnglScroll` (`scroll.kt`), html's
-`sngl-reach-end` element (`reachend.go`), gtk4's runtime's scroll (`rt/scroll.c`) and fynelayout's
+`sngl-reach-end` element (`reachend.go`), gtk4's scroll (`_rtScrollNew`) and fynelayout's
 `ReachScroll`. Each fires as the end arrives and again when the content
 grows while it is there, so a short first page loads the next without a
 scroll; content shrinking while it is there -- a row removed, a filter

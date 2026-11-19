@@ -444,7 +444,7 @@ func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
 }
 
 func _setSpan(w cgo.Widget, s _SpanState) {
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
+	cgo.HoldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
 }
 
 func _spanSaid(w cgo.Widget) _SpanState {
@@ -534,7 +534,7 @@ func _spanKids(parent cgo.Widget) cgo.Store {
 		return (cgo.Store)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer((*(held))))))
 	}
 	made := cgo.GListStoreNew(cgo.GObjectGetType())
-	cgo.HoldData((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
 	return made
 }
 
@@ -817,6 +817,6 @@ window.__sngl_boot = () => {
 -- run/go/fyne --
 pass sha256:1a8da2581f3355e85a5c4da8982ec75e
 -- run/go/gtk4 --
-pass sha256:aeb097c7e9991be4120baf22531894af
+pass sha256:f02dcfed69ea6c2d2f2e0db60741c1cb
 -- run/none/html --
 pass sha256:c7cfab655e9f2a36df0882c9a8a9fc55

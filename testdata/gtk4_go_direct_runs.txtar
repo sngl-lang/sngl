@@ -481,4 +481,4 @@ func snglGtkCarryFile(name, data string, n int) {
 	C.sngl_gtk_carry_file(cn, cd, C.int(n))
 }
 -- run/go/gtk4 --
-pass sha256:e81b8f8dbe8d5b2bf879fa0dfd258d7e
+pass sha256:23ade5d945e3166405bcad2371a0098a

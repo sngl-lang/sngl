@@ -218,21 +218,6 @@ typedef struct SnglSchedule SnglSchedule;
 SnglSchedule *sngl_every(int ms, SnglFn fn, void *ctx, GDestroyNotify release);
 void sngl_schedule_cancel(SnglSchedule *s);
 
-/* A scroll is a GtkScrolledWindow moving along a direction, "horizontal",
- * "both" or else vertical, that runs its reach-end handler as the end of
- * its content comes within half a viewport of showing (scroll.c). Its
- * content is set through sngl_scroll_set_child, which leaves content it
- * already holds where it is. sngl_scroll_reach_end runs the handler, as a
- * test does. */
-GtkWidget *sngl_scroll_new(GtkLayoutManager *layout);
-/* What the layout a scroll's probe is handed keeps on the probe (scroll.c). */
-int sngl_probe_across(GtkWidget *w);
-void sngl_probe_measured(GtkWidget *w, int nat);
-void sngl_scroll_set_child(GtkWidget *sw, GtkWidget *child);
-void sngl_scroll_set_direction(GtkWidget *sw, const char *dir);
-void sngl_scroll_on_reach_end(GtkWidget *sw, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_scroll_reach_end(GtkWidget *sw);
-
 /* A window's keys (keys.c). sngl_key_name is what a window's `@key` calls
  * the key keyval is with state held -- a name, or the character it types,
  * written into buf -- or NULL for one it does not report: a modifier on its

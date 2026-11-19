@@ -1313,7 +1313,7 @@ func _tabsRemove(box cgo.Widget, page cgo.Widget) bool {
 }
 
 func _setTabs(box cgo.Widget, t _TabsState) {
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs", t)
+	cgo.HoldTabs((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs", t)
 }
 
 func _tabsShown(box cgo.Widget) {
@@ -1371,7 +1371,7 @@ func _tabsShow(box cgo.Widget) {
 }
 
 func _setTabPage(page cgo.Widget, s _TabPageState) {
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page", s)
+	cgo.HoldTabPage((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page", s)
 }
 
 func _hostOf(page cgo.Widget) *cgo.Widget {
@@ -1560,4 +1560,4 @@ pass sha256:fb55da9509d8b8fabcb14cf67466fefe
 -- run/go/fyne --
 pass sha256:e30e9bbc54c925d2ba0849a2775250e6
 -- run/go/gtk4 --
-pass sha256:da3281cdc829bbdda99b193b98bd0c87
+pass sha256:a5ce3376ecd602411264a6139e088a5a

@@ -1,14 +1,14 @@
-A scroll's `direction` reaches the runtime through the set gtk4.sngl
-declares for it, `_set_Scroll_direction`, which calls
-`cgo.SnglScrollSetDirection` with the axis as a Go string; the wrapper hands
-it to `sngl_scroll_set_direction`, so the program holds no C string. That
-sets the scrolled window's two policies, lays the content out at its natural
-size along each axis that scrolls, and reads @reachEnd along x in a scroll
-moving sideways.
+A scroll's `direction` reaches the scrolled window through the set
+gtk4.sngl declares for it, `_set_Scroll_direction`, whose
+`_rtScrollSetDirection` compares the axis as a SNGL string and calls GTK
+through the generated wrappers, so the program holds no C string. That sets
+the scrolled window's two policies, lays the content out at its natural size
+along each axis that scrolls, and reads @reachEnd along x in a scroll moving
+sideways.
 
 A scroll given no direction is set "vertical", ui.ScrollDirection's default,
-which is how a scroll SnglScrollNew makes already moves.
-deny out/go/gtk4/main.go `import "C"` -- the direction crosses as a Go string through the generated wrapper, so the program imports no C
+which is how a scroll _rtScrollNew makes already moves.
+deny out/go/gtk4/main.go `import "C"` -- the scroll is SNGL calling GTK through the generated wrappers, so the program imports no C
 -- app.sngl --
 import ui "sngl:ui"
 
@@ -38,7 +38,12 @@ import (
 	"duckfam.us/sngl/lib/platform/gtk4/cgo"
 	"os"
 	"runtime"
+	"unsafe"
 )
+
+func snglSome[T any](v T) *T {
+	return &v
+}
 
 type _measureWidget__result struct {
 	Out3 int
@@ -70,6 +75,18 @@ type Look struct {
 	Columns   int
 }
 
+type _ScrollState struct {
+	Axis     int
+	Near     bool
+	Content  int
+	ReachEnd func()
+}
+
+type _ProbeState struct {
+	Across  bool
+	Content int
+}
+
 type snglState struct {
 	visible__inst0 bool
 	__n0           cgo.Widget
@@ -85,6 +102,28 @@ var m = &snglState{}
 
 func _main(build func()) int {
 	return cgo.SnglGtkMain(build)
+}
+
+func _rtScrollNew(layout cgo.LayoutManager) cgo.Widget {
+	sw := cgo.GtkScrolledWindowNew()
+	_setScroll(sw, _ScrollState{Content: -1, ReachEnd: func() {
+	}})
+	probe := cgo.BoxNew(1, 0)
+	cgo.GtkWidgetSetLayoutManager(probe, layout)
+	_setProbe(probe, _ProbeState{Content: -1})
+	cgo.GObjectRefSink(cgo.Pointer(probe))
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe", cgo.Pointer(probe), _unrefData)
+	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(sw)), "notify::child", func() {
+		_scrollChild(sw)
+	})
+	down__r0 := cgo.Pointer(cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
+	across__r0 := cgo.Pointer(cgo.GtkScrolledWindowGetHadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw))))
+	cgo.GSignalConnectObject(down__r0, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.GSignalConnectObject(down__r0, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.GSignalConnectObject(across__r0, "changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	cgo.GSignalConnectObject(across__r0, "value-changed", _scrollAdjusted, cgo.Pointer(sw), 0)
+	_scrollPolicies(sw)
+	return (cgo.Widget)(unsafe.Pointer(sw))
 }
 
 func _probeMode(w cgo.Widget) int {
@@ -116,7 +155,7 @@ func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
 			cgo.GtkWidgetAllocate((*(child)), width, height, baseline, nil)
 			var minimum int = 0
 			var natural int = 0
-			if cgo.SnglProbeAcross(w) {
+			if _probeAcross(w) {
 				__ref1 := _measureWidget__result(cgo.GtkWidgetMeasure((*(child)), 0, height, minimum, natural, nil, nil))
 				minimum = __ref1.Out3
 				natural = __ref1.Out4
@@ -125,8 +164,47 @@ func _probeAllocate(w cgo.Widget, width int, height int, baseline int) {
 				minimum = __ref2.Out3
 				natural = __ref2.Out4
 			}
-			cgo.SnglProbeMeasured(w, natural)
+			_probeMeasured(w, natural)
 		}
+	}
+}
+
+func _rtScrollSetChild(scroll cgo.Widget, child cgo.Widget) {
+	sw := scroll
+	probe := _probeIn(sw)
+	up := cgo.GtkWidgetGetParent(child)
+	if (probe != nil) && (up != nil) {
+		if (*(up)) == (*(probe)) {
+			return
+		}
+	}
+	cgo.ScrolledSetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)), snglSome(child))
+}
+
+func _rtScrollSetDirection(scroll cgo.Widget, direction string) {
+	sw := scroll
+	var axis int = 0
+	if direction == "horizontal" {
+		axis = 1
+	} else {
+		if direction == "both" {
+			axis = 2
+		}
+	}
+	s := func(h any) *_ScrollState {
+		if v, ok := h.(_ScrollState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	if s != nil {
+		_setScroll(sw, _ScrollState{Axis: axis, Content: -1, ReachEnd: (*(s)).ReachEnd})
+	}
+	_scrollPolicies(sw)
+	probe := _probeIn(sw)
+	if probe != nil {
+		_setProbe((*(probe)), _ProbeState{Across: (axis == 1), Content: -1})
+		cgo.GtkWidgetQueueAllocate((*(probe)))
 	}
 }
 
@@ -152,6 +230,236 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _setScroll(sw cgo.Widget, s _ScrollState) {
+	cgo.HoldScroll((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll", s)
+}
+
+func _setProbe(probe cgo.Widget, s _ProbeState) {
+	cgo.HoldProbe((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state", s)
+}
+
+func _unrefData(p cgo.Pointer) {
+	cgo.GObjectUnref(p)
+}
+
+func _scrollChild(sw cgo.Widget) {
+	_scrollPolicies(sw)
+	probe := _probeIn(sw)
+	set := cgo.GtkScrolledWindowGetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
+	if (probe != nil) && (set != nil) {
+		if (*(set)) != (*(probe)) {
+			if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(set))))), cgo.GtkViewportGetType()) {
+				inner := cgo.GtkViewportGetChild((cgo.Viewport)(unsafe.Pointer((*(set)))))
+				if inner != nil {
+					if (*(inner)) != (*(probe)) {
+						_scrollTake(sw, (*(probe)), (*(inner)))
+					}
+				}
+			} else {
+				_scrollTake(sw, (*(probe)), (*(set)))
+			}
+		}
+	}
+}
+
+func _scrollAdjusted(adjustment cgo.Pointer, gobject cgo.Pointer) {
+	_scrollChanged((cgo.Widget)(unsafe.Pointer(gobject)))
+}
+
+func _scrollPolicies(sw cgo.Widget) {
+	var axis int = 0
+	s := func(h any) *_ScrollState {
+		if v, ok := h.(_ScrollState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	if s != nil {
+		axis = (*(s)).Axis
+	}
+	var __lt3 int
+	if axis == 0 {
+		__lt3 = 3
+	} else {
+		__lt3 = 1
+	}
+	var __lt4 int
+	if axis == 1 {
+		__lt4 = 2
+	} else {
+		__lt4 = 1
+	}
+	cgo.GtkScrolledWindowSetPolicy((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)), int(__lt3), int(__lt4))
+	cgo.GtkScrolledWindowSetPropagateNaturalWidth((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)), (axis == 0))
+	c := cgo.GtkScrolledWindowGetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
+	if c != nil {
+		if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(c))))), cgo.GtkScrollableGetType()) {
+			_scrollablePolicies((*(c)), axis)
+		} else {
+			up := cgo.GtkWidgetGetParent((*(c)))
+			if up != nil {
+				if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(up))))), cgo.GtkScrollableGetType()) {
+					_scrollablePolicies((*(up)), axis)
+				}
+			}
+		}
+	}
+}
+
+func _probeAcross(w cgo.Widget) bool {
+	p := func(h any) *_ProbeState {
+		if v, ok := h.(_ProbeState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
+	return ((p != nil) && (*(p)).Across)
+}
+
+func _probeMeasured(w cgo.Widget, natural int) {
+	p := func(h any) *_ProbeState {
+		if v, ok := h.(_ProbeState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(w)), "sngl-probe-state"))
+	if p != nil {
+		if natural != (*(p)).Content {
+			_setProbe(w, _ProbeState{Across: (*(p)).Across, Content: natural})
+			sw := cgo.GtkWidgetGetAncestor(w, cgo.GtkScrolledWindowGetType())
+			if sw != nil {
+				_scrollChanged((*(sw)))
+			}
+		}
+	}
+}
+
+func _probeIn(sw cgo.Widget) *cgo.Widget {
+	p := cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-probe")
+	if p != nil {
+		return snglSome((cgo.Widget)(unsafe.Pointer((*(p)))))
+	}
+	return nil
+}
+
+func _scrollTake(sw cgo.Widget, probe cgo.Widget, content cgo.Widget) {
+	cgo.GObjectRef(cgo.Pointer(content))
+	emptied := false
+	for !emptied {
+		k := cgo.GtkWidgetGetFirstChild(probe)
+		if k != nil {
+			cgo.BoxRemove((cgo.PGtkBox)(unsafe.Pointer(probe)), (*(k)))
+		} else {
+			emptied = true
+		}
+	}
+	_probeForget(probe)
+	cgo.ScrolledSetChild((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)), snglSome(probe))
+	cgo.GtkBoxAppend((cgo.PGtkBox)(unsafe.Pointer(probe)), content)
+	cgo.GObjectUnref(cgo.Pointer(content))
+}
+
+func _scrollChanged(sw cgo.Widget) {
+	s := func(h any) *_ScrollState {
+		if v, ok := h.(_ScrollState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	if s != nil {
+		var __lt7 cgo.Adjustment
+		if (*(s)).Axis == 1 {
+			__lt7 = cgo.GtkScrolledWindowGetHadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
+		} else {
+			__lt7 = cgo.GtkScrolledWindowGetVadjustment((cgo.PGtkScrolledWindow)(unsafe.Pointer(sw)))
+		}
+		a := __lt7
+		var upper float64 = cgo.GtkAdjustmentGetUpper(a)
+		var value float64 = cgo.GtkAdjustmentGetValue(a)
+		var page float64 = cgo.GtkAdjustmentGetPageSize(a)
+		if page <= 0.0 {
+			return
+		}
+		near := ((upper - (value + page)) <= (page / 2.0))
+		var content int = -1
+		probe := _probeIn(sw)
+		if probe != nil {
+			p := func(h any) *_ProbeState {
+				if v, ok := h.(_ProbeState); ok {
+					return &v
+				}
+				return nil
+			}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer((*(probe)))), "sngl-probe-state"))
+			if p != nil {
+				content = (*(p)).Content
+			}
+		}
+		fire := (near && (!(*(s)).Near || (content > (*(s)).Content)))
+		_setScroll(sw, _ScrollState{Axis: (*(s)).Axis, Near: near, Content: content, ReachEnd: (*(s)).ReachEnd})
+		if fire && (cgo.Data((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked") == nil) {
+			source := cgo.GIdleSourceNew()
+			cgo.GSourceSetCallback(source, _scrollReport, cgo.Pointer(sw), _scrollReported)
+			cgo.GSourceAttach(source, nil)
+			cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", cgo.Pointer(source), _sourceGone)
+		}
+	}
+}
+
+func _scrollablePolicies(w cgo.Widget, axis int) {
+	var __lt8 int
+	if axis != 1 {
+		__lt8 = 1
+	} else {
+		__lt8 = 0
+	}
+	cgo.GtkScrollableSetVscrollPolicy((cgo.Scrollable)(unsafe.Pointer(w)), int(__lt8))
+	var __lt9 int
+	if axis != 0 {
+		__lt9 = 1
+	} else {
+		__lt9 = 0
+	}
+	cgo.GtkScrollableSetHscrollPolicy((cgo.Scrollable)(unsafe.Pointer(w)), int(__lt9))
+}
+
+func _probeForget(probe cgo.Widget) {
+	p := func(h any) *_ProbeState {
+		if v, ok := h.(_ProbeState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(probe)), "sngl-probe-state"))
+	if p != nil {
+		_setProbe(probe, _ProbeState{Across: (*(p)).Across, Content: -1})
+	}
+}
+
+func _scrollReport(data cgo.Pointer) bool {
+	sw := (cgo.Widget)(unsafe.Pointer(data))
+	cgo.GObjectSetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-asked", nil)
+	s := func(h any) *_ScrollState {
+		if v, ok := h.(_ScrollState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(sw)), "sngl-scroll"))
+	if s != nil {
+		run := (*(s)).ReachEnd
+		run()
+	}
+	return false
+}
+
+func _scrollReported(data cgo.Pointer) {
+	return
+}
+
+func _sourceGone(p cgo.Pointer) {
+	s := (cgo.Source)(unsafe.Pointer(p))
+	cgo.GSourceDestroy(s)
+	cgo.GSourceUnref(s)
+}
+
 func __n0_visible_handler(__visible bool) {
 	m.visible__inst0 = __visible
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
@@ -167,35 +475,35 @@ func snglBuild() {
 	cgo.SnglToplevelSetTitle(m.__n0, "t")
 	cgo.SnglToplevelSetVisible(m.__n0, m.visible__inst0)
 	cgo.SnglToplevelOnVisible(m.__n0, __n0_visible_handler)
-	m.down = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+	m.down = _rtScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
 		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
 	}, _probeAllocate))
-	cgo.SnglScrollSetDirection(m.down, "vertical")
+	_rtScrollSetDirection(m.down, "vertical")
 	_setLook(m.down, Look{})
 	m.__n1 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n1, "rows")
 	_setLook(m.__n1, Look{})
-	cgo.SnglScrollSetChild(m.down, m.__n1)
+	_rtScrollSetChild(m.down, m.__n1)
 	cgo.SnglToplevelAppend(m.__n0, m.down)
-	m.across = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+	m.across = _rtScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
 		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
 	}, _probeAllocate))
-	cgo.SnglScrollSetDirection(m.across, "horizontal")
+	_rtScrollSetDirection(m.across, "horizontal")
 	_setLook(m.across, Look{})
 	m.__n2 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n2, "columns")
 	_setLook(m.__n2, Look{})
-	cgo.SnglScrollSetChild(m.across, m.__n2)
+	_rtScrollSetChild(m.across, m.__n2)
 	cgo.SnglToplevelAppend(m.__n0, m.across)
-	m.either = cgo.SnglScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
+	m.either = _rtScrollNew(cgo.GtkCustomLayoutNew(_probeMode, func(a0 cgo.Widget, a1 int, a2 int) cgo.GtkCustomLayoutNewMeasure {
 		return cgo.GtkCustomLayoutNewMeasure(_probeMeasure(a0, a1, a2))
 	}, _probeAllocate))
-	cgo.SnglScrollSetDirection(m.either, "both")
+	_rtScrollSetDirection(m.either, "both")
 	_setLook(m.either, Look{})
 	m.__n3 = cgo.SnglTextNew()
 	cgo.SnglTextSetValue(m.__n3, "a page")
 	_setLook(m.__n3, Look{})
-	cgo.SnglScrollSetChild(m.either, m.__n3)
+	_rtScrollSetChild(m.either, m.__n3)
 	cgo.SnglToplevelAppend(m.__n0, m.either)
 	cgo.SnglAppAttach(m.__n0)
 }
@@ -234,4 +542,4 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:9ffa91893474238f0f004413d2c185ed
+pass sha256:9d46d4cda75972ff773e6cb0161f2ca7

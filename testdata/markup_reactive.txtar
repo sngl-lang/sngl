@@ -816,7 +816,7 @@ func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
 }
 
 func _setSpan(w cgo.Widget, s _SpanState) {
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
+	cgo.HoldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
 }
 
 func _spanSaid(w cgo.Widget) _SpanState {
@@ -906,7 +906,7 @@ func _spanKids(parent cgo.Widget) cgo.Store {
 		return (cgo.Store)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer((*(held))))))
 	}
 	made := cgo.GListStoreNew(cgo.GObjectGetType())
-	cgo.HoldData((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
 	return made
 }
 
@@ -1293,7 +1293,7 @@ pass sha256:99d675a6dd54d1befd297cb45b599e6b
 -- run/go/fyne --
 pass sha256:974ff7bcf960050683981c4cc4e80ff8
 -- run/go/gtk4 --
-pass sha256:6e67c4df80aff3f2995ee162fd8a1fd0
+pass sha256:fbfd7777b12d82143cb98cf14fa93386
 -- run/go/html --
 pass sha256:b3641d52508f8aad1477725df23f05f5
 -- run/kotlin/android --

@@ -38,8 +38,8 @@ stdout 'ok +1 tests, 0 failures'
 sngl test --platform=gtk4 --language=c controls.sngl
 stdout 'ok +1 tests, 0 failures'
 
-# A scroll's end arriving is no signal: rt's scroll.c reads it off the
-# adjustments, and a test fires the handler rt keeps. Its direction is the
+# A scroll's end arriving is no signal: gtk4.sngl reads it off the
+# adjustments, and a test fires the handler it keeps on the scroll. Its direction is the
 # member's name, which NoEnum writes in place of the ordinal a string of an
 # enum would otherwise format as.
 
@@ -1106,7 +1106,7 @@ ui.window {
     main()
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:38b061631f6f7d4f4f37e5c1000c2937
+sha256:4db812fef7dc6c3bbe8183e7fed11c46
 {
   "results": [
     {
@@ -1116,7 +1116,7 @@ sha256:38b061631f6f7d4f4f37e5c1000c2937
   ]
 }
 -- testrun/gtk4/c/async.sngl/main/1 --
-sha256:daf8228858b7f9edbd3f7c16d884008c
+sha256:987e5e8ed4aee0217e92c33d2818efba
 {
   "results": [
     {
@@ -1126,7 +1126,7 @@ sha256:daf8228858b7f9edbd3f7c16d884008c
   ]
 }
 -- testrun/gtk4/c/bare.sngl/main/1 --
-sha256:bc64b87ef4ce9eb01e87f8db2285135e
+sha256:3fed7ad1e182adc2c74fae7064336da2
 {
   "results": [
     {
@@ -1136,7 +1136,7 @@ sha256:bc64b87ef4ce9eb01e87f8db2285135e
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:3ca87022481416a54d4e1c92f5779ea4
+sha256:dab9db21bdea73ac90dde4a80251fa8d
 {
   "results": [
     {
@@ -1146,7 +1146,7 @@ sha256:3ca87022481416a54d4e1c92f5779ea4
   ]
 }
 -- testrun/gtk4/c/choose.sngl/strip/1 --
-sha256:15852ea64ee51a39d67ead3e160c8d18
+sha256:390a71b22d4a5c5c002a44233182bb3b
 {
   "results": [
     {
@@ -1164,7 +1164,7 @@ sha256:15852ea64ee51a39d67ead3e160c8d18
   ]
 }
 -- testrun/gtk4/c/controls.sngl/main/1 --
-sha256:06bbc8f113f4fa068ddbd45dd9257f98
+sha256:741cf3e2b3e6d2fbe33ad4b462ffd150
 {
   "results": [
     {
@@ -1174,7 +1174,7 @@ sha256:06bbc8f113f4fa068ddbd45dd9257f98
   ]
 }
 -- testrun/gtk4/c/flow.sngl/main/1 --
-sha256:48ee7751ef22c6fc1ebaf540fe54f810
+sha256:e54c914eae1f76fb9cb9cd3d2dc64a32
 {
   "results": [
     {
@@ -1188,7 +1188,7 @@ sha256:48ee7751ef22c6fc1ebaf540fe54f810
   ]
 }
 -- testrun/gtk4/c/holders.sngl/dial/1 --
-sha256:cb39c0e35e1c69ef477edc8ceb1f3d7c
+sha256:9984ed18496fd7237866c2d295d8f9f9
 {
   "results": [
     {
@@ -1198,7 +1198,7 @@ sha256:cb39c0e35e1c69ef477edc8ceb1f3d7c
   ]
 }
 -- testrun/gtk4/c/holders.sngl/framed/1 --
-sha256:4ec547f0ff90b4f9b86ce0db5f67eb4f
+sha256:4eabe0a3e839ee4cb318e3c0e3b01244
 {
   "results": [
     {
@@ -1208,7 +1208,7 @@ sha256:4ec547f0ff90b4f9b86ce0db5f67eb4f
   ]
 }
 -- testrun/gtk4/c/holders.sngl/picks/1 --
-sha256:ad630b7358f4e7c391899959138ba6d6
+sha256:dd39e7d06fe4b43d3f19a84e040fb713
 {
   "results": [
     {
@@ -1218,7 +1218,7 @@ sha256:ad630b7358f4e7c391899959138ba6d6
   ]
 }
 -- testrun/gtk4/c/holders.sngl/strip/1 --
-sha256:059f924021f7ddeded46f18fb3a4243d
+sha256:7176fe3f107cb86d80afc7541847a436
 {
   "results": [
     {
@@ -1228,7 +1228,7 @@ sha256:059f924021f7ddeded46f18fb3a4243d
   ]
 }
 -- testrun/gtk4/c/keep.sngl/ticker/1 --
-sha256:079c0d1024358f2a98a5b48cd3a2a9ef
+sha256:05a1410793163bd7365dfa333e42a3eb
 {
   "results": [
     {
@@ -1238,7 +1238,7 @@ sha256:079c0d1024358f2a98a5b48cd3a2a9ef
   ]
 }
 -- testrun/gtk4/c/keys.sngl/app/1 --
-sha256:5f4db159d4475fb9dddfaf051c9f58f0
+sha256:2229c778ccf0e490980326da44f02ef1
 {
   "results": [
     {
@@ -1248,7 +1248,7 @@ sha256:5f4db159d4475fb9dddfaf051c9f58f0
   ]
 }
 -- testrun/gtk4/c/menus.sngl/app/1 --
-sha256:b8074859a18859e3ae302173465cf82b
+sha256:4ee136ffd2c91a185afe09bc6a138769
 {
   "results": [
     {
@@ -1262,7 +1262,7 @@ sha256:b8074859a18859e3ae302173465cf82b
   ]
 }
 -- testrun/gtk4/c/records.sngl/page/1 --
-sha256:2891f18e3e5a8d1409b3d8ecac92a558
+sha256:5d2a557189711dcaa0bdc54b6b615fa1
 {
   "results": [
     {
@@ -1272,7 +1272,7 @@ sha256:2891f18e3e5a8d1409b3d8ecac92a558
   ]
 }
 -- testrun/gtk4/c/records.sngl/population/1 --
-sha256:0ee68f20b9fc40b957ef00c44f9cb4cb
+sha256:e76903c74707bb806fe828cee2f2bdc9
 {
   "results": [
     {
@@ -1282,7 +1282,7 @@ sha256:0ee68f20b9fc40b957ef00c44f9cb4cb
   ]
 }
 -- testrun/gtk4/c/records.sngl/rows/1 --
-sha256:b66fd403542f40766e59f03b600a0727
+sha256:56eb2cca68bc686e152996c26b0e84c2
 {
   "results": [
     {
@@ -1292,7 +1292,7 @@ sha256:b66fd403542f40766e59f03b600a0727
   ]
 }
 -- testrun/gtk4/c/rows.sngl/main/1 --
-sha256:be41b987777931a4bcbf19f02139e92f
+sha256:7cc77831cf9c08d6ec0aee5bb39164ff
 {
   "results": [
     {
@@ -1302,7 +1302,7 @@ sha256:be41b987777931a4bcbf19f02139e92f
   ]
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:3c66197d56a4502ea4c8d1cd54d4aafa
+sha256:5a838879ea0d44c4686ff9fb36c6d865
 {
   "results": [
     {
@@ -1316,7 +1316,7 @@ sha256:3c66197d56a4502ea4c8d1cd54d4aafa
   ]
 }
 -- testrun/gtk4/c/slots.sngl/card/1 --
-sha256:8289a28cbde0efaea4860a317bbbff2f
+sha256:32f6d2d831b93e745b07532563ba239a
 {
   "results": [
     {
@@ -1326,7 +1326,7 @@ sha256:8289a28cbde0efaea4860a317bbbff2f
   ]
 }
 -- testrun/gtk4/c/snap.sngl/_/1 --
-sha256:bda7a6ec5ec02f8d8b11c712a3bc9c1f
+sha256:4403e8465c8cee88d0f38382a9ac4120
 {
   "results": [
     {
@@ -1339,7 +1339,7 @@ sha256:bda7a6ec5ec02f8d8b11c712a3bc9c1f
   }
 }
 -- testrun/gtk4/c/snap.sngl/main/1 --
-sha256:85c05305ec85a606c22e40f84c166009
+sha256:14caf71adbd14a2b717370eef43a7671
 {
   "results": [
     {
@@ -1353,7 +1353,7 @@ sha256:85c05305ec85a606c22e40f84c166009
   }
 }
 -- testrun/gtk4/c/timer.sngl/main/1 --
-sha256:52d322fd40bb7c1be3b5433e840d91df
+sha256:4c07a134e0c22638bef83b43525972ce
 {
   "results": [
     {
@@ -1367,7 +1367,7 @@ sha256:52d322fd40bb7c1be3b5433e840d91df
   ]
 }
 -- testrun/gtk4/c/units.sngl/app/1 --
-sha256:e91a5920cf649504e14e1ff22ec37a1a
+sha256:c20e8e60f7412a4b9d093ae4fbe6d30f
 {
   "results": [
     {

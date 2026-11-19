@@ -2398,7 +2398,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:4a549f8764343791cee7dbeee267111b
+pass sha256:9bd5b62d505cd26d9868231db634aee5
 -- run/c/win32 --
 pass sha256:e254869f7e25f4636add2d30d2d05f99
 -- run/go/fyne --

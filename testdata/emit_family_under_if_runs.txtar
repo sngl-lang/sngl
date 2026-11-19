@@ -842,4 +842,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:139a5aacbd0aa0a6b5456875662cccdd
 -- run/go/gtk4 --
-pass sha256:11b592fda47af9248dd0740d088abf64
+pass sha256:5d40b24da2bac806e180b286d28dc99f

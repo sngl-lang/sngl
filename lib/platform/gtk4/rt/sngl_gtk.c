@@ -758,7 +758,7 @@ static GtkWidget *sngl_slot_host(GtkWidget *w) {
     }
     if (gtk_widget_get_parent(b) != NULL) return b;
     if (GTK_IS_SCROLLED_WINDOW(w)) {
-        sngl_scroll_set_child(w, b);
+        gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(w), b);
     } else if (GTK_IS_FRAME(w)) {
         gtk_frame_set_child(GTK_FRAME(w), b);
     } else if (GTK_IS_BUTTON(w)) {

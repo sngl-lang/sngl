@@ -1233,7 +1233,7 @@ func _spanInsert(parent cgo.Widget, child cgo.Widget, before *cgo.Widget) {
 }
 
 func _setSpan(w cgo.Widget, s _SpanState) {
-	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
+	cgo.HoldSpan((cgo.Object)(unsafe.Pointer(w)), "sngl-span", s)
 }
 
 func _spanSaid(w cgo.Widget) _SpanState {
@@ -1323,7 +1323,7 @@ func _spanKids(parent cgo.Widget) cgo.Store {
 		return (cgo.Store)(unsafe.Pointer((cgo.Widget)(unsafe.Pointer((*(held))))))
 	}
 	made := cgo.GListStoreNew(cgo.GObjectGetType())
-	cgo.HoldData((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(parent)), "sngl-spans", cgo.Pointer((cgo.Widget)(unsafe.Pointer(made))), _unrefData)
 	return made
 }
 
@@ -1607,6 +1607,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:c5bfe6deb449bd1bb9c3b32150abd901
+pass sha256:21c834c33ff32b9e64a26acaf220942b
 -- run/go/gtk4 --
-pass sha256:27360721e7a6890bee1ddf5b17ce4b0a
+pass sha256:eb5b0804a86e0fd68f54cc32419fcef3
