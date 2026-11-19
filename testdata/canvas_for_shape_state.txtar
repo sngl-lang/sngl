@@ -233,6 +233,7 @@ static s_pic s_load(int64_t n);
 static sngl_list___anon_id_elem_4ccb28 s___identified0(sngl_list_float __xs);
 static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style);
 static void s_platform_gtk4__source(cairo_t * ctx, s_builtin__color c);
+static void s_x_c__free(char * s);
 static void s___effect0_enter(void);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
@@ -961,6 +962,10 @@ static sngl_fn_cairo_t_p__void sngl_fn_cairo_t_p__void__keep(sngl_fn_cairo_t_p__
 	return v;
 }
 
+static char * s___rel0;
+static char * s___rel1;
+static char * s___rel2;
+static char * s___rel3;
 static int64_t s_opened;
 static int64_t s_closed;
 static int64_t s_lastClosed;
@@ -1042,6 +1047,10 @@ static void s_platform_gtk4__paint(cairo_t * ctx, s_ui_draw__Style style) {
 
 static void s_platform_gtk4__source(cairo_t * ctx, s_builtin__color c) {
 	cairo_set_source_rgba(ctx, (double)(((double)(c.r) / 255.0)), (double)(((double)(c.g) / 255.0)), (double)(((double)(c.b) / 255.0)), (double)(((double)(c.a) / 255.0)));
+}
+
+static void s_x_c__free(char * s) {
+	free((void *)(s));
 }
 
 static void s___effect0_enter(void) {
@@ -1355,6 +1364,10 @@ static void s___effect3_rekey_mark(void) {
 static void s___snglTeardown(void) {
 	s___effects0_torn = true;
 	s___effect2_teardown();
+	s_x_c__free(s___rel0);
+	s_x_c__free(s___rel1);
+	s_x_c__free(s___rel2);
+	s_x_c__free(s___rel3);
 }
 
 static void s___lambda0(s___lambda0_caps state, cairo_t * ctx) {
@@ -1367,6 +1380,10 @@ static void s___lambda0(s___lambda0_caps state, cairo_t * ctx) {
 }
 
 static void sngl_init(void) {
+	s___rel0 = sngl_cstring(SNGL_STR("items-changed"));
+	s___rel1 = sngl_cstring(SNGL_STR("sngl-contents-kids"));
+	s___rel2 = sngl_cstring(SNGL_STR("sngl-look"));
+	s___rel3 = sngl_cstring(SNGL_STR("notify::visible"));
 	s_opened = 0;
 	s_closed = 0;
 	s_lastClosed = 0;
@@ -5256,7 +5273,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:dfa42b98c219aa0d0788d5e3575d4421
+pass sha256:46d648e354221079a1173540737e4721
 -- run/c/win32 --
 pass sha256:f7786aded031ae88e0b763f1594b9905
 -- run/go/bubbletea --

@@ -22,30 +22,17 @@ typedef void (*SnglDrawFn)(cairo_t *cr, void *data);
  * widgets from the loop's thread. */
 void sngl_post(SnglFn fn, void *ctx, GDestroyNotify release);
 
-/* sngl_contents_new is the box an instance of a component holds its widgets
- * in, which the program never wrote: a child growing in it grows the box
- * too, in the box it sits in, as CSS's display: contents makes its children
- * that box's items (look.c). */
-GtkWidget *sngl_contents_new(void);
-
-/* sngl_set_look gives w what a gtk4 Look holds (look.c). */
-void sngl_set_look(GtkWidget *w, const char *css, int width, int height, double grow,
-                   int cross, int align, int lines, int wrap, int hidden, const char *cursor,
-                   int justify, int spaced, int spacing, int grid, int columns);
-
-/* What a look says that the layouts gtk4.sngl lays a box and a grid out by
- * read (look.c): a child's share of its box's spare room along o, a box's
- * justification, a grid's columns, the width a look asks for, a box's
- * spacing and its axis. sngl_layout_hooks hands look.c the layouts'
- * functions, before the first look is set. */
-double sngl_look_weight(GtkWidget *c, GtkOrientation o);
-int sngl_look_justify(GtkWidget *box);
-int sngl_look_columns(GtkWidget *box);
-int sngl_look_width(GtkWidget *box);
-int sngl_box_spacing(GtkWidget *box);
-GtkOrientation sngl_box_axis(GtkWidget *box);
-void sngl_layout_hooks(GtkCustomRequestModeFunc flex_mode, GtkCustomMeasureFunc flex_measure, GtkCustomAllocateFunc flex_allocate,
-                       GtkCustomRequestModeFunc grid_mode, GtkCustomMeasureFunc grid_measure, GtkCustomAllocateFunc grid_allocate);
+/* What of a widget's look gtk4.sngl does not write itself (look.c): a
+ * widget kept on o under key without a reference, NULL once it is
+ * finalized; a label sized width by height, measured by GtkLabel's own
+ * class; and a CSS provider of w's own, attached through the deprecated
+ * style context and loaded as the GTK built against takes it. */
+void sngl_weak_set(GObject *o, const char *key, GtkWidget *w);
+GtkWidget *sngl_weak(GObject *o, const char *key);
+void sngl_label_size(GtkWidget *w, int width, int height);
+void sngl_style_add(GtkWidget *w, GtkCssProvider *css);
+void sngl_style_remove(GtkWidget *w, GtkCssProvider *css);
+void sngl_css_load(GtkCssProvider *css, const char *rule);
 
 /* A toplevel is a ui.window: a box its content is appended to, which the
  * application shows in a window of its own once it is attached and the

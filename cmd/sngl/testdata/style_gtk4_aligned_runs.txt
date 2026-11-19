@@ -119,7 +119,7 @@ ui.window {
     centered
 }
 -- testrun/gtk4/go/app.sngl/centered/1 --
-sha256:ce959fd1abaf0db072d4364f6f76b4fe
+sha256:544e6707528e906cda3049f931d54ee7
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:ce959fd1abaf0db072d4364f6f76b4fe
   }
 }
 -- testrun/gtk4/go/app.sngl/long/1 --
-sha256:1400e28e74fa7e68697f6e7715eb969f
+sha256:154b0385dcdc612e4b0e44bd4871f5e4
 {
   "results": [
     {
@@ -145,7 +145,7 @@ sha256:1400e28e74fa7e68697f6e7715eb969f
   }
 }
 -- testrun/gtk4/go/app.sngl/stretched/1 --
-sha256:b80556915062d350a2a8395a5a1fd807
+sha256:6fdf93eca6b79030b5fc5ca9bad551be
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:b80556915062d350a2a8395a5a1fd807
   }
 }
 -- testrun/gtk4/go/app.sngl/textCentered/1 --
-sha256:71bee9b76bbc1034153ffd279edfe6c9
+sha256:6458379500b12520892f8242604a5151
 {
   "results": [
     {
@@ -171,7 +171,7 @@ sha256:71bee9b76bbc1034153ffd279edfe6c9
   }
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:58078989fcfa470027e8e3e26a5c2a28
+sha256:29524f903b987749800129561e44fc84
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:58078989fcfa470027e8e3e26a5c2a28
   }
 }
 -- testrun/gtk4/go/cgo.sngl/centered/1 --
-sha256:585fa0ef738d76d38a4f616bc35ffb05
+sha256:1dce89b2d4187750a6dec1d625d851c3
 {
   "results": [
     {
@@ -197,7 +197,7 @@ sha256:585fa0ef738d76d38a4f616bc35ffb05
   }
 }
 -- testrun/gtk4/go/cgo.sngl/plain/1 --
-sha256:3818730e74126c6793225c4aa73ad3e4
+sha256:21a3cb3aed8997a4b5f3532c23abba31
 {
   "results": [
     {

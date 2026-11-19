@@ -51,7 +51,7 @@ func testTheBuildReadsWhatTheTestSet(t test.Test, c page) {
     t.assert(c.inner.value == "inner")
 }
 -- testrun/gtk4/c/app.sngl/page/1 --
-sha256:e3f9e4fe2291e15e1a75f00fa08c220f
+sha256:3cb792e721f08fc86bb77dc2bdc89199
 {
   "results": [
     {

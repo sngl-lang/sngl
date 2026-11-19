@@ -164,7 +164,7 @@ sha256:b12b5fea3afbd41b2ea68439103cd2c4
   ]
 }
 -- testrun/gtk4/go/adder.sngl/page/1 --
-sha256:6a14204929bd0f2e934bc15ac99e636e
+sha256:36320b8ddaa7d3be118a3945dcfa3dbc
 {
   "results": [
     {
@@ -174,7 +174,7 @@ sha256:6a14204929bd0f2e934bc15ac99e636e
   ]
 }
 -- testrun/gtk4/go/picker.sngl/page/1 --
-sha256:63c1873733d9ff4a66c882140115c07e
+sha256:73e8b87f5318efbdc2b243ba64748608
 {
   "results": [
     {
