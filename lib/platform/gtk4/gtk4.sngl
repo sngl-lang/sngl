@@ -2120,9 +2120,9 @@ func _fire_Toplevel_key(w Toplevel, e ui.KeyPress, stop func()) {
 //
 // What a window's `@key` calls each key, the controllers that hear the
 // window's keys, and what a key nothing stopped does when a test presses it
-// by name. The runtime's toplevel keeps the handler, and hands the window
-// to _keysWatch as it makes it and a key a test pressed that nothing stopped
-// to _keysGoOn, the functions _rtToplevelNew hands it (sngl_keys_hooks).
+// by name. The handler is held on the toplevel's box (_KeyState), and the
+// runtime's toplevel hands the window it makes to _keysWatch, the function
+// _rtToplevelNew hands it (sngl_keys_hooks).
 
 // A key a window's `@key` names rather than types: a browser's
 // KeyboardEvent.key for its GDK keyval (gdkkeysyms.h's GDK_KEY_ value, in

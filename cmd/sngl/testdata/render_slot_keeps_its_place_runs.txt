@@ -1,7 +1,7 @@
 # A render slot emptied and filled again comes back where it was written, on
 # gtk4 and win32 in each language: its entries go before an anchor the
 # runtime keeps in the container (#[gen.protocol(anchor)]: gtk4's
-# sngl_slot_anchor, a hidden label, and win32's sngl_win32_slot_anchor, a
+# _slotAnchor, a hidden label, and win32's sngl_win32_slot_anchor, a
 # hidden spacer that takes no room). Placed past the entries it held last,
 # which were none, "A" went after "B" and the button.
 

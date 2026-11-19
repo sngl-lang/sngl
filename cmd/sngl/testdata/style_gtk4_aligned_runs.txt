@@ -20,7 +20,7 @@ stdout 'PASS'
 
 # The same for a box holding a toggle, whose children were once appended with
 # GTK's own call, which left a box's alignItems unread, so a centered box drew
-# as a plain one. Every child goes through the runtime's sngl_box_append now.
+# as a plain one. Every child goes through gtk4.sngl's boxAppend now.
 sngl test --platform=gtk4 cgo.sngl
 stdout 'PASS'
 ! stdout 'FAIL'

@@ -8,7 +8,7 @@
 # allocates, so the program is C's alone.
 #
 # A row rendering a slot of its own also lets go of the anchor gtk4 keeps
-# for it (#[gen.protocol(anchor)]): its teardown asks sngl_slot_anchor with no
+# for it (#[gen.protocol(anchor)]): its teardown asks gtk4.sngl's _slotAnchor with no
 # box, which gives back the reference the var held. Each row a rebuilt list
 # destroyed kept its hidden label alive. anchor.sngl counts the labels GTK
 # has not finalized, through a gtk_label_new of count.c's that the runtime's

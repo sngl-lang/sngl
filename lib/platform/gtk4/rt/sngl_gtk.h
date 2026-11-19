@@ -1,6 +1,8 @@
-/* gtk4's runtime, for a program in either language: a widget's look, a
- * window's toplevel, the application they run in. A C program compiles it
- * beside its own; Go reaches it through lib/platform/gtk4/cgo. */
+/* What of gtk4's runtime is C, for a program in either language: a window's
+ * toplevel and the application it runs in, the timer, the posted work and
+ * loop wait the C language runtime calls, a snapshot's capture, and what of
+ * a look, a calendar and a carried file SNGL cannot write. A C program
+ * compiles it beside its own; Go reaches it through lib/platform/gtk4/cgo. */
 #ifndef SNGL_GTK_H
 #define SNGL_GTK_H
 
