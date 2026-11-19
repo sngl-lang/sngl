@@ -92,7 +92,7 @@ sha256:291c2f158295579933f7cef677cbc1d4
   }
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:5f711599baf5c6d15ac1609b3d83ee67
+sha256:3551e3dc28194efeb6ca9e420d031611
 {
   "results": [
     {

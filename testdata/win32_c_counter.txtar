@@ -64,6 +64,7 @@ typedef struct s_platform_win32__Look s_platform_win32__Look;
 typedef struct sngl_list_float sngl_list_float;
 typedef struct sngl_fn_void__void sngl_fn_void__void;
 typedef struct sngl_lambda7_env sngl_lambda7_env;
+typedef struct sngl_opt_HWND sngl_opt_HWND;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda1_caps s___lambda1_caps;
 typedef struct s___lambda2_caps s___lambda2_caps;
@@ -218,6 +219,11 @@ typedef struct sngl_fn_void__void {
 typedef struct sngl_lambda7_env {
 	sngl_env hdr;
 } sngl_lambda7_env;
+
+typedef struct sngl_opt_HWND {
+	bool ok;
+	HWND value;
+} sngl_opt_HWND;
 
 typedef struct s___lambda0_caps {
 	s___ref_bool * visible__inst0;
@@ -947,17 +953,17 @@ static void s___renderSlot0(HWND parent) {
 						sngl_win32_set_text(__n2, (const unsigned short *)sngl_utf16(SNGL_STR("Big")));
 						sngl_win32_set_look(__n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 						sngl_win32_on_click(__n2, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){sngl_lambda7, NULL}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
-						HWND __place0_i_ref0 = s___anchor0;
+						sngl_opt_HWND __place0_i_ref0 = ((sngl_opt_HWND){true, s___anchor0});
 						if (__place0_i < (__place0_prev).len) {
-							__place0_i_ref0 = (*sngl_list_HWND_at(__place0_prev, __place0_i));
+							__place0_i_ref0 = ((sngl_opt_HWND){true, (*sngl_list_HWND_at(__place0_prev, __place0_i))});
 						}
-						if (__place0_i_ref0 == __n2) {
+						if ((__place0_i_ref0).ok && ((__place0_i_ref0).value == __n2)) {
 							__place0_i = (__place0_i + 1);
 						} else {
-							if (__place0_i_ref0 == NULL) {
+							if (!(__place0_i_ref0).ok) {
 								sngl_win32_append(parent, __n2);
 							} else {
-								sngl_win32_insert(parent, __n2, __place0_i_ref0);
+								sngl_win32_insert(parent, __n2, (__place0_i_ref0).value);
 							}
 						}
 						sngl_list_HWND_push_kept(&(s___slot0), __n2);
@@ -1124,4 +1130,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:06ae0f9aba131f3cd1af35fe9cc83744
+pass sha256:c100604da8728bf8a4e9b93c65b2dbcd

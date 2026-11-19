@@ -211,8 +211,8 @@ func setLook(w ui.node, l Look) {
 }
 
 // Runs the application: the program built once GTK is ready, and the loop
-// until the last window closes. A Go program's entry; C's calls
-// sngl_app_run with its own build.
+// until the last window closes: what _main, the entry both languages'
+// generated main calls, runs.
 #[c.native("sngl_gtk_main")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglGtkMain")]
 func _rtMain(
@@ -1517,10 +1517,10 @@ const component ui.modal[platform](style, open, title, closable, @close, content
 
 // A flow is one GtkLabel, and the spans in it its Pango markup, which nests
 // as they do: `<b><i>x</i></b>` is what `bold { italic { … } }` means, so
-// Pango resolves the cascade. A span is the runtime's, no widget, holding its
-// words, its link and the tags its style opens and closes, which the runtime
-// writes from what the style sets; any change to one sets its flow's markup
-// again (rt's markup.c).
+// Pango resolves the cascade. A span is no widget: it holds its words, its
+// link and the tags its style opens and closes, which _rtSpanStyle writes
+// from what the style sets; any change to one sets its flow's markup again
+// (the functions below, under "A span, with no class of its own").
 #[marks.intrinsic("gtk4:Flow")]
 component Flow(
     look    Look,
@@ -1555,7 +1555,7 @@ struct _Object {}
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Store")]
 struct _Store {}
 
-#[c.native("gpointer")]
+#[c.native("gpointer", pointer)]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.Pointer")]
 struct _Pointer {}
 

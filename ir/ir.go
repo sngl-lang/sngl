@@ -871,6 +871,10 @@ type Foreign struct {
 	// `#[c.native(…, variadic)]`: the declaration lists the arguments one
 	// call of it passes.
 	Variadic bool `json:",omitempty"`
+	// CPointer says a C type no `*` is written in is a typedef of a pointer,
+	// written `#[c.native(…, pointer)]`: an option of it is the pointer,
+	// NULL for none.
+	CPointer bool `json:",omitempty"`
 	// Also is the declaration's spelling in each other language that has
 	// one: today a Go wrapper's (`#[go.native]`) beside a C declaration's,
 	// which stays the primary, since every C pass reads it there. In finds

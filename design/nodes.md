@@ -431,12 +431,16 @@ declaration itself. Two things about the name that are easy to get wrong:
   parameter names its pointer typedef with `#[c.type]` where cgo needs it
   spelled (`gpointer`). A result is `option[c.held[T]]`, since C answers
   NULL where it holds nothing, read back as the `T` the pointer finds, and
-  `null` in Go where the registry holds nothing there. An option of any
-  opaque handle, a `#[c.native]` struct declaring no fields, is likewise the
-  pointer, NULL for none, in C (`cHandle`, `codegen/lang/c/collections.go`)
-  and in Go's cgo call (`cCall`), though its C type is a typedef that spells
-  no `*` -- GLib's `gpointer`, Win32's `HWND` -- as gtk4's
-  `g_object_get_data` answering `option[_Pointer]` is. A Go wrapper (`sngl tool cgogen`) cannot name the program's `T`, so it takes and answers
+  `null` in Go where the registry holds nothing there. An option of an
+  opaque handle whose C type is written with a `*` is the pointer, NULL for
+  none, and so is one of a typedef that spells no `*` where its declaration
+  says it is a pointer, `#[c.native("gpointer", pointer)]`, in C (`cHandle`,
+  `codegen/lang/c/collections.go`) and in Go's cgo call (`cCall`), as gtk4's
+  `g_object_get_data` answering `option[_Pointer]` is. The flag is written,
+  not inferred from the struct declaring no fields: NULL is a value of
+  Win32's `HWND`, which a keyed loop hands `sngl_win32_insert` for "at the
+  end", and reading every handle's NULL as none moved a win32 snapshot
+  (`dropped.png` in `cmd/sngl/testdata/c_win32_loops_runs.txt`). A Go wrapper (`sngl tool cgogen`) cannot name the program's `T`, so it takes and answers
   `any` and the program's call asserts it back (`heldOut`). purego takes
   the value's index as a `uintptr` (`cload.Hold`) and the one release
   callback cload makes. `CMarshal` writes a compiler-passed argument under

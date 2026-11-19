@@ -58,15 +58,15 @@ func (c *Context) optType(t *ir.Type) string {
 	return name
 }
 
-// cHandle reports whether t is a C type SNGL holds opaquely, a struct
-// declaring no fields: a pointer, or a typedef of one as GLib's gpointer
-// and Win32's HWND are, which C's own NULL is none of.
+// cHandle reports whether t is a C type its declaration says is a typedef
+// of a pointer (`#[c.native(…, pointer)]`), as GLib's gpointer is: an option
+// of it is the pointer, NULL where it holds none.
 func cHandle(t *ir.Type) bool {
 	if t == nil || t.Kind != ir.TypeStruct {
 		return false
 	}
 	sd, ok := t.Decl.(*ir.StructDef)
-	return ok && sd.Foreign.Path == ir.CPath && sd.Foreign.C != nil && len(sd.Fields) == 0
+	return ok && sd.Foreign.Path == ir.CPath && sd.Foreign.CPointer
 }
 
 // listOp is the function op of list type t, defined from its body the first

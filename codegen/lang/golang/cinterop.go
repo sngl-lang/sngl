@@ -272,8 +272,8 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		case ir.TypeOption:
 			// A pointer C answers NULL for: Go's option of it is a pointer
 			// to the pointer, nil for NULL. A typedef of one (GLib's
-			// gpointer) is a pointer too, which only an option says.
-			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && ir.CTypeOf(elem) != nil && ir.CStructOf(elem) == nil {
+			// gpointer) is a pointer where its declaration says so.
+			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && ir.CTypeOf(elem) != nil && ir.CStructOf(elem) == nil && (ir.CTypeOf(elem).Ptr > 0 || cPointer(elem)) {
 				// Spelled as castType spells a conversion to it: cgo's
 				// pointer, which a wrapper package's handle type aliases.
 				t := gc.CType(ir.CTypeOf(elem))
@@ -295,6 +295,13 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		}
 	}
 	return call
+}
+
+// cPointer reports whether t's declaration says its C type is a typedef of
+// a pointer (`#[c.native(…, pointer)]`).
+func cPointer(t *ir.Type) bool {
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Foreign.CPointer
 }
 
 // heldOut is v, the value a C function answering opt, an

@@ -122,7 +122,7 @@ type GListStoreFindResult struct {
 	Out2   int
 }
 
-// GtkCustomLayoutNewMeasure is what a callback C reads its answer through pointers of answers, field for field the program's record.
+// GtkCustomLayoutNewMeasure is what a callback answers where C reads the answer through pointers, field for field the program's record.
 type GtkCustomLayoutNewMeasure struct {
 	Minimum         int
 	Natural         int

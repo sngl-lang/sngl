@@ -75,6 +75,13 @@ enum NativeFlag {
     // that cannot call one itself calls a C function of that one shape, which
     // its build writes.
     variadic
+
+    // The struct's C type is a typedef of a pointer, as GLib's `gpointer`
+    // is, which its name does not say: an option of it is the pointer, NULL
+    // where it holds none, as an option of a type written with a `*` is.
+    // Unflagged, NULL is a value of the typedef like any other, as it is of
+    // a Win32 `HWND` a function is handed for "no window".
+    pointer
 }
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which

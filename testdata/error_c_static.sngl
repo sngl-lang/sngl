@@ -2,7 +2,8 @@
 // names a function of a package, since nothing C hands back would find a
 // closure, and it takes what any callback does and a string. Marked
 // `#[c.outs]` it answers a struct of scalars, which C reads through the
-// pointers it hands the callback. A `variadic` C function is a function.
+// pointers it hands the callback. A `variadic` C function is a function,
+// and `pointer` says a struct's typedef is a pointer.
 import c "sngl:x/c"
 
 c.link(include="calls.h")
@@ -49,6 +50,15 @@ struct Handle {}
 func mode(of int) => of
 
 func measure(forSize int) => Size{minimum=forSize, natural=forSize}
+
+#[c.native("gpointer", pointer)]
+struct Pointer {}
+
+#[c.native("void *", pointer)] // ERROR(check) "carries pointer, which a C type written with a `*` already is"
+struct Starred {}
+
+#[c.native("pointed", pointer)] // ERROR(check) "carries pointer, which describes a struct declaring no fields whose C type is a typedef of a pointer"
+func pointed()
 
 func hear(name string) {}
 

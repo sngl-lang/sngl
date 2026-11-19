@@ -313,7 +313,11 @@ func markCNative(m *mark) error {
 	}
 	cast := slices.Contains(flags, flagCast)
 	variadic := slices.Contains(flags, flagVariadic)
-	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name, Variadic: variadic}
+	pointer := slices.Contains(flags, flagPointer)
+	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name, Variadic: variadic, CPointer: pointer}
+	if sd, isStruct := m.sym.(*ir.StructDef); pointer && (!isStruct || len(sd.Fields) > 0) {
+		return fmt.Errorf("#[c.native(%q)] carries pointer, which describes a struct declaring no fields whose C type is a typedef of a pointer", name)
+	}
 	if _, isFunc := m.sym.(*ir.Func); variadic && (cast || !isFunc) {
 		return fmt.Errorf("#[c.native(%q)] carries variadic, which describes a C function taking a variable argument list", name)
 	}
@@ -338,6 +342,9 @@ func markCNative(m *mark) error {
 		}
 		if fm.C, err = ir.ParseCType(name); err != nil {
 			return fmt.Errorf("#[c.native(%q)]: %w", name, err)
+		}
+		if pointer && fm.C.Ptr > 0 {
+			return fmt.Errorf("#[c.native(%q)] carries pointer, which a C type written with a `*` already is", name)
 		}
 		// One with fields is the program's own struct with a C layout,
 		// which a backend declares as it does any other (Foreign.Marked).
@@ -388,6 +395,10 @@ const flagCast = "cast"
 // flagVariadic says a #[c.native] function takes a variable argument list,
 // of which the declaration lists what one call passes.
 const flagVariadic = "variadic"
+
+// flagPointer says a #[c.native] struct's C type is a typedef of a pointer,
+// whose option is the pointer itself.
+const flagPointer = "pointer"
 
 // markJSNative implements #[js.native("name")] and #[js.native("name",
 // "module")]: the declaration *is* that JavaScript identifier.

@@ -526,7 +526,7 @@ func (g *gen) write() error {
 		if w, ok := strings.CutSuffix(name, "Result"); ok {
 			fmt.Fprintf(&types, "\n// %s is what %s hands back.\ntype %s struct {\n", name, w, name)
 		} else {
-			fmt.Fprintf(&types, "\n// %s is what a callback C reads its answer through pointers of answers, field for field the program's record.\ntype %s struct {\n", name, name)
+			fmt.Fprintf(&types, "\n// %s is what a callback answers where C reads the answer through pointers, field for field the program's record.\ntype %s struct {\n", name, name)
 		}
 		for _, f := range g.results[name].Fields {
 			fmt.Fprintf(&types, "\t%s %s\n", golang.ExportName(f.Name), g.goType(f.Type))
