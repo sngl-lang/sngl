@@ -33,6 +33,10 @@ type file struct {
 	// seq numbers what the renderer names: each lifted function, each
 	// temporary.
 	seq int
+	// ordered is a frame per statement being rendered, innermost last, of
+	// the temporaries its expressions assign to keep their order
+	// (Context.sequenced), declared ahead of it.
+	ordered [][]string
 	// localVars are the vars the program's `var` statements declare
 	// (isLocalVar).
 	localVars map[*ir.Var]bool

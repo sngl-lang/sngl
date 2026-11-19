@@ -343,6 +343,9 @@ func (c *Context) Binary(n *ir.Binary, left, right string) string {
 	if lt != nil && (lt.Kind == ir.TypeString || textual(lt)) {
 		switch n.Op {
 		case ast.BinAdd:
+			if parts, ok := c.sequenced(n, "sngl_string", left, right); ok {
+				return "(" + parts[0] + ", " + parts[1] + ", sngl_concat(" + parts[2] + ", " + parts[3] + "))"
+			}
 			return "sngl_concat(" + left + ", " + right + ")"
 		case ast.BinEq:
 			return "sngl_string_eq(" + left + ", " + right + ")"
@@ -1204,6 +1207,64 @@ func (c *Context) MutTargetSelect(n *ir.Select, operand string) string {
 }
 
 func (c *Context) StmtPrefix(ir.Stmt) []string { return nil }
+
+// StmtStart opens s's frame of the temporaries that keep its expressions'
+// order (irwalk.Sequencer).
+func (c *Context) StmtStart(ir.Stmt) { c.file.ordered = append(c.file.ordered, nil) }
+
+// StmtEnd declares the temporaries rendering s assigned, ahead of it.
+func (c *Context) StmtEnd(ir.Stmt) []string {
+	f := c.file
+	n := len(f.ordered)
+	if n == 0 {
+		return nil
+	}
+	temps := f.ordered[n-1]
+	f.ordered = f.ordered[:n-1]
+	return temps
+}
+
+// sequenced keeps the order of n's operands, left then right, where either
+// calls something, which may change what the other reads or print before
+// it: C evaluates a call's arguments in no order it promises, and
+// gcc evaluated an interpolation's last part first. Each is assigned to a
+// temporary of type t, declared ahead of the statement (StmtEnd), the
+// assignments joined by the comma operator, which sequences them. It
+// answers the two assignments and the two temporaries, and false where
+// order cannot matter or no statement is being rendered to declare them
+// ahead of.
+func (c *Context) sequenced(n *ir.Binary, t, left, right string) ([4]string, bool) {
+	f := c.file
+	if len(f.ordered) == 0 || !calls(n.Left) && !calls(n.Right) || constant(n.Left) || constant(n.Right) {
+		return [4]string{}, false
+	}
+	var out [4]string
+	for i, v := range []string{left, right} {
+		f.seq++
+		name := fmt.Sprintf("__snglPart%d", f.seq)
+		f.ordered[len(f.ordered)-1] = append(f.ordered[len(f.ordered)-1], t+" "+name+";")
+		out[i], out[2+i] = name+" = "+v, name
+	}
+	return out, true
+}
+
+// calls reports whether e calls a function, which may do anything.
+func calls(e ir.Expr) bool {
+	found := false
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if _, ok := x.(*ir.Call); ok {
+			found = true
+		}
+		return nil
+	})
+	return found
+}
+
+// constant reports whether e is a literal, which nothing changes.
+func constant(e ir.Expr) bool {
+	_, ok := e.(*ir.Literal)
+	return ok
+}
 
 func (c *Context) Scoped(name string) irwalk.Renderer { return c.WithLocal(name) }
 

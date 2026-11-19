@@ -165,14 +165,36 @@ func EvalExpr(r Renderer, e ir.Expr) string {
 // nested statement bodies (For/If) with a child renderer obtained
 // via r.WithLocal for loop-variable scope.
 func EvalStmt(r Renderer, s ir.Stmt) []string {
+	seq, _ := r.(Sequencer)
+	if seq != nil {
+		seq.StmtStart(s)
+	}
 	lines := evalStmtImpl(r, s)
+	var temps []string
+	if seq != nil {
+		temps = seq.StmtEnd(s)
+	}
 	if lines == nil {
 		return nil
 	}
 	if prefix := r.StmtPrefix(s); len(prefix) > 0 {
 		lines = append(prefix, lines...)
 	}
+	if len(temps) > 0 {
+		lines = append(temps, lines...)
+	}
 	return lines
+}
+
+// Sequencer is a Renderer that declares, ahead of a statement, the
+// temporaries its expressions assign to keep their order: a language
+// evaluating a call's arguments in no order it promises, C, sequences what
+// SNGL evaluates left to right through them. StmtStart opens s's, and
+// StmtEnd answers the declarations of those rendering s asked for, which
+// a statement nested in s declares for itself.
+type Sequencer interface {
+	StmtStart(s ir.Stmt)
+	StmtEnd(s ir.Stmt) []string
 }
 
 func evalStmtImpl(r Renderer, s ir.Stmt) []string {
