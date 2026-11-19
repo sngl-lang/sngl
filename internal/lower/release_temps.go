@@ -47,9 +47,12 @@ var passReleaseTemps = pass{
 			if err := marshalFuncs(fresh, feats.language); err != nil {
 				return err
 			}
+			outside := runReach(pkg)
 			for _, fn := range fresh {
+				st.local = outside[&fn.Block]
 				st.block(&fn.Block)
 			}
+			st.local = false
 		}
 		return nil
 	},
@@ -74,15 +77,17 @@ func ReleaseTemps(pkg *ir.Package) error {
 	return nil
 }
 
-// runReach is each block the platform node's `@run` handler reaches: its
-// body, each function it calls, and theirs, with the lambdas in each. What
-// the handler does after `run` returns is after the application has torn
-// down, so a constant there is no application-lifetime value, which the
-// teardown would have released before it is read; it is made and released
+// runReach is each block the platform node's `@run` handler, or a target's
+// #[gen.entry] function, reaches: its body, each function it calls, and
+// theirs, with the lambdas in each. What the handler does after `run`
+// returns is after the application has torn down, and an entry runs before
+// the program's state is set -- gtk4's `_main` makes the application its
+// build runs in -- so a constant there is no application-lifetime value,
+// which sngl_init makes and the teardown releases; it is made and released
 // where it is used, as any other temp is.
 func runReach(pkg *ir.Package) map[*[]ir.Stmt]bool {
 	out := map[*[]ir.Stmt]bool{}
-	if pkg == nil || pkg.Run == nil {
+	if pkg == nil {
 		return out
 	}
 	seen := map[*ir.Func]bool{}
@@ -106,6 +111,9 @@ func runReach(pkg *ir.Package) map[*[]ir.Stmt]bool {
 		})
 	}
 	visit(pkg.Run)
+	for _, fn := range pkg.Entries {
+		visit(fn)
+	}
 	return out
 }
 
