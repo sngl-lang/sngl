@@ -125,12 +125,12 @@ sha256:02dca1fb1aa5ecdcea7245f3f02ac43b
   "stdout": "count 1\n"
 }
 -- testrun/run/gtk4/c/c.sngl/1 --
-sha256:9e2e77bfc07e485b8b1d5c64429d6ec5
+sha256:b32a5534557ea052cfb4746d9ada2834
 {
   "stdout": "count 0\n"
 }
 -- testrun/run/gtk4/c/c.sngl/2 --
-sha256:9e2e77bfc07e485b8b1d5c64429d6ec5
+sha256:b32a5534557ea052cfb4746d9ada2834
 {
   "stdout": "count 1\n"
 }

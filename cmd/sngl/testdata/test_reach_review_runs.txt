@@ -1612,7 +1612,7 @@ sha256:ef334e891590ddeac3e035e2a15942da
   ]
 }
 -- testrun/gtk4/c/sitecall.sngl/main/1 --
-sha256:d20c0dda560549de4445f1c1426bf9fa
+sha256:bc1234b6092f429831430012078684d9
 {
   "results": [
     {

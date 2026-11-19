@@ -772,6 +772,23 @@ static GtkWidget *sngl_slot_host(GtkWidget *w) {
     return b;
 }
 
+static SnglTabsHook sngl_tabs_add_hook, sngl_tabs_remove_hook;
+
+void sngl_tabs_hooks(SnglTabsHook add, SnglTabsHook remove) {
+    sngl_tabs_add_hook = add;
+    sngl_tabs_remove_hook = remove;
+}
+
+/* sngl_tabs_add and sngl_tabs_remove are a box's append and remove where it
+ * is a tabs, and whether it is: none is before the first is made. */
+static bool sngl_tabs_add(GtkWidget *box, GtkWidget *page) {
+    return sngl_tabs_add_hook != NULL && sngl_tabs_add_hook(box, page);
+}
+
+static bool sngl_tabs_remove(GtkWidget *box, GtkWidget *page) {
+    return sngl_tabs_remove_hook != NULL && sngl_tabs_remove_hook(box, page);
+}
+
 /* sngl_stack_put puts child into box ahead of before, or last where before
  * is NULL, where box is a stack, whose children are its layers: a slot
  * directly inside one renders its entries as layers of their own. */

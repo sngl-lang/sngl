@@ -256,22 +256,22 @@ ui.window(title="Grid") {
     grid
 }
 -- testrun/build/gtk4/c/app.sngl/1 --
-sha256:19a0c8a70e5c697be27d856114250051
+sha256:7101e63485839c48ccc7be11b318b873
 {
   "stdout": "app"
 }
 -- testrun/build/gtk4/c/generic.sngl/1 --
-sha256:2dcbe3b743d1b4df0b76f3250d9db09f
+sha256:243ad2a62a3b8e30951557f8cc0864e0
 {
   "stdout": "app"
 }
 -- testrun/build/gtk4/c/pages.sngl/1 --
-sha256:bf4e77e0d961ad4078045a352cbbc0b3
+sha256:3975f2328a89d39792ca624b1aeed492
 {
   "stdout": "app"
 }
 -- testrun/build/gtk4/c/shared.sngl/1 --
-sha256:c365beffe4a07492a242c3c4bd265be3
+sha256:0ee43baba40bd4ec740f13830e56ae52
 {
   "stdout": "app"
 }

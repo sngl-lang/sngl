@@ -209,7 +209,7 @@ sha256:ede15b710b1af8f79ea09beb757c0419
   ]
 }
 -- testrun/gtk4/c/app.sngl/main/1 --
-sha256:554e4a42061e05ba2c569fd9b71e035e
+sha256:a5767ceade1a9fa85db6ceab8fd240d8
 {
   "results": [
     {
@@ -219,7 +219,7 @@ sha256:554e4a42061e05ba2c569fd9b71e035e
   ]
 }
 -- testrun/gtk4/c/boundary.sngl/main/1 --
-sha256:b70b52260d976c790022675628fc1a8a
+sha256:6035d34624af789e20a2b41e3e57639d
 {
   "results": [
     {
@@ -229,7 +229,7 @@ sha256:b70b52260d976c790022675628fc1a8a
   ]
 }
 -- testrun/gtk4/c/return.sngl/main/1 --
-sha256:d73863a1d477802b7fc41eaedfaa4020
+sha256:41d84e62553cf49c32c18b0fb8091fd2
 {
   "results": [
     {

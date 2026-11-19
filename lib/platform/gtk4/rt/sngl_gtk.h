@@ -119,19 +119,11 @@ void sngl_box_remove(GtkWidget *box, GtkWidget *child);
 void sngl_box_append(GtkWidget *box, GtkWidget *child);
 
 /* A tabs is a box holding a GtkNotebook, whose pages are the tab pages
- * appended to the box (tabs.c). sngl_tabs_add and sngl_tabs_remove are a
- * box's append and remove where it is a tabs, and are whether it is. A tab
- * page's on_shown runs as the user chooses it, and sngl_tab_page_show runs
- * it as a test does. */
-GtkWidget *sngl_tabs_new(void);
-void sngl_tabs_set_selected(GtkWidget *box, int k);
-bool sngl_tabs_add(GtkWidget *box, GtkWidget *page);
-bool sngl_tabs_remove(GtkWidget *box, GtkWidget *page);
-GtkWidget *sngl_tab_page_new(void);
-void sngl_tab_page_set_title(GtkWidget *page, const char *title);
-void sngl_tab_page_set_disabled(GtkWidget *page, int disabled);
-void sngl_tab_page_on_shown(GtkWidget *page, SnglFn fn, void *ctx, GDestroyNotify release);
-void sngl_tab_page_show(GtkWidget *page);
+ * appended to the box: gtk4.sngl's. The box calls hand a tabs's append and
+ * remove to the two functions sngl_tabs_hooks was last handed, each taking
+ * the box and the page and answering whether the box is a tabs. */
+typedef int (*SnglTabsHook)(GtkWidget *box, GtkWidget *page);
+void sngl_tabs_hooks(SnglTabsHook add, SnglTabsHook remove);
 
 /* A window's menu entries and its way back (menu.c): hidden widgets among
  * its content, from which the window builds its header bar's menu and back

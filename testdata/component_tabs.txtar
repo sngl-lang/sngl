@@ -852,6 +852,17 @@ type Look struct {
 	Columns   int
 }
 
+type _TabsState struct {
+	Selected int
+	Quiet    bool
+}
+
+type _TabPageState struct {
+	Title    string
+	Disabled bool
+	Shown    func()
+}
+
 type snglState struct {
 	idx     int
 	changed int
@@ -859,6 +870,19 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func _rtTabsNew() cgo.Widget {
+	cgo.SnglTabsHooks(_tabsAdd, _tabsRemove)
+	box := cgo.BoxNew(1, 0)
+	nb := cgo.GtkNotebookNew()
+	cgo.GtkNotebookSetScrollable((cgo.Notebook)(unsafe.Pointer(nb)), true)
+	cgo.GtkBoxAppend((cgo.PGtkBox)(unsafe.Pointer(box)), nb)
+	_setTabs(box, _TabsState{})
+	cgo.SnglNotifyConnect((cgo.Widget)(unsafe.Pointer(nb)), "notify::page", func() {
+		_tabsShown(box)
+	})
+	return (cgo.Widget)(unsafe.Pointer(box))
+}
 
 func _setLook(w cgo.Widget, l Look) {
 	var __lt0 int
@@ -882,8 +906,231 @@ func _setLook(w cgo.Widget, l Look) {
 	cgo.SnglSetLook(w, l.Css, int((l.Width + 0.5)), int((l.Height + 0.5)), l.Grow, l.Cross, l.TextAlign, l.Lines, l.Wrap, __lt0, l.Cursor, l.Justify, __lt1, l.Spacing, __lt2, l.Columns)
 }
 
+func _rtTabsSetSelected(tabs cgo.Widget, k int) {
+	box := tabs
+	t := func(h any) *_TabsState {
+		if v, ok := h.(_TabsState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs"))
+	if t != nil {
+		_setTabs(box, _TabsState{Selected: k, Quiet: (*(t)).Quiet})
+		_tabsShow(box)
+	}
+}
+
+func _rtTabPageNew() cgo.Widget {
+	page := cgo.BoxNew(1, 0)
+	_setTabPage(page, _TabPageState{Shown: func() {
+	}})
+	return (cgo.Widget)(unsafe.Pointer(page))
+}
+
+func _rtTabPageSetDisabled(p cgo.Widget, disabled bool) {
+	page := p
+	s := func(h any) *_TabPageState {
+		if v, ok := h.(_TabPageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page"))
+	if s != nil {
+		_setTabPage(page, _TabPageState{Title: (*(s)).Title, Disabled: disabled, Shown: (*(s)).Shown})
+		nb := _hostOf(page)
+		if nb != nil {
+			_tabsSensitive((cgo.Notebook)(unsafe.Pointer((*(nb)))))
+		}
+	}
+}
+
+func _rtTabPageSetTitle(p cgo.Widget, title string) {
+	page := p
+	s := func(h any) *_TabPageState {
+		if v, ok := h.(_TabPageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page"))
+	if s != nil {
+		_setTabPage(page, _TabPageState{Title: title, Disabled: (*(s)).Disabled, Shown: (*(s)).Shown})
+		nb := _hostOf(page)
+		if nb != nil {
+			cgo.GtkNotebookSetTabLabelText((cgo.Notebook)(unsafe.Pointer((*(nb)))), page, title)
+		}
+	}
+}
+
+func _rtTabPageOnShown(p cgo.Widget, shown func()) {
+	page := p
+	s := func(h any) *_TabPageState {
+		if v, ok := h.(_TabPageState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page"))
+	if s != nil {
+		_setTabPage(page, _TabPageState{Title: (*(s)).Title, Disabled: (*(s)).Disabled, Shown: shown})
+	}
+}
+
+func _tabsAdd(box cgo.Widget, page cgo.Widget) bool {
+	nb := cgo.GtkWidgetGetFirstChild(box)
+	if (func(h any) *_TabsState {
+		if v, ok := h.(_TabsState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs")) != nil) && (nb != nil) {
+		s := func(h any) *_TabPageState {
+			if v, ok := h.(_TabPageState); ok {
+				return &v
+			}
+			return nil
+		}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page"))
+		if s != nil {
+			if cgo.GtkNotebookPageNum((cgo.Notebook)(unsafe.Pointer((*(nb)))), page) < 0 {
+				_tabsQuiet(box, true)
+				cgo.GtkNotebookAppendPage((cgo.Notebook)(unsafe.Pointer((*(nb)))), page, nil)
+				_tabsQuiet(box, false)
+				cgo.GtkNotebookSetTabLabelText((cgo.Notebook)(unsafe.Pointer((*(nb)))), page, (*(s)).Title)
+				_tabsSensitive((cgo.Notebook)(unsafe.Pointer((*(nb)))))
+				_tabsShow(box)
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func _tabsRemove(box cgo.Widget, page cgo.Widget) bool {
+	nb := cgo.GtkWidgetGetFirstChild(box)
+	if (func(h any) *_TabsState {
+		if v, ok := h.(_TabsState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs")) != nil) && (nb != nil) {
+		var at int = cgo.GtkNotebookPageNum((cgo.Notebook)(unsafe.Pointer((*(nb)))), page)
+		if at >= 0 {
+			_tabsQuiet(box, true)
+			cgo.GtkNotebookRemovePage((cgo.Notebook)(unsafe.Pointer((*(nb)))), at)
+			_tabsQuiet(box, false)
+			_tabsSensitive((cgo.Notebook)(unsafe.Pointer((*(nb)))))
+			_tabsShow(box)
+		}
+		return true
+	}
+	return false
+}
+
+func _setTabs(box cgo.Widget, t _TabsState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs", t)
+}
+
+func _tabsShown(box cgo.Widget) {
+	t := func(h any) *_TabsState {
+		if v, ok := h.(_TabsState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs"))
+	nb := cgo.GtkWidgetGetFirstChild(box)
+	if (t != nil) && (nb != nil) {
+		var k int = cgo.GtkNotebookGetCurrentPage((cgo.Notebook)(unsafe.Pointer((*(nb)))))
+		if (((*(t)).Quiet || (cgo.GtkWidgetGetParent((*(nb))) == nil)) || (k < 0)) || (k == (*(t)).Selected) {
+			return
+		}
+		shown := cgo.GtkNotebookGetNthPage((cgo.Notebook)(unsafe.Pointer((*(nb)))), k)
+		if shown != nil {
+			s := func(h any) *_TabPageState {
+				if v, ok := h.(_TabPageState); ok {
+					return &v
+				}
+				return nil
+			}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer((*(shown)))), "sngl-tab-page"))
+			chosen := false
+			if s != nil {
+				if !(*(s)).Disabled {
+					_setTabs(box, _TabsState{Selected: k, Quiet: (*(t)).Quiet})
+					run := (*(s)).Shown
+					run()
+					chosen = true
+				}
+			}
+			if !chosen {
+				_tabsShow(box)
+			}
+		}
+	}
+}
+
+func _tabsShow(box cgo.Widget) {
+	t := func(h any) *_TabsState {
+		if v, ok := h.(_TabsState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs"))
+	nb := cgo.GtkWidgetGetFirstChild(box)
+	if (t != nil) && (nb != nil) {
+		if ((*(t)).Selected >= 0) && ((*(t)).Selected < cgo.GtkNotebookGetNPages((cgo.Notebook)(unsafe.Pointer((*(nb)))))) {
+			_tabsQuiet(box, true)
+			cgo.GtkNotebookSetCurrentPage((cgo.Notebook)(unsafe.Pointer((*(nb)))), (*(t)).Selected)
+			_tabsQuiet(box, false)
+		}
+	}
+}
+
+func _setTabPage(page cgo.Widget, s _TabPageState) {
+	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(page)), "sngl-tab-page", s)
+}
+
+func _hostOf(page cgo.Widget) *cgo.Widget {
+	nb := cgo.GtkWidgetGetAncestor(page, cgo.GtkNotebookGetType())
+	if nb != nil {
+		if cgo.GtkNotebookPageNum((cgo.Notebook)(unsafe.Pointer((*(nb)))), page) >= 0 {
+			return nb
+		}
+	}
+	return nil
+}
+
+func _tabsSensitive(nb cgo.Notebook) {
+	var n int = cgo.GtkNotebookGetNPages(nb)
+	var i int = 0
+	for i < n {
+		page := cgo.GtkNotebookGetNthPage(nb, i)
+		if page != nil {
+			s := func(h any) *_TabPageState {
+				if v, ok := h.(_TabPageState); ok {
+					return &v
+				}
+				return nil
+			}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer((*(page)))), "sngl-tab-page"))
+			label := cgo.GtkNotebookGetTabLabel(nb, (*(page)))
+			if label != nil {
+				cgo.SetSensitive((*(label)), !((s != nil) && (*(s)).Disabled))
+			}
+		}
+		i += 1
+	}
+}
+
+func _tabsQuiet(box cgo.Widget, quiet bool) {
+	t := func(h any) *_TabsState {
+		if v, ok := h.(_TabsState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs"))
+	if t != nil {
+		_setTabs(box, _TabsState{Selected: (*(t)).Selected, Quiet: quiet})
+	}
+}
+
 func __wrote_idx() {
-	cgo.SnglTabsSetSelected(m.__n0, m.idx)
+	_rtTabsSetSelected(m.__n0, m.idx)
 }
 
 func snglInit() {
@@ -893,16 +1140,16 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.__n0 = cgo.SnglTabsNew()
-	cgo.SnglTabsSetSelected(m.__n0, m.idx)
+	m.__n0 = _rtTabsNew()
+	_rtTabsSetSelected(m.__n0, m.idx)
 	_setLook(m.__n0, Look{})
 	for k, t := range []Tab__record{Tab__record{Label: "Overview"}, Tab__record{Label: "Details", __id: 1}, Tab__record{Label: "Settings", Disabled: true, __id: 2}} {
-		__n1 := cgo.SnglTabPageNew()
-		cgo.SnglTabPageSetTitle(__n1, t.Label)
-		cgo.SnglTabPageSetDisabled(__n1, t.Disabled)
-		cgo.SnglTabPageOnShown(__n1, func() {
+		__n1 := _rtTabPageNew()
+		_rtTabPageSetTitle(__n1, t.Label)
+		_rtTabPageSetDisabled(__n1, t.Disabled)
+		_rtTabPageOnShown(__n1, func() {
 			m.idx = k
-			cgo.SnglTabsSetSelected(m.__n0, m.idx)
+			_rtTabsSetSelected(m.__n0, m.idx)
 			m.changed = k
 		})
 		if t.__id == 0 {
@@ -1754,7 +2001,7 @@ pass sha256:cfaab8ea5c58d24837c2c8c8dda05629
 -- run/go/fyne --
 pass sha256:fcc32173caaad7df71c8ad1f754d2bd9
 -- run/go/gtk4 --
-pass sha256:029994dddd664c32e8375d9493725024
+pass sha256:5dee5bfebf33d7b61175c62b0dd51fc7
 -- run/kotlin/android --
 pass sha256:7dbae4deeee32d2ad9dbc994085a6a66
 -- run/none/html --
