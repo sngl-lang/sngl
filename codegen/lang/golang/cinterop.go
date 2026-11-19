@@ -175,6 +175,22 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			outs = append(outs, gc.cStringOut(tmp, p.CFrees, false))
 			continue
 		}
+		// An option of a pointer handle C stores one through -- GLib's
+		// GError ** -- is handed a pointer to NULL, as GLib asks of an
+		// error, and what C stored is the option, a pointer to the pointer
+		// as one C answers is (cCall).
+		if ir.IsCPointerOption(elem) {
+			ct, t := gc.CType(ir.CTypeOf(elem.Elems[0])), gc.pointerOptionElem(elem)
+			body = append(body, tmp+" := ("+ct+")(nil)")
+			args[off+i] = "&" + tmp
+			v := "p"
+			if t != ct {
+				gc.RequireImport("unsafe")
+				v = "(" + t + ")(unsafe.Pointer(p))"
+			}
+			outs = append(outs, "func(p "+ct+") *"+t+" { if p == nil { return nil }; v := "+v+"; return &v }("+tmp+")")
+			continue
+		}
 		body = append(body, tmp+" := "+gc.cValueIn(elem, p.CAlias, args[off+i]))
 		args[off+i] = "&" + tmp
 		outs = append(outs, gc.cValueOut(elem, p.CAlias, tmp))
@@ -311,13 +327,8 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 			// A pointer C answers NULL for: Go's option of it is a pointer
 			// to the pointer, nil for NULL. A typedef of one (GLib's
 			// gpointer) is a pointer where its declaration says so.
-			if elem := fn.Return.Elems[0]; !fn.ReturnCAlias.IsCHeld() && optionOfPointer(fn.Return) {
-				// Spelled as castType spells a conversion to it: cgo's
-				// pointer, which a wrapper package's handle type aliases.
-				t := gc.CType(ir.CTypeOf(elem))
-				if sd, ok := elem.Decl.(*ir.StructDef); ok && gc.Wrapping == "" && wrapper(&sd.Foreign, gc.calls()) != nil {
-					t = gc.goType(elem)
-				}
+			if !fn.ReturnCAlias.IsCHeld() && optionOfPointer(fn.Return) {
+				t := gc.pointerOptionElem(fn.Return)
 				call = "func() *" + t + " { p := (" + t + ")(" + call + "); if p == nil { return nil }; return &p }()"
 			}
 			// What a held parameter registered, found by the pointer C
@@ -333,6 +344,18 @@ func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 		}
 	}
 	return call
+}
+
+// pointerOptionElem is how Go spells the pointer opt, an option of a pointer
+// handle, holds, as castType spells a conversion to it: cgo's pointer, which
+// a wrapper package's handle type aliases, and the wrapper's type where the
+// program holds one.
+func (gc *GoIRContext) pointerOptionElem(opt *ir.Type) string {
+	elem := opt.Elems[0]
+	if sd, ok := elem.Decl.(*ir.StructDef); ok && gc.Wrapping == "" && wrapper(&sd.Foreign, gc.calls()) != nil {
+		return gc.goType(elem)
+	}
+	return gc.CType(ir.CTypeOf(elem))
 }
 
 // cStringOut is v, a `char *` C answered or stored, as the string Go copies

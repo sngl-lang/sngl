@@ -707,8 +707,8 @@ func (c *checker) checkCCallbacks(pkg *ir.Package) {
 			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && !p.CAlias.IsCHeld() && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
 				c.error(pos(i), "parameter %q is an option of %s, and C has no NULL %s: an option crosses to C as a pointer, a string's", p.Name, p.CAlias.Name, p.CAlias.Name)
 			}
-			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) && p.CFrees == "" {
-				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, or a C struct, or a string marked #[c.frees]", p.Name, p.Type)
+			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) && !ir.IsCPointerOption(p.Type.Elems[0]) && p.CFrees == "" {
+				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, a C struct, an option of a C pointer handle, or a string marked #[c.frees]", p.Name, p.Type)
 			}
 		}
 		for _, i := range contexts {

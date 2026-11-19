@@ -271,7 +271,9 @@ func (g *gen) wrapperFunc(fn *ir.Func, name string) *ir.Func {
 			np.Type, g.held = ir.TypAny, true
 		}
 		w.Params = append(w.Params, np)
-		if np.Type != nil && np.Type.Kind == ir.TypeOption {
+		// An option a ref holds is the ref's, whose temp C is handed NULL
+		// in (golang's CCall), so the call need not split on it.
+		if np.Type != nil && np.Type.Kind == ir.TypeOption && p.Type.Kind != ir.TypeRef {
 			opts = append(opts, len(args))
 		}
 		args = append(args, &ir.Ident{Name: np.Name, Sym: np, Type: np.Type})

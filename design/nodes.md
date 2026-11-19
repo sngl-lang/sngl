@@ -369,7 +369,14 @@ declaration itself. Two things about the name that are easy to get wrong:
   C temp for each `ref` -- a scalar's, or a C struct's, converted into it
   and back field by field (`cStruct`, `fromCStruct`; gtk4's `_place` hands
   `gtk_widget_size_allocate` a GtkAllocation) -- and answering what the
-  pass made of the call. `passNoRef` leaves a C function's signature alone
+  pass made of the call. A ref to an option of a pointer handle
+  (`ir.IsCPointerOption`) is a pointer to the pointer, GLib's `GError **`:
+  C is handed the address of a temp holding NULL, whatever the variable held,
+  as GLib asks of an error and as a `ref[string]` is, and reads back null or
+  the handle; Go's temp is cgo's pointer, read back as the pointer to it
+  Go's option of one is, and a wrapper takes the option without splitting
+  its call on null (`codegen/lang/c/testdata/run/ref_options.txtar`,
+  `testdata/c_ref_option.txtar`, `cgogen_user_package_runs.txt`). `passNoRef` leaves a C function's signature alone
   too (`cRefs`): boxed, a program's own C function was handed a box where C
   takes a pointer to its type (`codegen/lang/c/testdata/run/refs.txtar`). `passRefParams` runs before `passLibFuncs`, so a promoted
   library function's `&x` reached no translator -- gtk4's probe measures

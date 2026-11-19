@@ -30,7 +30,7 @@ func intoInt(#[c.frees("g_free")] out ref[int]) // ERROR(check) "parameter \"out
 func byValue(#[c.frees("g_free")] s string) // ERROR(check) "parameter \"s\" is marked #[c.frees(\"g_free\")], which frees a string C stores through a ref[string], and it is a string"
 
 #[c.native("unmarked")]
-func unmarked(out ref[string]) // ERROR(check) "parameter \"out\" is a ref[string], and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, or a C struct, or a string marked #[c.frees]"
+func unmarked(out ref[string]) // ERROR(check) "parameter \"out\" is a ref[string], and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, a C struct, an option of a C pointer handle, or a string marked #[c.frees]"
 
 #[c.frees("g_free")] // ERROR(check) "#[c.frees] marks a #[c.native] function's string result, and bodied is not a C function"
 func bodied() => "x"

@@ -1445,6 +1445,15 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 				outs = append(outs, fmt.Sprintf("%s(t%d)", c.cStringOut(p.CFrees, false), i))
 				continue
 			}
+			// An option of a pointer handle C stores one through -- GLib's
+			// GError ** -- is the pointer, as such an option is: C is handed
+			// a pointer to NULL, as GLib asks of an error, and what it stored
+			// is the option, null where it stored nothing.
+			if ir.IsCPointerOption(elem) {
+				fmt.Fprintf(&body, "\t%s t%d = NULL;\n\t(void)%s;\n", ir.CTypeOf(elem.Elems[0]).String(), i, a)
+				outs = append(outs, fmt.Sprintf("(%s)t%d", c.typeName(elem), i))
+				continue
+			}
 			if sd := ir.CStructOf(elem); sd != nil {
 				fmt.Fprintf(&body, "\t%s t%d = %s(%s);\n", sd.Foreign.C.String(), i, c.cStruct(elem), a)
 				outs = append(outs, fmt.Sprintf("%s(t%d)", c.fromCStruct(elem), i))

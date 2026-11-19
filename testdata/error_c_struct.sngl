@@ -24,5 +24,8 @@ func fillName(s ref[string]) // ERROR(check) "parameter \"s\" is a ref[string], 
 #[c.native("fill_point")]
 func fillPoint(p ref[Point])
 
+#[c.native("fill_maybe_point")]
+func fillMaybePoint(p ref[option[Point]]) // ERROR(check) "parameter \"p\" is a ref[option[Point]], and a ref a C function fills is to"
+
 #[c.native("each_point")]
 func eachPoint(f func(p Point), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a Point"

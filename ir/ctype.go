@@ -207,6 +207,23 @@ func CTypeOf(t *Type) *CType {
 	return nil
 }
 
+// IsCPointerOption reports whether t is an option of a C handle whose C type
+// is a pointer -- written with a `*`, or a typedef its declaration says is
+// one (`#[c.native(…, pointer)]`) -- which crosses to C as that pointer,
+// NULL for none.
+func IsCPointerOption(t *Type) bool {
+	if t == nil || t.Kind != TypeOption || len(t.Elems) != 1 {
+		return false
+	}
+	elem := t.Elems[0]
+	ct := CTypeOf(elem)
+	if ct == nil || CStructOf(elem) != nil {
+		return false
+	}
+	sd, _ := elem.Decl.(*StructDef)
+	return ct.Ptr > 0 || sd.Foreign.CPointer
+}
+
 // CPath is the Foreign.Path every `#[c.native]` declaration carries.
 const CPath = "C"
 
