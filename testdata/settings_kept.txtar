@@ -1724,13 +1724,13 @@ func __effect4_enter() {
 
 func __effect5_mount() {
 	got := Load__string("language", m.__ctx_store)
-	var __lt5 *string
+	var __lt6 *string
 	if got != nil {
-		__lt5 = got
+		__lt6 = got
 	} else {
-		__lt5 = snglSome("English")
+		__lt6 = snglSome("English")
 	}
-	m.held__inst0__inst0 = __lt5
+	m.held__inst0__inst0 = __lt6
 	m.language = m.held__inst0__inst0
 	m.__effect6_dirty = true
 	__effects1_settle()
@@ -1765,13 +1765,13 @@ func __effect6_update() {
 
 func __effect7_mount() {
 	got := Load__int("count", m.__ctx_store)
-	var __lt6 *int
+	var __lt7 *int
 	if got != nil {
-		__lt6 = got
+		__lt7 = got
 	} else {
-		__lt6 = snglSome(1)
+		__lt7 = snglSome(1)
 	}
-	m.held__inst1__inst0 = __lt6
+	m.held__inst1__inst0 = __lt7
 	m.count = m.held__inst1__inst0
 	m.__effect8_dirty = true
 	__effects1_settle()
@@ -3298,7 +3298,7 @@ pass sha256:90500e10b2d9498976150f932322dd09
 -- run/go/fyne --
 pass sha256:28fa15432e4ff45e4c7be2165f35d421
 -- run/go/gtk4 --
-pass sha256:38c542452203910c0a58dd48f9f07d98
+pass sha256:972a31f89bf73477f845e526f3f1d1cc
 -- run/kotlin/android --
 pass sha256:0ce3833db9257db8a1d1cae28659f3c6
 -- run/none/html --

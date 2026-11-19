@@ -1343,7 +1343,7 @@ func _watchParent(w cgo.Widget) {
 }
 
 func _lookPlace(w cgo.Widget) {
-	parent := cgo.GtkWidgetGetParent(w)
+	parent := cgo.ParentOf(w)
 	var mainAxis int = -1
 	var cross int = 0
 	if parent != nil {
@@ -1759,9 +1759,9 @@ func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 		for i < n {
 			var cmin int = 0
 			var cnat int = 0
-			__ref1 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, forSize, cmin, cnat, nil, nil))
-			cmin = __ref1.Out3
-			cnat = __ref1.Out4
+			__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, forSize, cmin, cnat, nil, nil))
+			cmin = __ref2.Out3
+			cnat = __ref2.Out4
 			minimum += cmin
 			natural += cnat
 			i += 1
@@ -1785,9 +1785,9 @@ func _flexMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 			} else {
 				__lt18 = -1
 			}
-			__ref2 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, __lt18, cmin, cnat, nil, nil))
-			cmin = __ref2.Out3
-			cnat = __ref2.Out4
+			__ref3 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, __lt18, cmin, cnat, nil, nil))
+			cmin = __ref3.Out3
+			cnat = __ref3.Out4
 			var __lt19 int
 			if cmin > minimum {
 				__lt19 = cmin
@@ -1920,9 +1920,9 @@ func _gridMeasure(box cgo.Widget, orientation int, forSize int) Measured {
 		for i < n {
 			var cmin int = 0
 			var cnat int = 0
-			__ref3 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, -1, cmin, cnat, nil, nil))
-			cmin = __ref3.Out3
-			cnat = __ref3.Out4
+			__ref4 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], orientation, -1, cmin, cnat, nil, nil))
+			cmin = __ref4.Out3
+			cnat = __ref4.Out4
 			var __lt25 int
 			if cmin > widest {
 				__lt25 = cmin
@@ -2150,11 +2150,11 @@ func _labelMeasure(w cgo.Widget, orientation int, forSize int) Measured {
 	var natural int = 0
 	var minimumBaseline int = -1
 	var naturalBaseline int = -1
-	__ref4 := _classMeasure__result(cgo.GtkWidgetClassMeasure((cgo.WidgetClass)(unsafe.Pointer(cgo.GTypeClassPeek(cgo.GtkLabelGetType()))), w, int(orientation), at, minimum, natural, minimumBaseline, naturalBaseline))
-	minimum = __ref4.Out4
-	natural = __ref4.Out5
-	minimumBaseline = __ref4.Out6
-	naturalBaseline = __ref4.Out7
+	__ref5 := _classMeasure__result(cgo.GtkWidgetClassMeasure((cgo.WidgetClass)(unsafe.Pointer(cgo.GTypeClassPeek(cgo.GtkLabelGetType()))), w, int(orientation), at, minimum, natural, minimumBaseline, naturalBaseline))
+	minimum = __ref5.Out4
+	natural = __ref5.Out5
+	minimumBaseline = __ref5.Out6
+	naturalBaseline = __ref5.Out7
 	var __lt37 int
 	if orientation == 0 {
 		__lt37 = l.LabelWidth
@@ -2291,9 +2291,9 @@ func _flexSizes(box cgo.Widget, o int, along int, across int, kids []cgo.Widget)
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref5 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
-		minimum = __ref5.Out3
-		natural = __ref5.Out4
+		__ref6 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], o, across, minimum, natural, nil, nil))
+		minimum = __ref6.Out3
+		natural = __ref6.Out4
 		minimums = append(minimums, minimum)
 		naturals = append(naturals, natural)
 		spare -= minimum
@@ -2357,9 +2357,9 @@ func _gridHeights(kids []cgo.Widget, rows _GridRows) []int {
 		for i < rows.Ends[r] {
 			var minimum int = 0
 			var natural int = 0
-			__ref6 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
-			minimum = __ref6.Out3
-			natural = __ref6.Out4
+			__ref7 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 1, rows.Widths[i], minimum, natural, nil, nil))
+			minimum = __ref7.Out3
+			natural = __ref7.Out4
 			var __lt53 int
 			if natural > tall {
 				__lt53 = natural
@@ -2406,9 +2406,9 @@ func _gridRows(box cgo.Widget, room int, kids []cgo.Widget) _GridRows {
 	for i < n {
 		var minimum int = 0
 		var natural int = 0
-		__ref7 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
-		minimum = __ref7.Out3
-		natural = __ref7.Out4
+		__ref8 := _measureWidget__result(cgo.GtkWidgetMeasure(kids[i], 0, -1, minimum, natural, nil, nil))
+		minimum = __ref8.Out3
+		natural = __ref8.Out4
 		var w int = natural
 		if width >= 0 {
 			var __lt54 int
@@ -2884,7 +2884,7 @@ pass sha256:3a4a907985b80768d09c8a3d0118e56e
 -- run/go/fyne --
 pass sha256:ed31cc69c32310cf82154d49a30087f2
 -- run/go/gtk4 --
-pass sha256:61ad4467a86c976ad01f5fc42556936a
+pass sha256:6e08905b5f85b9bbac64ba76c52eea05
 -- run/go/html --
 pass sha256:ced4986900ece563a178020a8a2b674e
 -- run/kotlin/android --

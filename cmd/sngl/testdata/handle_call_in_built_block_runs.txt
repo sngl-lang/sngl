@@ -303,7 +303,7 @@ sha256:45f923a51062b0a7083bd0ccec96ee9f
   ]
 }
 -- testrun/gtk4/go/app.sngl/bound/1 --
-sha256:64af02e8a5e012124de90d11573111ff
+sha256:2aaf668f1bb39c6a8f9ac720100bfe3a
 {
   "results": [
     {
@@ -313,7 +313,7 @@ sha256:64af02e8a5e012124de90d11573111ff
   ]
 }
 -- testrun/gtk4/go/app.sngl/branch/1 --
-sha256:54420422bed7aec6cc65958498d1cedb
+sha256:0eeb981e8f597b69d9cb43e288698901
 {
   "results": [
     {
@@ -323,7 +323,7 @@ sha256:54420422bed7aec6cc65958498d1cedb
   ]
 }
 -- testrun/gtk4/go/app.sngl/panel/1 --
-sha256:67301324c0c8d4cc83bc2c2bb98806f8
+sha256:45ff8ffa86269e7f03171853e9c34792
 {
   "results": [
     {
@@ -333,7 +333,7 @@ sha256:67301324c0c8d4cc83bc2c2bb98806f8
   ]
 }
 -- testrun/gtk4/go/relays.sngl/branch/1 --
-sha256:f1fbea4e56577b447d9db16653bcd4ac
+sha256:9aebef17475a10dea7d8afb0cb06fd03
 {
   "results": [
     {

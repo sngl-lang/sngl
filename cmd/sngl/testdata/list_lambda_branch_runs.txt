@@ -93,7 +93,7 @@ sha256:8293d8e8a630b50233e067ce51db1dda
   ]
 }
 -- testrun/gtk4/go/app.sngl/compass/1 --
-sha256:a0155d810c3c6f24bd0edf50d7c17e61
+sha256:075108fa1b8859c7a7130eabcba51208
 {
   "results": [
     {

@@ -437,6 +437,21 @@ type _BackState struct {
 	Press func()
 }
 
+type _KeyState struct {
+	Run func()
+}
+
+type _HeardState struct {
+	Key     string
+	Ctrl    bool
+	Alt     bool
+	Shift   bool
+	Meta    bool
+	Editing bool
+	Stopped bool
+	Then    func()
+}
+
 type snglState struct {
 	on             bool
 	__slot0        []cgo.Widget
@@ -2170,7 +2185,7 @@ func _slotBox(w cgo.Widget) cgo.Widget {
 
 func _rtToplevelNew() cgo.Widget {
 	_menuHooksSet()
-	cgo.SnglKeysHooks(_keysWatch, _keysGoOn)
+	cgo.SnglKeysHooks(_keysWatch)
 	return cgo.SnglToplevelNew()
 }
 
@@ -2590,45 +2605,6 @@ func _keysWatch(win cgo.Widget) {
 	cgo.GtkWidgetAddController(win, b)
 }
 
-func _keysGoOn(win cgo.Widget, key string, shift bool) {
-	focus := cgo.GtkRootGetFocus((cgo.Root)(unsafe.Pointer(win)))
-	if ((focus != nil) && (cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(focus))))), cgo.GtkTextGetType()) || cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(focus))))), cgo.GtkTextViewGetType()))) && ((key != "Tab") || (cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer((*(focus))))), cgo.GtkTextViewGetType()) && cgo.GtkTextViewGetAcceptsTab((cgo.TextView)(unsafe.Pointer((*(focus))))))) {
-		_textKey((*(focus)), key, shift)
-		return
-	}
-	if (key == "Enter") || (key == " ") {
-		if focus != nil {
-			_keyActivate((*(focus)))
-		}
-	} else {
-		if key == "Tab" {
-			var __lt63 int
-			if shift {
-				__lt63 = 1
-			} else {
-				__lt63 = 0
-			}
-			_keyMoveFocus(win, __lt63)
-		} else {
-			if key == "ArrowUp" {
-				_keyMoveFocus(win, 2)
-			} else {
-				if key == "ArrowDown" {
-					_keyMoveFocus(win, 3)
-				} else {
-					if key == "ArrowLeft" {
-						_keyMoveFocus(win, 4)
-					} else {
-						if key == "ArrowRight" {
-							_keyMoveFocus(win, 5)
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 func _setTabs(box cgo.Widget, t _TabsState) {
 	cgo.GObjectSetDataFull((cgo.Object)(unsafe.Pointer(box)), "sngl-tabs", t)
 }
@@ -2763,13 +2739,13 @@ func _distribute(extra int, minimums []int, naturals []int) []int {
 		var k int = order[i]
 		var glue int = ((left + i) / (i + 1))
 		var gap int = (naturals[k] - minimums[k])
-		var __lt64 int
+		var __lt63 int
 		if glue < gap {
-			__lt64 = glue
+			__lt63 = glue
 		} else {
-			__lt64 = gap
+			__lt63 = gap
 		}
-		var add int = __lt64
+		var add int = __lt63
 		sizes[k] = (sizes[k] + add)
 		left -= add
 		i -= 1
@@ -2816,7 +2792,8 @@ func _keysPressed(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Po
 	if name == "" {
 		return false
 	}
-	return cgo.SnglToplevelHear((*(box)), name, (((state / 4) % 2) != 0), (((state / 8) % 2) != 0), (((state / 1) % 2) != 0), ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)), editing)
+	return _hear((*(box)), name, (((state / 4) % 2) != 0), (((state / 8) % 2) != 0), (((state / 1) % 2) != 0), ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)), editing, func() {
+	})
 }
 
 func _keysBack(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Pointer) bool {
@@ -2825,72 +2802,6 @@ func _keysBack(c cgo.Pointer, keyval int, keycode int, state int, data cgo.Point
 		return false
 	}
 	return _windowBack((*(box)))
-}
-
-func _textKey(w cgo.Widget, key string, shift bool) {
-	g := (cgo.PGtkWidget)(unsafe.Pointer(w))
-	typed := key
-	if key == "Tab" {
-		typed = "\t"
-	} else {
-		if key == "Enter" {
-			if !cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkTextViewGetType()) {
-				cgo.SignalEmitByName(g, "activate")
-				return
-			}
-			typed = "\n"
-		} else {
-			if key == "Backspace" {
-				cgo.SignalEmitByName(g, "backspace")
-				return
-			} else {
-				if key == "Delete" {
-					cgo.GSignalEmitByName(g, "delete-from-cursor", 0, 1)
-					return
-				} else {
-					if (key == "ArrowLeft") || (key == "ArrowRight") {
-						var __lt65 int
-						if key == "ArrowLeft" {
-							__lt65 = -1
-						} else {
-							__lt65 = 1
-						}
-						cgo.EmitMove(g, "move-cursor", 1, __lt65, shift)
-						return
-					} else {
-						if (key == "Home") || (key == "End") {
-							var __lt66 int
-							if key == "Home" {
-								__lt66 = -1
-							} else {
-								__lt66 = 1
-							}
-							cgo.EmitMove(g, "move-cursor", 4, __lt66, shift)
-							return
-						}
-					}
-				}
-			}
-		}
-	}
-	if utf8.RuneCountInString(typed) == 1 {
-		cgo.EmitText(g, "insert-at-cursor", typed)
-	}
-}
-
-func _keyActivate(w cgo.Widget) {
-	if cgo.GTypeCheckInstanceIsA((cgo.Instance)(unsafe.Pointer(cgo.Pointer(w))), cgo.GtkButtonGetType()) {
-		cgo.SignalEmitByName((cgo.PGtkWidget)(unsafe.Pointer(w)), "clicked")
-		return
-	}
-	cgo.GtkWidgetActivate(w)
-}
-
-func _keyMoveFocus(win cgo.Widget, direction int) {
-	if !cgo.GtkWidgetChildFocus(win, int(direction)) {
-		cgo.GtkWindowSetFocus((cgo.Window)(unsafe.Pointer(win)), nil)
-		cgo.GtkWidgetChildFocus(win, int(direction))
-	}
 }
 
 func _entriesFrom(c *cgo.Widget) int {
@@ -3039,13 +2950,13 @@ func _keyName(keyval int, state int) string {
 		return ""
 	}
 	if ((((state / 4) % 2) != 0) || (((state / 8) % 2) != 0)) || ((((state / 268435456) % 2) != 0) || (((state / 67108864) % 2) != 0)) {
-		var __lt67 int
+		var __lt64 int
 		if ((state / 1) % 2) != 0 {
-			__lt67 = int(cgo.GUnicharToupper(int(r)))
+			__lt64 = int(cgo.GUnicharToupper(int(r)))
 		} else {
-			__lt67 = int(cgo.GUnicharTolower(int(r)))
+			__lt64 = int(cgo.GUnicharTolower(int(r)))
 		}
-		r = __lt67
+		r = __lt64
 	}
 	return func(c int) string {
 		if c < 0 || c > utf8.MaxRune {
@@ -3057,6 +2968,41 @@ func _keyName(keyval int, state int) string {
 
 func _menuActivate(action cgo.Pointer, parameter cgo.Pointer, entry cgo.Pointer) {
 	_menuEntrySelect((cgo.Widget)(unsafe.Pointer(entry)))
+}
+
+func _hear(box cgo.Widget, key string, ctrl bool, alt bool, shift bool, meta bool, editing bool, then func()) bool {
+	k := func(h any) *_KeyState {
+		if v, ok := h.(_KeyState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData((cgo.Object)(unsafe.Pointer(box)), "sngl-key"))
+	if k == nil {
+		return false
+	}
+	d := (cgo.Object)(unsafe.Pointer(cgo.GdkDisplayGetDefault()))
+	outer := func(h any) *_HeardState {
+		if v, ok := h.(_HeardState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(d, "sngl-heard"))
+	cgo.GObjectSetDataFull(d, "sngl-heard", _HeardState{Key: key, Ctrl: ctrl, Alt: alt, Shift: shift, Meta: meta, Editing: editing, Then: then})
+	run := (*(k)).Run
+	run()
+	mine := func(h any) *_HeardState {
+		if v, ok := h.(_HeardState); ok {
+			return &v
+		}
+		return nil
+	}(cgo.GObjectGetData(d, "sngl-heard"))
+	stopped := ((mine != nil) && (*(mine)).Stopped)
+	if outer != nil {
+		cgo.GObjectSetDataFull(d, "sngl-heard", (*(outer)))
+	} else {
+		cgo.SetData(d, "sngl-heard", nil)
+	}
+	return stopped
 }
 
 func _menuEntrySelect(w cgo.Widget) {
@@ -3240,4 +3186,4 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/fyne --
 pass sha256:684c167ab767050aa8beb778bb8b5007
 -- run/go/gtk4 --
-pass sha256:40aa168c308d4f15c3dc4d0b8de4b9b7
+pass sha256:b1f7ce1726a1de2c7f9f2ae3cab7f548
