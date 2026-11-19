@@ -85,6 +85,7 @@ func spliceCanvas(canvas *ir.NodeInst, failed *error) {
 		width:    nodeIntProp(canvas, "width"),
 		height:   nodeIntProp(canvas, "height"),
 		inFlight: map[*ir.Component]bool{},
+		locals:   &drawLocals{taken: map[string]bool{}, names: renamer{}},
 		failed:   failed,
 	})
 	canvas.Children = body
@@ -104,10 +105,40 @@ type drawEnv struct {
 	// nested call: a copy would forget what its caller was inside, which is the
 	// whole question.
 	inFlight map[*ir.Component]bool
+	// locals is what the drawing's spliced bodies declare, shared by every
+	// copy of drawEnv as inFlight is.
+	locals *drawLocals
 	// failed is the first recursion found. Held here rather than returned,
 	// because the five functions between this and lowerShapeDraw have no error
 	// in their signatures and a drawing is the only thing they can fail at.
 	failed *error
+}
+
+// drawLocals is the names the bodies spliced into one drawing declare, and
+// the renamer giving a later one's local a name of its own. Every shape's
+// drawing is a statement of one paint function, so two paths each declaring
+// `at` declared it twice in one scope, which C and Go refuse
+// (testdata/canvas_shape_locals.txtar).
+type drawLocals struct {
+	taken map[string]bool
+	names renamer
+}
+
+// own is a spliced body, its locals (and its lambdas' parameters) renamed
+// where an earlier body in the drawing declared their names, which it then
+// counts as declared.
+func (env drawEnv) own(stmts []ir.Stmt) []ir.Stmt {
+	if env.locals == nil {
+		return stmts
+	}
+	stmts = freshenShadowingParams(stmts, env.locals.taken, env.locals.names)
+	_ = ir.Walk(stmts, func(n ir.Node) error {
+		if v, ok := n.(*ir.LocalVar); ok {
+			env.locals.taken[v.Name] = true
+		}
+		return nil
+	})
+	return stmts
 }
 
 func emitShapes(children []ir.Stmt, body *[]ir.Stmt, env drawEnv) {
@@ -278,7 +309,7 @@ func primitiveDrawBody(ni *ir.NodeInst, env drawEnv) ([]ir.Stmt, bool) {
 		for _, p := range h.Func.Params {
 			bindings[p.Name] = drawPayload(p.Type, env)
 		}
-		out = append(out, foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings))...)
+		out = append(out, env.own(foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings)))...)
 	}
 	return out, true
 }
@@ -331,7 +362,7 @@ func handlerDrawBody(ni *ir.NodeInst, name string, env drawEnv, src *ir.NodeInst
 		for _, p := range h.Func.Params {
 			bindings[p.Name] = drawPayloadWith(p.Type, env, src)
 		}
-		return foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings))
+		return env.own(foldPayloadReads(substituteParams(deepCloneStmts(h.Func.Block), bindings)))
 	}
 	return nil
 }
