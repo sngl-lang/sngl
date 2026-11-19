@@ -228,7 +228,7 @@ sha256:155ac62180f6f630f7f763eaca9ac41a
   ]
 }
 -- testrun/gtk4/go/handed.sngl/page/1 --
-sha256:d7e8bd246d7b51bf585a822acad9ae8e
+sha256:7d43da91b6f499f6389310cc4ac62fd8
 {
   "results": [
     {
@@ -238,7 +238,7 @@ sha256:d7e8bd246d7b51bf585a822acad9ae8e
   ]
 }
 -- testrun/gtk4/go/held.sngl/page/1 --
-sha256:86401b5a2be9d7d67da5fd433ce45651
+sha256:c55e58e363d16b278e986e2173d13b99
 {
   "results": [
     {
@@ -248,7 +248,7 @@ sha256:86401b5a2be9d7d67da5fd433ce45651
   ]
 }
 -- testrun/gtk4/go/returned.sngl/page/1 --
-sha256:b15b6612c5d42446b22da655316e8447
+sha256:90cb3b83d28073a6c8e8eebcad883ea6
 {
   "results": [
     {

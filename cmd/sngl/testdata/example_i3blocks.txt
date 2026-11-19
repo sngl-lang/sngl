@@ -50,7 +50,7 @@ sha256:98ed0ee1c6450fbfcec493a37e83453b
   "stdout": "bar"
 }
 -- testrun/build/gtk4/go/i3blocks/bar.sngl/1 --
-sha256:abc18cdad7790214007a55bf6e918a9c
+sha256:eea89e4712b6b7751a0318b89a5498e2
 {
   "stdout": "bar"
 }

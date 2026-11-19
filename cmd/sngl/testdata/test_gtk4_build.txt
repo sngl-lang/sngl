@@ -24,7 +24,7 @@ component greeter node {
 window {
 }
 -- testrun/build/gtk4/go/app.sngl/1 --
-sha256:ff4c093c83435b7dd57f6bbeb80cfa75
+sha256:dce777c3feb69e7df343ad9f97cf3451
 {
   "stdout": "app"
 }

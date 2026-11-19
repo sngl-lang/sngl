@@ -329,7 +329,7 @@ sha256:d310914cb37f46b132241cf1431d6ce8
   ]
 }
 -- testrun/gtk4/go/answered.sngl/ended/1 --
-sha256:19f4d7d680ce0072089abca4853b9498
+sha256:b8a973031377b1e6a838d8d52defe861
 {
   "results": [
     {
@@ -339,7 +339,7 @@ sha256:19f4d7d680ce0072089abca4853b9498
   ]
 }
 -- testrun/gtk4/go/ended.sngl/ended/1 --
-sha256:9b867a1d6c416aee839023862aefd782
+sha256:73d08ce82cbd493d3de74dbf102921e3
 {
   "results": [
     {
