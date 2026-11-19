@@ -224,11 +224,12 @@ func shimsLink(pkg *ir.Package) *ir.CLink {
 // CShims defines, for each of fns, the C functions a Go call of it goes
 // through (ir.CalledCShimmed): the function of a variadic one's one shape
 // (variadicName), since cgo calls no variadic function, and the function
-// freeing each string it hands over (freeName), once each. Static inline
+// freeing each string it hands over (freeName), once each, a name declared
+// twice included. Static inline
 // ones, which a preamble may hold.
 func CShims(fns []*ir.Func) string {
 	var b strings.Builder
-	var freed []string
+	var freed, shimmed []string
 	for _, fn := range fns {
 		for _, f := range fn.CFreed() {
 			if !slices.Contains(freed, f) {
@@ -236,9 +237,12 @@ func CShims(fns []*ir.Func) string {
 				fmt.Fprintf(&b, "\nstatic inline void %s(void *p) {\n\tif (p) {\n\t\t%s(p);\n\t}\n}\n", freeName(f), f)
 			}
 		}
-		if !fn.Foreign.Variadic && !fn.Foreign.Field {
+		// Two declarations of one name are one function: a library's and
+		// the copy a test build promotes of it.
+		if !fn.Foreign.Variadic && !fn.Foreign.Field || slices.Contains(shimmed, shimName(fn)) {
 			continue
 		}
+		shimmed = append(shimmed, shimName(fn))
 		var params, args []string
 		for i, p := range fn.Params {
 			a := fmt.Sprintf("a%d", i)
