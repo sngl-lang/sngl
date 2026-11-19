@@ -181,6 +181,21 @@ func placedProtocols(pkg *ir.Package) []*ir.Func {
 		return nil
 	}
 	_ = ir.Walk(pkg, visit)
+	// The platform's contents protocol, and the container it makes, which
+	// placement splices for an instance holding several nodes, though no
+	// node of the program's names either.
+	for _, tp := range ir.TargetPackages(pkg) {
+		for _, c := range tp.Components {
+			if c.Protocol == nil || c.Protocol.Contents == nil {
+				continue
+			}
+			note(c)
+			if r := c.Protocol.Contents.Return; r != nil {
+				box, _ := r.Decl.(*ir.Component)
+				note(box)
+			}
+		}
+	}
 	for len(bodies) > 0 {
 		c := bodies[0]
 		bodies = bodies[1:]
