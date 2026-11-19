@@ -1156,7 +1156,7 @@ static GtkWidget * s_platform_gtk4___rtToplevelNew(void) {
 
 static GtkWidget * s_platform_gtk4___rtScrollNew(GtkLayoutManager * layout) {
 	GtkWidget * sw = gtk_scrolled_window_new();
-	s_platform_gtk4___setScroll(sw, (s_platform_gtk4___ScrollState){.axis = 0, .near = false, .content = -1, .reachEnd = ((sngl_fn_void__void){sngl_lambda1, NULL})});
+	s_platform_gtk4___setScroll(sw, (s_platform_gtk4___ScrollState){.axis = 0, .near = false, .content = (-1), .reachEnd = ((sngl_fn_void__void){sngl_lambda1, NULL})});
 	GtkWidget * probe = gtk_box_new((GtkOrientation)(1), (int)(0));
 	gtk_widget_set_layout_manager(probe, layout);
 	s_platform_gtk4___setProbe(probe, (s_platform_gtk4___ProbeState){.across = false, .content = -1});
@@ -3109,6 +3109,6 @@ func snglGtkCaptureFile(path string, w, h int) int   { return cgo.SnglGtkCapture
 func snglGtkCarryFile(name, data string, n int)      { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
-pass sha256:be26ce21a4e410b61b5c040d51d38d45
+pass sha256:1e92683843c57187bc1c0bdc1a7f9ed8
 -- run/go/gtk4 --
 pass sha256:c97851b6f16eee9d4333734734d425a3

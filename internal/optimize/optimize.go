@@ -500,11 +500,8 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 			foldVar(v, ctx)
 		}
 	}
-	for _, f := range pkg.Funcs {
-		if reached(f) {
-			f.Block = foldStmts(f.Block, ctx)
-		}
-	}
+	// A struct's defaults before the bodies building one: a literal leaving
+	// a field out is folded against them (ir.StructField.DefaultFolded).
 	for _, s := range pkg.Structs {
 		if !reached(s) {
 			continue
@@ -513,6 +510,11 @@ func (r *optimizerRun) foldPkg(pkg *ir.Package) *evalCtx {
 			if f.Default != nil {
 				f.Default = foldOwned(f.Default, ctx)
 			}
+		}
+	}
+	for _, f := range pkg.Funcs {
+		if reached(f) {
+			f.Block = foldStmts(f.Block, ctx)
 		}
 	}
 	for _, e := range pkg.Enums {

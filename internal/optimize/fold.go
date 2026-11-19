@@ -919,17 +919,14 @@ func identityMap(call *ir.Call) ir.Expr {
 }
 
 // unfoldedDefaults is each field x leaves out whose declaration's default is
-// no literal, written out folded. A library struct's declaration is folded
-// only where the build reached it as it copied the library, and a protocol
-// function spliced after that -- gtk4's _rtTabPageNew building a
-// _TabPageState -- reaches one that is frozen, or copied for another target
-// and not folded for this one, so a backend spelling the field from the
-// declaration read its `false`, the builtin const, as an identifier: C's
-// `false_`. A literal folding whole is filled from the evaluated defaults
-// already; one holding a lambda folds field by field, and is filled here.
-// The program's own declarations are folded with it.
+// unfolded (ir.StructField.DefaultFolded), written out folded, since a
+// backend spells a field left out from the declaration: gtk4's
+// `_TabPageState{}`, built by a protocol function lowering splices in after
+// the build copied the library, left out a field defaulting to `false`, the
+// builtin const, which C spelled as the identifier `false_`. A literal the
+// fold evaluates whole keeps such a field for the same reason (HoldsOmitted).
 func unfoldedDefaults(x *ir.StructLit, ctx *evalCtx) []ir.FieldInit {
-	if x.Def == nil || x.Def.PkgPath() == "" || x.Def.Foreign.Name != "" && !x.Def.Foreign.Marked {
+	if x.Def == nil || x.Def.Foreign.Name != "" && !x.Def.Foreign.Marked {
 		return nil
 	}
 	if slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Spread }) {
@@ -937,13 +934,7 @@ func unfoldedDefaults(x *ir.StructLit, ctx *evalCtx) []ir.FieldInit {
 	}
 	var out []ir.FieldInit
 	for _, d := range x.Def.Fields {
-		if d.Default == nil || !d.DefaultWritten {
-			continue
-		}
-		if slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Name == d.Name }) {
-			continue
-		}
-		if _, folded := d.Default.(*ir.Literal); folded {
+		if d.DefaultFolded() || slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Name == d.Name }) {
 			continue
 		}
 		out = append(out, ir.FieldInit{Name: d.Name, Value: foldExpr(ir.CloneExprSharingDecls(d.Default), ctx)})

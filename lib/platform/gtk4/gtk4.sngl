@@ -882,7 +882,7 @@ func _rtMenuEntryNew() MenuEntry {
     _menuHooksSet()
     var box = _boxNew(1, 0)
     _setVisible(box, false)
-    _setMenuEntry(box, _MenuEntryState{label="", labeled=false, disabled=false, checked=false, select=func() {}})
+    _setMenuEntry(box, _MenuEntryState{})
     return _asMenuEntry(box)
 }
 
@@ -964,7 +964,7 @@ func _rtBackNew() Back {
     _menuHooksSet()
     var w = _labelNew(null)
     _setVisible(w, false)
-    _holdBack(_object(w), "sngl-back", _BackState{press=func() {}})
+    _holdBack(_object(w), "sngl-back", _BackState{})
     return _asBack(w)
 }
 
@@ -2290,10 +2290,10 @@ func _scrollTake(sw Widget, probe Widget, content Widget) {
 
 func _rtScrollNew(layout LayoutManager) Scroll {
     var sw = _scrolledNew()
-    _setScroll(sw, _ScrollState{axis=0, near=false, content=-1, reachEnd=func() {}})
+    _setScroll(sw, _ScrollState{})
     var probe = _boxNew(1, 0)
     _setLayoutManager(probe, layout)
-    _setProbe(probe, _ProbeState{across=false, content=-1})
+    _setProbe(probe, _ProbeState{})
     _refSink(_pointer(probe))
     _holdData(_object(sw), "sngl-probe", _pointer(probe), _unrefData)
     _rtNotifyConnect(_asScroll(sw), "notify::child", func() { _scrollChild(sw) })

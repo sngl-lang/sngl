@@ -242,11 +242,14 @@ emptied, since a build still asks whether a declaration is overridden for
 A library declaration is folded only where the build reached it as it copied
 the library, and a protocol function lowering splices in later reaches a
 struct whose declaration nothing folded: frozen, or copied and not folded for
-this target. So a library struct's literal names, folded, each field it
-leaves out whose default is no literal (`unfoldedDefaults`): gtk4's
-`_TabPageState{}` left out a field defaulting to `false`, the builtin const,
-which C spelled from the declaration as the identifier `false_`
-(`testdata/select_under_tabs.txtar`, `gtk4_tabs_runs.txtar`).
+this target. Its defaults name `false` and `null`, builtin consts, which a
+backend spelling a field left out read as identifiers: C's `false_`, and "C
+does not yet write a null" for an `option[Widget] = null`. So a field whose
+default names a const (`ir.StructField.DefaultFolded`, false) is written out
+folded by the literal leaving it out (`unfoldedDefaults`), and kept by one
+the fold evaluates whole (`StructLit.HoldsOmitted`); the optimizer folds a
+package's struct defaults before its bodies, so the program's own read as
+folded (`testdata/select_under_tabs.txtar`, `gtk4_tabs_runs.txtar`).
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 
