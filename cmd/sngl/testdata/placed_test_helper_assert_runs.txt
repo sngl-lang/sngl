@@ -112,7 +112,7 @@ sha256:a9be2ef4a8361b2ab4cebe0a6b9b45d4
   ]
 }
 -- testrun/win32/c/app.sngl/counter/1 --
-sha256:106645576336939f04fde7ffb5aa1242
+sha256:7540be5731592da4ff4f54a7d9ead4e8
 {
   "results": [
     {
@@ -134,7 +134,7 @@ sha256:106645576336939f04fde7ffb5aa1242
   ]
 }
 -- testrun/win32/go/app.sngl/counter/1 --
-sha256:0a125262f5153d678e96365ddd09ffe8
+sha256:6c71a4732d76ae9f4cd8569d420f6a00
 {
   "results": [
     {
