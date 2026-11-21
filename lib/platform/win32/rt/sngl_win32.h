@@ -86,6 +86,9 @@ void sngl_win32_hooks(sngl_win32_hwnd_int2_hook made, sngl_win32_hwnd_hook forge
  * window shown or hidden, answering whether that changed it; a divider's
  * line down or across, a scroll's bars; a box's etched edge. */
 void sngl_win32_natural(HWND w, SIZE *out);
+void sngl_win32_text_size(HWND w, SIZE *out);
+int sngl_win32_line_height(HWND w);
+int sngl_win32_check_width(int dpi);
 int sngl_win32_picture_size(HWND w, SIZE *out);
 void sngl_win32_tabs_size(HWND w, int cx, int cy, SIZE *out);
 int sngl_win32_flow_height(HWND w, int width);
@@ -287,10 +290,6 @@ const char *sngl_win32_get_text(HWND w);
 /* sngl_win32_set_edit_text sets an edit's text without reporting a change,
  * and only where it differs, so the caret stays where it is. */
 void sngl_win32_set_edit_text(HWND w, const unsigned short *text);
-
-/* sngl_win32_set_rows is the lines a multi-line edit is measured to show, 0
- * for the runtime's three. */
-void sngl_win32_set_rows(HWND w, int rows);
 
 /* sngl_win32_set_fraction fills a progress bar to fraction, 0 to 1, and a
  * negative one makes it indeterminate. sngl_win32_set_show_text writes its

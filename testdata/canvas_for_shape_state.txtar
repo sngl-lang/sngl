@@ -3786,6 +3786,7 @@ typedef struct sngl_map_HWND___Ctl sngl_map_HWND___Ctl;
 typedef struct s_platform_win32___Pen s_platform_win32___Pen;
 typedef struct s_platform_win32___Saved s_platform_win32___Saved;
 typedef struct sngl_list__Saved sngl_list__Saved;
+typedef struct sngl_map_int__bool sngl_map_int__bool;
 typedef struct sngl_list_float sngl_list_float;
 typedef struct s___ref_map_string_pic s___ref_map_string_pic;
 typedef struct s_pic s_pic;
@@ -3805,6 +3806,7 @@ typedef struct s_ui_draw__Style s_ui_draw__Style;
 typedef struct s_builtin__color s_builtin__color;
 typedef struct s_platform_win32_api__SIZE s_platform_win32_api__SIZE;
 typedef struct s__pictureSize__result s__pictureSize__result;
+typedef struct s__sendSize__result s__sendSize__result;
 typedef struct s_platform_win32_api__RECT s_platform_win32_api__RECT;
 typedef struct s_GetClientRect__result s_GetClientRect__result;
 typedef struct s__gdipCreateSolidFill__result s__gdipCreateSolidFill__result;
@@ -3880,6 +3882,13 @@ typedef struct s_platform_win32___Ctl {
 	int64_t laidW;
 	int64_t laidH;
 	sngl_list_HWND kids;
+	int64_t rows;
+	sngl_string text;
+	bool texted;
+	int64_t id;
+	bool disabled;
+	bool checked;
+	HMENU menu;
 } s_platform_win32___Ctl;
 
 typedef struct sngl_map_HWND___Ctl {
@@ -3912,6 +3921,14 @@ typedef struct sngl_list__Saved {
 	int64_t len;
 	int64_t cap;
 } sngl_list__Saved;
+
+typedef struct sngl_map_int__bool {
+	int64_t *keys;
+	bool *vals;
+	int64_t len;
+	int64_t cap;
+	uint32_t *idx;
+} sngl_map_int__bool;
 
 typedef struct sngl_list_float {
 	double *data;
@@ -4028,6 +4045,11 @@ typedef struct s__pictureSize__result {
 	int64_t result;
 	s_platform_win32_api__SIZE out1;
 } s__pictureSize__result;
+
+typedef struct s__sendSize__result {
+	int64_t result;
+	s_platform_win32_api__SIZE out3;
+} s__sendSize__result;
 
 typedef struct s_platform_win32_api__RECT {
 	int64_t left;
@@ -4203,11 +4225,14 @@ static void s_platform_win32__Gfx_lineJoin(sngl_win32_gfx * g, int64_t join);
 static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g);
 static void s_platform_win32___tabsSync(HWND tabs);
 static bool s_platform_win32___holdsEntries(HWND w);
+static void s_platform_win32___menuSync(HWND w);
 static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___Ctl k);
 static int64_t s_platform_win32___px(int64_t n, int64_t dpi);
+static s_platform_win32___Size s_platform_win32___textSize(HWND w);
 static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height);
 static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a);
 static void s_platform_win32___newPath(sngl_win32_gfx * g);
+static void s_platform_win32___fillMenu(HMENU m, HWND w, bool top);
 static sngl_list__Kid s_platform_win32___laidKids(s_platform_win32___Ctl k);
 static void s_platform_win32___invalidate(HWND w);
 static void s_platform_win32___reach(HWND box);
@@ -4215,6 +4240,7 @@ static sngl_list__Rect s_platform_win32___grid(s_platform_win32___Ctl k, sngl_li
 static s_platform_win32___Flowed s_platform_win32___flow(sngl_list__Kid ks, int64_t x0, int64_t y0, int64_t iw, int64_t gap);
 static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_list__Kid ks, int64_t x0, int64_t y0, int64_t iw, int64_t ih, int64_t gap);
 static void s_platform_win32___place(HWND w, int64_t cw, int64_t ch);
+static void s_platform_win32___addEntry(HMENU m, HWND e);
 static double s_platform_win32___flexOf(HWND w);
 static void s_platform_win32___layOutTabs(HWND tabs, int64_t w, int64_t h);
 static sngl_map_HWND___Ctl s_platform_win32___hooked(void);
@@ -4222,8 +4248,10 @@ static void s_platform_win32___made(HWND w, int64_t kind, int64_t dpi);
 static void s_platform_win32___Ctl__drop(s_platform_win32___Ctl v);
 static void sngl_list_HWND__drop(sngl_list_HWND v);
 static void s_platform_win32___forget(HWND w);
+static void sngl_map_int__bool__unshare(sngl_map_int__bool *l);
 static void s_platform_win32___layoutMessage(HWND top);
 static void s_platform_win32___tabChosen(HWND tabs);
+static void s_platform_win32___menuCommand(HWND top, int64_t id);
 static void s_platform_win32___refresh(HWND w, int64_t dpi);
 static void s_platform_win32___wheeled(HWND w, int64_t delta);
 static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request);
@@ -4232,6 +4260,7 @@ static HWND s_platform_win32___kidAt(HWND w, int64_t at);
 static int64_t s_platform_win32___padOf(HWND w, int64_t side);
 static void s_platform_win32___fit(HWND top);
 static void s_platform_win32___layOutNow(HWND w);
+static HWND s_platform_win32___findEntry(HWND w, int64_t id);
 static void s___effect0_enter(void);
 static sngl_list_string sngl_list_string__keep(sngl_list_string v);
 static void sngl_list_string__drop(sngl_list_string v);
@@ -4263,6 +4292,7 @@ static void s___effect3_rekey_mark(void);
 static void s___snglTeardown(void);
 static void s___lambda0(s___lambda0_caps state, sngl_win32_gfx * ctx);
 static sngl_map_HWND___Ctl sngl_map_HWND___Ctl__keep(sngl_map_HWND___Ctl v);
+static sngl_map_int__bool sngl_map_int__bool__keep(sngl_map_int__bool v);
 static sngl_list_float sngl_list_float__keep(sngl_list_float v);
 static sngl_map_string__pic sngl_map_string__pic__keep(sngl_map_string__pic v);
 static void s___ref_map_string_pic__release(void *p);
@@ -4486,6 +4516,7 @@ static sngl_list_HWND sngl_list_HWND__keep(sngl_list_HWND v) {
 
 static s_platform_win32___Ctl s_platform_win32___Ctl__keep(s_platform_win32___Ctl v) {
 	v.kids = sngl_list_HWND__keep(v.kids);
+	v.text = sngl_string_keep(v.text);
 	return v;
 }
 
@@ -4759,6 +4790,14 @@ static s_platform_win32_api__SIZE sngl_ccall_sngl_win32_natural__natural(HWND a0
 	return sngl_from_platform_win32_api__SIZE(t1);
 }
 
+static s__sendSize__result sngl_ccall_SendMessageW__sendSize(HWND a0, UINT a1, WPARAM a2, s_platform_win32_api__SIZE a3) {
+	SIZE t3 = sngl_to_platform_win32_api__SIZE(a3);
+	s__sendSize__result r;
+	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
+	r.out3 = sngl_from_platform_win32_api__SIZE(t3);
+	return r;
+}
+
 static RECT sngl_to_platform_win32_api__RECT(s_platform_win32_api__RECT v) {
 	return (RECT){.left = (LONG)v.left, .top = (LONG)v.top, .right = (LONG)v.right, .bottom = (LONG)v.bottom};
 }
@@ -4823,6 +4862,12 @@ static s_platform_win32___Kid *sngl_list__Kid_at(sngl_list__Kid l, int64_t i) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static s_platform_win32_api__SIZE sngl_ccall_sngl_win32_text_size__textExtent(HWND a0, s_platform_win32_api__SIZE a1) {
+	SIZE t1 = sngl_to_platform_win32_api__SIZE(a1);
+	sngl_win32_text_size(a0, &t1);
+	return sngl_from_platform_win32_api__SIZE(t1);
 }
 
 static SCROLLINFO sngl_to_platform_win32___ScrollInfo(s_platform_win32___ScrollInfo v) {
@@ -4959,8 +5004,8 @@ static void s_platform_win32___tabChosen__fn(void *env, HWND a0) {
 	s_platform_win32___tabChosen(a0);
 }
 
-static void s_platform_win32___tabsSync__fn(void *env, HWND a0) {
-	s_platform_win32___tabsSync(a0);
+static void s_platform_win32___menuCommand__fn(void *env, HWND a0, int64_t a1) {
+	s_platform_win32___menuCommand(a0, a1);
 }
 
 static void s_platform_win32___refresh__fn(void *env, HWND a0, int64_t a1) {
@@ -5027,9 +5072,9 @@ static void sngl_static_s_platform_win32___tabChosen(HWND a0) {
 	sngl_call_leave(m);
 }
 
-static void sngl_static_s_platform_win32___tabsSync(HWND a0) {
+static void sngl_static_s_platform_win32___menuCommand(HWND a0, int a1) {
 	sngl_mark m = sngl_call_enter();
-	s_platform_win32___tabsSync(a0);
+	s_platform_win32___menuCommand(a0, (int64_t)a1);
 	sngl_call_leave(m);
 }
 
@@ -5092,6 +5137,109 @@ static void sngl_list_HWND__drop(sngl_list_HWND v) {
 
 static void s_platform_win32___Ctl__drop(s_platform_win32___Ctl v) {
 	sngl_list_HWND__drop(v.kids);
+	sngl_drop((v.text).ptr);
+}
+
+static size_t sngl_map_int__bool_keys_size(int64_t cap) {
+	size_t n = sngl_mapidx_slots(cap);
+	return sngl_mapidx_at(sizeof(int64_t), cap) + (n == 0 ? 0 : sizeof(uint32_t) * (2 + n));
+}
+
+static void sngl_map_int__bool_index_put(sngl_map_int__bool *m, int64_t i) {
+	uint64_t mask = m->idx[-2];
+	if (((uint64_t)m->idx[-1] + 1) * 2 > mask + 1) {
+		m->idx = NULL;
+		return;
+	}
+	m->idx[-1]++;
+	for (uint64_t s = sngl_mapidx_mix((uint64_t)(m->keys[i])) & mask;; s = (s + 1) & mask) {
+		if (m->idx[s] == 0) {
+			m->idx[s] = (uint32_t)(i + 1);
+			return;
+		}
+	}
+}
+
+static void sngl_map_int__bool_reindex(sngl_map_int__bool *m) {
+	size_t n = sngl_mapidx_slots(m->cap);
+	if (n == 0) {
+		m->idx = NULL;
+		return;
+	}
+	uint32_t *h = (uint32_t *)(void *)((char *)m->keys + sngl_mapidx_at(sizeof(int64_t), m->cap));
+	memset(h, 0, sizeof(uint32_t) * (2 + n));
+	h[0] = (uint32_t)(n - 1);
+	m->idx = h + 2;
+	for (int64_t i = 0; i < m->len; i++) {
+		sngl_map_int__bool_index_put(m, i);
+	}
+}
+
+static void sngl_map_int__bool__unshare(sngl_map_int__bool *l) {
+	if (!sngl_shared(l->keys)) {
+		return;
+	}
+	sngl_map_int__bool v = *l;
+	sngl_let_go_shared_map(v.keys, v.vals);
+	int64_t *keys = sngl_keep_alloc(sngl_map_int__bool_keys_size(v.len));
+	if (v.len > 0) {
+		memcpy(keys, v.keys, sizeof(int64_t) * (size_t)v.len);
+	}
+	v.keys = keys;
+	sngl_kept_len(keys, v.len);
+	bool *vals = sngl_keep_alloc(sizeof(bool) * (size_t)(v.len + 1));
+	if (v.len > 0) {
+		memcpy(vals, v.vals, sizeof(bool) * (size_t)v.len);
+	}
+	v.vals = vals;
+	sngl_kept_len(vals, v.len);
+	v.cap = v.len;
+	sngl_map_int__bool_reindex(&v);
+	*l = v;
+}
+
+static int64_t sngl_map_int__bool_find(sngl_map_int__bool m, int64_t k) {
+	if (m.idx == NULL) {
+		for (int64_t i = 0; i < m.len; i++) {
+			if (m.keys[i] == k) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	uint64_t mask = m.idx[-2];
+	for (uint64_t s = sngl_mapidx_mix((uint64_t)(k)) & mask;; s = (s + 1) & mask) {
+		uint32_t p = m.idx[s];
+		if (p == 0) {
+			return -1;
+		}
+		if ((int64_t)p <= m.len && (m.keys[p - 1] == k)) {
+			return (int64_t)p - 1;
+		}
+	}
+}
+
+static void sngl_map_int__bool_remove_kept(sngl_map_int__bool *m, int64_t k) {
+	int64_t i = sngl_map_int__bool_find(*m, k);
+	if (i < 0) {
+		return;
+	}
+	sngl_map_int__bool__unshare(m);
+	int64_t *keys = sngl_keep_alloc(sngl_map_int__bool_keys_size(m->len));
+	bool *vals = sngl_keep_alloc(sizeof(bool) * (size_t)m->len);
+	memcpy(keys, m->keys, sizeof(int64_t) * (size_t)i);
+	memcpy(vals, m->vals, sizeof(bool) * (size_t)i);
+	memcpy(keys + i, m->keys + i + 1, sizeof(int64_t) * (size_t)(m->len - i - 1));
+	memcpy(vals + i, m->vals + i + 1, sizeof(bool) * (size_t)(m->len - i - 1));
+	sngl_drop(m->keys);
+	sngl_drop(m->vals);
+	m->cap = m->len;
+	m->len--;
+	m->keys = keys;
+	m->vals = vals;
+	sngl_map_int__bool_reindex(m);
+	sngl_kept_len(m->keys, m->len);
+	sngl_kept_len(m->vals, m->len);
 }
 
 static void sngl_map_HWND___Ctl_remove_kept(sngl_map_HWND___Ctl *m, HWND k) {
@@ -5793,6 +5941,26 @@ static sngl_map_HWND___Ctl sngl_map_HWND___Ctl__keep(sngl_map_HWND___Ctl v) {
 	return v;
 }
 
+static sngl_map_int__bool sngl_map_int__bool__keep(sngl_map_int__bool v) {
+	if (!sngl_share_map(v.keys, v.vals, v.len)) {
+		int64_t *keys = sngl_keep_alloc(sngl_map_int__bool_keys_size(v.len));
+		if (v.len > 0) {
+			memcpy(keys, v.keys, sizeof(int64_t) * (size_t)v.len);
+		}
+		v.keys = keys;
+		sngl_kept_len(keys, v.len);
+		bool *vals = sngl_keep_alloc(sizeof(bool) * (size_t)(v.len + 1));
+		if (v.len > 0) {
+			memcpy(vals, v.vals, sizeof(bool) * (size_t)v.len);
+		}
+		v.vals = vals;
+		sngl_kept_len(vals, v.len);
+		v.cap = v.len;
+		sngl_map_int__bool_reindex(&v);
+	}
+	return v;
+}
+
 static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
@@ -5963,6 +6131,7 @@ static s_platform_win32___Pen s_platform_win32___pen;
 static sngl_list__Saved s_platform_win32___saved;
 static double s_platform_win32___x;
 static double s_platform_win32___y;
+static sngl_map_int__bool s_platform_win32___entryIds;
 static sngl_list_float s_ws;
 static s___ref_map_string_pic * s_p__inst0;
 static sngl_map_string____anon_copy_v0_2d5b73 s___copied__inst0;
@@ -6146,7 +6315,7 @@ static void s_platform_win32___adopt(HWND parent, HWND child, int64_t at) {
 	}
 	sngl_win32_tip_child(parent, child, (int)(1));
 	if (s_platform_win32___holdsEntries(child)) {
-		sngl_win32_menu_sync(parent);
+		s_platform_win32___menuSync(parent);
 	}
 	s_platform_win32___relayout(parent);
 }
@@ -6218,10 +6387,55 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 							n = sngl_ccall_sngl_win32_natural__natural(w, n);
 							s = (s_platform_win32___Size){.cx = n.cx, .cy = ((k.flowH > 0) ? k.flowH : n.cy)};
 						} else {
-							if (((((k.kind != 24) && (k.kind != 21)) && (k.kind != 15)) && (k.kind != 16)) && (k.kind != 6)) {
-								s_platform_win32_api__SIZE n = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
-								n = sngl_ccall_sngl_win32_natural__natural(w, n);
-								s = (s_platform_win32___Size){.cx = n.cx, .cy = n.cy};
+							if ((k.kind == 2) || (k.kind == 11)) {
+								s = s_platform_win32___textSize(w);
+							} else {
+								if (k.kind == 3) {
+									s = s_platform_win32___textSize(w);
+									s.cx += s_platform_win32___px(20, k.dpi);
+									s.cy += s_platform_win32___px(10, k.dpi);
+									if (s.cx < s_platform_win32___px(75, k.dpi)) {
+										s.cx = s_platform_win32___px(75, k.dpi);
+									}
+								} else {
+									if ((k.kind == 5) || (k.kind == 12)) {
+										s = s_platform_win32___textSize(w);
+										s.cx += ((int64_t)sngl_win32_check_width((int)(k.dpi)) + s_platform_win32___px(8, k.dpi));
+										s.cy += s_platform_win32___px(4, k.dpi);
+									} else {
+										if (k.kind == 4) {
+											s = s_platform_win32___textSize(w);
+											s.cx = s_platform_win32___px(150, k.dpi);
+											s.cy += s_platform_win32___px(8, k.dpi);
+										} else {
+											if (k.kind == 8) {
+												s.cx = s_platform_win32___px(200, k.dpi);
+												s.cy = (((int64_t)sngl_win32_line_height(w) * ((k.rows > 0) ? k.rows : 3)) + s_platform_win32___px(8, k.dpi));
+											} else {
+												if (k.kind == 19) {
+													s_platform_win32_api__SIZE ideal = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
+													s__sendSize__result __ref2 = sngl_ccall_SendMessageW__sendSize(w, (UINT)(4111), (WPARAM)(0), ideal);
+													ideal = __ref2.out3;
+													if ((__ref2.result != 0) && (ideal.cx > 0)) {
+														s = (s_platform_win32___Size){.cx = ideal.cx, .cy = ideal.cy};
+													} else {
+														s = s_platform_win32___textSize(w);
+														s.cx = s_platform_win32___px(130, k.dpi);
+													}
+													if (s.cy < ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(8, k.dpi))) {
+														s.cy = ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(8, k.dpi));
+													}
+												} else {
+													if (((((k.kind != 24) && (k.kind != 21)) && (k.kind != 15)) && (k.kind != 16)) && (k.kind != 6)) {
+														s_platform_win32_api__SIZE n = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
+														n = sngl_ccall_sngl_win32_natural__natural(w, n);
+														s = (s_platform_win32___Size){.cx = n.cx, .cy = n.cy};
+													}
+												}
+											}
+										}
+									}
+								}
 							}
 						}
 					}
@@ -6250,8 +6464,8 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 
 static void s_platform_win32___layOutTop(HWND top) {
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetClientRect__result __ref2 = sngl_ccall_GetClientRect_GetClientRect(top, r);
-	r = __ref2.out1;
+	s_GetClientRect__result __ref3 = sngl_ccall_GetClientRect_GetClientRect(top, r);
+	r = __ref3.out1;
 	s_platform_win32___layOut(top, (r.right - r.left), (r.bottom - r.top));
 }
 
@@ -6288,9 +6502,9 @@ static void s_platform_win32__source(sngl_win32_gfx * ctx, s_builtin__color c) {
 static void s_platform_win32__Gfx_fill(sngl_win32_gfx * g, bool preserve) {
 	s_platform_win32___paintOf(g);
 	void * brush = NULL;
-	s__gdipCreateSolidFill__result __ref3 = sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), brush);
-	brush = __ref3.out1;
-	if ((__ref3.result == 0) && (brush != NULL)) {
+	s__gdipCreateSolidFill__result __ref4 = sngl_ccall_GdipCreateSolidFill__gdipCreateSolidFill((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), brush);
+	brush = __ref4.out1;
+	if ((__ref4.result == 0) && (brush != NULL)) {
 		(void)(int64_t)GdipFillPath((g)->g, (void *)(brush), (g)->path);
 		(void)(int64_t)GdipDeleteBrush((void *)(brush));
 	}
@@ -6319,9 +6533,9 @@ static void s_platform_win32__Gfx_stroke(sngl_win32_gfx * g) {
 	int64_t cap = (((s_platform_win32___pen.cap >= 0) && (s_platform_win32___pen.cap < 3)) ? s_platform_win32___pen.cap : 0);
 	int64_t join = (((s_platform_win32___pen.join >= 0) && (s_platform_win32___pen.join < 3)) ? s_platform_win32___pen.join : 0);
 	void * pen = NULL;
-	s__gdipCreatePen1__result __ref4 = sngl_ccall_GdipCreatePen1__gdipCreatePen1((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), (REAL)(s_platform_win32___pen.width), (GpUnit)(2), pen);
-	pen = __ref4.out3;
-	if ((__ref4.result == 0) && (pen != NULL)) {
+	s__gdipCreatePen1__result __ref5 = sngl_ccall_GdipCreatePen1__gdipCreatePen1((ARGB)(((((s_platform_win32___pen.a * 16777216) + (s_platform_win32___pen.r * 65536)) + (s_platform_win32___pen.g * 256)) + s_platform_win32___pen.b)), (REAL)(s_platform_win32___pen.width), (GpUnit)(2), pen);
+	pen = __ref5.out3;
+	if ((__ref5.result == 0) && (pen != NULL)) {
 		int64_t line = ((cap == 1) ? 2 : ((cap == 2) ? 1 : 0));
 		(void)(int64_t)GdipSetPenLineCap197819(pen, (GpLineCap)(line), (GpLineCap)(line), (GpDashCap)(((cap == 1) ? 2 : 0)));
 		(void)(int64_t)GdipSetPenLineJoin(pen, (GpLineJoin)(((join == 1) ? 2 : ((join == 2) ? 1 : 0))));
@@ -6358,6 +6572,32 @@ static bool s_platform_win32___holdsEntries(HWND w) {
 		}
 	}
 	return false;
+}
+
+static void s_platform_win32___menuSync(HWND w) {
+	HWND top = GetAncestor(w, (UINT)(2));
+	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, top) >= 0) || (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, top)->kind != 0)) {
+		return;
+	}
+	HMENU made = CreateMenu();
+	HMENU bar = NULL;
+	if (made != NULL) {
+		s_platform_win32___fillMenu(made, top, true);
+		if ((int64_t)GetMenuItemCount(made) > 0) {
+			bar = made;
+		} else {
+			(void)(int64_t)DestroyMenu(made);
+		}
+	}
+	HMENU old = sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, top)->menu;
+	(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), top)).menu = bar;
+	if ((bar != NULL) || (old != NULL)) {
+		(void)(int64_t)SetMenu(top, bar);
+		(void)(int64_t)DrawMenuBar(top);
+	}
+	if (old != NULL) {
+		(void)(int64_t)DestroyMenu(old);
+	}
 }
 
 static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___Ctl k) {
@@ -6432,6 +6672,12 @@ static int64_t s_platform_win32___px(int64_t n, int64_t dpi) {
 	return (0 - sngl_div((((0 - n) * dpi) + 48), 96));
 }
 
+static s_platform_win32___Size s_platform_win32___textSize(HWND w) {
+	s_platform_win32_api__SIZE s = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
+	s = sngl_ccall_sngl_win32_text_size__textExtent(w, s);
+	return (s_platform_win32___Size){.cx = s.cx, .cy = s.cy};
+}
+
 static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, box) >= 0)) {
 		return;
@@ -6481,15 +6727,15 @@ static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 			si.nMax = ((ih + (h - ph)) - 1);
 			si.nPage = h;
 			si.nPos = posY;
-			s__setScrollInfo__result __ref5 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(1), si, (int)(1));
-			si = __ref5.out2;
+			s__setScrollInfo__result __ref6 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(1), si, (int)(1));
+			si = __ref6.out2;
 		}
 		if (k.scrollH) {
 			si.nMax = ((iw + (w - pw)) - 1);
 			si.nPage = w;
 			si.nPos = posX;
-			s__setScrollInfo__result __ref6 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(0), si, (int)(1));
-			si = __ref6.out2;
+			s__setScrollInfo__result __ref7 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(0), si, (int)(1));
+			si = __ref7.out2;
 		}
 		x0 -= posX;
 		y0 -= posY;
@@ -6583,9 +6829,26 @@ static void s_platform_win32___newPath(sngl_win32_gfx * g) {
 	s_platform_win32___begun = false;
 }
 
+static void s_platform_win32___fillMenu(HMENU m, HWND w, bool top) {
+	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, w) >= 0)) {
+		return;
+	}
+	for (struct { sngl_list_HWND l; int64_t i; } __loop14 = {sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, w)->kids, 0}; __loop14.i < __loop14.l.len; __loop14.i++) { HWND child = __loop14.l.data[__loop14.i];
+		if (sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) {
+			if (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->kind == 16) {
+				s_platform_win32___addEntry(m, child);
+			} else {
+				if (top) {
+					s_platform_win32___fillMenu(m, child, true);
+				}
+			}
+		}
+	}
+}
+
 static sngl_list__Kid s_platform_win32___laidKids(s_platform_win32___Ctl k) {
 	sngl_list__Kid out = ((sngl_list__Kid){0});
-	for (struct { sngl_list_HWND l; int64_t i; } __loop14 = {k.kids, 0}; __loop14.i < __loop14.l.len; __loop14.i++) { HWND child = __loop14.l.data[__loop14.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop15 = {k.kids, 0}; __loop15.i < __loop15.l.len; __loop15.i++) { HWND child = __loop15.l.data[__loop15.i];
 		if (((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offProp) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offLook) {
 			s_platform_win32___Size s = s_platform_win32___measure(child);
 			sngl_list__Kid_push(&(out), (s_platform_win32___Kid){.w = child, .cx = s.cx, .cy = s.cy, .flex = s_platform_win32___flexOf(child)});
@@ -6642,7 +6905,7 @@ static s_platform_win32___Flowed s_platform_win32___flow(sngl_list__Kid ks, int6
 	int64_t y = y0;
 	int64_t h = 0;
 	sngl_list__Rect at = ((sngl_list__Rect){0});
-	for (struct { sngl_list__Kid l; int64_t i; } __loop15 = {ks, 0}; __loop15.i < __loop15.l.len; __loop15.i++) { s_platform_win32___Kid it = __loop15.l.data[__loop15.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop16 = {ks, 0}; __loop16.i < __loop16.l.len; __loop16.i++) { s_platform_win32___Kid it = __loop16.l.data[__loop16.i];
 		if ((x > x0) && ((x + it.cx) > (x0 + iw))) {
 			x = x0;
 			y += (h + gap);
@@ -6661,7 +6924,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 	sngl_list_int size = ((sngl_list_int){0});
 	int64_t total = 0;
 	double flex = 0.0;
-	for (struct { sngl_list__Kid l; int64_t i; } __loop16 = {ks, 0}; __loop16.i < __loop16.l.len; __loop16.i++) { s_platform_win32___Kid it = __loop16.l.data[__loop16.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop17 = {ks, 0}; __loop17.i < __loop17.l.len; __loop17.i++) { s_platform_win32___Kid it = __loop17.l.data[__loop17.i];
 		int64_t along = (k.vertical ? it.cy : it.cx);
 		sngl_list_int_push(&(size), along);
 		total += along;
@@ -6669,7 +6932,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 	}
 	int64_t spare = (avail - total);
 	if (k.mode == 4) {
-		for (struct { sngl_list__Kid l; int64_t i; } __loop17 = {ks, 0}; __loop17.i < __loop17.l.len; __loop17.i++) { int64_t i = __loop17.i; s_platform_win32___Kid it = __loop17.l.data[__loop17.i];
+		for (struct { sngl_list__Kid l; int64_t i; } __loop18 = {ks, 0}; __loop18.i < __loop18.l.len; __loop18.i++) { int64_t i = __loop18.i; s_platform_win32___Kid it = __loop18.l.data[__loop18.i];
 			(*sngl_list_int_at(size, i)) = sngl_div(avail, n);
 		}
 		(*sngl_list_int_at(size, (n - 1))) += (avail - (sngl_div(avail, n) * n));
@@ -6677,7 +6940,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 		if ((spare > 0) && (flex > 0.0)) {
 			int64_t given = 0;
 			int64_t last = -1;
-			for (struct { sngl_list__Kid l; int64_t i; } __loop18 = {ks, 0}; __loop18.i < __loop18.l.len; __loop18.i++) { int64_t i = __loop18.i; s_platform_win32___Kid it = __loop18.l.data[__loop18.i];
+			for (struct { sngl_list__Kid l; int64_t i; } __loop19 = {ks, 0}; __loop19.i < __loop19.l.len; __loop19.i++) { int64_t i = __loop19.i; s_platform_win32___Kid it = __loop19.l.data[__loop19.i];
 				if (it.flex > 0.0) {
 					int64_t more = sngl_float_int(((double)(spare) * (it.flex / flex)));
 					(*sngl_list_int_at(size, i)) += more;
@@ -6691,7 +6954,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 	int64_t pos = (k.vertical ? y0 : x0);
 	int64_t room = (k.vertical ? iw : ih);
 	sngl_list__Rect at = ((sngl_list__Rect){0});
-	for (struct { sngl_list__Kid l; int64_t i; } __loop19 = {ks, 0}; __loop19.i < __loop19.l.len; __loop19.i++) { int64_t i = __loop19.i; s_platform_win32___Kid it = __loop19.l.data[__loop19.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop20 = {ks, 0}; __loop20.i < __loop20.l.len; __loop20.i++) { int64_t i = __loop20.i; s_platform_win32___Kid it = __loop20.l.data[__loop20.i];
 		bool sized = (k.vertical ? (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, it.w)->exactW > 0) : (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, it.w)->exactH > 0));
 		int64_t across = room;
 		int64_t off = 0;
@@ -6728,7 +6991,7 @@ static void s_platform_win32___place(HWND w, int64_t cw, int64_t ch) {
 				s_platform_win32___invalidate(w);
 			} else {
 				if (k.kind == 20) {
-					for (struct { sngl_list_HWND l; int64_t i; } __loop20 = {k.kids, 0}; __loop20.i < __loop20.l.len; __loop20.i++) { HWND child = __loop20.l.data[__loop20.i];
+					for (struct { sngl_list_HWND l; int64_t i; } __loop21 = {k.kids, 0}; __loop21.i < __loop21.l.len; __loop21.i++) { HWND child = __loop21.l.data[__loop21.i];
 						if (sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) {
 							s_platform_win32___Ctl kc = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, child);
 							if ((((kc.placedL != 0) || (kc.placedT != 0)) || (kc.placedR != cw)) || (kc.placedB != ch)) {
@@ -6747,13 +7010,32 @@ static void s_platform_win32___place(HWND w, int64_t cw, int64_t ch) {
 	}
 }
 
+static void s_platform_win32___addEntry(HMENU m, HWND e) {
+	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, e);
+	int64_t subs = 0;
+	for (struct { sngl_list_HWND l; int64_t i; } __loop22 = {k.kids, 0}; __loop22.i < __loop22.l.len; __loop22.i++) { HWND child = __loop22.l.data[__loop22.i];
+		if ((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) && (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->kind == 16)) {
+			subs += 1;
+		}
+	}
+	if (subs > 0) {
+		HMENU sub = CreatePopupMenu();
+		if (sub != NULL) {
+			s_platform_win32___fillMenu(sub, e, false);
+			sngl_win32_append_popup(m, (UINT)((16 + ((k.disabled ? 1 : 0) + (k.checked ? 8 : 0)))), sub, (const unsigned short *)sngl_utf16(k.text));
+		}
+	} else {
+		(void)(int64_t)AppendMenuW(m, (UINT)(((k.disabled ? 1 : 0) + (k.checked ? 8 : 0))), (UINT_PTR)(k.id), (const unsigned short *)sngl_utf16(k.text));
+	}
+}
+
 static double s_platform_win32___flexOf(HWND w) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, w);
 	if (!k.contents) {
 		return k.flex;
 	}
 	double most = 0.0;
-	for (struct { sngl_list_HWND l; int64_t i; } __loop21 = {k.kids, 0}; __loop21.i < __loop21.l.len; __loop21.i++) { HWND child = __loop21.l.data[__loop21.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop23 = {k.kids, 0}; __loop23.i < __loop23.l.len; __loop23.i++) { HWND child = __loop23.l.data[__loop23.i];
 		if (((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offProp) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offLook) {
 			double f = s_platform_win32___flexOf(child);
 			most = ((f > most) ? f : most);
@@ -6765,9 +7047,9 @@ static double s_platform_win32___flexOf(HWND w) {
 static void s_platform_win32___layOutTabs(HWND tabs, int64_t w, int64_t h) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, tabs);
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = w, .bottom = h};
-	s__sendRect__result __ref7 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
-	r = __ref7.out3;
-	for (struct { sngl_list_HWND l; int64_t i; } __loop22 = {k.kids, 0}; __loop22.i < __loop22.l.len; __loop22.i++) { int64_t i = __loop22.i; HWND page = __loop22.l.data[__loop22.i];
+	s__sendRect__result __ref8 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
+	r = __ref8.out3;
+	for (struct { sngl_list_HWND l; int64_t i; } __loop24 = {k.kids, 0}; __loop24.i < __loop24.l.len; __loop24.i++) { int64_t i = __loop24.i; HWND page = __loop24.l.data[__loop24.i];
 		if (i == k.selected) {
 			(void)(int64_t)SetWindowPos(page, NULL, (int)(r.left), (int)(r.top), (int)((r.right - r.left)), (int)((r.bottom - r.top)), (UINT)(80));
 			s_platform_win32___place(page, (r.right - r.left), (r.bottom - r.top));
@@ -6779,20 +7061,32 @@ static void s_platform_win32___layOutTabs(HWND tabs, int64_t w, int64_t h) {
 }
 
 static sngl_map_HWND___Ctl s_platform_win32___hooked(void) {
-	sngl_win32_hooks((sngl_win32_hwnd_int2_hook)(void (*)(void))sngl_static_s_platform_win32___made, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___forget, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___relayout, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___layOutTop, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___layoutMessage, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___tabChosen, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___tabsSync, (sngl_win32_hwnd_int_hook)(void (*)(void))sngl_static_s_platform_win32___refresh, (sngl_win32_hwnd_int_hook)(void (*)(void))sngl_static_s_platform_win32___wheeled, (sngl_win32_hwnd_int2_hook)(void (*)(void))sngl_static_s_platform_win32___scrolled, (sngl_win32_size_hook)(void (*)(void))sngl_static_s_platform_win32___measure, (sngl_win32_count_hook)(void (*)(void))sngl_static_s_platform_win32___kidCount, (sngl_win32_kid_hook)(void (*)(void))sngl_static_s_platform_win32___kidAt, (sngl_win32_ask_hook)(void (*)(void))sngl_static_s_platform_win32___padOf);
+	sngl_win32_hooks((sngl_win32_hwnd_int2_hook)(void (*)(void))sngl_static_s_platform_win32___made, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___forget, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___relayout, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___layOutTop, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___layoutMessage, (sngl_win32_hwnd_hook)(void (*)(void))sngl_static_s_platform_win32___tabChosen, (sngl_win32_hwnd_int_hook)(void (*)(void))sngl_static_s_platform_win32___menuCommand, (sngl_win32_hwnd_int_hook)(void (*)(void))sngl_static_s_platform_win32___refresh, (sngl_win32_hwnd_int_hook)(void (*)(void))sngl_static_s_platform_win32___wheeled, (sngl_win32_hwnd_int2_hook)(void (*)(void))sngl_static_s_platform_win32___scrolled, (sngl_win32_size_hook)(void (*)(void))sngl_static_s_platform_win32___measure, (sngl_win32_count_hook)(void (*)(void))sngl_static_s_platform_win32___kidCount, (sngl_win32_kid_hook)(void (*)(void))sngl_static_s_platform_win32___kidAt, (sngl_win32_ask_hook)(void (*)(void))sngl_static_s_platform_win32___padOf);
 	return ((sngl_map_HWND___Ctl){0});
 }
 
 static void s_platform_win32___made(HWND w, int64_t kind, int64_t dpi) {
 	{
-	s_platform_win32___Ctl __kept23 = s_platform_win32___Ctl__keep((s_platform_win32___Ctl){.kind = kind, .vertical = ((kind == 0) || (kind == 14)), .flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minW = 0, .exactW = 0, .exactH = 0, .align = 0, .dpi = dpi, .laying = false, .mode = 0, .columns = 0, .flowH = 0, .framed = false, .contents = false, .offProp = ((kind == 15) || (kind == 16)), .offLook = false, .selected = 0, .scrollV = false, .scrollH = false, .posX = 0, .posY = 0, .atEnd = false, .maxX = 0, .maxY = 0, .pageX = 0, .pageY = 0, .wheel = 0, .sizeW = 0, .sizeH = 0, .measured = false, .placedL = 0, .placedT = 0, .placedR = 0, .placedB = 0, .laidW = 0, .laidH = 0, .kids = ((sngl_list_HWND){0})});
-	s_platform_win32___Ctl *__slot23 = &((*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)));
-	s_platform_win32___Ctl__drop(*__slot23);
-	*__slot23 = __kept23;
+	s_platform_win32___Ctl __kept25 = s_platform_win32___Ctl__keep((s_platform_win32___Ctl){.kind = kind, .vertical = ((kind == 0) || (kind == 14)), .flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minW = 0, .exactW = 0, .exactH = 0, .align = 0, .dpi = dpi, .laying = false, .mode = 0, .columns = 0, .flowH = 0, .framed = false, .contents = false, .offProp = ((kind == 15) || (kind == 16)), .offLook = false, .selected = 0, .scrollV = false, .scrollH = false, .posX = 0, .posY = 0, .atEnd = false, .maxX = 0, .maxY = 0, .pageX = 0, .pageY = 0, .wheel = 0, .sizeW = 0, .sizeH = 0, .measured = false, .placedL = 0, .placedT = 0, .placedR = 0, .placedB = 0, .laidW = 0, .laidH = 0, .kids = ((sngl_list_HWND){0}), .rows = 0, .text = SNGL_STR(""), .texted = false, .id = 0, .disabled = false, .checked = false, .menu = NULL});
+	s_platform_win32___Ctl *__slot25 = &((*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)));
+	s_platform_win32___Ctl__drop(*__slot25);
+	*__slot25 = __kept25;
 }
 }
 
 static void s_platform_win32___forget(HWND w) {
+	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, w) >= 0)) {
+		return;
+	}
+	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, w);
+	if ((k.kind == 16) && (k.id >= 1000)) {
+		sngl_map_int__bool_remove_kept(&(s_platform_win32___entryIds), k.id);
+	}
+	HMENU m = k.menu;
+	if (m != NULL) {
+		(void)(int64_t)SetMenu(w, NULL);
+		(void)(int64_t)DestroyMenu(m);
+	}
 	sngl_map_HWND___Ctl_remove_kept(&(s_platform_win32___ctls), w);
 }
 
@@ -6821,6 +7115,13 @@ static void s_platform_win32___tabChosen(HWND tabs) {
 	sngl_win32_clicked((*sngl_list_HWND_at(k.kids, at)));
 }
 
+static void s_platform_win32___menuCommand(HWND top, int64_t id) {
+	HWND e = s_platform_win32___findEntry(top, id);
+	if (e != NULL) {
+		sngl_win32_clicked((HWND)(e));
+	}
+}
+
 static void s_platform_win32___refresh(HWND w, int64_t dpi) {
 	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, w) >= 0)) {
 		return;
@@ -6831,7 +7132,7 @@ static void s_platform_win32___refresh(HWND w, int64_t dpi) {
 		(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)).measured = false;
 		sngl_win32_refont(w, (int)(dpi));
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop24 = {k.kids, 0}; __loop24.i < __loop24.l.len; __loop24.i++) { HWND child = __loop24.l.data[__loop24.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop26 = {k.kids, 0}; __loop26.i < __loop26.l.len; __loop26.i++) { HWND child = __loop26.l.data[__loop26.i];
 		s_platform_win32___refresh(child, dpi);
 	}
 }
@@ -6858,8 +7159,8 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 	}
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, w);
 	s_platform_win32___ScrollInfo si = (s_platform_win32___ScrollInfo){.cbSize = 28, .fMask = 23, .nMin = 0, .nMax = 0, .nPage = 0, .nPos = 0, .nTrackPos = 0};
-	s__getScrollInfo__result __ref8 = sngl_ccall_GetScrollInfo__getScrollInfo(w, (int)(bar), si);
-	si = __ref8.out2;
+	s__getScrollInfo__result __ref9 = sngl_ccall_GetScrollInfo__getScrollInfo(w, (int)(bar), si);
+	si = __ref9.out2;
 	int64_t pos = si.nPos;
 	int64_t line = s_platform_win32___px(20, k.dpi);
 	if (request == 0) {
@@ -6906,7 +7207,7 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 	(void)(int64_t)SetScrollPos(w, (int)(bar), (int)(pos), (int)(1));
 	int64_t dx = ((bar == 0) ? by : 0);
 	int64_t dy = ((bar == 1) ? by : 0);
-	for (struct { sngl_list_HWND l; int64_t i; } __loop25 = {k.kids, 0}; __loop25.i < __loop25.l.len; __loop25.i++) { HWND child = __loop25.l.data[__loop25.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop27 = {k.kids, 0}; __loop27.i < __loop27.l.len; __loop27.i++) { HWND child = __loop27.l.data[__loop27.i];
 		if (sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) {
 			(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), child)).placedL += dx;
 			(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), child)).placedR += dx;
@@ -6937,8 +7238,8 @@ static int64_t s_platform_win32___padOf(HWND w, int64_t side) {
 static void s_platform_win32___fit(HWND top) {
 	s_platform_win32___Size s = s_platform_win32___measure(top);
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetClientRect__result __ref9 = sngl_ccall_GetClientRect_GetClientRect(top, r);
-	r = __ref9.out1;
+	s_GetClientRect__result __ref10 = sngl_ccall_GetClientRect_GetClientRect(top, r);
+	r = __ref10.out1;
 	int64_t w = (r.right - r.left);
 	int64_t h = (r.bottom - r.top);
 	if ((s.cx <= w) && (s.cy <= h)) {
@@ -6949,31 +7250,48 @@ static void s_platform_win32___fit(HWND top) {
 
 static void s_platform_win32___layOutNow(HWND w) {
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetWindowRect__result __ref10 = sngl_ccall_GetWindowRect_GetWindowRect(w, r);
-	r = __ref10.out1;
+	s_GetWindowRect__result __ref11 = sngl_ccall_GetWindowRect_GetWindowRect(w, r);
+	r = __ref11.out1;
 	s_platform_win32___place(w, (r.right - r.left), (r.bottom - r.top));
+}
+
+static HWND s_platform_win32___findEntry(HWND w, int64_t id) {
+	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, w) >= 0)) {
+		return NULL;
+	}
+	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, w);
+	if ((k.kind == 16) && (k.id == id)) {
+		return (HWND)(w);
+	}
+	for (struct { sngl_list_HWND l; int64_t i; } __loop28 = {k.kids, 0}; __loop28.i < __loop28.l.len; __loop28.i++) { HWND child = __loop28.l.data[__loop28.i];
+		HWND found = s_platform_win32___findEntry(child, id);
+		if (found != NULL) {
+			return found;
+		}
+	}
+	return NULL;
 }
 
 static void s___effect0_enter(void) {
 	{
-	sngl_list_string __kept26 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot26 = &(s___effect0_desired);
-	sngl_list_string__drop(*__slot26);
-	*__slot26 = __kept26;
+	sngl_list_string __kept29 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot29 = &(s___effect0_desired);
+	sngl_list_string__drop(*__slot29);
+	*__slot29 = __kept29;
 }
 	{
-	sngl_list_string __kept27 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot27 = &(s___effect0_paths);
-	sngl_list_string__drop(*__slot27);
-	*__slot27 = __kept27;
+	sngl_list_string __kept30 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot30 = &(s___effect0_paths);
+	sngl_list_string__drop(*__slot30);
+	*__slot30 = __kept30;
 }
 	{
-	sngl_map_string__int __kept28 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot28 = &(s___effect0_pathAt);
-	sngl_map_string__int__drop(*__slot28);
-	*__slot28 = __kept28;
+	sngl_map_string__int __kept31 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot31 = &(s___effect0_pathAt);
+	sngl_map_string__int__drop(*__slot31);
+	*__slot31 = __kept31;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop29 = {s___identified0(s_ws), 0}; __loop29.i < __loop29.l.len; __loop29.i++) { int64_t __copy0 = __loop29.i; s___anon_id_elem_4ccb28 k = __loop29.l.data[__loop29.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop32 = {s___identified0(s_ws), 0}; __loop32.i < __loop32.l.len; __loop32.i++) { int64_t __copy0 = __loop32.i; s___anon_id_elem_4ccb28 k = __loop32.l.data[__loop32.i];
 		bool __effect0_fresh = true;
 		int64_t __effect0_at = sngl_map_string__int_get(s___effect0_liveAt, k.id, -1);
 		if (__effect0_at >= 0) {
@@ -6989,54 +7307,54 @@ static void s___effect0_enter(void) {
 		sngl_list_string_push_kept(&(s___effect0_desired), sngl_string_keep(k.id));
 	}
 	{
-	sngl_list_string __kept30 = sngl_list_string__keep(s___effect0_desired);
-	sngl_list_string *__slot30 = &(s___effect0_live);
-	sngl_list_string__drop(*__slot30);
-	*__slot30 = __kept30;
+	sngl_list_string __kept33 = sngl_list_string__keep(s___effect0_desired);
+	sngl_list_string *__slot33 = &(s___effect0_live);
+	sngl_list_string__drop(*__slot33);
+	*__slot33 = __kept33;
 }
 	{
-	sngl_list_string __kept31 = sngl_list_string__keep(s___effect0_paths);
-	sngl_list_string *__slot31 = &(s___effect0_livePaths);
-	sngl_list_string__drop(*__slot31);
-	*__slot31 = __kept31;
+	sngl_list_string __kept34 = sngl_list_string__keep(s___effect0_paths);
+	sngl_list_string *__slot34 = &(s___effect0_livePaths);
+	sngl_list_string__drop(*__slot34);
+	*__slot34 = __kept34;
 }
 	{
-	sngl_map_string__int __kept32 = sngl_map_string__int__keep(s___effect0_pathAt);
-	sngl_map_string__int *__slot32 = &(s___effect0_liveAt);
-	sngl_map_string__int__drop(*__slot32);
-	*__slot32 = __kept32;
+	sngl_map_string__int __kept35 = sngl_map_string__int__keep(s___effect0_pathAt);
+	sngl_map_string__int *__slot35 = &(s___effect0_liveAt);
+	sngl_map_string__int__drop(*__slot35);
+	*__slot35 = __kept35;
 }
 }
 
 static void s___effect1_mount(void) {
 	{
-	s___anon_copy_v0_2d5b73 __kept33 = s___anon_copy_v0_2d5b73__keep(s___effect1_key);
-	s___anon_copy_v0_2d5b73 *__slot33 = &((*sngl_map_string____anon_copy_v0_2d5b73_slot_kept(&(s___copied__inst0), s___effect1_key.copy)));
-	s___anon_copy_v0_2d5b73__drop(*__slot33);
-	*__slot33 = __kept33;
+	s___anon_copy_v0_2d5b73 __kept36 = s___anon_copy_v0_2d5b73__keep(s___effect1_key);
+	s___anon_copy_v0_2d5b73 *__slot36 = &((*sngl_map_string____anon_copy_v0_2d5b73_slot_kept(&(s___copied__inst0), s___effect1_key.copy)));
+	s___anon_copy_v0_2d5b73__drop(*__slot36);
+	*__slot36 = __kept36;
 }
 }
 
 static void s___effect1_down(void) {
 	{
-	sngl_list___anon_copy_v0_2d5b73 __kept34 = sngl_list___anon_copy_v0_2d5b73__keep(((sngl_list___anon_copy_v0_2d5b73){0}));
-	sngl_list___anon_copy_v0_2d5b73 *__slot34 = &(s___effect1_desired);
-	sngl_list___anon_copy_v0_2d5b73__drop(*__slot34);
-	*__slot34 = __kept34;
+	sngl_list___anon_copy_v0_2d5b73 __kept37 = sngl_list___anon_copy_v0_2d5b73__keep(((sngl_list___anon_copy_v0_2d5b73){0}));
+	sngl_list___anon_copy_v0_2d5b73 *__slot37 = &(s___effect1_desired);
+	sngl_list___anon_copy_v0_2d5b73__drop(*__slot37);
+	*__slot37 = __kept37;
 }
 	{
-	sngl_list_string __kept35 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot35 = &(s___effect1_paths);
-	sngl_list_string__drop(*__slot35);
-	*__slot35 = __kept35;
+	sngl_list_string __kept38 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot38 = &(s___effect1_paths);
+	sngl_list_string__drop(*__slot38);
+	*__slot38 = __kept38;
 }
 	{
-	sngl_map_string__int __kept36 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot36 = &(s___effect1_pathAt);
-	sngl_map_string__int__drop(*__slot36);
-	*__slot36 = __kept36;
+	sngl_map_string__int __kept39 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot39 = &(s___effect1_pathAt);
+	sngl_map_string__int__drop(*__slot39);
+	*__slot39 = __kept39;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop37 = {s___identified0(s_ws), 0}; __loop37.i < __loop37.l.len; __loop37.i++) { int64_t __copy0 = __loop37.i; s___anon_id_elem_4ccb28 k = __loop37.l.data[__loop37.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop40 = {s___identified0(s_ws), 0}; __loop40.i < __loop40.l.len; __loop40.i++) { int64_t __copy0 = __loop40.i; s___anon_id_elem_4ccb28 k = __loop40.l.data[__loop40.i];
 		sngl_list___anon_copy_v0_2d5b73_push_kept(&(s___effect1_desired), s___anon_copy_v0_2d5b73__keep((s___anon_copy_v0_2d5b73){.copy = k.id, .v0 = k.id}));
 		(*sngl_map_string__int_slot_kept(&(s___effect1_pathAt), k.id)) = (s___effect1_paths).len;
 		sngl_list_string_push_kept(&(s___effect1_paths), sngl_string_keep(k.id));
@@ -7044,45 +7362,45 @@ static void s___effect1_down(void) {
 }
 
 static void s___effect1_up(void) {
-	for (struct { sngl_list___anon_copy_v0_2d5b73 l; int64_t i; } __loop38 = {s___effect1_desired, 0}; __loop38.i < __loop38.l.len; __loop38.i++) { int64_t __effect1_i = __loop38.i; s___anon_copy_v0_2d5b73 __effect1_k = __loop38.l.data[__loop38.i];
+	for (struct { sngl_list___anon_copy_v0_2d5b73 l; int64_t i; } __loop41 = {s___effect1_desired, 0}; __loop41.i < __loop41.l.len; __loop41.i++) { int64_t __effect1_i = __loop41.i; s___anon_copy_v0_2d5b73 __effect1_k = __loop41.l.data[__loop41.i];
 		int64_t __effect1_at = sngl_map_string__int_get(s___effect1_liveAt, (*sngl_list_string_at(s___effect1_paths, __effect1_i)), -1);
 		if (__effect1_at < 0) {
 			{
-	s___anon_copy_v0_2d5b73 __kept39 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
-	s___anon_copy_v0_2d5b73 *__slot39 = &(s___effect1_key);
-	s___anon_copy_v0_2d5b73__drop(*__slot39);
-	*__slot39 = __kept39;
+	s___anon_copy_v0_2d5b73 __kept42 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
+	s___anon_copy_v0_2d5b73 *__slot42 = &(s___effect1_key);
+	s___anon_copy_v0_2d5b73__drop(*__slot42);
+	*__slot42 = __kept42;
 }
 			s___effect1_mount();
 		} else {
 			if (!sngl_string_eq((*sngl_list___anon_copy_v0_2d5b73_at(s___effect1_live, __effect1_at)).copy, __effect1_k.copy) || !sngl_string_eq((*sngl_list___anon_copy_v0_2d5b73_at(s___effect1_live, __effect1_at)).v0, __effect1_k.v0)) {
 				{
-	s___anon_copy_v0_2d5b73 __kept40 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
-	s___anon_copy_v0_2d5b73 *__slot40 = &(s___effect1_key);
-	s___anon_copy_v0_2d5b73__drop(*__slot40);
-	*__slot40 = __kept40;
+	s___anon_copy_v0_2d5b73 __kept43 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
+	s___anon_copy_v0_2d5b73 *__slot43 = &(s___effect1_key);
+	s___anon_copy_v0_2d5b73__drop(*__slot43);
+	*__slot43 = __kept43;
 }
 				s___effect1_mount();
 			}
 		}
 	}
 	{
-	sngl_list___anon_copy_v0_2d5b73 __kept41 = sngl_list___anon_copy_v0_2d5b73__keep(s___effect1_desired);
-	sngl_list___anon_copy_v0_2d5b73 *__slot41 = &(s___effect1_live);
-	sngl_list___anon_copy_v0_2d5b73__drop(*__slot41);
-	*__slot41 = __kept41;
+	sngl_list___anon_copy_v0_2d5b73 __kept44 = sngl_list___anon_copy_v0_2d5b73__keep(s___effect1_desired);
+	sngl_list___anon_copy_v0_2d5b73 *__slot44 = &(s___effect1_live);
+	sngl_list___anon_copy_v0_2d5b73__drop(*__slot44);
+	*__slot44 = __kept44;
 }
 	{
-	sngl_list_string __kept42 = sngl_list_string__keep(s___effect1_paths);
-	sngl_list_string *__slot42 = &(s___effect1_livePaths);
-	sngl_list_string__drop(*__slot42);
-	*__slot42 = __kept42;
+	sngl_list_string __kept45 = sngl_list_string__keep(s___effect1_paths);
+	sngl_list_string *__slot45 = &(s___effect1_livePaths);
+	sngl_list_string__drop(*__slot45);
+	*__slot45 = __kept45;
 }
 	{
-	sngl_map_string__int __kept43 = sngl_map_string__int__keep(s___effect1_pathAt);
-	sngl_map_string__int *__slot43 = &(s___effect1_liveAt);
-	sngl_map_string__int__drop(*__slot43);
-	*__slot43 = __kept43;
+	sngl_map_string__int __kept46 = sngl_map_string__int__keep(s___effect1_pathAt);
+	sngl_map_string__int *__slot46 = &(s___effect1_liveAt);
+	sngl_map_string__int__drop(*__slot46);
+	*__slot46 = __kept46;
 }
 }
 
@@ -7094,46 +7412,46 @@ static void s___effect2_unmount(void) {
 
 static void s___effect2_down(void) {
 	{
-	sngl_list_string __kept44 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot44 = &(s___effect2_desired);
-	sngl_list_string__drop(*__slot44);
-	*__slot44 = __kept44;
+	sngl_list_string __kept47 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot47 = &(s___effect2_desired);
+	sngl_list_string__drop(*__slot47);
+	*__slot47 = __kept47;
 }
 	{
-	sngl_list_string __kept45 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot45 = &(s___effect2_paths);
-	sngl_list_string__drop(*__slot45);
-	*__slot45 = __kept45;
+	sngl_list_string __kept48 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot48 = &(s___effect2_paths);
+	sngl_list_string__drop(*__slot48);
+	*__slot48 = __kept48;
 }
 	{
-	sngl_map_string__int __kept46 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot46 = &(s___effect2_pathAt);
-	sngl_map_string__int__drop(*__slot46);
-	*__slot46 = __kept46;
+	sngl_map_string__int __kept49 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot49 = &(s___effect2_pathAt);
+	sngl_map_string__int__drop(*__slot49);
+	*__slot49 = __kept49;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop47 = {s___identified0(s_ws), 0}; __loop47.i < __loop47.l.len; __loop47.i++) { int64_t __copy0 = __loop47.i; s___anon_id_elem_4ccb28 k = __loop47.l.data[__loop47.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop50 = {s___identified0(s_ws), 0}; __loop50.i < __loop50.l.len; __loop50.i++) { int64_t __copy0 = __loop50.i; s___anon_id_elem_4ccb28 k = __loop50.l.data[__loop50.i];
 		sngl_list_string_push_kept(&(s___effect2_desired), sngl_string_keep(k.id));
 		(*sngl_map_string__int_slot_kept(&(s___effect2_pathAt), k.id)) = (s___effect2_paths).len;
 		sngl_list_string_push_kept(&(s___effect2_paths), sngl_string_keep(k.id));
 	}
-	for (struct { sngl_list_string l; int64_t i; } __loop48 = {s___effect2_live, 0}; __loop48.i < __loop48.l.len; __loop48.i++) { int64_t __effect2_i = __loop48.i; sngl_string _ = __loop48.l.data[__loop48.i];
+	for (struct { sngl_list_string l; int64_t i; } __loop51 = {s___effect2_live, 0}; __loop51.i < __loop51.l.len; __loop51.i++) { int64_t __effect2_i = __loop51.i; sngl_string _ = __loop51.l.data[__loop51.i];
 		int64_t __effect2_j = (((s___effect2_live).len - 1) - __effect2_i);
 		int64_t __effect2_at = sngl_map_string__int_get(s___effect2_pathAt, (*sngl_list_string_at(s___effect2_livePaths, __effect2_j)), -1);
 		if (__effect2_at < 0) {
 			{
-	sngl_string __kept49 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
-	sngl_string *__slot49 = &(s___effect2_key);
-	sngl_drop((*__slot49).ptr);
-	*__slot49 = __kept49;
+	sngl_string __kept52 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
+	sngl_string *__slot52 = &(s___effect2_key);
+	sngl_drop((*__slot52).ptr);
+	*__slot52 = __kept52;
 }
 			s___effect2_unmount();
 		} else {
 			if (!sngl_string_eq((*sngl_list_string_at(s___effect2_desired, __effect2_at)), (*sngl_list_string_at(s___effect2_live, __effect2_j)))) {
 				{
-	sngl_string __kept50 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
-	sngl_string *__slot50 = &(s___effect2_key);
-	sngl_drop((*__slot50).ptr);
-	*__slot50 = __kept50;
+	sngl_string __kept53 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
+	sngl_string *__slot53 = &(s___effect2_key);
+	sngl_drop((*__slot53).ptr);
+	*__slot53 = __kept53;
 }
 				s___effect2_unmount();
 			}
@@ -7143,59 +7461,59 @@ static void s___effect2_down(void) {
 
 static void s___effect2_up(void) {
 	{
-	sngl_list_string __kept51 = sngl_list_string__keep(s___effect2_desired);
-	sngl_list_string *__slot51 = &(s___effect2_live);
-	sngl_list_string__drop(*__slot51);
-	*__slot51 = __kept51;
+	sngl_list_string __kept54 = sngl_list_string__keep(s___effect2_desired);
+	sngl_list_string *__slot54 = &(s___effect2_live);
+	sngl_list_string__drop(*__slot54);
+	*__slot54 = __kept54;
 }
 	{
-	sngl_list_string __kept52 = sngl_list_string__keep(s___effect2_paths);
-	sngl_list_string *__slot52 = &(s___effect2_livePaths);
-	sngl_list_string__drop(*__slot52);
-	*__slot52 = __kept52;
+	sngl_list_string __kept55 = sngl_list_string__keep(s___effect2_paths);
+	sngl_list_string *__slot55 = &(s___effect2_livePaths);
+	sngl_list_string__drop(*__slot55);
+	*__slot55 = __kept55;
 }
 	{
-	sngl_map_string__int __kept53 = sngl_map_string__int__keep(s___effect2_pathAt);
-	sngl_map_string__int *__slot53 = &(s___effect2_liveAt);
-	sngl_map_string__int__drop(*__slot53);
-	*__slot53 = __kept53;
+	sngl_map_string__int __kept56 = sngl_map_string__int__keep(s___effect2_pathAt);
+	sngl_map_string__int *__slot56 = &(s___effect2_liveAt);
+	sngl_map_string__int__drop(*__slot56);
+	*__slot56 = __kept56;
 }
 }
 
 static void s___effect2_teardown(void) {
-	for (struct { sngl_list_string l; int64_t i; } __loop54 = {s___effect2_live, 0}; __loop54.i < __loop54.l.len; __loop54.i++) { int64_t __effect2_ti = __loop54.i; sngl_string _ = __loop54.l.data[__loop54.i];
+	for (struct { sngl_list_string l; int64_t i; } __loop57 = {s___effect2_live, 0}; __loop57.i < __loop57.l.len; __loop57.i++) { int64_t __effect2_ti = __loop57.i; sngl_string _ = __loop57.l.data[__loop57.i];
 		{
-	sngl_string __kept55 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, (((s___effect2_live).len - 1) - __effect2_ti))));
-	sngl_string *__slot55 = &(s___effect2_key);
-	sngl_drop((*__slot55).ptr);
-	*__slot55 = __kept55;
+	sngl_string __kept58 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, (((s___effect2_live).len - 1) - __effect2_ti))));
+	sngl_string *__slot58 = &(s___effect2_key);
+	sngl_drop((*__slot58).ptr);
+	*__slot58 = __kept58;
 }
 		s___effect2_unmount();
 	}
 	{
-	sngl_list_string __kept56 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot56 = &(s___effect2_live);
-	sngl_list_string__drop(*__slot56);
-	*__slot56 = __kept56;
+	sngl_list_string __kept59 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot59 = &(s___effect2_live);
+	sngl_list_string__drop(*__slot59);
+	*__slot59 = __kept59;
 }
 	{
-	sngl_list_string __kept57 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot57 = &(s___effect2_livePaths);
-	sngl_list_string__drop(*__slot57);
-	*__slot57 = __kept57;
+	sngl_list_string __kept60 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot60 = &(s___effect2_livePaths);
+	sngl_list_string__drop(*__slot60);
+	*__slot60 = __kept60;
 }
 	{
-	sngl_map_string__int __kept58 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot58 = &(s___effect2_liveAt);
-	sngl_map_string__int__drop(*__slot58);
-	*__slot58 = __kept58;
+	sngl_map_string__int __kept61 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot61 = &(s___effect2_liveAt);
+	sngl_map_string__int__drop(*__slot61);
+	*__slot61 = __kept61;
 }
 }
 
 static void s___effect3_update(void) {
 	sngl_string __copyKey = s___effect3_key.copy;
 	s___anon_id_elem_4ccb28 k__at0 = (s___anon_id_elem_4ccb28){.id = SNGL_STR(""), .elem = 0.0};
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop59 = {s___identified0(s_ws), 0}; __loop59.i < __loop59.l.len; __loop59.i++) { int64_t __copyAt0 = __loop59.i; s___anon_id_elem_4ccb28 __copyElemAt0 = __loop59.l.data[__loop59.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop62 = {s___identified0(s_ws), 0}; __loop62.i < __loop62.l.len; __loop62.i++) { int64_t __copyAt0 = __loop62.i; s___anon_id_elem_4ccb28 __copyElemAt0 = __loop62.l.data[__loop62.i];
 		if (sngl_string_eq(__copyElemAt0.id, __copyKey)) {
 			k__at0 = __copyElemAt0;
 		}
@@ -7220,12 +7538,12 @@ static void s___effects0_settle(void) {
 				s___effects0_pending = false;
 				s___effects0_steps = (s___effects0_steps + 1);
 				sngl_map_string____anon_copy_on_5fc366 __effect3_next = ((sngl_map_string____anon_copy_on_5fc366){0});
-				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop60 = {s___identified0(s_ws), 0}; __loop60.i < __loop60.l.len; __loop60.i++) { int64_t __copy0 = __loop60.i; s___anon_id_elem_4ccb28 k = __loop60.l.data[__loop60.i];
+				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop63 = {s___identified0(s_ws), 0}; __loop63.i < __loop63.l.len; __loop63.i++) { int64_t __copy0 = __loop63.i; s___anon_id_elem_4ccb28 k = __loop63.l.data[__loop63.i];
 					{
-	s___anon_copy_on_5fc366 __kept61 = s___anon_copy_on_5fc366__keep((s___anon_copy_on_5fc366){.copy = k.id, .on = k.elem});
-	s___anon_copy_on_5fc366 *__slot61 = &(s___effect3_key);
-	s___anon_copy_on_5fc366__drop(*__slot61);
-	*__slot61 = __kept61;
+	s___anon_copy_on_5fc366 __kept64 = s___anon_copy_on_5fc366__keep((s___anon_copy_on_5fc366){.copy = k.id, .on = k.elem});
+	s___anon_copy_on_5fc366 *__slot64 = &(s___effect3_key);
+	s___anon_copy_on_5fc366__drop(*__slot64);
+	*__slot64 = __kept64;
 }
 					sngl_string __effect3_copy = k.id;
 					if (sngl_map_string____anon_copy_on_5fc366_find(s___effect3_keys, __effect3_copy) >= 0) {
@@ -7237,10 +7555,10 @@ static void s___effects0_settle(void) {
 					(*sngl_map_string____anon_copy_on_5fc366_slot(&(__effect3_next), __effect3_copy)) = s___effect3_key;
 				}
 				{
-	sngl_map_string____anon_copy_on_5fc366 __kept62 = sngl_map_string____anon_copy_on_5fc366__keep(__effect3_next);
-	sngl_map_string____anon_copy_on_5fc366 *__slot62 = &(s___effect3_keys);
-	sngl_map_string____anon_copy_on_5fc366__drop(*__slot62);
-	*__slot62 = __kept62;
+	sngl_map_string____anon_copy_on_5fc366 __kept65 = sngl_map_string____anon_copy_on_5fc366__keep(__effect3_next);
+	sngl_map_string____anon_copy_on_5fc366 *__slot65 = &(s___effect3_keys);
+	sngl_map_string____anon_copy_on_5fc366__drop(*__slot65);
+	*__slot65 = __kept65;
 }
 				s___effect3_dirty = false;
 				s___effect3_rekey = false;
@@ -7268,7 +7586,7 @@ static void s___snglTeardown(void) {
 }
 
 static void s___lambda0(s___lambda0_caps state, sngl_win32_gfx * ctx) {
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop63 = {s___identified0(state.ws), 0}; __loop63.i < __loop63.l.len; __loop63.i++) { int64_t __copy0 = __loop63.i; s___anon_id_elem_4ccb28 k = __loop63.l.data[__loop63.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop66 = {s___identified0(state.ws), 0}; __loop66.i < __loop66.l.len; __loop66.i++) { int64_t __copy0 = __loop66.i; s___anon_id_elem_4ccb28 k = __loop66.l.data[__loop66.i];
 		s_platform_win32__Gfx_save(ctx);
 		s_platform_win32__Gfx_rectangle(ctx, 0.0, 0.0, (double)(sngl_map_string__pic_get(state.p__inst0->value, k.id, (s_pic){.n = 0}).n), k.elem);
 		s_platform_win32__paint(ctx, (s_ui_draw__Style){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 0, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
@@ -7291,6 +7609,7 @@ static void sngl_init(void) {
 	s_platform_win32___saved = sngl_list__Saved__keep(((sngl_list__Saved){0}));
 	s_platform_win32___x = 0.0;
 	s_platform_win32___y = 0.0;
+	s_platform_win32___entryIds = sngl_map_int__bool__keep(((sngl_map_int__bool){0}));
 	s_ws = sngl_list_float__keep(sngl_list_float_of(2, (double[]){1.0, 2.0}));
 	s_p__inst0 = ((s___ref_map_string_pic *)sngl_counted_retain(((s___ref_map_string_pic *)sngl_counted_new(&(s___ref_map_string_pic[]){(s___ref_map_string_pic){.value = sngl_map_string__pic__keep(((sngl_map_string__pic){0}))}}, sizeof(s___ref_map_string_pic), s___ref_map_string_pic__release, s___ref_map_string_pic__rekeep, NULL))));
 	s___copied__inst0 = sngl_map_string____anon_copy_v0_2d5b73__keep(((sngl_map_string____anon_copy_v0_2d5b73){0}));
@@ -10362,6 +10681,11 @@ type _pictureSize__result struct {
 	Out1   cgo.SIZE
 }
 
+type _sendSize__result struct {
+	Result int
+	Out3   cgo.SIZE
+}
+
 type GetClientRect__result struct {
 	Result int
 	Out1   cgo.RECT
@@ -10462,6 +10786,13 @@ type _Ctl struct {
 	LaidW     int
 	LaidH     int
 	Kids      []cgo.HWND
+	Rows      int
+	Text      string
+	Texted    bool
+	Id        int
+	Disabled  bool
+	Checked   bool
+	Menu      *cgo.Menu
 }
 
 type _Rect struct {
@@ -10508,6 +10839,7 @@ type snglState struct {
 	_saved              []_Saved
 	_x                  float64
 	_y                  float64
+	_entryIds           map[int]bool
 	ws                  []float64
 	p__inst0            map[string]Pic
 	__copied__inst0     map[string]__anon_copy_v0_2d5b73
@@ -10740,7 +11072,7 @@ func _adopt(parent cgo.HWND, child cgo.HWND, at int) {
 	}
 	cgo.SnglWin32TipChild(parent, child, true)
 	if _holdsEntries(child) {
-		cgo.SnglWin32MenuSync(parent)
+		_menuSync(parent)
 	}
 	_relayout(parent)
 }
@@ -10854,10 +11186,61 @@ func _measure(w cgo.HWND) _Size {
 							}
 							s = _Size{Cx: int(n.Cx), Cy: __lt9}
 						} else {
-							if ((((k.Kind != 24) && (k.Kind != 21)) && (k.Kind != 15)) && (k.Kind != 16)) && (k.Kind != 6) {
-								n := cgo.SIZE{}
-								n = cgo.SnglWin32Natural(w, n)
-								s = _Size{Cx: int(n.Cx), Cy: int(n.Cy)}
+							if (k.Kind == 2) || (k.Kind == 11) {
+								s = _textSize(w)
+							} else {
+								if k.Kind == 3 {
+									s = _textSize(w)
+									s.Cx += _px(20, k.Dpi)
+									s.Cy += _px(10, k.Dpi)
+									if s.Cx < _px(75, k.Dpi) {
+										s.Cx = _px(75, k.Dpi)
+									}
+								} else {
+									if (k.Kind == 5) || (k.Kind == 12) {
+										s = _textSize(w)
+										s.Cx += (cgo.SnglWin32CheckWidth(k.Dpi) + _px(8, k.Dpi))
+										s.Cy += _px(4, k.Dpi)
+									} else {
+										if k.Kind == 4 {
+											s = _textSize(w)
+											s.Cx = _px(150, k.Dpi)
+											s.Cy += _px(8, k.Dpi)
+										} else {
+											if k.Kind == 8 {
+												s.Cx = _px(200, k.Dpi)
+												var __lt10 int
+												if k.Rows > 0 {
+													__lt10 = k.Rows
+												} else {
+													__lt10 = 3
+												}
+												s.Cy = ((cgo.SnglWin32LineHeight(w) * __lt10) + _px(8, k.Dpi))
+											} else {
+												if k.Kind == 19 {
+													ideal := cgo.SIZE{}
+													__ref2 := _sendSize__result(cgo.SendSize(w, 4111, 0, ideal))
+													ideal = __ref2.Out3
+													if (__ref2.Result != 0) && (int(ideal.Cx) > 0) {
+														s = _Size{Cx: int(ideal.Cx), Cy: int(ideal.Cy)}
+													} else {
+														s = _textSize(w)
+														s.Cx = _px(130, k.Dpi)
+													}
+													if s.Cy < (cgo.SnglWin32LineHeight(w) + _px(8, k.Dpi)) {
+														s.Cy = (cgo.SnglWin32LineHeight(w) + _px(8, k.Dpi))
+													}
+												} else {
+													if ((((k.Kind != 24) && (k.Kind != 21)) && (k.Kind != 15)) && (k.Kind != 16)) && (k.Kind != 6) {
+														n := cgo.SIZE{}
+														n = cgo.SnglWin32Natural(w, n)
+														s = _Size{Cx: int(n.Cx), Cy: int(n.Cy)}
+													}
+												}
+											}
+										}
+									}
+								}
 							}
 						}
 					}
@@ -10895,8 +11278,8 @@ func _measure(w cgo.HWND) _Size {
 
 func _layOutTop(top cgo.HWND) {
 	r := cgo.RECT{}
-	__ref2 := GetClientRect__result(cgo.GetClientRect(top, r))
-	r = __ref2.Out1
+	__ref3 := GetClientRect__result(cgo.GetClientRect(top, r))
+	r = __ref3.Out1
 	_layOut(top, (r.Right - r.Left), (r.Bottom - r.Top))
 }
 
@@ -10923,9 +11306,9 @@ func Source(ctx cgo.Gfx, c snglcolor.Color) {
 func GfxFill(g cgo.Gfx, preserve bool) {
 	_paintOf(g)
 	var brush *unsafe.Pointer
-	__ref3 := _gdipCreateSolidFill__result(cgo.GdipCreateSolidFill(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), brush))
-	brush = __ref3.Out1
-	if (__ref3.Result == 0) && (brush != nil) {
+	__ref4 := _gdipCreateSolidFill__result(cgo.GdipCreateSolidFill(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), brush))
+	brush = __ref4.Out1
+	if (__ref4.Result == 0) && (brush != nil) {
 		cgo.GdipFillPath(cgo.SnglWin32GfxG(g), unsafe.Pointer((*(brush))), cgo.SnglWin32GfxPath(g))
 		cgo.GdipDeleteBrush(unsafe.Pointer((*(brush))))
 	}
@@ -10951,57 +11334,57 @@ func GfxLineJoin(g cgo.Gfx, join int) {
 
 func GfxStroke(g cgo.Gfx) {
 	_paintOf(g)
-	var __lt12 int
-	if (m._pen.Cap >= 0) && (m._pen.Cap < 3) {
-		__lt12 = m._pen.Cap
-	} else {
-		__lt12 = 0
-	}
-	var cap__r3 int = __lt12
 	var __lt13 int
-	if (m._pen.Join >= 0) && (m._pen.Join < 3) {
-		__lt13 = m._pen.Join
+	if (m._pen.Cap >= 0) && (m._pen.Cap < 3) {
+		__lt13 = m._pen.Cap
 	} else {
 		__lt13 = 0
 	}
-	var join int = __lt13
+	var cap__r3 int = __lt13
+	var __lt14 int
+	if (m._pen.Join >= 0) && (m._pen.Join < 3) {
+		__lt14 = m._pen.Join
+	} else {
+		__lt14 = 0
+	}
+	var join int = __lt14
 	var pen *unsafe.Pointer
-	__ref4 := _gdipCreatePen1__result(cgo.GdipCreatePen1(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), m._pen.Width, 2, pen))
-	pen = __ref4.Out3
-	if (__ref4.Result == 0) && (pen != nil) {
-		var __lt15 int
-		if cap__r3 == 1 {
-			__lt15 = 2
-		} else {
-			var __lt14 int
-			if cap__r3 == 2 {
-				__lt14 = 1
-			} else {
-				__lt14 = 0
-			}
-			__lt15 = __lt14
-		}
-		var line int = __lt15
+	__ref5 := _gdipCreatePen1__result(cgo.GdipCreatePen1(int(((((m._pen.A * 16777216) + (m._pen.R * 65536)) + (m._pen.G * 256)) + m._pen.B)), m._pen.Width, 2, pen))
+	pen = __ref5.Out3
+	if (__ref5.Result == 0) && (pen != nil) {
 		var __lt16 int
 		if cap__r3 == 1 {
 			__lt16 = 2
 		} else {
-			__lt16 = 0
-		}
-		cgo.GdipSetPenLineCap197819((*(pen)), line, line, __lt16)
-		var __lt18 int
-		if join == 1 {
-			__lt18 = 2
-		} else {
-			var __lt17 int
-			if join == 2 {
-				__lt17 = 1
+			var __lt15 int
+			if cap__r3 == 2 {
+				__lt15 = 1
 			} else {
-				__lt17 = 0
+				__lt15 = 0
 			}
-			__lt18 = __lt17
+			__lt16 = __lt15
 		}
-		cgo.GdipSetPenLineJoin((*(pen)), __lt18)
+		var line int = __lt16
+		var __lt17 int
+		if cap__r3 == 1 {
+			__lt17 = 2
+		} else {
+			__lt17 = 0
+		}
+		cgo.GdipSetPenLineCap197819((*(pen)), line, line, __lt17)
+		var __lt19 int
+		if join == 1 {
+			__lt19 = 2
+		} else {
+			var __lt18 int
+			if join == 2 {
+				__lt18 = 1
+			} else {
+				__lt18 = 0
+			}
+			__lt19 = __lt18
+		}
+		cgo.GdipSetPenLineJoin((*(pen)), __lt19)
 		cgo.GdipDrawPath(cgo.SnglWin32GfxG(g), (*(pen)), cgo.SnglWin32GfxPath(g))
 		cgo.GdipDeletePen((*(pen)))
 	}
@@ -11037,6 +11420,35 @@ func _holdsEntries(w cgo.HWND) bool {
 	return false
 }
 
+func _menuSync(w cgo.HWND) {
+	top := cgo.GetAncestor(w, 2)
+	if !func() bool { _, __ok := m._ctls[top]; return __ok }() || (m._ctls[top].Kind != 0) {
+		return
+	}
+	made := cgo.CreateMenu()
+	var bar *cgo.Menu
+	if made != nil {
+		_fillMenu((*(made)), top, true)
+		if cgo.GetMenuItemCount((*(made))) > 0 {
+			bar = made
+		} else {
+			cgo.DestroyMenu((*(made)))
+		}
+	}
+	old := m._ctls[top].Menu
+	__entryKey66 := top
+	__entry67 := m._ctls[__entryKey66]
+	__entry67.Menu = bar
+	m._ctls[__entryKey66] = __entry67
+	if (bar != nil) || (old != nil) {
+		cgo.SetMenu(top, bar)
+		cgo.DrawMenuBar(top)
+	}
+	if old != nil {
+		cgo.DestroyMenu((*(old)))
+	}
+}
+
 func _boxMeasure(k _Ctl) _Size {
 	var gap int = _px(k.Gap, k.Dpi)
 	ks := _laidKids(k)
@@ -11044,20 +11456,20 @@ func _boxMeasure(k _Ctl) _Size {
 	var mostX int = 0
 	var mostY int = 0
 	for _, it := range ks {
-		var __lt19 int
-		if it.Cx > mostX {
-			__lt19 = it.Cx
-		} else {
-			__lt19 = mostX
-		}
-		mostX = __lt19
 		var __lt20 int
-		if it.Cy > mostY {
-			__lt20 = it.Cy
+		if it.Cx > mostX {
+			__lt20 = it.Cx
 		} else {
-			__lt20 = mostY
+			__lt20 = mostX
 		}
-		mostY = __lt20
+		mostX = __lt20
+		var __lt21 int
+		if it.Cy > mostY {
+			__lt21 = it.Cy
+		} else {
+			__lt21 = mostY
+		}
+		mostY = __lt21
 	}
 	var sx int = 0
 	var sy int = 0
@@ -11070,22 +11482,22 @@ func _boxMeasure(k _Ctl) _Size {
 			var h int = 0
 			var i int = (r * cols)
 			for (i < n) && (i < ((r + 1) * cols)) {
-				var __lt21 int
+				var __lt22 int
 				if ks[i].Cy > h {
-					__lt21 = ks[i].Cy
+					__lt22 = ks[i].Cy
 				} else {
-					__lt21 = h
+					__lt22 = h
 				}
-				h = __lt21
+				h = __lt22
 				i += 1
 			}
-			var __lt22 int
+			var __lt23 int
 			if r > 0 {
-				__lt22 = gap
+				__lt23 = gap
 			} else {
-				__lt22 = 0
+				__lt23 = 0
 			}
-			sy += (h + __lt22)
+			sy += (h + __lt23)
 			r += 1
 		}
 	} else {
@@ -11095,52 +11507,52 @@ func _boxMeasure(k _Ctl) _Size {
 		} else {
 			if k.Mode == 2 {
 				sx = mostX
-				var __lt23 int
+				var __lt24 int
 				if k.FlowH > mostY {
-					__lt23 = k.FlowH
+					__lt24 = k.FlowH
 				} else {
-					__lt23 = mostY
+					__lt24 = mostY
 				}
-				sy = __lt23
+				sy = __lt24
 			} else {
 				if k.Mode == 4 {
 					if k.Vertical {
 						sx = mostX
-						var __lt24 int
-						if n > 0 {
-							__lt24 = ((n - 1) * gap)
-						} else {
-							__lt24 = 0
-						}
-						sy = ((n * mostY) + __lt24)
-					} else {
 						var __lt25 int
 						if n > 0 {
 							__lt25 = ((n - 1) * gap)
 						} else {
 							__lt25 = 0
 						}
-						sx = ((n * mostX) + __lt25)
+						sy = ((n * mostY) + __lt25)
+					} else {
+						var __lt26 int
+						if n > 0 {
+							__lt26 = ((n - 1) * gap)
+						} else {
+							__lt26 = 0
+						}
+						sx = ((n * mostX) + __lt26)
 						sy = mostY
 					}
 				} else {
 					for i, it := range ks {
 						if k.Vertical {
-							var __lt26 int
-							if i > 0 {
-								__lt26 = gap
-							} else {
-								__lt26 = 0
-							}
-							sy += (it.Cy + __lt26)
-						} else {
 							var __lt27 int
 							if i > 0 {
 								__lt27 = gap
 							} else {
 								__lt27 = 0
 							}
-							sx += (it.Cx + __lt27)
+							sy += (it.Cy + __lt27)
+						} else {
+							var __lt28 int
+							if i > 0 {
+								__lt28 = gap
+							} else {
+								__lt28 = 0
+							}
+							sx += (it.Cx + __lt28)
 						}
 					}
 					if k.Vertical {
@@ -11163,6 +11575,12 @@ func _px(n int, dpi int) int {
 	return (0 - ((((0 - n) * dpi) + 48) / 96))
 }
 
+func _textSize(w cgo.HWND) _Size {
+	s := cgo.SIZE{}
+	s = cgo.SnglWin32TextSize(w, s)
+	return _Size{Cx: int(s.Cx), Cy: int(s.Cy)}
+}
+
 func _layOut(box cgo.HWND, width int, height int) {
 	if !func() bool { _, __ok := m._ctls[box]; return __ok }() {
 		return
@@ -11171,14 +11589,14 @@ func _layOut(box cgo.HWND, width int, height int) {
 	var w int = width
 	var h int = height
 	moved := ((w != k.LaidW) || (h != k.LaidH))
-	__entryKey88 := box
-	__entry89 := m._ctls[__entryKey88]
-	__entry89.LaidW = w
-	m._ctls[__entryKey88] = __entry89
 	__entryKey90 := box
 	__entry91 := m._ctls[__entryKey90]
-	__entry91.LaidH = h
+	__entry91.LaidW = w
 	m._ctls[__entryKey90] = __entry91
+	__entryKey92 := box
+	__entry93 := m._ctls[__entryKey92]
+	__entry93.LaidH = h
+	m._ctls[__entryKey92] = __entry93
 	if len(k.Kids) == 0 {
 		if moved {
 			_invalidate(box)
@@ -11192,20 +11610,20 @@ func _layOut(box cgo.HWND, width int, height int) {
 	var padBottom int = (_px(k.PadBottom, k.Dpi) + e)
 	var padLeft int = (_px(k.PadLeft, k.Dpi) + e)
 	if k.Kind == 14 {
-		var __lt28 int
-		if k.ScrollV {
-			__lt28 = cgo.GetSystemMetrics(2)
-		} else {
-			__lt28 = 0
-		}
-		w -= __lt28
 		var __lt29 int
-		if k.ScrollH {
-			__lt29 = cgo.GetSystemMetrics(3)
+		if k.ScrollV {
+			__lt29 = cgo.GetSystemMetrics(2)
 		} else {
 			__lt29 = 0
 		}
-		h -= __lt29
+		w -= __lt29
+		var __lt30 int
+		if k.ScrollH {
+			__lt30 = cgo.GetSystemMetrics(3)
+		} else {
+			__lt30 = 0
+		}
+		h -= __lt30
 	}
 	var x0 int = padLeft
 	var y0 int = padTop
@@ -11221,87 +11639,87 @@ func _layOut(box cgo.HWND, width int, height int) {
 		if k.ScrollV && (content.Cy > ih) {
 			ih = content.Cy
 		}
-		var __lt30 int
-		if (iw - pw) > 0 {
-			__lt30 = (iw - pw)
-		} else {
-			__lt30 = 0
-		}
-		var maxX int = __lt30
 		var __lt31 int
-		if (ih - ph) > 0 {
-			__lt31 = (ih - ph)
+		if (iw - pw) > 0 {
+			__lt31 = (iw - pw)
 		} else {
 			__lt31 = 0
 		}
-		var maxY int = __lt31
-		var __lt33 int
+		var maxX int = __lt31
+		var __lt32 int
+		if (ih - ph) > 0 {
+			__lt32 = (ih - ph)
+		} else {
+			__lt32 = 0
+		}
+		var maxY int = __lt32
+		var __lt34 int
 		if k.PosX > maxX {
-			__lt33 = maxX
+			__lt34 = maxX
 		} else {
-			var __lt32 int
+			var __lt33 int
 			if k.PosX < 0 {
-				__lt32 = 0
+				__lt33 = 0
 			} else {
-				__lt32 = k.PosX
+				__lt33 = k.PosX
 			}
-			__lt33 = __lt32
+			__lt34 = __lt33
 		}
-		var posX int = __lt33
-		var __lt35 int
+		var posX int = __lt34
+		var __lt36 int
 		if k.PosY > maxY {
-			__lt35 = maxY
+			__lt36 = maxY
 		} else {
-			var __lt34 int
+			var __lt35 int
 			if k.PosY < 0 {
-				__lt34 = 0
+				__lt35 = 0
 			} else {
-				__lt34 = k.PosY
+				__lt35 = k.PosY
 			}
-			__lt35 = __lt34
+			__lt36 = __lt35
 		}
-		var posY int = __lt35
+		var posY int = __lt36
 		si := cgo.ScrollInfo{CbSize: 28, FMask: 31}
 		if k.ScrollV {
 			si.NMax = ((ih + (h - ph)) - 1)
 			si.NPage = h
 			si.NPos = posY
-			__ref5 := _setScrollInfo__result(cgo.SetScrollInfo(box, 1, si, true))
-			si = __ref5.Out2
+			__ref6 := _setScrollInfo__result(cgo.SetScrollInfo(box, 1, si, true))
+			si = __ref6.Out2
 		}
 		if k.ScrollH {
 			si.NMax = ((iw + (w - pw)) - 1)
 			si.NPage = w
 			si.NPos = posX
-			__ref6 := _setScrollInfo__result(cgo.SetScrollInfo(box, 0, si, true))
-			si = __ref6.Out2
+			__ref7 := _setScrollInfo__result(cgo.SetScrollInfo(box, 0, si, true))
+			si = __ref7.Out2
 		}
 		x0 -= posX
 		y0 -= posY
-		__entryKey66 := box
-		__entry67 := m._ctls[__entryKey66]
-		__entry67.PosX = posX
-		m._ctls[__entryKey66] = __entry67
 		__entryKey68 := box
 		__entry69 := m._ctls[__entryKey68]
-		__entry69.PosY = posY
+		__entry69.PosX = posX
 		m._ctls[__entryKey68] = __entry69
 		__entryKey70 := box
 		__entry71 := m._ctls[__entryKey70]
-		__entry71.MaxX = maxX
+		__entry71.PosY = posY
 		m._ctls[__entryKey70] = __entry71
 		__entryKey72 := box
 		__entry73 := m._ctls[__entryKey72]
-		__entry73.MaxY = maxY
+		__entry73.MaxX = maxX
 		m._ctls[__entryKey72] = __entry73
 		__entryKey74 := box
 		__entry75 := m._ctls[__entryKey74]
-		__entry75.PageX = pw
+		__entry75.MaxY = maxY
 		m._ctls[__entryKey74] = __entry75
 		__entryKey76 := box
 		__entry77 := m._ctls[__entryKey76]
-		__entry77.PageY = ph
+		__entry77.PageX = pw
 		m._ctls[__entryKey76] = __entry77
+		__entryKey78 := box
+		__entry79 := m._ctls[__entryKey78]
+		__entry79.PageY = ph
+		m._ctls[__entryKey78] = __entry79
 		_reach(box)
 	}
 	ks := _laidKids(k)
@@ -11315,10 +11733,10 @@ func _layOut(box cgo.HWND, width int, height int) {
 				f := _flow(ks, x0, y0, iw, gap)
 				at = f.At
 				if f.H != m._ctls[box].FlowH {
-					__entryKey78 := box
-					__entry79 := m._ctls[__entryKey78]
-					__entry79.FlowH = f.H
-					m._ctls[__entryKey78] = __entry79
+					__entryKey80 := box
+					__entry81 := m._ctls[__entryKey80]
+					__entry81.FlowH = f.H
+					m._ctls[__entryKey80] = __entry81
 					_relayout(box)
 				}
 			} else {
@@ -11332,13 +11750,13 @@ func _layOut(box cgo.HWND, width int, height int) {
 			}
 		}
 	}
-	var __lt36 int
+	var __lt37 int
 	if n > 0 {
-		__lt36 = n
+		__lt37 = n
 	} else {
-		__lt36 = 1
+		__lt37 = 1
 	}
-	batch := cgo.BeginDeferWindowPos(__lt36)
+	batch := cgo.BeginDeferWindowPos(__lt37)
 	for i, it := range ks {
 		r := at[i]
 		var ch int = (r.B - r.T)
@@ -11349,22 +11767,22 @@ func _layOut(box cgo.HWND, width int, height int) {
 		to := _Rect{L: r.L, T: r.T, R: r.R, B: (r.T + ch)}
 		held := batch
 		if (held != nil) && ((((kc.PlacedL != to.L) || (kc.PlacedT != to.T)) || (kc.PlacedR != to.R)) || (kc.PlacedB != to.B)) {
-			__entryKey80 := it.W
-			__entry81 := m._ctls[__entryKey80]
-			__entry81.PlacedL = to.L
-			m._ctls[__entryKey80] = __entry81
 			__entryKey82 := it.W
 			__entry83 := m._ctls[__entryKey82]
-			__entry83.PlacedT = to.T
+			__entry83.PlacedL = to.L
 			m._ctls[__entryKey82] = __entry83
 			__entryKey84 := it.W
 			__entry85 := m._ctls[__entryKey84]
-			__entry85.PlacedR = to.R
+			__entry85.PlacedT = to.T
 			m._ctls[__entryKey84] = __entry85
 			__entryKey86 := it.W
 			__entry87 := m._ctls[__entryKey86]
-			__entry87.PlacedB = to.B
+			__entry87.PlacedR = to.R
 			m._ctls[__entryKey86] = __entry87
+			__entryKey88 := it.W
+			__entry89 := m._ctls[__entryKey88]
+			__entry89.PlacedB = to.B
+			m._ctls[__entryKey88] = __entry89
 			moved = true
 			batch = cgo.DeferWindowPos((*(held)), it.W, nil, r.L, r.T, (r.R - r.L), ch, 20)
 		}
@@ -11407,6 +11825,23 @@ func _newPath(g cgo.Gfx) {
 	m._begun = false
 }
 
+func _fillMenu(m__r1 cgo.Menu, w cgo.HWND, top bool) {
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return
+	}
+	for _, child := range m._ctls[w].Kids {
+		if func() bool { _, __ok := m._ctls[child]; return __ok }() {
+			if m._ctls[child].Kind == 16 {
+				_addEntry(m__r1, child)
+			} else {
+				if top {
+					_fillMenu(m__r1, child, true)
+				}
+			}
+		}
+	}
+}
+
 func _laidKids(k _Ctl) []_Kid {
 	out := []_Kid{}
 	for _, child := range k.Kids {
@@ -11419,23 +11854,23 @@ func _laidKids(k _Ctl) []_Kid {
 }
 
 func _columnsOf(k _Ctl) int {
-	var __lt37 int
+	var __lt38 int
 	if k.Columns > 0 {
-		__lt37 = k.Columns
+		__lt38 = k.Columns
 	} else {
-		__lt37 = 1
+		__lt38 = 1
 	}
-	return __lt37
+	return __lt38
 }
 
 func _edge(k _Ctl) int {
-	var __lt38 int
+	var __lt39 int
 	if k.Framed {
-		__lt38 = _px(2, k.Dpi)
+		__lt39 = _px(2, k.Dpi)
 	} else {
-		__lt38 = 0
+		__lt39 = 0
 	}
-	return __lt38
+	return __lt39
 }
 
 func _invalidate(w cgo.HWND) {
@@ -11444,25 +11879,25 @@ func _invalidate(w cgo.HWND) {
 
 func _reach(box cgo.HWND) {
 	k := m._ctls[box]
-	var __lt39 bool
+	var __lt40 bool
 	if k.ScrollV {
-		__lt39 = (k.PosY >= (k.MaxY - (k.PageY / 2)))
+		__lt40 = (k.PosY >= (k.MaxY - (k.PageY / 2)))
 	} else {
-		__lt39 = (k.PosX >= (k.MaxX - (k.PageX / 2)))
+		__lt40 = (k.PosX >= (k.MaxX - (k.PageX / 2)))
 	}
-	ending := __lt39
+	ending := __lt40
 	if ending && !k.AtEnd {
-		__entryKey92 := box
-		__entry93 := m._ctls[__entryKey92]
-		__entry93.AtEnd = true
-		m._ctls[__entryKey92] = __entry93
+		__entryKey94 := box
+		__entry95 := m._ctls[__entryKey94]
+		__entry95.AtEnd = true
+		m._ctls[__entryKey94] = __entry95
 		cgo.PostMessageW(box, 32771, 0, 0)
 	} else {
 		if !ending {
-			__entryKey94 := box
-			__entry95 := m._ctls[__entryKey94]
-			__entry95.AtEnd = false
-			m._ctls[__entryKey94] = __entry95
+			__entryKey96 := box
+			__entry97 := m._ctls[__entryKey96]
+			__entry97.AtEnd = false
+			m._ctls[__entryKey96] = __entry97
 		}
 	}
 }
@@ -11478,13 +11913,13 @@ func _grid(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, gap int) []_Rect {
 		var h int = 0
 		var i int = (r * cols)
 		for (i < n) && (i < ((r + 1) * cols)) {
-			var __lt40 int
+			var __lt41 int
 			if ks[i].Cy > h {
-				__lt40 = ks[i].Cy
+				__lt41 = ks[i].Cy
 			} else {
-				__lt40 = h
+				__lt41 = h
 			}
-			h = __lt40
+			h = __lt41
 			i += 1
 		}
 		i = (r * cols)
@@ -11512,43 +11947,43 @@ func _flow(ks []_Kid, x0 int, y0 int, iw int, gap int) _Flowed {
 		}
 		at = append(at, _Rect{L: x, T: y, R: (x + it.Cx), B: (y + it.Cy)})
 		x += (it.Cx + gap)
-		var __lt41 int
+		var __lt42 int
 		if it.Cy > h {
-			__lt41 = it.Cy
+			__lt42 = it.Cy
 		} else {
-			__lt41 = h
+			__lt42 = h
 		}
-		h = __lt41
+		h = __lt42
 	}
-	var __lt42 int
+	var __lt43 int
 	if len(ks) > 0 {
-		__lt42 = ((y + h) - y0)
+		__lt43 = ((y + h) - y0)
 	} else {
-		__lt42 = 0
+		__lt43 = 0
 	}
-	return _Flowed{At: at, H: __lt42}
+	return _Flowed{At: at, H: __lt43}
 }
 
 func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
 	var n int = len(ks)
-	var __lt43 int
+	var __lt44 int
 	if k.Vertical {
-		__lt43 = ih
+		__lt44 = ih
 	} else {
-		__lt43 = iw
+		__lt44 = iw
 	}
-	var avail int = (__lt43 - (gap * (n - 1)))
+	var avail int = (__lt44 - (gap * (n - 1)))
 	size := []int{}
 	var total int = 0
 	var flex float64 = 0.0
 	for _, it := range ks {
-		var __lt44 int
+		var __lt45 int
 		if k.Vertical {
-			__lt44 = it.Cy
+			__lt45 = it.Cy
 		} else {
-			__lt44 = it.Cx
+			__lt45 = it.Cx
 		}
-		var along int = __lt44
+		var along int = __lt45
 		size = append(size, along)
 		total += along
 		flex += it.Flex
@@ -11574,87 +12009,87 @@ func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
 			size[last] += (spare - given)
 		}
 	}
-	var __lt45 int
-	if k.Vertical {
-		__lt45 = y0
-	} else {
-		__lt45 = x0
-	}
-	var pos int = __lt45
 	var __lt46 int
 	if k.Vertical {
-		__lt46 = iw
+		__lt46 = y0
 	} else {
-		__lt46 = ih
+		__lt46 = x0
 	}
-	var room int = __lt46
+	var pos int = __lt46
+	var __lt47 int
+	if k.Vertical {
+		__lt47 = iw
+	} else {
+		__lt47 = ih
+	}
+	var room int = __lt47
 	at := []_Rect{}
 	for i, it := range ks {
-		var __lt47 bool
+		var __lt48 bool
 		if k.Vertical {
-			__lt47 = (m._ctls[it.W].ExactW > 0)
+			__lt48 = (m._ctls[it.W].ExactW > 0)
 		} else {
-			__lt47 = (m._ctls[it.W].ExactH > 0)
+			__lt48 = (m._ctls[it.W].ExactH > 0)
 		}
-		sized := __lt47
+		sized := __lt48
 		var across int = room
 		var off int = 0
 		if (k.Align != 0) || sized {
-			var __lt48 int
-			if k.Vertical {
-				__lt48 = it.Cx
-			} else {
-				__lt48 = it.Cy
-			}
-			var want int = __lt48
 			var __lt49 int
+			if k.Vertical {
+				__lt49 = it.Cx
+			} else {
+				__lt49 = it.Cy
+			}
+			var want int = __lt49
+			var __lt50 int
 			if want < room {
-				__lt49 = want
+				__lt50 = want
 			} else {
-				__lt49 = room
+				__lt50 = room
 			}
-			across = __lt49
-			var __lt51 int
+			across = __lt50
+			var __lt52 int
 			if k.Align == 2 {
-				__lt51 = ((room - across) / 2)
+				__lt52 = ((room - across) / 2)
 			} else {
-				var __lt50 int
+				var __lt51 int
 				if k.Align == 3 {
-					__lt50 = (room - across)
+					__lt51 = (room - across)
 				} else {
-					__lt50 = 0
+					__lt51 = 0
 				}
-				__lt51 = __lt50
+				__lt52 = __lt51
 			}
-			off = __lt51
+			off = __lt52
 		}
-		var __lt52 int
-		if k.Vertical {
-			__lt52 = (x0 + off)
-		} else {
-			__lt52 = pos
-		}
-		var x int = __lt52
 		var __lt53 int
 		if k.Vertical {
-			__lt53 = pos
+			__lt53 = (x0 + off)
 		} else {
-			__lt53 = (y0 + off)
+			__lt53 = pos
 		}
-		var y int = __lt53
+		var x int = __lt53
 		var __lt54 int
 		if k.Vertical {
-			__lt54 = across
+			__lt54 = pos
 		} else {
-			__lt54 = size[i]
+			__lt54 = (y0 + off)
 		}
+		var y int = __lt54
 		var __lt55 int
 		if k.Vertical {
-			__lt55 = size[i]
-		} else {
 			__lt55 = across
+		} else {
+			__lt55 = size[i]
 		}
-		at = append(at, _Rect{L: x, T: y, R: (x + __lt54), B: (y + __lt55)})
+		var __lt56 int
+		if k.Vertical {
+			__lt56 = size[i]
+		} else {
+			__lt56 = across
+		}
+		at = append(at, _Rect{L: x, T: y, R: (x + __lt55), B: (y + __lt56)})
 		pos += (size[i] + gap)
 	}
 	return at
@@ -11674,10 +12109,10 @@ func _place(w cgo.HWND, cw int, ch int) {
 			if k.Kind == 23 {
 				var fh int = cgo.SnglWin32FlowHeight(w, (cw - _px((k.PadRight+k.PadLeft), k.Dpi)))
 				if fh != k.FlowH {
-					__entryKey96 := w
-					__entry97 := m._ctls[__entryKey96]
-					__entry97.FlowH = fh
-					m._ctls[__entryKey96] = __entry97
+					__entryKey98 := w
+					__entry99 := m._ctls[__entryKey98]
+					__entry99.FlowH = fh
+					m._ctls[__entryKey98] = __entry99
 					_relayout(w)
 				}
 				_invalidate(w)
@@ -11687,22 +12122,22 @@ func _place(w cgo.HWND, cw int, ch int) {
 						if func() bool { _, __ok := m._ctls[child]; return __ok }() {
 							kc := m._ctls[child]
 							if (((kc.PlacedL != 0) || (kc.PlacedT != 0)) || (kc.PlacedR != cw)) || (kc.PlacedB != ch) {
-								__entryKey98 := child
-								__entry99 := m._ctls[__entryKey98]
-								__entry99.PlacedL = 0
-								m._ctls[__entryKey98] = __entry99
 								__entryKey100 := child
 								__entry101 := m._ctls[__entryKey100]
-								__entry101.PlacedT = 0
+								__entry101.PlacedL = 0
 								m._ctls[__entryKey100] = __entry101
 								__entryKey102 := child
 								__entry103 := m._ctls[__entryKey102]
-								__entry103.PlacedR = cw
+								__entry103.PlacedT = 0
 								m._ctls[__entryKey102] = __entry103
 								__entryKey104 := child
 								__entry105 := m._ctls[__entryKey104]
-								__entry105.PlacedB = ch
+								__entry105.PlacedR = cw
 								m._ctls[__entryKey104] = __entry105
+								__entryKey106 := child
+								__entry107 := m._ctls[__entryKey106]
+								__entry107.PlacedB = ch
+								m._ctls[__entryKey106] = __entry107
 								cgo.SetWindowPos(child, nil, 0, 0, cw, ch, 20)
 								cgo.InvalidateRect(child, nil, false)
 							}
@@ -11715,19 +12150,38 @@ func _place(w cgo.HWND, cw int, ch int) {
 }
 
 func _channel(v int) int {
-	var __lt57 int
+	var __lt58 int
 	if v < 0 {
-		__lt57 = 0
+		__lt58 = 0
 	} else {
-		var __lt56 int
+		var __lt57 int
 		if v > 255 {
-			__lt56 = 255
+			__lt57 = 255
 		} else {
-			__lt56 = v
+			__lt57 = v
 		}
-		__lt57 = __lt56
+		__lt58 = __lt57
 	}
-	return __lt57
+	return __lt58
+}
+
+func _addEntry(m__r2 cgo.Menu, e cgo.HWND) {
+	k := m._ctls[e]
+	var subs int = 0
+	for _, child := range k.Kids {
+		if func() bool { _, __ok := m._ctls[child]; return __ok }() && (m._ctls[child].Kind == 16) {
+			subs += 1
+		}
+	}
+	if subs > 0 {
+		sub := cgo.CreatePopupMenu()
+		if sub != nil {
+			_fillMenu((*(sub)), e, false)
+			cgo.SnglWin32AppendPopup(m__r2, (16 + _entryFlags(k)), (*(sub)), k.Text)
+		}
+	} else {
+		cgo.AppendMenuW(m__r2, _entryFlags(k), k.Id, k.Text)
+	}
 }
 
 func _flexOf(w cgo.HWND) float64 {
@@ -11739,13 +12193,13 @@ func _flexOf(w cgo.HWND) float64 {
 	for _, child := range k.Kids {
 		if (func() bool { _, __ok := m._ctls[child]; return __ok }() && !m._ctls[child].OffProp) && !m._ctls[child].OffLook {
 			var f float64 = _flexOf(child)
-			var __lt58 float64
+			var __lt59 float64
 			if f > most {
-				__lt58 = f
+				__lt59 = f
 			} else {
-				__lt58 = most
+				__lt59 = most
 			}
-			most = __lt58
+			most = __lt59
 		}
 	}
 	return most
@@ -11754,8 +12208,8 @@ func _flexOf(w cgo.HWND) float64 {
 func _layOutTabs(tabs cgo.HWND, w int, h int) {
 	k := m._ctls[tabs]
 	r := cgo.RECT{Right: w, Bottom: h}
-	__ref7 := _sendRect__result(cgo.SendRect(tabs, 4904, 0, r))
-	r = __ref7.Out3
+	__ref8 := _sendRect__result(cgo.SendRect(tabs, 4904, 0, r))
+	r = __ref8.Out3
 	for i, page := range k.Kids {
 		if i == k.Selected {
 			cgo.SetWindowPos(page, nil, r.Left, r.Top, (r.Right - r.Left), (r.Bottom - r.Top), 80)
@@ -11767,8 +12221,24 @@ func _layOutTabs(tabs cgo.HWND, w int, h int) {
 	_invalidate(tabs)
 }
 
+func _entryFlags(k _Ctl) int {
+	var __lt60 int
+	if k.Disabled {
+		__lt60 = 1
+	} else {
+		__lt60 = 0
+	}
+	var __lt61 int
+	if k.Checked {
+		__lt61 = 8
+	} else {
+		__lt61 = 0
+	}
+	return (__lt60 + __lt61)
+}
+
 func _hooked() map[cgo.HWND]_Ctl {
-	cgo.SnglWin32Hooks(_made, _forget, _relayout, _layOutTop, _layoutMessage, _tabChosen, _tabsSync, _refresh, _wheeled, _scrolled, func(a0 cgo.HWND) cgo.SnglWin32HooksMeasure { return cgo.SnglWin32HooksMeasure(_measure(a0)) }, _kidCount, _kidAt, _padOf)
+	cgo.SnglWin32Hooks(_made, _forget, _relayout, _layOutTop, _layoutMessage, _tabChosen, _menuCommand, _refresh, _wheeled, _scrolled, func(a0 cgo.HWND) cgo.SnglWin32HooksMeasure { return cgo.SnglWin32HooksMeasure(_measure(a0)) }, _kidCount, _kidAt, _padOf)
 	return map[cgo.HWND]_Ctl{}
 }
 
@@ -11777,6 +12247,18 @@ func _made(w cgo.HWND, kind int, dpi int) {
 }
 
 func _forget(w cgo.HWND) {
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return
+	}
+	k := m._ctls[w]
+	if (k.Kind == 16) && (k.Id >= 1000) {
+		delete(m._entryIds, k.Id)
+	}
+	m__r3 := k.Menu
+	if m__r3 != nil {
+		cgo.SetMenu(w, nil)
+		cgo.DestroyMenu((*(m__r3)))
+	}
 	delete(m._ctls, w)
 }
 
@@ -11784,10 +12266,10 @@ func _layoutMessage(top cgo.HWND) {
 	if !func() bool { _, __ok := m._ctls[top]; return __ok }() {
 		return
 	}
-	__entryKey106 := top
-	__entry107 := m._ctls[__entryKey106]
-	__entry107.Laying = false
-	m._ctls[__entryKey106] = __entry107
+	__entryKey108 := top
+	__entry109 := m._ctls[__entryKey108]
+	__entry109.Laying = false
+	m._ctls[__entryKey108] = __entry109
 	_refresh(top, cgo.SnglWin32DpiOf(top))
 	_fit(top)
 	_layOutTop(top)
@@ -11803,12 +12285,19 @@ func _tabChosen(tabs cgo.HWND) {
 		cgo.SendMessageW(tabs, 4876, k.Selected, 0)
 		return
 	}
-	__entryKey108 := tabs
-	__entry109 := m._ctls[__entryKey108]
-	__entry109.Selected = at
-	m._ctls[__entryKey108] = __entry109
+	__entryKey110 := tabs
+	__entry111 := m._ctls[__entryKey110]
+	__entry111.Selected = at
+	m._ctls[__entryKey110] = __entry111
 	_layOutNow(tabs)
 	cgo.SnglWin32Clicked(k.Kids[at])
+}
+
+func _menuCommand(top cgo.HWND, id int) {
+	e := _findEntry(top, id)
+	if e != nil {
+		cgo.SnglWin32Clicked(cgo.HWND((*(e))))
+	}
 }
 
 func _refresh(w cgo.HWND, dpi int) {
@@ -11817,14 +12306,14 @@ func _refresh(w cgo.HWND, dpi int) {
 	}
 	k := m._ctls[w]
 	if k.Dpi != dpi {
-		__entryKey110 := w
-		__entry111 := m._ctls[__entryKey110]
-		__entry111.Dpi = dpi
-		m._ctls[__entryKey110] = __entry111
 		__entryKey112 := w
 		__entry113 := m._ctls[__entryKey112]
-		__entry113.Measured = false
+		__entry113.Dpi = dpi
 		m._ctls[__entryKey112] = __entry113
+		__entryKey114 := w
+		__entry115 := m._ctls[__entryKey114]
+		__entry115.Measured = false
+		m._ctls[__entryKey114] = __entry115
 		cgo.SnglWin32Refont(w, dpi)
 	}
 	for _, child := range k.Kids {
@@ -11838,33 +12327,33 @@ func _wheeled(w cgo.HWND, delta int) {
 	}
 	var turned int = (m._ctls[w].Wheel + delta)
 	var lines int = (turned / 120)
-	__entryKey114 := w
-	__entry115 := m._ctls[__entryKey114]
-	__entry115.Wheel = (turned - (lines * 120))
-	m._ctls[__entryKey114] = __entry115
-	var __lt59 int
+	__entryKey116 := w
+	__entry117 := m._ctls[__entryKey116]
+	__entry117.Wheel = (turned - (lines * 120))
+	m._ctls[__entryKey116] = __entry117
+	var __lt62 int
 	if m._ctls[w].ScrollV {
-		__lt59 = 1
+		__lt62 = 1
 	} else {
-		__lt59 = 0
+		__lt62 = 0
 	}
-	var bar int = __lt59
+	var bar int = __lt62
 	var i int = 0
-	var __lt60 int
+	var __lt63 int
 	if lines < 0 {
-		__lt60 = (0 - lines)
+		__lt63 = (0 - lines)
 	} else {
-		__lt60 = lines
+		__lt63 = lines
 	}
-	var count int = __lt60
+	var count int = __lt63
 	for i < count {
-		var __lt61 int
+		var __lt64 int
 		if lines < 0 {
-			__lt61 = 1
+			__lt64 = 1
 		} else {
-			__lt61 = 0
+			__lt64 = 0
 		}
-		_scrolled(w, bar, __lt61)
+		_scrolled(w, bar, __lt64)
 		i += 1
 	}
 }
@@ -11875,8 +12364,8 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 	}
 	k := m._ctls[w]
 	si := cgo.ScrollInfo{CbSize: 28, FMask: 23}
-	__ref8 := _getScrollInfo__result(cgo.GetScrollInfo(w, bar, si))
-	si = __ref8.Out2
+	__ref9 := _getScrollInfo__result(cgo.GetScrollInfo(w, bar, si))
+	si = __ref9.Out2
 	var pos int = si.NPos
 	var line int = _px(20, k.Dpi)
 	if request == 0 {
@@ -11908,81 +12397,81 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 			}
 		}
 	}
-	var __lt62 int
-	if bar == 1 {
-		__lt62 = k.MaxY
-	} else {
-		__lt62 = k.MaxX
-	}
-	var most int = __lt62
-	var __lt64 int
-	if pos > most {
-		__lt64 = most
-	} else {
-		var __lt63 int
-		if pos < 0 {
-			__lt63 = 0
-		} else {
-			__lt63 = pos
-		}
-		__lt64 = __lt63
-	}
-	pos = __lt64
 	var __lt65 int
 	if bar == 1 {
-		__lt65 = k.PosY
+		__lt65 = k.MaxY
 	} else {
-		__lt65 = k.PosX
+		__lt65 = k.MaxX
 	}
-	var was int = __lt65
+	var most int = __lt65
+	var __lt67 int
+	if pos > most {
+		__lt67 = most
+	} else {
+		var __lt66 int
+		if pos < 0 {
+			__lt66 = 0
+		} else {
+			__lt66 = pos
+		}
+		__lt67 = __lt66
+	}
+	pos = __lt67
+	var __lt68 int
+	if bar == 1 {
+		__lt68 = k.PosY
+	} else {
+		__lt68 = k.PosX
+	}
+	var was int = __lt68
 	if pos == was {
 		return
 	}
 	var by int = (was - pos)
 	if bar == 1 {
-		__entryKey116 := w
-		__entry117 := m._ctls[__entryKey116]
-		__entry117.PosY = pos
-		m._ctls[__entryKey116] = __entry117
-	} else {
 		__entryKey118 := w
 		__entry119 := m._ctls[__entryKey118]
-		__entry119.PosX = pos
+		__entry119.PosY = pos
 		m._ctls[__entryKey118] = __entry119
+	} else {
+		__entryKey120 := w
+		__entry121 := m._ctls[__entryKey120]
+		__entry121.PosX = pos
+		m._ctls[__entryKey120] = __entry121
 	}
 	cgo.SetScrollPos(w, bar, pos, true)
-	var __lt66 int
+	var __lt69 int
 	if bar == 0 {
-		__lt66 = by
+		__lt69 = by
 	} else {
-		__lt66 = 0
+		__lt69 = 0
 	}
-	var dx int = __lt66
-	var __lt67 int
+	var dx int = __lt69
+	var __lt70 int
 	if bar == 1 {
-		__lt67 = by
+		__lt70 = by
 	} else {
-		__lt67 = 0
+		__lt70 = 0
 	}
-	var dy int = __lt67
+	var dy int = __lt70
 	for _, child := range k.Kids {
 		if func() bool { _, __ok := m._ctls[child]; return __ok }() {
-			__entryKey120 := child
-			__entry121 := m._ctls[__entryKey120]
-			__entry121.PlacedL += dx
-			m._ctls[__entryKey120] = __entry121
 			__entryKey122 := child
 			__entry123 := m._ctls[__entryKey122]
-			__entry123.PlacedR += dx
+			__entry123.PlacedL += dx
 			m._ctls[__entryKey122] = __entry123
 			__entryKey124 := child
 			__entry125 := m._ctls[__entryKey124]
-			__entry125.PlacedT += dy
+			__entry125.PlacedR += dx
 			m._ctls[__entryKey124] = __entry125
 			__entryKey126 := child
 			__entry127 := m._ctls[__entryKey126]
-			__entry127.PlacedB += dy
+			__entry127.PlacedT += dy
 			m._ctls[__entryKey126] = __entry127
+			__entryKey128 := child
+			__entry129 := m._ctls[__entryKey128]
+			__entry129.PlacedB += dy
+			m._ctls[__entryKey128] = __entry129
 		}
 	}
 	cgo.SnglWin32ScrollChildren(w, dx, dy)
@@ -11990,13 +12479,13 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 }
 
 func _kidCount(w cgo.HWND) int {
-	var __lt68 int
+	var __lt71 int
 	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		__lt68 = len(m._ctls[w].Kids)
+		__lt71 = len(m._ctls[w].Kids)
 	} else {
-		__lt68 = 0
+		__lt71 = 0
 	}
-	return __lt68
+	return __lt71
 }
 
 func _kidAt(w cgo.HWND, at int) cgo.HWND {
@@ -12008,57 +12497,74 @@ func _padOf(w cgo.HWND, side int) int {
 		return 0
 	}
 	k := m._ctls[w]
-	var __lt71 int
+	var __lt74 int
 	if side == 0 {
-		__lt71 = k.PadTop
+		__lt74 = k.PadTop
 	} else {
-		var __lt70 int
+		var __lt73 int
 		if side == 1 {
-			__lt70 = k.PadRight
+			__lt73 = k.PadRight
 		} else {
-			var __lt69 int
+			var __lt72 int
 			if side == 2 {
-				__lt69 = k.PadBottom
+				__lt72 = k.PadBottom
 			} else {
-				__lt69 = k.PadLeft
+				__lt72 = k.PadLeft
 			}
-			__lt70 = __lt69
+			__lt73 = __lt72
 		}
-		__lt71 = __lt70
+		__lt74 = __lt73
 	}
-	return __lt71
+	return __lt74
 }
 
 func _fit(top cgo.HWND) {
 	s := _measure(top)
 	r := cgo.RECT{}
-	__ref9 := GetClientRect__result(cgo.GetClientRect(top, r))
-	r = __ref9.Out1
+	__ref10 := GetClientRect__result(cgo.GetClientRect(top, r))
+	r = __ref10.Out1
 	var w int = int((r.Right - r.Left))
 	var h int = int((r.Bottom - r.Top))
 	if (s.Cx <= w) && (s.Cy <= h) {
 		return
 	}
-	var __lt72 int
+	var __lt75 int
 	if s.Cx > w {
-		__lt72 = s.Cx
+		__lt75 = s.Cx
 	} else {
-		__lt72 = w
+		__lt75 = w
 	}
-	var __lt73 int
+	var __lt76 int
 	if s.Cy > h {
-		__lt73 = s.Cy
+		__lt76 = s.Cy
 	} else {
-		__lt73 = h
+		__lt76 = h
 	}
-	cgo.SnglWin32ResizeClient(top, __lt72, __lt73)
+	cgo.SnglWin32ResizeClient(top, __lt75, __lt76)
 }
 
 func _layOutNow(w cgo.HWND) {
 	r := cgo.RECT{}
-	__ref10 := GetWindowRect__result(cgo.GetWindowRect(w, r))
-	r = __ref10.Out1
+	__ref11 := GetWindowRect__result(cgo.GetWindowRect(w, r))
+	r = __ref11.Out1
 	_place(w, (r.Right - r.Left), (r.Bottom - r.Top))
+}
+
+func _findEntry(w cgo.HWND, id int) *cgo.Found {
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return nil
+	}
+	k := m._ctls[w]
+	if (k.Kind == 16) && (k.Id == id) {
+		return snglSome(cgo.Found(w))
+	}
+	for _, child := range k.Kids {
+		found := _findEntry(child, id)
+		if found != nil {
+			return found
+		}
+	}
+	return nil
 }
 
 func __effect0_enter() {
@@ -12304,6 +12810,7 @@ func snglInit() {
 	m._saved = []_Saved{}
 	m._x = 0.0
 	m._y = 0.0
+	m._entryIds = map[int]bool{}
 	m.ws = []float64{1.0, 2.0}
 	m.p__inst0 = map[string]Pic{}
 	m.__copied__inst0 = map[string]__anon_copy_v0_2d5b73{}
@@ -12698,7 +13205,7 @@ window.__sngl_boot = () => {
 -- run/c/gtk4 --
 pass sha256:ca7346f3097e5cf0e478c8ea4449d0a8
 -- run/c/win32 --
-pass sha256:ccd2e7459931a159ec1fe75a5dbc743d
+pass sha256:14c0779723d1bd5573eb862bb696fca1
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
@@ -12706,6 +13213,6 @@ pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
 pass sha256:858c375d5c77f59304352d3454946d43
 -- run/go/win32 --
-pass sha256:c53ba2dc903ba9b5e38017f2a71aa0c7
+pass sha256:1027812db5cf743123280e68fc2d5476
 -- run/none/html --
 pass sha256:f421c9a95ab06abbbce1bd120fb70d21

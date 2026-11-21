@@ -927,9 +927,14 @@ component TextArea(rows int, look Look, @change(), @commit()) ui.node
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Textarea")]
 func _rtTextArea() TextArea
 
-#[c.native("sngl_win32_set_rows")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetRows")]
-func _rtSetRows(e TextArea, rows int)
+// The lines a multi-line edit is measured to show, 0 for three.
+func _rtSetRows(e TextArea, rows int) {
+    var w = _handle(e)
+    if _ctls.contains(w) && _ctls[w].rows != rows {
+        _ctls[w].rows = rows
+        _relayout(w)
+    }
+}
 
 #[gen.protocol(create)]
 func _create_TextArea() TextArea {

@@ -60,10 +60,8 @@ typedef struct {
 	/* quiet is set while the runtime writes an edit's text, which Win32
 	 * reports as a change the program did not make. */
 	int quiet;
-	/* rows is the lines a multi-line edit is measured to show, and fraction
-	 * a progress bar's, negative while it is indeterminate, which show_text
-	 * writes over it. */
-	int rows;
+	/* fraction is a progress bar's, negative while it is indeterminate,
+	 * which show_text writes over it. */
 	double fraction;
 	int show_text;
 	/* href is a link's, opened as the user clicks it. */
@@ -902,8 +900,9 @@ static HWND link_under(ctl *c, int x, int y) {
 
 /* sngl_win32_natural is what a control's content measures, in device
  * pixels, before its record's padding and sizes: its text in its font, its
- * metrics, or what it asks the control for. A box, a scroll, tabs, a
- * divider and an image are measured by their record (_measure). */
+ * metrics, or what it asks the control for: a drop-down, a progress bar, a
+ * table, a tree, a canvas and a flow. The rest are measured by their record
+ * (_measure). */
 void sngl_win32_natural(HWND w, SIZE *out) {
 	ctl *c = ctl_of(w);
 	SIZE s = {0, 0};
@@ -912,32 +911,6 @@ void sngl_win32_natural(HWND w, SIZE *out) {
 		return;
 	}
 	switch (c->kind) {
-	case K_TEXT:
-		s = text_size(w);
-		break;
-	case K_BUTTON:
-		s = text_size(w);
-		s.cx += px(20, c->dpi);
-		s.cy += px(10, c->dpi);
-		if (s.cx < px(75, c->dpi)) {
-			s.cx = px(75, c->dpi);
-		}
-		break;
-	case K_CHECK:
-	case K_RADIO:
-		s = text_size(w);
-		s.cx += (system_metric_for_dpi ? system_metric_for_dpi(SM_CXMENUCHECK, (UINT)c->dpi) : GetSystemMetrics(SM_CXMENUCHECK)) + px(8, c->dpi);
-		s.cy += px(4, c->dpi);
-		break;
-	case K_EDIT:
-		s = text_size(w);
-		s.cx = px(150, c->dpi);
-		s.cy += px(8, c->dpi);
-		break;
-	case K_AREA:
-		s.cx = px(200, c->dpi);
-		s.cy = line_height(w) * (c->rows > 0 ? c->rows : 3) + px(8, c->dpi);
-		break;
 	case K_SELECT:
 		s = select_size(w, c);
 		break;
@@ -960,9 +933,6 @@ void sngl_win32_natural(HWND w, SIZE *out) {
 				s.cy = r.bottom - r.top + px(4, c->dpi);
 			}
 		}
-		break;
-	case K_LINK:
-		s = text_size(w);
 		break;
 	case K_TABLE: {
 		/* Every column, and every row under the header. */
@@ -989,19 +959,6 @@ void sngl_win32_natural(HWND w, SIZE *out) {
 	case K_TREE:
 		s = tree_size(w, c);
 		break;
-	case K_DATE: {
-		SIZE ideal = {0, 0};
-		if (SendMessageW(w, DTM_GETIDEALSIZE, 0, (LPARAM)&ideal) && ideal.cx > 0) {
-			s = ideal;
-		} else {
-			s = text_size(w);
-			s.cx = px(130, c->dpi);
-		}
-		if (s.cy < line_height(w) + px(8, c->dpi)) {
-			s.cy = line_height(w) + px(8, c->dpi);
-		}
-		break;
-	}
 	case K_CANVAS:
 		s.cx = px(c->cw, c->dpi);
 		s.cy = px(c->ch, c->dpi);
@@ -1024,6 +981,14 @@ void sngl_win32_natural(HWND w, SIZE *out) {
 	}
 	*out = s;
 }
+
+/* sngl_win32_text_size is w's text as its font draws it, sngl_win32_line_height
+ * a line of its font, and sngl_win32_check_width a check box's box at dpi. */
+void sngl_win32_text_size(HWND w, SIZE *out) { *out = text_size(w); }
+
+int sngl_win32_line_height(HWND w) { return line_height(w); }
+
+int sngl_win32_check_width(int dpi) { return system_metric_for_dpi ? system_metric_for_dpi(SM_CXMENUCHECK, (UINT)dpi) : GetSystemMetrics(SM_CXMENUCHECK); }
 
 /* sngl_win32_picture_size is a picture's bitmap's size, where it has one. */
 int sngl_win32_picture_size(HWND w, SIZE *out) {
@@ -3116,14 +3081,6 @@ void sngl_win32_set_edit_text(HWND w, const unsigned short *text) {
 	free(want);
 	if (!same) {
 		set_quietly(w, (LPCWSTR)text);
-	}
-}
-
-void sngl_win32_set_rows(HWND w, int rows) {
-	ctl *c = ctl_of(w);
-	if (c && c->rows != rows) {
-		c->rows = rows;
-		relayout(w);
 	}
 }
 

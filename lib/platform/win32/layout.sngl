@@ -76,6 +76,8 @@ struct _Ctl {
     laidW     int = 0
     laidH     int = 0
     kids      list[api.HWND] = []
+    // The lines a multi-line edit is measured to show.
+    rows      int = 0
     // What `_setText` last set, once it has.
     text      string = ""
     texted    bool = false
@@ -96,13 +98,25 @@ const _kTop = 0
 
 const _kBox = 1
 
+const _kText = 2
+
 const _kButton = 3
 
+const _kEdit = 4
+
+const _kCheck = 5
+
 const _kSpacer = 6
+
+const _kArea = 8
 
 const _kSelect = 9
 
 const _kDivider = 10
+
+const _kLink = 11
+
+const _kRadio = 12
 
 const _kTabs = 13
 
@@ -282,6 +296,31 @@ func _sendRect(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] r re
 #[c.native("sngl_win32_natural")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Natural")]
 func _natural(w api.HWND, out ref[api.SIZE])
+
+// w's text as its font draws it, a line of its font, and a check box's box
+// at dpi.
+#[c.native("sngl_win32_text_size")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TextSize")]
+func _textExtent(w api.HWND, out ref[api.SIZE])
+
+func _textSize(w api.HWND) _Size {
+    var s = api.SIZE{cx=0, cy=0}
+    _textExtent(w, &s)
+    return _Size{cx=int(s.cx), cy=int(s.cy)}
+}
+
+#[c.native("sngl_win32_line_height")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32LineHeight")]
+func _lineHeight(w api.HWND) int
+
+#[c.native("sngl_win32_check_width")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32CheckWidth")]
+func _checkWidth(dpi int) int
+
+// A message whose LPARAM is a SIZE the control fills: DTM_GETIDEALSIZE.
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendSize")]
+func _sendSize(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] s ref[api.SIZE]) api.LRESULT
 
 #[c.native("sngl_win32_picture_size")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PictureSize")]
@@ -550,6 +589,37 @@ func _measure(w api.HWND) _Size {
         var n = api.SIZE{cx=0, cy=0}
         _natural(w, &n)
         s = _Size{cx=int(n.cx), cy=k.flowH > 0 ? k.flowH : int(n.cy)}
+    } else if k.kind == _kText || k.kind == _kLink {
+        s = _textSize(w)
+    } else if k.kind == _kButton {
+        s = _textSize(w)
+        s.cx += _px(20, k.dpi)
+        s.cy += _px(10, k.dpi)
+        if s.cx < _px(75, k.dpi) {
+            s.cx = _px(75, k.dpi)
+        }
+    } else if k.kind == _kCheck || k.kind == _kRadio {
+        s = _textSize(w)
+        s.cx += _checkWidth(k.dpi) + _px(8, k.dpi)
+        s.cy += _px(4, k.dpi)
+    } else if k.kind == _kEdit {
+        s = _textSize(w)
+        s.cx = _px(150, k.dpi)
+        s.cy += _px(8, k.dpi)
+    } else if k.kind == _kArea {
+        s.cx = _px(200, k.dpi)
+        s.cy = _lineHeight(w) * (k.rows > 0 ? k.rows : 3) + _px(8, k.dpi)
+    } else if k.kind == _kDate {
+        var ideal = api.SIZE{cx=0, cy=0}
+        if _sendSize(w, 4111, 0, &ideal) != 0 && int(ideal.cx) > 0 {
+            s = _Size{cx=int(ideal.cx), cy=int(ideal.cy)}
+        } else {
+            s = _textSize(w)
+            s.cx = _px(130, k.dpi)
+        }
+        if s.cy < _lineHeight(w) + _px(8, k.dpi) {
+            s.cy = _lineHeight(w) + _px(8, k.dpi)
+        }
     } else if k.kind != _kSpan && k.kind != _kPicture && k.kind != _kModal && k.kind != _kEntry && k.kind != _kSpacer {
         var n = api.SIZE{cx=0, cy=0}
         _natural(w, &n)

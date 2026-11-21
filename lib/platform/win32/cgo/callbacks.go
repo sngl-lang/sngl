@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: f9ff3ef4f22ac3d0428236f1
+// The C sources, as a change to them builds this package again: 3e95db1089f2760312c423f2
 
 package cgo
 

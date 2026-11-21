@@ -312,7 +312,7 @@ const char *interop_item_text(HWND list, int i) {
 }
 
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:f0dbcd1dc76e34ecdfd5be70d259cbf9
+sha256:8df51fa2941e4442eecfd1986d46bdac
 {
   "results": [
     {
@@ -346,7 +346,7 @@ sha256:f0dbcd1dc76e34ecdfd5be70d259cbf9
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:b142fbcc9b99f5ba5a977757c7f43c0e
+sha256:a2bfe3e6287eba612dc3025cc542da2c
 {
   "results": [
     {
@@ -380,7 +380,7 @@ sha256:b142fbcc9b99f5ba5a977757c7f43c0e
   ]
 }
 -- testrun/win32/go/app.sngl/_/1 --
-sha256:633a58a4c3268d446b30a28f62f0251b
+sha256:92ca3f62f5e8001afccd5d5b73974c12
 {
   "results": [
     {
@@ -414,7 +414,7 @@ sha256:633a58a4c3268d446b30a28f62f0251b
   ]
 }
 -- testrun/win32/go/app.sngl/_/2 --
-sha256:ffddb03659429f63d0799d3da7491536
+sha256:ae19805013ffe37c4f1927084c8dea61
 {
   "results": [
     {
@@ -448,7 +448,7 @@ sha256:ffddb03659429f63d0799d3da7491536
   ]
 }
 -- testrun/win32/go/app.sngl/_/3 --
-sha256:924e72ec18d882e16c47a4b84f3b284d
+sha256:6f2fac31f2758cd17ed19a29d98e0067
 {
   "results": [
     {
@@ -482,7 +482,7 @@ sha256:924e72ec18d882e16c47a4b84f3b284d
   ]
 }
 -- testrun/win32/go/app.sngl/_/4 --
-sha256:912e5c22586a02c2b6a9cb40bd2cad70
+sha256:e0d464a4e023a42b08983d28fbf44951
 {
   "results": [
     {

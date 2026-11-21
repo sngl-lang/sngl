@@ -149,38 +149,46 @@ same place: it keeps them in the order offered. Pin:
 and Go calling C directly, reading what each control shows through its own
 `peek.c`.
 
-**Where the rest of the runtime is held** (November 2026, 4,544 lines;
-functions by what keeps them C, lines in their bodies):
+**Where the rest of the runtime is held** (November 2026, 3,500 lines, from
+4,544 before the record moved; functions by what keeps them C):
 
-- the record (`ctl`), and what only it calls: 192 functions, 3,295 lines --
-  the window procedures, layout, measuring, painting, menus, tips, fonts,
-  every constructor (`control` makes the record) and every setter keeping
-  a prop in it. A map drops an entry on `WM_NCDESTROY` (`map.remove`),
-  SNGL writes a map's entries field by field on every language
-  (`passEntryWrites`), and the C target's map finds a key through an index
-  (`design/ownership.md`), so a `map[HWND, _Ctl]` package var can hold it.
-  A relayout reading the record as `measure` and a vertical `lay_out` do,
-  over 100, 300 and 900 records of 45 fields under Wine, takes 0.045, 0.12
-  and 0.37 ms in C as the target builds it (no `-O`; 0.017, 0.045 and 0.15 ms
-  at `-O2`), against 0.027, 0.083 and 0.27 ms in Go; walking the keys, C took
-  0.11, 0.74 and 5.5 ms (November 2026, 200 relayouts each, the record
-  read whole; read field by field, through a pointer to the entry, it is
-  0.054 ms at `-O2`). A page of 250 cards (some 1,000 windows)
-  re-rendered takes about 15 ms a round in render and layout through the
-  runtime's table, in C and in Go alike, the figure the port is held to. Of
-  the record's functions, `SetWindowLongPtrW` (a macro on 386), the filled
-  buffers (`fit_columns`, `entry_labeled`) and the pictures' raw pixels
-  would still hold roughly 300 lines;
-- wide strings C fills, answered as UTF-8 or as a place: 7, 97;
-- an array of C structs (`DTM_SETRANGE`'s two `SYSTEMTIME`s) and raw
-  pixels (WIC's decode, the snapshot): 5, 179;
-- the language runtime's loop and its globals (`sngl_post`, the loop, the
-  windows shown and held, the carried files, the fetch thread): 16, 133;
-- registering the classes, whose `WNDCLASSEXW` holds the window procedure,
-  and the process's DPI and manifest setup: 3, 70;
-- timers, whose `schedules` flag no bodied function carries: 3, 34;
-- a click a test raises, which sets the `firing` flag `box_proc` reads: 1,
-  5.
+- **the window procedures and the handlers**, movable and not moved yet:
+  `box_proc` and `control_proc` (some 450 lines) read the runtime's `ctl`
+  for the handlers the program connected, which `sngl_win32_on_*` keep as a
+  function, a context and a release, and fire on each notification. The
+  procedure is declarable (`#[c.static(convention="CALLBACK")]`, a class
+  registered by a C function taking it); the handlers would move into the
+  record as closures first, and `press`, `paint_button`, `color` and the
+  tips with them;
+- **what reads `SetWindowLongPtrW` or `GetWindowLongPtrW`**, macros on 386
+  that cgo cannot call: a divider's and a scroll's styles, a button's owner
+  draw, a progress bar's marquee, a table's sort header, a modal's owner
+  and close box, a toplevel's frame for its client size, a window's own
+  `WS_VISIBLE`: 9 functions, about 110 lines, each a small C function the
+  record's SNGL calls;
+- **fonts**: `LOGFONTW` and `NONCLIENTMETRICSW` hold arrays (`lfFaceName`),
+  which no C struct SNGL declares may: `message_font`, `own_font`,
+  `look_font`, and the text measured in a font (`text_size`,
+  `line_height`, `select_size`, `tree_size`, `fit_columns`), 8 functions,
+  about 190 lines;
+- **rich text**: a flow wraps and draws with `GetTextExtentExPointW`, which
+  fills an array of advances: `flow_size`, `collect`, `add_piece`,
+  `add_font`, `inherit`, `link_under`, 6 functions, about 210 lines;
+- **wide strings C fills**, answered as UTF-8 or as a place
+  (`sngl_win32_get_text`, `selected`, `sorted`, `chosen`, `tree_find`,
+  `find_choice`), and a table's and a tree's rows parsed into `LVITEMW` and
+  `TVINSERTSTRUCTW` (a union): 18 functions, about 270 lines;
+- **raw pixels**: WIC's decode, a picture's bitmap scaled and painted, a
+  drawing's DIB, a canvas's GDI+ graphics, the capture and the snapshot:
+  15 functions, about 420 lines;
+- **the language runtime's loop and its globals** (`sngl_post`, the loop,
+  the windows shown and held, the carried files, the fetch thread),
+  **registering the classes and the process's DPI and manifest**, and
+  **timers**, whose `schedules` flag no bodied function carries: 25
+  functions, about 300 lines;
+- **the runtime's own table** of its `ctl` (`ctl_of`, `ctl_put`,
+  `ctl_drop`, `new_ctl`, `control`, `forget`), which goes when the
+  handlers do.
 
 **What holds the rest in C.** Each is a gap in the language, not a choice:
 
@@ -191,14 +199,13 @@ functions by what keeps them C, lines in their bodies):
   Before it, the C target's cast through `void (*)(void)` silenced what
   MinGW reports (`initialization of 'WNDENUMPROC' ... from incompatible pointer type`) and a Go export was cdecl; Wine restores the stack around
   such a call, so a run passed, and Windows promises nothing.
-- **A window's record stays the runtime's** (`ctl`). `c.held` needs a
-  `#[c.release]` parameter ("is a copy C holds until it calls the function
-  a #[c.release] parameter is handed"), and none of Win32's per-window slots
-  -- `GWLP_USERDATA`, a property, a subclass's reference data -- calls
-  anything as the window goes; the record would be let go on
-  `WM_NCDESTROY`, in a window procedure. `SetWindowLongPtrW` is a macro on
-  386, which cgo cannot call. Everything reading the record -- layout,
-  painting, events, the tree -- stays C with it.
+- **A window's record is the platform's, in a map** (`_ctls`), not held on
+  the window: `c.held` needs a `#[c.release]` parameter, and none of
+  Win32's per-window slots -- `GWLP_USERDATA`, a property, a subclass's
+  reference data -- calls anything as the window goes, and
+  `SetWindowLongPtrW` is a macro on 386, which cgo cannot call. The runtime
+  hands the record a window made and gone (`_made`, `_forget`), from
+  `new_ctl` and `WM_NCDESTROY`.
 - **A pointer in a message's WPARAM or LPARAM** crosses where the
   declaration marks the parameter `#[c.type("LPARAM")]`
   (`design/nodes.md`): C casts it, and Go calls a C function taking the

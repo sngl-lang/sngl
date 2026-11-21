@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: f9ff3ef4f22ac3d0428236f1
+// The C sources, as a change to them builds this package again: 3e95db1089f2760312c423f2
 
 package cgo
 
@@ -26,6 +26,10 @@ static inline int snglF__gfxSerial(sngl_win32_gfx * a0) {
 }
 
 static inline LRESULT snglP__sendRect(HWND a0, UINT a1, WPARAM a2, RECT * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendSize(HWND a0, UINT a1, WPARAM a2, SIZE * a3) {
 	return SendMessageW(a0, a1, a2, (LPARAM)a3);
 }
 
@@ -327,6 +331,12 @@ type SendNotifyResult struct {
 type SendRectResult struct {
 	Result int
 	Out3   RECT
+}
+
+// SendSizeResult is what SendSize hands back.
+type SendSizeResult struct {
+	Result int
+	Out3   SIZE
 }
 
 // SetScrollInfoResult is what SetScrollInfo hands back.
@@ -971,6 +981,15 @@ func SendRect(to HWND, msg int, w int, r RECT) SendRectResult {
 	}()
 }
 
+// SendSize calls SendMessageW.
+func SendSize(to HWND, msg int, w int, s SIZE) SendSizeResult {
+	return func() SendSizeResult {
+		__snglOut3 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(s)
+		__snglResult := int(C.snglP__sendSize(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendSizeResult{Result: __snglResult, Out3: func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut3)}
+	}()
+}
+
 // SendTreeItem calls SendMessageW.
 func SendTreeItem(t HWND, msg int, w int, it TreeItem) int {
 	return int(C.snglP__sendTreeItem(t, C.UINT(msg), C.WPARAM(w), it))
@@ -1106,6 +1125,11 @@ func SnglWin32CarryFile(name string, data string, len int) {
 	C.sngl_win32_carry_file(__rel0, __rel1, C.int(len))
 	free(__rel1)
 	free(__rel0)
+}
+
+// SnglWin32CheckWidth calls sngl_win32_check_width.
+func SnglWin32CheckWidth(dpi int) int {
+	return int(C.sngl_win32_check_width(C.int(dpi)))
 }
 
 // SnglWin32Checkbox calls sngl_win32_checkbox.
@@ -1292,6 +1316,11 @@ func SnglWin32ImageFailure(i HWND) string {
 // SnglWin32IsOpen calls sngl_win32_is_open.
 func SnglWin32IsOpen(m HWND) bool {
 	return (C.sngl_win32_is_open(m) != 0)
+}
+
+// SnglWin32LineHeight calls sngl_win32_line_height.
+func SnglWin32LineHeight(w HWND) int {
+	return int(C.sngl_win32_line_height(w))
 }
 
 // SnglWin32Link calls sngl_win32_link.
@@ -1554,11 +1583,6 @@ func SnglWin32SetRow(t HWND, row int) {
 	C.sngl_win32_set_row(t, C.int(row))
 }
 
-// SnglWin32SetRows calls sngl_win32_set_rows.
-func SnglWin32SetRows(e HWND, rows int) {
-	C.sngl_win32_set_rows(e, C.int(rows))
-}
-
 // SnglWin32SetScaling calls sngl_win32_set_scaling.
 func SnglWin32SetScaling(w HWND, mode int) int {
 	return int(C.sngl_win32_set_scaling(w, C.int(mode)))
@@ -1706,6 +1730,15 @@ func SnglWin32TabsSize(w HWND, cx int, cy int, out SIZE) SIZE {
 // SnglWin32Text calls sngl_win32_text.
 func SnglWin32Text() HWND {
 	return C.sngl_win32_text()
+}
+
+// SnglWin32TextSize calls sngl_win32_text_size.
+func SnglWin32TextSize(w HWND, out SIZE) SIZE {
+	return func() SIZE {
+		__snglOut1 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(out)
+		C.sngl_win32_text_size(w, &__snglOut1)
+		return func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut1)
+	}()
 }
 
 // SnglWin32Textarea calls sngl_win32_textarea.
