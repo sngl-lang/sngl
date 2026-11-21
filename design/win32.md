@@ -135,9 +135,8 @@ made are win32.sngl's: each sends the message the control would, a
 `WM_COMMAND` (`_notify`) or a `WM_NOTIFY` whose `NMHDR`, `NMLISTVIEW` or
 `NMDATETIMECHANGE` it hands by `ref` through the `LPARAM`, the last two
 holding the header as a nested C struct. What they need of the record
-they ask the runtime for through small exported functions -- the first
-node of a kind in a window (`sngl_win32_find_kind`), a layout
-(`sngl_win32_relayout`) -- and what reads a wide buffer stays a C helper
+they read off it -- the first node of a kind in a window (`_findKind`), a
+layout (`_relayout`) -- and what reads a wide buffer stays a C helper
 answering a number or a handle (`sngl_win32_find_choice`,
 `sngl_win32_tree_find`). A function a test hands its instance is inlined
 into the test and may do no more than return (`TestInstanceReach`), so
@@ -149,46 +148,69 @@ same place: it keeps them in the order offered. Pin:
 and Go calling C directly, reading what each control shows through its own
 `peek.c`.
 
-**Where the rest of the runtime is held** (November 2026, 3,500 lines, from
-4,544 before the record moved; functions by what keeps them C):
+**The window procedures are the platform's** (`procs.sngl`). A box's and a
+toplevel's procedure and the one each control is subclassed with are
+`#[c.static(convention="CALLBACK")]` functions, which `_ctls`'s initializer
+hands `sngl_win32_procs`; the runtime registers its classes and subclasses
+each control with them. The handlers the program connected are closures in
+`_on`, a map beside `_ctls` rather than fields of it, since a layout copies
+records by the thousand; a record holds what the procedures read besides --
+its colors and its background's brush, what a link or a span leads to, a
+box's tip, a table's selection and sort, an image's fit, a modal's window
+and whether it is open and closable. So a click bubbling (`_press`), the
+colors a box answers (`_colored`, `_inherited`), the button a box draws
+(`_paintButton`), the tips, a modal shown over its window (`_showModal`), a
+toplevel's close and a window going are SNGL, and a test's click, close and
+scroll's end are raised there too. The runtime makes each window and SNGL
+makes its record as the function making it returns (`_made`). What the
+procedures still ask C they ask through small functions answering one
+thing (`sngl_win32.h`): a window painted where it draws pixels or rich text
+(`sngl_win32_paint`, a progress bar's `sngl_win32_paint_bar`), a picture's
+load and a fetch arrived, a post run and a timer's tick, a flow's link
+under a point, the hand cursor, whether the runtime is writing a control
+(its `quiet`), and the conversions a declaration cannot make: an LPARAM's
+window, a WPARAM's DC, a brush as an LRESULT, a rectangle filled through
+its `const RECT *`. A toplevel's `:visible` an `@run` handler holds back is
+told by a message of the runtime's (`SNGL_WM_VISIBLE`), so the loop's own
+C reaches no handler. Pin: `cmd/sngl/testdata/c_win32_procs_runs.txt`, what
+each procedure answers read off Win32 by its own `peek.c`, in C and Go,
+amd64 and 386, and Go calling C directly. Each message to a box or a
+control is a call from C into Go in a Go program; a relayout of 250 cards
+takes 15-18 ms a round in C and 19-24 ms in Go, against 14-17 and 16-20
+with the procedures in C (`tmp/realbench`, November 2026).
 
-- **the window procedures and the handlers**, movable and not moved yet:
-  `box_proc` and `control_proc` (some 450 lines) read the runtime's `ctl`
-  for the handlers the program connected, which `sngl_win32_on_*` keep as a
-  function, a context and a release, and fire on each notification. The
-  procedure is declarable (`#[c.static(convention="CALLBACK")]`, a class
-  registered by a C function taking it); the handlers would move into the
-  record as closures first, and `press`, `paint_button`, `color` and the
-  tips with them;
+**Where the rest of the runtime is held** (November 2026, 2,773 lines, from
+3,487 before the procedures moved; functions by what keeps them C):
+
 - **what reads `SetWindowLongPtrW` or `GetWindowLongPtrW`**, macros on 386
   that cgo cannot call: a divider's and a scroll's styles, a button's owner
   draw, a progress bar's marquee, a table's sort header, a modal's owner
   and close box, a toplevel's frame for its client size, a window's own
-  `WS_VISIBLE`: 9 functions, about 110 lines, each a small C function the
-  record's SNGL calls;
+  `WS_VISIBLE`, each a small C function the record's SNGL calls;
 - **fonts**: `LOGFONTW` and `NONCLIENTMETRICSW` hold arrays (`lfFaceName`),
   which no C struct SNGL declares may: `message_font`, `own_font`,
-  `look_font`, and the text measured in a font (`text_size`,
-  `line_height`, `select_size`, `tree_size`, `fit_columns`), 8 functions,
-  about 190 lines;
+  `look_font`, and the text measured or drawn in a font (`text_size`,
+  `line_height`, `select_size`, `tree_size`, `fit_columns`, a button's
+  label), with the record of each window's font and color C keeps;
 - **rich text**: a flow wraps and draws with `GetTextExtentExPointW`, which
   fills an array of advances: `flow_size`, `collect`, `add_piece`,
-  `add_font`, `inherit`, `link_under`, 6 functions, about 210 lines;
+  `add_font`, `inherit`, `link_under`; it reads the spans under a flow
+  through the record's children (`sngl_win32_procs`'s `nkids` and `kid`,
+  the last hooks C calls);
 - **wide strings C fills**, answered as UTF-8 or as a place
-  (`sngl_win32_get_text`, `selected`, `sorted`, `chosen`, `tree_find`,
+  (`sngl_win32_get_text`, `selected`, `column`, `chosen`, `tree_find`,
   `find_choice`), and a table's and a tree's rows parsed into `LVITEMW` and
-  `TVINSERTSTRUCTW` (a union): 18 functions, about 270 lines;
+  `TVINSERTSTRUCTW` (a union);
 - **raw pixels**: WIC's decode, a picture's bitmap scaled and painted, a
-  drawing's DIB, a canvas's GDI+ graphics, the capture and the snapshot:
-  15 functions, about 420 lines;
+  drawing's DIB, a canvas's GDI+ graphics, the capture and the snapshot;
 - **the language runtime's loop and its globals** (`sngl_post`, the loop,
   the windows shown and held, the carried files, the fetch thread),
-  **registering the classes and the process's DPI and manifest**, and
-  **timers**, whose `schedules` flag no bodied function carries: 25
-  functions, about 300 lines;
+  **making each window and registering the classes, the process's DPI and
+  manifest**, and **timers**, whose `schedules` flag no bodied function
+  carries;
 - **the runtime's own table** of its `ctl` (`ctl_of`, `ctl_put`,
-  `ctl_drop`, `new_ctl`, `control`, `forget`), which goes when the
-  handlers do.
+  `ctl_drop`, `new_ctl`), which holds what the four above keep beside a
+  window and goes only with them.
 
 **What holds the rest in C.** Each is a gap in the language, not a choice:
 
@@ -203,9 +225,9 @@ and Go calling C directly, reading what each control shows through its own
   the window: `c.held` needs a `#[c.release]` parameter, and none of
   Win32's per-window slots -- `GWLP_USERDATA`, a property, a subclass's
   reference data -- calls anything as the window goes, and
-  `SetWindowLongPtrW` is a macro on 386, which cgo cannot call. The runtime
-  hands the record a window made and gone (`_made`, `_forget`), from
-  `new_ctl` and `WM_NCDESTROY`.
+  `SetWindowLongPtrW` is a macro on 386, which cgo cannot call. The record
+  is made as the function making a window returns (`_made`) and dropped on
+  `WM_NCDESTROY` (`_forget`), both in SNGL.
 - **A pointer in a message's WPARAM or LPARAM** crosses where the
   declaration marks the parameter `#[c.type("LPARAM")]`
   (`design/nodes.md`): C casts it, and Go calls a C function taking the
@@ -486,17 +508,17 @@ thousands. It holds:
 - what its last layout found: its measured size, where it was put, a scroll's
   position and extent.
 
-What the runtime paints a window by -- its colors, font and brush, a
-picture's bitmap, a flow's words -- and the handlers the program connected
-stay in the runtime's `ctl` beside the record, which keeps the record's kind
-and DPI as well, since its painting and fonts read them.
+What the runtime measures and draws a window by -- its font, a picture's
+bitmap, a flow's words -- stays in the runtime's `ctl` beside the record,
+which keeps the record's kind and DPI as well, since its painting and fonts
+read them; the handlers the program connected are `_on`'s, beside the
+record.
 
-**The runtime reaches the record through functions SNGL hands it.** C cannot
-call SNGL by name, so `_ctls`'s initializer hands the runtime, through
-`sngl_win32_hooks`, `#[c.static]` functions for what it still asks of the
-record: a window made and gone, a layout asked for and run, a toplevel's
-layout and DPI, a scroll's bar and wheel, a tab chosen, a menu's command, a window's measure (`#[c.outs]`), its children and its padding.
-Each goes when its last C reader moves. The layout asks the runtime, the other
+**The runtime reaches the record through the window procedures.** Every
+message a window gets is SNGL's (`procs.sngl`): a layout asked for and run,
+a toplevel's size and DPI, a scroll's bar and wheel, a tab chosen, a menu's
+command. Rich text alone reads the record from C, a flow's spans through
+`sngl_win32_procs`'s `nkids` and `kid`. The layout asks the runtime, the other
 way, for what only it measures: a control's text in its font
 (`sngl_win32_natural`), a picture's size, a flow's height, a font for a DPI.
 A relayout of 250 cards, some 1,000 windows, takes about 14 ms a round in C
@@ -570,7 +592,7 @@ window, and its grid kept the 200 px a scroll measures at
 
 **A node with no background shows the nearest one around it.** Each box
 erases in the background of the nearest box holding it that has one
-(`inherited`), and answers a control's `WM_CTLCOLOR*` with it, as a browser
+(`_inherited`), and answers a control's `WM_CTLCOLOR*` with it, as a browser
 shows a box's background through what it holds. It had painted the class's
 face color, so a calculator's dark vbox showed only where nothing covered it.
 A look set redraws what it holds for the same reason.
@@ -578,7 +600,7 @@ A look set redraws what it holds for the same reason.
 **A button given a background is drawn by the runtime.** A push button's
 theme paints over whatever `WM_CTLCOLORBTN` answers, so a look with a
 background makes the button `BS_OWNERDRAW`, and its box draws it on
-`WM_DRAWITEM` (`paint_button`): flat in its background, darker while
+`WM_DRAWITEM` (`_paintButton`): flat in its background, darker while
 pressed, its text centered in its color.
 
 **A click bubbles.** Every override connects a node's `@click` whether the
@@ -586,7 +608,7 @@ program bound one or not, so a text or an image in a clickable card holds an
 empty handler of its own, and took the click from the card. A press on a box,
 on text (its `STN_CLICKED`) or on a picture, which lets the click through to
 its image, fires its own handler and then every one of the boxes holding it
-up to the toplevel (`press`), as a browser bubbles one. A button, a check box
+up to the toplevel (`_press`), as a browser bubbles one. A button, a check box
 and a link fire only their own. A test's trigger fires only the node's.
 
 **A picture paints once off screen.** It erases nothing and paints its

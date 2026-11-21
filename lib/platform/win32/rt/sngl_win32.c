@@ -19,14 +19,13 @@
 #define SNGL_WM_LAYOUT (WM_APP + 1)
 /* Work sngl_post queued, its handler the message's lParam. */
 #define SNGL_WM_POST (WM_APP + 2)
-/* A scroll's end arriving, reported once its layout is done. */
-#define SNGL_WM_REACHED (WM_APP + 3)
-/* A modal's open applied, once it is in the window it is shown over. */
-#define SNGL_WM_OPEN (WM_APP + 4)
 /* A picture's load reported to its image, once it is in one; and a fetch
  * arrived, the file it was saved to the message's lParam, or 0. */
 #define SNGL_WM_LOADED (WM_APP + 5)
 #define SNGL_WM_FETCHED (WM_APP + 6)
+/* A toplevel's :visible told, its wParam the value: as an @run handler
+ * holds it back and presents it. */
+#define SNGL_WM_VISIBLE (WM_APP + 7)
 
 enum sngl_kind { K_TOP, K_BOX, K_TEXT, K_BUTTON, K_EDIT, K_CHECK, K_SPACER, K_PROGRESS, K_AREA, K_SELECT, K_DIVIDER, K_LINK, K_RADIO, K_TABS, K_SCROLL, K_MODAL, K_ENTRY, K_TABLE, K_TREE, K_DATE, K_IMAGE, K_PICTURE, K_CANVAS, K_FLOW, K_SPAN };
 
@@ -43,48 +42,35 @@ struct link_at {
 };
 
 /* ctl is what the runtime keeps beside each node's window beyond its record,
- * which is sngl:platform/win32's (_Ctl): what C draws and reports it by. */
+ * which is sngl:platform/win32's (_Ctl): what C measures and draws it by. The
+ * record holds the rest -- its handlers, its colors' brush, its tip, a
+ * modal's window, a table's selection -- and the window procedures reading
+ * them (procs.sngl). */
 typedef struct {
 	enum sngl_kind kind;
-	int color, background, font_px;
-	/* framed is a box drawn with an etched edge inside its bounds. */
-	int framed;
+	/* color is what a flow's words and a progress bar's text are drawn
+	 * in, 0xRRGGBB or -1, and font_px its font's size, as its look sets
+	 * them (sngl_win32_set_paint). */
+	int color, font_px;
 	/* dpi is what its font is made for, the record's as its layout last
 	 * refreshed it (sngl_win32_refont). */
 	int dpi;
-	HFONT font;   /* the node's own, for a font_px; else the message font */
-	HBRUSH brush; /* its background's, for a background */
-	handler click, change, activate, closed;
-	/* visible is a toplevel's report of :visible, a sngl_win32_bool_fn. */
-	handler visible;
-	/* quiet is set while the runtime writes an edit's text, which Win32
-	 * reports as a change the program did not make. */
+	HFONT font; /* the node's own, for a font_px; else the message font */
+	/* quiet is set while the runtime writes an edit's text, or a table's,
+	 * a tree's or a date picker's, which Win32 reports as a change the
+	 * program did not make. */
 	int quiet;
 	/* fraction is a progress bar's, negative while it is indeterminate,
 	 * which show_text writes over it. */
 	double fraction;
 	int show_text;
-	/* href is a link's, opened as the user clicks it. */
+	/* href is a span's, which its flow draws as a link. */
 	WCHAR *href;
-	/* tip is what a box's children show as the pointer rests on them. */
-	WCHAR *tip;
-	/* row is a table's row selected. */
-	int row;
-	handler reach;
-	/* A modal is a node holding no room in its box, and dialog the window
-	 * it shows what it holds in while open, over the window it is in,
-	 * which modal_of names back. */
-	HWND dialog, modal_of;
-	int open, closable;
-	/* A table's: whether a row can be selected and a column sorted by, and
-	 * the column a header click last asked for. A tree's label selected. */
-	int selectable, sortable, sort_col;
+	/* A tree's label selected. */
 	WCHAR *chosen;
-	/* An image's fit (sngl_win32_set_fit), its handlers, and why its
-	 * picture failed; a picture's bitmap, its size, and what it shows,
-	 * and the bitmap scaled to the size it was last painted at. */
-	int fit;
-	handler load, failed;
+	/* Why an image's picture failed; a picture's bitmap, its size, and
+	 * what it shows, and the bitmap scaled to the size it was last painted
+	 * at. */
 	char *why;
 	HBITMAP bmp, scaled;
 	int bw, bh, sw, sh;
@@ -116,8 +102,6 @@ struct url_picture {
 };
 
 static int ready;
-/* firing is set while a test's event is raised. */
-static int firing;
 static HWND park;
 /* The message font at each DPI a window has been shown at. */
 static struct message_font {
@@ -210,76 +194,30 @@ static void ctl_drop(HWND w) {
 	nctls--;
 }
 
-/* What sngl:platform/win32 hands the runtime as its package starts: each
- * window's record and the layout reading it are the SNGL's (_Ctl, _ctls),
- * and what C still reads of them it reads through these. Before they are
- * handed over, no window has a record. */
+/* What sngl:platform/win32 hands the runtime as its package starts: the
+ * window procedures, a box's and a toplevel's and the one each control is
+ * subclassed with (procs.sngl), which its classes are registered with; and
+ * what rich text reads of each window's record, its children in order.
+ * Before they are handed over, the runtime makes no window. */
 static struct {
-	sngl_win32_hwnd_int2_hook made;
-	sngl_win32_hwnd_hook forget, relayout, lay_out_top, layout, tab_chosen;
-	sngl_win32_hwnd_int_hook command, refresh, wheel;
-	sngl_win32_hwnd_int2_hook scrolled;
-	sngl_win32_size_hook measure;
+	WNDPROC box;
+	SUBCLASSPROC control;
 	sngl_win32_count_hook nkids;
 	sngl_win32_kid_hook kid;
-	sngl_win32_ask_hook pad;
-} hooks;
+} procs;
 
-void sngl_win32_hooks(sngl_win32_hwnd_int2_hook made, sngl_win32_hwnd_hook forget, sngl_win32_hwnd_hook relayout, sngl_win32_hwnd_hook lay_out_top, sngl_win32_hwnd_hook layout, sngl_win32_hwnd_hook tab_chosen, sngl_win32_hwnd_int_hook command, sngl_win32_hwnd_int_hook refresh, sngl_win32_hwnd_int_hook wheel, sngl_win32_hwnd_int2_hook scrolled, sngl_win32_size_hook measure, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid, sngl_win32_ask_hook pad) {
-	hooks.made = made;
-	hooks.forget = forget;
-	hooks.relayout = relayout;
-	hooks.lay_out_top = lay_out_top;
-	hooks.layout = layout;
-	hooks.tab_chosen = tab_chosen;
-	hooks.command = command;
-	hooks.refresh = refresh;
-	hooks.wheel = wheel;
-	hooks.scrolled = scrolled;
-	hooks.measure = measure;
-	hooks.nkids = nkids;
-	hooks.kid = kid;
-	hooks.pad = pad;
-}
-
-/* relayout asks for the layout of the toplevel w is in (_relayout). */
-static void relayout(HWND w) {
-	if (hooks.relayout) {
-		hooks.relayout(w);
-	}
+void sngl_win32_procs(WNDPROC box, SUBCLASSPROC control, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid) {
+	procs.box = box;
+	procs.control = control;
+	procs.nkids = nkids;
+	procs.kid = kid;
+	sngl_win32_init();
 }
 
 /* nkids is how many children w's record holds, and kid the one at i. */
-static int nkids(HWND w) { return hooks.nkids ? hooks.nkids(w) : 0; }
+static int nkids(HWND w) { return procs.nkids ? procs.nkids(w) : 0; }
 
-static HWND kid(HWND w, int i) { return hooks.kid(w, i); }
-
-/* pad is one side of w's padding in SNGL px: 0 top, 1 right, 2 bottom, 3
- * left. */
-static int pad(HWND w, int side) { return hooks.pad ? hooks.pad(w, side) : 0; }
-
-static SIZE measure(HWND w) {
-	SIZE s = {0, 0};
-	int cx = 0, cy = 0;
-	if (hooks.measure) {
-		hooks.measure(w, &cx, &cy);
-		s.cx = cx;
-		s.cy = cy;
-	}
-	return s;
-}
-
-static void lay_out_top(HWND top) {
-	if (hooks.lay_out_top) {
-		hooks.lay_out_top(top);
-	}
-}
-
-static void refresh(HWND w, int dpi) {
-	if (hooks.refresh) {
-		hooks.refresh(w, dpi);
-	}
-}
+static HWND kid(HWND w, int i) { return procs.kid(w, i); }
 
 static int dpi_of(HWND w) {
 	if (dpi_for_window && w) {
@@ -358,29 +296,6 @@ static void fire(handler *h) {
 	}
 }
 
-/* press fires w's click and then each of the boxes' holding it, as a
- * browser bubbles one: every override connects a node's @click whether the
- * program wrote one or not, so a text or a picture in a clickable card holds
- * an empty one. Each is found before any fires, and fired only while its
- * window stands, since a handler may close the page it is on. */
-static void press(HWND w) {
-	HWND chain[64];
-	int n = 0;
-	for (HWND p = w; p && n < 64; p = GetParent(p)) {
-		ctl *c = ctl_of(p);
-		if (!c || c->kind == K_TOP) {
-			break;
-		}
-		chain[n++] = p;
-	}
-	for (int i = 0; i < n; i++) {
-		ctl *c = IsWindow(chain[i]) ? ctl_of(chain[i]) : NULL;
-		if (c) {
-			fire(&c->click);
-		}
-	}
-}
-
 static void drop_handler(handler *h) {
 	if (h->release) {
 		h->release(h->ctx);
@@ -397,24 +312,17 @@ static void set_handler(handler *h, sngl_win32_fn fn, void *ctx, sngl_win32_rele
 
 static int step(MSG *m);
 
-/* forget frees what w's record holds, as w goes. */
-static void forget(HWND w) {
+/* sngl_win32_forget frees what the runtime keeps beside w, as w goes, and
+ * counts a toplevel shown out of those on screen where `counted`. */
+void sngl_win32_forget(HWND w, int counted) {
+	if (counted) {
+		shown--;
+	}
 	ctl *c = ctl_of(w);
 	if (!c) {
 		return;
 	}
 	ctl_drop(w);
-	if (hooks.forget) {
-		hooks.forget(w);
-	}
-	drop_handler(&c->click);
-	drop_handler(&c->change);
-	drop_handler(&c->activate);
-	drop_handler(&c->closed);
-	drop_handler(&c->visible);
-	drop_handler(&c->reach);
-	drop_handler(&c->load);
-	drop_handler(&c->failed);
 	drop_handler(&c->paint);
 	free(c->words);
 	free(c->family);
@@ -434,21 +342,10 @@ static void forget(HWND w) {
 		}
 	}
 	free(c->pictures);
-	if (c->dialog) {
-		HWND owner = GetWindow(c->dialog, GW_OWNER);
-		if (c->open && owner) {
-			EnableWindow(owner, TRUE);
-		}
-		DestroyWindow(c->dialog);
-	}
 	if (c->font) {
 		DeleteObject(c->font);
 	}
-	if (c->brush) {
-		DeleteObject(c->brush);
-	}
 	free(c->href);
-	free(c->tip);
 	free(c->chosen);
 	free(c);
 }
@@ -456,8 +353,6 @@ static void forget(HWND w) {
 /* --- Layout --- */
 
 static const char *utf8(const WCHAR *wide);
-static void paint_button(DRAWITEMSTRUCT *di, ctl *c);
-static void touched(HWND w);
 
 /* text_size is w's text as its font draws it. */
 static SIZE text_size(HWND w) {
@@ -535,32 +430,6 @@ static SIZE select_size(HWND w, ctl *c) {
 	}
 	s.cy += px(10, c->dpi);
 	return s;
-}
-
-/* inherited is the nearest background among w and the boxes holding it,
- * as a node with none of its own shows its box's in a browser, or NULL
- * where none of them has one. */
-static ctl *inherited(HWND w) {
-	for (HWND p = w; p; p = GetParent(p)) {
-		ctl *c = ctl_of(p);
-		if (!c) {
-			break;
-		}
-		if (c->brush) {
-			return c;
-		}
-		if (c->kind == K_TOP) {
-			break;
-		}
-	}
-	return NULL;
-}
-
-/* backdrop is the brush w shows where it draws nothing: the inherited
- * background, or the class's. */
-static HBRUSH backdrop(HWND w) {
-	ctl *c = inherited(w);
-	return c ? c->brush : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND);
 }
 
 /* tree_size is a tree's: its widest row shown, as deep as it is, and every
@@ -775,8 +644,9 @@ static void collect(HWND w, span_look l, flow_text *t, HDC dc, int dpi) {
 }
 
 /* flow_size is the size a flow's words take wrapped at width, drawn into
- * draw where it is not NULL, which is where the flow's links are found. */
-static SIZE flow_size(HWND w, ctl *c, int width, HDC draw) {
+ * draw where it is not NULL, from x0, y0, which is where the flow's links
+ * are found. */
+static SIZE flow_size(HWND w, ctl *c, int width, HDC draw, int x0, int y0) {
 	HDC dc = draw ? draw : GetDC(w);
 	flow_text t;
 	memset(&t, 0, sizeof t);
@@ -829,7 +699,6 @@ static SIZE flow_size(HWND w, ctl *c, int width, HDC draw) {
 		size.cy += asc[i] + desc[i];
 	}
 	if (draw) {
-		int x0 = px(pad(w, 3), c->dpi), y0 = px(pad(w, 0), c->dpi);
 		free(c->links);
 		c->links = NULL;
 		c->nlinks = 0;
@@ -970,7 +839,7 @@ void sngl_win32_natural(HWND w, SIZE *out) {
 		 * gives it the whole of its width whatever it asks, and it wraps
 		 * there. */
 		int most = px(240, c->dpi);
-		s = flow_size(w, c, most, 0);
+		s = flow_size(w, c, most, 0, 0, 0);
 		if (s.cx > most) {
 			s.cx = most;
 		}
@@ -1004,7 +873,7 @@ int sngl_win32_picture_size(HWND w, SIZE *out) {
 /* sngl_win32_flow_height is the height a flow's words wrap to at width. */
 int sngl_win32_flow_height(HWND w, int width) {
 	ctl *c = ctl_of(w);
-	return c ? flow_size(w, c, width, 0).cy : 0;
+	return c ? flow_size(w, c, width, 0, 0, 0).cy : 0;
 }
 
 /* sngl_win32_refont gives w the font for dpi, the DPI of the toplevel it is
@@ -1075,53 +944,6 @@ void sngl_win32_tab_insert(HWND tabs, int at, HWND page) {
 	free(title);
 }
 
-/* sngl_win32_clicked fires w's click handler, as a tab's page hears its tab
- * chosen. */
-void sngl_win32_clicked(HWND w) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		fire(&c->click);
-	}
-}
-
-/* show_modal shows a modal's window over the window the modal is in,
- * disabling that one while it is open, or hides it and enables it again. */
-static void show_modal(HWND m, ctl *c) {
-	HWND owner = GetAncestor(m, GA_ROOT);
-	if (owner == park) {
-		owner = NULL;
-	}
-	HWND was = GetWindow(c->dialog, GW_OWNER);
-	if (c->open) {
-		if (IsWindowVisible(c->dialog)) {
-			return;
-		}
-		SetWindowLongPtrW(c->dialog, GWLP_HWNDPARENT, (LONG_PTR)owner);
-		ctl *d = ctl_of(c->dialog);
-		refresh(c->dialog, owner ? dpi_of(owner) : system_dpi);
-		SIZE s = measure(c->dialog);
-		RECT r = {0, 0, s.cx < px(240, d->dpi) ? px(240, d->dpi) : s.cx, s.cy < px(80, d->dpi) ? px(80, d->dpi) : s.cy};
-		AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(c->dialog, GWL_STYLE), GetMenu(c->dialog) != NULL, (DWORD)GetWindowLongPtrW(c->dialog, GWL_EXSTYLE));
-		int ww = r.right - r.left, wh = r.bottom - r.top, x = 0, y = 0;
-		RECT o;
-		if (owner && GetWindowRect(owner, &o)) {
-			x = o.left + (o.right - o.left - ww) / 2;
-			y = o.top + (o.bottom - o.top - wh) / 2;
-		}
-		SetWindowPos(c->dialog, HWND_TOP, x, y, ww, wh, SWP_NOACTIVATE);
-		ShowWindow(c->dialog, SW_SHOW);
-		lay_out_top(c->dialog);
-		if (owner) {
-			EnableWindow(owner, FALSE);
-		}
-	} else if (IsWindowVisible(c->dialog)) {
-		if (was) {
-			EnableWindow(was, TRUE);
-		}
-		ShowWindow(c->dialog, SW_HIDE);
-	}
-}
-
 /* --- Menus --- */
 
 /* sngl_win32_append_popup appends a submenu to m, whose handle AppendMenuW
@@ -1131,9 +953,10 @@ void sngl_win32_append_popup(HMENU m, UINT flags, HMENU sub, const unsigned shor
 /* tips is the tooltip every box with a tip shows its children's through. */
 static HWND tips;
 
-/* tip_tool gives child, one of box's, the tip text, or none where it is NULL
- * or empty. */
-static void tip_tool(HWND box, HWND child, const WCHAR *text) {
+/* sngl_win32_tip_tool gives child, one of box's, the tip text, or none
+ * where it is NULL or empty. */
+void sngl_win32_tip_tool(HWND box, HWND child, const unsigned short *tip) {
+	const WCHAR *text = (const WCHAR *)tip;
 	if (!tips) {
 		tips = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, NULL, WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, park, NULL, GetModuleHandleW(NULL), NULL);
 	}
@@ -1330,10 +1153,10 @@ static void load(HWND w, ctl *c) {
 	shown_as(w, c, bmp, bw, bh, why);
 }
 
-/* paint_picture draws a picture's bitmap into its w by h area as its
- * image's fit says: whole and centered, covering it, stretched over it, at
- * its own size, or whole and no larger than its own. */
-static void paint_picture(HWND w, ctl *c, HDC dc) {
+/* paint_picture draws a picture's bitmap into its w by h area, over
+ * backdrop, as its image's fit says: whole and centered, covering it,
+ * stretched over it, at its own size, or whole and no larger than its own. */
+static void paint_picture(HWND w, ctl *c, HDC dc, HBRUSH backdrop, int fit) {
 	RECT r;
 	GetClientRect(w, &r);
 	int aw = r.right, ah = r.bottom;
@@ -1346,10 +1169,8 @@ static void paint_picture(HWND w, ctl *c, HDC dc) {
 	HDC buf = CreateCompatibleDC(dc);
 	HBITMAP frame_bmp = CreateCompatibleBitmap(dc, aw, ah);
 	HGDIOBJ old_frame = SelectObject(buf, frame_bmp);
-	FillRect(buf, &r, backdrop(w));
+	FillRect(buf, &r, backdrop ? backdrop : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND));
 	if (c->bmp) {
-		ctl *frame = ctl_of(GetParent(w));
-		int fit = frame ? frame->fit : 0;
 		double sx = (double)aw / c->bw, sy = (double)ah / c->bh, sc;
 		switch (fit) {
 		case 1: /* cover */
@@ -1492,7 +1313,7 @@ static void gfx_begin(sngl_win32_gfx *g, GpGraphics *gr, HWND owner) {
 
 /* paint_canvas paints a canvas into dc: its background, and its drawing
  * mapped onto its client area as its scaling says, off screen first. */
-static void paint_canvas(HWND w, ctl *c, HDC dc) {
+static void paint_canvas(HWND w, ctl *c, HDC dc, HBRUSH own) {
 	RECT r;
 	GetClientRect(w, &r);
 	int aw = r.right, ah = r.bottom;
@@ -1502,7 +1323,7 @@ static void paint_canvas(HWND w, ctl *c, HDC dc) {
 	HDC mem = CreateCompatibleDC(dc);
 	HBITMAP bmp = CreateCompatibleBitmap(dc, aw, ah);
 	HGDIOBJ old = SelectObject(mem, bmp);
-	HBRUSH bg = c->brush ? c->brush : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND);
+	HBRUSH bg = own ? own : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND);
 	FillRect(mem, &r, bg);
 	sngl_win32_gfx g;
 	GpGraphics *gr = NULL;
@@ -1571,520 +1392,193 @@ static void render_drawing(HWND w, ctl *c) {
 	shown_as(w, c, bmp, iw, ih, NULL);
 }
 
-/* --- Window procedures --- */
+/* --- What the window procedures ask --- */
 
-static LRESULT color(ctl *c, HDC dc, LRESULT otherwise) {
-	if (!c) {
-		return otherwise;
-	}
-	if (c->color >= 0) {
-		SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
-	} else if (c->kind == K_LINK) {
-		SetTextColor(dc, IsWindowEnabled(c->self) ? GetSysColor(COLOR_HOTLIGHT) : GetSysColor(COLOR_GRAYTEXT));
-	}
-	if (c->brush) {
-		SetBkColor(dc, RGB((c->background >> 16) & 0xff, (c->background >> 8) & 0xff, c->background & 0xff));
-		return (LRESULT)c->brush;
-	}
-	return otherwise;
-}
+/* The window procedures are sngl:platform/win32's (procs.sngl), which ask
+ * the runtime for what it draws and keeps: a window painted, a picture's
+ * load, a fetch arrived, a post or a timer's tick, a flow's link, and the
+ * few conversions of a message's parameters a declaration does not make. */
 
-/* box_proc is a box's and a toplevel's: each control's notifications reach
- * the window it is in, which hands them to the control's record. */
-static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
+/* sngl_win32_paint paints w on WM_PAINT, or into the DC a WM_PRINTCLIENT
+ * hands it: a flow's words from its padding, a canvas over its own brush, a
+ * picture over the backdrop of the boxes holding it as its image's fit
+ * says, or a framed box's etched edge. */
+LRESULT sngl_win32_paint(HWND w, UINT msg, WPARAM wp, HBRUSH own, HBRUSH backdrop, int fit, int pad_top, int pad_right, int pad_left) {
 	ctl *c = ctl_of(w);
-	switch (msg) {
-	case WM_COMMAND: {
-		if (lp == 0 && HIWORD(wp) == 0 && c && c->kind == K_TOP) {
-			/* A menu's command, its entry's id. */
-			if (hooks.command) {
-				hooks.command(w, LOWORD(wp));
-			}
-			return 0;
+	PAINTSTRUCT ps;
+	HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
+	if (c && c->kind == K_FLOW) {
+		if (msg == WM_PRINTCLIENT) {
+			SendMessageW(w, WM_ERASEBKGND, wp, 0);
 		}
-		ctl *src = ctl_of((HWND)lp);
-		if (!src) {
-			break;
-		}
-		switch (HIWORD(wp)) {
-		case BN_CLICKED:
-			/* STN_CLICKED too, a text's or a link's. A test's click
-			 * reports it without opening anything. */
-			if (src->kind == K_LINK && src->href && src->href[0] && !firing) {
-				ShellExecuteW(NULL, L"open", src->href, NULL, NULL, SW_SHOWNORMAL);
-			}
-			if (src->kind == K_TEXT && !firing) {
-				press((HWND)lp);
-			} else {
-				fire(&src->click);
-			}
-			return 0;
-		case EN_CHANGE:
-			if (!src->quiet) {
-				fire(&src->change);
-			}
-			return 0;
-		case EN_KILLFOCUS:
-			/* A multi-line edit's text is committed as it is left, Enter
-			 * being a line of it. */
-			if (src->kind == K_AREA) {
-				fire(&src->activate);
-				return 0;
-			}
-			break;
-		case CBN_SELCHANGE:
-			/* BN_PAINT's code too, which only a BS_NOTIFY button sends. */
-			if (src->kind == K_SELECT) {
-				fire(&src->change);
-				return 0;
-			}
-			break;
-		}
-		break;
-	}
-	case WM_CTLCOLORSTATIC:
-	case WM_CTLCOLORBTN:
-	case WM_CTLCOLOREDIT: {
-		LRESULT otherwise = DefWindowProcW(w, msg, wp, lp);
-		ctl *src = ctl_of((HWND)lp);
-		ctl *under = src && !src->brush && msg != WM_CTLCOLOREDIT ? inherited((HWND)lp) : NULL;
-		if (under) {
-			/* A control with no background of its own shows its box's. */
-			SetBkMode((HDC)wp, TRANSPARENT);
-			color(src, (HDC)wp, 0);
-			return (LRESULT)under->brush;
-		}
-		return color(src, (HDC)wp, otherwise);
-	}
-	case WM_ERASEBKGND:
-		if (c && (c->kind == K_CANVAS || c->kind == K_PICTURE)) {
-			/* Its paint fills what it draws over, off screen, so it does
-			 * not flicker. */
-			return 1;
-		}
-		if (c && inherited(w)) {
-			RECT r;
-			GetClientRect(w, &r);
-			FillRect((HDC)wp, &r, backdrop(w));
-			return 1;
-		}
-		break;
-	case WM_DRAWITEM: {
-		DRAWITEMSTRUCT *di = (DRAWITEMSTRUCT *)lp;
-		ctl *src = ctl_of(di->hwndItem);
-		if (src && src->kind == K_BUTTON) {
-			paint_button(di, src);
-			return TRUE;
-		}
-		break;
-	}
-	case WM_NCHITTEST:
-		if (c && c->kind == K_PICTURE) {
-			/* Its image takes the click. */
-			return HTTRANSPARENT;
-		}
-		break;
-	case SNGL_WM_LOADED:
-		if (c && c->kind == K_PICTURE) {
-			ctl *frame = ctl_of(GetParent(w));
-			if (frame && frame->kind == K_IMAGE) {
-				free(frame->why);
-				frame->why = c->why ? _strdup(c->why) : NULL;
-				if (c->bmp) {
-					fire(&frame->load);
-				} else if (c->why) {
-					fire(&frame->failed);
-				}
-				relayout(w);
-			}
-		}
-		return 0;
-	case SNGL_WM_FETCHED: {
-		WCHAR *url = (WCHAR *)wp, *path = (WCHAR *)lp;
-		for (int i = 0; c && path && i < c->npictures; i++) {
-			struct url_picture *p = &c->pictures[i];
-			if (!p->bmp && wcscmp(p->url, url) == 0) {
-				const char *why = NULL;
-				p->bmp = decode(NULL, 0, path, &p->w, &p->h, &why);
-				if (c->kind == K_CANVAS) {
-					InvalidateRect(w, NULL, FALSE);
-				} else {
-					render_drawing(w, c);
-				}
-			}
-		}
-		/* A fetch for a URL the picture no longer shows is dropped: a
-		 * slow one may land after the one for its new URL. */
-		if (c && c->kind == K_PICTURE && c->url && wcscmp(c->url, url) == 0) {
-			const char *why = "the image could not be fetched";
-			int bw = 0, bh = 0;
-			HBITMAP bmp = path ? decode(NULL, 0, path, &bw, &bh, &why) : NULL;
-			shown_as(w, c, bmp, bw, bh, bmp ? NULL : why);
-		}
-		free(url);
-		free(path);
-		return 0;
-	}
-	case WM_PAINT:
-	case WM_PRINTCLIENT:
-		if (c && c->kind == K_FLOW) {
-			PAINTSTRUCT ps;
-			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
-			if (msg == WM_PRINTCLIENT) {
-				SendMessageW(w, WM_ERASEBKGND, wp, 0);
-			}
-			RECT r;
-			GetClientRect(w, &r);
-			flow_size(w, c, r.right - px(pad(w, 1) + pad(w, 3), c->dpi), dc);
-			if (msg != WM_PRINTCLIENT) {
-				EndPaint(w, &ps);
-			}
-			return 0;
-		}
-		if (c && c->kind == K_CANVAS) {
-			PAINTSTRUCT ps;
-			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
-			paint_canvas(w, c, dc);
-			if (msg != WM_PRINTCLIENT) {
-				EndPaint(w, &ps);
-			}
-			return 0;
-		}
-		if (c && c->kind == K_PICTURE) {
-			PAINTSTRUCT ps;
-			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
-			paint_picture(w, c, dc);
-			if (msg != WM_PRINTCLIENT) {
-				EndPaint(w, &ps);
-			}
-			return 0;
-		}
-		if (c && c->framed) {
-			PAINTSTRUCT ps;
-			HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : BeginPaint(w, &ps);
-			if (msg == WM_PRINTCLIENT) {
-				/* PrintWindow erases through this DC too. */
-				SendMessageW(w, WM_ERASEBKGND, wp, 0);
-			}
-			RECT r;
-			GetClientRect(w, &r);
-			DrawEdge(dc, &r, EDGE_ETCHED, BF_RECT);
-			if (msg != WM_PRINTCLIENT) {
-				EndPaint(w, &ps);
-			}
-			return 0;
-		}
-		break;
-	case WM_LBUTTONUP:
-		if (c && c->kind == K_FLOW) {
-			/* A link's words open where it leads. */
-			ctl *link = ctl_of(link_under(c, (short)LOWORD(lp), (short)HIWORD(lp)));
-			if (link && link->href && link->href[0]) {
-				ShellExecuteW(NULL, L"open", link->href, NULL, NULL, SW_SHOWNORMAL);
-			}
-			return 0;
-		}
-		/* A box with a click handler, a clickable card, is pressed as a
-		 * button is, wherever in it the click lands: on a box it holds,
-		 * or a picture, which lets the click through to its image. */
-		if (c && c->kind != K_TOP) {
-			press(w);
-			return 0;
-		}
-		break;
-	case WM_SETCURSOR:
-		if (c && c->click.fn && LOWORD(lp) == HTCLIENT) {
-			SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
-			return TRUE;
-		}
-		break;
-	case WM_SIZE:
-		if (c && c->kind == K_TOP) {
-			lay_out_top(w);
-		}
-		return 0;
-	case WM_NOTIFY: {
-		NMHDR *nm = (NMHDR *)lp;
-		ctl *src = ctl_of(nm->hwndFrom);
-		if (!src) {
-			break;
-		}
-		switch (src->kind) {
-		case K_TABS:
-			if (nm->code == TCN_SELCHANGE) {
-				if (hooks.tab_chosen) {
-					hooks.tab_chosen(nm->hwndFrom);
-				}
-				return 0;
-			}
-			break;
-		case K_TABLE: {
-			NMLISTVIEW *lv = (NMLISTVIEW *)lp;
-			if (nm->code == LVN_ITEMCHANGING && (lv->uChanged & LVIF_STATE) && (lv->uNewState & LVIS_SELECTED) && !src->selectable && !src->quiet) {
-				/* A table no row of which can be selected refuses it. */
-				return TRUE;
-			}
-			if (nm->code == LVN_ITEMCHANGED && (lv->uChanged & LVIF_STATE) && (lv->uNewState & LVIS_SELECTED) && !(lv->uOldState & LVIS_SELECTED) && !src->quiet) {
-				src->row = lv->iItem;
-				fire(&src->change);
-				return 0;
-			}
-			if (nm->code == LVN_COLUMNCLICK && src->sortable) {
-				src->sort_col = lv->iSubItem;
-				fire(&src->click);
-				return 0;
-			}
-			break;
-		}
-		case K_TREE:
-			if (nm->code == TVN_SELCHANGEDW && !src->quiet) {
-				fire(&src->change);
-				return 0;
-			}
-			if (nm->code == TVN_ITEMEXPANDEDW && !src->quiet) {
-				fire(&src->activate);
-				relayout(nm->hwndFrom);
-				return 0;
-			}
-			break;
-		case K_DATE:
-			if (nm->code == DTN_DATETIMECHANGE && !src->quiet) {
-				fire(&src->change);
-				return 0;
-			}
-			break;
-		default:
-			break;
-		}
-		break;
-	}
-	case WM_VSCROLL:
-	case WM_HSCROLL:
-		if (c && c->kind == K_SCROLL) {
-			if (hooks.scrolled) {
-				hooks.scrolled(w, msg == WM_VSCROLL ? SB_VERT : SB_HORZ, LOWORD(wp));
-			}
-			return 0;
-		}
-		break;
-	case WM_MOUSEWHEEL:
-		if (c && c->kind == K_SCROLL) {
-			/* What a precision touchpad sends a notch in pieces is
-			 * added up until it makes a line. */
-			if (hooks.wheel) {
-				hooks.wheel(w, GET_WHEEL_DELTA_WPARAM(wp));
-			}
-			return 0;
-		}
-		break;
-	case SNGL_WM_REACHED:
-		if (c) {
-			fire(&c->reach);
-		}
-		return 0;
-	case SNGL_WM_OPEN:
-		if (c && c->kind == K_MODAL) {
-			show_modal(w, c);
-		}
-		return 0;
-	case SNGL_WM_POST: {
-		handler *h = (handler *)lp;
-		fire(h);
-		drop_handler(h);
-		free(h);
-		return 0;
-	}
-	case WM_TIMER:
-		if (w == park) {
-			tick(wp);
-			return 0;
-		}
-		break;
-	case SNGL_WM_LAYOUT:
-		if (c && hooks.layout) {
-			hooks.layout(w);
-		}
-		return 0;
-	case WM_DPICHANGED:
-		/* Moved to a monitor of another DPI: the size Windows suggests,
-		 * and everything in it measured again at the new one. */
-		if (c && c->kind == K_TOP) {
-			RECT *r = (RECT *)lp;
-			refresh(w, HIWORD(wp));
-			SetWindowPos(w, NULL, r->left, r->top, r->right - r->left, r->bottom - r->top, SWP_NOZORDER | SWP_NOACTIVATE);
-			lay_out_top(w);
-			return 0;
-		}
-		break;
-	case WM_CLOSE:
-		if (c && c->modal_of) {
-			/* A modal's close is the program's to answer, by its open. */
-			ctl *m = ctl_of(c->modal_of);
-			if (m && m->closable) {
-				fire(&m->closed);
-			}
-			return 0;
-		}
-		if (c && c->kind == K_TOP) {
-			sngl_win32_set_visible(w, 0);
-			/* The program's write-back of :visible may take the window
-			 * away, and its record with it: @closed is held out of the
-			 * record while the two run, and handed back to it if it is
-			 * still there. */
-			handler closed = c->closed;
-			memset(&c->closed, 0, sizeof c->closed);
-			if (c->visible.fn) {
-				((sngl_win32_bool_fn)(void (*)(void))c->visible.fn)(0, c->visible.ctx);
-			}
-			fire(&closed);
-			ctl *still = IsWindow(w) ? ctl_of(w) : NULL;
-			if (still && !still->closed.fn) {
-				still->closed = closed;
-			} else {
-				drop_handler(&closed);
-			}
-			return 0;
-		}
-		break;
-	case WM_NCDESTROY:
-		if (c && c->kind == K_TOP && !c->modal_of && IsWindowVisible(w)) {
-			shown--;
-		}
-		forget(w);
-		break;
-	}
-	return DefWindowProcW(w, msg, wp, lp);
-}
-
-/* shade is rgb, 0xRRGGBB, darkened by a share of 256. */
-static COLORREF shade(int rgb, int by) {
-	int r = (rgb >> 16) & 0xff, g = (rgb >> 8) & 0xff, b = rgb & 0xff;
-	return RGB(r * (256 - by) / 256, g * (256 - by) / 256, b * (256 - by) / 256);
-}
-
-/* paint_button draws a button given a background, which a push button's
- * theme paints over: flat in its background, darker while pressed, as
- * gtk4's shades one under :active, and its text centered in its color. */
-static void paint_button(DRAWITEMSTRUCT *di, ctl *c) {
-	HDC dc = di->hDC;
-	RECT r = di->rcItem;
-	int pressed = (di->itemState & ODS_SELECTED) != 0;
-	HBRUSH fill = pressed ? CreateSolidBrush(shade(c->background, 48)) : NULL;
-	FillRect(dc, &r, fill ? fill : c->brush);
-	if (fill) {
-		DeleteObject(fill);
-	}
-	WCHAR stack[256];
-	int n = GetWindowTextLengthW(di->hwndItem);
-	WCHAR *buf = n < 256 ? stack : malloc(sizeof(WCHAR) * (size_t)(n + 1));
-	GetWindowTextW(di->hwndItem, buf, n + 1);
-	HGDIOBJ old = SelectObject(dc, font_of(c));
-	SetBkMode(dc, TRANSPARENT);
-	if (di->itemState & ODS_DISABLED) {
-		SetTextColor(dc, GetSysColor(COLOR_GRAYTEXT));
-	} else if (c->color >= 0) {
-		SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
+		RECT r;
+		GetClientRect(w, &r);
+		flow_size(w, c, r.right - px(pad_right + pad_left, c->dpi), dc, px(pad_left, c->dpi), px(pad_top, c->dpi));
+	} else if (c && c->kind == K_CANVAS) {
+		paint_canvas(w, c, dc, own);
+	} else if (c && c->kind == K_PICTURE) {
+		paint_picture(w, c, dc, backdrop, fit);
 	} else {
-		SetTextColor(dc, GetSysColor(COLOR_BTNTEXT));
+		if (msg == WM_PRINTCLIENT) {
+			/* PrintWindow erases through this DC too. */
+			SendMessageW(w, WM_ERASEBKGND, wp, 0);
+		}
+		RECT r;
+		GetClientRect(w, &r);
+		DrawEdge(dc, &r, EDGE_ETCHED, BF_RECT);
 	}
-	DrawTextW(dc, buf, n, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-	SelectObject(dc, old);
-	if (buf != stack) {
-		free(buf);
+	if (msg != WM_PRINTCLIENT) {
+		EndPaint(w, &ps);
 	}
-	if ((di->itemState & ODS_FOCUS) && !(di->itemState & ODS_NOFOCUSRECT)) {
-		RECT f = r;
-		InflateRect(&f, -px(3, c->dpi), -px(3, c->dpi));
-		DrawFocusRect(dc, &f);
-	}
+	return 0;
 }
 
-/* control_proc subclasses each control the runtime makes: Enter in an edit
- * is its activation, and a control going takes its record with it. */
-static LRESULT CALLBACK control_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp, UINT_PTR id, DWORD_PTR data) {
-	(void)id;
-	(void)data;
-	switch (msg) {
-	case WM_GETDLGCODE: {
-		/* An edit taking Enter as its activation claims the key, which
-		 * IsDialogMessage would take as the dialog's default button and
-		 * send the window, where it does nothing. */
-		ctl *c = ctl_of(w);
-		MSG *m = (MSG *)lp;
-		if (c && c->kind == K_EDIT && c->activate.fn && m && (m->message == WM_KEYDOWN || m->message == WM_CHAR) && (m->wParam == VK_RETURN || m->wParam == '\r')) {
-			return DefSubclassProc(w, msg, wp, lp) | DLGC_WANTALLKEYS;
-		}
-		break;
-	}
-	case WM_KEYDOWN:
-		if (wp == VK_RETURN) {
-			ctl *c = ctl_of(w);
-			if (c && c->kind == K_EDIT && c->activate.fn) {
-				fire(&c->activate);
-				return 0;
-			}
-		}
-		break;
-	case WM_CHAR:
-		if (wp == '\r') {
-			ctl *c = ctl_of(w);
-			if (c && c->kind == K_EDIT) {
-				/* No beep for the Enter the activation took. */
-				return 0;
-			}
-		}
-		break;
-	case WM_SETCURSOR: {
-		ctl *c = ctl_of(w);
-		if (c && c->kind == K_LINK) {
-			SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
-			return TRUE;
-		}
-		if (c && c->kind == K_FLOW) {
-			POINT pt;
-			GetCursorPos(&pt);
-			ScreenToClient(w, &pt);
-			if (link_under(c, pt.x, pt.y)) {
-				SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
-				return TRUE;
-			}
-		}
-		break;
-	}
-	case WM_PAINT:
-	case WM_PRINTCLIENT: {
-		/* A progress bar writes its text over what Win32 draws, as GTK's
-		 * does; PrintWindow, a snapshot's, asks for the client area with
-		 * WM_PRINTCLIENT and the DC it draws in. */
-		ctl *c = ctl_of(w);
-		if (!c || c->kind != K_PROGRESS || !c->show_text) {
-			break;
-		}
-		LRESULT r = DefSubclassProc(w, msg, wp, lp);
-		WCHAR buf[256];
-		bar_text(w, c, buf, 256);
-		HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : GetDC(w);
-		RECT rc;
-		GetClientRect(w, &rc);
-		HGDIOBJ old = SelectObject(dc, font_of(c));
-		SetBkMode(dc, TRANSPARENT);
-		if (c->color >= 0) {
-			SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
-		}
-		DrawTextW(dc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
-		SelectObject(dc, old);
-		if (msg != WM_PRINTCLIENT) {
-			ReleaseDC(w, dc);
-		}
+/* sngl_win32_paint_bar is a progress bar's paint: Win32's, and its text
+ * written over it where it shows any, as GTK's does; PrintWindow, a
+ * snapshot's, asks for the client area with WM_PRINTCLIENT and the DC it
+ * draws in. */
+LRESULT sngl_win32_paint_bar(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
+	ctl *c = ctl_of(w);
+	LRESULT r = DefSubclassProc(w, msg, wp, lp);
+	if (!c || !c->show_text) {
 		return r;
 	}
-	case WM_NCDESTROY:
-		RemoveWindowSubclass(w, control_proc, 1);
-		forget(w);
-		break;
+	WCHAR buf[256];
+	bar_text(w, c, buf, 256);
+	HDC dc = msg == WM_PRINTCLIENT ? (HDC)wp : GetDC(w);
+	RECT rc;
+	GetClientRect(w, &rc);
+	HGDIOBJ old = SelectObject(dc, font_of(c));
+	SetBkMode(dc, TRANSPARENT);
+	if (c->color >= 0) {
+		SetTextColor(dc, RGB((c->color >> 16) & 0xff, (c->color >> 8) & 0xff, c->color & 0xff));
 	}
-	return DefSubclassProc(w, msg, wp, lp);
+	DrawTextW(dc, buf, -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	SelectObject(dc, old);
+	if (msg != WM_PRINTCLIENT) {
+		ReleaseDC(w, dc);
+	}
+	return r;
 }
+
+/* sngl_win32_loaded hands a picture's load to the image framing it: why it
+ * failed, which sngl_win32_image_failure reads, and 1 where it shows a
+ * bitmap, 2 where it failed, and 0 for neither. */
+int sngl_win32_loaded(HWND picture, HWND frame) {
+	ctl *c = ctl_of(picture), *f = ctl_of(frame);
+	if (!c || !f) {
+		return 0;
+	}
+	free(f->why);
+	f->why = c->why ? _strdup(c->why) : NULL;
+	return c->bmp ? 1 : c->why ? 2 : 0;
+}
+
+/* sngl_win32_fetched takes a fetch's file, the message's lParam, or 0, for
+ * the URL its wParam holds: a canvas's picture painted again, a drawing's
+ * drawn again, or a picture shown. */
+void sngl_win32_fetched(HWND w, WPARAM wp, LPARAM lp) {
+	ctl *c = ctl_of(w);
+	WCHAR *url = (WCHAR *)wp, *path = (WCHAR *)lp;
+	for (int i = 0; c && path && i < c->npictures; i++) {
+		struct url_picture *p = &c->pictures[i];
+		if (!p->bmp && wcscmp(p->url, url) == 0) {
+			const char *why = NULL;
+			p->bmp = decode(NULL, 0, path, &p->w, &p->h, &why);
+			if (c->kind == K_CANVAS) {
+				InvalidateRect(w, NULL, FALSE);
+			} else {
+				render_drawing(w, c);
+			}
+		}
+	}
+	/* A fetch for a URL the picture no longer shows is dropped: a slow one
+	 * may land after the one for its new URL. */
+	if (c && c->kind == K_PICTURE && c->url && wcscmp(c->url, url) == 0) {
+		const char *why = "the image could not be fetched";
+		int bw = 0, bh = 0;
+		HBITMAP bmp = path ? decode(NULL, 0, path, &bw, &bh, &why) : NULL;
+		shown_as(w, c, bmp, bw, bh, bmp ? NULL : why);
+	}
+	free(url);
+	free(path);
+}
+
+/* sngl_win32_posted runs what sngl_post queued, the message's lParam. */
+void sngl_win32_posted(LPARAM lp) {
+	handler *h = (handler *)lp;
+	fire(h);
+	drop_handler(h);
+	free(h);
+}
+
+/* sngl_win32_timer ticks the timer wParam names, where w is the parked
+ * window that owns the timers, and answers whether it was. */
+int sngl_win32_timer(HWND w, WPARAM wp) {
+	if (w != park) {
+		return 0;
+	}
+	tick(wp);
+	return 1;
+}
+
+/* sngl_win32_link_under is the span leading where the link a flow drew at
+ * x, y does, or NULL, and sngl_win32_over_link whether the pointer is over
+ * one. */
+HWND sngl_win32_link_under(HWND flow, int x, int y) {
+	ctl *c = ctl_of(flow);
+	return c ? link_under(c, x, y) : NULL;
+}
+
+int sngl_win32_over_link(HWND flow) {
+	POINT pt;
+	GetCursorPos(&pt);
+	ScreenToClient(flow, &pt);
+	return sngl_win32_link_under(flow, pt.x, pt.y) != NULL;
+}
+
+/* sngl_win32_hand shows the hand, where what is under the pointer is
+ * clicked. */
+void sngl_win32_hand(void) { SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_HAND)); }
+
+/* What a message's parameter holds where it holds a handle: a window, a
+ * WM_COMMAND's lParam; a DC, a WM_CTLCOLOR*'s wParam; and the brush a
+ * WM_CTLCOLOR* answers. */
+HWND sngl_win32_window_of(LPARAM lp) { return (HWND)lp; }
+
+HDC sngl_win32_dc_of(WPARAM wp) { return (HDC)wp; }
+
+LRESULT sngl_win32_brush_answer(HBRUSH b) { return (LRESULT)b; }
+
+/* sngl_win32_brush is a brush of rgb, 0xRRGGBB, which sngl_win32_drop_brush
+ * deletes. */
+HBRUSH sngl_win32_brush(int rgb) { return CreateSolidBrush(RGB((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff)); }
+
+void sngl_win32_drop_brush(HBRUSH b) { DeleteObject(b); }
+
+/* sngl_win32_fill fills r of dc with b, or with w's class's background
+ * where b is NULL; sngl_win32_focus_rect draws the focus inside r. */
+void sngl_win32_fill(HWND w, HDC dc, RECT r, HBRUSH b) { FillRect(dc, &r, b ? b : (HBRUSH)GetClassLongPtrW(w, GCLP_HBRBACKGROUND)); }
+
+void sngl_win32_focus_rect(HDC dc, RECT r) { DrawFocusRect(dc, &r); }
+
+/* sngl_win32_draw_label draws text in r of dc in w's font, as format
+ * says. */
+void sngl_win32_draw_label(HWND w, HDC dc, const unsigned short *text, RECT r, UINT format) {
+	HGDIOBJ old = SelectObject(dc, font_of(ctl_of(w)));
+	DrawTextW(dc, (const WCHAR *)text, -1, &r, format);
+	SelectObject(dc, old);
+}
+
+/* sngl_win32_quiet is whether the runtime is writing w, which reports a
+ * change the program did not make. */
+int sngl_win32_quiet(HWND w) {
+	ctl *c = ctl_of(w);
+	return c && c->quiet;
+}
+
+/* sngl_win32_unsubclass takes w's subclass off it, as it goes. */
+void sngl_win32_unsubclass(HWND w) { RemoveWindowSubclass(w, procs.control, 1); }
 
 /* --- Making nodes --- */
 
@@ -2153,7 +1647,7 @@ static void common_controls_v6(void) {
 }
 
 void sngl_win32_init(void) {
-	if (ready) {
+	if (ready || !procs.box) {
 		return;
 	}
 	ready = 1;
@@ -2166,7 +1660,7 @@ void sngl_win32_init(void) {
 	WNDCLASSEXW wc;
 	memset(&wc, 0, sizeof wc);
 	wc.cbSize = sizeof wc;
-	wc.lpfnWndProc = box_proc;
+	wc.lpfnWndProc = procs.box;
 	wc.hInstance = inst;
 	wc.hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_ARROW);
 	wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
@@ -2178,9 +1672,10 @@ void sngl_win32_init(void) {
 	park = CreateWindowExW(0, SNGL_BOX_CLASS, L"", WS_POPUP, 0, 0, 0, 0, NULL, NULL, inst, NULL);
 }
 
-/* new_ctl gives w its record, or NULL where there is no w: Win32 made no
- * window, and each call on one is then a call on NULL, which Win32
- * refuses. */
+/* new_ctl gives w what the runtime keeps beside it, or NULL where there is
+ * no w: Win32 made no window, and each call on one is then a call on NULL,
+ * which Win32 refuses. Its record is the platform's, which it makes as the
+ * function making w returns (_made). */
 static ctl *new_ctl(HWND w, enum sngl_kind kind) {
 	if (!w) {
 		return NULL;
@@ -2188,12 +1683,9 @@ static ctl *new_ctl(HWND w, enum sngl_kind kind) {
 	ctl *c = calloc(1, sizeof *c);
 	c->kind = kind;
 	c->dpi = dpi_of(w);
-	c->color = c->background = -1;
+	c->color = -1;
 	c->self = w;
 	ctl_put(w, c);
-	if (hooks.made) {
-		hooks.made(w, (int)kind, c->dpi);
-	}
 	return c;
 }
 
@@ -2205,7 +1697,7 @@ static HWND control(LPCWSTR class, DWORD style, DWORD ex, enum sngl_kind kind) {
 	new_ctl(w, kind);
 	SendMessageW(w, WM_SETFONT, (WPARAM)font_of(ctl_of(w)), FALSE);
 	if (kind != K_BOX && kind != K_SPACER) {
-		SetWindowSubclass(w, control_proc, 1, 0);
+		SetWindowSubclass(w, procs.control, 1, 0);
 	}
 	return w;
 }
@@ -2226,14 +1718,6 @@ void sngl_win32_divider_style(HWND w, int vertical) {
 	InvalidateRect(w, NULL, TRUE);
 }
 
-void sngl_win32_set_framed(HWND box, int framed) {
-	ctl *c = ctl_of(box);
-	if (c) {
-		c->framed = framed != 0;
-		InvalidateRect(box, NULL, TRUE);
-	}
-}
-
 /* sngl_win32_show shows or hides w, and answers whether it was shown or
  * hidden otherwise, by Win32 or its own style. */
 int sngl_win32_show(HWND w, int on) {
@@ -2252,50 +1736,33 @@ void sngl_win32_scroll_style(HWND w, int vertical, int horizontal) {
 	SetWindowPos(w, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 }
 
-void sngl_win32_set_tip(HWND box, const unsigned short *tip) {
-	ctl *c = ctl_of(box);
-	if (!c) {
-		return;
-	}
-	free(c->tip);
-	c->tip = _wcsdup((const WCHAR *)tip);
-	for (int i = 0, n = nkids(box); i < n; i++) {
-		tip_tool(box, kid(box, i), c->tip);
-	}
+/* sngl_win32_closable gives a modal's window a close button, or none. */
+void sngl_win32_closable(HWND dialog, int closable) {
+	LONG_PTR style = GetWindowLongPtrW(dialog, GWL_STYLE) & ~(LONG_PTR)WS_SYSMENU;
+	SetWindowLongPtrW(dialog, GWL_STYLE, style | (closable ? WS_SYSMENU : 0));
+	SetWindowPos(dialog, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 }
 
-void sngl_win32_set_open(HWND m, int open) {
-	ctl *c = ctl_of(m);
-	if (c && c->kind == K_MODAL) {
-		c->open = open != 0;
-		/* Applied once the modal is in the window it shows over. */
-		PostMessageW(m, SNGL_WM_OPEN, 0, 0);
-	}
+/* sngl_win32_set_owner makes owner, or none, the window a modal's is shown
+ * over. */
+void sngl_win32_set_owner(HWND dialog, HWND owner) { SetWindowLongPtrW(dialog, GWLP_HWNDPARENT, (LONG_PTR)owner); }
+
+/* sngl_win32_frame_size is the size w's frame takes for a client area of cw
+ * by ch. */
+void sngl_win32_frame_size(HWND w, int cw, int ch, SIZE *out) {
+	RECT r = {0, 0, cw, ch};
+	AdjustWindowRectEx(&r, (DWORD)GetWindowLongPtrW(w, GWL_STYLE), GetMenu(w) != NULL, (DWORD)GetWindowLongPtrW(w, GWL_EXSTYLE));
+	out->cx = r.right - r.left;
+	out->cy = r.bottom - r.top;
 }
 
-int sngl_win32_is_open(HWND m) {
-	ctl *c = ctl_of(m);
-	return c && c->dialog && IsWindowVisible(c->dialog);
-}
-
-void sngl_win32_set_closable(HWND m, int closable) {
-	ctl *c = ctl_of(m);
-	if (!c || !c->dialog) {
-		return;
-	}
-	c->closable = closable != 0;
-	LONG_PTR style = GetWindowLongPtrW(c->dialog, GWL_STYLE) & ~(LONG_PTR)WS_SYSMENU;
-	SetWindowLongPtrW(c->dialog, GWL_STYLE, style | (c->closable ? WS_SYSMENU : 0));
-	SetWindowPos(c->dialog, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-}
-
+/* sngl_win32_set_href is what a span leads to, which its flow draws as a
+ * link. */
 void sngl_win32_set_href(HWND w, const unsigned short *href) {
 	ctl *c = ctl_of(w);
 	if (c) {
 		free(c->href);
 		c->href = _wcsdup((const WCHAR *)href);
-		/* A span's, which its flow draws as a link. */
-		touched(w);
 	}
 }
 
@@ -2335,30 +1802,16 @@ HWND sngl_win32_scroll(void) { return control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, W
 
 HWND sngl_win32_modal(void) {
 	HWND w = control(SNGL_BOX_CLASS, 0, 0, K_MODAL);
-	ctl *c = ctl_of(w);
-	if (!c) {
-		return w;
-	}
 	ShowWindow(w, SW_HIDE);
-	c->dialog = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_CONTROLPARENT, SNGL_TOP_CLASS, L"", WS_POPUP | WS_CAPTION | WS_CLIPCHILDREN, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
-	ctl *d = new_ctl(c->dialog, K_TOP);
-	if (d) {
-		d->modal_of = w;
-	}
 	return w;
 }
 
-/* sngl_win32_dialog is the window a modal shows what it holds in, and
- * sngl_win32_host the window what is put in parent goes in: a modal's
- * dialog, and otherwise parent. */
-HWND sngl_win32_dialog(HWND m) {
-	ctl *c = ctl_of(m);
-	return c ? c->dialog : NULL;
-}
-
-HWND sngl_win32_host(HWND parent) {
-	ctl *c = ctl_of(parent);
-	return c && c->kind == K_MODAL ? c->dialog : parent;
+/* sngl_win32_dialog is the window a modal shows what it holds in, a
+ * toplevel owned by the window the modal is in while it is open. */
+HWND sngl_win32_dialog(void) {
+	HWND d = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_CONTROLPARENT, SNGL_TOP_CLASS, L"", WS_POPUP | WS_CAPTION | WS_CLIPCHILDREN, 0, 0, 0, 0, park, NULL, GetModuleHandleW(NULL), NULL);
+	new_ctl(d, K_TOP);
+	return d;
 }
 
 HWND sngl_win32_entry(void) {
@@ -2373,10 +1826,6 @@ HWND sngl_win32_entry(void) {
 HWND sngl_win32_table(void) {
 	HWND w = control(WC_LISTVIEWW, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_TABSTOP, WS_EX_CLIENTEDGE, K_TABLE);
 	SendMessageW(w, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-	ctl *c = ctl_of(w);
-	if (c) {
-		c->row = -1;
-	}
 	return w;
 }
 
@@ -2507,7 +1956,7 @@ static void select_row(HWND w, ctl *c, int at) {
 	c->quiet--;
 }
 
-void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned short *rows) {
+void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned short *rows, int row) {
 	ctl *c = ctl_of(w);
 	if (!c) {
 		return;
@@ -2520,46 +1969,32 @@ void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned
 	cell_at at = {w, 0, 0};
 	split((const WCHAR *)rows, L'\n', add_row, &at);
 	fit_columns(w, c);
-	select_row(w, c, c->row);
+	select_row(w, c, row);
 	c->quiet--;
-	relayout(w);
 }
 
-void sngl_win32_set_row(HWND w, int row) {
+void sngl_win32_select_row(HWND w, int row) {
 	ctl *c = ctl_of(w);
 	if (c) {
-		c->row = row;
 		select_row(w, c, row);
 	}
 }
 
-int sngl_win32_row(HWND w) {
-	ctl *c = ctl_of(w);
-	return c ? c->row : -1;
-}
-
-void sngl_win32_set_table(HWND w, int selectable, int sortable) {
-	ctl *c = ctl_of(w);
-	if (!c) {
-		return;
-	}
-	c->selectable = selectable != 0;
-	c->sortable = sortable != 0;
+/* sngl_win32_sort_header lets a table's column headers be clicked, or
+ * not. */
+void sngl_win32_sort_header(HWND w, int sortable) {
 	LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE) & ~(LONG_PTR)LVS_NOSORTHEADER;
-	SetWindowLongPtrW(w, GWL_STYLE, style | (c->sortable ? 0 : LVS_NOSORTHEADER));
+	SetWindowLongPtrW(w, GWL_STYLE, style | (sortable ? 0 : LVS_NOSORTHEADER));
 }
 
-const char *sngl_win32_sorted(HWND w) {
-	ctl *c = ctl_of(w);
+const char *sngl_win32_column(HWND w, int col) {
 	WCHAR buf[256] = {0};
-	LVCOLUMNW col;
-	memset(&col, 0, sizeof col);
-	col.mask = LVCF_TEXT;
-	col.pszText = buf;
-	col.cchTextMax = 256;
-	if (c) {
-		SendMessageW(w, LVM_GETCOLUMNW, (WPARAM)c->sort_col, (LPARAM)&col);
-	}
+	LVCOLUMNW lc;
+	memset(&lc, 0, sizeof lc);
+	lc.mask = LVCF_TEXT;
+	lc.pszText = buf;
+	lc.cchTextMax = 256;
+	SendMessageW(w, LVM_GETCOLUMNW, (WPARAM)col, (LPARAM)&lc);
 	return utf8(buf);
 }
 
@@ -2663,7 +2098,6 @@ void sngl_win32_fill_tree(HWND w, const unsigned short *lines, const unsigned sh
 	free(f.open);
 	tree_select(w, c);
 	c->quiet--;
-	relayout(w);
 }
 
 void sngl_win32_set_chosen(HWND w, const unsigned short *label) {
@@ -2757,22 +2191,6 @@ HWND sngl_win32_span(void) {
 	return w;
 }
 
-/* touched draws the flow w is in again, and lays it out where its words now
- * wrap to another height. */
-static void touched(HWND w) {
-	for (HWND at = w; at; at = GetParent(at)) {
-		ctl *c = ctl_of(at);
-		if (!c || (c->kind != K_SPAN && c->kind != K_FLOW)) {
-			return;
-		}
-		if (c->kind == K_FLOW) {
-			InvalidateRect(at, NULL, TRUE);
-			relayout(at);
-			return;
-		}
-	}
-}
-
 static WCHAR *dup16(const unsigned short *s) { return s && s[0] ? _wcsdup((const WCHAR *)s) : NULL; }
 
 void sngl_win32_set_words(HWND w, const unsigned short *words) {
@@ -2780,7 +2198,6 @@ void sngl_win32_set_words(HWND w, const unsigned short *words) {
 	if (c) {
 		free(c->words);
 		c->words = dup16(words);
-		touched(w);
 	}
 }
 
@@ -2795,7 +2212,6 @@ void sngl_win32_set_span_style(HWND w, int color, int size, int weight, int slan
 		c->sp_strike = strike;
 		free(c->family);
 		c->family = dup16(family);
-		touched(w);
 	}
 }
 
@@ -2804,26 +2220,25 @@ HWND sngl_win32_canvas(void) {
 	return control(SNGL_BOX_CLASS, 0, 0, K_CANVAS);
 }
 
-static void canvas_size(HWND w, int *at, int v) {
+/* canvas_size answers whether the size changed, and its record lays it
+ * out again (_rtSetCanvasWidth). */
+static int canvas_size(HWND w, int *at, int v) {
 	if (*at != v) {
 		*at = v;
 		InvalidateRect(w, NULL, FALSE);
-		relayout(w);
+		return 1;
 	}
+	return 0;
 }
 
-void sngl_win32_set_canvas_width(HWND w, int width) {
+int sngl_win32_set_canvas_width(HWND w, int width) {
 	ctl *c = ctl_of(w);
-	if (c) {
-		canvas_size(w, &c->cw, width);
-	}
+	return c ? canvas_size(w, &c->cw, width) : 0;
 }
 
-void sngl_win32_set_canvas_height(HWND w, int height) {
+int sngl_win32_set_canvas_height(HWND w, int height) {
 	ctl *c = ctl_of(w);
-	if (c) {
-		canvas_size(w, &c->ch, height);
-	}
+	return c ? canvas_size(w, &c->ch, height) : 0;
 }
 
 /* sngl_win32_set_scaling answers whether the scaling changed, and its
@@ -2888,16 +2303,6 @@ void sngl_win32_drawing_redraw(HWND w) {
 	}
 }
 
-void sngl_win32_set_fit(HWND w, int fit) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		c->fit = fit;
-		for (int i = 0, n = nkids(w); i < n; i++) {
-			InvalidateRect(kid(w, i), NULL, TRUE);
-		}
-	}
-}
-
 void sngl_win32_set_url(HWND w, const unsigned short *url) {
 	ctl *c = ctl_of(w);
 	if (!c || (c->url && wcscmp(c->url, (const WCHAR *)url) == 0)) {
@@ -2913,34 +2318,11 @@ const char *sngl_win32_image_failure(HWND w) {
 	return c && c->why ? c->why : "";
 }
 
-void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		set_handler(&c->load, fn, ctx, release);
-	}
-}
-
-void sngl_win32_on_failed(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		set_handler(&c->failed, fn, ctx, release);
-	}
-}
-
 HWND sngl_win32_radio(void) { return control(L"BUTTON", BS_AUTORADIOBUTTON | WS_TABSTOP, 0, K_RADIO); }
 
 HWND sngl_win32_select(void) { return control(WC_COMBOBOXW, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP, 0, K_SELECT); }
 
 /* --- The tree --- */
-
-/* sngl_win32_tip_child gives child, one of box's, box's tip, or takes it
- * away. */
-void sngl_win32_tip_child(HWND box, HWND child, int on) {
-	ctl *c = ctl_of(box);
-	if (c && c->tip) {
-		tip_tool(box, child, on ? c->tip : NULL);
-	}
-}
 
 /* sngl_win32_nothing is no window, which a slot's anchor is in a container
  * keeping none. */
@@ -2949,14 +2331,11 @@ HWND sngl_win32_nothing(void) { return NULL; }
 /* sngl_win32_show_attached shows a toplevel attach sized, or holds it back
  * while an @run handler has not called run, which node's :visible hears. */
 void sngl_win32_show_attached(HWND top, HWND node) {
-	ctl *c = ctl_of(node);
 	if (holding) {
 		/* Not shown yet, which the window's :visible hears. */
 		held = realloc(held, sizeof(HWND) * (size_t)(nheld + 1));
 		held[nheld++] = top;
-		if (c && c->visible.fn) {
-			((sngl_win32_bool_fn)(void (*)(void))c->visible.fn)(0, c->visible.ctx);
-		}
+		SendMessageW(node, SNGL_WM_VISIBLE, 0, 0);
 	} else {
 		sngl_win32_set_visible(top, 1);
 	}
@@ -2968,34 +2347,13 @@ void sngl_win32_present(void) {
 	holding = 0;
 	for (int i = 0; i < nheld; i++) {
 		if (IsWindow(held[i])) {
-			ctl *c = ctl_of(held[i]);
 			sngl_win32_set_visible(held[i], 1);
-			if (c && c->visible.fn) {
-				((sngl_win32_bool_fn)(void (*)(void))c->visible.fn)(1, c->visible.ctx);
-			}
+			SendMessageW(held[i], SNGL_WM_VISIBLE, 1, 0);
 		}
 	}
 	free(held);
 	held = NULL;
 	nheld = 0;
-}
-
-void sngl_win32_detach(HWND top) {
-	ctl *c = ctl_of(top);
-	if (c && c->kind != K_TOP) {
-		/* The window attach made it. */
-		HWND made = GetAncestor(top, GA_ROOT);
-		if (made != park) {
-			top = made;
-		}
-	}
-	/* Hidden first, so it is counted out of what is on screen: Windows
-	 * hides a window it destroys before telling it, which no count sees. */
-	ctl *t = ctl_of(top);
-	if (t && t->kind == K_TOP && !t->modal_of) {
-		sngl_win32_set_visible(top, 0);
-	}
-	DestroyWindow(top);
 }
 
 /* --- Props --- */
@@ -3084,10 +2442,12 @@ void sngl_win32_set_edit_text(HWND w, const unsigned short *text) {
 	}
 }
 
-void sngl_win32_set_fraction(HWND w, double fraction) {
+/* sngl_win32_set_fraction answers whether the bar writes its fraction over
+ * itself, and its record lays it out again (_rtSetFraction). */
+int sngl_win32_set_fraction(HWND w, double fraction) {
 	ctl *c = ctl_of(w);
 	if (!c) {
-		return;
+		return 0;
 	}
 	c->fraction = fraction;
 	LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE);
@@ -3102,18 +2462,17 @@ void sngl_win32_set_fraction(HWND w, double fraction) {
 		SendMessageW(w, PBM_SETPOS, (WPARAM)(fraction > 1 ? 10000 : (int)(fraction * 10000 + 0.5)), 0);
 	}
 	InvalidateRect(w, NULL, TRUE);
-	if (c->show_text) {
-		relayout(w);
-	}
+	return c->show_text;
 }
 
-void sngl_win32_set_show_text(HWND w, int show) {
+int sngl_win32_set_show_text(HWND w, int show) {
 	ctl *c = ctl_of(w);
 	if (c && c->show_text != (show != 0)) {
 		c->show_text = show != 0;
 		InvalidateRect(w, NULL, TRUE);
-		relayout(w);
+		return 1;
 	}
+	return 0;
 }
 
 int sngl_win32_find_choice(HWND w, const unsigned short *label) {
@@ -3163,80 +2522,29 @@ HWND sngl_win32_shown(void) {
 	return shown_last;
 }
 
-void sngl_win32_set_look(HWND w, sngl_win32_look look) {
+/* sngl_win32_owner_draw has a push button drawn by its box, as its theme
+ * paints one whatever WM_CTLCOLORBTN answers, or by its theme again. */
+void sngl_win32_owner_draw(HWND w, int on) {
+	LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE) & ~(LONG_PTR)BS_TYPEMASK;
+	SetWindowLongPtrW(w, GWL_STYLE, style | (on ? BS_OWNERDRAW : BS_PUSHBUTTON));
+}
+
+/* sngl_win32_set_paint is what of a look C draws a node by, its text's
+ * color and its font's size, which it is drawn again in, with what it
+ * holds, since what has no background of its own shows the one its look
+ * sets (_paintLook). */
+void sngl_win32_set_paint(HWND w, int color, int font_px) {
 	ctl *c = ctl_of(w);
 	if (!c) {
 		return;
 	}
-	/* What it asks of a layout is its record's (_look), which lays it out
-	 * again after this. */
-	int color = look.color, background = look.background, font_px = look.fontPx;
 	c->color = color;
-	if (c->brush) {
-		DeleteObject(c->brush);
-		c->brush = NULL;
-	}
-	c->background = background;
-	if (background >= 0) {
-		c->brush = CreateSolidBrush(RGB((background >> 16) & 0xff, (background >> 8) & 0xff, background & 0xff));
-	}
-	if (c->kind == K_BUTTON) {
-		/* Its theme paints a push button whatever WM_CTLCOLORBTN
-		 * answers, so one given a background is drawn by the runtime. */
-		LONG_PTR style = GetWindowLongPtrW(w, GWL_STYLE) & ~(LONG_PTR)BS_TYPEMASK;
-		SetWindowLongPtrW(w, GWL_STYLE, style | (c->brush ? BS_OWNERDRAW : BS_PUSHBUTTON));
-	}
 	if (font_px != c->font_px) {
 		c->font_px = font_px;
 		own_font(c);
 		SendMessageW(w, WM_SETFONT, (WPARAM)font_of(c), TRUE);
 	}
-	/* What has no background of its own shows this one's. */
 	RedrawWindow(w, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
-}
-
-/* --- Events --- */
-
-void sngl_win32_on_click(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		set_handler(&c->click, fn, ctx, release);
-	}
-}
-
-void sngl_win32_on_change(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		set_handler(&c->change, fn, ctx, release);
-	}
-}
-
-void sngl_win32_on_activate(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		set_handler(&c->activate, fn, ctx, release);
-	}
-}
-
-void sngl_win32_on_closed(HWND top, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(top);
-	if (c) {
-		set_handler(&c->closed, fn, ctx, release);
-	}
-}
-
-void sngl_win32_on_reach_end(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		set_handler(&c->reach, fn, ctx, release);
-	}
-}
-
-void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win32_release release) {
-	ctl *c = ctl_of(top);
-	if (c) {
-		set_handler(&c->visible, (sngl_win32_fn)(void (*)(void))fn, ctx, release);
-	}
 }
 
 /* --- A test's events --- */
@@ -3244,12 +2552,6 @@ void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win3
 /* notify sends the control's notification to the window it is in. */
 static void notify(HWND w, WORD code) {
 	SendMessageW(GetParent(w), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(w), code), (LPARAM)w);
-}
-
-void sngl_win32_fire_click(HWND w) {
-	firing = 1;
-	notify(w, BN_CLICKED);
-	firing = 0;
 }
 
 void sngl_win32_fire_change(HWND w, const unsigned short *text) {
@@ -3268,22 +2570,6 @@ void sngl_win32_fire_activate(HWND w, const unsigned short *text) {
 	 * IsDialogMessage first. */
 	MSG m = {.hwnd = w, .message = WM_KEYDOWN, .wParam = VK_RETURN};
 	step(&m);
-}
-
-void sngl_win32_fire_close(HWND top) {
-	ctl *c = ctl_of(top);
-	if (c && c->kind == K_MODAL) {
-		/* A modal's close is its window's. */
-		top = c->dialog;
-	}
-	SendMessageW(top, WM_CLOSE, 0, 0);
-}
-
-void sngl_win32_fire_reach_end(HWND w) {
-	ctl *c = ctl_of(w);
-	if (c) {
-		fire(&c->reach);
-	}
 }
 
 /* --- The loop --- */

@@ -149,10 +149,6 @@ func _handle(n ui.node) api.HWND
 // attaches it and destroyed, with everything in it, when it detaches it. Any
 // other node attached -- a test's component, a program with no window -- is
 // shown in a window of its own, which goes with it.
-#[c.native("sngl_win32_detach")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Detach")]
-func _rtDetach(n ui.node)
-
 #[gen.protocol(attach)]
 func _attach(n ui.node) {
     _attachNode(_handle(n))
@@ -160,7 +156,7 @@ func _attach(n ui.node) {
 
 #[gen.protocol(detach)]
 func _detach(n ui.node) {
-    _rtDetach(n)
+    _detachNode(_handle(n))
 }
 
 // A node's children, which every container shares: a child appended last,
@@ -187,34 +183,19 @@ func _rtRemove(parent ui.node, child ui.node) {
     _removeFrom(_handle(parent), _handle(child))
 }
 
-// A handler the runtime calls with its context, which it releases when the
-// window it was connected to goes.
-#[c.native("sngl_win32_on_click")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnClick")]
-func _rtOnClick(
-    w ui.node,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+// A handler the window procedures call (procs.sngl), which goes with the
+// window it was connected to.
+func _rtOnClick(w ui.node, fn func()) {
+    _onClick(_handle(w), fn)
+}
 
-#[c.native("sngl_win32_on_change")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnChange")]
-func _rtOnChange(
-    w ui.node,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtOnChange(w ui.node, fn func()) {
+    _onChange(_handle(w), fn)
+}
 
-#[c.native("sngl_win32_on_activate")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnActivate")]
-func _rtOnActivate(
-    w ui.node,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtOnActivate(w ui.node, fn func()) {
+    _onActivate(_handle(w), fn)
+}
 
 // A control's or a toplevel's text, which the runtime measures it by again.
 func _rtSetText(w ui.node, text string) {
@@ -244,12 +225,6 @@ struct Look {
     fontPx     int
     hidden     int
 }
-
-// What of a look the runtime paints a node by: its colors and font size
-// (_look, layout.sngl, sets the rest).
-#[c.native("sngl_win32_set_look")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetLook")]
-func _paintLook(w ui.node, look Look)
 
 // What a window's paint is asked to cover again: all of it, where NULL.
 // win32gen writes no InvalidateRect, whose rectangle is a `const RECT *`.
@@ -336,7 +311,13 @@ component Window(title string, :visible bool = true, @closed(), content ...compo
 
 #[c.native("sngl_win32_toplevel")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Toplevel")]
-func _rtToplevel() Window
+func _rtToplevelWindow() Window
+
+func _rtToplevel() Window {
+    var w = _rtToplevelWindow()
+    _made(_windowHandle(w), _kTop)
+    return w
+}
 
 #[c.native("sngl_win32_set_visible")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetVisible")]
@@ -359,14 +340,9 @@ func _rtWindowInsert(parent Window, child ui.node, before ui.node) {
     _insertTo(_windowHandle(parent), _handle(child), _handle(before))
 }
 
-#[c.native("sngl_win32_on_closed")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnClosed")]
-func _rtWindowOnClosed(
-    w Window,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtWindowOnClosed(w Window, fn func()) {
+    _onClosed(_windowHandle(w), fn)
+}
 
 #[gen.protocol(create)]
 func _create_Window() Window {
@@ -404,23 +380,18 @@ func _on_Window_closed(w Window, closed func()) {
     _rtWindowOnClosed(w, closed)
 }
 
-#[c.native("sngl_win32_fire_close")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireClose")]
-func _rtFireClose(w Window)
+func _rtFireClose(w Window) {
+    _fireClose(_windowHandle(w))
+}
 
 #[gen.fires("closed")]
 func _fire_Window_closed(w Window) {
     _rtFireClose(w)
 }
 
-#[c.native("sngl_win32_on_visible")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnVisible")]
-func _rtWindowOnVisible(
-    w Window,
-    #[c.type("sngl_win32_bool_fn")] fn func(visible bool),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtWindowOnVisible(w Window, fn func(visible bool)) {
+    _onVisible(_windowHandle(w), fn)
+}
 
 // The window manager's close hides the window, which reaches `:visible` as
 // false before `@closed` is reported.
@@ -464,9 +435,9 @@ component Box(
     children ...component ui.node,
 ) ui.node
 
-#[c.native("sngl_win32_set_tip")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetTip")]
-func _rtSetTip(b Box, tip c.utf16)
+func _rtSetTip(b Box, tip string) {
+    _setTip(_handle(b), tip)
+}
 
 func _rtSetMode(b Box, mode int) {
     _setMode(_handle(b), mode)
@@ -487,6 +458,7 @@ func _rtBoxWindow() Box
 func _rtBox(vertical bool) Box {
     var b = _rtBoxWindow()
     var w = _handle(b)
+    _made(w, _kBox)
     if _ctls.contains(w) {
         _ctls[w].vertical = vertical
     }
@@ -585,7 +557,13 @@ component Spacer(look Look) ui.node
 
 #[c.native("sngl_win32_spacer")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Spacer")]
-func _rtSpacer() Spacer
+func _rtSpacerWindow() Spacer
+
+func _rtSpacer() Spacer {
+    var n = _rtSpacerWindow()
+    _made(_handle(n), _kSpacer)
+    return n
+}
 
 #[gen.protocol(create)]
 func _create_Spacer() Spacer {
@@ -606,7 +584,13 @@ component Text(value string, look Look, @click()) ui.node
 
 #[c.native("sngl_win32_text")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Text")]
-func _rtText() Text
+func _rtTextWindow() Text
+
+func _rtText() Text {
+    var n = _rtTextWindow()
+    _made(_handle(n), _kText)
+    return n
+}
 
 #[gen.protocol(create)]
 func _create_Text() Text {
@@ -639,7 +623,13 @@ component Button(text string, enabled bool = true, look Look, @click()) ui.node
 
 #[c.native("sngl_win32_button")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Button")]
-func _rtButton() Button
+func _rtButtonWindow() Button
+
+func _rtButton() Button {
+    var n = _rtButtonWindow()
+    _made(_handle(n), _kButton)
+    return n
+}
 
 #[gen.protocol(create)]
 func _create_Button() Button {
@@ -666,9 +656,9 @@ func _on_Button_click(b Button, click func()) {
     _rtOnClick(b, click)
 }
 
-#[c.native("sngl_win32_fire_click")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireClick")]
-func _rtFireClick(w ui.node)
+func _rtFireClick(w ui.node) {
+    _fireClick(_handle(w))
+}
 
 #[gen.fires("click")]
 func _fire_Button_click(b Button) {
@@ -682,7 +672,13 @@ component CheckBox(label string, checked bool, enabled bool = true, look Look, @
 
 #[c.native("sngl_win32_checkbox")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Checkbox")]
-func _rtCheckBox() CheckBox
+func _rtCheckBoxWindow() CheckBox
+
+func _rtCheckBox() CheckBox {
+    var n = _rtCheckBoxWindow()
+    _made(_handle(n), _kCheck)
+    return n
+}
 
 func _rtSetChecked(b CheckBox, checked bool) {
     _setCheck(b, checked)
@@ -742,7 +738,13 @@ component Edit(look Look, @change(), @activate()) ui.node
 
 #[c.native("sngl_win32_edit")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Edit")]
-func _rtEdit() Edit
+func _rtEditWindow() Edit
+
+func _rtEdit() Edit {
+    var n = _rtEditWindow()
+    _made(_handle(n), _kEdit)
+    return n
+}
 
 // An edit's text, a multi-line one's included, read off it.
 #[c.native("sngl_win32_get_text")]
@@ -800,7 +802,13 @@ component Divider(vertical bool, look Look) ui.node
 
 #[c.native("sngl_win32_divider")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Divider")]
-func _rtDivider() Divider
+func _rtDividerWindow() Divider
+
+func _rtDivider() Divider {
+    var n = _rtDividerWindow()
+    _made(_handle(n), _kDivider)
+    return n
+}
 
 func _rtSetDividerVertical(d Divider, vertical bool) {
     _setVertical(_handle(d), vertical)
@@ -828,12 +836,31 @@ component Link(text string, href string, enabled bool, look Look, @click()) ui.n
 
 #[c.native("sngl_win32_link")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Link")]
-func _rtLink() Link
+func _rtLinkWindow() Link
 
-// What a link, or a span, opens.
+func _rtLink() Link {
+    var n = _rtLinkWindow()
+    _made(_handle(n), _kLink)
+    return n
+}
+
+// What a link, or a span, opens; a span's the runtime draws its flow's
+// words by.
 #[c.native("sngl_win32_set_href")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetHref")]
-func _rtSetHref(l ui.node, href c.utf16)
+func _rtHref(w api.HWND, href c.utf16)
+
+func _setHref(w api.HWND, href string) {
+    if _ctls.contains(w) {
+        _ctls[w].href = href
+    }
+    _rtHref(w, href)
+    _touched(w)
+}
+
+func _rtSetHref(l ui.node, href string) {
+    _setHref(_handle(l), href)
+}
 
 #[gen.protocol(create)]
 func _create_Link() Link {
@@ -877,7 +904,13 @@ component Radio(label string, checked bool, enabled bool, look Look, @click()) u
 
 #[c.native("sngl_win32_radio")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Radio")]
-func _rtRadio() Radio
+func _rtRadioWindow() Radio
+
+func _rtRadio() Radio {
+    var n = _rtRadioWindow()
+    _made(_handle(n), _kRadio)
+    return n
+}
 
 func _rtSetRadioChecked(b Radio, checked bool) {
     _setCheck(b, checked)
@@ -925,7 +958,13 @@ component TextArea(rows int, look Look, @change(), @commit()) ui.node
 
 #[c.native("sngl_win32_textarea")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Textarea")]
-func _rtTextArea() TextArea
+func _rtTextAreaWindow() TextArea
+
+func _rtTextArea() TextArea {
+    var n = _rtTextAreaWindow()
+    _made(_handle(n), _kArea)
+    return n
+}
 
 // The lines a multi-line edit is measured to show, 0 for three.
 func _rtSetRows(e TextArea, rows int) {
@@ -979,15 +1018,36 @@ component Progress(fraction float, text string, showText bool, look Look) ui.nod
 
 #[c.native("sngl_win32_progress")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Progress")]
-func _rtProgress() Progress
+func _rtProgressWindow() Progress
+
+func _rtProgress() Progress {
+    var n = _rtProgressWindow()
+    _made(_handle(n), _kProgress)
+    return n
+}
 
 #[c.native("sngl_win32_set_fraction")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetFraction")]
-func _rtSetFraction(p Progress, fraction float)
+func _fraction(p api.HWND, fraction float) int
 
 #[c.native("sngl_win32_set_show_text")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetShowText")]
-func _rtSetShowText(p Progress, show bool)
+func _showText(p api.HWND, show bool) int
+
+// A bar writing its fraction over itself measures it.
+func _rtSetFraction(p Progress, fraction float) {
+    var w = _handle(p)
+    if _fraction(w, fraction) != 0 {
+        _relayout(w)
+    }
+}
+
+func _rtSetShowText(p Progress, show bool) {
+    var w = _handle(p)
+    if _showText(w, show) != 0 {
+        _relayout(w)
+    }
+}
 
 #[gen.protocol(create)]
 func _create_Progress() Progress {
@@ -1021,7 +1081,13 @@ component Select(enabled bool, look Look, @change()) ui.node
 
 #[c.native("sngl_win32_select")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Select")]
-func _rtSelect() Select
+func _rtSelectWindow() Select
+
+func _rtSelect() Select {
+    var n = _rtSelectWindow()
+    _made(_handle(n), _kSelect)
+    return n
+}
 
 #[c.native("SendMessageW")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.AddString")]
@@ -1100,7 +1166,13 @@ component TabPage(title string, enabled bool, @change(), content ...component ui
 
 #[c.native("sngl_win32_tabs")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Tabs")]
-func _rtTabs() Tabs
+func _rtTabsWindow() Tabs
+
+func _rtTabs() Tabs {
+    var n = _rtTabsWindow()
+    _made(_handle(n), _kTabs)
+    return n
+}
 
 func _rtSetSelected(t Tabs, selected int) {
     _setSelected(_handle(t), selected)
@@ -1123,6 +1195,7 @@ func _rtTabPageWindow() TabPage
 func _rtTabPage(vertical bool) TabPage {
     var p = _rtTabPageWindow()
     var w = _handle(p)
+    _made(w, _kBox)
     if _ctls.contains(w) {
         _ctls[w].vertical = vertical
     }
@@ -1211,6 +1284,7 @@ func _rtScrollWindow() Scroll
 // Down, until its axes are set.
 func _rtScroll() Scroll {
     var s = _rtScrollWindow()
+    _made(_handle(s), _kScroll)
     _setScroll(_handle(s), true, false)
     return s
 }
@@ -1219,18 +1293,13 @@ func _rtSetScroll(s Scroll, vertical bool, horizontal bool) {
     _setScroll(_handle(s), vertical, horizontal)
 }
 
-#[c.native("sngl_win32_on_reach_end")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnReachEnd")]
-func _rtOnReachEnd(
-    w Scroll,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtOnReachEnd(w Scroll, fn func()) {
+    _onReach(_handle(w), fn)
+}
 
-#[c.native("sngl_win32_fire_reach_end")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireReachEnd")]
-func _rtFireReachEnd(s Scroll)
+func _rtFireReachEnd(s Scroll) {
+    _reached(_handle(s))
+}
 
 #[gen.protocol(create)]
 func _create_Scroll() Scroll {
@@ -1283,11 +1352,22 @@ component Modal(title string, open bool, closable bool, @closed(), content ...co
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Modal")]
 func _rtModalWindow() Modal
 
+#[c.native("sngl_win32_dialog")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Dialog")]
+func _rtDialog() api.HWND
+
 // Its window lays out what it holds down it, spaced as a dialog is.
 func _rtModal() Modal {
     var m = _rtModalWindow()
-    var d = _dialogOf(_handle(m))
+    var w = _handle(m)
+    _made(w, _kModal)
+    var d = _rtDialog()
+    _made(d, _kTop)
+    if _ctls.contains(w) {
+        _ctls[w].dialog = _asFound(d)
+    }
     if _ctls.contains(d) {
+        _ctls[d].modalOf = _asFound(w)
         _ctls[d].gap = 6
         _ctls[d].padTop = 12
         _ctls[d].padRight = 12
@@ -1297,31 +1377,41 @@ func _rtModal() Modal {
     return m
 }
 
-#[c.native("sngl_win32_set_open")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetOpen")]
-func _rtSetOpen(m Modal, open bool)
+// Shown or hidden once the modal is in the window it shows over.
+func _rtSetOpen(m Modal, open bool) {
+    var w = _handle(m)
+    if _ctls.contains(w) {
+        _ctls[w].open = open
+        api.PostMessage(w, _wmOpen, 0, 0)
+    }
+}
 
-#[c.native("sngl_win32_set_closable")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetClosable")]
-func _rtSetClosable(m Modal, closable bool)
+func _rtSetClosable(m Modal, closable bool) {
+    var w = _handle(m)
+    var d = _ctls.contains(w) ? _ctls[w].dialog : null
+    if d != null {
+        _ctls[w].closable = closable
+        _closable(_found(d), closable)
+    }
+}
 
-#[c.native("sngl_win32_on_closed")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnClosed")]
-func _rtModalOnClosed(
-    m Modal,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtModalOnClosed(m Modal, fn func()) {
+    _onClosed(_handle(m), fn)
+}
 
-#[c.native("sngl_win32_fire_close")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireClose")]
-func _rtFireModalClose(m Modal)
+func _rtFireModalClose(m Modal) {
+    _fireClose(_handle(m))
+}
 
 // Whether a modal's window is shown.
-#[c.native("sngl_win32_is_open")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32IsOpen")]
-func isOpen(m Modal) bool
+func isOpen(m Modal) bool {
+    return _isOpen(_handle(m))
+}
+
+func _isOpen(m api.HWND) bool {
+    var d = _ctls.contains(m) ? _ctls[m].dialog : null
+    return d != null && api.IsWindowVisible(_found(d)) != 0
+}
 
 #[gen.protocol(create)]
 func _create_Modal() Modal {
@@ -1382,6 +1472,7 @@ func _rtEntryWindow() MenuEntry
 func _rtEntry() MenuEntry {
     var e = _rtEntryWindow()
     var w = _handle(e)
+    _made(w, _kEntry)
     if _ctls.contains(w) {
         _ctls[w].id = _entryId()
     }
@@ -1455,34 +1546,84 @@ component Table(enabled bool, look Look, @select(), @sort()) ui.node
 
 #[c.native("sngl_win32_table")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Table")]
-func _rtTable() Table
+func _rtTableWindow() Table
+
+func _rtTable() Table {
+    var n = _rtTableWindow()
+    _made(_handle(n), _kTable)
+    return n
+}
 
 // Whether a table's rows can be selected, and its rows sorted by a column
 // whose header is clicked.
-#[c.native("sngl_win32_set_table")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetTable")]
-func setTable(t Table, selectable bool, sortable bool)
+func setTable(t Table, selectable bool, sortable bool) {
+    _setTable(_handle(t), selectable, sortable)
+}
+
+func _setTable(w api.HWND, selectable bool, sortable bool) {
+    if _ctls.contains(w) {
+        _ctls[w].selectable = selectable
+        _ctls[w].sortable = sortable
+        _sortHeader(w, sortable)
+    }
+}
+
+#[c.native("sngl_win32_sort_header")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SortHeader")]
+func _sortHeader(w api.HWND, sortable bool)
 
 // Gives a table its columns, `columns` one a line, and its rows, `rows` one
 // a line of cells separated by tabs, reporting nothing.
+func fillTable(t Table, columns string, rows string) {
+    _fillTable(_handle(t), columns, rows)
+}
+
 #[c.native("sngl_win32_fill_table")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FillTable")]
-func fillTable(t Table, columns c.utf16, rows c.utf16)
+func _fillRows(w api.HWND, columns c.utf16, rows c.utf16, row int)
+
+func _fillTable(w api.HWND, columns string, rows string) {
+    _fillRows(w, columns, rows, _rowOf(w))
+    _relayout(w)
+}
 
 // Selects a table's row `row`, or none where it is negative, unreported.
-#[c.native("sngl_win32_set_row")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetRow")]
-func selectRow(t Table, row int)
+func selectRow(t Table, row int) {
+    _selectRow(_handle(t), row)
+}
+
+#[c.native("sngl_win32_select_row")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SelectRow")]
+func _rtSelectRow(w api.HWND, row int)
+
+func _selectRow(w api.HWND, row int) {
+    if _ctls.contains(w) {
+        _ctls[w].row = row
+        _rtSelectRow(w, row)
+    }
+}
 
 // The row a table has selected, or -1.
-#[c.native("sngl_win32_row")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Row")]
-func selectedRow(t Table) int
+func selectedRow(t Table) int {
+    return _rowOf(_handle(t))
+}
+
+func _rowOf(w api.HWND) int {
+    return _ctls.contains(w) ? _ctls[w].row : -1
+}
 
 // The header of the column the user last clicked.
-#[c.native("sngl_win32_sorted")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Sorted")]
-func sortedColumn(t Table) string
+func sortedColumn(t Table) string {
+    return _sortedColumn(_handle(t))
+}
+
+#[c.native("sngl_win32_column")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Column")]
+func _column(w api.HWND, col int) string
+
+func _sortedColumn(w api.HWND) string {
+    return _column(w, _ctls.contains(w) ? _ctls[w].sortCol : 0)
+}
 
 #[gen.protocol(create)]
 func _create_Table() Table {
@@ -1516,14 +1657,29 @@ component Tree(look Look, @select(), @expand()) ui.node
 
 #[c.native("sngl_win32_tree")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Tree")]
-func _rtTree() Tree
+func _rtTreeWindow() Tree
+
+func _rtTree() Tree {
+    var n = _rtTreeWindow()
+    _made(_handle(n), _kTree)
+    return n
+}
 
 // Gives a tree its nodes, `lines` one a line, each indented a tab a level,
 // expanding those whose places in that order `expanded` lists, comma
 // separated.
+func fillTree(t Tree, lines string, expanded string) {
+    _fillTree(_handle(t), lines, expanded)
+}
+
 #[c.native("sngl_win32_fill_tree")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FillTree")]
-func fillTree(t Tree, lines c.utf16, expanded c.utf16)
+func _fillNodes(w api.HWND, lines c.utf16, expanded c.utf16)
+
+func _fillTree(w api.HWND, lines string, expanded string) {
+    _fillNodes(w, lines, expanded)
+    _relayout(w)
+}
 
 // Selects the node labeled `label`, unreported.
 #[c.native("sngl_win32_set_chosen")]
@@ -1562,7 +1718,13 @@ component DatePicker(enabled bool, look Look, @change()) ui.node
 
 #[c.native("sngl_win32_date")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Date")]
-func _rtDate() DatePicker
+func _rtDateWindow() DatePicker
+
+func _rtDate() DatePicker {
+    var n = _rtDateWindow()
+    _made(_handle(n), _kDate)
+    return n
+}
 
 // Shows the date `iso`, "YYYY-MM-DD", or none where it is "", unreported.
 #[c.native("sngl_win32_set_date")]
@@ -1856,15 +2018,34 @@ component Picture(url string) ui.imageSource
 
 #[c.native("sngl_win32_image")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Image")]
-func _rtImage() Image
+func _rtImageWindow() Image
+
+func _rtImage() Image {
+    var n = _rtImageWindow()
+    _made(_handle(n), _kImage)
+    return n
+}
 
 #[c.native("sngl_win32_picture")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Picture")]
-func _rtPicture() Picture
+func _rtPictureWindow() Picture
 
-#[c.native("sngl_win32_set_fit")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetFit")]
-func _rtSetFit(i Image, fit int)
+func _rtPicture() Picture {
+    var n = _rtPictureWindow()
+    _made(_pictureHandle(n), _kPicture)
+    return n
+}
+
+// How an image's picture fills it, which paints itself fitted again.
+func _rtSetFit(i Image, fit int) {
+    var w = _handle(i)
+    if _ctls.contains(w) {
+        _ctls[w].fit = fit
+        for var child = _ctls[w].kids {
+            _invalidate(child)
+        }
+    }
+}
 
 #[c.native("sngl_win32_set_url")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetUrl")]
@@ -1875,23 +2056,13 @@ func _rtSetUrl(p Picture, url c.utf16)
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ImageFailure")]
 func imageFailure(i Image) string
 
-#[c.native("sngl_win32_on_load")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnLoad")]
-func _rtOnLoad(
-    i Image,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtOnLoad(i Image, fn func()) {
+    _onLoad(_handle(i), fn)
+}
 
-#[c.native("sngl_win32_on_failed")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnFailed")]
-func _rtOnFailed(
-    i Image,
-    #[c.type("sngl_win32_fn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
-)
+func _rtOnFailed(i Image, fn func()) {
+    _onFailed(_handle(i), fn)
+}
 
 #[gen.protocol(create)]
 func _create_Image() Image {
@@ -2246,7 +2417,13 @@ component ImageDrawing(
 
 #[c.native("sngl_win32_drawing")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Drawing")]
-func _rtDrawing() ImageDrawing
+func _rtDrawingWindow() ImageDrawing
+
+func _rtDrawing() ImageDrawing {
+    var n = _rtDrawingWindow()
+    _made(_drawingHandle(n), _kPicture)
+    return n
+}
 
 #[c.native("sngl_win32_set_drawing_width")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetDrawingWidth")]
@@ -2296,15 +2473,36 @@ func _redraw_ImageDrawing(w ImageDrawing) {
 
 #[c.native("sngl_win32_canvas")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Canvas")]
-func _rtCanvas() Canvas
+func _rtCanvasWindow() Canvas
+
+func _rtCanvas() Canvas {
+    var n = _rtCanvasWindow()
+    _made(_handle(n), _kCanvas)
+    return n
+}
 
 #[c.native("sngl_win32_set_canvas_width")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetCanvasWidth")]
-func _rtSetCanvasWidth(w Canvas, width int)
+func _canvasWidth(w api.HWND, width int) int
 
 #[c.native("sngl_win32_set_canvas_height")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetCanvasHeight")]
-func _rtSetCanvasHeight(w Canvas, height int)
+func _canvasHeight(w api.HWND, height int) int
+
+// A canvas measures at the size of its drawing's space.
+func _rtSetCanvasWidth(w Canvas, width int) {
+    var h = _handle(w)
+    if _canvasWidth(h, width) != 0 {
+        _relayout(h)
+    }
+}
+
+func _rtSetCanvasHeight(w Canvas, height int) {
+    var h = _handle(w)
+    if _canvasHeight(h, height) != 0 {
+        _relayout(h)
+    }
+}
 
 #[c.native("sngl_win32_set_scaling")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetScaling")]
@@ -2439,15 +2637,64 @@ component Span(
 
 #[c.native("sngl_win32_flow")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Flow")]
-func _rtFlow() Flow
+func _rtFlowWindow() Flow
+
+func _rtFlow() Flow {
+    var n = _rtFlowWindow()
+    _made(_handle(n), _kFlow)
+    return n
+}
 
 #[c.native("sngl_win32_span")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Span")]
-func _rtSpan() Span
+func _rtSpanWindow() Span
+
+func _rtSpan() Span {
+    var n = _rtSpanWindow()
+    _made(_spanHandle(n), _kSpan)
+    return n
+}
+
+#[c.native("HWND", cast)]
+func _pictureHandle(p Picture) api.HWND
+
+#[c.native("HWND", cast)]
+func _drawingHandle(d ImageDrawing) api.HWND
 
 #[c.native("sngl_win32_set_words")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetWords")]
-func _rtSetWords(w Span, words c.utf16)
+func _words(w api.HWND, words c.utf16)
+
+func _rtSetWords(w Span, words string) {
+    var h = _spanHandle(w)
+    _words(h, words)
+    _touched(h)
+}
+
+// The flow w is in drawn again, and laid out where its words now wrap to
+// another height: a change to a span is its flow's.
+func _touched(w api.HWND) {
+    var at = w
+    var going = true
+    for going {
+        if !_ctls.contains(at) {
+            going = false
+        } else if _ctls[at].kind == _kFlow {
+            _invalidate(at)
+            _relayout(at)
+            going = false
+        } else if _ctls[at].kind != _kSpan {
+            going = false
+        } else {
+            var up = _parentOf(at)
+            if up != null {
+                at = _found(up)
+            } else {
+                going = false
+            }
+        }
+    }
+}
 
 // The runtime's calls on a span, which is no `ui.node` but a window all the
 // same: put into a flow or a span, and written.
@@ -2478,14 +2725,14 @@ func _rtSpanRemoveIn(parent markup.span, child markup.span) {
     _removeFrom(_spanHandle(parent), _spanHandle(child))
 }
 
-#[c.native("sngl_win32_set_href")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetHref")]
-func _rtSpanHref(w Span, href c.utf16)
+func _rtSpanHref(w Span, href string) {
+    _setHref(_spanHandle(w), href)
+}
 
 #[c.native("sngl_win32_set_span_style")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetSpanStyle")]
-func _rtSpanStyle(
-    w         Span,
+func _spanStyle(
+    w         api.HWND,
     color     int,
     size      int,
     weight    int,
@@ -2495,18 +2742,17 @@ func _rtSpanStyle(
     family    c.utf16,
 )
 
-#[c.native("sngl_win32_set_span_style")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetSpanStyle")]
-func _rtSetSpanStyle(
-    w         ui.node,
-    color     int,
-    size      int,
-    weight    int,
-    slant     int,
-    underline bool,
-    strike    bool,
-    family    c.utf16,
-)
+func _rtSpanStyle(w Span, color int, size int, weight int, slant int, underline bool, strike bool, family string) {
+    var h = _spanHandle(w)
+    _spanStyle(h, color, size, weight, slant, underline, strike, family)
+    _touched(h)
+}
+
+func _rtSetSpanStyle(w ui.node, color int, size int, weight int, slant int, underline bool, strike bool, family string) {
+    var h = _handle(w)
+    _spanStyle(h, color, size, weight, slant, underline, strike, family)
+    _touched(h)
+}
 
 #[gen.protocol(create)]
 func _create_Flow() Flow {

@@ -79,7 +79,7 @@ func testPaints(t test.Test, c main) {
     t.snapshot("paint")
 }
 -- testrun/win32/c/paint.sngl/main/1 --
-sha256:72d40277532132693751daf793a5a8c9
+sha256:9fcda195852bcf2dab870dc5edf6a1a6
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:72d40277532132693751daf793a5a8c9
   }
 }
 -- testrun/win32/c/paint.sngl/main/2 --
-sha256:3e8a4745d0ef99bef7afb6c58b14d30f
+sha256:a4a3f8797d7d42592f7773c69c1638d7
 {
   "results": [
     {
@@ -102,7 +102,7 @@ sha256:3e8a4745d0ef99bef7afb6c58b14d30f
   ]
 }
 -- testrun/win32/go/paint.sngl/main/1 --
-sha256:7c82c2fc7d013f223bc7d1d0a8a55ac9
+sha256:8708f4897a5c66c30ed9a9bc0596dbd4
 {
   "results": [
     {
@@ -112,7 +112,7 @@ sha256:7c82c2fc7d013f223bc7d1d0a8a55ac9
   ]
 }
 -- testrun/win32/go/paint.sngl/main/2 --
-sha256:e10a565e3f848fe0ad98a65f35cafd5e
+sha256:649ca57da07b31ff3bf5717771eed4a4
 {
   "results": [
     {

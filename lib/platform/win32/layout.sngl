@@ -10,83 +10,109 @@ import go "sngl:language/go"
 // handle (`_ctls`): its kind, the runtime's `enum sngl_kind`; its children
 // in order, since `GetWindow(GW_CHILD)`'s order is z-order; what its look
 // asks of a layout, in SNGL px, a 96th of an inch, scaled to its `dpi` where
-// a layout reads them; and what its last layout found. What the runtime
-// paints a window by, and the handlers the program connected, are the
-// runtime's own record beside this one (sngl_win32.c's `ctl`).
+// a layout reads them; what its last layout found; and what the window
+// procedures read (procs.sngl). The handlers the program connected are
+// beside it (`_on`), and what the runtime measures and draws a window by --
+// its font, a flow's words, a picture's bitmap -- is the runtime's own
+// record beside this one (sngl_win32.c's `ctl`).
 struct _Ctl {
-    kind      int = 0
+    kind       int = 0
     // A box's axis, a divider's, and a toplevel's, which is down.
-    vertical  bool = false
-    flex      float = 0.0
-    gap       int = 0
-    padTop    int = 0
-    padRight  int = 0
-    padBottom int = 0
-    padLeft   int = 0
+    vertical   bool = false
+    flex       float = 0.0
+    gap        int = 0
+    padTop     int = 0
+    padRight   int = 0
+    padBottom  int = 0
+    padLeft    int = 0
     // Its least width, and the size its style gives it, or 0; and how a
     // line box places its children across it (`_aStretch` and on).
-    minW      int = 0
-    exactW    int = 0
-    exactH    int = 0
-    align     int = 0
+    minW       int = 0
+    exactW     int = 0
+    exactH     int = 0
+    align      int = 0
     // The DPI of the toplevel it is in, which its refresh sets.
-    dpi       int = 96
+    dpi        int = 96
     // Set while a toplevel's layout is posted and not yet run.
-    laying    bool = false
+    laying     bool = false
     // A box's mode, its columns as a grid, and the height a flow wrapped
     // to at the width it was last laid out at, which it measures as next.
-    mode      int = 0
-    columns   int = 0
-    flowH     int = 0
+    mode       int = 0
+    columns    int = 0
+    flowH      int = 0
     // A box drawn with an etched edge inside its bounds; the box a
     // component's several top nodes are held in.
-    framed    bool = false
-    contents  bool = false
+    framed     bool = false
+    contents   bool = false
     // Hidden by its visible prop and by its style's display, either of
     // which takes it out of its box's layout.
-    offProp   bool = false
-    offLook   bool = false
+    offProp    bool = false
+    offLook    bool = false
     // A tabs' page shown.
-    selected  int = 0
+    selected   int = 0
     // A scroll's axes, where it is along each, and whether its end was
     // reported and has not been left since; how far it can move along each
     // axis and its room inside, as its last layout found them; and the
     // wheel's turn not yet a whole line.
-    scrollV   bool = false
-    scrollH   bool = false
-    posX      int = 0
-    posY      int = 0
-    atEnd     bool = false
-    maxX      int = 0
-    maxY      int = 0
-    pageX     int = 0
-    pageY     int = 0
-    wheel     int = 0
+    scrollV    bool = false
+    scrollH    bool = false
+    posX       int = 0
+    posY       int = 0
+    atEnd      bool = false
+    maxX       int = 0
+    maxY       int = 0
+    pageX      int = 0
+    pageY      int = 0
+    wheel      int = 0
     // What it last measured, while `measured`: until something changes
     // it, which calls `_relayout`.
-    sizeW     int = 0
-    sizeH     int = 0
-    measured  bool = false
+    sizeW      int = 0
+    sizeH      int = 0
+    measured   bool = false
     // Where its box's layout last put it, in its box, and the room it last
     // laid out what it holds in.
-    placedL   int = 0
-    placedT   int = 0
-    placedR   int = 0
-    placedB   int = 0
-    laidW     int = 0
-    laidH     int = 0
-    kids      list[api.HWND] = []
+    placedL    int = 0
+    placedT    int = 0
+    placedR    int = 0
+    placedB    int = 0
+    laidW      int = 0
+    laidH      int = 0
+    kids       list[api.HWND] = []
     // The lines a multi-line edit is measured to show.
-    rows      int = 0
+    rows       int = 0
     // What `_setText` last set, once it has.
-    text      string = ""
-    texted    bool = false
+    text       string = ""
+    texted     bool = false
     // A menu entry's command, its state, and the menu bar a toplevel shows
     // its entries in.
-    id        int = 0
-    disabled  bool = false
-    checked   bool = false
-    menu      option[_Menu] = null
+    id         int = 0
+    disabled   bool = false
+    checked    bool = false
+    menu       option[_Menu] = null
+    // Its colors, 0xRRGGBB or -1, and its background's brush; what a link
+    // or a span leads to; what a box's children show as the pointer rests
+    // on them, once one is set.
+    color      int = -1
+    background int = -1
+    brush      option[_Brush] = null
+    href       string = ""
+    tip        string = ""
+    tipped     bool = false
+    // A table's row selected, the column a header click last asked for,
+    // and whether a row can be selected and a column sorted by; an image's
+    // fit, `ui.ObjectFit`'s order.
+    row        int = -1
+    sortCol    int = 0
+    selectable bool = false
+    sortable   bool = false
+    fit        int = 0
+    // A modal's window, which shows what it holds while it is open, over
+    // the window it is in, and closes where it is closable; and in that
+    // window, the modal it is.
+    dialog     option[_Found] = null
+    modalOf    option[_Found] = null
+    open       bool = false
+    closable   bool = false
 }
 
 // Every window's record, by its handle. Its initializer hands the runtime
@@ -107,6 +133,8 @@ const _kEdit = 4
 const _kCheck = 5
 
 const _kSpacer = 6
+
+const _kProgress = 7
 
 const _kArea = 8
 
@@ -129,6 +157,8 @@ const _kEntry = 16
 const _kImage = 20
 
 const _kPicture = 21
+
+const _kCanvas = 22
 
 const _kFlow = 23
 
@@ -157,45 +187,28 @@ const _wmLayout = 32769
 
 const _wmReached = 32771
 
-// Hands the runtime the functions it reaches each window's record through,
-// which `_ctls` starts as.
-#[c.native("sngl_win32_hooks")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Hooks")]
-func _hooks(
-    #[c.type("sngl_win32_hwnd_int2_hook")] #[c.static] made func(w api.HWND, kind int, dpi int),
-    #[c.type("sngl_win32_hwnd_hook")] #[c.static] forget func(w api.HWND),
-    #[c.type("sngl_win32_hwnd_hook")] #[c.static] relayout func(w api.HWND),
-    #[c.type("sngl_win32_hwnd_hook")] #[c.static] layOutTop func(w api.HWND),
-    #[c.type("sngl_win32_hwnd_hook")] #[c.static] layout func(w api.HWND),
-    #[c.type("sngl_win32_hwnd_hook")] #[c.static] tabChosen func(w api.HWND),
-    #[c.type("sngl_win32_hwnd_int_hook")] #[c.static] command func(w api.HWND, id int),
-    #[c.type("sngl_win32_hwnd_int_hook")] #[c.static] refresh func(w api.HWND, dpi int),
-    #[c.type("sngl_win32_hwnd_int_hook")] #[c.static] wheel func(w api.HWND, delta int),
-    #[c.type("sngl_win32_hwnd_int2_hook")] #[c.static] scrolled func(w api.HWND, bar int, request int),
-    #[c.type("sngl_win32_size_hook")] #[c.static] #[c.outs] measure func(w api.HWND) _Size,
-    #[c.type("sngl_win32_count_hook")] #[c.static] nkids func(w api.HWND) int,
-    #[c.type("sngl_win32_kid_hook")] #[c.static] kid func(w api.HWND, at int) api.HWND,
-    #[c.type("sngl_win32_ask_hook")] #[c.static] pad func(w api.HWND, side int) int,
-)
-
 func _hooked() map[api.HWND, _Ctl] {
-    _hooks(_made, _forget, _relayout, _layOutTop, _layoutMessage, _tabChosen, _menuCommand, _refresh, _wheeled, _scrolled, _measure, _kidCount, _kidAt, _padOf)
+    _procs(_boxProc, _controlProc, _kidCount, _kidAt)
     return {}
 }
 
 // A window the runtime made: its record, down where it is a toplevel or a
-// scroll, and taking no room where it is a modal or a menu entry.
-func _made(w api.HWND, kind int, dpi int) {
-    _ctls[w] = _Ctl{kind=kind, dpi=dpi, vertical=kind == _kTop || kind == _kScroll, offProp=kind == _kModal || kind == _kEntry}
+// scroll, and taking no room where it is a modal or a menu entry. Each
+// function making one makes its record as it returns.
+func _made(w api.HWND, kind int) {
+    _ctls[w] = _Ctl{kind=kind, dpi=_dpiOf(w), vertical=kind == _kTop || kind == _kScroll, offProp=kind == _kModal || kind == _kEntry}
 }
 
-// A window gone, as it is destroyed: a menu entry's command free to be
-// handed out again, and a toplevel's menu bar destroyed.
+// A window gone, as it is destroyed: its handlers and its brush let go, a
+// menu entry's command free to be handed out again, a toplevel's menu bar
+// destroyed, and a modal's window with it.
 func _forget(w api.HWND) {
+    _on.remove(w)
     if !_ctls.contains(w) {
         return
     }
     var k = _ctls[w]
+    _ctls.remove(w)
     if k.kind == _kEntry && k.id >= _entryFirst {
         _entryIds.remove(k.id)
     }
@@ -204,7 +217,19 @@ func _forget(w api.HWND) {
         _setMenu(w, null)
         _destroyMenu(m)
     }
-    _ctls.remove(w)
+    var b = k.brush
+    if b != null {
+        _dropBrush(b)
+    }
+    var dialog = k.dialog
+    if dialog != null {
+        var d = _found(dialog)
+        var owner = _getWindow(d, 4)
+        if k.open && owner != null {
+            api.EnableWindow(_found(owner), true)
+        }
+        api.DestroyWindow(d)
+    }
 }
 
 func _kidCount(w api.HWND) int {
@@ -213,15 +238,6 @@ func _kidCount(w api.HWND) int {
 
 func _kidAt(w api.HWND, at int) api.HWND {
     return _ctls[w].kids[at]
-}
-
-// One side of w's padding: 0 its top, 1 its right, 2 its bottom, 3 its left.
-func _padOf(w api.HWND, side int) int {
-    if !_ctls.contains(w) {
-        return 0
-    }
-    var k = _ctls[w]
-    return side == 0 ? k.padTop : (side == 1 ? k.padRight : (side == 2 ? k.padBottom : k.padLeft))
 }
 
 // --- Win32, as the layout calls it ---
@@ -354,22 +370,6 @@ func _scrollChildren(w api.HWND, dx int, dy int)
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TabInsert")]
 func _tabInsert(tabs api.HWND, at int, page api.HWND)
 
-#[c.native("sngl_win32_clicked")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Clicked")]
-func _clicked(w api.HWND)
-
-#[c.native("sngl_win32_tip_child")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TipChild")]
-func _tipChild(box api.HWND, child api.HWND, on bool)
-
-#[c.native("sngl_win32_dialog")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Dialog")]
-func _dialogOf(m api.HWND) api.HWND
-
-#[c.native("sngl_win32_host")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Host")]
-func _host(parent api.HWND) api.HWND
-
 #[c.native("sngl_win32_nothing")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Nothing")]
 func _nothing() api.HWND
@@ -389,10 +389,6 @@ func _dividerStyle(w api.HWND, vertical bool)
 #[c.native("sngl_win32_scroll_style")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ScrollStyle")]
 func _scrollStyle(w api.HWND, vertical bool, horizontal bool)
-
-#[c.native("sngl_win32_set_framed")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetFramed")]
-func _frameStyle(w api.HWND, framed bool)
 
 // --- Layout ---
 
@@ -1389,7 +1385,7 @@ func _setColumns(w api.HWND, columns int) {
 func _setFramed(w api.HWND, framed bool) {
     if _ctls.contains(w) && _ctls[w].framed != framed {
         _ctls[w].framed = framed
-        _frameStyle(w, framed)
+        _invalidate(w)
         _relayout(w)
     }
 }

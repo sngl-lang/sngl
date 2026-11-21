@@ -381,7 +381,7 @@ void sngl_keep_int(int_cb f, void *data) { kept = f; kept_data = data; }
 void sngl_fire(void) { if (kept) kept(5, kept_data); }
 
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:1ce4091956598b1431be322462ea7039
+sha256:bc06839f73826bf13fdb01e6343c1eb7
 {
   "results": [
     {
@@ -391,7 +391,7 @@ sha256:1ce4091956598b1431be322462ea7039
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:b8c8a8618b08fc195654fce3a000c76d
+sha256:7d50c3596b1803976a4fa05d224130d5
 {
   "results": [
     {
@@ -401,7 +401,7 @@ sha256:b8c8a8618b08fc195654fce3a000c76d
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:a1bcb28a3fe6f7402210a88e440d2c30
+sha256:8d836015fd7fb80928ddabacc59142ee
 {
   "results": [
     {
@@ -423,7 +423,7 @@ sha256:a1bcb28a3fe6f7402210a88e440d2c30
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:96e8c17a775968503abda07c9da770db
+sha256:abdfff0a69c1d62f6571790cb69f0dcc
 {
   "results": [
     {
@@ -441,7 +441,7 @@ sha256:96e8c17a775968503abda07c9da770db
   ]
 }
 -- testrun/win32/c/async.sngl/main/1 --
-sha256:bf73bbd925b53a68b2a40d60ae15e64a
+sha256:96e3b71e1439b4d40c1dd8c395c4a442
 {
   "results": [
     {
@@ -451,7 +451,7 @@ sha256:bf73bbd925b53a68b2a40d60ae15e64a
   ]
 }
 -- testrun/win32/c/callback.sngl/_/1 --
-sha256:2d3f38c7525701a906032443e20dd884
+sha256:47edabda8fc867fe059f90ad55660ff5
 {
   "results": [
     {
@@ -461,7 +461,7 @@ sha256:2d3f38c7525701a906032443e20dd884
   ]
 }
 -- testrun/win32/c/empty.sngl/main/1 --
-sha256:9cf06bf7ce525563b01247d7cc733cea
+sha256:fe39e48e0dc46fd9067b443e89910303
 {
   "results": [
     {
@@ -471,7 +471,7 @@ sha256:9cf06bf7ce525563b01247d7cc733cea
   ]
 }
 -- testrun/win32/c/rect.sngl/main/1 --
-sha256:7b62488ae59e12d9d9f5fc3e4d8dfe84
+sha256:426415c7563bd2fee21d990fbec282d5
 {
   "results": [
     {
@@ -481,7 +481,7 @@ sha256:7b62488ae59e12d9d9f5fc3e4d8dfe84
   ]
 }
 -- testrun/win32/c/retained.sngl/_/1 --
-sha256:9abfe9c2ac11af60a2b5eb650ae957b5
+sha256:f4c1b7426968e500a24f9e6d13f22ff2
 {
   "results": [
     {
@@ -491,7 +491,7 @@ sha256:9abfe9c2ac11af60a2b5eb650ae957b5
   ]
 }
 -- testrun/win32/c/store.sngl/_/1 --
-sha256:0facc82e6ed1d6bc7a455f4bbab51427
+sha256:9ba17ae1d366da04eaa9b0578ef08883
 {
   "results": [
     {
@@ -501,7 +501,7 @@ sha256:0facc82e6ed1d6bc7a455f4bbab51427
   ]
 }
 -- testrun/win32/go/app.sngl/_/1 --
-sha256:fbc66c9442f94c9dc50f1d2c806865ca
+sha256:67de1cb7d624e298ccda2ac5b9c0cbed
 {
   "results": [
     {
@@ -511,7 +511,7 @@ sha256:fbc66c9442f94c9dc50f1d2c806865ca
   ]
 }
 -- testrun/win32/go/app.sngl/_/2 --
-sha256:58f0bf4926db4e9b8af23704e6d8c157
+sha256:6a31f44e7da6a31ec690982265dda296
 {
   "results": [
     {
@@ -521,7 +521,7 @@ sha256:58f0bf4926db4e9b8af23704e6d8c157
   ]
 }
 -- testrun/win32/go/app.sngl/_/3 --
-sha256:88fb4160edc543e84573839d34096105
+sha256:4481863b025e3d6fd47c90d039d9225d
 {
   "results": [
     {
@@ -531,7 +531,7 @@ sha256:88fb4160edc543e84573839d34096105
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:6d440adffdd0986bd54cfbd1cdede882
+sha256:887ec0d9b7b1472135d7d4c054018c01
 {
   "results": [
     {
@@ -549,7 +549,7 @@ sha256:6d440adffdd0986bd54cfbd1cdede882
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:48680913584f1cf81f7dfb58937d2ba8
+sha256:5d540671f093b626127b344eeac1d7e7
 {
   "results": [
     {
@@ -567,7 +567,7 @@ sha256:48680913584f1cf81f7dfb58937d2ba8
   ]
 }
 -- testrun/win32/go/app.sngl/main/3 --
-sha256:2eb12f860924e3b8fd37b80e980c1561
+sha256:22b50d0f6e4dd6bcf20d3edf0dde80bf
 {
   "results": [
     {
@@ -585,7 +585,7 @@ sha256:2eb12f860924e3b8fd37b80e980c1561
   ]
 }
 -- testrun/win32/go/async.sngl/main/1 --
-sha256:93ac6f0587977e9400d65f1333189bd3
+sha256:b5bd3a6365b70e6c513bf965be792c4d
 {
   "results": [
     {
@@ -595,7 +595,7 @@ sha256:93ac6f0587977e9400d65f1333189bd3
   ]
 }
 -- testrun/win32/go/empty.sngl/main/1 --
-sha256:b50d1935784f796002e04fea533b8350
+sha256:72b76cea8dc410fd2f7d5c889eefac6f
 {
   "results": [
     {
@@ -605,7 +605,7 @@ sha256:b50d1935784f796002e04fea533b8350
   ]
 }
 -- testrun/win32/go/rect.sngl/main/1 --
-sha256:1f3ce34f4274ee62fc28162f018b0234
+sha256:8842a1b0ca74a26c3b366320cbcd2b42
 {
   "results": [
     {
@@ -615,7 +615,7 @@ sha256:1f3ce34f4274ee62fc28162f018b0234
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/1 --
-sha256:b2c3c7e15fbf75000a2b60fb9a905964
+sha256:e3a770f1c29128b710946f22445498ee
 {
   "results": [
     {
@@ -625,7 +625,7 @@ sha256:b2c3c7e15fbf75000a2b60fb9a905964
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/2 --
-sha256:8f4a0701fadb887b74a1cbf0ebc2b3fe
+sha256:bbba0bbb76a997b56103f6efe698e128
 {
   "results": [
     {

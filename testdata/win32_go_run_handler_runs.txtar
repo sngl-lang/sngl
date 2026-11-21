@@ -136,56 +136,84 @@ type _Size struct {
 	Cy int
 }
 
+type _On struct {
+	Click     func()
+	Clicks    bool
+	Change    func()
+	Activate  func()
+	Activates bool
+	Closed    func()
+	Reach     func()
+	Load      func()
+	Failed    func()
+	Visible   func(bool)
+}
+
 type _Ctl struct {
-	Kind      int
-	Vertical  bool
-	Flex      float64
-	Gap       int
-	PadTop    int
-	PadRight  int
-	PadBottom int
-	PadLeft   int
-	MinW      int
-	ExactW    int
-	ExactH    int
-	Align     int
-	Dpi       int
-	Laying    bool
-	Mode      int
-	Columns   int
-	FlowH     int
-	Framed    bool
-	Contents  bool
-	OffProp   bool
-	OffLook   bool
-	Selected  int
-	ScrollV   bool
-	ScrollH   bool
-	PosX      int
-	PosY      int
-	AtEnd     bool
-	MaxX      int
-	MaxY      int
-	PageX     int
-	PageY     int
-	Wheel     int
-	SizeW     int
-	SizeH     int
-	Measured  bool
-	PlacedL   int
-	PlacedT   int
-	PlacedR   int
-	PlacedB   int
-	LaidW     int
-	LaidH     int
-	Kids      []cgo.HWND
-	Rows      int
-	Text      string
-	Texted    bool
-	Id        int
-	Disabled  bool
-	Checked   bool
-	Menu      *cgo.Menu
+	Kind       int
+	Vertical   bool
+	Flex       float64
+	Gap        int
+	PadTop     int
+	PadRight   int
+	PadBottom  int
+	PadLeft    int
+	MinW       int
+	ExactW     int
+	ExactH     int
+	Align      int
+	Dpi        int
+	Laying     bool
+	Mode       int
+	Columns    int
+	FlowH      int
+	Framed     bool
+	Contents   bool
+	OffProp    bool
+	OffLook    bool
+	Selected   int
+	ScrollV    bool
+	ScrollH    bool
+	PosX       int
+	PosY       int
+	AtEnd      bool
+	MaxX       int
+	MaxY       int
+	PageX      int
+	PageY      int
+	Wheel      int
+	SizeW      int
+	SizeH      int
+	Measured   bool
+	PlacedL    int
+	PlacedT    int
+	PlacedR    int
+	PlacedB    int
+	LaidW      int
+	LaidH      int
+	Kids       []cgo.HWND
+	Rows       int
+	Text       string
+	Texted     bool
+	Id         int
+	Disabled   bool
+	Checked    bool
+	Menu       *cgo.Menu
+	Color      int
+	Background int
+	Brush      *cgo.Brush
+	Href       string
+	Tip        string
+	Tipped     bool
+	Row        int
+	SortCol    int
+	Selectable bool
+	Sortable   bool
+	Fit        int
+	Dialog     *cgo.Found
+	ModalOf    *cgo.Found
+	Open       bool
+	Closable   bool
 }
 
 type _Rect struct {
@@ -206,6 +234,8 @@ type snglState struct {
 	handle__inst0       int
 	visible__inst0      bool
 	_ctls               map[cgo.HWND]_Ctl
+	_firing             bool
+	_on                 map[cgo.HWND]_On
 	_entryIds           map[int]bool
 	__effect0_key       time.Duration
 	__effect0_live      []time.Duration
@@ -234,6 +264,18 @@ func Start(args []string, run func()) {
 
 func __run(args []string, run func()) {
 	Start(args, run)
+}
+
+func _rtToplevel() cgo.HWND {
+	w := cgo.SnglWin32Toplevel()
+	_made(w, 0)
+	return w
+}
+
+func _rtText() cgo.HWND {
+	n__r0 := cgo.SnglWin32Text()
+	_made(n__r0, 2)
+	return n__r0
 }
 
 func _look(n cgo.HWND, look cgo.Look) {
@@ -288,7 +330,7 @@ func _look(n cgo.HWND, look cgo.Look) {
 		m._ctls[__entryKey0] = __entry1
 		_show(w)
 	}
-	cgo.SnglWin32SetLook(n, look)
+	_paintLook(n, look)
 	_relayout(w)
 }
 
@@ -298,7 +340,7 @@ func _attachNode(node cgo.HWND) {
 	}
 	top := node
 	if m._ctls[node].Kind != 0 {
-		top = cgo.SnglWin32Toplevel()
+		top = _rtToplevel()
 		_appendTo(top, node)
 	}
 	s := _measure(top)
@@ -319,11 +361,21 @@ func _attachNode(node cgo.HWND) {
 	_layOutTop(top)
 }
 
+func _made(w cgo.HWND, kind int) {
+	m._ctls[w] = _Ctl{Kind: kind, Vertical: ((kind == 0) || (kind == 14)), Dpi: cgo.SnglWin32DpiOf(w), OffProp: ((kind == 15) || (kind == 16)), Kids: []cgo.HWND{}, Color: -1, Background: -1, Row: -1}
+}
+
 func _appendTo(parent cgo.HWND, child cgo.HWND) {
-	host := cgo.SnglWin32Host(parent)
+	host := _host(parent)
 	if func() bool { _, __ok := m._ctls[host]; return __ok }() {
 		_adopt(host, child, len(m._ctls[host].Kids))
 	}
+}
+
+func _onVisible(w cgo.HWND, visible func(bool)) {
+	h := _handlers(w)
+	h.Visible = visible
+	m._on[w] = h
 }
 
 func _show(w cgo.HWND) {
@@ -336,6 +388,39 @@ func _show(w cgo.HWND) {
 	}
 }
 
+func _paintLook(n cgo.HWND, look cgo.Look) {
+	w := n
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return
+	}
+	__entryKey36 := w
+	__entry37 := m._ctls[__entryKey36]
+	__entry37.Color = look.Color
+	m._ctls[__entryKey36] = __entry37
+	old := m._ctls[w].Brush
+	if old != nil {
+		cgo.SnglWin32DropBrush((*(old)))
+	}
+	__entryKey38 := w
+	__entry39 := m._ctls[__entryKey38]
+	__entry39.Brush = nil
+	m._ctls[__entryKey38] = __entry39
+	__entryKey40 := w
+	__entry41 := m._ctls[__entryKey40]
+	__entry41.Background = look.Background
+	m._ctls[__entryKey40] = __entry41
+	if look.Background >= 0 {
+		__entryKey34 := w
+		__entry35 := m._ctls[__entryKey34]
+		__entry35.Brush = cgo.SnglWin32Brush(look.Background)
+		m._ctls[__entryKey34] = __entry35
+	}
+	if m._ctls[w].Kind == 3 {
+		cgo.SnglWin32OwnerDraw(w, (m._ctls[w].Brush != nil))
+	}
+	cgo.SnglWin32SetPaint(w, look.Color, look.FontPx)
+}
+
 func _relayout(w cgo.HWND) {
 	p := w
 	going := true
@@ -343,10 +428,10 @@ func _relayout(w cgo.HWND) {
 		if !func() bool { _, __ok := m._ctls[p]; return __ok }() {
 			going = false
 		} else {
-			__entryKey34 := p
-			__entry35 := m._ctls[__entryKey34]
-			__entry35.Measured = false
-			m._ctls[__entryKey34] = __entry35
+			__entryKey42 := p
+			__entry43 := m._ctls[__entryKey42]
+			__entry43.Measured = false
+			m._ctls[__entryKey42] = __entry43
 			if m._ctls[p].Kind == 0 {
 				going = false
 			} else {
@@ -363,10 +448,10 @@ func _relayout(w cgo.HWND) {
 	if (!func() bool { _, __ok := m._ctls[top]; return __ok }() || (m._ctls[top].Kind != 0)) || m._ctls[top].Laying {
 		return
 	}
-	__entryKey36 := top
-	__entry37 := m._ctls[__entryKey36]
-	__entry37.Laying = true
-	m._ctls[__entryKey36] = __entry37
+	__entryKey44 := top
+	__entry45 := m._ctls[__entryKey44]
+	__entry45.Laying = true
+	m._ctls[__entryKey44] = __entry45
 	cgo.PostMessageW(top, 32769, 0, 0)
 }
 
@@ -376,16 +461,16 @@ func _setText(w cgo.HWND, text string) {
 		return
 	}
 	if has {
-		__entryKey38 := w
-		__entry39 := m._ctls[__entryKey38]
-		__entry39.Text = text
-		m._ctls[__entryKey38] = __entry39
-		__entryKey40 := w
-		__entry41 := m._ctls[__entryKey40]
-		__entry41.Texted = true
-		m._ctls[__entryKey40] = __entry41
+		__entryKey46 := w
+		__entry47 := m._ctls[__entryKey46]
+		__entry47.Text = text
+		m._ctls[__entryKey46] = __entry47
+		__entryKey48 := w
+		__entry49 := m._ctls[__entryKey48]
+		__entry49.Texted = true
+		m._ctls[__entryKey48] = __entry49
 		if m._ctls[w].Kind == 15 {
-			cgo.SetWindowTextW(cgo.SnglWin32Dialog(w), snglSome(text))
+			cgo.SetWindowTextW(_dialogOf(w), snglSome(text))
 			return
 		}
 	}
@@ -401,39 +486,49 @@ func _setText(w cgo.HWND, text string) {
 	_relayout(w)
 }
 
+func _host(parent cgo.HWND) cgo.HWND {
+	var __lt20 cgo.HWND
+	if func() bool { _, __ok := m._ctls[parent]; return __ok }() && (m._ctls[parent].Kind == 15) {
+		__lt20 = _dialogOf(parent)
+	} else {
+		__lt20 = parent
+	}
+	return __lt20
+}
+
 func _adopt(parent cgo.HWND, child cgo.HWND, at int) {
 	if !func() bool { _, __ok := m._ctls[parent]; return __ok }() {
 		return
 	}
 	cgo.SetParent(child, parent)
 	if func() bool { _, __ok := m._ctls[child]; return __ok }() {
-		__entryKey42 := child
-		__entry43 := m._ctls[__entryKey42]
-		__entry43.PlacedL = 0
-		m._ctls[__entryKey42] = __entry43
-		__entryKey44 := child
-		__entry45 := m._ctls[__entryKey44]
-		__entry45.PlacedT = 0
-		m._ctls[__entryKey44] = __entry45
-		__entryKey46 := child
-		__entry47 := m._ctls[__entryKey46]
-		__entry47.PlacedR = 0
-		m._ctls[__entryKey46] = __entry47
-		__entryKey48 := child
-		__entry49 := m._ctls[__entryKey48]
-		__entry49.PlacedB = 0
-		m._ctls[__entryKey48] = __entry49
+		__entryKey50 := child
+		__entry51 := m._ctls[__entryKey50]
+		__entry51.PlacedL = 0
+		m._ctls[__entryKey50] = __entry51
+		__entryKey52 := child
+		__entry53 := m._ctls[__entryKey52]
+		__entry53.PlacedT = 0
+		m._ctls[__entryKey52] = __entry53
+		__entryKey54 := child
+		__entry55 := m._ctls[__entryKey54]
+		__entry55.PlacedR = 0
+		m._ctls[__entryKey54] = __entry55
+		__entryKey56 := child
+		__entry57 := m._ctls[__entryKey56]
+		__entry57.PlacedB = 0
+		m._ctls[__entryKey56] = __entry57
 	}
-	__entryKey50 := parent
-	__entry51 := m._ctls[__entryKey50]
-	if __i := at; __i >= 0 && __i <= len(__entry51.Kids) {
-		__entry51.Kids = slices.Insert(__entry51.Kids, __i, child)
+	__entryKey58 := parent
+	__entry59 := m._ctls[__entryKey58]
+	if __i := at; __i >= 0 && __i <= len(__entry59.Kids) {
+		__entry59.Kids = slices.Insert(__entry59.Kids, __i, child)
 	}
-	m._ctls[__entryKey50] = __entry51
+	m._ctls[__entryKey58] = __entry59
 	if m._ctls[parent].Kind == 13 {
 		_tabsSync(parent)
 	}
-	cgo.SnglWin32TipChild(parent, child, true)
+	_tipChild(parent, child, true)
 	if _holdsEntries(child) {
 		_menuSync(parent)
 	}
@@ -464,20 +559,20 @@ func _measure(w cgo.HWND) _Size {
 				var mostY int = 0
 				for _, page := range k.Kids {
 					p := _measure(page)
-					var __lt20 int
-					if p.Cx > mostX {
-						__lt20 = p.Cx
-					} else {
-						__lt20 = mostX
-					}
-					mostX = __lt20
 					var __lt21 int
-					if p.Cy > mostY {
-						__lt21 = p.Cy
+					if p.Cx > mostX {
+						__lt21 = p.Cx
 					} else {
-						__lt21 = mostY
+						__lt21 = mostX
 					}
-					mostY = __lt21
+					mostX = __lt21
+					var __lt22 int
+					if p.Cy > mostY {
+						__lt22 = p.Cy
+					} else {
+						__lt22 = mostY
+					}
+					mostY = __lt22
 				}
 				t := cgo.SIZE{}
 				t = cgo.SnglWin32TabsSize(w, mostX, mostY, t)
@@ -487,37 +582,37 @@ func _measure(w cgo.HWND) _Size {
 					s = _boxMeasure(k)
 					var most int = _px(200, k.Dpi)
 					if k.ScrollV {
-						var __lt22 int
-						if k.ExactH > 0 {
-							__lt22 = 0
-						} else {
-							__lt22 = most
-						}
-						var cap__r0 int = __lt22
 						var __lt23 int
-						if s.Cy < cap__r0 {
-							__lt23 = s.Cy
+						if k.ExactH > 0 {
+							__lt23 = 0
 						} else {
-							__lt23 = cap__r0
+							__lt23 = most
 						}
-						s.Cy = __lt23
+						var cap__r0 int = __lt23
+						var __lt24 int
+						if s.Cy < cap__r0 {
+							__lt24 = s.Cy
+						} else {
+							__lt24 = cap__r0
+						}
+						s.Cy = __lt24
 						s.Cx += cgo.GetSystemMetrics(2)
 					}
 					if k.ScrollH {
-						var __lt24 int
-						if (k.MinW > 0) || (k.ExactW > 0) {
-							__lt24 = 0
-						} else {
-							__lt24 = most
-						}
-						var cap__r1 int = __lt24
 						var __lt25 int
-						if s.Cx < cap__r1 {
-							__lt25 = s.Cx
+						if (k.MinW > 0) || (k.ExactW > 0) {
+							__lt25 = 0
 						} else {
-							__lt25 = cap__r1
+							__lt25 = most
 						}
-						s.Cx = __lt25
+						var cap__r1 int = __lt25
+						var __lt26 int
+						if s.Cx < cap__r1 {
+							__lt26 = s.Cx
+						} else {
+							__lt26 = cap__r1
+						}
+						s.Cx = __lt26
 						s.Cy += cgo.GetSystemMetrics(3)
 					}
 				} else {
@@ -532,15 +627,15 @@ func _measure(w cgo.HWND) _Size {
 						}
 					} else {
 						if k.Kind == 23 {
-							n__r1 := cgo.SIZE{}
-							n__r1 = cgo.SnglWin32Natural(w, n__r1)
-							var __lt26 int
+							n__r3 := cgo.SIZE{}
+							n__r3 = cgo.SnglWin32Natural(w, n__r3)
+							var __lt27 int
 							if k.FlowH > 0 {
-								__lt26 = k.FlowH
+								__lt27 = k.FlowH
 							} else {
-								__lt26 = int(n__r1.Cy)
+								__lt27 = int(n__r3.Cy)
 							}
-							s = _Size{Cx: int(n__r1.Cx), Cy: __lt26}
+							s = _Size{Cx: int(n__r3.Cx), Cy: __lt27}
 						} else {
 							if (k.Kind == 2) || (k.Kind == 11) {
 								s = _textSize(w)
@@ -565,13 +660,13 @@ func _measure(w cgo.HWND) _Size {
 										} else {
 											if k.Kind == 8 {
 												s.Cx = _px(200, k.Dpi)
-												var __lt27 int
+												var __lt28 int
 												if k.Rows > 0 {
-													__lt27 = k.Rows
+													__lt28 = k.Rows
 												} else {
-													__lt27 = 3
+													__lt28 = 3
 												}
-												s.Cy = ((cgo.SnglWin32LineHeight(w) * __lt27) + _px(8, k.Dpi))
+												s.Cy = ((cgo.SnglWin32LineHeight(w) * __lt28) + _px(8, k.Dpi))
 											} else {
 												if k.Kind == 19 {
 													ideal := cgo.SIZE{}
@@ -588,9 +683,9 @@ func _measure(w cgo.HWND) _Size {
 													}
 												} else {
 													if ((((k.Kind != 24) && (k.Kind != 21)) && (k.Kind != 15)) && (k.Kind != 16)) && (k.Kind != 6) {
-														n__r2 := cgo.SIZE{}
-														n__r2 = cgo.SnglWin32Natural(w, n__r2)
-														s = _Size{Cx: int(n__r2.Cx), Cy: int(n__r2.Cy)}
+														n__r4 := cgo.SIZE{}
+														n__r4 = cgo.SnglWin32Natural(w, n__r4)
+														s = _Size{Cx: int(n__r4.Cx), Cy: int(n__r4.Cy)}
 													}
 												}
 											}
@@ -616,18 +711,18 @@ func _measure(w cgo.HWND) _Size {
 		s.Cy = _px(k.ExactH, k.Dpi)
 	}
 	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		__entryKey52 := w
-		__entry53 := m._ctls[__entryKey52]
-		__entry53.SizeW = s.Cx
-		m._ctls[__entryKey52] = __entry53
-		__entryKey54 := w
-		__entry55 := m._ctls[__entryKey54]
-		__entry55.SizeH = s.Cy
-		m._ctls[__entryKey54] = __entry55
-		__entryKey56 := w
-		__entry57 := m._ctls[__entryKey56]
-		__entry57.Measured = true
-		m._ctls[__entryKey56] = __entry57
+		__entryKey60 := w
+		__entry61 := m._ctls[__entryKey60]
+		__entry61.SizeW = s.Cx
+		m._ctls[__entryKey60] = __entry61
+		__entryKey62 := w
+		__entry63 := m._ctls[__entryKey62]
+		__entry63.SizeH = s.Cy
+		m._ctls[__entryKey62] = __entry63
+		__entryKey64 := w
+		__entry65 := m._ctls[__entryKey64]
+		__entry65.Measured = true
+		m._ctls[__entryKey64] = __entry65
 	}
 	return s
 }
@@ -637,6 +732,18 @@ func _layOutTop(top cgo.HWND) {
 	__ref2 := GetClientRect__result(cgo.GetClientRect(top, r))
 	r = __ref2.Out1
 	_layOut(top, (r.Right - r.Left), (r.Bottom - r.Top))
+}
+
+func _tipChild(box cgo.HWND, child cgo.HWND, on bool) {
+	if func() bool { _, __ok := m._ctls[box]; return __ok }() && m._ctls[box].Tipped {
+		var __lt30 string
+		if on {
+			__lt30 = m._ctls[box].Tip
+		} else {
+			__lt30 = ""
+		}
+		cgo.SnglWin32TipTool(box, child, __lt30)
+	}
 }
 
 func _holdsEntries(w cgo.HWND) bool {
@@ -671,10 +778,10 @@ func _menuSync(w cgo.HWND) {
 		}
 	}
 	old := m._ctls[top].Menu
-	__entryKey68 := top
-	__entry69 := m._ctls[__entryKey68]
-	__entry69.Menu = bar
-	m._ctls[__entryKey68] = __entry69
+	__entryKey80 := top
+	__entry81 := m._ctls[__entryKey80]
+	__entry81.Menu = bar
+	m._ctls[__entryKey80] = __entry81
 	if (bar != nil) || (old != nil) {
 		cgo.SetMenu(top, bar)
 		cgo.DrawMenuBar(top)
@@ -697,55 +804,90 @@ func _tabsSync(tabs cgo.HWND) {
 	_relayout(tabs)
 }
 
+func _handlers(w cgo.HWND) _On {
+	var __lt31 _On
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		__lt31 = m._on[w]
+	} else {
+		__lt31 = _On{Click: func() {
+		}, Change: func() {
+		}, Activate: func() {
+		}, Closed: func() {
+		}, Reach: func() {
+		}, Load: func() {
+		}, Failed: func() {
+		}, Visible: func(visible bool) {
+		}}
+	}
+	return __lt31
+}
+
+func _dialogOf(m__r1 cgo.HWND) cgo.HWND {
+	var __lt32 *cgo.Found
+	if func() bool { _, __ok := m._ctls[m__r1]; return __ok }() {
+		__lt32 = m._ctls[m__r1].Dialog
+	} else {
+		__lt32 = nil
+	}
+	d := __lt32
+	var __lt33 cgo.HWND
+	if d != nil {
+		__lt33 = cgo.HWND((*(d)))
+	} else {
+		__lt33 = m__r1
+	}
+	return __lt33
+}
+
 func _boxMeasure(k _Ctl) _Size {
 	var gap int = _px(k.Gap, k.Dpi)
 	ks := _laidKids(k)
-	var n__r3 int = len(ks)
+	var n__r5 int = len(ks)
 	var mostX int = 0
 	var mostY int = 0
 	for _, it := range ks {
-		var __lt29 int
+		var __lt34 int
 		if it.Cx > mostX {
-			__lt29 = it.Cx
+			__lt34 = it.Cx
 		} else {
-			__lt29 = mostX
+			__lt34 = mostX
 		}
-		mostX = __lt29
-		var __lt30 int
+		mostX = __lt34
+		var __lt35 int
 		if it.Cy > mostY {
-			__lt30 = it.Cy
+			__lt35 = it.Cy
 		} else {
-			__lt30 = mostY
+			__lt35 = mostY
 		}
-		mostY = __lt30
+		mostY = __lt35
 	}
 	var sx int = 0
 	var sy int = 0
 	if k.Mode == 1 {
 		var cols int = _columnsOf(k)
-		var rows int = (((n__r3 + cols) - 1) / cols)
+		var rows int = (((n__r5 + cols) - 1) / cols)
 		sx = ((cols * mostX) + ((cols - 1) * gap))
 		var r int = 0
 		for r < rows {
 			var h int = 0
 			var i int = (r * cols)
-			for (i < n__r3) && (i < ((r + 1) * cols)) {
-				var __lt31 int
+			for (i < n__r5) && (i < ((r + 1) * cols)) {
+				var __lt36 int
 				if ks[i].Cy > h {
-					__lt31 = ks[i].Cy
+					__lt36 = ks[i].Cy
 				} else {
-					__lt31 = h
+					__lt36 = h
 				}
-				h = __lt31
+				h = __lt36
 				i += 1
 			}
-			var __lt32 int
+			var __lt37 int
 			if r > 0 {
-				__lt32 = gap
+				__lt37 = gap
 			} else {
-				__lt32 = 0
+				__lt37 = 0
 			}
-			sy += (h + __lt32)
+			sy += (h + __lt37)
 			r += 1
 		}
 	} else {
@@ -755,52 +897,52 @@ func _boxMeasure(k _Ctl) _Size {
 		} else {
 			if k.Mode == 2 {
 				sx = mostX
-				var __lt33 int
+				var __lt38 int
 				if k.FlowH > mostY {
-					__lt33 = k.FlowH
+					__lt38 = k.FlowH
 				} else {
-					__lt33 = mostY
+					__lt38 = mostY
 				}
-				sy = __lt33
+				sy = __lt38
 			} else {
 				if k.Mode == 4 {
 					if k.Vertical {
 						sx = mostX
-						var __lt34 int
-						if n__r3 > 0 {
-							__lt34 = ((n__r3 - 1) * gap)
+						var __lt39 int
+						if n__r5 > 0 {
+							__lt39 = ((n__r5 - 1) * gap)
 						} else {
-							__lt34 = 0
+							__lt39 = 0
 						}
-						sy = ((n__r3 * mostY) + __lt34)
+						sy = ((n__r5 * mostY) + __lt39)
 					} else {
-						var __lt35 int
-						if n__r3 > 0 {
-							__lt35 = ((n__r3 - 1) * gap)
+						var __lt40 int
+						if n__r5 > 0 {
+							__lt40 = ((n__r5 - 1) * gap)
 						} else {
-							__lt35 = 0
+							__lt40 = 0
 						}
-						sx = ((n__r3 * mostX) + __lt35)
+						sx = ((n__r5 * mostX) + __lt40)
 						sy = mostY
 					}
 				} else {
 					for i, it := range ks {
 						if k.Vertical {
-							var __lt36 int
+							var __lt41 int
 							if i > 0 {
-								__lt36 = gap
+								__lt41 = gap
 							} else {
-								__lt36 = 0
+								__lt41 = 0
 							}
-							sy += (it.Cy + __lt36)
+							sy += (it.Cy + __lt41)
 						} else {
-							var __lt37 int
+							var __lt42 int
 							if i > 0 {
-								__lt37 = gap
+								__lt42 = gap
 							} else {
-								__lt37 = 0
+								__lt42 = 0
 							}
-							sx += (it.Cx + __lt37)
+							sx += (it.Cx + __lt42)
 						}
 					}
 					if k.Vertical {
@@ -837,14 +979,14 @@ func _layOut(box cgo.HWND, width int, height int) {
 	var w int = width
 	var h int = height
 	moved := ((w != k.LaidW) || (h != k.LaidH))
-	__entryKey92 := box
-	__entry93 := m._ctls[__entryKey92]
-	__entry93.LaidW = w
-	m._ctls[__entryKey92] = __entry93
-	__entryKey94 := box
-	__entry95 := m._ctls[__entryKey94]
-	__entry95.LaidH = h
-	m._ctls[__entryKey94] = __entry95
+	__entryKey104 := box
+	__entry105 := m._ctls[__entryKey104]
+	__entry105.LaidW = w
+	m._ctls[__entryKey104] = __entry105
+	__entryKey106 := box
+	__entry107 := m._ctls[__entryKey106]
+	__entry107.LaidH = h
+	m._ctls[__entryKey106] = __entry107
 	if len(k.Kids) == 0 {
 		if moved {
 			_invalidate(box)
@@ -858,20 +1000,20 @@ func _layOut(box cgo.HWND, width int, height int) {
 	var padBottom int = (_px(k.PadBottom, k.Dpi) + e)
 	var padLeft int = (_px(k.PadLeft, k.Dpi) + e)
 	if k.Kind == 14 {
-		var __lt38 int
+		var __lt43 int
 		if k.ScrollV {
-			__lt38 = cgo.GetSystemMetrics(2)
+			__lt43 = cgo.GetSystemMetrics(2)
 		} else {
-			__lt38 = 0
+			__lt43 = 0
 		}
-		w -= __lt38
-		var __lt39 int
+		w -= __lt43
+		var __lt44 int
 		if k.ScrollH {
-			__lt39 = cgo.GetSystemMetrics(3)
+			__lt44 = cgo.GetSystemMetrics(3)
 		} else {
-			__lt39 = 0
+			__lt44 = 0
 		}
-		h -= __lt39
+		h -= __lt44
 	}
 	var x0 int = padLeft
 	var y0 int = padTop
@@ -887,46 +1029,46 @@ func _layOut(box cgo.HWND, width int, height int) {
 		if k.ScrollV && (content.Cy > ih) {
 			ih = content.Cy
 		}
-		var __lt40 int
-		if (iw - pw) > 0 {
-			__lt40 = (iw - pw)
-		} else {
-			__lt40 = 0
-		}
-		var maxX int = __lt40
-		var __lt41 int
-		if (ih - ph) > 0 {
-			__lt41 = (ih - ph)
-		} else {
-			__lt41 = 0
-		}
-		var maxY int = __lt41
-		var __lt43 int
-		if k.PosX > maxX {
-			__lt43 = maxX
-		} else {
-			var __lt42 int
-			if k.PosX < 0 {
-				__lt42 = 0
-			} else {
-				__lt42 = k.PosX
-			}
-			__lt43 = __lt42
-		}
-		var posX int = __lt43
 		var __lt45 int
-		if k.PosY > maxY {
-			__lt45 = maxY
+		if (iw - pw) > 0 {
+			__lt45 = (iw - pw)
 		} else {
-			var __lt44 int
-			if k.PosY < 0 {
-				__lt44 = 0
-			} else {
-				__lt44 = k.PosY
-			}
-			__lt45 = __lt44
+			__lt45 = 0
 		}
-		var posY int = __lt45
+		var maxX int = __lt45
+		var __lt46 int
+		if (ih - ph) > 0 {
+			__lt46 = (ih - ph)
+		} else {
+			__lt46 = 0
+		}
+		var maxY int = __lt46
+		var __lt48 int
+		if k.PosX > maxX {
+			__lt48 = maxX
+		} else {
+			var __lt47 int
+			if k.PosX < 0 {
+				__lt47 = 0
+			} else {
+				__lt47 = k.PosX
+			}
+			__lt48 = __lt47
+		}
+		var posX int = __lt48
+		var __lt50 int
+		if k.PosY > maxY {
+			__lt50 = maxY
+		} else {
+			var __lt49 int
+			if k.PosY < 0 {
+				__lt49 = 0
+			} else {
+				__lt49 = k.PosY
+			}
+			__lt50 = __lt49
+		}
+		var posY int = __lt50
 		si := cgo.ScrollInfo{CbSize: 28, FMask: 31}
 		if k.ScrollV {
 			si.NMax = ((ih + (h - ph)) - 1)
@@ -944,36 +1086,36 @@ func _layOut(box cgo.HWND, width int, height int) {
 		}
 		x0 -= posX
 		y0 -= posY
-		__entryKey70 := box
-		__entry71 := m._ctls[__entryKey70]
-		__entry71.PosX = posX
-		m._ctls[__entryKey70] = __entry71
-		__entryKey72 := box
-		__entry73 := m._ctls[__entryKey72]
-		__entry73.PosY = posY
-		m._ctls[__entryKey72] = __entry73
-		__entryKey74 := box
-		__entry75 := m._ctls[__entryKey74]
-		__entry75.MaxX = maxX
-		m._ctls[__entryKey74] = __entry75
-		__entryKey76 := box
-		__entry77 := m._ctls[__entryKey76]
-		__entry77.MaxY = maxY
-		m._ctls[__entryKey76] = __entry77
-		__entryKey78 := box
-		__entry79 := m._ctls[__entryKey78]
-		__entry79.PageX = pw
-		m._ctls[__entryKey78] = __entry79
-		__entryKey80 := box
-		__entry81 := m._ctls[__entryKey80]
-		__entry81.PageY = ph
-		m._ctls[__entryKey80] = __entry81
+		__entryKey82 := box
+		__entry83 := m._ctls[__entryKey82]
+		__entry83.PosX = posX
+		m._ctls[__entryKey82] = __entry83
+		__entryKey84 := box
+		__entry85 := m._ctls[__entryKey84]
+		__entry85.PosY = posY
+		m._ctls[__entryKey84] = __entry85
+		__entryKey86 := box
+		__entry87 := m._ctls[__entryKey86]
+		__entry87.MaxX = maxX
+		m._ctls[__entryKey86] = __entry87
+		__entryKey88 := box
+		__entry89 := m._ctls[__entryKey88]
+		__entry89.MaxY = maxY
+		m._ctls[__entryKey88] = __entry89
+		__entryKey90 := box
+		__entry91 := m._ctls[__entryKey90]
+		__entry91.PageX = pw
+		m._ctls[__entryKey90] = __entry91
+		__entryKey92 := box
+		__entry93 := m._ctls[__entryKey92]
+		__entry93.PageY = ph
+		m._ctls[__entryKey92] = __entry93
 		_reach(box)
 	}
 	ks := _laidKids(k)
-	var n__r4 int = len(ks)
+	var n__r6 int = len(ks)
 	at := []_Rect{}
-	if n__r4 > 0 {
+	if n__r6 > 0 {
 		if k.Mode == 1 {
 			at = _grid(k, ks, x0, y0, iw, gap)
 		} else {
@@ -981,10 +1123,10 @@ func _layOut(box cgo.HWND, width int, height int) {
 				f := _flow(ks, x0, y0, iw, gap)
 				at = f.At
 				if f.H != m._ctls[box].FlowH {
-					__entryKey82 := box
-					__entry83 := m._ctls[__entryKey82]
-					__entry83.FlowH = f.H
-					m._ctls[__entryKey82] = __entry83
+					__entryKey94 := box
+					__entry95 := m._ctls[__entryKey94]
+					__entry95.FlowH = f.H
+					m._ctls[__entryKey94] = __entry95
 					_relayout(box)
 				}
 			} else {
@@ -998,13 +1140,13 @@ func _layOut(box cgo.HWND, width int, height int) {
 			}
 		}
 	}
-	var __lt46 int
-	if n__r4 > 0 {
-		__lt46 = n__r4
+	var __lt51 int
+	if n__r6 > 0 {
+		__lt51 = n__r6
 	} else {
-		__lt46 = 1
+		__lt51 = 1
 	}
-	batch := cgo.BeginDeferWindowPos(__lt46)
+	batch := cgo.BeginDeferWindowPos(__lt51)
 	for i, it := range ks {
 		r := at[i]
 		var ch int = (r.B - r.T)
@@ -1015,22 +1157,22 @@ func _layOut(box cgo.HWND, width int, height int) {
 		to := _Rect{L: r.L, T: r.T, R: r.R, B: (r.T + ch)}
 		held := batch
 		if (held != nil) && ((((kc.PlacedL != to.L) || (kc.PlacedT != to.T)) || (kc.PlacedR != to.R)) || (kc.PlacedB != to.B)) {
-			__entryKey84 := it.W
-			__entry85 := m._ctls[__entryKey84]
-			__entry85.PlacedL = to.L
-			m._ctls[__entryKey84] = __entry85
-			__entryKey86 := it.W
-			__entry87 := m._ctls[__entryKey86]
-			__entry87.PlacedT = to.T
-			m._ctls[__entryKey86] = __entry87
-			__entryKey88 := it.W
-			__entry89 := m._ctls[__entryKey88]
-			__entry89.PlacedR = to.R
-			m._ctls[__entryKey88] = __entry89
-			__entryKey90 := it.W
-			__entry91 := m._ctls[__entryKey90]
-			__entry91.PlacedB = to.B
-			m._ctls[__entryKey90] = __entry91
+			__entryKey96 := it.W
+			__entry97 := m._ctls[__entryKey96]
+			__entry97.PlacedL = to.L
+			m._ctls[__entryKey96] = __entry97
+			__entryKey98 := it.W
+			__entry99 := m._ctls[__entryKey98]
+			__entry99.PlacedT = to.T
+			m._ctls[__entryKey98] = __entry99
+			__entryKey100 := it.W
+			__entry101 := m._ctls[__entryKey100]
+			__entry101.PlacedR = to.R
+			m._ctls[__entryKey100] = __entry101
+			__entryKey102 := it.W
+			__entry103 := m._ctls[__entryKey102]
+			__entry103.PlacedB = to.B
+			m._ctls[__entryKey102] = __entry103
 			moved = true
 			batch = cgo.DeferWindowPos((*(held)), it.W, nil, r.L, r.T, (r.R - r.L), ch, 20)
 		}
@@ -1040,9 +1182,9 @@ func _layOut(box cgo.HWND, width int, height int) {
 		cgo.EndDeferWindowPos((*(done)))
 	}
 	if k.Mode == 3 {
-		var i int = (n__r4 - 1)
+		var i int = (n__r6 - 1)
 		for i >= 0 {
-			if i == (n__r4 - 1) {
+			if i == (n__r6 - 1) {
 				cgo.SetWindowPos(ks[i].W, nil, 0, 0, 0, 0, 19)
 			} else {
 				cgo.SetWindowPos(ks[i].W, snglSome(cgo.Found(ks[(i+1)].W)), 0, 0, 0, 0, 19)
@@ -1058,17 +1200,21 @@ func _layOut(box cgo.HWND, width int, height int) {
 	}
 }
 
-func _fillMenu(m__r1 cgo.Menu, w cgo.HWND, top bool) {
+func _invalidate(w cgo.HWND) {
+	cgo.InvalidateRect(w, nil, true)
+}
+
+func _fillMenu(m__r2 cgo.Menu, w cgo.HWND, top bool) {
 	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
 		return
 	}
 	for _, child := range m._ctls[w].Kids {
 		if func() bool { _, __ok := m._ctls[child]; return __ok }() {
 			if m._ctls[child].Kind == 16 {
-				_addEntry(m__r1, child)
+				_addEntry(m__r2, child)
 			} else {
 				if top {
-					_fillMenu(m__r1, child, true)
+					_fillMenu(m__r2, child, true)
 				}
 			}
 		}
@@ -1087,50 +1233,46 @@ func _laidKids(k _Ctl) []_Kid {
 }
 
 func _columnsOf(k _Ctl) int {
-	var __lt47 int
+	var __lt52 int
 	if k.Columns > 0 {
-		__lt47 = k.Columns
+		__lt52 = k.Columns
 	} else {
-		__lt47 = 1
+		__lt52 = 1
 	}
-	return __lt47
+	return __lt52
 }
 
 func _edge(k _Ctl) int {
-	var __lt48 int
+	var __lt53 int
 	if k.Framed {
-		__lt48 = _px(2, k.Dpi)
+		__lt53 = _px(2, k.Dpi)
 	} else {
-		__lt48 = 0
+		__lt53 = 0
 	}
-	return __lt48
-}
-
-func _invalidate(w cgo.HWND) {
-	cgo.InvalidateRect(w, nil, true)
+	return __lt53
 }
 
 func _reach(box cgo.HWND) {
 	k := m._ctls[box]
-	var __lt49 bool
+	var __lt54 bool
 	if k.ScrollV {
-		__lt49 = (k.PosY >= (k.MaxY - (k.PageY / 2)))
+		__lt54 = (k.PosY >= (k.MaxY - (k.PageY / 2)))
 	} else {
-		__lt49 = (k.PosX >= (k.MaxX - (k.PageX / 2)))
+		__lt54 = (k.PosX >= (k.MaxX - (k.PageX / 2)))
 	}
-	ending := __lt49
+	ending := __lt54
 	if ending && !k.AtEnd {
-		__entryKey96 := box
-		__entry97 := m._ctls[__entryKey96]
-		__entry97.AtEnd = true
-		m._ctls[__entryKey96] = __entry97
+		__entryKey108 := box
+		__entry109 := m._ctls[__entryKey108]
+		__entry109.AtEnd = true
+		m._ctls[__entryKey108] = __entry109
 		cgo.PostMessageW(box, 32771, 0, 0)
 	} else {
 		if !ending {
-			__entryKey98 := box
-			__entry99 := m._ctls[__entryKey98]
-			__entry99.AtEnd = false
-			m._ctls[__entryKey98] = __entry99
+			__entryKey110 := box
+			__entry111 := m._ctls[__entryKey110]
+			__entry111.AtEnd = false
+			m._ctls[__entryKey110] = __entry111
 		}
 	}
 }
@@ -1139,24 +1281,24 @@ func _grid(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, gap int) []_Rect {
 	var cols int = _columnsOf(k)
 	var cw int = ((iw - (gap * (cols - 1))) / cols)
 	var y int = y0
-	var n__r5 int = len(ks)
+	var n__r7 int = len(ks)
 	at := []_Rect{}
 	var r int = 0
-	for (r * cols) < n__r5 {
+	for (r * cols) < n__r7 {
 		var h int = 0
 		var i int = (r * cols)
-		for (i < n__r5) && (i < ((r + 1) * cols)) {
-			var __lt50 int
+		for (i < n__r7) && (i < ((r + 1) * cols)) {
+			var __lt55 int
 			if ks[i].Cy > h {
-				__lt50 = ks[i].Cy
+				__lt55 = ks[i].Cy
 			} else {
-				__lt50 = h
+				__lt55 = h
 			}
-			h = __lt50
+			h = __lt55
 			i += 1
 		}
 		i = (r * cols)
-		for (i < n__r5) && (i < ((r + 1) * cols)) {
+		for (i < n__r7) && (i < ((r + 1) * cols)) {
 			var x int = (x0 + ((i - (r * cols)) * (cw + gap)))
 			at = append(at, _Rect{L: x, T: y, R: (x + cw), B: (y + h)})
 			i += 1
@@ -1180,43 +1322,43 @@ func _flow(ks []_Kid, x0 int, y0 int, iw int, gap int) _Flowed {
 		}
 		at = append(at, _Rect{L: x, T: y, R: (x + it.Cx), B: (y + it.Cy)})
 		x += (it.Cx + gap)
-		var __lt51 int
+		var __lt56 int
 		if it.Cy > h {
-			__lt51 = it.Cy
+			__lt56 = it.Cy
 		} else {
-			__lt51 = h
+			__lt56 = h
 		}
-		h = __lt51
+		h = __lt56
 	}
-	var __lt52 int
+	var __lt57 int
 	if len(ks) > 0 {
-		__lt52 = ((y + h) - y0)
+		__lt57 = ((y + h) - y0)
 	} else {
-		__lt52 = 0
+		__lt57 = 0
 	}
-	return _Flowed{At: at, H: __lt52}
+	return _Flowed{At: at, H: __lt57}
 }
 
 func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
-	var n__r6 int = len(ks)
-	var __lt53 int
+	var n__r8 int = len(ks)
+	var __lt58 int
 	if k.Vertical {
-		__lt53 = ih
+		__lt58 = ih
 	} else {
-		__lt53 = iw
+		__lt58 = iw
 	}
-	var avail int = (__lt53 - (gap * (n__r6 - 1)))
+	var avail int = (__lt58 - (gap * (n__r8 - 1)))
 	size := []int{}
 	var total int = 0
 	var flex float64 = 0.0
 	for _, it := range ks {
-		var __lt54 int
+		var __lt59 int
 		if k.Vertical {
-			__lt54 = it.Cy
+			__lt59 = it.Cy
 		} else {
-			__lt54 = it.Cx
+			__lt59 = it.Cx
 		}
-		var along int = __lt54
+		var along int = __lt59
 		size = append(size, along)
 		total += along
 		flex += it.Flex
@@ -1224,9 +1366,9 @@ func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
 	var spare int = (avail - total)
 	if k.Mode == 4 {
 		for i, _ := range ks {
-			size[i] = (avail / n__r6)
+			size[i] = (avail / n__r8)
 		}
-		size[(n__r6 - 1)] += (avail - ((avail / n__r6) * n__r6))
+		size[(n__r8 - 1)] += (avail - ((avail / n__r8) * n__r8))
 	} else {
 		if (spare > 0) && (flex > 0.0) {
 			var given int = 0
@@ -1242,87 +1384,87 @@ func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
 			size[last] += (spare - given)
 		}
 	}
-	var __lt55 int
+	var __lt60 int
 	if k.Vertical {
-		__lt55 = y0
+		__lt60 = y0
 	} else {
-		__lt55 = x0
+		__lt60 = x0
 	}
-	var pos int = __lt55
-	var __lt56 int
+	var pos int = __lt60
+	var __lt61 int
 	if k.Vertical {
-		__lt56 = iw
+		__lt61 = iw
 	} else {
-		__lt56 = ih
+		__lt61 = ih
 	}
-	var room int = __lt56
+	var room int = __lt61
 	at := []_Rect{}
 	for i, it := range ks {
-		var __lt57 bool
+		var __lt62 bool
 		if k.Vertical {
-			__lt57 = (m._ctls[it.W].ExactW > 0)
+			__lt62 = (m._ctls[it.W].ExactW > 0)
 		} else {
-			__lt57 = (m._ctls[it.W].ExactH > 0)
+			__lt62 = (m._ctls[it.W].ExactH > 0)
 		}
-		sized := __lt57
+		sized := __lt62
 		var across int = room
 		var off int = 0
 		if (k.Align != 0) || sized {
-			var __lt58 int
+			var __lt63 int
 			if k.Vertical {
-				__lt58 = it.Cx
+				__lt63 = it.Cx
 			} else {
-				__lt58 = it.Cy
+				__lt63 = it.Cy
 			}
-			var want int = __lt58
-			var __lt59 int
+			var want int = __lt63
+			var __lt64 int
 			if want < room {
-				__lt59 = want
+				__lt64 = want
 			} else {
-				__lt59 = room
+				__lt64 = room
 			}
-			across = __lt59
-			var __lt61 int
+			across = __lt64
+			var __lt66 int
 			if k.Align == 2 {
-				__lt61 = ((room - across) / 2)
+				__lt66 = ((room - across) / 2)
 			} else {
-				var __lt60 int
+				var __lt65 int
 				if k.Align == 3 {
-					__lt60 = (room - across)
+					__lt65 = (room - across)
 				} else {
-					__lt60 = 0
+					__lt65 = 0
 				}
-				__lt61 = __lt60
+				__lt66 = __lt65
 			}
-			off = __lt61
+			off = __lt66
 		}
-		var __lt62 int
+		var __lt67 int
 		if k.Vertical {
-			__lt62 = (x0 + off)
+			__lt67 = (x0 + off)
 		} else {
-			__lt62 = pos
+			__lt67 = pos
 		}
-		var x int = __lt62
-		var __lt63 int
+		var x int = __lt67
+		var __lt68 int
 		if k.Vertical {
-			__lt63 = pos
+			__lt68 = pos
 		} else {
-			__lt63 = (y0 + off)
+			__lt68 = (y0 + off)
 		}
-		var y int = __lt63
-		var __lt64 int
+		var y int = __lt68
+		var __lt69 int
 		if k.Vertical {
-			__lt64 = across
+			__lt69 = across
 		} else {
-			__lt64 = size[i]
+			__lt69 = size[i]
 		}
-		var __lt65 int
+		var __lt70 int
 		if k.Vertical {
-			__lt65 = size[i]
+			__lt70 = size[i]
 		} else {
-			__lt65 = across
+			__lt70 = across
 		}
-		at = append(at, _Rect{L: x, T: y, R: (x + __lt64), B: (y + __lt65)})
+		at = append(at, _Rect{L: x, T: y, R: (x + __lt69), B: (y + __lt70)})
 		pos += (size[i] + gap)
 	}
 	return at
@@ -1342,10 +1484,10 @@ func _place(w cgo.HWND, cw int, ch int) {
 			if k.Kind == 23 {
 				var fh int = cgo.SnglWin32FlowHeight(w, (cw - _px((k.PadRight+k.PadLeft), k.Dpi)))
 				if fh != k.FlowH {
-					__entryKey100 := w
-					__entry101 := m._ctls[__entryKey100]
-					__entry101.FlowH = fh
-					m._ctls[__entryKey100] = __entry101
+					__entryKey112 := w
+					__entry113 := m._ctls[__entryKey112]
+					__entry113.FlowH = fh
+					m._ctls[__entryKey112] = __entry113
 					_relayout(w)
 				}
 				_invalidate(w)
@@ -1355,22 +1497,22 @@ func _place(w cgo.HWND, cw int, ch int) {
 						if func() bool { _, __ok := m._ctls[child]; return __ok }() {
 							kc := m._ctls[child]
 							if (((kc.PlacedL != 0) || (kc.PlacedT != 0)) || (kc.PlacedR != cw)) || (kc.PlacedB != ch) {
-								__entryKey102 := child
-								__entry103 := m._ctls[__entryKey102]
-								__entry103.PlacedL = 0
-								m._ctls[__entryKey102] = __entry103
-								__entryKey104 := child
-								__entry105 := m._ctls[__entryKey104]
-								__entry105.PlacedT = 0
-								m._ctls[__entryKey104] = __entry105
-								__entryKey106 := child
-								__entry107 := m._ctls[__entryKey106]
-								__entry107.PlacedR = cw
-								m._ctls[__entryKey106] = __entry107
-								__entryKey108 := child
-								__entry109 := m._ctls[__entryKey108]
-								__entry109.PlacedB = ch
-								m._ctls[__entryKey108] = __entry109
+								__entryKey114 := child
+								__entry115 := m._ctls[__entryKey114]
+								__entry115.PlacedL = 0
+								m._ctls[__entryKey114] = __entry115
+								__entryKey116 := child
+								__entry117 := m._ctls[__entryKey116]
+								__entry117.PlacedT = 0
+								m._ctls[__entryKey116] = __entry117
+								__entryKey118 := child
+								__entry119 := m._ctls[__entryKey118]
+								__entry119.PlacedR = cw
+								m._ctls[__entryKey118] = __entry119
+								__entryKey120 := child
+								__entry121 := m._ctls[__entryKey120]
+								__entry121.PlacedB = ch
+								m._ctls[__entryKey120] = __entry121
 								cgo.SetWindowPos(child, nil, 0, 0, cw, ch, 20)
 								cgo.InvalidateRect(child, nil, false)
 							}
@@ -1382,7 +1524,7 @@ func _place(w cgo.HWND, cw int, ch int) {
 	}
 }
 
-func _addEntry(m__r2 cgo.Menu, e cgo.HWND) {
+func _addEntry(m__r3 cgo.Menu, e cgo.HWND) {
 	k := m._ctls[e]
 	var subs int = 0
 	for _, child := range k.Kids {
@@ -1394,10 +1536,10 @@ func _addEntry(m__r2 cgo.Menu, e cgo.HWND) {
 		sub := cgo.CreatePopupMenu()
 		if sub != nil {
 			_fillMenu((*(sub)), e, false)
-			cgo.SnglWin32AppendPopup(m__r2, (16 + _entryFlags(k)), (*(sub)), k.Text)
+			cgo.SnglWin32AppendPopup(m__r3, (16 + _entryFlags(k)), (*(sub)), k.Text)
 		}
 	} else {
-		cgo.AppendMenuW(m__r2, _entryFlags(k), k.Id, k.Text)
+		cgo.AppendMenuW(m__r3, _entryFlags(k), k.Id, k.Text)
 	}
 }
 
@@ -1410,13 +1552,13 @@ func _flexOf(w cgo.HWND) float64 {
 	for _, child := range k.Kids {
 		if (func() bool { _, __ok := m._ctls[child]; return __ok }() && !m._ctls[child].OffProp) && !m._ctls[child].OffLook {
 			var f float64 = _flexOf(child)
-			var __lt66 float64
+			var __lt71 float64
 			if f > most {
-				__lt66 = f
+				__lt71 = f
 			} else {
-				__lt66 = most
+				__lt71 = most
 			}
-			most = __lt66
+			most = __lt71
 		}
 	}
 	return most
@@ -1439,140 +1581,478 @@ func _layOutTabs(tabs cgo.HWND, w int, h int) {
 }
 
 func _entryFlags(k _Ctl) int {
-	var __lt67 int
+	var __lt72 int
 	if k.Disabled {
-		__lt67 = 1
+		__lt72 = 1
 	} else {
-		__lt67 = 0
+		__lt72 = 0
 	}
-	var __lt68 int
+	var __lt73 int
 	if k.Checked {
-		__lt68 = 8
+		__lt73 = 8
 	} else {
-		__lt68 = 0
+		__lt73 = 0
 	}
-	return (__lt67 + __lt68)
+	return (__lt72 + __lt73)
 }
 
 func _hooked() map[cgo.HWND]_Ctl {
-	cgo.SnglWin32Hooks(_made, _forget, _relayout, _layOutTop, _layoutMessage, _tabChosen, _menuCommand, _refresh, _wheeled, _scrolled, func(a0 cgo.HWND) cgo.SnglWin32HooksMeasure { return cgo.SnglWin32HooksMeasure(_measure(a0)) }, _kidCount, _kidAt, _padOf)
+	cgo.SnglWin32Procs(_boxProc, _controlProc, _kidCount, _kidAt)
 	return map[cgo.HWND]_Ctl{}
 }
 
-func _made(w cgo.HWND, kind int, dpi int) {
-	m._ctls[w] = _Ctl{Kind: kind, Vertical: ((kind == 0) || (kind == 14)), Dpi: dpi, OffProp: ((kind == 15) || (kind == 16)), Kids: []cgo.HWND{}}
-}
-
-func _forget(w cgo.HWND) {
-	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		return
-	}
-	k := m._ctls[w]
-	if (k.Kind == 16) && (k.Id >= 1000) {
-		delete(m._entryIds, k.Id)
-	}
-	m__r3 := k.Menu
-	if m__r3 != nil {
-		cgo.SetMenu(w, nil)
-		cgo.DestroyMenu((*(m__r3)))
-	}
-	delete(m._ctls, w)
-}
-
-func _layoutMessage(top cgo.HWND) {
-	if !func() bool { _, __ok := m._ctls[top]; return __ok }() {
-		return
-	}
-	__entryKey110 := top
-	__entry111 := m._ctls[__entryKey110]
-	__entry111.Laying = false
-	m._ctls[__entryKey110] = __entry111
-	_refresh(top, cgo.SnglWin32DpiOf(top))
-	_fit(top)
-	_layOutTop(top)
-}
-
-func _tabChosen(tabs cgo.HWND) {
-	if !func() bool { _, __ok := m._ctls[tabs]; return __ok }() {
-		return
-	}
-	k := m._ctls[tabs]
-	var at int = int(cgo.SendMessageW(tabs, 4875, 0, 0))
-	if ((at < 0) || (at >= len(k.Kids))) || (cgo.IsWindowEnabled(k.Kids[at]) == 0) {
-		cgo.SendMessageW(tabs, 4876, k.Selected, 0)
-		return
-	}
-	__entryKey112 := tabs
-	__entry113 := m._ctls[__entryKey112]
-	__entry113.Selected = at
-	m._ctls[__entryKey112] = __entry113
-	_layOutNow(tabs)
-	cgo.SnglWin32Clicked(k.Kids[at])
-}
-
-func _menuCommand(top cgo.HWND, id int) {
-	e := _findEntry(top, id)
-	if e != nil {
-		cgo.SnglWin32Clicked(cgo.HWND((*(e))))
-	}
-}
-
-func _refresh(w cgo.HWND, dpi int) {
-	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		return
-	}
-	k := m._ctls[w]
-	if k.Dpi != dpi {
-		__entryKey114 := w
-		__entry115 := m._ctls[__entryKey114]
-		__entry115.Dpi = dpi
-		m._ctls[__entryKey114] = __entry115
-		__entryKey116 := w
-		__entry117 := m._ctls[__entryKey116]
-		__entry117.Measured = false
-		m._ctls[__entryKey116] = __entry117
-		cgo.SnglWin32Refont(w, dpi)
-	}
-	for _, child := range k.Kids {
-		_refresh(child, dpi)
-	}
-}
-
-func _wheeled(w cgo.HWND, delta int) {
-	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		return
-	}
-	var turned int = (m._ctls[w].Wheel + delta)
-	var lines int = (turned / 120)
-	__entryKey118 := w
-	__entry119 := m._ctls[__entryKey118]
-	__entry119.Wheel = (turned - (lines * 120))
-	m._ctls[__entryKey118] = __entry119
-	var __lt69 int
-	if m._ctls[w].ScrollV {
-		__lt69 = 1
+func _boxProc(w cgo.HWND, msg int, wp int, lp int) int {
+	has := func() bool { _, __ok := m._ctls[w]; return __ok }()
+	var __lt74 int
+	if has {
+		__lt74 = m._ctls[w].Kind
 	} else {
-		__lt69 = 0
+		__lt74 = -1
 	}
-	var bar int = __lt69
-	var i int = 0
-	var __lt70 int
-	if lines < 0 {
-		__lt70 = (0 - lines)
-	} else {
-		__lt70 = lines
+	var kind int = __lt74
+	if msg == 273 {
+		return _command(w, msg, wp, lp, kind)
 	}
-	var count int = __lt70
-	for i < count {
-		var __lt71 int
-		if lines < 0 {
-			__lt71 = 1
-		} else {
-			__lt71 = 0
+	if ((msg == 312) || (msg == 309)) || (msg == 307) {
+		return _colored(w, msg, wp, lp)
+	}
+	if (msg == 20) && has {
+		if (kind == 22) || (kind == 21) {
+			return 1
 		}
-		_scrolled(w, bar, __lt71)
-		i += 1
+		b := _inherited(w)
+		if b != nil {
+			r := cgo.RECT{}
+			__ref6 := GetClientRect__result(cgo.GetClientRect(w, r))
+			r = __ref6.Out1
+			cgo.SnglWin32Fill(w, cgo.SnglWin32DcOf(wp), r, b)
+			return 1
+		}
 	}
+	if msg == 43 {
+		di := cgo.DrawOf(lp)
+		item := cgo.DRAWITEMSTRUCTHwndItem(di)
+		if func() bool { _, __ok := m._ctls[item]; return __ok }() && (m._ctls[item].Kind == 3) {
+			_paintButton(di, item)
+			return 1
+		}
+	}
+	if (msg == 132) && (kind == 21) {
+		return -1
+	}
+	if msg == 32773 {
+		if kind == 21 {
+			_pictureLoaded(w)
+		}
+		return 0
+	}
+	if msg == 32774 {
+		cgo.SnglWin32Fetched(w, wp, lp)
+		return 0
+	}
+	if ((msg == 15) || (msg == 792)) && has {
+		k := m._ctls[w]
+		if (((k.Kind == 23) || (k.Kind == 22)) || (k.Kind == 21)) || k.Framed {
+			var fit int = 0
+			up := cgo.ParentOf(w)
+			if (up != nil) && func() bool { _, __ok := m._ctls[cgo.HWND((*(up)))]; return __ok }() {
+				fit = m._ctls[cgo.HWND((*(up)))].Fit
+			}
+			var __lt75 *cgo.Brush
+			if k.Kind == 21 {
+				__lt75 = _inherited(w)
+			} else {
+				__lt75 = nil
+			}
+			backdrop := __lt75
+			return cgo.SnglWin32Paint(w, msg, wp, k.Brush, backdrop, fit, k.PadTop, k.PadRight, k.PadLeft)
+		}
+	}
+	if msg == 514 {
+		if kind == 23 {
+			span := cgo.SnglWin32LinkUnder(w, _signed16(_loword(lp)), _signed16(_loword(((lp - _loword(lp)) / 65536))))
+			if span != nil {
+				s := cgo.HWND((*(span)))
+				if func() bool { _, __ok := m._ctls[s]; return __ok }() && (m._ctls[s].Href != "") {
+					_open(m._ctls[s].Href)
+				}
+			}
+			return 0
+		}
+		if has && (kind != 0) {
+			_press(w)
+			return 0
+		}
+	}
+	if ((((msg == 32) && has) && func() bool { _, __ok := m._on[w]; return __ok }()) && m._on[w].Clicks) && (_loword(lp) == 1) {
+		cgo.SnglWin32Hand()
+		return 1
+	}
+	if msg == 5 {
+		if kind == 0 {
+			_layOutTop(w)
+		}
+		return 0
+	}
+	if msg == 78 {
+		return _notified(w, msg, wp, lp)
+	}
+	if ((msg == 277) || (msg == 276)) && (kind == 14) {
+		var __lt76 int
+		if msg == 277 {
+			__lt76 = 1
+		} else {
+			__lt76 = 0
+		}
+		_scrolled(w, __lt76, _loword(wp))
+		return 0
+	}
+	if (msg == 522) && (kind == 14) {
+		_wheeled(w, _signed16(_loword(((wp - _loword(wp)) / 65536))))
+		return 0
+	}
+	if msg == 32771 {
+		_reached(w)
+		return 0
+	}
+	if msg == 32772 {
+		if kind == 15 {
+			_showModal(w)
+		}
+		return 0
+	}
+	if msg == 32770 {
+		cgo.SnglWin32Posted(lp)
+		return 0
+	}
+	if (msg == 275) && (cgo.SnglWin32Timer(w, wp) != 0) {
+		return 0
+	}
+	if msg == 32769 {
+		if has {
+			_layoutMessage(w)
+		}
+		return 0
+	}
+	if msg == 32775 {
+		if func() bool { _, __ok := m._on[w]; return __ok }() {
+			visible := m._on[w].Visible
+			visible((wp != 0))
+		}
+		return 0
+	}
+	if (msg == 736) && (kind == 0) {
+		r := cgo.RectOf(lp)
+		_refresh(w, _loword(((wp - _loword(wp)) / 65536)))
+		cgo.SetWindowPos(w, nil, cgo.RECTLeft(r), cgo.RECTTop(r), (cgo.RECTRight(r) - cgo.RECTLeft(r)), (cgo.RECTBottom(r) - cgo.RECTTop(r)), 20)
+		_layOutTop(w)
+		return 0
+	}
+	if (msg == 16) && _close(w) {
+		return 0
+	}
+	if msg == 130 {
+		_gone(w, (((has && (kind == 0)) && (m._ctls[w].ModalOf == nil)) && (cgo.IsWindowVisible(w) != 0)))
+	}
+	return cgo.DefWindowProcW(w, msg, wp, lp)
+}
+
+func _controlProc(w cgo.HWND, msg int, wp int, lp int, id int, data int) int {
+	var __lt77 int
+	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		__lt77 = m._ctls[w].Kind
+	} else {
+		__lt77 = -1
+	}
+	var kind int = __lt77
+	activates := (((kind == 4) && func() bool { _, __ok := m._on[w]; return __ok }()) && m._on[w].Activates)
+	if ((msg == 135) && activates) && (lp != 0) {
+		m__r5 := cgo.MsgOf(lp)
+		var what int = int(cgo.MSGMessage(m__r5))
+		if ((what == 256) || (what == 258)) && (int(cgo.MSGWParam(m__r5)) == 13) {
+			var r int = cgo.DefSubclassProc(w, msg, wp, lp)
+			var __lt78 int
+			if ((r / 4) % 2) == 1 {
+				__lt78 = r
+			} else {
+				__lt78 = (r + 4)
+			}
+			return __lt78
+		}
+	}
+	if ((msg == 256) && (wp == 13)) && activates {
+		_activated(w)
+		return 0
+	}
+	if ((msg == 258) && (wp == 13)) && (kind == 4) {
+		return 0
+	}
+	if msg == 32 {
+		if (kind == 11) || ((kind == 23) && (cgo.SnglWin32OverLink(w) != 0)) {
+			cgo.SnglWin32Hand()
+			return 1
+		}
+	}
+	if ((msg == 15) || (msg == 792)) && (kind == 7) {
+		return cgo.SnglWin32PaintBar(w, msg, wp, lp)
+	}
+	if msg == 130 {
+		cgo.SnglWin32Unsubclass(w)
+		_gone(w, false)
+	}
+	return cgo.DefSubclassProc(w, msg, wp, lp)
+}
+
+func _kidCount(w cgo.HWND) int {
+	var __lt79 int
+	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		__lt79 = len(m._ctls[w].Kids)
+	} else {
+		__lt79 = 0
+	}
+	return __lt79
+}
+
+func _kidAt(w cgo.HWND, at int) cgo.HWND {
+	return m._ctls[w].Kids[at]
+}
+
+func _command(w cgo.HWND, msg int, wp int, lp int, kind int) int {
+	var code int = _loword(((wp - _loword(wp)) / 65536))
+	if ((lp == 0) && (code == 0)) && (kind == 0) {
+		_menuCommand(w, _loword(wp))
+		return 0
+	}
+	src := cgo.SnglWin32WindowOf(lp)
+	if !func() bool { _, __ok := m._ctls[src]; return __ok }() {
+		return cgo.DefWindowProcW(w, msg, wp, lp)
+	}
+	k := m._ctls[src]
+	if code == 0 {
+		if ((k.Kind == 11) && (k.Href != "")) && !m._firing {
+			_open(k.Href)
+		}
+		if (k.Kind == 2) && !m._firing {
+			_press(src)
+		} else {
+			_clicked(src)
+		}
+		return 0
+	}
+	if code == 768 {
+		if cgo.SnglWin32Quiet(src) == 0 {
+			_changed(src)
+		}
+		return 0
+	}
+	if (code == 512) && (k.Kind == 8) {
+		_activated(src)
+		return 0
+	}
+	if (code == 1) && (k.Kind == 9) {
+		_changed(src)
+		return 0
+	}
+	return cgo.DefWindowProcW(w, msg, wp, lp)
+}
+
+func _colored(w cgo.HWND, msg int, wp int, lp int) int {
+	var otherwise int = cgo.DefWindowProcW(w, msg, wp, lp)
+	src := cgo.SnglWin32WindowOf(lp)
+	dc := cgo.SnglWin32DcOf(wp)
+	if (func() bool { _, __ok := m._ctls[src]; return __ok }() && (m._ctls[src].Brush == nil)) && (msg != 307) {
+		under := _inherited(src)
+		if under != nil {
+			cgo.SetBkMode(dc, 1)
+			_color(src, dc, 0)
+			return cgo.SnglWin32BrushAnswer((*(under)))
+		}
+	}
+	return _color(src, dc, otherwise)
+}
+
+func _inherited(w cgo.HWND) *cgo.Brush {
+	p := w
+	going := true
+	var found *cgo.Brush
+	for going {
+		if !func() bool { _, __ok := m._ctls[p]; return __ok }() {
+			going = false
+		} else {
+			if m._ctls[p].Brush != nil {
+				found = m._ctls[p].Brush
+				going = false
+			} else {
+				if m._ctls[p].Kind == 0 {
+					going = false
+				} else {
+					up := cgo.ParentOf(p)
+					if up != nil {
+						p = cgo.HWND((*(up)))
+					} else {
+						going = false
+					}
+				}
+			}
+		}
+	}
+	return found
+}
+
+func _paintButton(di cgo.DrawPtr, w cgo.HWND) {
+	k := m._ctls[w]
+	dc := cgo.DRAWITEMSTRUCTHDC(di)
+	r := cgo.DRAWITEMSTRUCTRcItem(di)
+	var state int = int(cgo.DRAWITEMSTRUCTItemState(di))
+	filled := false
+	if ((state / 1) % 2) == 1 {
+		fill := cgo.SnglWin32Brush(_shade(k.Background, 48))
+		if fill != nil {
+			cgo.SnglWin32Fill(w, dc, r, fill)
+			cgo.SnglWin32DropBrush((*(fill)))
+			filled = true
+		}
+	}
+	if !filled {
+		cgo.SnglWin32Fill(w, dc, r, k.Brush)
+	}
+	cgo.SetBkMode(dc, 1)
+	if ((state / 4) % 2) == 1 {
+		cgo.SetTextColor(dc, cgo.GetSysColor(17))
+	} else {
+		if k.Color >= 0 {
+			cgo.SetTextColor(dc, ((((k.Color / 65536) % 256) + (((k.Color / 256) % 256) * 256)) + ((k.Color % 256) * 65536)))
+		} else {
+			cgo.SetTextColor(dc, cgo.GetSysColor(18))
+		}
+	}
+	cgo.SnglWin32DrawLabel(w, dc, k.Text, r, 2085)
+	if (((state / 16) % 2) == 1) && !(((state / 512) % 2) == 1) {
+		var d int = _px(3, k.Dpi)
+		cgo.SnglWin32FocusRect(dc, cgo.RECT{Left: (r.Left + d), Top: (r.Top + d), Right: (r.Right - d), Bottom: (r.Bottom - d)})
+	}
+}
+
+func _pictureLoaded(w cgo.HWND) {
+	up := cgo.ParentOf(w)
+	if up != nil {
+		frame := cgo.HWND((*(up)))
+		if func() bool { _, __ok := m._ctls[frame]; return __ok }() && (m._ctls[frame].Kind == 20) {
+			var got int = cgo.SnglWin32Loaded(w, frame)
+			if (got != 0) && func() bool { _, __ok := m._on[frame]; return __ok }() {
+				h := m._on[frame]
+				if got == 1 {
+					load := h.Load
+					load()
+				} else {
+					failed := h.Failed
+					failed()
+				}
+			}
+			_relayout(w)
+		}
+	}
+}
+
+func _signed16(n int) int {
+	var __lt80 int
+	if n >= 32768 {
+		__lt80 = (n - 65536)
+	} else {
+		__lt80 = n
+	}
+	return __lt80
+}
+
+func _loword(n int) int {
+	var lo int = (n % 65536)
+	var __lt81 int
+	if lo < 0 {
+		__lt81 = (lo + 65536)
+	} else {
+		__lt81 = lo
+	}
+	return __lt81
+}
+
+func _open(href string) {
+	cgo.ShellExecuteW(nil, "open", href, nil, nil, 1)
+}
+
+func _press(w cgo.HWND) {
+	chain := []cgo.HWND{}
+	p := w
+	going := true
+	for going && (len(chain) < 64) {
+		if !func() bool { _, __ok := m._ctls[p]; return __ok }() || (m._ctls[p].Kind == 0) {
+			going = false
+		} else {
+			chain = append(chain, p)
+			up := cgo.ParentOf(p)
+			if up != nil {
+				p = cgo.HWND((*(up)))
+			} else {
+				going = false
+			}
+		}
+	}
+	for _, at := range chain {
+		if cgo.IsWindow(at) != 0 {
+			_clicked(at)
+		}
+	}
+}
+
+func _notified(w cgo.HWND, msg int, wp int, lp int) int {
+	nm := cgo.NmOf(lp)
+	src := cgo.NMHDRHwndFrom(nm)
+	if !func() bool { _, __ok := m._ctls[src]; return __ok }() {
+		return cgo.DefWindowProcW(w, msg, wp, lp)
+	}
+	k := m._ctls[src]
+	var code int = _signed32(int(cgo.NMHDRCode(nm)))
+	if (k.Kind == 13) && (code == -551) {
+		_tabChosen(src)
+		return 0
+	}
+	if k.Kind == 17 {
+		lv := cgo.LvOf(lp)
+		stated := (((int(cgo.NMLISTVIEWUChanged(lv)) / 8) % 2) == 1)
+		selected := (((int(cgo.NMLISTVIEWUNewState(lv)) / 2) % 2) == 1)
+		if ((((code == -100) && stated) && selected) && !k.Selectable) && (cgo.SnglWin32Quiet(src) == 0) {
+			return 1
+		}
+		if ((((code == -101) && stated) && selected) && !(((int(cgo.NMLISTVIEWUOldState(lv)) / 2) % 2) == 1)) && (cgo.SnglWin32Quiet(src) == 0) {
+			__entryKey122 := src
+			__entry123 := m._ctls[__entryKey122]
+			__entry123.Row = cgo.NMLISTVIEWIItem(lv)
+			m._ctls[__entryKey122] = __entry123
+			_changed(src)
+			return 0
+		}
+		if (code == -108) && k.Sortable {
+			__entryKey124 := src
+			__entry125 := m._ctls[__entryKey124]
+			__entry125.SortCol = cgo.NMLISTVIEWISubItem(lv)
+			m._ctls[__entryKey124] = __entry125
+			_clicked(src)
+			return 0
+		}
+	}
+	if ((k.Kind == 18) && (code == -451)) && (cgo.SnglWin32Quiet(src) == 0) {
+		_changed(src)
+		return 0
+	}
+	if ((k.Kind == 18) && (code == -455)) && (cgo.SnglWin32Quiet(src) == 0) {
+		_activated(src)
+		_relayout(src)
+		return 0
+	}
+	if ((k.Kind == 19) && (code == -759)) && (cgo.SnglWin32Quiet(src) == 0) {
+		_changed(src)
+		return 0
+	}
+	return cgo.DefWindowProcW(w, msg, wp, lp)
 }
 
 func _scrolled(w cgo.HWND, bar int, request int) {
@@ -1581,8 +2061,8 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 	}
 	k := m._ctls[w]
 	si := cgo.ScrollInfo{CbSize: 28, FMask: 23}
-	__ref6 := _getScrollInfo__result(cgo.GetScrollInfo(w, bar, si))
-	si = __ref6.Out2
+	__ref7 := _getScrollInfo__result(cgo.GetScrollInfo(w, bar, si))
+	si = __ref7.Out2
 	var pos int = si.NPos
 	var line int = _px(20, k.Dpi)
 	if request == 0 {
@@ -1614,157 +2094,407 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 			}
 		}
 	}
-	var __lt72 int
+	var __lt82 int
 	if bar == 1 {
-		__lt72 = k.MaxY
+		__lt82 = k.MaxY
 	} else {
-		__lt72 = k.MaxX
+		__lt82 = k.MaxX
 	}
-	var most int = __lt72
-	var __lt74 int
+	var most int = __lt82
+	var __lt84 int
 	if pos > most {
-		__lt74 = most
+		__lt84 = most
 	} else {
-		var __lt73 int
+		var __lt83 int
 		if pos < 0 {
-			__lt73 = 0
+			__lt83 = 0
 		} else {
-			__lt73 = pos
+			__lt83 = pos
 		}
-		__lt74 = __lt73
+		__lt84 = __lt83
 	}
-	pos = __lt74
-	var __lt75 int
+	pos = __lt84
+	var __lt85 int
 	if bar == 1 {
-		__lt75 = k.PosY
+		__lt85 = k.PosY
 	} else {
-		__lt75 = k.PosX
+		__lt85 = k.PosX
 	}
-	var was int = __lt75
+	var was int = __lt85
 	if pos == was {
 		return
 	}
 	var by int = (was - pos)
 	if bar == 1 {
-		__entryKey120 := w
-		__entry121 := m._ctls[__entryKey120]
-		__entry121.PosY = pos
-		m._ctls[__entryKey120] = __entry121
+		__entryKey126 := w
+		__entry127 := m._ctls[__entryKey126]
+		__entry127.PosY = pos
+		m._ctls[__entryKey126] = __entry127
 	} else {
-		__entryKey122 := w
-		__entry123 := m._ctls[__entryKey122]
-		__entry123.PosX = pos
-		m._ctls[__entryKey122] = __entry123
+		__entryKey128 := w
+		__entry129 := m._ctls[__entryKey128]
+		__entry129.PosX = pos
+		m._ctls[__entryKey128] = __entry129
 	}
 	cgo.SetScrollPos(w, bar, pos, true)
-	var __lt76 int
+	var __lt86 int
 	if bar == 0 {
-		__lt76 = by
+		__lt86 = by
 	} else {
-		__lt76 = 0
+		__lt86 = 0
 	}
-	var dx int = __lt76
-	var __lt77 int
+	var dx int = __lt86
+	var __lt87 int
 	if bar == 1 {
-		__lt77 = by
+		__lt87 = by
 	} else {
-		__lt77 = 0
+		__lt87 = 0
 	}
-	var dy int = __lt77
+	var dy int = __lt87
 	for _, child := range k.Kids {
 		if func() bool { _, __ok := m._ctls[child]; return __ok }() {
-			__entryKey124 := child
-			__entry125 := m._ctls[__entryKey124]
-			__entry125.PlacedL += dx
-			m._ctls[__entryKey124] = __entry125
-			__entryKey126 := child
-			__entry127 := m._ctls[__entryKey126]
-			__entry127.PlacedR += dx
-			m._ctls[__entryKey126] = __entry127
-			__entryKey128 := child
-			__entry129 := m._ctls[__entryKey128]
-			__entry129.PlacedT += dy
-			m._ctls[__entryKey128] = __entry129
 			__entryKey130 := child
 			__entry131 := m._ctls[__entryKey130]
-			__entry131.PlacedB += dy
+			__entry131.PlacedL += dx
 			m._ctls[__entryKey130] = __entry131
+			__entryKey132 := child
+			__entry133 := m._ctls[__entryKey132]
+			__entry133.PlacedR += dx
+			m._ctls[__entryKey132] = __entry133
+			__entryKey134 := child
+			__entry135 := m._ctls[__entryKey134]
+			__entry135.PlacedT += dy
+			m._ctls[__entryKey134] = __entry135
+			__entryKey136 := child
+			__entry137 := m._ctls[__entryKey136]
+			__entry137.PlacedB += dy
+			m._ctls[__entryKey136] = __entry137
 		}
 	}
 	cgo.SnglWin32ScrollChildren(w, dx, dy)
 	_reach(w)
 }
 
-func _kidCount(w cgo.HWND) int {
-	var __lt78 int
-	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		__lt78 = len(m._ctls[w].Kids)
-	} else {
-		__lt78 = 0
-	}
-	return __lt78
-}
-
-func _kidAt(w cgo.HWND, at int) cgo.HWND {
-	return m._ctls[w].Kids[at]
-}
-
-func _padOf(w cgo.HWND, side int) int {
+func _wheeled(w cgo.HWND, delta int) {
 	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		return 0
+		return
+	}
+	var turned int = (m._ctls[w].Wheel + delta)
+	var lines int = (turned / 120)
+	__entryKey138 := w
+	__entry139 := m._ctls[__entryKey138]
+	__entry139.Wheel = (turned - (lines * 120))
+	m._ctls[__entryKey138] = __entry139
+	var __lt88 int
+	if m._ctls[w].ScrollV {
+		__lt88 = 1
+	} else {
+		__lt88 = 0
+	}
+	var bar int = __lt88
+	var i int = 0
+	var __lt89 int
+	if lines < 0 {
+		__lt89 = (0 - lines)
+	} else {
+		__lt89 = lines
+	}
+	var count int = __lt89
+	for i < count {
+		var __lt90 int
+		if lines < 0 {
+			__lt90 = 1
+		} else {
+			__lt90 = 0
+		}
+		_scrolled(w, bar, __lt90)
+		i += 1
+	}
+}
+
+func _reached(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Reach
+		f()
+	}
+}
+
+func _showModal(m__r4 cgo.HWND) {
+	k := m._ctls[m__r4]
+	dialog := k.Dialog
+	if dialog == nil {
+		return
+	}
+	d := cgo.HWND((*(dialog)))
+	root := cgo.GetAncestor(m__r4, 2)
+	var __lt91 cgo.Found
+	if func() bool { _, __ok := m._ctls[root]; return __ok }() {
+		__lt91 = cgo.Found(root)
+	} else {
+		__lt91 = nil
+	}
+	owner := snglSome(__lt91)
+	was := cgo.GetWindow(d, 4)
+	if k.Open {
+		if cgo.IsWindowVisible(d) != 0 {
+			return
+		}
+		cgo.SnglWin32SetOwner(d, owner)
+		var __lt92 int
+		if owner != nil {
+			__lt92 = cgo.SnglWin32DpiOf(cgo.HWND((*(owner))))
+		} else {
+			__lt92 = cgo.SnglWin32DpiOf(cgo.SnglWin32Nothing())
+		}
+		_refresh(d, __lt92)
+		s := _measure(d)
+		var dpi int = m._ctls[d].Dpi
+		var __lt93 int
+		if s.Cx < _px(240, dpi) {
+			__lt93 = _px(240, dpi)
+		} else {
+			__lt93 = s.Cx
+		}
+		var cw int = __lt93
+		var __lt94 int
+		if s.Cy < _px(80, dpi) {
+			__lt94 = _px(80, dpi)
+		} else {
+			__lt94 = s.Cy
+		}
+		var ch int = __lt94
+		frame := cgo.SIZE{}
+		frame = cgo.SnglWin32FrameSize(d, cw, ch, frame)
+		var ww int = int(frame.Cx)
+		var wh int = int(frame.Cy)
+		var x int = 0
+		var y int = 0
+		if owner != nil {
+			o := cgo.RECT{}
+			__ref8 := GetWindowRect__result(cgo.GetWindowRect(cgo.HWND((*(owner))), o))
+			o = __ref8.Out1
+			if __ref8.Result != 0 {
+				x = (o.Left + (((o.Right - o.Left) - ww) / 2))
+				y = (o.Top + (((o.Bottom - o.Top) - wh) / 2))
+			}
+		}
+		cgo.SetWindowPos(d, nil, x, y, ww, wh, 16)
+		cgo.ShowWindow(d, 5)
+		_layOutTop(d)
+		if owner != nil {
+			cgo.EnableWindow(cgo.HWND((*(owner))), false)
+		}
+	} else {
+		if cgo.IsWindowVisible(d) != 0 {
+			if was != nil {
+				cgo.EnableWindow(cgo.HWND((*(was))), true)
+			}
+			cgo.ShowWindow(d, 0)
+		}
+	}
+}
+
+func _layoutMessage(top cgo.HWND) {
+	if !func() bool { _, __ok := m._ctls[top]; return __ok }() {
+		return
+	}
+	__entryKey140 := top
+	__entry141 := m._ctls[__entryKey140]
+	__entry141.Laying = false
+	m._ctls[__entryKey140] = __entry141
+	_refresh(top, cgo.SnglWin32DpiOf(top))
+	_fit(top)
+	_layOutTop(top)
+}
+
+func _refresh(w cgo.HWND, dpi int) {
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return
 	}
 	k := m._ctls[w]
-	var __lt81 int
-	if side == 0 {
-		__lt81 = k.PadTop
-	} else {
-		var __lt80 int
-		if side == 1 {
-			__lt80 = k.PadRight
-		} else {
-			var __lt79 int
-			if side == 2 {
-				__lt79 = k.PadBottom
-			} else {
-				__lt79 = k.PadLeft
-			}
-			__lt80 = __lt79
-		}
-		__lt81 = __lt80
+	if k.Dpi != dpi {
+		__entryKey142 := w
+		__entry143 := m._ctls[__entryKey142]
+		__entry143.Dpi = dpi
+		m._ctls[__entryKey142] = __entry143
+		__entryKey144 := w
+		__entry145 := m._ctls[__entryKey144]
+		__entry145.Measured = false
+		m._ctls[__entryKey144] = __entry145
+		cgo.SnglWin32Refont(w, dpi)
 	}
-	return __lt81
+	for _, child := range k.Kids {
+		_refresh(child, dpi)
+	}
+}
+
+func _close(w cgo.HWND) bool {
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return false
+	}
+	k := m._ctls[w]
+	of := k.ModalOf
+	if of != nil {
+		m__r6 := cgo.HWND((*(of)))
+		if (func() bool { _, __ok := m._ctls[m__r6]; return __ok }() && m._ctls[m__r6].Closable) && func() bool { _, __ok := m._on[m__r6]; return __ok }() {
+			closed := m._on[m__r6].Closed
+			closed()
+		}
+		return true
+	}
+	if k.Kind != 0 {
+		return false
+	}
+	cgo.SnglWin32SetVisible(w, false)
+	h := _handlers(w)
+	visible := h.Visible
+	closed := h.Closed
+	visible(false)
+	closed()
+	return true
+}
+
+func _gone(w cgo.HWND, counted bool) {
+	cgo.SnglWin32Forget(w, counted)
+	_forget(w)
+}
+
+func _activated(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Activate
+		f()
+	}
+}
+
+func _menuCommand(top cgo.HWND, id int) {
+	e := _findEntry(top, id)
+	if e != nil {
+		_clicked(cgo.HWND((*(e))))
+	}
+}
+
+func _clicked(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Click
+		f()
+	}
+}
+
+func _changed(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Change
+		f()
+	}
+}
+
+func _color(src cgo.HWND, dc cgo.HDC, otherwise int) int {
+	if !func() bool { _, __ok := m._ctls[src]; return __ok }() {
+		return otherwise
+	}
+	k := m._ctls[src]
+	if k.Color >= 0 {
+		cgo.SetTextColor(dc, ((((k.Color / 65536) % 256) + (((k.Color / 256) % 256) * 256)) + ((k.Color % 256) * 65536)))
+	} else {
+		if k.Kind == 11 {
+			var __lt95 int
+			if cgo.IsWindowEnabled(src) != 0 {
+				__lt95 = cgo.GetSysColor(26)
+			} else {
+				__lt95 = cgo.GetSysColor(17)
+			}
+			cgo.SetTextColor(dc, __lt95)
+		}
+	}
+	b := k.Brush
+	if b != nil {
+		cgo.SetBkColor(dc, ((((k.Background / 65536) % 256) + (((k.Background / 256) % 256) * 256)) + ((k.Background % 256) * 65536)))
+		return cgo.SnglWin32BrushAnswer((*(b)))
+	}
+	return otherwise
+}
+
+func _shade(rgb int, by int) int {
+	var r int = ((((rgb / 65536) % 256) * (256 - by)) / 256)
+	var g int = ((((rgb / 256) % 256) * (256 - by)) / 256)
+	var b int = (((rgb % 256) * (256 - by)) / 256)
+	return (((r * 65536) + (g * 256)) + b)
+}
+
+func _signed32(n int) int {
+	return ((_signed16(_loword(((n - _loword(n)) / 65536))) * 65536) + _loword(n))
+}
+
+func _tabChosen(tabs cgo.HWND) {
+	if !func() bool { _, __ok := m._ctls[tabs]; return __ok }() {
+		return
+	}
+	k := m._ctls[tabs]
+	var at int = int(cgo.SendMessageW(tabs, 4875, 0, 0))
+	if ((at < 0) || (at >= len(k.Kids))) || (cgo.IsWindowEnabled(k.Kids[at]) == 0) {
+		cgo.SendMessageW(tabs, 4876, k.Selected, 0)
+		return
+	}
+	__entryKey146 := tabs
+	__entry147 := m._ctls[__entryKey146]
+	__entry147.Selected = at
+	m._ctls[__entryKey146] = __entry147
+	_layOutNow(tabs)
+	_clicked(k.Kids[at])
 }
 
 func _fit(top cgo.HWND) {
 	s := _measure(top)
 	r := cgo.RECT{}
-	__ref7 := GetClientRect__result(cgo.GetClientRect(top, r))
-	r = __ref7.Out1
+	__ref9 := GetClientRect__result(cgo.GetClientRect(top, r))
+	r = __ref9.Out1
 	var w int = int((r.Right - r.Left))
 	var h int = int((r.Bottom - r.Top))
 	if (s.Cx <= w) && (s.Cy <= h) {
 		return
 	}
-	var __lt82 int
+	var __lt96 int
 	if s.Cx > w {
-		__lt82 = s.Cx
+		__lt96 = s.Cx
 	} else {
-		__lt82 = w
+		__lt96 = w
 	}
-	var __lt83 int
+	var __lt97 int
 	if s.Cy > h {
-		__lt83 = s.Cy
+		__lt97 = s.Cy
 	} else {
-		__lt83 = h
+		__lt97 = h
 	}
-	cgo.SnglWin32ResizeClient(top, __lt82, __lt83)
+	cgo.SnglWin32ResizeClient(top, __lt96, __lt97)
 }
 
-func _layOutNow(w cgo.HWND) {
-	r := cgo.RECT{}
-	__ref8 := GetWindowRect__result(cgo.GetWindowRect(w, r))
-	r = __ref8.Out1
-	_place(w, (r.Right - r.Left), (r.Bottom - r.Top))
+func _forget(w cgo.HWND) {
+	delete(m._on, w)
+	if !func() bool { _, __ok := m._ctls[w]; return __ok }() {
+		return
+	}
+	k := m._ctls[w]
+	delete(m._ctls, w)
+	if (k.Kind == 16) && (k.Id >= 1000) {
+		delete(m._entryIds, k.Id)
+	}
+	m__r7 := k.Menu
+	if m__r7 != nil {
+		cgo.SetMenu(w, nil)
+		cgo.DestroyMenu((*(m__r7)))
+	}
+	b := k.Brush
+	if b != nil {
+		cgo.SnglWin32DropBrush((*(b)))
+	}
+	dialog := k.Dialog
+	if dialog != nil {
+		d := cgo.HWND((*(dialog)))
+		owner := cgo.GetWindow(d, 4)
+		if k.Open && (owner != nil) {
+			cgo.EnableWindow(cgo.HWND((*(owner))), true)
+		}
+		cgo.DestroyWindow(d)
+	}
 }
 
 func _findEntry(w cgo.HWND, id int) *cgo.Found {
@@ -1782,6 +2512,13 @@ func _findEntry(w cgo.HWND, id int) *cgo.Found {
 		}
 	}
 	return nil
+}
+
+func _layOutNow(w cgo.HWND) {
+	r := cgo.RECT{}
+	__ref10 := GetWindowRect__result(cgo.GetWindowRect(w, r))
+	r = __ref10.Out1
+	_place(w, (r.Right - r.Left), (r.Bottom - r.Top))
 }
 
 func __effect0_mount() {
@@ -1910,6 +2647,8 @@ func snglInit() {
 	m.handle__inst0 = 0
 	m.visible__inst0 = true
 	m._ctls = _hooked()
+	m._firing = false
+	m._on = map[cgo.HWND]_On{}
 	m._entryIds = map[int]bool{}
 	m.__effect0_key = (time.Duration(0) * time.Millisecond)
 	m.__effect0_live = []time.Duration{}
@@ -1923,11 +2662,11 @@ func snglInit() {
 }
 
 func snglBuild() {
-	m.__n0 = cgo.SnglWin32Toplevel()
+	m.__n0 = _rtToplevel()
 	cgo.SetWindowTextW(m.__n0, snglSome(""))
 	cgo.SnglWin32SetVisible(m.__n0, m.visible__inst0)
-	cgo.SnglWin32OnVisible(m.__n0, __n0_visible_handler)
-	m.__n1 = cgo.SnglWin32Text()
+	_onVisible(m.__n0, __n0_visible_handler)
+	m.__n1 = _rtText()
 	_setText(m.__n1, fmt.Sprint(m.n))
 	_look(m.__n1, cgo.Look{Color: -1, Background: -1})
 	_appendTo(m.__n0, m.__n1)
@@ -1985,4 +2724,4 @@ func snglWin32Snapshot(path string, w, h int) int    { return cgo.SnglWin32Snaps
 func snglWin32CarryFile(name, data string, n int)    { cgo.SnglWin32CarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/win32 --
-pass sha256:aa340168ab11271ba72e883137450425
+pass sha256:cff51a31ff1ee6566fe26a8eeedac19a

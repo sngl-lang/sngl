@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 3e95db1089f2760312c423f2
+// The C sources, as a change to them builds this package again: 7d92c81ed722fecc3e1b4eda
 
 package cgo
 
@@ -13,23 +13,32 @@ package cgo
 #include <stdlib.h>
 #include <stdint.h>
 
-extern void snglCallback_bool__void(int, void *);
 extern void snglCallback_sngl_win32_gfx_p__void(sngl_win32_gfx *, void *);
 extern void snglCallback_void__void(void *);
-extern void snglStatic__hooks_made(HWND, int, int);
-extern void snglStatic__hooks_forget(HWND);
-extern void snglStatic__hooks_relayout(HWND);
-extern void snglStatic__hooks_layOutTop(HWND);
-extern void snglStatic__hooks_layout(HWND);
-extern void snglStatic__hooks_tabChosen(HWND);
-extern void snglStatic__hooks_command(HWND, int);
-extern void snglStatic__hooks_refresh(HWND, int);
-extern void snglStatic__hooks_wheel(HWND, int);
-extern void snglStatic__hooks_scrolled(HWND, int, int);
-extern void snglStatic__hooks_measure(HWND, int *, int *);
-extern int snglStatic__hooks_nkids(HWND);
-extern HWND snglStatic__hooks_kid(HWND, int);
-extern int snglStatic__hooks_pad(HWND, int);
+extern LRESULT snglStatic__procs_box(HWND, UINT, WPARAM, LPARAM);
+
+static LRESULT CALLBACK snglStatic__procs_box_CALLBACK(HWND a0, UINT a1, WPARAM a2, LPARAM a3) {
+	return snglStatic__procs_box((HWND)a0, (UINT)a1, (WPARAM)a2, (LPARAM)a3);
+}
+
+typedef LRESULT (CALLBACK *snglStatic__procs_box_CALLBACK_t)(HWND, UINT, WPARAM, LPARAM);
+
+static snglStatic__procs_box_CALLBACK_t snglStatic__procs_box_CALLBACK_get(void) {
+	return snglStatic__procs_box_CALLBACK;
+}
+extern LRESULT snglStatic__procs_control(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+
+static LRESULT CALLBACK snglStatic__procs_control_CALLBACK(HWND a0, UINT a1, WPARAM a2, LPARAM a3, UINT_PTR a4, DWORD_PTR a5) {
+	return snglStatic__procs_control((HWND)a0, (UINT)a1, (WPARAM)a2, (LPARAM)a3, (UINT_PTR)a4, (DWORD_PTR)a5);
+}
+
+typedef LRESULT (CALLBACK *snglStatic__procs_control_CALLBACK_t)(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+
+static snglStatic__procs_control_CALLBACK_t snglStatic__procs_control_CALLBACK_get(void) {
+	return snglStatic__procs_control_CALLBACK;
+}
+extern int snglStatic__procs_nkids(HWND);
+extern HWND snglStatic__procs_kid(HWND, int);
 extern void snglRelease(void *);
 
 static void *sngl_context(uintptr_t i) { return (void *)i; }
@@ -69,17 +78,6 @@ func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglCon
 // snglReleasePtr is snglRelease as the function pointer C calls.
 func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 
-//export snglCallback_bool__void
-func snglCallback_bool__void(a0 C.int, ctx unsafe.Pointer) {
-	fn, ok := snglClosure(ctx).(func(bool))
-	if ok {
-		fn(a0 != 0)
-	}
-}
-
-// snglCallback_bool__voidPtr is snglCallback_bool__void as the function pointer C calls.
-func snglCallback_bool__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_bool__void) }
-
 //export snglCallback_sngl_win32_gfx_p__void
 func snglCallback_sngl_win32_gfx_p__void(a0 *C.sngl_win32_gfx, ctx unsafe.Pointer) {
 	fn, ok := snglClosure(ctx).(func(*C.sngl_win32_gfx))
@@ -104,162 +102,56 @@ func snglCallback_void__void(ctx unsafe.Pointer) {
 // snglCallback_void__voidPtr is snglCallback_void__void as the function pointer C calls.
 func snglCallback_void__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_void__void) }
 
-// snglStatic__hooks_madeFn is the program's function C calls snglStatic__hooks_made for, which the call handing it to C sets.
-var snglStatic__hooks_madeFn func(C.HWND, int, int)
+// snglStatic__procs_boxFn is the program's function C calls snglStatic__procs_box for, which the call handing it to C sets.
+var snglStatic__procs_boxFn func(C.HWND, int, int, int) int
 
-//export snglStatic__hooks_made
-func snglStatic__hooks_made(a0 C.HWND, a1 C.int, a2 C.int) {
-	snglStatic__hooks_madeFn(a0, int(a1), int(a2))
+//export snglStatic__procs_box
+func snglStatic__procs_box(a0 C.HWND, a1 C.UINT, a2 C.WPARAM, a3 C.LPARAM) C.LRESULT {
+	return C.LRESULT(snglStatic__procs_boxFn(a0, int(a1), int(a2), int(a3)))
 }
 
-// snglStatic__hooks_madePtr is snglStatic__hooks_made as the function pointer C calls.
-func snglStatic__hooks_madePtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_made) }
+// snglStatic__procs_boxPtr is snglStatic__procs_box as the function pointer C calls.
+func snglStatic__procs_boxPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_box) }
 
-// snglStatic__hooks_forgetFn is the program's function C calls snglStatic__hooks_forget for, which the call handing it to C sets.
-var snglStatic__hooks_forgetFn func(C.HWND)
-
-//export snglStatic__hooks_forget
-func snglStatic__hooks_forget(a0 C.HWND) {
-	snglStatic__hooks_forgetFn(a0)
+// snglStatic__procs_box_CALLBACKPtr is snglStatic__procs_box as the function pointer C calls: snglStatic__procs_box_CALLBACK, which calls it CALLBACK.
+func snglStatic__procs_box_CALLBACKPtr() *[0]byte {
+	return (*[0]byte)(C.snglStatic__procs_box_CALLBACK_get())
 }
 
-// snglStatic__hooks_forgetPtr is snglStatic__hooks_forget as the function pointer C calls.
-func snglStatic__hooks_forgetPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_forget) }
+// snglStatic__procs_controlFn is the program's function C calls snglStatic__procs_control for, which the call handing it to C sets.
+var snglStatic__procs_controlFn func(C.HWND, int, int, int, int, int) int
 
-// snglStatic__hooks_relayoutFn is the program's function C calls snglStatic__hooks_relayout for, which the call handing it to C sets.
-var snglStatic__hooks_relayoutFn func(C.HWND)
-
-//export snglStatic__hooks_relayout
-func snglStatic__hooks_relayout(a0 C.HWND) {
-	snglStatic__hooks_relayoutFn(a0)
+//export snglStatic__procs_control
+func snglStatic__procs_control(a0 C.HWND, a1 C.UINT, a2 C.WPARAM, a3 C.LPARAM, a4 C.UINT_PTR, a5 C.DWORD_PTR) C.LRESULT {
+	return C.LRESULT(snglStatic__procs_controlFn(a0, int(a1), int(a2), int(a3), int(a4), int(a5)))
 }
 
-// snglStatic__hooks_relayoutPtr is snglStatic__hooks_relayout as the function pointer C calls.
-func snglStatic__hooks_relayoutPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_relayout) }
+// snglStatic__procs_controlPtr is snglStatic__procs_control as the function pointer C calls.
+func snglStatic__procs_controlPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_control) }
 
-// snglStatic__hooks_layOutTopFn is the program's function C calls snglStatic__hooks_layOutTop for, which the call handing it to C sets.
-var snglStatic__hooks_layOutTopFn func(C.HWND)
-
-//export snglStatic__hooks_layOutTop
-func snglStatic__hooks_layOutTop(a0 C.HWND) {
-	snglStatic__hooks_layOutTopFn(a0)
+// snglStatic__procs_control_CALLBACKPtr is snglStatic__procs_control as the function pointer C calls: snglStatic__procs_control_CALLBACK, which calls it CALLBACK.
+func snglStatic__procs_control_CALLBACKPtr() *[0]byte {
+	return (*[0]byte)(C.snglStatic__procs_control_CALLBACK_get())
 }
 
-// snglStatic__hooks_layOutTopPtr is snglStatic__hooks_layOutTop as the function pointer C calls.
-func snglStatic__hooks_layOutTopPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_layOutTop) }
+// snglStatic__procs_nkidsFn is the program's function C calls snglStatic__procs_nkids for, which the call handing it to C sets.
+var snglStatic__procs_nkidsFn func(C.HWND) int
 
-// snglStatic__hooks_layoutFn is the program's function C calls snglStatic__hooks_layout for, which the call handing it to C sets.
-var snglStatic__hooks_layoutFn func(C.HWND)
-
-//export snglStatic__hooks_layout
-func snglStatic__hooks_layout(a0 C.HWND) {
-	snglStatic__hooks_layoutFn(a0)
+//export snglStatic__procs_nkids
+func snglStatic__procs_nkids(a0 C.HWND) C.int {
+	return C.int(snglStatic__procs_nkidsFn(a0))
 }
 
-// snglStatic__hooks_layoutPtr is snglStatic__hooks_layout as the function pointer C calls.
-func snglStatic__hooks_layoutPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_layout) }
+// snglStatic__procs_nkidsPtr is snglStatic__procs_nkids as the function pointer C calls.
+func snglStatic__procs_nkidsPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_nkids) }
 
-// snglStatic__hooks_tabChosenFn is the program's function C calls snglStatic__hooks_tabChosen for, which the call handing it to C sets.
-var snglStatic__hooks_tabChosenFn func(C.HWND)
+// snglStatic__procs_kidFn is the program's function C calls snglStatic__procs_kid for, which the call handing it to C sets.
+var snglStatic__procs_kidFn func(C.HWND, int) C.HWND
 
-//export snglStatic__hooks_tabChosen
-func snglStatic__hooks_tabChosen(a0 C.HWND) {
-	snglStatic__hooks_tabChosenFn(a0)
+//export snglStatic__procs_kid
+func snglStatic__procs_kid(a0 C.HWND, a1 C.int) C.HWND {
+	return snglStatic__procs_kidFn(a0, int(a1))
 }
 
-// snglStatic__hooks_tabChosenPtr is snglStatic__hooks_tabChosen as the function pointer C calls.
-func snglStatic__hooks_tabChosenPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_tabChosen) }
-
-// snglStatic__hooks_commandFn is the program's function C calls snglStatic__hooks_command for, which the call handing it to C sets.
-var snglStatic__hooks_commandFn func(C.HWND, int)
-
-//export snglStatic__hooks_command
-func snglStatic__hooks_command(a0 C.HWND, a1 C.int) {
-	snglStatic__hooks_commandFn(a0, int(a1))
-}
-
-// snglStatic__hooks_commandPtr is snglStatic__hooks_command as the function pointer C calls.
-func snglStatic__hooks_commandPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_command) }
-
-// snglStatic__hooks_refreshFn is the program's function C calls snglStatic__hooks_refresh for, which the call handing it to C sets.
-var snglStatic__hooks_refreshFn func(C.HWND, int)
-
-//export snglStatic__hooks_refresh
-func snglStatic__hooks_refresh(a0 C.HWND, a1 C.int) {
-	snglStatic__hooks_refreshFn(a0, int(a1))
-}
-
-// snglStatic__hooks_refreshPtr is snglStatic__hooks_refresh as the function pointer C calls.
-func snglStatic__hooks_refreshPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_refresh) }
-
-// snglStatic__hooks_wheelFn is the program's function C calls snglStatic__hooks_wheel for, which the call handing it to C sets.
-var snglStatic__hooks_wheelFn func(C.HWND, int)
-
-//export snglStatic__hooks_wheel
-func snglStatic__hooks_wheel(a0 C.HWND, a1 C.int) {
-	snglStatic__hooks_wheelFn(a0, int(a1))
-}
-
-// snglStatic__hooks_wheelPtr is snglStatic__hooks_wheel as the function pointer C calls.
-func snglStatic__hooks_wheelPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_wheel) }
-
-// snglStatic__hooks_scrolledFn is the program's function C calls snglStatic__hooks_scrolled for, which the call handing it to C sets.
-var snglStatic__hooks_scrolledFn func(C.HWND, int, int)
-
-//export snglStatic__hooks_scrolled
-func snglStatic__hooks_scrolled(a0 C.HWND, a1 C.int, a2 C.int) {
-	snglStatic__hooks_scrolledFn(a0, int(a1), int(a2))
-}
-
-// snglStatic__hooks_scrolledPtr is snglStatic__hooks_scrolled as the function pointer C calls.
-func snglStatic__hooks_scrolledPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_scrolled) }
-
-// snglStatic__hooks_measureFn is the program's function C calls snglStatic__hooks_measure for, which the call handing it to C sets.
-var snglStatic__hooks_measureFn func(C.HWND) SnglWin32HooksMeasure
-
-//export snglStatic__hooks_measure
-func snglStatic__hooks_measure(a0 C.HWND, o0 *C.int, o1 *C.int) {
-	r := snglStatic__hooks_measureFn(a0)
-	if o0 != nil {
-		*o0 = C.int(r.Cx)
-	}
-	if o1 != nil {
-		*o1 = C.int(r.Cy)
-	}
-}
-
-// snglStatic__hooks_measurePtr is snglStatic__hooks_measure as the function pointer C calls.
-func snglStatic__hooks_measurePtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_measure) }
-
-// snglStatic__hooks_nkidsFn is the program's function C calls snglStatic__hooks_nkids for, which the call handing it to C sets.
-var snglStatic__hooks_nkidsFn func(C.HWND) int
-
-//export snglStatic__hooks_nkids
-func snglStatic__hooks_nkids(a0 C.HWND) C.int {
-	return C.int(snglStatic__hooks_nkidsFn(a0))
-}
-
-// snglStatic__hooks_nkidsPtr is snglStatic__hooks_nkids as the function pointer C calls.
-func snglStatic__hooks_nkidsPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_nkids) }
-
-// snglStatic__hooks_kidFn is the program's function C calls snglStatic__hooks_kid for, which the call handing it to C sets.
-var snglStatic__hooks_kidFn func(C.HWND, int) C.HWND
-
-//export snglStatic__hooks_kid
-func snglStatic__hooks_kid(a0 C.HWND, a1 C.int) C.HWND {
-	return snglStatic__hooks_kidFn(a0, int(a1))
-}
-
-// snglStatic__hooks_kidPtr is snglStatic__hooks_kid as the function pointer C calls.
-func snglStatic__hooks_kidPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_kid) }
-
-// snglStatic__hooks_padFn is the program's function C calls snglStatic__hooks_pad for, which the call handing it to C sets.
-var snglStatic__hooks_padFn func(C.HWND, int) int
-
-//export snglStatic__hooks_pad
-func snglStatic__hooks_pad(a0 C.HWND, a1 C.int) C.int {
-	return C.int(snglStatic__hooks_padFn(a0, int(a1)))
-}
-
-// snglStatic__hooks_padPtr is snglStatic__hooks_pad as the function pointer C calls.
-func snglStatic__hooks_padPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_pad) }
+// snglStatic__procs_kidPtr is snglStatic__procs_kid as the function pointer C calls.
+func snglStatic__procs_kidPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_kid) }
