@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 7612d45c4450d1ab5d441f30
+// The C sources, as a change to them builds this package again: c2ae9c84283e93d03bbdfe17
 
 package cgo
 
@@ -25,7 +25,35 @@ static inline int snglF__gfxSerial(sngl_win32_gfx * a0) {
 	return (a0)->serial;
 }
 
+static inline LRESULT snglP__sendCommand(HWND a0, UINT a1, WPARAM a2, HWND a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendNotify(HWND a0, UINT a1, WPARAM a2, NMHDR * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__addString(HWND a0, UINT a1, WPARAM a2, const unsigned short * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
 static inline LRESULT snglP__dtmGetSystemTime(HWND a0, UINT a1, WPARAM a2, SYSTEMTIME * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendItemState(HWND a0, UINT a1, WPARAM a2, LVITEMW * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendListView(HWND a0, UINT a1, WPARAM a2, NMLISTVIEW * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendTreeItem(HWND a0, UINT a1, WPARAM a2, HTREEITEM a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendDateChange(HWND a0, UINT a1, WPARAM a2, NMDATETIMECHANGE * a3) {
 	return SendMessageW(a0, a1, a2, (LPARAM)a3);
 }
 */
@@ -38,6 +66,9 @@ import (
 
 // ConstRect is C's const RECT *.
 type ConstRect = *C.RECT
+
+// Found is C's HWND.
+type Found = C.HWND
 
 // Gfx is C's sngl_win32_gfx *.
 type Gfx = *C.sngl_win32_gfx
@@ -83,6 +114,36 @@ type Look struct {
 	Hidden     int
 }
 
+// LvState is C's LVITEMW, field by field.
+type LvState struct {
+	Mask      int
+	IItem     int
+	ISubItem  int
+	State     int
+	StateMask int
+}
+
+// NmDateTimeChange is C's NMDATETIMECHANGE, field by field.
+type NmDateTimeChange struct {
+	Nmhdr   Nmhdr
+	DwFlags int
+	St      SystemTime
+}
+
+// NmListView is C's NMLISTVIEW, field by field.
+type NmListView struct {
+	Hdr      Nmhdr
+	IItem    int
+	ISubItem int
+}
+
+// Nmhdr is C's NMHDR, field by field.
+type Nmhdr struct {
+	HwndFrom HWND
+	IdFrom   int
+	Code     int
+}
+
 // POINT is C's POINT, field by field.
 type POINT struct {
 	X int
@@ -114,6 +175,12 @@ type SystemTime struct {
 	WSecond       int
 	WMilliseconds int
 }
+
+// TreeFound is C's HTREEITEM.
+type TreeFound = C.HTREEITEM
+
+// TreeItem is C's HTREEITEM.
+type TreeItem = C.HTREEITEM
 
 // DtmGetSystemTimeResult is what DtmGetSystemTime hands back.
 type DtmGetSystemTimeResult struct {
@@ -203,6 +270,35 @@ type GetClientRectResult struct {
 type GetWindowRectResult struct {
 	Result int
 	Out1   RECT
+}
+
+// SendDateChangeResult is what SendDateChange hands back.
+type SendDateChangeResult struct {
+	Result int
+	Out3   NmDateTimeChange
+}
+
+// SendItemStateResult is what SendItemState hands back.
+type SendItemStateResult struct {
+	Result int
+	Out3   LvState
+}
+
+// SendListViewResult is what SendListView hands back.
+type SendListViewResult struct {
+	Result int
+	Out3   NmListView
+}
+
+// SendNotifyResult is what SendNotify hands back.
+type SendNotifyResult struct {
+	Result int
+	Out3   Nmhdr
+}
+
+// AddString calls SendMessageW.
+func AddString(s HWND, msg int, w int, label string) int {
+	return int(C.snglP__addString(s, C.UINT(msg), C.WPARAM(w), (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
 }
 
 // CreateSolidBrush calls CreateSolidBrush.
@@ -518,6 +614,11 @@ func GdipTranslateWorldTransform(g unsafe.Pointer, x float64, y float64, order i
 	return int(C.GdipTranslateWorldTransform(g, C.REAL(x), C.REAL(y), C.GpMatrixOrder(order)))
 }
 
+// GetAncestor calls GetAncestor.
+func GetAncestor(w HWND, flags int) HWND {
+	return C.GetAncestor(w, C.UINT(flags))
+}
+
 // GetClientRect calls GetClientRect.
 func GetClientRect(hWnd HWND, lpRect RECT) GetClientRectResult {
 	return func() GetClientRectResult {
@@ -529,6 +630,11 @@ func GetClientRect(hWnd HWND, lpRect RECT) GetClientRectResult {
 			return RECT{Left: int(c.left), Top: int(c.top), Right: int(c.right), Bottom: int(c.bottom)}
 		}(__snglOut1)}
 	}()
+}
+
+// GetDlgCtrlID calls GetDlgCtrlID.
+func GetDlgCtrlID(w HWND) int {
+	return int(C.GetDlgCtrlID(w))
 }
 
 // GetFocus calls GetFocus.
@@ -625,9 +731,77 @@ func PostMessageW(hWnd HWND, Msg int, wParam int, lParam int) int {
 	return int(C.PostMessageW(hWnd, C.UINT(Msg), C.WPARAM(wParam), C.LPARAM(lParam)))
 }
 
+// SendCommand calls SendMessageW.
+func SendCommand(to HWND, msg int, w int, from HWND) int {
+	return int(C.snglP__sendCommand(to, C.UINT(msg), C.WPARAM(w), from))
+}
+
+// SendDateChange calls SendMessageW.
+func SendDateChange(to HWND, msg int, w int, ch NmDateTimeChange) SendDateChangeResult {
+	return func() SendDateChangeResult {
+		__snglOut3 := func(v NmDateTimeChange) C.NMDATETIMECHANGE {
+			return C.NMDATETIMECHANGE{nmhdr: func(v Nmhdr) C.NMHDR {
+				return C.NMHDR{hwndFrom: v.HwndFrom, idFrom: C.UINT_PTR(v.IdFrom), code: C.UINT(v.Code)}
+			}(v.Nmhdr), dwFlags: C.DWORD(v.DwFlags), st: func(v SystemTime) C.SYSTEMTIME {
+				return C.SYSTEMTIME{wYear: C.WORD(v.WYear), wMonth: C.WORD(v.WMonth), wDayOfWeek: C.WORD(v.WDayOfWeek), wDay: C.WORD(v.WDay), wHour: C.WORD(v.WHour), wMinute: C.WORD(v.WMinute), wSecond: C.WORD(v.WSecond), wMilliseconds: C.WORD(v.WMilliseconds)}
+			}(v.St)}
+		}(ch)
+		__snglResult := int(C.snglP__sendDateChange(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendDateChangeResult{Result: __snglResult, Out3: func(c C.NMDATETIMECHANGE) NmDateTimeChange {
+			return NmDateTimeChange{Nmhdr: func(c C.NMHDR) Nmhdr { return Nmhdr{HwndFrom: c.hwndFrom, IdFrom: int(c.idFrom), Code: int(c.code)} }(c.nmhdr), DwFlags: int(c.dwFlags), St: func(c C.SYSTEMTIME) SystemTime {
+				return SystemTime{WYear: int(c.wYear), WMonth: int(c.wMonth), WDayOfWeek: int(c.wDayOfWeek), WDay: int(c.wDay), WHour: int(c.wHour), WMinute: int(c.wMinute), WSecond: int(c.wSecond), WMilliseconds: int(c.wMilliseconds)}
+			}(c.st)}
+		}(__snglOut3)}
+	}()
+}
+
+// SendItemState calls SendMessageW.
+func SendItemState(t HWND, msg int, w int, it LvState) SendItemStateResult {
+	return func() SendItemStateResult {
+		__snglOut3 := func(v LvState) C.LVITEMW {
+			return C.LVITEMW{mask: C.UINT(v.Mask), iItem: C.int(v.IItem), iSubItem: C.int(v.ISubItem), state: C.UINT(v.State), stateMask: C.UINT(v.StateMask)}
+		}(it)
+		__snglResult := int(C.snglP__sendItemState(t, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendItemStateResult{Result: __snglResult, Out3: func(c C.LVITEMW) LvState {
+			return LvState{Mask: int(c.mask), IItem: int(c.iItem), ISubItem: int(c.iSubItem), State: int(c.state), StateMask: int(c.stateMask)}
+		}(__snglOut3)}
+	}()
+}
+
+// SendListView calls SendMessageW.
+func SendListView(to HWND, msg int, w int, lv NmListView) SendListViewResult {
+	return func() SendListViewResult {
+		__snglOut3 := func(v NmListView) C.NMLISTVIEW {
+			return C.NMLISTVIEW{hdr: func(v Nmhdr) C.NMHDR {
+				return C.NMHDR{hwndFrom: v.HwndFrom, idFrom: C.UINT_PTR(v.IdFrom), code: C.UINT(v.Code)}
+			}(v.Hdr), iItem: C.int(v.IItem), iSubItem: C.int(v.ISubItem)}
+		}(lv)
+		__snglResult := int(C.snglP__sendListView(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendListViewResult{Result: __snglResult, Out3: func(c C.NMLISTVIEW) NmListView {
+			return NmListView{Hdr: func(c C.NMHDR) Nmhdr { return Nmhdr{HwndFrom: c.hwndFrom, IdFrom: int(c.idFrom), Code: int(c.code)} }(c.hdr), IItem: int(c.iItem), ISubItem: int(c.iSubItem)}
+		}(__snglOut3)}
+	}()
+}
+
 // SendMessageW calls SendMessageW.
 func SendMessageW(hWnd HWND, Msg int, wParam int, lParam int) int {
 	return int(C.SendMessageW(hWnd, C.UINT(Msg), C.WPARAM(wParam), C.LPARAM(lParam)))
+}
+
+// SendNotify calls SendMessageW.
+func SendNotify(to HWND, msg int, w int, nm Nmhdr) SendNotifyResult {
+	return func() SendNotifyResult {
+		__snglOut3 := func(v Nmhdr) C.NMHDR {
+			return C.NMHDR{hwndFrom: v.HwndFrom, idFrom: C.UINT_PTR(v.IdFrom), code: C.UINT(v.Code)}
+		}(nm)
+		__snglResult := int(C.snglP__sendNotify(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendNotifyResult{Result: __snglResult, Out3: func(c C.NMHDR) Nmhdr { return Nmhdr{HwndFrom: c.hwndFrom, IdFrom: int(c.idFrom), Code: int(c.code)} }(__snglOut3)}
+	}()
+}
+
+// SendTreeItem calls SendMessageW.
+func SendTreeItem(t HWND, msg int, w int, it TreeItem) int {
+	return int(C.snglP__sendTreeItem(t, C.UINT(msg), C.WPARAM(w), it))
 }
 
 // SetBkColor calls SetBkColor.
@@ -729,11 +903,6 @@ func SnglWin32Chosen(t HWND) string {
 	return C.GoString(C.sngl_win32_chosen(t))
 }
 
-// SnglWin32ClickColumn calls sngl_win32_click_column.
-func SnglWin32ClickColumn(n HWND, column int) bool {
-	return (C.sngl_win32_click_column(n, C.int(column)) != 0)
-}
-
 // SnglWin32Contents calls sngl_win32_contents.
 func SnglWin32Contents() HWND {
 	return C.sngl_win32_contents()
@@ -794,6 +963,22 @@ func SnglWin32FillTree(t HWND, lines string, expanded string) {
 	C.sngl_win32_fill_tree(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(lines))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(expanded))))
 }
 
+// SnglWin32FindChoice calls sngl_win32_find_choice.
+func SnglWin32FindChoice(s HWND, label string) int {
+	return int(C.sngl_win32_find_choice(s, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
+}
+
+// SnglWin32FindKind calls sngl_win32_find_kind.
+func SnglWin32FindKind(w HWND, kind int) *Found {
+	return func() *C.HWND {
+		p := (C.HWND)(C.sngl_win32_find_kind(w, C.int(kind)))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
 // SnglWin32FireActivate calls sngl_win32_fire_activate.
 func SnglWin32FireActivate(e HWND, text string) {
 	C.sngl_win32_fire_activate(e, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
@@ -802,17 +987,6 @@ func SnglWin32FireActivate(e HWND, text string) {
 // SnglWin32FireChange calls sngl_win32_fire_change.
 func SnglWin32FireChange(e HWND, text string) {
 	C.sngl_win32_fire_change(e, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
-}
-
-// SnglWin32FireCheck calls sngl_win32_fire_check.
-func SnglWin32FireCheck(b HWND, checked bool) {
-	var __lt5 int
-	if checked {
-		__lt5 = 1
-	} else {
-		__lt5 = 0
-	}
-	C.sngl_win32_fire_check(b, C.int(__lt5))
 }
 
 // SnglWin32FireClick calls sngl_win32_fire_click.
@@ -828,16 +1002,6 @@ func SnglWin32FireClose(w HWND) {
 // SnglWin32FireReachEnd calls sngl_win32_fire_reach_end.
 func SnglWin32FireReachEnd(s HWND) {
 	C.sngl_win32_fire_reach_end(s)
-}
-
-// SnglWin32FireSelect calls sngl_win32_fire_select.
-func SnglWin32FireSelect(s HWND, label string) {
-	C.sngl_win32_fire_select(s, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label))))
-}
-
-// SnglWin32FireTab calls sngl_win32_fire_tab.
-func SnglWin32FireTab(t HWND, index int) {
-	C.sngl_win32_fire_tab(t, C.int(index))
 }
 
 // SnglWin32Flow calls sngl_win32_flow.
@@ -910,11 +1074,6 @@ func SnglWin32Modal() HWND {
 	return C.sngl_win32_modal()
 }
 
-// SnglWin32Offer calls sngl_win32_offer.
-func SnglWin32Offer(s HWND, labels string, chosen string) {
-	C.sngl_win32_offer(s, (*C.ushort)(unsafe.Pointer(cbind.UTF16(labels))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(chosen))))
-}
-
 // SnglWin32OnActivate calls sngl_win32_on_activate.
 func SnglWin32OnActivate(w HWND, fn func()) {
 	C.sngl_win32_on_activate(w, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
@@ -960,21 +1119,6 @@ func SnglWin32OnVisible(w HWND, fn func(bool)) {
 	C.sngl_win32_on_visible(w, snglCallback_bool__voidPtr(), snglContext(fn), snglReleasePtr())
 }
 
-// SnglWin32PickDate calls sngl_win32_pick_date.
-func SnglWin32PickDate(n HWND, iso string) bool {
-	return (C.sngl_win32_pick_date(n, (*C.ushort)(unsafe.Pointer(cbind.UTF16(iso)))) != 0)
-}
-
-// SnglWin32PickNode calls sngl_win32_pick_node.
-func SnglWin32PickNode(n HWND, label string) bool {
-	return (C.sngl_win32_pick_node(n, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))) != 0)
-}
-
-// SnglWin32PickRow calls sngl_win32_pick_row.
-func SnglWin32PickRow(n HWND, row int) bool {
-	return (C.sngl_win32_pick_row(n, C.int(row)) != 0)
-}
-
 // SnglWin32Picture calls sngl_win32_picture.
 func SnglWin32Picture() HWND {
 	return C.sngl_win32_picture()
@@ -1000,9 +1144,9 @@ func SnglWin32Radio() HWND {
 	return C.sngl_win32_radio()
 }
 
-// SnglWin32Redraw calls sngl_win32_redraw.
-func SnglWin32Redraw(w HWND) {
-	C.sngl_win32_redraw(w)
+// SnglWin32Relayout calls sngl_win32_relayout.
+func SnglWin32Relayout(w HWND) {
+	C.sngl_win32_relayout(w)
 }
 
 // SnglWin32Remove calls sngl_win32_remove.
@@ -1052,13 +1196,13 @@ func SnglWin32SetChosen(t HWND, label string) {
 
 // SnglWin32SetClosable calls sngl_win32_set_closable.
 func SnglWin32SetClosable(m HWND, closable bool) {
-	var __lt6 int
+	var __lt5 int
 	if closable {
-		__lt6 = 1
+		__lt5 = 1
 	} else {
-		__lt6 = 0
+		__lt5 = 0
 	}
-	C.sngl_win32_set_closable(m, C.int(__lt6))
+	C.sngl_win32_set_closable(m, C.int(__lt5))
 }
 
 // SnglWin32SetColumns calls sngl_win32_set_columns.
@@ -1093,24 +1237,24 @@ func SnglWin32SetEditText(e HWND, text string) {
 
 // SnglWin32SetEntryChecked calls sngl_win32_set_entry_checked.
 func SnglWin32SetEntryChecked(e HWND, checked bool) {
-	var __lt7 int
+	var __lt6 int
 	if checked {
-		__lt7 = 1
+		__lt6 = 1
 	} else {
-		__lt7 = 0
+		__lt6 = 0
 	}
-	C.sngl_win32_set_entry_checked(e, C.int(__lt7))
+	C.sngl_win32_set_entry_checked(e, C.int(__lt6))
 }
 
 // SnglWin32SetEntryDisabled calls sngl_win32_set_entry_disabled.
 func SnglWin32SetEntryDisabled(e HWND, disabled bool) {
-	var __lt8 int
+	var __lt7 int
 	if disabled {
-		__lt8 = 1
+		__lt7 = 1
 	} else {
-		__lt8 = 0
+		__lt7 = 0
 	}
-	C.sngl_win32_set_entry_disabled(e, C.int(__lt8))
+	C.sngl_win32_set_entry_disabled(e, C.int(__lt7))
 }
 
 // SnglWin32SetFit calls sngl_win32_set_fit.
@@ -1125,13 +1269,13 @@ func SnglWin32SetFraction(p HWND, fraction float64) {
 
 // SnglWin32SetFramed calls sngl_win32_set_framed.
 func SnglWin32SetFramed(b HWND, framed bool) {
-	var __lt9 int
+	var __lt8 int
 	if framed {
-		__lt9 = 1
+		__lt8 = 1
 	} else {
-		__lt9 = 0
+		__lt8 = 0
 	}
-	C.sngl_win32_set_framed(b, C.int(__lt9))
+	C.sngl_win32_set_framed(b, C.int(__lt8))
 }
 
 // SnglWin32SetHref calls sngl_win32_set_href.
@@ -1153,13 +1297,13 @@ func SnglWin32SetMode(b HWND, mode int) {
 
 // SnglWin32SetOpen calls sngl_win32_set_open.
 func SnglWin32SetOpen(m HWND, open bool) {
-	var __lt10 int
+	var __lt9 int
 	if open {
-		__lt10 = 1
+		__lt9 = 1
 	} else {
-		__lt10 = 0
+		__lt9 = 0
 	}
-	C.sngl_win32_set_open(m, C.int(__lt10))
+	C.sngl_win32_set_open(m, C.int(__lt9))
 }
 
 // SnglWin32SetRow calls sngl_win32_set_row.
@@ -1179,19 +1323,19 @@ func SnglWin32SetScaling(w HWND, mode int) {
 
 // SnglWin32SetScroll calls sngl_win32_set_scroll.
 func SnglWin32SetScroll(s HWND, vertical bool, horizontal bool) {
-	var __lt11 int
+	var __lt10 int
 	if vertical {
+		__lt10 = 1
+	} else {
+		__lt10 = 0
+	}
+	var __lt11 int
+	if horizontal {
 		__lt11 = 1
 	} else {
 		__lt11 = 0
 	}
-	var __lt12 int
-	if horizontal {
-		__lt12 = 1
-	} else {
-		__lt12 = 0
-	}
-	C.sngl_win32_set_scroll(s, C.int(__lt11), C.int(__lt12))
+	C.sngl_win32_set_scroll(s, C.int(__lt10), C.int(__lt11))
 }
 
 // SnglWin32SetSelected calls sngl_win32_set_selected.
@@ -1201,58 +1345,58 @@ func SnglWin32SetSelected(t HWND, selected int) {
 
 // SnglWin32SetShowText calls sngl_win32_set_show_text.
 func SnglWin32SetShowText(p HWND, show bool) {
-	var __lt13 int
+	var __lt12 int
 	if show {
-		__lt13 = 1
+		__lt12 = 1
 	} else {
-		__lt13 = 0
+		__lt12 = 0
 	}
-	C.sngl_win32_set_show_text(p, C.int(__lt13))
+	C.sngl_win32_set_show_text(p, C.int(__lt12))
 }
 
 // SnglWin32SetShown calls sngl_win32_set_shown.
 func SnglWin32SetShown(w HWND, shown bool) {
-	var __lt14 int
+	var __lt13 int
 	if shown {
-		__lt14 = 1
+		__lt13 = 1
 	} else {
-		__lt14 = 0
+		__lt13 = 0
 	}
-	C.sngl_win32_set_shown(w, C.int(__lt14))
+	C.sngl_win32_set_shown(w, C.int(__lt13))
 }
 
 // SnglWin32SetSpanStyle calls sngl_win32_set_span_style.
 func SnglWin32SetSpanStyle(w HWND, color int, size int, weight int, slant int, underline bool, strike bool, family string) {
-	var __lt15 int
+	var __lt14 int
 	if underline {
+		__lt14 = 1
+	} else {
+		__lt14 = 0
+	}
+	var __lt15 int
+	if strike {
 		__lt15 = 1
 	} else {
 		__lt15 = 0
 	}
-	var __lt16 int
-	if strike {
-		__lt16 = 1
-	} else {
-		__lt16 = 0
-	}
-	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt15), C.int(__lt16), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
+	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt14), C.int(__lt15), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
 }
 
 // SnglWin32SetTable calls sngl_win32_set_table.
 func SnglWin32SetTable(t HWND, selectable bool, sortable bool) {
-	var __lt17 int
+	var __lt16 int
 	if selectable {
+		__lt16 = 1
+	} else {
+		__lt16 = 0
+	}
+	var __lt17 int
+	if sortable {
 		__lt17 = 1
 	} else {
 		__lt17 = 0
 	}
-	var __lt18 int
-	if sortable {
-		__lt18 = 1
-	} else {
-		__lt18 = 0
-	}
-	C.sngl_win32_set_table(t, C.int(__lt17), C.int(__lt18))
+	C.sngl_win32_set_table(t, C.int(__lt16), C.int(__lt17))
 }
 
 // SnglWin32SetText calls sngl_win32_set_text.
@@ -1272,24 +1416,24 @@ func SnglWin32SetUrl(p HWND, url string) {
 
 // SnglWin32SetVertical calls sngl_win32_set_vertical.
 func SnglWin32SetVertical(b HWND, vertical bool) {
-	var __lt19 int
+	var __lt18 int
 	if vertical {
-		__lt19 = 1
+		__lt18 = 1
 	} else {
-		__lt19 = 0
+		__lt18 = 0
 	}
-	C.sngl_win32_set_vertical(b, C.int(__lt19))
+	C.sngl_win32_set_vertical(b, C.int(__lt18))
 }
 
 // SnglWin32SetVisible calls sngl_win32_set_visible.
 func SnglWin32SetVisible(w HWND, visible bool) {
-	var __lt20 int
+	var __lt19 int
 	if visible {
-		__lt20 = 1
+		__lt19 = 1
 	} else {
-		__lt20 = 0
+		__lt19 = 0
 	}
-	C.sngl_win32_set_visible(w, C.int(__lt20))
+	C.sngl_win32_set_visible(w, C.int(__lt19))
 }
 
 // SnglWin32SetWords calls sngl_win32_set_words.
@@ -1330,11 +1474,6 @@ func SnglWin32Step() {
 	C.sngl_win32_step()
 }
 
-// SnglWin32TabPage calls sngl_win32_tab_page.
-func SnglWin32TabPage() HWND {
-	return C.sngl_win32_tab_page()
-}
-
 // SnglWin32Table calls sngl_win32_table.
 func SnglWin32Table() HWND {
 	return C.sngl_win32_table()
@@ -1363,6 +1502,17 @@ func SnglWin32Toplevel() HWND {
 // SnglWin32Tree calls sngl_win32_tree.
 func SnglWin32Tree() HWND {
 	return C.sngl_win32_tree()
+}
+
+// SnglWin32TreeFind calls sngl_win32_tree_find.
+func SnglWin32TreeFind(t HWND, label string) *TreeFound {
+	return func() *C.HTREEITEM {
+		p := (C.HTREEITEM)(C.sngl_win32_tree_find(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
 }
 
 // UpdateWindow calls UpdateWindow.

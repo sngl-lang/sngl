@@ -15,6 +15,7 @@
 #define SNGL_WIN32_H
 
 #include <windows.h>
+#include <commctrl.h>
 #include <gdiplus.h>
 
 #include "sngl_http.h"
@@ -87,9 +88,8 @@ HWND sngl_win32_link(void);
 HWND sngl_win32_radio(void);
 /* sngl_win32_tabs is a tab control, which shows a tab for each page
  * appended to it, titled with the page's text, and the page of the one
- * selected; a page, sngl_win32_tab_page, is a box. */
+ * selected; a page is a box (win32.sngl's _rtTabPage). */
 HWND sngl_win32_tabs(void);
-HWND sngl_win32_tab_page(void);
 /* sngl_win32_scroll is a box that scrolls what it holds along the axes
  * sngl_win32_set_scroll gives it, vertically where it is given none. */
 HWND sngl_win32_scroll(void);
@@ -124,7 +124,7 @@ void sngl_win32_set_fit(HWND w, int fit);
  * it is, centered (mode 0), scaled evenly to fit inside the area (1) or to
  * fill it (2), or stretched over it (3), as sngl_win32_set_scaling says. It
  * measures as that size, a pixel a SNGL px, and takes a share of its box's
- * spare room where it scales. sngl_win32_redraw asks it to paint again. */
+ * spare room where it scales. */
 /* A drawing context is GDI+'s graphics and the path being built, which
  * sngl:platform/win32 paints through as cairo is painted (Gfx), keeping the
  * rest of what it draws in -- the current point, the color, the line, the
@@ -144,7 +144,6 @@ void sngl_win32_set_canvas_width(HWND w, int width);
 void sngl_win32_set_canvas_height(HWND w, int height);
 void sngl_win32_set_scaling(HWND w, int mode);
 void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release);
-void sngl_win32_redraw(HWND w);
 
 /* sngl_win32_drawing is a picture, as sngl_win32_picture is, whose bitmap is
  * painted by the function sngl_win32_drawing_on_paint connects, at the size
@@ -232,13 +231,12 @@ void sngl_win32_set_date(HWND w, const unsigned short *iso);
 void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned short *max);
 
 /* A test's choice, as the user's, in the first table, tree or date picker
- * of the toplevel w is in: a row selected, a column header clicked, a node
- * selected by its label, a date picked. Each answers whether there was one
- * to choose. */
-int sngl_win32_pick_row(HWND w, int row);
-int sngl_win32_click_column(HWND w, int col);
-int sngl_win32_pick_node(HWND w, const unsigned short *label);
-int sngl_win32_pick_date(HWND w, const unsigned short *iso);
+ * of the toplevel w is in is win32.sngl's (pickRow and on), which finds it
+ * with sngl_win32_find_kind: the first node of kind (the runtime's
+ * enum sngl_kind) under w, w itself included, or NULL. sngl_win32_tree_find
+ * is the item of tree w labeled label, or NULL. */
+HWND sngl_win32_find_kind(HWND w, int kind);
+HTREEITEM sngl_win32_tree_find(HWND w, const unsigned short *label);
 void sngl_win32_set_entry_disabled(HWND w, int disabled);
 void sngl_win32_set_entry_checked(HWND w, int checked);
 int sngl_win32_menu_items(HWND w);
@@ -288,12 +286,16 @@ void sngl_win32_set_rows(HWND w, int rows);
 void sngl_win32_set_fraction(HWND w, double fraction);
 void sngl_win32_set_show_text(HWND w, int show);
 
-/* sngl_win32_offer gives a drop-down the choices labels holds, one a line,
- * and selects the one labeled chosen, or none; it reports neither.
+/* A drop-down's choices are offered by win32.sngl's offerChoices.
  * sngl_win32_selected is the label of its choice selected, or "", as UTF-8 in
- * a buffer the next call overwrites. */
-void sngl_win32_offer(HWND w, const unsigned short *labels, const unsigned short *chosen);
+ * a buffer the next call overwrites, and sngl_win32_find_choice the index of
+ * the one labeled label, or -1. */
 const char *sngl_win32_selected(HWND w);
+int sngl_win32_find_choice(HWND w, const unsigned short *label);
+
+/* sngl_win32_relayout asks for the layout of the toplevel w is in, once
+ * whatever is changing it has: what SNGL changes the size of calls it. */
+void sngl_win32_relayout(HWND w);
 
 /* sngl_win32_set_shown hides a node, which then takes no room in its box,
  * or shows it again; sngl_win32_is_shown is whether it is shown. */
@@ -378,23 +380,18 @@ void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win3
  * the notification the control would, which reaches the handler the program
  * connected through the window the control is in, as the user's does. */
 
-/* sngl_win32_fire_click is a button's press, or a check box's, which is
- * checked first. */
+/* sngl_win32_fire_click is a button's press; a check box's is win32.sngl's
+ * _rtFireCheck. */
 void sngl_win32_fire_click(HWND w);
-void sngl_win32_fire_check(HWND w, int checked);
 /* sngl_win32_fire_change is text typed into an edit, and
  * sngl_win32_fire_activate Enter pressed in it after. */
 void sngl_win32_fire_change(HWND w, const unsigned short *text);
 void sngl_win32_fire_activate(HWND w, const unsigned short *text);
-/* sngl_win32_fire_select is the choice labeled label picked from a
- * drop-down. */
-void sngl_win32_fire_select(HWND w, const unsigned short *label);
 /* sngl_win32_fire_close is the window manager's close of a toplevel, or
  * of a modal's window. */
 void sngl_win32_fire_close(HWND top);
-/* sngl_win32_fire_tab is the tab at index chosen, and
- * sngl_win32_fire_reach_end a scroll's end arriving. */
-void sngl_win32_fire_tab(HWND tabs, int index);
+/* sngl_win32_fire_reach_end is a scroll's end arriving; a drop-down's
+ * choice picked and a tab chosen are win32.sngl's (selectLabel, pickTab). */
 void sngl_win32_fire_reach_end(HWND w);
 
 /* --- Timers --- */

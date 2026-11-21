@@ -291,6 +291,57 @@ func _check(w ui.node) bool {
     return api.SendMessage(_handle(w), api.BM_GETCHECK, 0, 0) == api.BST_CHECKED
 }
 
+// What a test raises, it raises as the control would: the notification it
+// sends the window it is in, which reaches the handler the program connected
+// there as the user's does.
+
+#[c.native("GetDlgCtrlID")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetDlgCtrlID")]
+func _dlgCtrlId(w api.HWND) int
+
+#[c.native("GetAncestor")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetAncestor")]
+func _ancestor(w api.HWND, flags api.UINT) api.HWND
+
+// WM_COMMAND, the window it is from in its LPARAM.
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendCommand")]
+func _sendCommand(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] from api.HWND) api.LRESULT
+
+// A control's notification `code`: WM_COMMAND to the window it is in, its
+// id and the code in its WPARAM (MAKEWPARAM).
+func _notify(w api.HWND, code int) {
+    _sendCommand(api.GetParent(w), api.WM_COMMAND, _dlgCtrlId(w) % 65536 + code * 65536, w)
+}
+
+#[c.native("UINT_PTR")]
+struct _UintPtr = int
+
+// What a WM_NOTIFY's LPARAM points to first: the control it is from and
+// what it says.
+#[c.native("NMHDR")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Nmhdr")]
+struct _Nmhdr {
+    hwndFrom api.HWND
+    idFrom   _UintPtr
+    code     api.UINT
+}
+
+// The header of w's notification `code`.
+func _header(w api.HWND, code int) _Nmhdr {
+    return _Nmhdr{hwndFrom=w, idFrom=_dlgCtrlId(w), code=code}
+}
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendNotify")]
+func _sendNotify(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] nm ref[_Nmhdr]) api.LRESULT
+
+// Asks for the layout of the window w is in once whatever is changing it
+// has: what changes w's size calls it.
+#[c.native("sngl_win32_relayout")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Relayout")]
+func _relayout(w api.HWND)
+
 // --- Windows ---
 
 // A toplevel: the window a `ui.window` is. The window manager's close hides
@@ -674,9 +725,11 @@ func _on_CheckBox_click(b CheckBox, click func()) {
     _rtOnClick(b, click)
 }
 
-#[c.native("sngl_win32_fire_check")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireCheck")]
-func _rtFireCheck(b CheckBox, checked bool)
+// A check box pressed: the state it leaves, then its BN_CLICKED.
+func _rtFireCheck(b CheckBox, checked bool) {
+    _setCheck(b, checked)
+    _notify(_handle(b), api.BN_CLICKED)
+}
 
 // A test's press of a check box hands the state it leaves.
 #[gen.fires("click")]
@@ -967,22 +1020,50 @@ component Select(enabled bool, look Look, @change()) ui.node
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Select")]
 func _rtSelect() Select
 
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.AddString")]
+func _addString(s api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] label c.utf16) api.LRESULT
+
 // Offers a drop-down the labels `labels` joins with newlines and selects
-// `chosen` where one of them is it, reporting neither.
-#[c.native("sngl_win32_offer")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Offer")]
-func offerChoices(s Select, labels c.utf16, chosen c.utf16)
+// `chosen` where one of them is it, reporting neither: CB_SETCURSEL
+// reports nothing. A drop-down keeps its choices in the order offered, so
+// the first labeled `chosen` is its place among `labels`.
+func offerChoices(s Select, labels string, chosen string) {
+    var w = _handle(s)
+    api.SendMessage(w, 331, 0, 0)
+    var at = -1
+    if labels != "" {
+        var each = labels.split("\n")
+        var i = 0
+        for i < each.length() {
+            _addString(w, 323, 0, each[i])
+            if at < 0 && each[i] == chosen {
+                at = i
+            }
+            i += 1
+        }
+    }
+    api.SendMessage(w, 334, at, 0)
+    _relayout(w)
+}
 
 // The label of the choice a drop-down has selected, or "".
 #[c.native("sngl_win32_selected")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Selected")]
 func selectedLabel(s Select) string
 
+// The place of the choice labeled `label` in a drop-down, or -1.
+#[c.native("sngl_win32_find_choice")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FindChoice")]
+func _findChoice(s api.HWND, label c.utf16) int
+
 // Selects the choice labeled `label` as the user's pick does, which reports
-// it.
-#[c.native("sngl_win32_fire_select")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireSelect")]
-func selectLabel(s Select, label c.utf16)
+// it: CB_SETCURSEL, then CBN_SELCHANGE.
+func selectLabel(s Select, label string) {
+    var w = _handle(s)
+    api.SendMessage(w, 334, _findChoice(w, label), 0)
+    _notify(w, 1)
+}
 
 #[gen.protocol(create)]
 func _create_Select() Select {
@@ -1023,14 +1104,18 @@ func _rtTabs() Tabs
 func _rtSetSelected(t Tabs, selected int)
 
 // Chooses the tab at `index` as the user's click on it does, which reports
-// it.
-#[c.native("sngl_win32_fire_tab")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FireTab")]
-func pickTab(t Tabs, index int)
+// it: TCM_SETCURSEL, then TCN_SELCHANGE.
+func pickTab(t Tabs, index int) {
+    var w = _handle(t)
+    api.SendMessage(w, 4876, index, 0)
+    var nm = _header(w, -551)
+    _sendNotify(api.GetParent(w), api.WM_NOTIFY, nm.idFrom, &nm)
+}
 
-#[c.native("sngl_win32_tab_page")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TabPage")]
-func _rtTabPage() TabPage
+// A page is a box, its title its text.
+#[c.native("sngl_win32_box")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Box")]
+func _rtTabPage(vertical bool) TabPage
 
 #[gen.protocol(create)]
 func _create_Tabs() Tabs {
@@ -1064,7 +1149,7 @@ func _set_Tabs_look(t Tabs, look Look) {
 
 #[gen.protocol(create)]
 func _create_TabPage() TabPage {
-    return _rtTabPage()
+    return _rtTabPage(true)
 }
 
 #[gen.protocol(append)]
@@ -1508,25 +1593,165 @@ func _on_DatePicker_change(d DatePicker, change func()) {
     _rtOnChange(d, change)
 }
 
+// A window the runtime may answer none of, NULL for none: api's HWND holds
+// NULL as a window like any other.
+#[c.native("HWND", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Found")]
+struct _Found {}
+
+#[c.native("HWND", cast)]
+func _found(f _Found) api.HWND
+
+// The first node of `kind`, the runtime's `enum sngl_kind`, in the window
+// `n` is in.
+#[c.native("sngl_win32_find_kind")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FindKind")]
+func _findKind(w api.HWND, kind int) option[_Found]
+
+func _firstOf(w api.HWND, kind int) option[_Found] {
+    return _findKind(_ancestor(w, 2), kind)
+}
+
+// The kinds a test picks in: K_TABLE, K_TREE and K_DATE.
+const _kTable = 17
+
+const _kTree = 18
+
+const _kDate = 19
+
+// The part of an LVITEMW LVM_SETITEMSTATE reads; C zeroes the rest.
+#[c.native("LVITEMW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.LvState")]
+struct _LvState {
+    mask      api.UINT
+    iItem     int
+    iSubItem  int
+    state     api.UINT
+    stateMask api.UINT
+}
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendItemState")]
+func _sendItemState(t api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] it ref[_LvState]) api.LRESULT
+
+// The part of an NMLISTVIEW a column's click says.
+#[c.native("NMLISTVIEW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NmListView")]
+struct _NmListView {
+    hdr      _Nmhdr
+    iItem    int
+    iSubItem int
+}
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendListView")]
+func _sendListView(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] lv ref[_NmListView]) api.LRESULT
+
+// A tree's item, which the runtime may answer none of: NULL for none.
+#[c.native("HTREEITEM", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.TreeFound")]
+struct _TreeFound {}
+
+// A tree's item as a message carries it.
+#[c.native("HTREEITEM")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.TreeItem")]
+struct _TreeItem {}
+
+#[c.native("HTREEITEM", cast)]
+func _treeFoundItem(f _TreeFound) _TreeItem
+
+// The item of tree `t` labeled `label`.
+#[c.native("sngl_win32_tree_find")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TreeFind")]
+func _treeFind(t api.HWND, label c.utf16) option[_TreeFound]
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendTreeItem")]
+func _sendTreeItem(t api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] it _TreeItem) api.LRESULT
+
+// What DTN_DATETIMECHANGE's LPARAM points to.
+#[c.native("NMDATETIMECHANGE")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NmDateTimeChange")]
+struct _NmDateTimeChange {
+    nmhdr   _Nmhdr
+    dwFlags api.DWORD
+    st      _SystemTime
+}
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendDateChange")]
+func _sendDateChange(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] ch ref[_NmDateTimeChange]) api.LRESULT
+
+#[c.native("sngl_win32_set_date")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetDate")]
+func _setDate(d api.HWND, iso c.utf16)
+
 // A test's choice, as the user's, in the first table, tree or date picker
 // of the window `n` is in: a row selected, a column header clicked, a node
 // selected by its label, a date picked ("YYYY-MM-DD", or "" for none). Each
 // answers whether there was one to choose.
-#[c.native("sngl_win32_pick_row")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PickRow")]
-func pickRow(n ui.node, row int) bool
+func pickRow(n ui.node, row int) bool {
+    return _pickRow(_handle(n), row)
+}
 
-#[c.native("sngl_win32_click_column")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ClickColumn")]
-func clickColumn(n ui.node, column int) bool
+func _pickRow(n api.HWND, row int) bool {
+    var t = _firstOf(n, _kTable)
+    if t != null {
+        // Selected and focused, as a click leaves it.
+        var it = _LvState{mask=0, iItem=0, iSubItem=0, state=3, stateMask=3}
+        return _sendItemState(_found(t), 4139, row, &it) != 0
+    }
+    return false
+}
 
-#[c.native("sngl_win32_pick_node")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PickNode")]
-func pickNode(n ui.node, label c.utf16) bool
+func clickColumn(n ui.node, column int) bool {
+    return _clickColumn(_handle(n), column)
+}
 
-#[c.native("sngl_win32_pick_date")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PickDate")]
-func pickDate(n ui.node, iso c.utf16) bool
+func _clickColumn(n api.HWND, column int) bool {
+    var t = _firstOf(n, _kTable)
+    if t != null {
+        var w = _found(t)
+        var lv = _NmListView{hdr=_header(w, -108), iItem=-1, iSubItem=column}
+        _sendListView(api.GetParent(w), api.WM_NOTIFY, lv.hdr.idFrom, &lv)
+        return true
+    }
+    return false
+}
+
+func pickNode(n ui.node, label string) bool {
+    return _pickNode(_handle(n), label)
+}
+
+func _pickNode(n api.HWND, label string) bool {
+    var t = _firstOf(n, _kTree)
+    if t != null {
+        var w = _found(t)
+        var it = _treeFind(w, label)
+        if it != null {
+            return _sendTreeItem(w, 4363, 9, _treeFoundItem(it)) != 0
+        }
+    }
+    return false
+}
+
+func pickDate(n ui.node, iso string) bool {
+    return _pickDate(_handle(n), iso)
+}
+
+func _pickDate(n api.HWND, iso string) bool {
+    var t = _firstOf(n, _kDate)
+    if t != null {
+        var w = _found(t)
+        _setDate(w, iso)
+        var st = _SystemTime{wYear=0, wMonth=0, wDayOfWeek=0, wDay=0, wHour=0, wMinute=0, wSecond=0, wMilliseconds=0}
+        var flags = _dtmGetSystemTime(w, 4097, 0, &st)
+        var ch = _NmDateTimeChange{nmhdr=_header(w, -759), dwFlags=flags, st=st}
+        _sendDateChange(api.GetParent(w), api.WM_NOTIFY, ch.nmhdr.idFrom, &ch)
+        return true
+    }
+    return false
+}
 
 // Ends the message loop, and with it the program: a window-less program's,
 // such as one an `@run` handler started without calling run, way out.
@@ -2055,9 +2280,10 @@ func _rtOnPaint(
     #[c.type("sngl_win32_release")] #[c.release] rel c.pointer,
 )
 
-#[c.native("sngl_win32_redraw")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Redraw")]
-func _rtRedraw(w Canvas)
+// A canvas painted again, over what it painted.
+func _rtRedraw(w Canvas) {
+    _invalidateRect(_handle(w), null, false)
+}
 
 #[gen.protocol(create)]
 func _create_Canvas() Canvas {

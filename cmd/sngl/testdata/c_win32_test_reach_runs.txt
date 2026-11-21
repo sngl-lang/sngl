@@ -395,7 +395,7 @@ window {
     main
 }
 -- testrun/win32/c/branch.sngl/branch/1 --
-sha256:b010b3cca029c03c398723419a2bac52
+sha256:1d59c7e8cc189e918b98a7193f757ce0
 {
   "results": [
     {
@@ -409,7 +409,7 @@ sha256:b010b3cca029c03c398723419a2bac52
   ]
 }
 -- testrun/win32/c/context.sngl/main/1 --
-sha256:fcc7124a525441954965ee415e83d5a9
+sha256:ce05b1f2de478713b3eb1c8d6dea717e
 {
   "results": [
     {
@@ -419,7 +419,7 @@ sha256:fcc7124a525441954965ee415e83d5a9
   ]
 }
 -- testrun/win32/c/copies.sngl/main/1 --
-sha256:00eaa8d7e387d02a01f8ceb38a02e120
+sha256:991c836ac6bd70c74fbac45ee016225f
 {
   "results": [
     {
@@ -433,7 +433,7 @@ sha256:00eaa8d7e387d02a01f8ceb38a02e120
   ]
 }
 -- testrun/win32/c/deepfire.sngl/main/1 --
-sha256:8353c78e7f3ca63d7f3fcdb24899077b
+sha256:83cfd8eef8907ae406d7ce9bb935b8cd
 {
   "results": [
     {
@@ -443,7 +443,7 @@ sha256:8353c78e7f3ca63d7f3fcdb24899077b
   ]
 }
 -- testrun/win32/c/forward.sngl/main/1 --
-sha256:951983803eb775037aa627e208a7459a
+sha256:6a6fba3dd709bcb1cb0486d08d3acfd4
 {
   "results": [
     {
@@ -453,7 +453,7 @@ sha256:951983803eb775037aa627e208a7459a
   ]
 }
 -- testrun/win32/c/panel.sngl/panel/1 --
-sha256:4a54341b84a7c19c98d38528c2c3c999
+sha256:3d13410d0372ea8ae722936175e1d1f6
 {
   "results": [
     {
@@ -463,7 +463,7 @@ sha256:4a54341b84a7c19c98d38528c2c3c999
   ]
 }
 -- testrun/win32/c/reserved.sngl/main/1 --
-sha256:7447ea649221fd9470613f17d415e339
+sha256:af0b47dc81d43c9df7ede6fffec8f5d5
 {
   "results": [
     {
@@ -473,7 +473,7 @@ sha256:7447ea649221fd9470613f17d415e339
   ]
 }
 -- testrun/win32/c/slot.sngl/main/1 --
-sha256:45dd97113af819bb69ca6534faeea579
+sha256:acee84d2736d28310bb5616a28de814b
 {
   "results": [
     {
@@ -541,7 +541,7 @@ sha256:6e6e9e1207916a92d01bbf906050fbac
   ]
 }
 -- testrun/win32/go/panel.sngl/panel/1 --
-sha256:4b0a422357707d84dde08cfe1f293824
+sha256:d403eb8868155a5e9ca3a2abb70ccf00
 {
   "results": [
     {

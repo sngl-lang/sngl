@@ -9117,7 +9117,7 @@ window.__sngl_boot = () => {
 -- run/c/gtk4 --
 pass sha256:10bbc8d666b6bbbd9631b2adeb9178c5
 -- run/c/win32 --
-pass sha256:5d67cf5983539ed8e78d0801a08ad366
+pass sha256:fe5d139b836c4dddd42db93949d4bbc6
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --

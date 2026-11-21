@@ -231,7 +231,7 @@ int peek_day(HWND any) {
 	return st.wDay;
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:187ff1c504af4ca0b78cab44241b14aa
+sha256:328dc6393fa946691b4a1586b81d8af6
 {
   "results": [
     {
@@ -261,7 +261,7 @@ sha256:187ff1c504af4ca0b78cab44241b14aa
   ]
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:f36f1ea3adfcffb64395ae85b896254f
+sha256:b8130c935d9b4510562873d79f40871b
 {
   "results": [
     {
@@ -291,7 +291,7 @@ sha256:f36f1ea3adfcffb64395ae85b896254f
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:aee9765b6a6b4bbb17d5e20af6027bd6
+sha256:f6bfa22d23d3e56433fd7cb69c52756e
 {
   "results": [
     {
@@ -321,7 +321,7 @@ sha256:aee9765b6a6b4bbb17d5e20af6027bd6
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:1e8ff1ba3bf028489b928f875064321f
+sha256:0f974bd6d9fcb2fe034298b317ed5594
 {
   "results": [
     {
@@ -351,7 +351,7 @@ sha256:1e8ff1ba3bf028489b928f875064321f
   ]
 }
 -- testrun/win32/go/app.sngl/main/3 --
-sha256:d6e44a6b01217d7bd4b69028bb852472
+sha256:b146d0a4b0fe0b3388d67d2465291c55
 {
   "results": [
     {

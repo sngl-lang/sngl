@@ -126,6 +126,50 @@ integer for the declaration (`cgo.DtmGetSystemTime`): named for
 `SendMessageW`, it took that name from api's `SendMessage`
 (`c_win32_controls_runs.txt`'s `testADayIsPicked`).
 
+**What a test raises, and what only sends messages, is SNGL.** A check box
+pressed (`_rtFireCheck`), a drop-down offered its choices and one picked
+(`offerChoices`, `selectLabel`), a tab chosen (`pickTab`), a table's row
+picked and its column clicked, a tree's node and a date picked (`pickRow`,
+`clickColumn`, `pickNode`, `pickDate`), a canvas redrawn and a tab page
+made are win32.sngl's: each sends the message the control would, a
+`WM_COMMAND` (`_notify`) or a `WM_NOTIFY` whose `NMHDR`, `NMLISTVIEW` or
+`NMDATETIMECHANGE` it hands by `ref` through the `LPARAM`, the last two
+holding the header as a nested C struct. What they need of the record
+they ask the runtime for through small exported functions -- the first
+node of a kind in a window (`sngl_win32_find_kind`), a layout
+(`sngl_win32_relayout`) -- and what reads a wide buffer stays a C helper
+answering a number or a handle (`sngl_win32_find_choice`,
+`sngl_win32_tree_find`). A function a test hands its instance is inlined
+into the test and may do no more than return (`TestInstanceReach`), so
+each public pick hands its node's window to a helper. `sngl_win32.h`
+includes `commctrl.h`, whose structs these name. A drop-down's choice is
+found among the labels offered rather than read back off it, which is the
+same place: it keeps them in the order offered. Pin:
+`cmd/sngl/testdata/c_win32_senders_runs.txt`, in C and Go, amd64 and 386,
+and Go calling C directly, reading what each control shows through its own
+`peek.c`.
+
+**Where the rest of the runtime is held** (November 2026, 4,544 lines;
+functions by what keeps them C, lines in their bodies):
+
+- the record (`ctl`), and what only it calls: 192 functions, 3,295 lines --
+  the window procedures, layout, measuring, painting, menus, tips, fonts,
+  every constructor (`control` makes the record) and every setter keeping
+  a prop in it. A map dropping an entry on `WM_NCDESTROY` would open most
+  of it; of those, `SetWindowLongPtrW` (a macro on 386), the filled
+  buffers (`fit_columns`, `entry_labeled`) and the pictures' raw pixels
+  would still hold roughly 300 lines;
+- wide strings C fills, answered as UTF-8 or as a place: 7, 97;
+- an array of C structs (`DTM_SETRANGE`'s two `SYSTEMTIME`s) and raw
+  pixels (WIC's decode, the snapshot): 5, 179;
+- the language runtime's loop and its globals (`sngl_post`, the loop, the
+  windows shown and held, the carried files, the fetch thread): 16, 133;
+- registering the classes, whose `WNDCLASSEXW` holds the window procedure,
+  and the process's DPI and manifest setup: 3, 70;
+- timers, whose `schedules` flag no bodied function carries: 3, 34;
+- a click a test raises, which sets the `firing` flag `box_proc` reads: 1,
+  5.
+
 **What holds the rest in C.** Each is a gap in the language, not a choice:
 
 - **A Win32 callback is `__stdcall` on 386**, which a `#[c.static]`

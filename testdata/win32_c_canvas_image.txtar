@@ -1041,7 +1041,7 @@ static void s___lambda2(s___lambda2_caps state, sngl_win32_gfx * ctx) {
 
 static void s___lambda3(s___lambda3_caps state) {
 	state.r__inst0->value += 1.0;
-	sngl_win32_redraw(s___drawing0);
+	(void)(int64_t)InvalidateRect((HWND)(s___drawing0), NULL, (int)(0));
 	sngl_win32_drawing_redraw(s___drawing1);
 }
 
@@ -1124,4 +1124,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:ab2d4a77f713546e7ed3cc9b88074564
+pass sha256:f12e3c0626f1b22632aa94f179a5940a

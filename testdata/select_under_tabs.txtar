@@ -7346,6 +7346,7 @@ static int64_t s_ui__choiceLabeled__string(sngl_list_choice__record__string opti
 static sngl_string s_ui__choiceLabel__string(sngl_list_choice__record__string options, sngl_string value);
 static void s_platform_win32___rtSetEnabled(HWND w, bool enabled);
 static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s);
+static void s_platform_win32__offerChoices(HWND s, sngl_string labels, sngl_string chosen);
 static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t otherwise);
 static void s_platform_win32___invalidate(HWND w);
 static int64_t s_platform_win32__inset(sngl_opt_measurement m);
@@ -7462,6 +7463,60 @@ static sngl_list_float sngl_list_float_of(int64_t n, double const *xs) {
 	sngl_list_float l = {sngl_alloc(sizeof(double) * (size_t)n), n, n};
 	memcpy(l.data, xs, sizeof(double) * (size_t)n);
 	return l;
+}
+
+static void sngl_list_string_grow(sngl_list_string *l, int64_t n) {
+	if (l->len + n <= l->cap) {
+		return;
+	}
+	int64_t cap = l->cap * 2;
+	if (cap < l->len + n) {
+		cap = l->len + n;
+	}
+	if (cap < 4) {
+		cap = 4;
+	}
+	sngl_string *data = sngl_alloc(sizeof(sngl_string) * (size_t)cap);
+	if (l->len > 0) {
+		memcpy(data, l->data, sizeof(sngl_string) * (size_t)l->len);
+	}
+	l->data = data;
+	l->cap = cap;
+}
+
+static sngl_list_string sngl_list_string_split(sngl_string s, sngl_string sep) {
+	sngl_list_string out = {0};
+	if (sep.len == 0) {
+		for (size_t i = 0; i < s.len;) {
+			unsigned char b = (unsigned char)s.ptr[i];
+			size_t n = b < 0x80 ? 1 : (b >> 5) == 6 ? 2 : (b >> 4) == 14 ? 3 : (b >> 3) == 30 ? 4 : 1;
+			if (n > s.len - i) {
+				n = 1;
+			}
+			sngl_list_string_grow(&out, 1);
+			out.data[out.len++] = sngl_string_bytes(s.ptr + i, n);
+			i += n;
+		}
+		return out;
+	}
+	int64_t from = 0;
+	for (;;) {
+		int64_t at = sep.len == 0 ? -1 : sngl_string_find(s, sep, from);
+		sngl_list_string_grow(&out, 1);
+		if (at < 0) {
+			out.data[out.len++] = sngl_string_bytes(s.ptr + from, s.len - (size_t)from);
+			return out;
+		}
+		out.data[out.len++] = sngl_string_bytes(s.ptr + from, (size_t)(at - from));
+		from = at + (int64_t)sep.len;
+	}
+}
+
+static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
+	if (i < 0 || i >= l.len) {
+		sngl_panic("index out of range");
+	}
+	return &l.data[i];
 }
 
 static sngl_list_choice__record__string sngl_list_choice__record__string_of(int64_t n, s_ui__choice__record__string const *xs) {
@@ -7743,13 +7798,6 @@ static void sngl_list_string_push_kept(sngl_list_string *l, sngl_string v) {
 static int64_t sngl_map_string__int_get(sngl_map_string__int m, sngl_string k, int64_t otherwise) {
 	int64_t i = sngl_map_string__int_find(m, k);
 	return i < 0 ? otherwise : m.vals[i];
-}
-
-static sngl_string *sngl_list_string_at(sngl_list_string l, int64_t i) {
-	if (i < 0 || i >= l.len) {
-		sngl_panic("index out of range");
-	}
-	return &l.data[i];
 }
 
 static s_platform_win32____anon_drop_labels_87008d *sngl_list___anon_drop_labels_87008d_at(sngl_list___anon_drop_labels_87008d l, int64_t i) {
@@ -8299,6 +8347,25 @@ static s_platform_win32__Look s_platform_win32__lookOf(s_ui__Style s) {
 	return look;
 }
 
+static void s_platform_win32__offerChoices(HWND s, sngl_string labels, sngl_string chosen) {
+	HWND w = (HWND)(s);
+	(void)(int64_t)SendMessageW(w, (UINT)(331), (WPARAM)(0), (LPARAM)(0));
+	int64_t at = -1;
+	if (!sngl_string_eq(labels, SNGL_STR(""))) {
+		sngl_list_string each = sngl_list_string_split(labels, SNGL_STR("\n"));
+		int64_t i = 0;
+		while (i < (each).len) {
+			(void)(int64_t)SendMessageW(w, (UINT)(323), (WPARAM)(0), (LPARAM)(const unsigned short *)sngl_utf16((*sngl_list_string_at(each, i))));
+			if ((at < 0) && sngl_string_eq((*sngl_list_string_at(each, i)), chosen)) {
+				at = i;
+			}
+			i += 1;
+		}
+	}
+	(void)(int64_t)SendMessageW(w, (UINT)(334), (WPARAM)(at), (LPARAM)(0));
+	sngl_win32_relayout(w);
+}
+
 static s_platform_win32__Look s_platform_win32__boxLookOf(s_ui__Style s, int64_t otherwise) {
 	s_platform_win32__Look look = s_platform_win32__lookOf(s);
 	if (!(s.gap).ok) {
@@ -8323,7 +8390,7 @@ static int64_t s_platform_win32__rgb(sngl_opt_color c) {
 }
 
 static void s___effect0_mount(void) {
-	sngl_win32_offer(s_topPick, (const unsigned short *)sngl_utf16(s___effect0_key.labels), (const unsigned short *)sngl_utf16(s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), s_top->value)));
+	s_platform_win32__offerChoices(s_topPick, s___effect0_key.labels, s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), s_top->value));
 }
 
 static void s___effect0_down(void) {
@@ -8398,7 +8465,7 @@ static void s___effect0_up(void) {
 }
 
 static void s___effect1_mount(void) {
-	sngl_win32_offer(s_topPick, (const unsigned short *)sngl_utf16(sngl_list_string_join(sngl_list_choice__record__string_map_string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), ((sngl_fn_choice__record__string__string){sngl_lambda14, NULL})), SNGL_STR("\n"))), (const unsigned short *)sngl_utf16(s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), s___effect1_key)));
+	s_platform_win32__offerChoices(s_topPick, sngl_list_string_join(sngl_list_choice__record__string_map_string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), ((sngl_fn_choice__record__string__string){sngl_lambda14, NULL})), SNGL_STR("\n")), s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), s___effect1_key));
 }
 
 static void s___effect1_down(void) {
@@ -8618,7 +8685,7 @@ static s_moves__inst * s_moves__new(void) {
 	sngl_win32_set_selected(__self->__n0, (int)(__self->tab->value));
 	sngl_win32_set_look(__self->__n0, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	for (struct { sngl_list_tab__record l; int64_t i; } __loop35 = {sngl_list_tab__record_of(2, (s_ui__tab__record[]){(s_ui__tab__record){.label = SNGL_STR("One"), .disabled = false, .__id = 1}, (s_ui__tab__record){.label = SNGL_STR("Two"), .disabled = false, .__id = 2}}), 0}; __loop35.i < __loop35.l.len; __loop35.i++) { int64_t k = __loop35.i; s_ui__tab__record t = __loop35.l.data[__loop35.i];
-		HWND __n5 = sngl_win32_tab_page();
+		HWND __n5 = sngl_win32_box((int)(1));
 		sngl_win32_set_text(__n5, (const unsigned short *)sngl_utf16(t.label));
 		s_platform_win32___rtSetEnabled(__n5, !t.disabled);
 		sngl_win32_on_click(__n5, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda0__fn, sngl_alloc_copy(&(s___lambda0_caps__env[]){{{s___lambda0_caps__env__keep, false}, (s___lambda0_caps){.tab = __self->tab, .k = k, .__self = __self}}}, sizeof(s___lambda0_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
@@ -8666,7 +8733,7 @@ static void s___lambda1(s___lambda1_caps state) {
 }
 
 static void s_moves__effect2_mount(s_moves__inst * __self) {
-	sngl_win32_offer(__self->methodPick, (const unsigned short *)sngl_utf16(__self->__effect2_key.labels), (const unsigned short *)sngl_utf16(s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), __self->pick->value)));
+	s_platform_win32__offerChoices(__self->methodPick, __self->__effect2_key.labels, s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), __self->pick->value));
 }
 
 static void s_moves__effect2_down(s_moves__inst * __self) {
@@ -8743,7 +8810,7 @@ static void s_moves__effect2_up(s_moves__inst * __self) {
 }
 
 static void s_moves__effect3_mount(s_moves__inst * __self) {
-	sngl_win32_offer(__self->methodPick, (const unsigned short *)sngl_utf16(sngl_list_string_join(sngl_list_choice__record__string_map_string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), ((sngl_fn_choice__record__string__string){sngl_lambda49, NULL})), SNGL_STR("\n"))), (const unsigned short *)sngl_utf16(s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), __self->__effect3_key)));
+	s_platform_win32__offerChoices(__self->methodPick, sngl_list_string_join(sngl_list_choice__record__string_map_string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), ((sngl_fn_choice__record__string__string){sngl_lambda49, NULL})), SNGL_STR("\n")), s_ui__choiceLabel__string(sngl_list_choice__record__string_of(2, (s_ui__choice__record__string[]){(s_ui__choice__record__string){.label = SNGL_STR("A"), .value = SNGL_STR("a")}, (s_ui__choice__record__string){.label = SNGL_STR("B"), .value = SNGL_STR("b")}}), __self->__effect3_key));
 }
 
 static void s_moves__effect3_down(s_moves__inst * __self) {
@@ -8956,7 +9023,7 @@ static void sngl_build(void) {
 	sngl_win32_set_selected(s___n2, (int)(s_selected__inst0->value));
 	sngl_win32_set_look(s___n2, sngl_to_platform_win32__Look((s_platform_win32__Look){.flex = 0.0, .gap = 0, .padTop = 0, .padRight = 0, .padBottom = 0, .padLeft = 0, .minWidth = 0, .width = 0, .height = 0, .align = 0, .color = -1, .background = -1, .fontPx = 0, .hidden = 0}));
 	for (struct { sngl_list_tab__record l; int64_t i; } __loop64 = {sngl_list_tab__record_of(1, (s_ui__tab__record[]){(s_ui__tab__record){.label = SNGL_STR("Top"), .disabled = false, .__id = 0}}), 0}; __loop64.i < __loop64.l.len; __loop64.i++) { int64_t k = __loop64.i; s_ui__tab__record t = __loop64.l.data[__loop64.i];
-		HWND __n7 = sngl_win32_tab_page();
+		HWND __n7 = sngl_win32_box((int)(1));
 		sngl_win32_set_text(__n7, (const unsigned short *)sngl_utf16(t.label));
 		s_platform_win32___rtSetEnabled(__n7, !t.disabled);
 		sngl_win32_on_click(__n7, (sngl_win32_fn)(void (*)(void))sngl_dispatch_void__void, (void *)sngl_heap_copy(&(sngl_fn_void__void[]){sngl_fn_void__void__keep(((sngl_fn_void__void){s___lambda3__fn, sngl_alloc_copy(&(s___lambda3_caps__env[]){{{s___lambda3_caps__env__keep, false}, (s___lambda3_caps){.selected__inst0 = s_selected__inst0, .k = k}}}, sizeof(s___lambda3_caps__env))}))}, sizeof(sngl_fn_void__void)), (sngl_win32_release)(void (*)(void))sngl_release);
@@ -13127,6 +13194,25 @@ func LookOf(s Style) cgo.Look {
 	return look
 }
 
+func OfferChoices(s cgo.HWND, labels string, chosen string) {
+	w := s
+	cgo.SendMessageW(w, 331, 0, 0)
+	var at int = -1
+	if labels != "" {
+		each := strings.Split(labels, "\n")
+		var i int = 0
+		for i < len(each) {
+			cgo.AddString(w, 323, 0, each[i])
+			if (at < 0) && (each[i] == chosen) {
+				at = i
+			}
+			i += 1
+		}
+	}
+	cgo.SendMessageW(w, 334, at, 0)
+	cgo.SnglWin32Relayout(w)
+}
+
 func BoxLookOf(s Style, otherwise int) cgo.Look {
 	look := LookOf(s)
 	if s.Gap == nil {
@@ -13188,7 +13274,7 @@ func Rgb(c *snglcolor.Color) int {
 }
 
 func __effect0_mount() {
-	cgo.SnglWin32Offer(m.topPick, m.__effect0_key.Labels, ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}}, m.top))
+	OfferChoices(m.topPick, m.__effect0_key.Labels, ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}}, m.top))
 }
 
 func __effect0_down() {
@@ -13234,7 +13320,7 @@ func __effect0_up() {
 }
 
 func __effect1_mount() {
-	cgo.SnglWin32Offer(m.topPick, strings.Join(func() []string {
+	OfferChoices(m.topPick, strings.Join(func() []string {
 		__out := make([]string, len([]Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}}))
 		for __i, __item := range []Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}} {
 			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
@@ -13407,7 +13493,7 @@ func Moves__new() *Moves__inst {
 	cgo.SnglWin32SetSelected(__self.__n0, __self.Tab)
 	cgo.SnglWin32SetLook(__self.__n0, cgo.Look{Color: -1, Background: -1})
 	for k, t := range []Tab__record{Tab__record{Label: "One", __id: 1}, Tab__record{Label: "Two", __id: 2}} {
-		__n5 := cgo.SnglWin32TabPage()
+		__n5 := cgo.SnglWin32Box(true)
 		cgo.SnglWin32SetText(__n5, t.Label)
 		_rtSetEnabled(__n5, !t.Disabled)
 		cgo.SnglWin32OnClick(__n5, func() {
@@ -13447,7 +13533,7 @@ func Moves__new() *Moves__inst {
 }
 
 func Moves__effect2_mount(__self *Moves__inst) {
-	cgo.SnglWin32Offer(__self.MethodPick, __self.__effect2_key.Labels, ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}}, __self.Pick))
+	OfferChoices(__self.MethodPick, __self.__effect2_key.Labels, ChoiceLabel__string([]Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}}, __self.Pick))
 }
 
 func Moves__effect2_down(__self *Moves__inst) {
@@ -13495,7 +13581,7 @@ func Moves__effect2_up(__self *Moves__inst) {
 }
 
 func Moves__effect3_mount(__self *Moves__inst) {
-	cgo.SnglWin32Offer(__self.MethodPick, strings.Join(func() []string {
+	OfferChoices(__self.MethodPick, strings.Join(func() []string {
 		__out := make([]string, len([]Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}}))
 		for __i, __item := range []Choice__record__string{Choice__record__string{Label: "A", Value: "a"}, Choice__record__string{Label: "B", Value: "b"}} {
 			__out[__i] = func(o Choice__record__string) string { return o.Label }(__item)
@@ -13618,7 +13704,7 @@ func snglBuild() {
 	cgo.SnglWin32SetSelected(m.__n2, m.selected__inst0)
 	cgo.SnglWin32SetLook(m.__n2, cgo.Look{Color: -1, Background: -1})
 	for k, t := range []Tab__record{Tab__record{Label: "Top"}} {
-		__n7 := cgo.SnglWin32TabPage()
+		__n7 := cgo.SnglWin32Box(true)
 		cgo.SnglWin32SetText(__n7, t.Label)
 		_rtSetEnabled(__n7, !t.Disabled)
 		cgo.SnglWin32OnClick(__n7, func() {
@@ -13679,8 +13765,8 @@ func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/c/gtk4 --
 pass sha256:1edae9bf97b62c5bae791c88fd709b24
 -- run/c/win32 --
-pass sha256:f62554f724fde43b338ef9570271fa57
+pass sha256:b08a93cb6dddd1d719e2d6e5b57345df
 -- run/go/gtk4 --
 pass sha256:ac4beec1bcde6eef3f6c0492e3461347
 -- run/go/win32 --
-pass sha256:47680ea1046c940caf0c1336415fb94b
+pass sha256:a72efea8666982b0620ceded90ab0d75

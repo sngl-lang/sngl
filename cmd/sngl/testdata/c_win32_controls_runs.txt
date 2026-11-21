@@ -538,7 +538,7 @@ func testACanvasPaintsTheFile(t test.Test, c main) {
     t.snapshot("canvas")
 }
 -- testrun/win32/c/controls.sngl/main/1 --
-sha256:ac0857f12a266a64257c32e523c33870
+sha256:789378363a68dc9743b89a88e4077627
 {
   "results": [
     {
@@ -563,7 +563,7 @@ sha256:ac0857f12a266a64257c32e523c33870
   }
 }
 -- testrun/win32/c/data.sngl/main/1 --
-sha256:c5bae8fbc3d235092b6b2e37e447a9ee
+sha256:3ca4dc453f6ebbc310c1feafaccc9f1b
 {
   "results": [
     {
@@ -588,7 +588,7 @@ sha256:c5bae8fbc3d235092b6b2e37e447a9ee
   }
 }
 -- testrun/win32/c/image.sngl/main/1 --
-sha256:a397c91329091b18fede49a2888be784
+sha256:3c7c09c9262026b8fbb77e44ccee7800
 {
   "results": [
     {
@@ -614,7 +614,7 @@ sha256:a397c91329091b18fede49a2888be784
   }
 }
 -- testrun/win32/c/layout.sngl/main/1 --
-sha256:4105ade35c6e31b8efce4b74a6bae6fe
+sha256:721a09ecdbd7edda7e00744a79d16504
 {
   "results": [
     {
@@ -632,7 +632,7 @@ sha256:4105ade35c6e31b8efce4b74a6bae6fe
   }
 }
 -- testrun/win32/c/menus.sngl/_/1 --
-sha256:389709577082ebc4b8265d7682603464
+sha256:28dd72a71f2b7f08cae64322ff570e22
 {
   "results": [
     {
@@ -642,7 +642,7 @@ sha256:389709577082ebc4b8265d7682603464
   ]
 }
 -- testrun/win32/c/menus.sngl/main/1 --
-sha256:db80f651d10a3132ec8ec0c98224c396
+sha256:145811fb6e60fd49ab69ba27fddfdd12
 {
   "results": [
     {
@@ -660,7 +660,7 @@ sha256:db80f651d10a3132ec8ec0c98224c396
   }
 }
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:5e606164719efab613a8766e645a3c28
+sha256:856f784d823e5313c45147f287405c45
 {
   "results": [
     {
@@ -686,7 +686,7 @@ sha256:5e606164719efab613a8766e645a3c28
   }
 }
 -- testrun/win32/go/controls.sngl/main/1 --
-sha256:f705bfb408567da5deb518f2dbf4fb3e
+sha256:a530e1ece5c18391507466e83fa3d879
 {
   "results": [
     {
@@ -708,7 +708,7 @@ sha256:f705bfb408567da5deb518f2dbf4fb3e
   ]
 }
 -- testrun/win32/go/data.sngl/main/1 --
-sha256:f334e2eddbe7f3551fa81316c7e7179d
+sha256:b1bbb33f274f7d5c08e6b9c38f8de5ce
 {
   "results": [
     {
@@ -752,7 +752,7 @@ sha256:d9f0e3e18dcc3f6cc02282843f069c8c
   ]
 }
 -- testrun/win32/go/layout.sngl/main/1 --
-sha256:983d11abe227a1e33ce8c11d9b138bdf
+sha256:5921d433a4532216d8f7552c09f8a617
 {
   "results": [
     {
@@ -790,7 +790,7 @@ sha256:cf188235641fb116f08f8f9fe16c5f5d
   ]
 }
 -- testrun/win32/go/panels.sngl/main/1 --
-sha256:261ef4a334c8769752e87e563b9cd437
+sha256:7814df99fd7c1c384cce45aa6b34858f
 {
   "results": [
     {

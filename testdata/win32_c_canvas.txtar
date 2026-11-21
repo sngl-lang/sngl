@@ -2175,7 +2175,7 @@ static void s___lambda0(s___lambda0_caps state, sngl_win32_gfx * ctx) {
 
 static void s___lambda1(s___lambda1_caps state) {
 	state.n->value += 1;
-	sngl_win32_redraw(state.__self->__drawing0);
+	(void)(int64_t)InvalidateRect((HWND)(state.__self->__drawing0), NULL, (int)(0));
 }
 
 static void s_dot__set_r(s_dot__inst * __self, double __v) {
@@ -2183,7 +2183,7 @@ static void s_dot__set_r(s_dot__inst * __self, double __v) {
 		return;
 	}
 	__self->__prop_r->value = __v;
-	sngl_win32_redraw(__self->__drawing0);
+	(void)(int64_t)InvalidateRect((HWND)(__self->__drawing0), NULL, (int)(0));
 }
 
 static void s_dot__destroy(s_dot__inst * __self) {
@@ -2234,7 +2234,7 @@ static void s___canvas0__set___p0(s___canvas0__inst * __self, s___anon_id_elem_4
 	s___anon_id_elem_4ccb28__drop(*__slot7);
 	*__slot7 = __kept7;
 }
-	sngl_win32_redraw(__self->__drawing2);
+	(void)(int64_t)InvalidateRect((HWND)(__self->__drawing2), NULL, (int)(0));
 }
 
 static void s___canvas0__set___p1(s___canvas0__inst * __self, int64_t __v) {
@@ -2242,7 +2242,7 @@ static void s___canvas0__set___p1(s___canvas0__inst * __self, int64_t __v) {
 		return;
 	}
 	__self->__prop___p1->value = __v;
-	sngl_win32_redraw(__self->__drawing2);
+	(void)(int64_t)InvalidateRect((HWND)(__self->__drawing2), NULL, (int)(0));
 }
 
 static void s___canvas0__set___on0(s___canvas0__inst * __self, sngl_fn_void__void __v) {
@@ -2519,8 +2519,8 @@ static void s___lambda4(s___lambda4_caps state) {
 	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop31 = {state.__inst3_live->value, 0}; __loop31.i < __loop31.m.len; __loop31.i++) { sngl_string __inst3_live_uk = __loop31.m.keys[__loop31.i]; s___canvas0__inst * __inst3_live_uv = __loop31.m.vals[__loop31.i];
 		s___canvas0__set___p1(__inst3_live_uv, state.hits->value);
 	}
-	sngl_win32_redraw(s_board);
-	sngl_win32_redraw(s_pic);
+	(void)(int64_t)InvalidateRect((HWND)(s_board), NULL, (int)(0));
+	(void)(int64_t)InvalidateRect((HWND)(s_pic), NULL, (int)(0));
 }
 
 static void s___lambda5(s___lambda5_caps state, sngl_win32_gfx * ctx) {
@@ -2620,8 +2620,8 @@ static void sngl_lambda16(void *env_) {
 	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop17 = {s___inst3_live->value, 0}; __loop17.i < __loop17.m.len; __loop17.i++) { sngl_string __inst3_live_uk = __loop17.m.keys[__loop17.i]; s___canvas0__inst * __inst3_live_uv = __loop17.m.vals[__loop17.i];
 		s___canvas0__set___p1(__inst3_live_uv, s_hits->value);
 	}
-	sngl_win32_redraw(s_board);
-	sngl_win32_redraw(s_pic);
+	(void)(int64_t)InvalidateRect((HWND)(s_board), NULL, (int)(0));
+	(void)(int64_t)InvalidateRect((HWND)(s_pic), NULL, (int)(0));
 }
 
 static void sngl_lambda18(void *env_) {
@@ -2629,8 +2629,8 @@ static void sngl_lambda18(void *env_) {
 	for (struct { sngl_map_string____canvas0__inst m; int64_t i; } __loop19 = {s___inst3_live->value, 0}; __loop19.i < __loop19.m.len; __loop19.i++) { sngl_string __inst3_live_uk = __loop19.m.keys[__loop19.i]; s___canvas0__inst * __inst3_live_uv = __loop19.m.vals[__loop19.i];
 		s___canvas0__set___p1(__inst3_live_uv, s_hits->value);
 	}
-	sngl_win32_redraw(s_board);
-	sngl_win32_redraw(s_pic);
+	(void)(int64_t)InvalidateRect((HWND)(s_board), NULL, (int)(0));
+	(void)(int64_t)InvalidateRect((HWND)(s_pic), NULL, (int)(0));
 }
 -- out/c/win32/sngl.build --
 # What this program links, which `sngl build` reads.
@@ -2655,4 +2655,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:426fff4a3f0e416c1c69d5dba9880c98
+pass sha256:0e7592c833f5742f73e27873bf234fb1

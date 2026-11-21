@@ -5423,7 +5423,7 @@ static void s_platform_win32___newPath(sngl_win32_gfx * g) {
 
 static void s___effect0_mount(void) {
 	s_frame->value = 4;
-	sngl_win32_redraw(s___drawing0);
+	(void)(int64_t)InvalidateRect((HWND)(s___drawing0), NULL, (int)(0));
 }
 
 static void s___effect0_down(void) {
@@ -5616,7 +5616,7 @@ int main(void) {
 
 static void sngl_lambda7(void *env_) {
 	s_frame->value = (s_frame->value + 1);
-	sngl_win32_redraw(s___drawing0);
+	(void)(int64_t)InvalidateRect((HWND)(s___drawing0), NULL, (int)(0));
 }
 -- out/c/win32/sngl.build --
 # What this program links, which `sngl build` reads.
@@ -9939,7 +9939,7 @@ func _channel(v int) int {
 
 func __effect0_mount() {
 	m.frame = 4
-	cgo.SnglWin32Redraw(m.__drawing0)
+	cgo.InvalidateRect(m.__drawing0, nil, false)
 }
 
 func __effect0_down() {
@@ -9963,7 +9963,7 @@ func __effect0_up() {
 func __effect1_mount() {
 	m.handle__inst0 = cgo.SnglWin32Every(int(m.__effect1_key/time.Millisecond), func() {
 		m.frame = (m.frame + 1)
-		cgo.SnglWin32Redraw(m.__drawing0)
+		cgo.InvalidateRect(m.__drawing0, nil, false)
 	})
 }
 
@@ -10709,7 +10709,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/c/gtk4 --
 pass sha256:348f611255760e5766302d57cf0cb1c4
 -- run/c/win32 --
-pass sha256:542dbb4fa7f11ce9f306777a88791a4f
+pass sha256:75230675370b79a965eec9aef4fc4185
 -- run/go/bubbletea --
 pass sha256:4050baaf343b3789637964efbf3dbf2e
 -- run/go/fyne --
@@ -10717,7 +10717,7 @@ pass sha256:4a19961ae5f2c22c86eb5adb5bdb5ae8
 -- run/go/gtk4 --
 pass sha256:cba47e00521da661b807aa9c0b13e3ae
 -- run/go/win32 --
-pass sha256:551d1c66a9afb0e0f249d47de7a98b47
+pass sha256:1ac8471ce9458b1edae40784bfdfbfb0
 -- run/kotlin/android --
 pass sha256:82b9eaaea22806d0fd821929fc92067a
 -- run/none/html --

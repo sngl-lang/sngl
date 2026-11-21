@@ -1594,6 +1594,8 @@ static void relayout(HWND w) {
 	PostMessageW(top, SNGL_WM_LAYOUT, 0, 0);
 }
 
+void sngl_win32_relayout(HWND w) { relayout(w); }
+
 /* --- Timers --- */
 
 /* A timer is the parked window's, which is never shown and so never closed:
@@ -3120,9 +3122,6 @@ HWND sngl_win32_link(void) {
 
 HWND sngl_win32_tabs(void) { return control(WC_TABCONTROLW, WS_CLIPCHILDREN | WS_TABSTOP, WS_EX_CONTROLPARENT, K_TABS); }
 
-/* A page is a box, its title its text. */
-HWND sngl_win32_tab_page(void) { return sngl_win32_box(1); }
-
 HWND sngl_win32_scroll(void) {
 	HWND w = control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, WS_EX_CONTROLPARENT, K_SCROLL);
 	ctl *c = ctl_of(w);
@@ -3487,9 +3486,12 @@ static HTREEITEM tree_find(HWND w, HTREEITEM from, const WCHAR *label) {
 	return NULL;
 }
 
+HTREEITEM sngl_win32_tree_find(HWND w, const unsigned short *label) {
+	return tree_find(w, (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_ROOT, 0), (const WCHAR *)label);
+}
+
 static void tree_select(HWND w, ctl *c) {
-	HTREEITEM root = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_ROOT, 0);
-	HTREEITEM it = c->chosen && c->chosen[0] ? tree_find(w, root, c->chosen) : NULL;
+	HTREEITEM it = c->chosen && c->chosen[0] ? sngl_win32_tree_find(w, (const unsigned short *)c->chosen) : NULL;
 	c->quiet++;
 	SendMessageW(w, TVM_SELECTITEM, TVGN_CARET, (LPARAM)it);
 	c->quiet--;
@@ -3583,75 +3585,21 @@ void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned
 	SendMessageW(w, DTM_SETRANGE, has, (LPARAM)st);
 }
 
-/* find_kind is the first node of kind under w, w itself included, or NULL. */
-static HWND find_kind(HWND w, enum sngl_kind kind) {
+HWND sngl_win32_find_kind(HWND w, int kind) {
 	ctl *c = ctl_of(w);
 	if (!c) {
 		return NULL;
 	}
-	if (c->kind == kind) {
+	if ((int)c->kind == kind) {
 		return w;
 	}
 	for (int i = 0; i < c->nkids; i++) {
-		HWND k = find_kind(c->kids[i], kind);
+		HWND k = sngl_win32_find_kind(c->kids[i], kind);
 		if (k) {
 			return k;
 		}
 	}
 	return NULL;
-}
-
-int sngl_win32_pick_row(HWND w, int row) {
-	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_TABLE);
-	if (!t) {
-		return 0;
-	}
-	LVITEMW it;
-	memset(&it, 0, sizeof it);
-	it.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
-	it.state = LVIS_SELECTED | LVIS_FOCUSED;
-	return (int)SendMessageW(t, LVM_SETITEMSTATE, (WPARAM)row, (LPARAM)&it);
-}
-
-int sngl_win32_click_column(HWND w, int col) {
-	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_TABLE);
-	if (!t) {
-		return 0;
-	}
-	NMLISTVIEW lv;
-	memset(&lv, 0, sizeof lv);
-	lv.hdr.hwndFrom = t;
-	lv.hdr.idFrom = (UINT_PTR)GetDlgCtrlID(t);
-	lv.hdr.code = LVN_COLUMNCLICK;
-	lv.iItem = -1;
-	lv.iSubItem = col;
-	SendMessageW(GetParent(t), WM_NOTIFY, lv.hdr.idFrom, (LPARAM)&lv);
-	return 1;
-}
-
-int sngl_win32_pick_node(HWND w, const unsigned short *label) {
-	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_TREE);
-	if (!t) {
-		return 0;
-	}
-	HTREEITEM it = tree_find(t, (HTREEITEM)SendMessageW(t, TVM_GETNEXTITEM, TVGN_ROOT, 0), (const WCHAR *)label);
-	return it && SendMessageW(t, TVM_SELECTITEM, TVGN_CARET, (LPARAM)it);
-}
-
-int sngl_win32_pick_date(HWND w, const unsigned short *iso) {
-	HWND t = find_kind(GetAncestor(w, GA_ROOT), K_DATE);
-	if (!t) {
-		return 0;
-	}
-	sngl_win32_set_date(t, iso);
-	NMDATETIMECHANGE ch;
-	memset(&ch, 0, sizeof ch);
-	ch.nmhdr.hwndFrom = t;
-	ch.nmhdr.idFrom = (UINT_PTR)GetDlgCtrlID(t);
-	ch.nmhdr.code = DTN_DATETIMECHANGE;
-	ch.dwFlags = (DWORD)SendMessageW(t, DTM_GETSYSTEMTIME, 0, (LPARAM)&ch.st);
-	SendMessageW(GetParent(t), WM_NOTIFY, ch.nmhdr.idFrom, (LPARAM)&ch);
-	return 1;
 }
 
 HWND sngl_win32_image(void) { return control(SNGL_BOX_CLASS, WS_CLIPCHILDREN, 0, K_IMAGE); }
@@ -3762,12 +3710,6 @@ void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_r
 	ctl *c = ctl_of(w);
 	if (c) {
 		set_handler(&c->paint, (sngl_win32_fn)(void (*)(void))fn, ctx, release);
-		InvalidateRect(w, NULL, FALSE);
-	}
-}
-
-void sngl_win32_redraw(HWND w) {
-	if (w) {
 		InvalidateRect(w, NULL, FALSE);
 	}
 }
@@ -4218,43 +4160,19 @@ void sngl_win32_set_show_text(HWND w, int show) {
 	}
 }
 
-/* find is the choice of a drop-down labeled label, or -1. */
-static int find(HWND w, const WCHAR *label) {
+int sngl_win32_find_choice(HWND w, const unsigned short *label) {
 	int n = (int)SendMessageW(w, CB_GETCOUNT, 0, 0);
 	for (int i = 0; i < n; i++) {
 		int len = (int)SendMessageW(w, CB_GETLBTEXTLEN, (WPARAM)i, 0);
 		WCHAR *buf = malloc(sizeof(WCHAR) * (size_t)(len + 1));
 		SendMessageW(w, CB_GETLBTEXT, (WPARAM)i, (LPARAM)buf);
-		int same = wcscmp(buf, label) == 0;
+		int same = wcscmp(buf, (const WCHAR *)label) == 0;
 		free(buf);
 		if (same) {
 			return i;
 		}
 	}
 	return -1;
-}
-
-void sngl_win32_offer(HWND w, const unsigned short *labels, const unsigned short *chosen) {
-	SendMessageW(w, CB_RESETCONTENT, 0, 0);
-	const WCHAR *at = (const WCHAR *)labels;
-	if (*at) {
-		for (;;) {
-			const WCHAR *end = wcschr(at, L'\n');
-			size_t len = end ? (size_t)(end - at) : wcslen(at);
-			WCHAR *one = malloc(sizeof(WCHAR) * (len + 1));
-			memcpy(one, at, sizeof(WCHAR) * len);
-			one[len] = 0;
-			SendMessageW(w, CB_ADDSTRING, 0, (LPARAM)one);
-			free(one);
-			if (!end) {
-				break;
-			}
-			at = end + 1;
-		}
-	}
-	/* CB_SETCURSEL reports nothing, which is what an offer wants. */
-	SendMessageW(w, CB_SETCURSEL, (WPARAM)find(w, (const WCHAR *)chosen), 0);
-	relayout(w);
 }
 
 const char *sngl_win32_selected(HWND w) {
@@ -4391,11 +4309,6 @@ void sngl_win32_fire_click(HWND w) {
 	firing = 0;
 }
 
-void sngl_win32_fire_check(HWND w, int checked) {
-	SendMessageW(w, BM_SETCHECK, checked ? BST_CHECKED : BST_UNCHECKED, 0);
-	notify(w, BN_CLICKED);
-}
-
 void sngl_win32_fire_change(HWND w, const unsigned short *text) {
 	set_quietly(w, (LPCWSTR)text);
 	notify(w, EN_CHANGE);
@@ -4414,11 +4327,6 @@ void sngl_win32_fire_activate(HWND w, const unsigned short *text) {
 	step(&m);
 }
 
-void sngl_win32_fire_select(HWND w, const unsigned short *label) {
-	SendMessageW(w, CB_SETCURSEL, (WPARAM)find(w, (const WCHAR *)label), 0);
-	notify(w, CBN_SELCHANGE);
-}
-
 void sngl_win32_fire_close(HWND top) {
 	ctl *c = ctl_of(top);
 	if (c && c->kind == K_MODAL) {
@@ -4426,12 +4334,6 @@ void sngl_win32_fire_close(HWND top) {
 		top = c->dialog;
 	}
 	SendMessageW(top, WM_CLOSE, 0, 0);
-}
-
-void sngl_win32_fire_tab(HWND tabs, int index) {
-	SendMessageW(tabs, TCM_SETCURSEL, (WPARAM)index, 0);
-	NMHDR nm = {tabs, (UINT_PTR)GetDlgCtrlID(tabs), TCN_SELCHANGE};
-	SendMessageW(GetParent(tabs), WM_NOTIFY, nm.idFrom, (LPARAM)&nm);
 }
 
 void sngl_win32_fire_reach_end(HWND w) {
