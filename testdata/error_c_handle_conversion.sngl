@@ -1,0 +1,49 @@
+// A conversion `T(x)` converts to a scalar, or to an alias of one, written
+// qualified or not. A `#[c.native]` handle has no conversion: C hands one
+// out, or a cast function (`#[c.native("T", cast)]`) makes one, as gtk4's
+// `_handle` makes a widget's pointer of a node. Nor has a struct, a C struct
+// among them. Qualified, each had passed the check and reached a backend as
+// a call of nothing.
+import api "sngl:platform/win32/api"
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="things.h")
+
+#[c.native("thing *")]
+struct Thing {}
+
+#[c.native("UINT")]
+struct Count = int
+
+#[c.native("thing *", cast)]
+func toThing(p c.pointer) Thing
+
+struct Plain {
+    n int
+}
+
+func local(p c.pointer) Thing {
+    return Thing(p) // ERROR(check) "cannot convert to Thing, a C handle: a handle is made by a cast function, #[c.native(\"thing *\", cast)] func f(v T) Thing"
+}
+
+func qualified(n ui.node) api.HWND {
+    return api.HWND(n) // ERROR(check) "cannot convert to HWND, a C handle: a handle is made by a cast function, #[c.native(\"HWND\", cast)] func f(v T) HWND"
+}
+
+func rect(n int) api.RECT {
+    return api.RECT(n) // ERROR(check) "cannot cast to struct RECT (use a struct literal: {field = value})"
+}
+
+func plain(n int) Plain {
+    return Plain(n) // ERROR(check) "cannot cast to struct Plain (use a struct literal: {field = value})"
+}
+
+// An alias of a scalar converts, qualified or not, and a cast makes a handle.
+func counted(n int) int {
+    return int(Count(n)) + int(api.UINT(n))
+}
+
+func made(p c.pointer) Thing {
+    return toThing(p)
+}

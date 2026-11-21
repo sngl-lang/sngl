@@ -718,6 +718,10 @@ permitted conversions among primitives are:
 rejected where x's type declares no format. Other conversions whose operand is
 a struct, component, function, list, option, or `null` are rejected, and so
 are `int` and `float` of a multi-base unit (see [Unit types](#unit-types)).
+An alias of a primitive converts as the primitive does, named bare or through
+its package (`api.UINT(n)`). A struct is no conversion's type: it is built by
+a literal, and a `#[c.native]` handle, which has no fields, by a cast function
+(`#[c.native("T", cast)]`) or by the C function answering one.
 
 ### Narrowing an option
 

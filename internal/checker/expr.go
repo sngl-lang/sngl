@@ -1607,7 +1607,19 @@ func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns
 			if target, ok := stringReprCast(fsym); ok {
 				return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
 			}
+			// An alias of a scalar converts as the bare name does:
+			// `api.UINT(n)` is `UINT(n)`.
+			if typ, kind, ok := scalarOf(c.aliasedDecl(fsym)); ok && kind.IsConvertibleScalar() {
+				return c.inferBuiltinConversion(call, typ, ident.Name+"."+sel.Field)
+			}
 			t := c.symType(fsym)
+			// What is neither a function nor a value holding one is no
+			// call, as a bare name is none: a struct named through its
+			// package had been a call of nothing every backend refused.
+			if _, isVar := fsym.(*ir.Var); !isVar && t != nil && t.Kind != ir.TypeFunc && t.Kind != ir.TypeInvalid {
+				c.errorNotCallable(call, &ir.Ident{Type: t, Name: sel.Field, Sym: fsym}, t)
+				return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
+			}
 			var sig *ir.FuncSig
 			if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
 				sig = t.Sig
@@ -6150,6 +6162,12 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 		// their own, so the struct-literal hint would be wrong for them.
 		if sym.Builtin.IsGeneric() {
 			c.error(x.Pos, "cannot cast to %s", t)
+			return
+		}
+		// A handle is C's pointer, which C hands out or a cast function
+		// makes; it has no fields a literal could fill either.
+		if ct := ir.CTypeOf(t); ct != nil && ir.CStructOf(t) == nil {
+			c.error(x.Pos, "cannot convert to %s, a C handle: a handle is made by a cast function, #[c.native(%q, cast)] func f(v T) %s", t, ct.String(), t)
 			return
 		}
 		c.error(x.Pos, "cannot cast to struct %s (use a struct literal: {field = value})", t)
