@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 247e9b522520732aa04da179
+// The C sources, as a change to them builds this package again: f9ff3ef4f22ac3d0428236f1
 
 package cgo
 
@@ -22,7 +22,7 @@ extern void snglStatic__hooks_relayout(HWND);
 extern void snglStatic__hooks_layOutTop(HWND);
 extern void snglStatic__hooks_layout(HWND);
 extern void snglStatic__hooks_tabChosen(HWND);
-extern void snglStatic__hooks_tabsSync(HWND);
+extern void snglStatic__hooks_command(HWND, int);
 extern void snglStatic__hooks_refresh(HWND, int);
 extern void snglStatic__hooks_wheel(HWND, int);
 extern void snglStatic__hooks_scrolled(HWND, int, int);
@@ -170,16 +170,16 @@ func snglStatic__hooks_tabChosen(a0 C.HWND) {
 // snglStatic__hooks_tabChosenPtr is snglStatic__hooks_tabChosen as the function pointer C calls.
 func snglStatic__hooks_tabChosenPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_tabChosen) }
 
-// snglStatic__hooks_tabsSyncFn is the program's function C calls snglStatic__hooks_tabsSync for, which the call handing it to C sets.
-var snglStatic__hooks_tabsSyncFn func(C.HWND)
+// snglStatic__hooks_commandFn is the program's function C calls snglStatic__hooks_command for, which the call handing it to C sets.
+var snglStatic__hooks_commandFn func(C.HWND, int)
 
-//export snglStatic__hooks_tabsSync
-func snglStatic__hooks_tabsSync(a0 C.HWND) {
-	snglStatic__hooks_tabsSyncFn(a0)
+//export snglStatic__hooks_command
+func snglStatic__hooks_command(a0 C.HWND, a1 C.int) {
+	snglStatic__hooks_commandFn(a0, int(a1))
 }
 
-// snglStatic__hooks_tabsSyncPtr is snglStatic__hooks_tabsSync as the function pointer C calls.
-func snglStatic__hooks_tabsSyncPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_tabsSync) }
+// snglStatic__hooks_commandPtr is snglStatic__hooks_command as the function pointer C calls.
+func snglStatic__hooks_commandPtr() *[0]byte { return (*[0]byte)(C.snglStatic__hooks_command) }
 
 // snglStatic__hooks_refreshFn is the program's function C calls snglStatic__hooks_refresh for, which the call handing it to C sets.
 var snglStatic__hooks_refreshFn func(C.HWND, int)

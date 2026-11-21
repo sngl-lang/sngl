@@ -76,6 +76,15 @@ struct _Ctl {
     laidW     int = 0
     laidH     int = 0
     kids      list[api.HWND] = []
+    // What `_setText` last set, once it has.
+    text      string = ""
+    texted    bool = false
+    // A menu entry's command, its state, and the menu bar a toplevel shows
+    // its entries in.
+    id        int = 0
+    disabled  bool = false
+    checked   bool = false
+    menu      option[_Menu] = null
 }
 
 // Every window's record, by its handle. Its initializer hands the runtime
@@ -145,7 +154,7 @@ func _hooks(
     #[c.type("sngl_win32_hwnd_hook")] #[c.static] layOutTop func(w api.HWND),
     #[c.type("sngl_win32_hwnd_hook")] #[c.static] layout func(w api.HWND),
     #[c.type("sngl_win32_hwnd_hook")] #[c.static] tabChosen func(w api.HWND),
-    #[c.type("sngl_win32_hwnd_hook")] #[c.static] tabsSync func(w api.HWND),
+    #[c.type("sngl_win32_hwnd_int_hook")] #[c.static] command func(w api.HWND, id int),
     #[c.type("sngl_win32_hwnd_int_hook")] #[c.static] refresh func(w api.HWND, dpi int),
     #[c.type("sngl_win32_hwnd_int_hook")] #[c.static] wheel func(w api.HWND, delta int),
     #[c.type("sngl_win32_hwnd_int2_hook")] #[c.static] scrolled func(w api.HWND, bar int, request int),
@@ -156,7 +165,7 @@ func _hooks(
 )
 
 func _hooked() map[api.HWND, _Ctl] {
-    _hooks(_made, _forget, _relayout, _layOutTop, _layoutMessage, _tabChosen, _tabsSync, _refresh, _wheeled, _scrolled, _measure, _kidCount, _kidAt, _padOf)
+    _hooks(_made, _forget, _relayout, _layOutTop, _layoutMessage, _tabChosen, _menuCommand, _refresh, _wheeled, _scrolled, _measure, _kidCount, _kidAt, _padOf)
     return {}
 }
 
@@ -166,8 +175,21 @@ func _made(w api.HWND, kind int, dpi int) {
     _ctls[w] = _Ctl{kind=kind, dpi=dpi, vertical=kind == _kTop || kind == _kScroll, offProp=kind == _kModal || kind == _kEntry}
 }
 
-// A window gone, as it is destroyed.
+// A window gone, as it is destroyed: a menu entry's command free to be
+// handed out again, and a toplevel's menu bar destroyed.
 func _forget(w api.HWND) {
+    if !_ctls.contains(w) {
+        return
+    }
+    var k = _ctls[w]
+    if k.kind == _kEntry && k.id >= _entryFirst {
+        _entryIds.remove(k.id)
+    }
+    var m = k.menu
+    if m != null {
+        _setMenu(w, null)
+        _destroyMenu(m)
+    }
     _ctls.remove(w)
 }
 
@@ -300,10 +322,6 @@ func _clicked(w api.HWND)
 #[c.native("sngl_win32_tip_child")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TipChild")]
 func _tipChild(box api.HWND, child api.HWND, on bool)
-
-#[c.native("sngl_win32_menu_sync")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32MenuSync")]
-func _menuSync(w api.HWND)
 
 #[c.native("sngl_win32_dialog")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Dialog")]
@@ -1344,4 +1362,260 @@ func _findKind(w api.HWND, kind int) option[_Found] {
         }
     }
     return null
+}
+
+// --- Text and menus ---
+
+// A window's text -- a toplevel's title, a control's caption -- and its
+// layout again. A render sets every prop it writes, changed or not, and a
+// text set is measured again with everything holding it: a page of cards
+// each set its name again as any one name arrived, so one set to what it
+// shows already is not set again. A modal's is its dialog's title, a menu
+// entry's its item's label, and a tab page's its tab's title.
+func _setText(w api.HWND, text string) {
+    var has = _ctls.contains(w)
+    if has && _ctls[w].texted && _ctls[w].text == text {
+        return
+    }
+    if has {
+        _ctls[w].text = text
+        _ctls[w].texted = true
+        if _ctls[w].kind == _kModal {
+            api.SetWindowText(_dialogOf(w), text)
+            return
+        }
+    }
+    api.SetWindowText(w, text)
+    if has && _ctls[w].kind == _kEntry {
+        _menuSync(w)
+        return
+    }
+    var parent = api.GetParent(w)
+    if _ctls.contains(parent) && _ctls[parent].kind == _kTabs {
+        _tabsSync(parent)
+    }
+    _relayout(w)
+}
+
+// A menu entry's command id is what WM_COMMAND carries in 16 bits: those in
+// use are kept, so an id handed out again once they wrap is free.
+const _entryFirst = 1000
+
+var _entryIds map[int, bool] = {}
+
+var _nextEntry = 1000
+
+func _entryId() int {
+    var n = 0
+    for n < 65536 - _entryFirst {
+        var id = _nextEntry
+        _nextEntry = _nextEntry == 65535 ? _entryFirst : _nextEntry + 1
+        if !_entryIds.contains(id) {
+            _entryIds[id] = true
+            return id
+        }
+        n += 1
+    }
+    return 0
+}
+
+// A menu, or a toplevel's menu bar, which Win32 may answer none of.
+#[c.native("HMENU", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Menu")]
+struct _Menu {}
+
+#[c.native("CreateMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.CreateMenu")]
+func _createMenu() option[_Menu]
+
+#[c.native("CreatePopupMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.CreatePopupMenu")]
+func _createPopupMenu() option[_Menu]
+
+#[c.native("AppendMenuW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.AppendMenuW")]
+func _appendMenu(m _Menu, flags api.UINT, id _UintPtr, label c.utf16) api.WINBOOL
+
+// AppendMenuW with a submenu, whose handle it takes as its id.
+#[c.native("sngl_win32_append_popup")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32AppendPopup")]
+func _appendPopup(m _Menu, flags api.UINT, sub _Menu, label c.utf16)
+
+#[c.native("GetMenuItemCount")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetMenuItemCount")]
+func _menuItemCount(m _Menu) int
+
+#[c.native("SetMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetMenu")]
+func _setMenu(w api.HWND, m option[_Menu]) api.WINBOOL
+
+#[c.native("DrawMenuBar")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DrawMenuBar")]
+func _drawMenuBar(w api.HWND) api.WINBOOL
+
+#[c.native("DestroyMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DestroyMenu")]
+func _destroyMenu(m _Menu) api.WINBOOL
+
+#[c.native("GetMenuState")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetMenuState")]
+func _menuState(m _Menu, id api.UINT, flags api.UINT) api.UINT
+
+// How an entry's state shows in a menu: MF_GRAYED, MF_CHECKED.
+func _entryFlags(k _Ctl) int {
+    return (k.disabled ? 1 : 0) + (k.checked ? 8 : 0)
+}
+
+// An item for each entry w holds put in m, or that a toplevel's walk finds:
+// a submenu where it holds entries itself, and otherwise its command. A
+// menu bar's entries are found wherever the window holds them,
+// ui.menubar's included.
+func _fillMenu(m _Menu, w api.HWND, top bool) {
+    if !_ctls.contains(w) {
+        return
+    }
+    for var child = _ctls[w].kids {
+        if _ctls.contains(child) {
+            if _ctls[child].kind == _kEntry {
+                _addEntry(m, child)
+            } else if top {
+                _fillMenu(m, child, true)
+            }
+        }
+    }
+}
+
+func _addEntry(m _Menu, e api.HWND) {
+    var k = _ctls[e]
+    var subs = 0
+    for var child = k.kids {
+        if _ctls.contains(child) && _ctls[child].kind == _kEntry {
+            subs += 1
+        }
+    }
+    if subs > 0 {
+        var sub = _createPopupMenu()
+        if sub != null {
+            _fillMenu(sub, e, false)
+            _appendPopup(m, 16 + _entryFlags(k), sub, k.text)
+        }
+    } else {
+        _appendMenu(m, _entryFlags(k), k.id, k.text)
+    }
+}
+
+// The toplevel w is in given a menu bar of every entry it holds, or none
+// where it holds none.
+func _menuSync(w api.HWND) {
+    var top = _ancestor(w, 2)
+    if !_ctls.contains(top) || _ctls[top].kind != _kTop {
+        return
+    }
+    var made = _createMenu()
+    var bar option[_Menu] = null
+    if made != null {
+        _fillMenu(made, top, true)
+        if _menuItemCount(made) > 0 {
+            bar = made
+        } else {
+            _destroyMenu(made)
+        }
+    }
+    var old = _ctls[top].menu
+    _ctls[top].menu = bar
+    if bar != null || old != null {
+        _setMenu(top, bar)
+        _drawMenuBar(top)
+    }
+    if old != null {
+        _destroyMenu(old)
+    }
+}
+
+// The entry under w whose command is id.
+func _findEntry(w api.HWND, id int) option[_Found] {
+    if !_ctls.contains(w) {
+        return null
+    }
+    var k = _ctls[w]
+    if k.kind == _kEntry && k.id == id {
+        return _asFound(w)
+    }
+    for var child = k.kids {
+        var found = _findEntry(child, id)
+        if found != null {
+            return found
+        }
+    }
+    return null
+}
+
+// A menu's command in toplevel `top`, its entry's id: the entry's click.
+func _menuCommand(top api.HWND, id int) {
+    var e = _findEntry(top, id)
+    if e != null {
+        _clicked(_found(e))
+    }
+}
+
+// The entry under w labeled `label`.
+func _entryLabeled(w api.HWND, label string) option[_Found] {
+    if !_ctls.contains(w) {
+        return null
+    }
+    var k = _ctls[w]
+    if k.kind == _kEntry && k.text == label {
+        return _asFound(w)
+    }
+    for var child = k.kids {
+        var found = _entryLabeled(child, label)
+        if found != null {
+            return found
+        }
+    }
+    return null
+}
+
+// The entry labeled `label` in the menu bar of the window w is in chosen as
+// the user chooses it: through the menu, where a grayed item, or one not
+// in it, is none.
+func _chooseMenu(w api.HWND, label string) bool {
+    var top = _ancestor(w, 2)
+    var e = _entryLabeled(top, label)
+    if !_ctls.contains(top) || e == null {
+        return false
+    }
+    var bar = _ctls[top].menu
+    if bar == null {
+        return false
+    }
+    var id = _ctls[_found(e)].id
+    if int(_menuState(bar, id, 0)) % 2 != 0 {
+        return false
+    }
+    api.SendMessage(top, api.WM_COMMAND, id, 0)
+    return true
+}
+
+func _menuItems(w api.HWND) int {
+    var top = _ancestor(w, 2)
+    if !_ctls.contains(top) {
+        return 0
+    }
+    var bar = _ctls[top].menu
+    return bar != null ? _menuItemCount(bar) : 0
+}
+
+func _setEntryDisabled(w api.HWND, disabled bool) {
+    if _ctls.contains(w) && _ctls[w].disabled != disabled {
+        _ctls[w].disabled = disabled
+        _menuSync(w)
+    }
+}
+
+func _setEntryChecked(w api.HWND, checked bool) {
+    if _ctls.contains(w) && _ctls[w].checked != checked {
+        _ctls[w].checked = checked
+        _menuSync(w)
+    }
 }

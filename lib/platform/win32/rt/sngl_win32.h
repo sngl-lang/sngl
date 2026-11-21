@@ -62,7 +62,7 @@ void sngl_win32_step(void);
  * window's record and the layout reading it are the platform's (_Ctl,
  * _ctls), and what the runtime still reads of them -- a window made, gone,
  * changed in size, a toplevel's layout, its DPI, a scroll's bar and wheel, a
- * tab chosen, the tabs a page's title is in, a window's measure, its
+ * tab chosen, a menu's command, a window's measure, its
  * children, its padding -- it reaches through these. Before they are handed
  * over, no window has a record. */
 typedef void (*sngl_win32_hwnd_hook)(HWND w);
@@ -72,7 +72,7 @@ typedef void (*sngl_win32_size_hook)(HWND w, int *cx, int *cy);
 typedef int (*sngl_win32_count_hook)(HWND w);
 typedef HWND (*sngl_win32_kid_hook)(HWND w, int at);
 typedef int (*sngl_win32_ask_hook)(HWND w, int which);
-void sngl_win32_hooks(sngl_win32_hwnd_int2_hook made, sngl_win32_hwnd_hook forget, sngl_win32_hwnd_hook relayout, sngl_win32_hwnd_hook lay_out_top, sngl_win32_hwnd_hook layout, sngl_win32_hwnd_hook tab_chosen, sngl_win32_hwnd_hook tabs_sync, sngl_win32_hwnd_int_hook refresh, sngl_win32_hwnd_int_hook wheel, sngl_win32_hwnd_int2_hook scrolled, sngl_win32_size_hook measure, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid, sngl_win32_ask_hook pad);
+void sngl_win32_hooks(sngl_win32_hwnd_int2_hook made, sngl_win32_hwnd_hook forget, sngl_win32_hwnd_hook relayout, sngl_win32_hwnd_hook lay_out_top, sngl_win32_hwnd_hook layout, sngl_win32_hwnd_hook tab_chosen, sngl_win32_hwnd_int_hook command, sngl_win32_hwnd_int_hook refresh, sngl_win32_hwnd_int_hook wheel, sngl_win32_hwnd_int2_hook scrolled, sngl_win32_size_hook measure, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid, sngl_win32_ask_hook pad);
 
 /* What the record's layout asks of the runtime: a control's content
  * measured, in device pixels; a picture's bitmap's size, where it has one; a
@@ -96,7 +96,7 @@ void sngl_win32_scroll_children(HWND w, int dx, int dy);
 void sngl_win32_tab_insert(HWND tabs, int at, HWND page);
 void sngl_win32_clicked(HWND w);
 void sngl_win32_tip_child(HWND box, HWND child, int on);
-void sngl_win32_menu_sync(HWND w);
+void sngl_win32_append_popup(HMENU m, UINT flags, HMENU sub, const unsigned short *label);
 HWND sngl_win32_dialog(HWND m);
 HWND sngl_win32_host(HWND parent);
 HWND sngl_win32_nothing(void);
@@ -140,10 +140,8 @@ HWND sngl_win32_modal(void);
 /* sngl_win32_entry is a menu entry, its label its text: a node taking no
  * room, which the toplevel it is in shows in its menu bar, wherever in it
  * it is, and an entry holding entries as their submenu. Its click handler
- * is its command. sngl_win32_set_entry_* gray it or check it.
- * sngl_win32_menu_items is how many items the menu bar of the toplevel w
- * is in holds, and sngl_win32_choose chooses the entry labeled label in it
- * as the user does, answering whether there was one to choose. */
+ * is its command; its label, its state and the menu bar are win32.sngl's
+ * (_setText, _menuSync). */
 HWND sngl_win32_entry(void);
 
 /* sngl_win32_image is an image: a node holding the picture it shows, which
@@ -274,10 +272,6 @@ void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned
  * of the toplevel w is in is win32.sngl's (pickRow and on).
  * sngl_win32_tree_find is the item of tree w labeled label, or NULL. */
 HTREEITEM sngl_win32_tree_find(HWND w, const unsigned short *label);
-void sngl_win32_set_entry_disabled(HWND w, int disabled);
-void sngl_win32_set_entry_checked(HWND w, int checked);
-int sngl_win32_menu_items(HWND w);
-int sngl_win32_choose(HWND w, const unsigned short *label);
 
 /* sngl_win32_detach destroys the toplevel a node the program attached is
  * shown in; attaching it, and putting a node in another or taking it out,
@@ -285,10 +279,6 @@ int sngl_win32_choose(HWND w, const unsigned short *label);
 void sngl_win32_detach(HWND top);
 
 /* --- Props --- */
-
-/* sngl_win32_set_text sets a window's text -- a toplevel's title, a
- * control's caption, an edit's content -- and lays it out again. */
-void sngl_win32_set_text(HWND w, const unsigned short *text);
 
 /* sngl_win32_get_text is a window's text as UTF-8, in a buffer the next call
  * overwrites. */

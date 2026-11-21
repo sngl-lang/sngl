@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 247e9b522520732aa04da179
+// The C sources, as a change to them builds this package again: f9ff3ef4f22ac3d0428236f1
 
 package cgo
 
@@ -129,6 +129,9 @@ type LvState struct {
 	State     int
 	StateMask int
 }
+
+// Menu is C's HMENU.
+type Menu = C.HMENU
 
 // NmDateTimeChange is C's NMDATETIMECHANGE, field by field.
 type NmDateTimeChange struct {
@@ -349,10 +352,37 @@ func AddString(s HWND, msg int, w int, label string) int {
 	return int(C.snglP__addString(s, C.UINT(msg), C.WPARAM(w), (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
 }
 
+// AppendMenuW calls AppendMenuW.
+func AppendMenuW(m Menu, flags int, id int, label string) int {
+	return int(C.AppendMenuW(m, C.UINT(flags), C.UINT_PTR(id), (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
+}
+
 // BeginDeferWindowPos calls BeginDeferWindowPos.
 func BeginDeferWindowPos(n int) *Hdwp {
 	return func() *C.HDWP {
 		p := (C.HDWP)(C.BeginDeferWindowPos(C.int(n)))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// CreateMenu calls CreateMenu.
+func CreateMenu() *Menu {
+	return func() *C.HMENU {
+		p := (C.HMENU)(C.CreateMenu())
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// CreatePopupMenu calls CreatePopupMenu.
+func CreatePopupMenu() *Menu {
+	return func() *C.HMENU {
+		p := (C.HMENU)(C.CreatePopupMenu())
 		if p == nil {
 			return nil
 		}
@@ -391,9 +421,19 @@ func DeleteObject(ho HGDIOBJ) int {
 	return int(C.DeleteObject(ho))
 }
 
+// DestroyMenu calls DestroyMenu.
+func DestroyMenu(m Menu) int {
+	return int(C.DestroyMenu(m))
+}
+
 // DestroyWindow calls DestroyWindow.
 func DestroyWindow(hWnd HWND) int {
 	return int(C.DestroyWindow(hWnd))
+}
+
+// DrawMenuBar calls DrawMenuBar.
+func DrawMenuBar(w HWND) int {
+	return int(C.DrawMenuBar(w))
 }
 
 // DtmGetSystemTime calls SendMessageW.
@@ -727,6 +767,16 @@ func GetFocus() HWND {
 	return C.GetFocus()
 }
 
+// GetMenuItemCount calls GetMenuItemCount.
+func GetMenuItemCount(m Menu) int {
+	return int(C.GetMenuItemCount(m))
+}
+
+// GetMenuState calls GetMenuState.
+func GetMenuState(m Menu, id int, flags int) int {
+	return int(C.GetMenuState(m, C.UINT(id), C.UINT(flags)))
+}
+
 // GetModuleHandleW calls GetModuleHandleW.
 func GetModuleHandleW(lpModuleName *string) HMODULE {
 	if lpModuleName == nil {
@@ -941,6 +991,15 @@ func SetFocus(hWnd HWND) HWND {
 	return C.SetFocus(hWnd)
 }
 
+// SetMenu calls SetMenu.
+func SetMenu(w HWND, m *Menu) int {
+	if m == nil {
+		return int(C.SetMenu(w, nil))
+	} else {
+		return int(C.SetMenu(w, (*(m))))
+	}
+}
+
 // SetParent calls SetParent.
 func SetParent(child HWND, parent HWND) *Found {
 	return func() *C.HWND {
@@ -1015,6 +1074,11 @@ func SnglPost(fn func()) {
 	C.sngl_post(snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
 }
 
+// SnglWin32AppendPopup calls sngl_win32_append_popup.
+func SnglWin32AppendPopup(m Menu, flags int, sub Menu, label string) {
+	C.sngl_win32_append_popup(m, C.UINT(flags), sub, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label))))
+}
+
 // SnglWin32Box calls sngl_win32_box.
 func SnglWin32Box() HWND {
 	return C.sngl_win32_box()
@@ -1047,11 +1111,6 @@ func SnglWin32CarryFile(name string, data string, len int) {
 // SnglWin32Checkbox calls sngl_win32_checkbox.
 func SnglWin32Checkbox() HWND {
 	return C.sngl_win32_checkbox()
-}
-
-// SnglWin32Choose calls sngl_win32_choose.
-func SnglWin32Choose(n HWND, label string) bool {
-	return (C.sngl_win32_choose(n, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))) != 0)
 }
 
 // SnglWin32Chosen calls sngl_win32_chosen.
@@ -1211,8 +1270,8 @@ func SnglWin32Hold() {
 }
 
 // SnglWin32Hooks calls sngl_win32_hooks.
-func SnglWin32Hooks(made func(HWND, int, int), forget func(HWND), relayout func(HWND), layOutTop func(HWND), layout func(HWND), tabChosen func(HWND), tabsSync func(HWND), refresh func(HWND, int), wheel func(HWND, int), scrolled func(HWND, int, int), measure func(HWND) SnglWin32HooksMeasure, nkids func(HWND) int, kid func(HWND, int) HWND, pad func(HWND, int) int) {
-	C.sngl_win32_hooks(func() *[0]byte { snglStatic__hooks_madeFn = made; return snglStatic__hooks_madePtr() }(), func() *[0]byte { snglStatic__hooks_forgetFn = forget; return snglStatic__hooks_forgetPtr() }(), func() *[0]byte { snglStatic__hooks_relayoutFn = relayout; return snglStatic__hooks_relayoutPtr() }(), func() *[0]byte { snglStatic__hooks_layOutTopFn = layOutTop; return snglStatic__hooks_layOutTopPtr() }(), func() *[0]byte { snglStatic__hooks_layoutFn = layout; return snglStatic__hooks_layoutPtr() }(), func() *[0]byte { snglStatic__hooks_tabChosenFn = tabChosen; return snglStatic__hooks_tabChosenPtr() }(), func() *[0]byte { snglStatic__hooks_tabsSyncFn = tabsSync; return snglStatic__hooks_tabsSyncPtr() }(), func() *[0]byte { snglStatic__hooks_refreshFn = refresh; return snglStatic__hooks_refreshPtr() }(), func() *[0]byte { snglStatic__hooks_wheelFn = wheel; return snglStatic__hooks_wheelPtr() }(), func() *[0]byte { snglStatic__hooks_scrolledFn = scrolled; return snglStatic__hooks_scrolledPtr() }(), func() *[0]byte { snglStatic__hooks_measureFn = measure; return snglStatic__hooks_measurePtr() }(), func() *[0]byte { snglStatic__hooks_nkidsFn = nkids; return snglStatic__hooks_nkidsPtr() }(), func() *[0]byte { snglStatic__hooks_kidFn = kid; return snglStatic__hooks_kidPtr() }(), func() *[0]byte { snglStatic__hooks_padFn = pad; return snglStatic__hooks_padPtr() }())
+func SnglWin32Hooks(made func(HWND, int, int), forget func(HWND), relayout func(HWND), layOutTop func(HWND), layout func(HWND), tabChosen func(HWND), command func(HWND, int), refresh func(HWND, int), wheel func(HWND, int), scrolled func(HWND, int, int), measure func(HWND) SnglWin32HooksMeasure, nkids func(HWND) int, kid func(HWND, int) HWND, pad func(HWND, int) int) {
+	C.sngl_win32_hooks(func() *[0]byte { snglStatic__hooks_madeFn = made; return snglStatic__hooks_madePtr() }(), func() *[0]byte { snglStatic__hooks_forgetFn = forget; return snglStatic__hooks_forgetPtr() }(), func() *[0]byte { snglStatic__hooks_relayoutFn = relayout; return snglStatic__hooks_relayoutPtr() }(), func() *[0]byte { snglStatic__hooks_layOutTopFn = layOutTop; return snglStatic__hooks_layOutTopPtr() }(), func() *[0]byte { snglStatic__hooks_layoutFn = layout; return snglStatic__hooks_layoutPtr() }(), func() *[0]byte { snglStatic__hooks_tabChosenFn = tabChosen; return snglStatic__hooks_tabChosenPtr() }(), func() *[0]byte { snglStatic__hooks_commandFn = command; return snglStatic__hooks_commandPtr() }(), func() *[0]byte { snglStatic__hooks_refreshFn = refresh; return snglStatic__hooks_refreshPtr() }(), func() *[0]byte { snglStatic__hooks_wheelFn = wheel; return snglStatic__hooks_wheelPtr() }(), func() *[0]byte { snglStatic__hooks_scrolledFn = scrolled; return snglStatic__hooks_scrolledPtr() }(), func() *[0]byte { snglStatic__hooks_measureFn = measure; return snglStatic__hooks_measurePtr() }(), func() *[0]byte { snglStatic__hooks_nkidsFn = nkids; return snglStatic__hooks_nkidsPtr() }(), func() *[0]byte { snglStatic__hooks_kidFn = kid; return snglStatic__hooks_kidPtr() }(), func() *[0]byte { snglStatic__hooks_padFn = pad; return snglStatic__hooks_padPtr() }())
 }
 
 // SnglWin32Host calls sngl_win32_host.
@@ -1238,16 +1297,6 @@ func SnglWin32IsOpen(m HWND) bool {
 // SnglWin32Link calls sngl_win32_link.
 func SnglWin32Link() HWND {
 	return C.sngl_win32_link()
-}
-
-// SnglWin32MenuItems calls sngl_win32_menu_items.
-func SnglWin32MenuItems(n HWND) int {
-	return int(C.sngl_win32_menu_items(n))
-}
-
-// SnglWin32MenuSync calls sngl_win32_menu_sync.
-func SnglWin32MenuSync(w HWND) {
-	C.sngl_win32_menu_sync(w)
 }
 
 // SnglWin32Modal calls sngl_win32_modal.
@@ -1456,28 +1505,6 @@ func SnglWin32SetEditText(e HWND, text string) {
 	C.sngl_win32_set_edit_text(e, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
 }
 
-// SnglWin32SetEntryChecked calls sngl_win32_set_entry_checked.
-func SnglWin32SetEntryChecked(e HWND, checked bool) {
-	var __lt10 int
-	if checked {
-		__lt10 = 1
-	} else {
-		__lt10 = 0
-	}
-	C.sngl_win32_set_entry_checked(e, C.int(__lt10))
-}
-
-// SnglWin32SetEntryDisabled calls sngl_win32_set_entry_disabled.
-func SnglWin32SetEntryDisabled(e HWND, disabled bool) {
-	var __lt11 int
-	if disabled {
-		__lt11 = 1
-	} else {
-		__lt11 = 0
-	}
-	C.sngl_win32_set_entry_disabled(e, C.int(__lt11))
-}
-
 // SnglWin32SetFit calls sngl_win32_set_fit.
 func SnglWin32SetFit(i HWND, fit int) {
 	C.sngl_win32_set_fit(i, C.int(fit))
@@ -1490,13 +1517,13 @@ func SnglWin32SetFraction(p HWND, fraction float64) {
 
 // SnglWin32SetFramed calls sngl_win32_set_framed.
 func SnglWin32SetFramed(w HWND, framed bool) {
-	var __lt12 int
+	var __lt10 int
 	if framed {
-		__lt12 = 1
+		__lt10 = 1
 	} else {
-		__lt12 = 0
+		__lt10 = 0
 	}
-	C.sngl_win32_set_framed(w, C.int(__lt12))
+	C.sngl_win32_set_framed(w, C.int(__lt10))
 }
 
 // SnglWin32SetHref calls sngl_win32_set_href.
@@ -1513,13 +1540,13 @@ func SnglWin32SetLook(w HWND, look Look) {
 
 // SnglWin32SetOpen calls sngl_win32_set_open.
 func SnglWin32SetOpen(m HWND, open bool) {
-	var __lt13 int
+	var __lt11 int
 	if open {
-		__lt13 = 1
+		__lt11 = 1
 	} else {
-		__lt13 = 0
+		__lt11 = 0
 	}
-	C.sngl_win32_set_open(m, C.int(__lt13))
+	C.sngl_win32_set_open(m, C.int(__lt11))
 }
 
 // SnglWin32SetRow calls sngl_win32_set_row.
@@ -1539,52 +1566,47 @@ func SnglWin32SetScaling(w HWND, mode int) int {
 
 // SnglWin32SetShowText calls sngl_win32_set_show_text.
 func SnglWin32SetShowText(p HWND, show bool) {
-	var __lt14 int
+	var __lt12 int
 	if show {
-		__lt14 = 1
+		__lt12 = 1
 	} else {
-		__lt14 = 0
+		__lt12 = 0
 	}
-	C.sngl_win32_set_show_text(p, C.int(__lt14))
+	C.sngl_win32_set_show_text(p, C.int(__lt12))
 }
 
 // SnglWin32SetSpanStyle calls sngl_win32_set_span_style.
 func SnglWin32SetSpanStyle(w HWND, color int, size int, weight int, slant int, underline bool, strike bool, family string) {
-	var __lt15 int
+	var __lt13 int
 	if underline {
+		__lt13 = 1
+	} else {
+		__lt13 = 0
+	}
+	var __lt14 int
+	if strike {
+		__lt14 = 1
+	} else {
+		__lt14 = 0
+	}
+	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt13), C.int(__lt14), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
+}
+
+// SnglWin32SetTable calls sngl_win32_set_table.
+func SnglWin32SetTable(t HWND, selectable bool, sortable bool) {
+	var __lt15 int
+	if selectable {
 		__lt15 = 1
 	} else {
 		__lt15 = 0
 	}
 	var __lt16 int
-	if strike {
+	if sortable {
 		__lt16 = 1
 	} else {
 		__lt16 = 0
 	}
-	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt15), C.int(__lt16), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
-}
-
-// SnglWin32SetTable calls sngl_win32_set_table.
-func SnglWin32SetTable(t HWND, selectable bool, sortable bool) {
-	var __lt17 int
-	if selectable {
-		__lt17 = 1
-	} else {
-		__lt17 = 0
-	}
-	var __lt18 int
-	if sortable {
-		__lt18 = 1
-	} else {
-		__lt18 = 0
-	}
-	C.sngl_win32_set_table(t, C.int(__lt17), C.int(__lt18))
-}
-
-// SnglWin32SetText calls sngl_win32_set_text.
-func SnglWin32SetText(w HWND, text string) {
-	C.sngl_win32_set_text(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
+	C.sngl_win32_set_table(t, C.int(__lt15), C.int(__lt16))
 }
 
 // SnglWin32SetTip calls sngl_win32_set_tip.
@@ -1599,13 +1621,13 @@ func SnglWin32SetUrl(p HWND, url string) {
 
 // SnglWin32SetVisible calls sngl_win32_set_visible.
 func SnglWin32SetVisible(w HWND, visible bool) {
-	var __lt19 int
+	var __lt17 int
 	if visible {
-		__lt19 = 1
+		__lt17 = 1
 	} else {
-		__lt19 = 0
+		__lt17 = 0
 	}
-	C.sngl_win32_set_visible(w, C.int(__lt19))
+	C.sngl_win32_set_visible(w, C.int(__lt17))
 }
 
 // SnglWin32SetWords calls sngl_win32_set_words.
@@ -1615,13 +1637,13 @@ func SnglWin32SetWords(w HWND, words string) {
 
 // SnglWin32Show calls sngl_win32_show.
 func SnglWin32Show(w HWND, on bool) int {
-	var __lt20 int
+	var __lt18 int
 	if on {
-		__lt20 = 1
+		__lt18 = 1
 	} else {
-		__lt20 = 0
+		__lt18 = 0
 	}
-	return int(C.sngl_win32_show(w, C.int(__lt20)))
+	return int(C.sngl_win32_show(w, C.int(__lt18)))
 }
 
 // SnglWin32ShowAttached calls sngl_win32_show_attached.
@@ -1693,13 +1715,13 @@ func SnglWin32Textarea() HWND {
 
 // SnglWin32TipChild calls sngl_win32_tip_child.
 func SnglWin32TipChild(box HWND, child HWND, on bool) {
-	var __lt21 int
+	var __lt19 int
 	if on {
-		__lt21 = 1
+		__lt19 = 1
 	} else {
-		__lt21 = 0
+		__lt19 = 0
 	}
-	C.sngl_win32_tip_child(box, child, C.int(__lt21))
+	C.sngl_win32_tip_child(box, child, C.int(__lt19))
 }
 
 // SnglWin32Toplevel calls sngl_win32_toplevel.

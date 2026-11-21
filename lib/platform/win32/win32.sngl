@@ -217,9 +217,9 @@ func _rtOnActivate(
 )
 
 // A control's or a toplevel's text, which the runtime measures it by again.
-#[c.native("sngl_win32_set_text")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetText")]
-func _rtSetText(w ui.node, text c.utf16)
+func _rtSetText(w ui.node, text string) {
+    _setText(_handle(w), text)
+}
 
 // What a node's style asks of the runtime (sngl_win32_look): its share of a
 // box's spare room, the gap between a box's children, the room inside its
@@ -1371,27 +1371,37 @@ component MenuEntry(label string, disabled bool, checked bool, @select(), entrie
 
 #[c.native("sngl_win32_entry")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Entry")]
-func _rtEntry() MenuEntry
+func _rtEntryWindow() MenuEntry
 
-#[c.native("sngl_win32_set_entry_disabled")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetEntryDisabled")]
-func _rtSetEntryDisabled(e MenuEntry, disabled bool)
+// Its command, an id of its own.
+func _rtEntry() MenuEntry {
+    var e = _rtEntryWindow()
+    var w = _handle(e)
+    if _ctls.contains(w) {
+        _ctls[w].id = _entryId()
+    }
+    return e
+}
 
-#[c.native("sngl_win32_set_entry_checked")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetEntryChecked")]
-func _rtSetEntryChecked(e MenuEntry, checked bool)
+func _rtSetEntryDisabled(e MenuEntry, disabled bool) {
+    _setEntryDisabled(_handle(e), disabled)
+}
+
+func _rtSetEntryChecked(e MenuEntry, checked bool) {
+    _setEntryChecked(_handle(e), checked)
+}
 
 // How many items the menu bar of the window `n` is in holds.
-#[c.native("sngl_win32_menu_items")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32MenuItems")]
-func menuItems(n ui.node) int
+func menuItems(n ui.node) int {
+    return _menuItems(_handle(n))
+}
 
 // Chooses the entry labeled `label` in the menu bar of the window `n` is
 // in, as the user does: a test's way to a menu. False where there is no
 // such entry, or it is grayed.
-#[c.native("sngl_win32_choose")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Choose")]
-func chooseMenu(n ui.node, label c.utf16) bool
+func chooseMenu(n ui.node, label string) bool {
+    return _chooseMenu(_handle(n), label)
+}
 
 #[gen.protocol(create)]
 func _create_MenuEntry() MenuEntry {

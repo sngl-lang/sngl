@@ -488,8 +488,7 @@ and DPI as well, since its painting and fonts read them.
 call SNGL by name, so `_ctls`'s initializer hands the runtime, through
 `sngl_win32_hooks`, `#[c.static]` functions for what it still asks of the
 record: a window made and gone, a layout asked for and run, a toplevel's
-layout and DPI, a scroll's bar and wheel, a tab chosen, the tabs a page's
-title is in, a window's measure (`#[c.outs]`), its children and its padding.
+layout and DPI, a scroll's bar and wheel, a tab chosen, a menu's command, a window's measure (`#[c.outs]`), its children and its padding.
 Each goes when its last C reader moves. The layout asks the runtime, the other
 way, for what only it measures: a control's text in its font
 (`sngl_win32_natural`), a picture's size, a flow's height, a font for a DPI.

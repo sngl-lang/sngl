@@ -68,8 +68,6 @@ typedef struct {
 	int show_text;
 	/* href is a link's, opened as the user clicks it. */
 	WCHAR *href;
-	/* text is what sngl_win32_set_text last set. */
-	WCHAR *text;
 	/* tip is what a box's children show as the pointer rests on them. */
 	WCHAR *tip;
 	/* row is a table's row selected. */
@@ -80,11 +78,6 @@ typedef struct {
 	 * which modal_of names back. */
 	HWND dialog, modal_of;
 	int open, closable;
-	/* A menu entry's command, its state, and the menu bar a toplevel shows
-	 * its entries in. */
-	UINT id;
-	int disabled, checked;
-	HMENU menu;
 	/* A table's: whether a row can be selected and a column sorted by, and
 	 * the column a header click last asked for. A tree's label selected. */
 	int selectable, sortable, sort_col;
@@ -225,8 +218,8 @@ static void ctl_drop(HWND w) {
  * handed over, no window has a record. */
 static struct {
 	sngl_win32_hwnd_int2_hook made;
-	sngl_win32_hwnd_hook forget, relayout, lay_out_top, layout, tab_chosen, tabs_sync;
-	sngl_win32_hwnd_int_hook refresh, wheel;
+	sngl_win32_hwnd_hook forget, relayout, lay_out_top, layout, tab_chosen;
+	sngl_win32_hwnd_int_hook command, refresh, wheel;
 	sngl_win32_hwnd_int2_hook scrolled;
 	sngl_win32_size_hook measure;
 	sngl_win32_count_hook nkids;
@@ -234,14 +227,14 @@ static struct {
 	sngl_win32_ask_hook pad;
 } hooks;
 
-void sngl_win32_hooks(sngl_win32_hwnd_int2_hook made, sngl_win32_hwnd_hook forget, sngl_win32_hwnd_hook relayout, sngl_win32_hwnd_hook lay_out_top, sngl_win32_hwnd_hook layout, sngl_win32_hwnd_hook tab_chosen, sngl_win32_hwnd_hook tabs_sync, sngl_win32_hwnd_int_hook refresh, sngl_win32_hwnd_int_hook wheel, sngl_win32_hwnd_int2_hook scrolled, sngl_win32_size_hook measure, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid, sngl_win32_ask_hook pad) {
+void sngl_win32_hooks(sngl_win32_hwnd_int2_hook made, sngl_win32_hwnd_hook forget, sngl_win32_hwnd_hook relayout, sngl_win32_hwnd_hook lay_out_top, sngl_win32_hwnd_hook layout, sngl_win32_hwnd_hook tab_chosen, sngl_win32_hwnd_int_hook command, sngl_win32_hwnd_int_hook refresh, sngl_win32_hwnd_int_hook wheel, sngl_win32_hwnd_int2_hook scrolled, sngl_win32_size_hook measure, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid, sngl_win32_ask_hook pad) {
 	hooks.made = made;
 	hooks.forget = forget;
 	hooks.relayout = relayout;
 	hooks.lay_out_top = lay_out_top;
 	hooks.layout = layout;
 	hooks.tab_chosen = tab_chosen;
-	hooks.tabs_sync = tabs_sync;
+	hooks.command = command;
 	hooks.refresh = refresh;
 	hooks.wheel = wheel;
 	hooks.scrolled = scrolled;
@@ -406,32 +399,11 @@ static void set_handler(handler *h, sngl_win32_fn fn, void *ctx, sngl_win32_rele
 
 static int step(MSG *m);
 
-/* A menu entry's command id is what WM_COMMAND carries in 16 bits: those
- * in use are marked, so an id handed out again once they wrap is free. */
-#define SNGL_ENTRY_FIRST 1000
-static unsigned char entry_ids[0x10000 / 8];
-static UINT next_entry = SNGL_ENTRY_FIRST;
-
-static UINT entry_id(void) {
-	for (UINT n = 0; n < 0x10000 - SNGL_ENTRY_FIRST; n++) {
-		UINT id = next_entry;
-		next_entry = next_entry == 0xffff ? SNGL_ENTRY_FIRST : next_entry + 1;
-		if (!(entry_ids[id / 8] & (1u << (id % 8)))) {
-			entry_ids[id / 8] |= (unsigned char)(1u << (id % 8));
-			return id;
-		}
-	}
-	return 0;
-}
-
 /* forget frees what w's record holds, as w goes. */
 static void forget(HWND w) {
 	ctl *c = ctl_of(w);
 	if (!c) {
 		return;
-	}
-	if (c->kind == K_ENTRY && c->id >= SNGL_ENTRY_FIRST && c->id <= 0xffff) {
-		entry_ids[c->id / 8] &= (unsigned char)~(1u << (c->id % 8));
 	}
 	ctl_drop(w);
 	if (hooks.forget) {
@@ -457,7 +429,6 @@ static void forget(HWND w) {
 	}
 	free(c->why);
 	free(c->url);
-	free(c->text);
 	for (int i = 0; i < c->npictures; i++) {
 		free(c->pictures[i].url);
 		if (c->pictures[i].bmp) {
@@ -471,10 +442,6 @@ static void forget(HWND w) {
 			EnableWindow(owner, TRUE);
 		}
 		DestroyWindow(c->dialog);
-	}
-	if (c->menu) {
-		SetMenu(w, NULL);
-		DestroyMenu(c->menu);
 	}
 	if (c->font) {
 		DeleteObject(c->font);
@@ -1192,96 +1159,9 @@ static void show_modal(HWND m, ctl *c) {
 
 /* --- Menus --- */
 
-/* entry_flags is how an entry's state shows in a menu. */
-static UINT entry_flags(ctl *e) { return (e->disabled ? MF_GRAYED : MF_ENABLED) | (e->checked ? MF_CHECKED : MF_UNCHECKED); }
-
-/* fill_menu puts in m an item for each entry entry holds, or the top's
- * walk finds: a submenu where it holds entries itself, and otherwise its
- * command. */
-static void fill_menu(HMENU m, HWND w, int top);
-
-static void add_entry(HMENU m, HWND e) {
-	ctl *ec = ctl_of(e);
-	int n = GetWindowTextLengthW(e);
-	WCHAR *label = malloc(sizeof(WCHAR) * (size_t)(n + 1));
-	GetWindowTextW(e, label, n + 1);
-	int subs = 0;
-	for (int i = 0, n = nkids(e); i < n; i++) {
-		ctl *k = ctl_of(kid(e, i));
-		subs += k && k->kind == K_ENTRY;
-	}
-	if (subs) {
-		HMENU sub = CreatePopupMenu();
-		fill_menu(sub, e, 0);
-		AppendMenuW(m, MF_POPUP | entry_flags(ec), (UINT_PTR)sub, label);
-	} else {
-		AppendMenuW(m, MF_STRING | entry_flags(ec), ec->id, label);
-	}
-	free(label);
-}
-
-static void fill_menu(HMENU m, HWND w, int top) {
-	ctl *c = ctl_of(w);
-	if (!c) {
-		return;
-	}
-	for (int i = 0, n = nkids(w); i < n; i++) {
-		HWND kw = kid(w, i);
-		ctl *k = ctl_of(kw);
-		if (!k) {
-			continue;
-		}
-		if (k->kind == K_ENTRY) {
-			add_entry(m, kw);
-		} else if (top) {
-			/* A menu bar's entries are found wherever the window holds
-			 * them, ui.menubar's included. */
-			fill_menu(m, kw, 1);
-		}
-	}
-}
-
-/* menu_sync gives the toplevel w is in a menu bar of every entry it holds,
- * or none where it holds none. */
-static void menu_sync(HWND w) {
-	HWND top = GetAncestor(w, GA_ROOT);
-	ctl *c = ctl_of(top);
-	if (!c || c->kind != K_TOP) {
-		return;
-	}
-	HMENU m = CreateMenu();
-	fill_menu(m, top, 1);
-	HMENU old = c->menu;
-	c->menu = GetMenuItemCount(m) > 0 ? m : NULL;
-	if (!c->menu) {
-		DestroyMenu(m);
-	}
-	if (c->menu || old) {
-		SetMenu(top, c->menu);
-		DrawMenuBar(top);
-	}
-	if (old) {
-		DestroyMenu(old);
-	}
-}
-
-/* find_entry is the entry under w whose command is id, or NULL. */
-static ctl *find_entry(HWND w, UINT id) {
-	ctl *c = ctl_of(w);
-	if (!c) {
-		return NULL;
-	}
-	if (c->kind == K_ENTRY && c->id == id) {
-		return c;
-	}
-	for (int i = 0, n = nkids(w); i < n; i++) {
-		ctl *e = find_entry(kid(w, i), id);
-		if (e) {
-			return e;
-		}
-	}
-	return NULL;
-}
+/* sngl_win32_append_popup appends a submenu to m, whose handle AppendMenuW
+ * takes as its id. */
+void sngl_win32_append_popup(HMENU m, UINT flags, HMENU sub, const unsigned short *label) { AppendMenuW(m, flags, (UINT_PTR)sub, (LPCWSTR)label); }
 
 /* tips is the tooltip every box with a tip shows its children's through. */
 static HWND tips;
@@ -1752,9 +1632,8 @@ static LRESULT CALLBACK box_proc(HWND w, UINT msg, WPARAM wp, LPARAM lp) {
 	case WM_COMMAND: {
 		if (lp == 0 && HIWORD(wp) == 0 && c && c->kind == K_TOP) {
 			/* A menu's command, its entry's id. */
-			ctl *e = find_entry(w, LOWORD(wp));
-			if (e) {
-				fire(&e->click);
+			if (hooks.command) {
+				hooks.command(w, LOWORD(wp));
 			}
 			return 0;
 		}
@@ -2521,70 +2400,9 @@ HWND sngl_win32_entry(void) {
 	HWND w = control(SNGL_BOX_CLASS, 0, 0, K_ENTRY);
 	ctl *c = ctl_of(w);
 	if (c) {
-		c->id = entry_id();
 		ShowWindow(w, SW_HIDE);
 	}
 	return w;
-}
-
-void sngl_win32_set_entry_disabled(HWND w, int disabled) {
-	ctl *c = ctl_of(w);
-	if (c && c->disabled != (disabled != 0)) {
-		c->disabled = disabled != 0;
-		menu_sync(w);
-	}
-}
-
-void sngl_win32_set_entry_checked(HWND w, int checked) {
-	ctl *c = ctl_of(w);
-	if (c && c->checked != (checked != 0)) {
-		c->checked = checked != 0;
-		menu_sync(w);
-	}
-}
-
-/* entry_labeled is the entry under w labeled label, or NULL. */
-static HWND entry_labeled(HWND w, const WCHAR *label) {
-	ctl *c = ctl_of(w);
-	if (!c) {
-		return NULL;
-	}
-	if (c->kind == K_ENTRY) {
-		WCHAR buf[256];
-		GetWindowTextW(w, buf, 256);
-		if (wcscmp(buf, label) == 0) {
-			return w;
-		}
-	}
-	for (int i = 0, n = nkids(w); i < n; i++) {
-		HWND e = entry_labeled(kid(w, i), label);
-		if (e) {
-			return e;
-		}
-	}
-	return NULL;
-}
-
-int sngl_win32_choose(HWND w, const unsigned short *label) {
-	HWND top = GetAncestor(w, GA_ROOT);
-	ctl *c = ctl_of(top);
-	HWND e = entry_labeled(top, (const WCHAR *)label);
-	if (!c || !c->menu || !e) {
-		return 0;
-	}
-	/* As the user's choice: through the menu, where a grayed item is none. */
-	ctl *ec = ctl_of(e);
-	MENUITEMINFOW mi = {sizeof mi, MIIM_STATE, 0, 0, 0, NULL, NULL, NULL, 0, NULL, 0, NULL};
-	if (!GetMenuItemInfoW(c->menu, ec->id, FALSE, &mi) || (mi.fState & MFS_GRAYED)) {
-		return 0;
-	}
-	SendMessageW(top, WM_COMMAND, MAKEWPARAM(ec->id, 0), 0);
-	return 1;
-}
-
-int sngl_win32_menu_items(HWND w) {
-	ctl *c = ctl_of(GetAncestor(w, GA_ROOT));
-	return c && c->menu ? GetMenuItemCount(c->menu) : 0;
 }
 
 HWND sngl_win32_table(void) {
@@ -3159,8 +2977,6 @@ void sngl_win32_tip_child(HWND box, HWND child, int on) {
 	}
 }
 
-void sngl_win32_menu_sync(HWND w) { menu_sync(w); }
-
 /* sngl_win32_nothing is no window, which a slot's anchor is in a container
  * keeping none. */
 HWND sngl_win32_nothing(void) { return NULL; }
@@ -3218,39 +3034,6 @@ void sngl_win32_detach(HWND top) {
 }
 
 /* --- Props --- */
-
-void sngl_win32_set_text(HWND w, const unsigned short *text) {
-	ctl *c = ctl_of(w);
-	/* A render sets every prop it writes, changed or not, and a text set
-	 * is measured again with everything holding it: a page of cards each
-	 * set its name again as any one name arrived. */
-	if (c && c->text && wcscmp(c->text, (const WCHAR *)text) == 0) {
-		return;
-	}
-	if (c) {
-		free(c->text);
-		c->text = _wcsdup((const WCHAR *)text);
-	}
-	if (c && c->kind == K_MODAL) {
-		/* A modal's is its window's title. */
-		SetWindowTextW(c->dialog, (LPCWSTR)text);
-		return;
-	}
-	SetWindowTextW(w, (LPCWSTR)text);
-	if (c && c->kind == K_ENTRY) {
-		menu_sync(w);
-		return;
-	}
-	HWND parent = GetParent(w);
-	ctl *pc = ctl_of(parent);
-	if (pc && pc->kind == K_TABS) {
-		/* A page's is its tab's. */
-		if (hooks.tabs_sync) {
-			hooks.tabs_sync(parent);
-		}
-	}
-	relayout(w);
-}
 
 const char *sngl_win32_get_text(HWND w) {
 	static char *buf;
