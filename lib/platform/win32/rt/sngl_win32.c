@@ -467,21 +467,6 @@ static SIZE tree_size(HWND w, ctl *c) {
 	return s;
 }
 
-/* sngl_win32_tabs_size is a tabs' whose largest page is cx by cy: that,
- * and the strip of tabs over it. */
-void sngl_win32_tabs_size(HWND w, int cx, int cy, SIZE *out) {
-	ctl *c = ctl_of(w);
-	RECT r = {0, 0, cx, cy};
-	SendMessageW(w, TCM_ADJUSTRECT, TRUE, (LPARAM)&r);
-	SIZE s = {r.right - r.left, r.bottom - r.top};
-	int n = (int)SendMessageW(w, TCM_GETITEMCOUNT, 0, 0);
-	RECT last;
-	if (c && n > 0 && SendMessageW(w, TCM_GETITEMRECT, (WPARAM)(n - 1), (LPARAM)&last) && last.right + px(4, c->dpi) > s.cx) {
-		s.cx = last.right + px(4, c->dpi);
-	}
-	*out = s;
-}
-
 /* --- Rich text --- */
 
 /* span_look is what a run of a flow is drawn in, as the spans around it
@@ -769,8 +754,8 @@ static HWND link_under(ctl *c, int x, int y) {
 
 /* sngl_win32_natural is what a control's content measures, in device
  * pixels, before its record's padding and sizes: its text in its font, its
- * metrics, or what it asks the control for: a drop-down, a progress bar, a
- * table, a tree, a canvas and a flow. The rest are measured by their record
+ * metrics, or what it asks the control for: a drop-down, a progress bar,
+ * a tree, a canvas and a flow. The rest are measured by their record
  * (_measure). */
 void sngl_win32_natural(HWND w, SIZE *out) {
 	ctl *c = ctl_of(w);
@@ -803,28 +788,6 @@ void sngl_win32_natural(HWND w, SIZE *out) {
 			}
 		}
 		break;
-	case K_TABLE: {
-		/* Every column, and every row under the header. */
-		HWND header = (HWND)SendMessageW(w, LVM_GETHEADER, 0, 0);
-		int cols = (int)SendMessageW(header, HDM_GETITEMCOUNT, 0, 0);
-		for (int i = 0; i < cols; i++) {
-			s.cx += (int)SendMessageW(w, LVM_GETCOLUMNWIDTH, (WPARAM)i, 0);
-		}
-		RECT hr = {0, 0, 0, 0};
-		if (cols > 0) {
-			SendMessageW(header, HDM_GETITEMRECT, 0, (LPARAM)&hr);
-		}
-		int head = hr.bottom - hr.top > 0 ? hr.bottom - hr.top : line_height(w) + px(8, c->dpi);
-		int rows = (int)SendMessageW(w, LVM_GETITEMCOUNT, 0, 0), row = line_height(w) + px(4, c->dpi);
-		RECT ir;
-		ir.left = LVIR_BOUNDS;
-		if (rows > 0 && SendMessageW(w, LVM_GETITEMRECT, 0, (LPARAM)&ir) && ir.bottom > ir.top) {
-			row = ir.bottom - ir.top;
-		}
-		s.cx += 2 * GetSystemMetrics(SM_CXEDGE) + GetSystemMetrics(SM_CXVSCROLL);
-		s.cy = head + rows * row + 2 * GetSystemMetrics(SM_CYEDGE) + px(2, c->dpi);
-		break;
-	}
 	case K_TREE:
 		s = tree_size(w, c);
 		break;
@@ -900,12 +863,6 @@ void sngl_win32_resize_client(HWND top, int w, int h) {
 	SetWindowPos(top, NULL, 0, 0, r.right - r.left, r.bottom - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-/* sngl_win32_scroll_children moves what a scroll shows by dx, dy, its
- * children with it, and paints what it uncovers. */
-void sngl_win32_scroll_children(HWND w, int dx, int dy) {
-	ScrollWindowEx(w, dx, dy, NULL, NULL, NULL, NULL, SW_SCROLLCHILDREN | SW_INVALIDATE | SW_ERASE);
-}
-
 /* --- Timers --- */
 
 /* A timer is the parked window's, which is never shown and so never closed:
@@ -929,20 +886,6 @@ static void tick(UINT_PTR id) {
 }
 
 /* --- Tabs, scrolls, modals and tips --- */
-
-/* sngl_win32_tab_insert gives a tabs a tab at `at` titled with page's
- * text. */
-void sngl_win32_tab_insert(HWND tabs, int at, HWND page) {
-	int n = GetWindowTextLengthW(page);
-	WCHAR *title = malloc(sizeof(WCHAR) * (size_t)(n + 1));
-	GetWindowTextW(page, title, n + 1);
-	TCITEMW item;
-	memset(&item, 0, sizeof item);
-	item.mask = TCIF_TEXT;
-	item.pszText = title;
-	SendMessageW(tabs, TCM_INSERTITEMW, (WPARAM)at, (LPARAM)&item);
-	free(title);
-}
 
 /* --- Menus --- */
 

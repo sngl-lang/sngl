@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 7d92c81ed722fecc3e1b4eda
+// The C sources, as a change to them builds this package again: e4abb333a9cf62667fb0d216
 
 package cgo
 
@@ -30,6 +30,10 @@ static inline LRESULT snglP__sendRect(HWND a0, UINT a1, WPARAM a2, RECT * a3) {
 }
 
 static inline LRESULT snglP__sendSize(HWND a0, UINT a1, WPARAM a2, SIZE * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendTabItem(HWND a0, UINT a1, WPARAM a2, TCITEMW * a3) {
 	return SendMessageW(a0, a1, a2, (LPARAM)a3);
 }
 
@@ -281,6 +285,9 @@ type RECT struct {
 // RectPtr is C's RECT *.
 type RectPtr = *C.RECT
 
+// Region is C's HRGN.
+type Region = C.HRGN
+
 // SIZE is C's SIZE, field by field.
 type SIZE struct {
 	Cx int
@@ -308,6 +315,12 @@ type SystemTime struct {
 	WMinute       int
 	WSecond       int
 	WMilliseconds int
+}
+
+// TabItem is C's TCITEMW, field by field.
+type TabItem struct {
+	Mask    int
+	PszText string
 }
 
 // TreeFound is C's HTREEITEM.
@@ -446,6 +459,12 @@ type SendRectResult struct {
 type SendSizeResult struct {
 	Result int
 	Out3   SIZE
+}
+
+// SendTabItemResult is what SendTabItem hands back.
+type SendTabItemResult struct {
+	Result int
+	Out3   TabItem
 }
 
 // SetScrollInfoResult is what SetScrollInfo hands back.
@@ -1141,6 +1160,71 @@ func RectOf(lp int) RectPtr {
 	return C.snglP__rectOf(C.LPARAM(C.LPARAM(lp)))
 }
 
+// ScrollWindowEx calls ScrollWindowEx.
+func ScrollWindowEx(w HWND, dx int, dy int, scroll *ConstRect, clip *ConstRect, update *Region, updated *RectPtr, flags int) int {
+	if scroll == nil {
+		if clip == nil {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		} else {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		}
+	} else {
+		if clip == nil {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		} else {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		}
+	}
+}
+
 // SendCommand calls SendMessageW.
 func SendCommand(to HWND, msg int, w int, from HWND) int {
 	return int(C.snglP__sendCommand(to, C.UINT(msg), C.WPARAM(w), from))
@@ -1228,6 +1312,23 @@ func SendSize(to HWND, msg int, w int, s SIZE) SendSizeResult {
 		__snglOut3 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(s)
 		__snglResult := int(C.snglP__sendSize(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
 		return SendSizeResult{Result: __snglResult, Out3: func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut3)}
+	}()
+}
+
+// SendTabItem calls SendMessageW.
+func SendTabItem(tabs HWND, msg int, w int, item TabItem) SendTabItemResult {
+	return func() SendTabItemResult {
+		var __snglPins cbind.Pins
+		defer __snglPins.Unpin()
+		__snglIn3 := item
+		__snglOut3 := func(v TabItem) C.TCITEMW {
+			var c C.TCITEMW
+			c.mask = C.UINT(v.Mask)
+			*(*unsafe.Pointer)(unsafe.Pointer(&c.pszText)) = unsafe.Pointer(__snglPins.UTF16(v.PszText))
+			return c
+		}(__snglIn3)
+		__snglResult := int(C.snglP__sendTabItem(tabs, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendTabItemResult{Result: __snglResult, Out3: func(c C.TCITEMW, o TabItem) TabItem { return TabItem{Mask: int(c.mask), PszText: o.PszText} }(__snglOut3, __snglIn3)}
 	}()
 }
 
@@ -1808,11 +1909,6 @@ func SnglWin32Scroll() HWND {
 	return C.sngl_win32_scroll()
 }
 
-// SnglWin32ScrollChildren calls sngl_win32_scroll_children.
-func SnglWin32ScrollChildren(w HWND, dx int, dy int) {
-	C.sngl_win32_scroll_children(w, C.int(dx), C.int(dy))
-}
-
 // SnglWin32ScrollStyle calls sngl_win32_scroll_style.
 func SnglWin32ScrollStyle(w HWND, vertical bool, horizontal bool) {
 	var __lt10 int
@@ -2013,11 +2109,6 @@ func SnglWin32Step() {
 	C.sngl_win32_step()
 }
 
-// SnglWin32TabInsert calls sngl_win32_tab_insert.
-func SnglWin32TabInsert(tabs HWND, at int, page HWND) {
-	C.sngl_win32_tab_insert(tabs, C.int(at), page)
-}
-
 // SnglWin32Table calls sngl_win32_table.
 func SnglWin32Table() HWND {
 	return C.sngl_win32_table()
@@ -2026,15 +2117,6 @@ func SnglWin32Table() HWND {
 // SnglWin32Tabs calls sngl_win32_tabs.
 func SnglWin32Tabs() HWND {
 	return C.sngl_win32_tabs()
-}
-
-// SnglWin32TabsSize calls sngl_win32_tabs_size.
-func SnglWin32TabsSize(w HWND, cx int, cy int, out SIZE) SIZE {
-	return func() SIZE {
-		__snglOut3 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(out)
-		C.sngl_win32_tabs_size(w, C.int(cx), C.int(cy), &__snglOut3)
-		return func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut3)
-	}()
 }
 
 // SnglWin32Text calls sngl_win32_text.

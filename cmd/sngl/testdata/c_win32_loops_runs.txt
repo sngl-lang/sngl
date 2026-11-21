@@ -276,7 +276,7 @@ func testAMethodReadsItsCopy(t test.Test, c main) {
     t.assert(c.r[1].shown == "<")
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:7548ec7b719d5e8fe162e23fe3604ec7
+sha256:bed48a9a9034d29af5f6bbc57d8dbca8
 {
   "results": [
     {
@@ -293,7 +293,7 @@ sha256:7548ec7b719d5e8fe162e23fe3604ec7
   }
 }
 -- testrun/win32/c/methods.sngl/main/1 --
-sha256:947eabe8bef7e2475c3f1b228868b917
+sha256:40bd36b4385643b3511c717d3d9179e6
 {
   "results": [
     {
@@ -303,7 +303,7 @@ sha256:947eabe8bef7e2475c3f1b228868b917
   ]
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:56811eead1f54c00c0b3be5cc069543b
+sha256:245e6fa11bd1b714fafe186133d5d43d
 {
   "results": [
     {
@@ -321,7 +321,7 @@ sha256:56811eead1f54c00c0b3be5cc069543b
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:b1392dabc158a472fb48390686e6586c
+sha256:8a84b6abd8b32e7a50634eb757b47d8e
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:b1392dabc158a472fb48390686e6586c
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:5c2ad496672b3077535869407a355e47
+sha256:685e3c3234b24a63deb75f0e8d899c18
 {
   "results": [
     {
@@ -345,7 +345,7 @@ sha256:5c2ad496672b3077535869407a355e47
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:3e5511943d7c9730273428308151e139
+sha256:ac728d5370e8cfe8c8df2e519b0f6dcf
 {
   "results": [
     {
@@ -355,7 +355,7 @@ sha256:3e5511943d7c9730273428308151e139
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:ee8b154c23a5e08c41994af4cde4b18e
+sha256:644b938b089a96cf125bb05d342d48a7
 {
   "results": [
     {
@@ -369,7 +369,7 @@ sha256:ee8b154c23a5e08c41994af4cde4b18e
   ]
 }
 -- testrun/win32/go/methods.sngl/main/1 --
-sha256:f5210166b9b84bb28a720f7a9fcff467
+sha256:90a05ad8d5ad620ebebc92cd50f79851
 {
   "results": [
     {
@@ -379,7 +379,7 @@ sha256:f5210166b9b84bb28a720f7a9fcff467
   ]
 }
 -- testrun/win32/go/nested.sngl/main/1 --
-sha256:0df16df10f49afdbb8325957eb91f05f
+sha256:da95239fe3390c97ceaa6207febb5609
 {
   "results": [
     {
@@ -397,7 +397,7 @@ sha256:0df16df10f49afdbb8325957eb91f05f
   ]
 }
 -- testrun/win32/go/rows.sngl/main/1 --
-sha256:9b363372d1848228dcda22d148fb0f29
+sha256:3a038763df536e602a938c01c4076fd0
 {
   "results": [
     {
@@ -411,7 +411,7 @@ sha256:9b363372d1848228dcda22d148fb0f29
   ]
 }
 -- testrun/win32/go/seq.sngl/main/1 --
-sha256:69d875e17854a3e8c7dc102dd7db38c6
+sha256:c51818e47b73841d9ddc295fcba78656
 {
   "results": [
     {
@@ -421,7 +421,7 @@ sha256:69d875e17854a3e8c7dc102dd7db38c6
   ]
 }
 -- testrun/win32/go/top.sngl/main/1 --
-sha256:22d622916bc71c9e85746dcb7d021818
+sha256:21ab388c795cd9a5fd845d6541b59dd3
 {
   "results": [
     {

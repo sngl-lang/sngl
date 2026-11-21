@@ -100,11 +100,10 @@ void sngl_win32_unsubclass(HWND w);
 void sngl_win32_forget(HWND w, int counted);
 
 /* What the record's layout asks of the runtime: a control's content
- * measured, in device pixels; a picture's bitmap's size, where it has one; a
- * tabs' size around a page of cx by cy; the height a flow wraps to; a
+ * measured, in device pixels; a picture's bitmap's size, where it has one;
+ * the height a flow wraps to; a
  * window's font for a DPI, and the DPI it is shown at; a toplevel's frame for
- * a client area of w by h, and the size it takes; what a scroll holds moved
- * by dx, dy; a tab made at `at` for a page, titled with its text; a box's tip
+ * a client area of w by h, and the size it takes; a box's tip
  * given to a child, or taken away where it is empty; a submenu appended; no
  * window; a toplevel attach sized shown, or held back for an @run handler; a
  * window shown or hidden, answering whether that changed it; a divider's
@@ -115,13 +114,10 @@ void sngl_win32_text_size(HWND w, SIZE *out);
 int sngl_win32_line_height(HWND w);
 int sngl_win32_check_width(int dpi);
 int sngl_win32_picture_size(HWND w, SIZE *out);
-void sngl_win32_tabs_size(HWND w, int cx, int cy, SIZE *out);
 int sngl_win32_flow_height(HWND w, int width);
 void sngl_win32_refont(HWND w, int dpi);
 int sngl_win32_dpi_of(HWND w);
 void sngl_win32_resize_client(HWND top, int w, int h);
-void sngl_win32_scroll_children(HWND w, int dx, int dy);
-void sngl_win32_tab_insert(HWND tabs, int at, HWND page);
 void sngl_win32_frame_size(HWND w, int cw, int ch, SIZE *out);
 void sngl_win32_tip_tool(HWND box, HWND child, const unsigned short *tip);
 void sngl_win32_append_popup(HMENU m, UINT flags, HMENU sub, const unsigned short *label);

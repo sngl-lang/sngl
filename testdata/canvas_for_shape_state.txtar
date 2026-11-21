@@ -3815,15 +3815,17 @@ typedef struct s_platform_win32_api__RECT s_platform_win32_api__RECT;
 typedef struct s_GetClientRect__result s_GetClientRect__result;
 typedef struct s__gdipCreateSolidFill__result s__gdipCreateSolidFill__result;
 typedef struct s__gdipCreatePen1__result s__gdipCreatePen1__result;
+typedef struct s_platform_win32___TabItem s_platform_win32___TabItem;
+typedef struct s__sendTabItem__result s__sendTabItem__result;
 typedef struct s_platform_win32___Kid s_platform_win32___Kid;
 typedef struct sngl_list__Kid sngl_list__Kid;
+typedef struct s__sendRect__result s__sendRect__result;
 typedef struct s_platform_win32___ScrollInfo s_platform_win32___ScrollInfo;
 typedef struct s__setScrollInfo__result s__setScrollInfo__result;
 typedef struct s_platform_win32___Rect s_platform_win32___Rect;
 typedef struct sngl_list__Rect sngl_list__Rect;
 typedef struct s_platform_win32___Flowed s_platform_win32___Flowed;
 typedef struct sngl_list_int sngl_list_int;
-typedef struct s__sendRect__result s__sendRect__result;
 typedef struct sngl_fn_HWND_int_int_int__int sngl_fn_HWND_int_int_int__int;
 typedef struct sngl_fn_HWND_int_int_int_int_int__int sngl_fn_HWND_int_int_int_int_int__int;
 typedef struct sngl_fn_HWND__int sngl_fn_HWND__int;
@@ -4128,6 +4130,16 @@ typedef struct s__gdipCreatePen1__result {
 	void * out3;
 } s__gdipCreatePen1__result;
 
+typedef struct s_platform_win32___TabItem {
+	int64_t mask;
+	sngl_string pszText;
+} s_platform_win32___TabItem;
+
+typedef struct s__sendTabItem__result {
+	int64_t result;
+	s_platform_win32___TabItem out3;
+} s__sendTabItem__result;
+
 typedef struct s_platform_win32___Kid {
 	HWND w;
 	int64_t cx;
@@ -4140,6 +4152,11 @@ typedef struct sngl_list__Kid {
 	int64_t len;
 	int64_t cap;
 } sngl_list__Kid;
+
+typedef struct s__sendRect__result {
+	int64_t result;
+	s_platform_win32_api__RECT out3;
+} s__sendRect__result;
 
 typedef struct s_platform_win32___ScrollInfo {
 	int64_t cbSize;
@@ -4179,11 +4196,6 @@ typedef struct sngl_list_int {
 	int64_t len;
 	int64_t cap;
 } sngl_list_int;
-
-typedef struct s__sendRect__result {
-	int64_t result;
-	s_platform_win32_api__RECT out3;
-} s__sendRect__result;
 
 typedef struct sngl_fn_HWND_int_int_int__int {
 	int64_t (*fn)(void *env, HWND, int64_t, int64_t, int64_t);
@@ -4308,8 +4320,10 @@ static void s_platform_win32___tipChild(HWND box, HWND child, bool on);
 static bool s_platform_win32___holdsEntries(HWND w);
 static void s_platform_win32___menuSync(HWND w);
 static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___Ctl k);
+static s_platform_win32___Size s_platform_win32___tabsSize(HWND w, s_platform_win32___Ctl k, int64_t cx, int64_t cy);
 static int64_t s_platform_win32___px(int64_t n, int64_t dpi);
 static s_platform_win32___Size s_platform_win32___textSize(HWND w);
+static s_platform_win32___Size s_platform_win32___tableSize(HWND w, s_platform_win32___Ctl k);
 static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height);
 static void s_platform_win32___invalidate(HWND w);
 static void s_platform_win32__Gfx_color(sngl_win32_gfx * g, int64_t r, int64_t gr, int64_t b, int64_t a);
@@ -4899,12 +4913,6 @@ static s_platform_win32_api__SIZE sngl_from_platform_win32_api__SIZE(SIZE v) {
 	return (s_platform_win32_api__SIZE){.cx = (int64_t)v.cx, .cy = (int64_t)v.cy};
 }
 
-static s_platform_win32_api__SIZE sngl_ccall_sngl_win32_tabs_size__tabsFrame(HWND a0, int a1, int a2, s_platform_win32_api__SIZE a3) {
-	SIZE t3 = sngl_to_platform_win32_api__SIZE(a3);
-	sngl_win32_tabs_size(a0, a1, a2, &t3);
-	return sngl_from_platform_win32_api__SIZE(t3);
-}
-
 static s__pictureSize__result sngl_ccall_sngl_win32_picture_size__pictureSize(HWND a0, s_platform_win32_api__SIZE a1) {
 	SIZE t1 = sngl_to_platform_win32_api__SIZE(a1);
 	s__pictureSize__result r;
@@ -4986,11 +4994,35 @@ static s__gdipCreatePen1__result sngl_ccall_GdipCreatePen1__gdipCreatePen1(ARGB 
 	return r;
 }
 
+static TCITEMW sngl_to_platform_win32___TabItem(s_platform_win32___TabItem v) {
+	return (TCITEMW){.mask = (UINT)v.mask, .pszText = (unsigned short *)sngl_utf16(v.pszText)};
+}
+
+static s_platform_win32___TabItem sngl_from_platform_win32___TabItem(TCITEMW v, s_platform_win32___TabItem o) {
+	return (s_platform_win32___TabItem){.mask = (int64_t)v.mask, .pszText = o.pszText};
+}
+
+static s__sendTabItem__result sngl_ccall_SendMessageW__sendTabItem(HWND a0, UINT a1, WPARAM a2, s_platform_win32___TabItem a3) {
+	TCITEMW t3 = sngl_to_platform_win32___TabItem(a3);
+	s__sendTabItem__result r;
+	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
+	r.out3 = sngl_from_platform_win32___TabItem(t3, a3);
+	return r;
+}
+
 static s_platform_win32___Kid *sngl_list__Kid_at(sngl_list__Kid l, int64_t i) {
 	if (i < 0 || i >= l.len) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static s__sendRect__result sngl_ccall_SendMessageW__sendRect(HWND a0, UINT a1, WPARAM a2, s_platform_win32_api__RECT a3) {
+	RECT t3 = sngl_to_platform_win32_api__RECT(a3);
+	s__sendRect__result r;
+	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
+	r.out3 = sngl_from_platform_win32_api__RECT(t3);
+	return r;
 }
 
 static s_platform_win32_api__SIZE sngl_ccall_sngl_win32_text_size__textExtent(HWND a0, s_platform_win32_api__SIZE a1) {
@@ -5099,14 +5131,6 @@ static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
-}
-
-static s__sendRect__result sngl_ccall_SendMessageW__sendRect(HWND a0, UINT a1, WPARAM a2, s_platform_win32_api__RECT a3) {
-	RECT t3 = sngl_to_platform_win32_api__RECT(a3);
-	s__sendRect__result r;
-	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
-	r.out3 = sngl_from_platform_win32_api__RECT(t3);
-	return r;
 }
 
 static int64_t s_platform_win32___boxProc__fn(void *env, HWND a0, int64_t a1, int64_t a2, int64_t a3) {
@@ -6591,9 +6615,7 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 					mostX = ((p.cx > mostX) ? p.cx : mostX);
 					mostY = ((p.cy > mostY) ? p.cy : mostY);
 				}
-				s_platform_win32_api__SIZE t = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
-				t = sngl_ccall_sngl_win32_tabs_size__tabsFrame(w, (int)(mostX), (int)(mostY), t);
-				s = (s_platform_win32___Size){.cx = t.cx, .cy = t.cy};
+				s = s_platform_win32___tabsSize(w, k, mostX, mostY);
 			} else {
 				if (k.kind == 14) {
 					s = s_platform_win32___boxMeasure(k);
@@ -6663,10 +6685,14 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 														s.cy = ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(8, k.dpi));
 													}
 												} else {
-													if (((((k.kind != 24) && (k.kind != 21)) && (k.kind != 15)) && (k.kind != 16)) && (k.kind != 6)) {
-														s_platform_win32_api__SIZE n = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
-														n = sngl_ccall_sngl_win32_natural__natural(w, n);
-														s = (s_platform_win32___Size){.cx = n.cx, .cy = n.cy};
+													if (k.kind == 17) {
+														s = s_platform_win32___tableSize(w, k);
+													} else {
+														if (((((k.kind != 24) && (k.kind != 21)) && (k.kind != 15)) && (k.kind != 16)) && (k.kind != 6)) {
+															s_platform_win32_api__SIZE n = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
+															n = sngl_ccall_sngl_win32_natural__natural(w, n);
+															s = (s_platform_win32___Size){.cx = n.cx, .cy = n.cy};
+														}
 													}
 												}
 											}
@@ -6794,7 +6820,9 @@ static void s_platform_win32___tabsSync(HWND tabs) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, tabs);
 	(void)(int64_t)SendMessageW(tabs, (UINT)(4873), (WPARAM)(0), (LPARAM)(0));
 	for (struct { sngl_list_HWND l; int64_t i; } __loop8 = {k.kids, 0}; __loop8.i < __loop8.l.len; __loop8.i++) { int64_t i = __loop8.i; HWND page = __loop8.l.data[__loop8.i];
-		sngl_win32_tab_insert(tabs, (int)(i), page);
+		s_platform_win32___TabItem item = (s_platform_win32___TabItem){.mask = 1, .pszText = ((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, page) >= 0) ? sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, page)->text : SNGL_STR(""))};
+		s__sendTabItem__result __ref6 = sngl_ccall_SendMessageW__sendTabItem(tabs, (UINT)(4926), (WPARAM)(i), item);
+		item = __ref6.out3;
 	}
 	(void)(int64_t)SendMessageW(tabs, (UINT)(4876), (WPARAM)(k.selected), (LPARAM)(0));
 	s_platform_win32___relayout(tabs);
@@ -6913,6 +6941,24 @@ static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___
 	return (s_platform_win32___Size){.cx = (sx + (2 * e)), .cy = (sy + (2 * e))};
 }
 
+static s_platform_win32___Size s_platform_win32___tabsSize(HWND w, s_platform_win32___Ctl k, int64_t cx, int64_t cy) {
+	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = cx, .bottom = cy};
+	s__sendRect__result __ref7 = sngl_ccall_SendMessageW__sendRect(w, (UINT)(4904), (WPARAM)(1), r);
+	r = __ref7.out3;
+	s_platform_win32___Size s = (s_platform_win32___Size){.cx = (r.right - r.left), .cy = (r.bottom - r.top)};
+	int64_t n = (int64_t)SendMessageW(w, (UINT)(4868), (WPARAM)(0), (LPARAM)(0));
+	if (n > 0) {
+		s_platform_win32_api__RECT last = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
+		s__sendRect__result __ref8 = sngl_ccall_SendMessageW__sendRect(w, (UINT)(4874), (WPARAM)((n - 1)), last);
+		last = __ref8.out3;
+		int64_t got = __ref8.result;
+		if ((got != 0) && ((last.right + s_platform_win32___px(4, k.dpi)) > s.cx)) {
+			s.cx = (last.right + s_platform_win32___px(4, k.dpi));
+		}
+	}
+	return s;
+}
+
 static int64_t s_platform_win32___px(int64_t n, int64_t dpi) {
 	if (n >= 0) {
 		return sngl_div(((n * dpi) + 48), 96);
@@ -6924,6 +6970,36 @@ static s_platform_win32___Size s_platform_win32___textSize(HWND w) {
 	s_platform_win32_api__SIZE s = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
 	s = sngl_ccall_sngl_win32_text_size__textExtent(w, s);
 	return (s_platform_win32___Size){.cx = s.cx, .cy = s.cy};
+}
+
+static s_platform_win32___Size s_platform_win32___tableSize(HWND w, s_platform_win32___Ctl k) {
+	HWND header = sngl_win32_window_of((LPARAM)((int64_t)SendMessageW(w, (UINT)(4127), (WPARAM)(0), (LPARAM)(0))));
+	int64_t cols = (int64_t)SendMessageW(header, (UINT)(4608), (WPARAM)(0), (LPARAM)(0));
+	int64_t cx = 0;
+	int64_t i = 0;
+	while (i < cols) {
+		cx += (int64_t)SendMessageW(w, (UINT)(4125), (WPARAM)(i), (LPARAM)(0));
+		i += 1;
+	}
+	s_platform_win32_api__RECT hr = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
+	if (cols > 0) {
+		s__sendRect__result __ref9 = sngl_ccall_SendMessageW__sendRect(header, (UINT)(4615), (WPARAM)(0), hr);
+		hr = __ref9.out3;
+	}
+	int64_t head = (((hr.bottom - hr.top) > 0) ? (hr.bottom - hr.top) : ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(8, k.dpi)));
+	int64_t rows = (int64_t)SendMessageW(w, (UINT)(4100), (WPARAM)(0), (LPARAM)(0));
+	int64_t row = ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(4, k.dpi));
+	if (rows > 0) {
+		s_platform_win32_api__RECT ir = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
+		s__sendRect__result __ref10 = sngl_ccall_SendMessageW__sendRect(w, (UINT)(4110), (WPARAM)(0), ir);
+		ir = __ref10.out3;
+		int64_t got = __ref10.result;
+		if ((got != 0) && (ir.bottom > ir.top)) {
+			row = (ir.bottom - ir.top);
+		}
+	}
+	cx += ((2 * (int64_t)GetSystemMetrics((int)(45))) + (int64_t)GetSystemMetrics((int)(2)));
+	return (s_platform_win32___Size){.cx = cx, .cy = (((head + (rows * row)) + (2 * (int64_t)GetSystemMetrics((int)(46)))) + s_platform_win32___px(2, k.dpi))};
 }
 
 static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
@@ -6975,15 +7051,15 @@ static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 			si.nMax = ((ih + (h - ph)) - 1);
 			si.nPage = h;
 			si.nPos = posY;
-			s__setScrollInfo__result __ref6 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(1), si, (int)(1));
-			si = __ref6.out2;
+			s__setScrollInfo__result __ref11 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(1), si, (int)(1));
+			si = __ref11.out2;
 		}
 		if (k.scrollH) {
 			si.nMax = ((iw + (w - pw)) - 1);
 			si.nPage = w;
 			si.nPos = posX;
-			s__setScrollInfo__result __ref7 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(0), si, (int)(1));
-			si = __ref7.out2;
+			s__setScrollInfo__result __ref12 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(0), si, (int)(1));
+			si = __ref12.out2;
 		}
 		x0 -= posX;
 		y0 -= posY;
@@ -7295,8 +7371,8 @@ static double s_platform_win32___flexOf(HWND w) {
 static void s_platform_win32___layOutTabs(HWND tabs, int64_t w, int64_t h) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, tabs);
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = w, .bottom = h};
-	s__sendRect__result __ref8 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
-	r = __ref8.out3;
+	s__sendRect__result __ref13 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
+	r = __ref13.out3;
 	for (struct { sngl_list_HWND l; int64_t i; } __loop25 = {k.kids, 0}; __loop25.i < __loop25.l.len; __loop25.i++) { int64_t i = __loop25.i; HWND page = __loop25.l.data[__loop25.i];
 		if (i == k.selected) {
 			(void)(int64_t)SetWindowPos(page, NULL, (int)(r.left), (int)(r.top), (int)((r.right - r.left)), (int)((r.bottom - r.top)), (UINT)(80));
@@ -7329,8 +7405,8 @@ static int64_t s_platform_win32___boxProc(HWND w, int64_t msg, int64_t wp, int64
 		HBRUSH b = s_platform_win32___inherited(w);
 		if (b != NULL) {
 			s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-			s_GetClientRect__result __ref9 = sngl_ccall_GetClientRect_GetClientRect(w, r);
-			r = __ref9.out1;
+			s_GetClientRect__result __ref14 = sngl_ccall_GetClientRect_GetClientRect(w, r);
+			r = __ref14.out1;
 			sngl_win32_fill(w, sngl_win32_dc_of((WPARAM)(wp)), sngl_to_platform_win32_api__RECT(r), b);
 			return 1;
 		}
@@ -7719,8 +7795,8 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 	}
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, w);
 	s_platform_win32___ScrollInfo si = (s_platform_win32___ScrollInfo){.cbSize = 28, .fMask = 23, .nMin = 0, .nMax = 0, .nPage = 0, .nPos = 0, .nTrackPos = 0};
-	s__getScrollInfo__result __ref10 = sngl_ccall_GetScrollInfo__getScrollInfo(w, (int)(bar), si);
-	si = __ref10.out2;
+	s__getScrollInfo__result __ref15 = sngl_ccall_GetScrollInfo__getScrollInfo(w, (int)(bar), si);
+	si = __ref15.out2;
 	int64_t pos = si.nPos;
 	int64_t line = s_platform_win32___px(20, k.dpi);
 	if (request == 0) {
@@ -7775,7 +7851,7 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 			(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), child)).placedB += dy;
 		}
 	}
-	sngl_win32_scroll_children(w, (int)(dx), (int)(dy));
+	(void)(int64_t)ScrollWindowEx(w, (int)(dx), (int)(dy), NULL, NULL, NULL, NULL, (UINT)(7));
 	s_platform_win32___reach(w);
 }
 
@@ -7832,9 +7908,9 @@ static void s_platform_win32___showModal(HWND m) {
 		int64_t y = 0;
 		if (owner != NULL) {
 			s_platform_win32_api__RECT o = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-			s_GetWindowRect__result __ref11 = sngl_ccall_GetWindowRect_GetWindowRect((HWND)(owner), o);
-			o = __ref11.out1;
-			if (__ref11.result != 0) {
+			s_GetWindowRect__result __ref16 = sngl_ccall_GetWindowRect_GetWindowRect((HWND)(owner), o);
+			o = __ref16.out1;
+			if (__ref16.result != 0) {
 				x = (o.left + sngl_div(((o.right - o.left) - ww), 2));
 				y = (o.top + sngl_div(((o.bottom - o.top) - wh), 2));
 			}
@@ -7988,8 +8064,8 @@ static void s_platform_win32___tabChosen(HWND tabs) {
 static void s_platform_win32___fit(HWND top) {
 	s_platform_win32___Size s = s_platform_win32___measure(top);
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetClientRect__result __ref12 = sngl_ccall_GetClientRect_GetClientRect(top, r);
-	r = __ref12.out1;
+	s_GetClientRect__result __ref17 = sngl_ccall_GetClientRect_GetClientRect(top, r);
+	r = __ref17.out1;
 	int64_t w = (r.right - r.left);
 	int64_t h = (r.bottom - r.top);
 	if ((s.cx <= w) && (s.cy <= h)) {
@@ -8047,8 +8123,8 @@ static HWND s_platform_win32___findEntry(HWND w, int64_t id) {
 
 static void s_platform_win32___layOutNow(HWND w) {
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetWindowRect__result __ref13 = sngl_ccall_GetWindowRect_GetWindowRect(w, r);
-	r = __ref13.out1;
+	s_GetWindowRect__result __ref18 = sngl_ccall_GetWindowRect_GetWindowRect(w, r);
+	r = __ref18.out1;
 	s_platform_win32___place(w, (r.right - r.left), (r.bottom - r.top));
 }
 
@@ -11507,14 +11583,19 @@ type _gdipCreatePen1__result struct {
 	Out3   *unsafe.Pointer
 }
 
-type _setScrollInfo__result struct {
+type _sendTabItem__result struct {
 	Result int
-	Out2   cgo.ScrollInfo
+	Out3   cgo.TabItem
 }
 
 type _sendRect__result struct {
 	Result int
 	Out3   cgo.RECT
+}
+
+type _setScrollInfo__result struct {
+	Result int
+	Out2   cgo.ScrollInfo
 }
 
 type _getScrollInfo__result struct {
@@ -11999,9 +12080,7 @@ func _measure(w cgo.HWND) _Size {
 					}
 					mostY = __lt5
 				}
-				t := cgo.SIZE{}
-				t = cgo.SnglWin32TabsSize(w, mostX, mostY, t)
-				s = _Size{Cx: int(t.Cx), Cy: int(t.Cy)}
+				s = _tabsSize(w, k, mostX, mostY)
 			} else {
 				if k.Kind == 14 {
 					s = _boxMeasure(k)
@@ -12107,10 +12186,14 @@ func _measure(w cgo.HWND) _Size {
 														s.Cy = (cgo.SnglWin32LineHeight(w) + _px(8, k.Dpi))
 													}
 												} else {
-													if ((((k.Kind != 24) && (k.Kind != 21)) && (k.Kind != 15)) && (k.Kind != 16)) && (k.Kind != 6) {
-														n := cgo.SIZE{}
-														n = cgo.SnglWin32Natural(w, n)
-														s = _Size{Cx: int(n.Cx), Cy: int(n.Cy)}
+													if k.Kind == 17 {
+														s = _tableSize(w, k)
+													} else {
+														if ((((k.Kind != 24) && (k.Kind != 21)) && (k.Kind != 15)) && (k.Kind != 16)) && (k.Kind != 6) {
+															n := cgo.SIZE{}
+															n = cgo.SnglWin32Natural(w, n)
+															s = _Size{Cx: int(n.Cx), Cy: int(n.Cy)}
+														}
 													}
 												}
 											}
@@ -12309,7 +12392,15 @@ func _tabsSync(tabs cgo.HWND) {
 	k := m._ctls[tabs]
 	cgo.SendMessageW(tabs, 4873, 0, 0)
 	for i, page := range k.Kids {
-		cgo.SnglWin32TabInsert(tabs, i, page)
+		var __lt24 string
+		if func() bool { _, __ok := m._ctls[page]; return __ok }() {
+			__lt24 = m._ctls[page].Text
+		} else {
+			__lt24 = ""
+		}
+		item := cgo.TabItem{Mask: 1, PszText: __lt24}
+		__ref6 := _sendTabItem__result(cgo.SendTabItem(tabs, 4926, i, item))
+		item = __ref6.Out3
 	}
 	cgo.SendMessageW(tabs, 4876, k.Selected, 0)
 	_relayout(tabs)
@@ -12317,13 +12408,13 @@ func _tabsSync(tabs cgo.HWND) {
 
 func _tipChild(box cgo.HWND, child cgo.HWND, on bool) {
 	if func() bool { _, __ok := m._ctls[box]; return __ok }() && m._ctls[box].Tipped {
-		var __lt24 string
+		var __lt25 string
 		if on {
-			__lt24 = m._ctls[box].Tip
+			__lt25 = m._ctls[box].Tip
 		} else {
-			__lt24 = ""
+			__lt25 = ""
 		}
-		cgo.SnglWin32TipTool(box, child, __lt24)
+		cgo.SnglWin32TipTool(box, child, __lt25)
 	}
 }
 
@@ -12379,20 +12470,20 @@ func _boxMeasure(k _Ctl) _Size {
 	var mostX int = 0
 	var mostY int = 0
 	for _, it := range ks {
-		var __lt25 int
-		if it.Cx > mostX {
-			__lt25 = it.Cx
-		} else {
-			__lt25 = mostX
-		}
-		mostX = __lt25
 		var __lt26 int
-		if it.Cy > mostY {
-			__lt26 = it.Cy
+		if it.Cx > mostX {
+			__lt26 = it.Cx
 		} else {
-			__lt26 = mostY
+			__lt26 = mostX
 		}
-		mostY = __lt26
+		mostX = __lt26
+		var __lt27 int
+		if it.Cy > mostY {
+			__lt27 = it.Cy
+		} else {
+			__lt27 = mostY
+		}
+		mostY = __lt27
 	}
 	var sx int = 0
 	var sy int = 0
@@ -12405,22 +12496,22 @@ func _boxMeasure(k _Ctl) _Size {
 			var h int = 0
 			var i int = (r * cols)
 			for (i < n) && (i < ((r + 1) * cols)) {
-				var __lt27 int
+				var __lt28 int
 				if ks[i].Cy > h {
-					__lt27 = ks[i].Cy
+					__lt28 = ks[i].Cy
 				} else {
-					__lt27 = h
+					__lt28 = h
 				}
-				h = __lt27
+				h = __lt28
 				i += 1
 			}
-			var __lt28 int
+			var __lt29 int
 			if r > 0 {
-				__lt28 = gap
+				__lt29 = gap
 			} else {
-				__lt28 = 0
+				__lt29 = 0
 			}
-			sy += (h + __lt28)
+			sy += (h + __lt29)
 			r += 1
 		}
 	} else {
@@ -12430,52 +12521,52 @@ func _boxMeasure(k _Ctl) _Size {
 		} else {
 			if k.Mode == 2 {
 				sx = mostX
-				var __lt29 int
+				var __lt30 int
 				if k.FlowH > mostY {
-					__lt29 = k.FlowH
+					__lt30 = k.FlowH
 				} else {
-					__lt29 = mostY
+					__lt30 = mostY
 				}
-				sy = __lt29
+				sy = __lt30
 			} else {
 				if k.Mode == 4 {
 					if k.Vertical {
 						sx = mostX
-						var __lt30 int
-						if n > 0 {
-							__lt30 = ((n - 1) * gap)
-						} else {
-							__lt30 = 0
-						}
-						sy = ((n * mostY) + __lt30)
-					} else {
 						var __lt31 int
 						if n > 0 {
 							__lt31 = ((n - 1) * gap)
 						} else {
 							__lt31 = 0
 						}
-						sx = ((n * mostX) + __lt31)
+						sy = ((n * mostY) + __lt31)
+					} else {
+						var __lt32 int
+						if n > 0 {
+							__lt32 = ((n - 1) * gap)
+						} else {
+							__lt32 = 0
+						}
+						sx = ((n * mostX) + __lt32)
 						sy = mostY
 					}
 				} else {
 					for i, it := range ks {
 						if k.Vertical {
-							var __lt32 int
-							if i > 0 {
-								__lt32 = gap
-							} else {
-								__lt32 = 0
-							}
-							sy += (it.Cy + __lt32)
-						} else {
 							var __lt33 int
 							if i > 0 {
 								__lt33 = gap
 							} else {
 								__lt33 = 0
 							}
-							sx += (it.Cx + __lt33)
+							sy += (it.Cy + __lt33)
+						} else {
+							var __lt34 int
+							if i > 0 {
+								__lt34 = gap
+							} else {
+								__lt34 = 0
+							}
+							sx += (it.Cx + __lt34)
 						}
 					}
 					if k.Vertical {
@@ -12491,6 +12582,24 @@ func _boxMeasure(k _Ctl) _Size {
 	return _Size{Cx: (sx + (2 * e)), Cy: (sy + (2 * e))}
 }
 
+func _tabsSize(w cgo.HWND, k _Ctl, cx int, cy int) _Size {
+	r := cgo.RECT{Right: cx, Bottom: cy}
+	__ref7 := _sendRect__result(cgo.SendRect(w, 4904, 1, r))
+	r = __ref7.Out3
+	s := _Size{Cx: (r.Right - r.Left), Cy: (r.Bottom - r.Top)}
+	var n int = int(cgo.SendMessageW(w, 4868, 0, 0))
+	if n > 0 {
+		last := cgo.RECT{}
+		__ref8 := _sendRect__result(cgo.SendRect(w, 4874, (n - 1), last))
+		last = __ref8.Out3
+		var got int = __ref8.Result
+		if (got != 0) && ((last.Right + _px(4, k.Dpi)) > s.Cx) {
+			s.Cx = (last.Right + _px(4, k.Dpi))
+		}
+	}
+	return s
+}
+
 func _px(n int, dpi int) int {
 	if n >= 0 {
 		return (((n * dpi) + 48) / 96)
@@ -12502,6 +12611,42 @@ func _textSize(w cgo.HWND) _Size {
 	s := cgo.SIZE{}
 	s = cgo.SnglWin32TextSize(w, s)
 	return _Size{Cx: int(s.Cx), Cy: int(s.Cy)}
+}
+
+func _tableSize(w cgo.HWND, k _Ctl) _Size {
+	header := cgo.SnglWin32WindowOf(cgo.SendMessageW(w, 4127, 0, 0))
+	var cols int = int(cgo.SendMessageW(header, 4608, 0, 0))
+	var cx int = 0
+	var i int = 0
+	for i < cols {
+		cx += int(cgo.SendMessageW(w, 4125, i, 0))
+		i += 1
+	}
+	hr := cgo.RECT{}
+	if cols > 0 {
+		__ref9 := _sendRect__result(cgo.SendRect(header, 4615, 0, hr))
+		hr = __ref9.Out3
+	}
+	var __lt35 int
+	if (hr.Bottom - hr.Top) > 0 {
+		__lt35 = (hr.Bottom - hr.Top)
+	} else {
+		__lt35 = (cgo.SnglWin32LineHeight(w) + _px(8, k.Dpi))
+	}
+	var head int = __lt35
+	var rows int = int(cgo.SendMessageW(w, 4100, 0, 0))
+	var row int = (cgo.SnglWin32LineHeight(w) + _px(4, k.Dpi))
+	if rows > 0 {
+		ir := cgo.RECT{}
+		__ref10 := _sendRect__result(cgo.SendRect(w, 4110, 0, ir))
+		ir = __ref10.Out3
+		var got int = __ref10.Result
+		if (got != 0) && (ir.Bottom > ir.Top) {
+			row = (ir.Bottom - ir.Top)
+		}
+	}
+	cx += ((2 * cgo.GetSystemMetrics(45)) + cgo.GetSystemMetrics(2))
+	return _Size{Cx: cx, Cy: (((head + (rows * row)) + (2 * cgo.GetSystemMetrics(46))) + _px(2, k.Dpi))}
 }
 
 func _layOut(box cgo.HWND, width int, height int) {
@@ -12533,20 +12678,20 @@ func _layOut(box cgo.HWND, width int, height int) {
 	var padBottom int = (_px(k.PadBottom, k.Dpi) + e)
 	var padLeft int = (_px(k.PadLeft, k.Dpi) + e)
 	if k.Kind == 14 {
-		var __lt34 int
+		var __lt36 int
 		if k.ScrollV {
-			__lt34 = cgo.GetSystemMetrics(2)
+			__lt36 = cgo.GetSystemMetrics(2)
 		} else {
-			__lt34 = 0
+			__lt36 = 0
 		}
-		w -= __lt34
-		var __lt35 int
+		w -= __lt36
+		var __lt37 int
 		if k.ScrollH {
-			__lt35 = cgo.GetSystemMetrics(3)
+			__lt37 = cgo.GetSystemMetrics(3)
 		} else {
-			__lt35 = 0
+			__lt37 = 0
 		}
-		h -= __lt35
+		h -= __lt37
 	}
 	var x0 int = padLeft
 	var y0 int = padTop
@@ -12562,60 +12707,60 @@ func _layOut(box cgo.HWND, width int, height int) {
 		if k.ScrollV && (content.Cy > ih) {
 			ih = content.Cy
 		}
-		var __lt36 int
+		var __lt38 int
 		if (iw - pw) > 0 {
-			__lt36 = (iw - pw)
+			__lt38 = (iw - pw)
 		} else {
-			__lt36 = 0
+			__lt38 = 0
 		}
-		var maxX int = __lt36
-		var __lt37 int
-		if (ih - ph) > 0 {
-			__lt37 = (ih - ph)
-		} else {
-			__lt37 = 0
-		}
-		var maxY int = __lt37
+		var maxX int = __lt38
 		var __lt39 int
-		if k.PosX > maxX {
-			__lt39 = maxX
+		if (ih - ph) > 0 {
+			__lt39 = (ih - ph)
 		} else {
-			var __lt38 int
-			if k.PosX < 0 {
-				__lt38 = 0
-			} else {
-				__lt38 = k.PosX
-			}
-			__lt39 = __lt38
+			__lt39 = 0
 		}
-		var posX int = __lt39
+		var maxY int = __lt39
 		var __lt41 int
-		if k.PosY > maxY {
-			__lt41 = maxY
+		if k.PosX > maxX {
+			__lt41 = maxX
 		} else {
 			var __lt40 int
-			if k.PosY < 0 {
+			if k.PosX < 0 {
 				__lt40 = 0
 			} else {
-				__lt40 = k.PosY
+				__lt40 = k.PosX
 			}
 			__lt41 = __lt40
 		}
-		var posY int = __lt41
+		var posX int = __lt41
+		var __lt43 int
+		if k.PosY > maxY {
+			__lt43 = maxY
+		} else {
+			var __lt42 int
+			if k.PosY < 0 {
+				__lt42 = 0
+			} else {
+				__lt42 = k.PosY
+			}
+			__lt43 = __lt42
+		}
+		var posY int = __lt43
 		si := cgo.ScrollInfo{CbSize: 28, FMask: 31}
 		if k.ScrollV {
 			si.NMax = ((ih + (h - ph)) - 1)
 			si.NPage = h
 			si.NPos = posY
-			__ref6 := _setScrollInfo__result(cgo.SetScrollInfo(box, 1, si, true))
-			si = __ref6.Out2
+			__ref11 := _setScrollInfo__result(cgo.SetScrollInfo(box, 1, si, true))
+			si = __ref11.Out2
 		}
 		if k.ScrollH {
 			si.NMax = ((iw + (w - pw)) - 1)
 			si.NPage = w
 			si.NPos = posX
-			__ref7 := _setScrollInfo__result(cgo.SetScrollInfo(box, 0, si, true))
-			si = __ref7.Out2
+			__ref12 := _setScrollInfo__result(cgo.SetScrollInfo(box, 0, si, true))
+			si = __ref12.Out2
 		}
 		x0 -= posX
 		y0 -= posY
@@ -12673,13 +12818,13 @@ func _layOut(box cgo.HWND, width int, height int) {
 			}
 		}
 	}
-	var __lt42 int
+	var __lt44 int
 	if n > 0 {
-		__lt42 = n
+		__lt44 = n
 	} else {
-		__lt42 = 1
+		__lt44 = 1
 	}
-	batch := cgo.BeginDeferWindowPos(__lt42)
+	batch := cgo.BeginDeferWindowPos(__lt44)
 	for i, it := range ks {
 		r := at[i]
 		var ch int = (r.B - r.T)
@@ -12781,34 +12926,34 @@ func _laidKids(k _Ctl) []_Kid {
 }
 
 func _columnsOf(k _Ctl) int {
-	var __lt43 int
+	var __lt45 int
 	if k.Columns > 0 {
-		__lt43 = k.Columns
+		__lt45 = k.Columns
 	} else {
-		__lt43 = 1
+		__lt45 = 1
 	}
-	return __lt43
+	return __lt45
 }
 
 func _edge(k _Ctl) int {
-	var __lt44 int
+	var __lt46 int
 	if k.Framed {
-		__lt44 = _px(2, k.Dpi)
+		__lt46 = _px(2, k.Dpi)
 	} else {
-		__lt44 = 0
+		__lt46 = 0
 	}
-	return __lt44
+	return __lt46
 }
 
 func _reach(box cgo.HWND) {
 	k := m._ctls[box]
-	var __lt45 bool
+	var __lt47 bool
 	if k.ScrollV {
-		__lt45 = (k.PosY >= (k.MaxY - (k.PageY / 2)))
+		__lt47 = (k.PosY >= (k.MaxY - (k.PageY / 2)))
 	} else {
-		__lt45 = (k.PosX >= (k.MaxX - (k.PageX / 2)))
+		__lt47 = (k.PosX >= (k.MaxX - (k.PageX / 2)))
 	}
-	ending := __lt45
+	ending := __lt47
 	if ending && !k.AtEnd {
 		__entryKey106 := box
 		__entry107 := m._ctls[__entryKey106]
@@ -12836,13 +12981,13 @@ func _grid(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, gap int) []_Rect {
 		var h int = 0
 		var i int = (r * cols)
 		for (i < n) && (i < ((r + 1) * cols)) {
-			var __lt46 int
+			var __lt48 int
 			if ks[i].Cy > h {
-				__lt46 = ks[i].Cy
+				__lt48 = ks[i].Cy
 			} else {
-				__lt46 = h
+				__lt48 = h
 			}
-			h = __lt46
+			h = __lt48
 			i += 1
 		}
 		i = (r * cols)
@@ -12870,43 +13015,43 @@ func _flow(ks []_Kid, x0 int, y0 int, iw int, gap int) _Flowed {
 		}
 		at = append(at, _Rect{L: x, T: y, R: (x + it.Cx), B: (y + it.Cy)})
 		x += (it.Cx + gap)
-		var __lt47 int
+		var __lt49 int
 		if it.Cy > h {
-			__lt47 = it.Cy
+			__lt49 = it.Cy
 		} else {
-			__lt47 = h
+			__lt49 = h
 		}
-		h = __lt47
+		h = __lt49
 	}
-	var __lt48 int
+	var __lt50 int
 	if len(ks) > 0 {
-		__lt48 = ((y + h) - y0)
+		__lt50 = ((y + h) - y0)
 	} else {
-		__lt48 = 0
+		__lt50 = 0
 	}
-	return _Flowed{At: at, H: __lt48}
+	return _Flowed{At: at, H: __lt50}
 }
 
 func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
 	var n int = len(ks)
-	var __lt49 int
+	var __lt51 int
 	if k.Vertical {
-		__lt49 = ih
+		__lt51 = ih
 	} else {
-		__lt49 = iw
+		__lt51 = iw
 	}
-	var avail int = (__lt49 - (gap * (n - 1)))
+	var avail int = (__lt51 - (gap * (n - 1)))
 	size := []int{}
 	var total int = 0
 	var flex float64 = 0.0
 	for _, it := range ks {
-		var __lt50 int
+		var __lt52 int
 		if k.Vertical {
-			__lt50 = it.Cy
+			__lt52 = it.Cy
 		} else {
-			__lt50 = it.Cx
+			__lt52 = it.Cx
 		}
-		var along int = __lt50
+		var along int = __lt52
 		size = append(size, along)
 		total += along
 		flex += it.Flex
@@ -12932,87 +13077,87 @@ func _line(k _Ctl, ks []_Kid, x0 int, y0 int, iw int, ih int, gap int) []_Rect {
 			size[last] += (spare - given)
 		}
 	}
-	var __lt51 int
+	var __lt53 int
 	if k.Vertical {
-		__lt51 = y0
+		__lt53 = y0
 	} else {
-		__lt51 = x0
+		__lt53 = x0
 	}
-	var pos int = __lt51
-	var __lt52 int
+	var pos int = __lt53
+	var __lt54 int
 	if k.Vertical {
-		__lt52 = iw
+		__lt54 = iw
 	} else {
-		__lt52 = ih
+		__lt54 = ih
 	}
-	var room int = __lt52
+	var room int = __lt54
 	at := []_Rect{}
 	for i, it := range ks {
-		var __lt53 bool
+		var __lt55 bool
 		if k.Vertical {
-			__lt53 = (m._ctls[it.W].ExactW > 0)
+			__lt55 = (m._ctls[it.W].ExactW > 0)
 		} else {
-			__lt53 = (m._ctls[it.W].ExactH > 0)
+			__lt55 = (m._ctls[it.W].ExactH > 0)
 		}
-		sized := __lt53
+		sized := __lt55
 		var across int = room
 		var off int = 0
 		if (k.Align != 0) || sized {
-			var __lt54 int
+			var __lt56 int
 			if k.Vertical {
-				__lt54 = it.Cx
+				__lt56 = it.Cx
 			} else {
-				__lt54 = it.Cy
+				__lt56 = it.Cy
 			}
-			var want int = __lt54
-			var __lt55 int
-			if want < room {
-				__lt55 = want
-			} else {
-				__lt55 = room
-			}
-			across = __lt55
+			var want int = __lt56
 			var __lt57 int
-			if k.Align == 2 {
-				__lt57 = ((room - across) / 2)
+			if want < room {
+				__lt57 = want
 			} else {
-				var __lt56 int
-				if k.Align == 3 {
-					__lt56 = (room - across)
-				} else {
-					__lt56 = 0
-				}
-				__lt57 = __lt56
+				__lt57 = room
 			}
-			off = __lt57
+			across = __lt57
+			var __lt59 int
+			if k.Align == 2 {
+				__lt59 = ((room - across) / 2)
+			} else {
+				var __lt58 int
+				if k.Align == 3 {
+					__lt58 = (room - across)
+				} else {
+					__lt58 = 0
+				}
+				__lt59 = __lt58
+			}
+			off = __lt59
 		}
-		var __lt58 int
-		if k.Vertical {
-			__lt58 = (x0 + off)
-		} else {
-			__lt58 = pos
-		}
-		var x int = __lt58
-		var __lt59 int
-		if k.Vertical {
-			__lt59 = pos
-		} else {
-			__lt59 = (y0 + off)
-		}
-		var y int = __lt59
 		var __lt60 int
 		if k.Vertical {
-			__lt60 = across
+			__lt60 = (x0 + off)
 		} else {
-			__lt60 = size[i]
+			__lt60 = pos
 		}
+		var x int = __lt60
 		var __lt61 int
 		if k.Vertical {
-			__lt61 = size[i]
+			__lt61 = pos
 		} else {
-			__lt61 = across
+			__lt61 = (y0 + off)
 		}
-		at = append(at, _Rect{L: x, T: y, R: (x + __lt60), B: (y + __lt61)})
+		var y int = __lt61
+		var __lt62 int
+		if k.Vertical {
+			__lt62 = across
+		} else {
+			__lt62 = size[i]
+		}
+		var __lt63 int
+		if k.Vertical {
+			__lt63 = size[i]
+		} else {
+			__lt63 = across
+		}
+		at = append(at, _Rect{L: x, T: y, R: (x + __lt62), B: (y + __lt63)})
 		pos += (size[i] + gap)
 	}
 	return at
@@ -13073,19 +13218,19 @@ func _place(w cgo.HWND, cw int, ch int) {
 }
 
 func _channel(v int) int {
-	var __lt63 int
+	var __lt65 int
 	if v < 0 {
-		__lt63 = 0
+		__lt65 = 0
 	} else {
-		var __lt62 int
+		var __lt64 int
 		if v > 255 {
-			__lt62 = 255
+			__lt64 = 255
 		} else {
-			__lt62 = v
+			__lt64 = v
 		}
-		__lt63 = __lt62
+		__lt65 = __lt64
 	}
-	return __lt63
+	return __lt65
 }
 
 func _addEntry(m__r3 cgo.Menu, e cgo.HWND) {
@@ -13116,13 +13261,13 @@ func _flexOf(w cgo.HWND) float64 {
 	for _, child := range k.Kids {
 		if (func() bool { _, __ok := m._ctls[child]; return __ok }() && !m._ctls[child].OffProp) && !m._ctls[child].OffLook {
 			var f float64 = _flexOf(child)
-			var __lt64 float64
+			var __lt66 float64
 			if f > most {
-				__lt64 = f
+				__lt66 = f
 			} else {
-				__lt64 = most
+				__lt66 = most
 			}
-			most = __lt64
+			most = __lt66
 		}
 	}
 	return most
@@ -13131,8 +13276,8 @@ func _flexOf(w cgo.HWND) float64 {
 func _layOutTabs(tabs cgo.HWND, w int, h int) {
 	k := m._ctls[tabs]
 	r := cgo.RECT{Right: w, Bottom: h}
-	__ref8 := _sendRect__result(cgo.SendRect(tabs, 4904, 0, r))
-	r = __ref8.Out3
+	__ref13 := _sendRect__result(cgo.SendRect(tabs, 4904, 0, r))
+	r = __ref13.Out3
 	for i, page := range k.Kids {
 		if i == k.Selected {
 			cgo.SetWindowPos(page, nil, r.Left, r.Top, (r.Right - r.Left), (r.Bottom - r.Top), 80)
@@ -13145,19 +13290,19 @@ func _layOutTabs(tabs cgo.HWND, w int, h int) {
 }
 
 func _entryFlags(k _Ctl) int {
-	var __lt65 int
+	var __lt67 int
 	if k.Disabled {
-		__lt65 = 1
+		__lt67 = 1
 	} else {
-		__lt65 = 0
+		__lt67 = 0
 	}
-	var __lt66 int
+	var __lt68 int
 	if k.Checked {
-		__lt66 = 8
+		__lt68 = 8
 	} else {
-		__lt66 = 0
+		__lt68 = 0
 	}
-	return (__lt65 + __lt66)
+	return (__lt67 + __lt68)
 }
 
 func _hooked() map[cgo.HWND]_Ctl {
@@ -13167,13 +13312,13 @@ func _hooked() map[cgo.HWND]_Ctl {
 
 func _boxProc(w cgo.HWND, msg int, wp int, lp int) int {
 	has := func() bool { _, __ok := m._ctls[w]; return __ok }()
-	var __lt67 int
+	var __lt69 int
 	if has {
-		__lt67 = m._ctls[w].Kind
+		__lt69 = m._ctls[w].Kind
 	} else {
-		__lt67 = -1
+		__lt69 = -1
 	}
-	var kind int = __lt67
+	var kind int = __lt69
 	if msg == 273 {
 		return _command(w, msg, wp, lp, kind)
 	}
@@ -13187,8 +13332,8 @@ func _boxProc(w cgo.HWND, msg int, wp int, lp int) int {
 		b := _inherited(w)
 		if b != nil {
 			r := cgo.RECT{}
-			__ref9 := GetClientRect__result(cgo.GetClientRect(w, r))
-			r = __ref9.Out1
+			__ref14 := GetClientRect__result(cgo.GetClientRect(w, r))
+			r = __ref14.Out1
 			cgo.SnglWin32Fill(w, cgo.SnglWin32DcOf(wp), r, b)
 			return 1
 		}
@@ -13222,13 +13367,13 @@ func _boxProc(w cgo.HWND, msg int, wp int, lp int) int {
 			if (up != nil) && func() bool { _, __ok := m._ctls[cgo.HWND((*(up)))]; return __ok }() {
 				fit = m._ctls[cgo.HWND((*(up)))].Fit
 			}
-			var __lt68 *cgo.Brush
+			var __lt70 *cgo.Brush
 			if k.Kind == 21 {
-				__lt68 = _inherited(w)
+				__lt70 = _inherited(w)
 			} else {
-				__lt68 = nil
+				__lt70 = nil
 			}
-			backdrop := __lt68
+			backdrop := __lt70
 			return cgo.SnglWin32Paint(w, msg, wp, k.Brush, backdrop, fit, k.PadTop, k.PadRight, k.PadLeft)
 		}
 	}
@@ -13262,13 +13407,13 @@ func _boxProc(w cgo.HWND, msg int, wp int, lp int) int {
 		return _notified(w, msg, wp, lp)
 	}
 	if ((msg == 277) || (msg == 276)) && (kind == 14) {
-		var __lt69 int
+		var __lt71 int
 		if msg == 277 {
-			__lt69 = 1
+			__lt71 = 1
 		} else {
-			__lt69 = 0
+			__lt71 = 0
 		}
-		_scrolled(w, __lt69, _loword(wp))
+		_scrolled(w, __lt71, _loword(wp))
 		return 0
 	}
 	if (msg == 522) && (kind == 14) {
@@ -13322,26 +13467,26 @@ func _boxProc(w cgo.HWND, msg int, wp int, lp int) int {
 }
 
 func _controlProc(w cgo.HWND, msg int, wp int, lp int, id int, data int) int {
-	var __lt70 int
+	var __lt72 int
 	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		__lt70 = m._ctls[w].Kind
+		__lt72 = m._ctls[w].Kind
 	} else {
-		__lt70 = -1
+		__lt72 = -1
 	}
-	var kind int = __lt70
+	var kind int = __lt72
 	activates := (((kind == 4) && func() bool { _, __ok := m._on[w]; return __ok }()) && m._on[w].Activates)
 	if ((msg == 135) && activates) && (lp != 0) {
 		m__r5 := cgo.MsgOf(lp)
 		var what int = int(cgo.MSGMessage(m__r5))
 		if ((what == 256) || (what == 258)) && (int(cgo.MSGWParam(m__r5)) == 13) {
 			var r int = cgo.DefSubclassProc(w, msg, wp, lp)
-			var __lt71 int
+			var __lt73 int
 			if ((r / 4) % 2) == 1 {
-				__lt71 = r
+				__lt73 = r
 			} else {
-				__lt71 = (r + 4)
+				__lt73 = (r + 4)
 			}
-			return __lt71
+			return __lt73
 		}
 	}
 	if ((msg == 256) && (wp == 13)) && activates {
@@ -13368,13 +13513,13 @@ func _controlProc(w cgo.HWND, msg int, wp int, lp int, id int, data int) int {
 }
 
 func _kidCount(w cgo.HWND) int {
-	var __lt72 int
+	var __lt74 int
 	if func() bool { _, __ok := m._ctls[w]; return __ok }() {
-		__lt72 = len(m._ctls[w].Kids)
+		__lt74 = len(m._ctls[w].Kids)
 	} else {
-		__lt72 = 0
+		__lt74 = 0
 	}
-	return __lt72
+	return __lt74
 }
 
 func _kidAt(w cgo.HWND, at int) cgo.HWND {
@@ -13519,24 +13664,24 @@ func _pictureLoaded(w cgo.HWND) {
 }
 
 func _signed16(n int) int {
-	var __lt73 int
+	var __lt75 int
 	if n >= 32768 {
-		__lt73 = (n - 65536)
+		__lt75 = (n - 65536)
 	} else {
-		__lt73 = n
+		__lt75 = n
 	}
-	return __lt73
+	return __lt75
 }
 
 func _loword(n int) int {
 	var lo int = (n % 65536)
-	var __lt74 int
+	var __lt76 int
 	if lo < 0 {
-		__lt74 = (lo + 65536)
+		__lt76 = (lo + 65536)
 	} else {
-		__lt74 = lo
+		__lt76 = lo
 	}
-	return __lt74
+	return __lt76
 }
 
 func _open(href string) {
@@ -13625,8 +13770,8 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 	}
 	k := m._ctls[w]
 	si := cgo.ScrollInfo{CbSize: 28, FMask: 23}
-	__ref10 := _getScrollInfo__result(cgo.GetScrollInfo(w, bar, si))
-	si = __ref10.Out2
+	__ref15 := _getScrollInfo__result(cgo.GetScrollInfo(w, bar, si))
+	si = __ref15.Out2
 	var pos int = si.NPos
 	var line int = _px(20, k.Dpi)
 	if request == 0 {
@@ -13658,33 +13803,33 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 			}
 		}
 	}
-	var __lt75 int
-	if bar == 1 {
-		__lt75 = k.MaxY
-	} else {
-		__lt75 = k.MaxX
-	}
-	var most int = __lt75
 	var __lt77 int
-	if pos > most {
-		__lt77 = most
-	} else {
-		var __lt76 int
-		if pos < 0 {
-			__lt76 = 0
-		} else {
-			__lt76 = pos
-		}
-		__lt77 = __lt76
-	}
-	pos = __lt77
-	var __lt78 int
 	if bar == 1 {
-		__lt78 = k.PosY
+		__lt77 = k.MaxY
 	} else {
-		__lt78 = k.PosX
+		__lt77 = k.MaxX
 	}
-	var was int = __lt78
+	var most int = __lt77
+	var __lt79 int
+	if pos > most {
+		__lt79 = most
+	} else {
+		var __lt78 int
+		if pos < 0 {
+			__lt78 = 0
+		} else {
+			__lt78 = pos
+		}
+		__lt79 = __lt78
+	}
+	pos = __lt79
+	var __lt80 int
+	if bar == 1 {
+		__lt80 = k.PosY
+	} else {
+		__lt80 = k.PosX
+	}
+	var was int = __lt80
 	if pos == was {
 		return
 	}
@@ -13701,20 +13846,20 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 		m._ctls[__entryKey126] = __entry127
 	}
 	cgo.SetScrollPos(w, bar, pos, true)
-	var __lt79 int
+	var __lt81 int
 	if bar == 0 {
-		__lt79 = by
+		__lt81 = by
 	} else {
-		__lt79 = 0
+		__lt81 = 0
 	}
-	var dx int = __lt79
-	var __lt80 int
+	var dx int = __lt81
+	var __lt82 int
 	if bar == 1 {
-		__lt80 = by
+		__lt82 = by
 	} else {
-		__lt80 = 0
+		__lt82 = 0
 	}
-	var dy int = __lt80
+	var dy int = __lt82
 	for _, child := range k.Kids {
 		if func() bool { _, __ok := m._ctls[child]; return __ok }() {
 			__entryKey128 := child
@@ -13735,7 +13880,7 @@ func _scrolled(w cgo.HWND, bar int, request int) {
 			m._ctls[__entryKey134] = __entry135
 		}
 	}
-	cgo.SnglWin32ScrollChildren(w, dx, dy)
+	cgo.ScrollWindowEx(w, dx, dy, nil, nil, nil, nil, 7)
 	_reach(w)
 }
 
@@ -13749,29 +13894,29 @@ func _wheeled(w cgo.HWND, delta int) {
 	__entry137 := m._ctls[__entryKey136]
 	__entry137.Wheel = (turned - (lines * 120))
 	m._ctls[__entryKey136] = __entry137
-	var __lt81 int
+	var __lt83 int
 	if m._ctls[w].ScrollV {
-		__lt81 = 1
+		__lt83 = 1
 	} else {
-		__lt81 = 0
+		__lt83 = 0
 	}
-	var bar int = __lt81
+	var bar int = __lt83
 	var i int = 0
-	var __lt82 int
+	var __lt84 int
 	if lines < 0 {
-		__lt82 = (0 - lines)
+		__lt84 = (0 - lines)
 	} else {
-		__lt82 = lines
+		__lt84 = lines
 	}
-	var count int = __lt82
+	var count int = __lt84
 	for i < count {
-		var __lt83 int
+		var __lt85 int
 		if lines < 0 {
-			__lt83 = 1
+			__lt85 = 1
 		} else {
-			__lt83 = 0
+			__lt85 = 0
 		}
-		_scrolled(w, bar, __lt83)
+		_scrolled(w, bar, __lt85)
 		i += 1
 	}
 }
@@ -13791,42 +13936,42 @@ func _showModal(m__r4 cgo.HWND) {
 	}
 	d := cgo.HWND((*(dialog)))
 	root := cgo.GetAncestor(m__r4, 2)
-	var __lt84 cgo.Found
+	var __lt86 cgo.Found
 	if func() bool { _, __ok := m._ctls[root]; return __ok }() {
-		__lt84 = cgo.Found(root)
+		__lt86 = cgo.Found(root)
 	} else {
-		__lt84 = nil
+		__lt86 = nil
 	}
-	owner := snglSome(__lt84)
+	owner := snglSome(__lt86)
 	was := cgo.GetWindow(d, 4)
 	if k.Open {
 		if cgo.IsWindowVisible(d) != 0 {
 			return
 		}
 		cgo.SnglWin32SetOwner(d, owner)
-		var __lt85 int
+		var __lt87 int
 		if owner != nil {
-			__lt85 = cgo.SnglWin32DpiOf(cgo.HWND((*(owner))))
+			__lt87 = cgo.SnglWin32DpiOf(cgo.HWND((*(owner))))
 		} else {
-			__lt85 = cgo.SnglWin32DpiOf(cgo.SnglWin32Nothing())
+			__lt87 = cgo.SnglWin32DpiOf(cgo.SnglWin32Nothing())
 		}
-		_refresh(d, __lt85)
+		_refresh(d, __lt87)
 		s := _measure(d)
 		var dpi int = m._ctls[d].Dpi
-		var __lt86 int
+		var __lt88 int
 		if s.Cx < _px(240, dpi) {
-			__lt86 = _px(240, dpi)
+			__lt88 = _px(240, dpi)
 		} else {
-			__lt86 = s.Cx
+			__lt88 = s.Cx
 		}
-		var cw int = __lt86
-		var __lt87 int
+		var cw int = __lt88
+		var __lt89 int
 		if s.Cy < _px(80, dpi) {
-			__lt87 = _px(80, dpi)
+			__lt89 = _px(80, dpi)
 		} else {
-			__lt87 = s.Cy
+			__lt89 = s.Cy
 		}
-		var ch int = __lt87
+		var ch int = __lt89
 		frame := cgo.SIZE{}
 		frame = cgo.SnglWin32FrameSize(d, cw, ch, frame)
 		var ww int = int(frame.Cx)
@@ -13835,9 +13980,9 @@ func _showModal(m__r4 cgo.HWND) {
 		var y int = 0
 		if owner != nil {
 			o := cgo.RECT{}
-			__ref11 := GetWindowRect__result(cgo.GetWindowRect(cgo.HWND((*(owner))), o))
-			o = __ref11.Out1
-			if __ref11.Result != 0 {
+			__ref16 := GetWindowRect__result(cgo.GetWindowRect(cgo.HWND((*(owner))), o))
+			o = __ref16.Out1
+			if __ref16.Result != 0 {
 				x = (o.Left + (((o.Right - o.Left) - ww) / 2))
 				y = (o.Top + (((o.Bottom - o.Top) - wh) / 2))
 			}
@@ -13960,13 +14105,13 @@ func _color(src cgo.HWND, dc cgo.HDC, otherwise int) int {
 		cgo.SetTextColor(dc, ((((k.Color / 65536) % 256) + (((k.Color / 256) % 256) * 256)) + ((k.Color % 256) * 65536)))
 	} else {
 		if k.Kind == 11 {
-			var __lt88 int
+			var __lt90 int
 			if cgo.IsWindowEnabled(src) != 0 {
-				__lt88 = cgo.GetSysColor(26)
+				__lt90 = cgo.GetSysColor(26)
 			} else {
-				__lt88 = cgo.GetSysColor(17)
+				__lt90 = cgo.GetSysColor(17)
 			}
-			cgo.SetTextColor(dc, __lt88)
+			cgo.SetTextColor(dc, __lt90)
 		}
 	}
 	b := k.Brush
@@ -14009,26 +14154,26 @@ func _tabChosen(tabs cgo.HWND) {
 func _fit(top cgo.HWND) {
 	s := _measure(top)
 	r := cgo.RECT{}
-	__ref12 := GetClientRect__result(cgo.GetClientRect(top, r))
-	r = __ref12.Out1
+	__ref17 := GetClientRect__result(cgo.GetClientRect(top, r))
+	r = __ref17.Out1
 	var w int = int((r.Right - r.Left))
 	var h int = int((r.Bottom - r.Top))
 	if (s.Cx <= w) && (s.Cy <= h) {
 		return
 	}
-	var __lt89 int
+	var __lt91 int
 	if s.Cx > w {
-		__lt89 = s.Cx
+		__lt91 = s.Cx
 	} else {
-		__lt89 = w
+		__lt91 = w
 	}
-	var __lt90 int
+	var __lt92 int
 	if s.Cy > h {
-		__lt90 = s.Cy
+		__lt92 = s.Cy
 	} else {
-		__lt90 = h
+		__lt92 = h
 	}
-	cgo.SnglWin32ResizeClient(top, __lt89, __lt90)
+	cgo.SnglWin32ResizeClient(top, __lt91, __lt92)
 }
 
 func _forget(w cgo.HWND) {
@@ -14080,8 +14225,8 @@ func _findEntry(w cgo.HWND, id int) *cgo.Found {
 
 func _layOutNow(w cgo.HWND) {
 	r := cgo.RECT{}
-	__ref13 := GetWindowRect__result(cgo.GetWindowRect(w, r))
-	r = __ref13.Out1
+	__ref18 := GetWindowRect__result(cgo.GetWindowRect(w, r))
+	r = __ref18.Out1
 	_place(w, (r.Right - r.Left), (r.Bottom - r.Top))
 }
 
@@ -14725,7 +14870,7 @@ window.__sngl_boot = () => {
 -- run/c/gtk4 --
 pass sha256:ca7346f3097e5cf0e478c8ea4449d0a8
 -- run/c/win32 --
-pass sha256:0ce4aa1d108df031d097ac57df3f824c
+pass sha256:ed04a035c3ef70c00a74fbe80ac72503
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
@@ -14733,6 +14878,6 @@ pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
 pass sha256:858c375d5c77f59304352d3454946d43
 -- run/go/win32 --
-pass sha256:cbdba0dbfe318caeeb3b05102d452445
+pass sha256:ef7c1b03097ea2df8771b4bbf20bea46
 -- run/none/html --
 pass sha256:f421c9a95ab06abbbce1bd120fb70d21

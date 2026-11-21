@@ -342,10 +342,6 @@ func _sendSize(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] s re
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PictureSize")]
 func _pictureSize(w api.HWND, out ref[api.SIZE]) int
 
-#[c.native("sngl_win32_tabs_size")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TabsSize")]
-func _tabsFrame(w api.HWND, cx int, cy int, out ref[api.SIZE])
-
 #[c.native("sngl_win32_flow_height")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FlowHeight")]
 func _flowHeight(w api.HWND, width int) int
@@ -361,14 +357,6 @@ func _dpiOf(w api.HWND) int
 #[c.native("sngl_win32_resize_client")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ResizeClient")]
 func _resizeClient(top api.HWND, w int, h int)
-
-#[c.native("sngl_win32_scroll_children")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ScrollChildren")]
-func _scrollChildren(w api.HWND, dx int, dy int)
-
-#[c.native("sngl_win32_tab_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TabInsert")]
-func _tabInsert(tabs api.HWND, at int, page api.HWND)
 
 #[c.native("sngl_win32_nothing")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Nothing")]
@@ -389,6 +377,72 @@ func _dividerStyle(w api.HWND, vertical bool)
 #[c.native("sngl_win32_scroll_style")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ScrollStyle")]
 func _scrollStyle(w api.HWND, vertical bool, horizontal bool)
+
+// A tabs' size whose largest page is cx by cy: that, and the strip of tabs
+// over it, as wide as its tabs.
+func _tabsSize(w api.HWND, k _Ctl, cx int, cy int) _Size {
+    var r = api.RECT{left=0, top=0, right=cx, bottom=cy}
+    _sendRect(w, 4904, 1, &r)
+    var s = _Size{cx=r.right - r.left, cy=r.bottom - r.top}
+    var n = int(api.SendMessage(w, 4868, 0, 0))
+    if n > 0 {
+        var last = api.RECT{left=0, top=0, right=0, bottom=0}
+        var got = _sendRect(w, 4874, n - 1, &last)
+        if got != 0 && last.right + _px(4, k.dpi) > s.cx {
+            s.cx = last.right + _px(4, k.dpi)
+        }
+    }
+    return s
+}
+
+// A table's size: every column, and every row under its header.
+func _tableSize(w api.HWND, k _Ctl) _Size {
+    var header = _windowOf(api.SendMessage(w, 4127, 0, 0))
+    var cols = int(api.SendMessage(header, 4608, 0, 0))
+    var cx = 0
+    var i = 0
+    for i < cols {
+        cx += int(api.SendMessage(w, 4125, i, 0))
+        i += 1
+    }
+    var hr = api.RECT{left=0, top=0, right=0, bottom=0}
+    if cols > 0 {
+        _sendRect(header, 4615, 0, &hr)
+    }
+    var head = hr.bottom - hr.top > 0 ? hr.bottom - hr.top : _lineHeight(w) + _px(8, k.dpi)
+    var rows = int(api.SendMessage(w, 4100, 0, 0))
+    var row = _lineHeight(w) + _px(4, k.dpi)
+    if rows > 0 {
+        var ir = api.RECT{left=0, top=0, right=0, bottom=0}
+        var got = _sendRect(w, 4110, 0, &ir)
+        if got != 0 && ir.bottom > ir.top {
+            row = ir.bottom - ir.top
+        }
+    }
+    cx += 2 * api.GetSystemMetrics(45) + api.GetSystemMetrics(api.SM_CXVSCROLL)
+    return _Size{cx=cx, cy=head + rows * row + 2 * api.GetSystemMetrics(46) + _px(2, k.dpi)}
+}
+
+// What a tab is titled by, as TCM_INSERTITEMW takes it.
+#[c.native("TCITEMW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.TabItem")]
+struct _TabItem {
+    mask    api.UINT
+    pszText c.utf16
+}
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendTabItem")]
+func _sendTabItem(tabs api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] item ref[_TabItem]) api.LRESULT
+
+// What a scroll holds moved by dx, dy, and what it uncovers painted.
+#[c.native("HRGN", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Region")]
+struct _Region {}
+
+#[c.native("ScrollWindowEx")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ScrollWindowEx")]
+func _scrollWindow(w api.HWND, dx int, dy int, scroll option[_ConstRect], clip option[_ConstRect], update option[_Region], updated option[_RectPtr], flags api.UINT) int
 
 // --- Layout ---
 
@@ -558,9 +612,7 @@ func _measure(w api.HWND) _Size {
             mostX = p.cx > mostX ? p.cx : mostX
             mostY = p.cy > mostY ? p.cy : mostY
         }
-        var t = api.SIZE{cx=0, cy=0}
-        _tabsFrame(w, mostX, mostY, &t)
-        s = _Size{cx=int(t.cx), cy=int(t.cy)}
+        s = _tabsSize(w, k, mostX, mostY)
     } else if k.kind == _kScroll {
         s = _boxMeasure(k)
         var most = _px(200, k.dpi)
@@ -616,6 +668,8 @@ func _measure(w api.HWND) _Size {
         if s.cy < _lineHeight(w) + _px(8, k.dpi) {
             s.cy = _lineHeight(w) + _px(8, k.dpi)
         }
+    } else if k.kind == _kTable {
+        s = _tableSize(w, k)
     } else if k.kind != _kSpan && k.kind != _kPicture && k.kind != _kModal && k.kind != _kEntry && k.kind != _kSpacer {
         var n = api.SIZE{cx=0, cy=0}
         _natural(w, &n)
@@ -1122,7 +1176,7 @@ func _scrolled(w api.HWND, bar int, request int) {
             _ctls[child].placedB += dy
         }
     }
-    _scrollChildren(w, dx, dy)
+    _scrollWindow(w, dx, dy, null, null, null, null, api.SW_SCROLLCHILDREN + api.SW_INVALIDATE + api.SW_ERASE)
     _reach(w)
 }
 
@@ -1153,7 +1207,8 @@ func _tabsSync(tabs api.HWND) {
     var k = _ctls[tabs]
     api.SendMessage(tabs, 4873, 0, 0)
     for var i, page = k.kids {
-        _tabInsert(tabs, i, page)
+        var item = _TabItem{mask=1, pszText=_ctls.contains(page) ? _ctls[page].text : ""}
+        _sendTabItem(tabs, 4926, i, &item)
     }
     api.SendMessage(tabs, 4876, k.selected, 0)
     _relayout(tabs)

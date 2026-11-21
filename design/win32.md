@@ -179,7 +179,7 @@ control is a call from C into Go in a Go program; a relayout of 250 cards
 takes 15-18 ms a round in C and 19-24 ms in Go, against 14-17 and 16-20
 with the procedures in C (`tmp/realbench`, November 2026).
 
-**Where the rest of the runtime is held** (November 2026, 2,773 lines, from
+**Where the rest of the runtime is held** (November 2026, 2,716 lines, from
 3,487 before the procedures moved; functions by what keeps them C):
 
 - **what reads `SetWindowLongPtrW` or `GetWindowLongPtrW`**, macros on 386
@@ -542,7 +542,10 @@ to the picture's 475 px as each arrived, moving every card in the grid
   75 px wide;
 - an entry, a text area, a progress bar and a date picker are fixed metrics,
   in lines of their font where they have lines;
-- a table, a tree and tabs ask the control for their rows and columns;
+- a table, a tree and tabs ask the control for their rows and columns: a
+  table's columns and rows and tabs' strip in SNGL (`_tableSize`,
+  `_tabsSize`), a tree's rows in C, whose labels it reads into a wide
+  buffer;
 - a canvas is the size it was given;
 - a flow is its words wrapped to 240 px (`design/markup.md`);
 - a box is `box_measure`, which follows its mode:

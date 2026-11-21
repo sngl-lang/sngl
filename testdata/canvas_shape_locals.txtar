@@ -71,15 +71,17 @@ typedef struct s_platform_win32_api__RECT s_platform_win32_api__RECT;
 typedef struct s_GetClientRect__result s_GetClientRect__result;
 typedef struct s__gdipCreateSolidFill__result s__gdipCreateSolidFill__result;
 typedef struct s__gdipCreatePen1__result s__gdipCreatePen1__result;
+typedef struct s_platform_win32___TabItem s_platform_win32___TabItem;
+typedef struct s__sendTabItem__result s__sendTabItem__result;
 typedef struct s_platform_win32___Kid s_platform_win32___Kid;
 typedef struct sngl_list__Kid sngl_list__Kid;
+typedef struct s__sendRect__result s__sendRect__result;
 typedef struct s_platform_win32___ScrollInfo s_platform_win32___ScrollInfo;
 typedef struct s__setScrollInfo__result s__setScrollInfo__result;
 typedef struct s_platform_win32___Rect s_platform_win32___Rect;
 typedef struct sngl_list__Rect sngl_list__Rect;
 typedef struct s_platform_win32___Flowed s_platform_win32___Flowed;
 typedef struct sngl_list_int sngl_list_int;
-typedef struct s__sendRect__result s__sendRect__result;
 typedef struct sngl_fn_HWND_int_int_int__int sngl_fn_HWND_int_int_int__int;
 typedef struct sngl_fn_HWND_int_int_int_int_int__int sngl_fn_HWND_int_int_int_int_int__int;
 typedef struct sngl_fn_HWND__int sngl_fn_HWND__int;
@@ -357,6 +359,16 @@ typedef struct s__gdipCreatePen1__result {
 	void * out3;
 } s__gdipCreatePen1__result;
 
+typedef struct s_platform_win32___TabItem {
+	int64_t mask;
+	sngl_string pszText;
+} s_platform_win32___TabItem;
+
+typedef struct s__sendTabItem__result {
+	int64_t result;
+	s_platform_win32___TabItem out3;
+} s__sendTabItem__result;
+
 typedef struct s_platform_win32___Kid {
 	HWND w;
 	int64_t cx;
@@ -369,6 +381,11 @@ typedef struct sngl_list__Kid {
 	int64_t len;
 	int64_t cap;
 } sngl_list__Kid;
+
+typedef struct s__sendRect__result {
+	int64_t result;
+	s_platform_win32_api__RECT out3;
+} s__sendRect__result;
 
 typedef struct s_platform_win32___ScrollInfo {
 	int64_t cbSize;
@@ -408,11 +425,6 @@ typedef struct sngl_list_int {
 	int64_t len;
 	int64_t cap;
 } sngl_list_int;
-
-typedef struct s__sendRect__result {
-	int64_t result;
-	s_platform_win32_api__RECT out3;
-} s__sendRect__result;
 
 typedef struct sngl_fn_HWND_int_int_int__int {
 	int64_t (*fn)(void *env, HWND, int64_t, int64_t, int64_t);
@@ -573,8 +585,10 @@ static void s_platform_win32___menuSync(HWND w);
 static void s_platform_win32___tabsSync(HWND tabs);
 static HWND s_platform_win32___dialogOf(HWND m);
 static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___Ctl k);
+static s_platform_win32___Size s_platform_win32___tabsSize(HWND w, s_platform_win32___Ctl k, int64_t cx, int64_t cy);
 static int64_t s_platform_win32___px(int64_t n, int64_t dpi);
 static s_platform_win32___Size s_platform_win32___textSize(HWND w);
+static s_platform_win32___Size s_platform_win32___tableSize(HWND w, s_platform_win32___Ctl k);
 static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height);
 static void s_platform_win32___invalidate(HWND w);
 static s_ui_draw__Point s_ui_draw__Point_polar(s_ui_draw__Point center, double radius, double angle);
@@ -1151,12 +1165,6 @@ static s_platform_win32_api__SIZE sngl_from_platform_win32_api__SIZE(SIZE v) {
 	return (s_platform_win32_api__SIZE){.cx = (int64_t)v.cx, .cy = (int64_t)v.cy};
 }
 
-static s_platform_win32_api__SIZE sngl_ccall_sngl_win32_tabs_size__tabsFrame(HWND a0, int a1, int a2, s_platform_win32_api__SIZE a3) {
-	SIZE t3 = sngl_to_platform_win32_api__SIZE(a3);
-	sngl_win32_tabs_size(a0, a1, a2, &t3);
-	return sngl_from_platform_win32_api__SIZE(t3);
-}
-
 static s__pictureSize__result sngl_ccall_sngl_win32_picture_size__pictureSize(HWND a0, s_platform_win32_api__SIZE a1) {
 	SIZE t1 = sngl_to_platform_win32_api__SIZE(a1);
 	s__pictureSize__result r;
@@ -1238,11 +1246,35 @@ static s__gdipCreatePen1__result sngl_ccall_GdipCreatePen1__gdipCreatePen1(ARGB 
 	return r;
 }
 
+static TCITEMW sngl_to_platform_win32___TabItem(s_platform_win32___TabItem v) {
+	return (TCITEMW){.mask = (UINT)v.mask, .pszText = (unsigned short *)sngl_utf16(v.pszText)};
+}
+
+static s_platform_win32___TabItem sngl_from_platform_win32___TabItem(TCITEMW v, s_platform_win32___TabItem o) {
+	return (s_platform_win32___TabItem){.mask = (int64_t)v.mask, .pszText = o.pszText};
+}
+
+static s__sendTabItem__result sngl_ccall_SendMessageW__sendTabItem(HWND a0, UINT a1, WPARAM a2, s_platform_win32___TabItem a3) {
+	TCITEMW t3 = sngl_to_platform_win32___TabItem(a3);
+	s__sendTabItem__result r;
+	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
+	r.out3 = sngl_from_platform_win32___TabItem(t3, a3);
+	return r;
+}
+
 static s_platform_win32___Kid *sngl_list__Kid_at(sngl_list__Kid l, int64_t i) {
 	if (i < 0 || i >= l.len) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
+}
+
+static s__sendRect__result sngl_ccall_SendMessageW__sendRect(HWND a0, UINT a1, WPARAM a2, s_platform_win32_api__RECT a3) {
+	RECT t3 = sngl_to_platform_win32_api__RECT(a3);
+	s__sendRect__result r;
+	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
+	r.out3 = sngl_from_platform_win32_api__RECT(t3);
+	return r;
 }
 
 static s_platform_win32_api__SIZE sngl_ccall_sngl_win32_text_size__textExtent(HWND a0, s_platform_win32_api__SIZE a1) {
@@ -1351,14 +1383,6 @@ static int64_t *sngl_list_int_at(sngl_list_int l, int64_t i) {
 		sngl_panic("index out of range");
 	}
 	return &l.data[i];
-}
-
-static s__sendRect__result sngl_ccall_SendMessageW__sendRect(HWND a0, UINT a1, WPARAM a2, s_platform_win32_api__RECT a3) {
-	RECT t3 = sngl_to_platform_win32_api__RECT(a3);
-	s__sendRect__result r;
-	r.result = (int64_t)SendMessageW(a0, a1, a2, (LPARAM)&t3);
-	r.out3 = sngl_from_platform_win32_api__RECT(t3);
-	return r;
 }
 
 static int64_t s_platform_win32___boxProc__fn(void *env, HWND a0, int64_t a1, int64_t a2, int64_t a3) {
@@ -2038,9 +2062,7 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 					mostX = ((p.cx > mostX) ? p.cx : mostX);
 					mostY = ((p.cy > mostY) ? p.cy : mostY);
 				}
-				s_platform_win32_api__SIZE t = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
-				t = sngl_ccall_sngl_win32_tabs_size__tabsFrame(w, (int)(mostX), (int)(mostY), t);
-				s = (s_platform_win32___Size){.cx = t.cx, .cy = t.cy};
+				s = s_platform_win32___tabsSize(w, k, mostX, mostY);
 			} else {
 				if (k.kind == 14) {
 					s = s_platform_win32___boxMeasure(k);
@@ -2110,10 +2132,14 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 														s.cy = ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(8, k.dpi));
 													}
 												} else {
-													if (((((k.kind != 24) && (k.kind != 21)) && (k.kind != 15)) && (k.kind != 16)) && (k.kind != 6)) {
-														s_platform_win32_api__SIZE n = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
-														n = sngl_ccall_sngl_win32_natural__natural(w, n);
-														s = (s_platform_win32___Size){.cx = n.cx, .cy = n.cy};
+													if (k.kind == 17) {
+														s = s_platform_win32___tableSize(w, k);
+													} else {
+														if (((((k.kind != 24) && (k.kind != 21)) && (k.kind != 15)) && (k.kind != 16)) && (k.kind != 6)) {
+															s_platform_win32_api__SIZE n = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
+															n = sngl_ccall_sngl_win32_natural__natural(w, n);
+															s = (s_platform_win32___Size){.cx = n.cx, .cy = n.cy};
+														}
 													}
 												}
 											}
@@ -2327,7 +2353,9 @@ static void s_platform_win32___tabsSync(HWND tabs) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, tabs);
 	(void)(int64_t)SendMessageW(tabs, (UINT)(4873), (WPARAM)(0), (LPARAM)(0));
 	for (struct { sngl_list_HWND l; int64_t i; } __loop17 = {k.kids, 0}; __loop17.i < __loop17.l.len; __loop17.i++) { int64_t i = __loop17.i; HWND page = __loop17.l.data[__loop17.i];
-		sngl_win32_tab_insert(tabs, (int)(i), page);
+		s_platform_win32___TabItem item = (s_platform_win32___TabItem){.mask = 1, .pszText = ((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, page) >= 0) ? sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, page)->text : SNGL_STR(""))};
+		s__sendTabItem__result __ref6 = sngl_ccall_SendMessageW__sendTabItem(tabs, (UINT)(4926), (WPARAM)(i), item);
+		item = __ref6.out3;
 	}
 	(void)(int64_t)SendMessageW(tabs, (UINT)(4876), (WPARAM)(k.selected), (LPARAM)(0));
 	s_platform_win32___relayout(tabs);
@@ -2403,6 +2431,24 @@ static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___
 	return (s_platform_win32___Size){.cx = (sx + (2 * e)), .cy = (sy + (2 * e))};
 }
 
+static s_platform_win32___Size s_platform_win32___tabsSize(HWND w, s_platform_win32___Ctl k, int64_t cx, int64_t cy) {
+	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = cx, .bottom = cy};
+	s__sendRect__result __ref7 = sngl_ccall_SendMessageW__sendRect(w, (UINT)(4904), (WPARAM)(1), r);
+	r = __ref7.out3;
+	s_platform_win32___Size s = (s_platform_win32___Size){.cx = (r.right - r.left), .cy = (r.bottom - r.top)};
+	int64_t n = (int64_t)SendMessageW(w, (UINT)(4868), (WPARAM)(0), (LPARAM)(0));
+	if (n > 0) {
+		s_platform_win32_api__RECT last = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
+		s__sendRect__result __ref8 = sngl_ccall_SendMessageW__sendRect(w, (UINT)(4874), (WPARAM)((n - 1)), last);
+		last = __ref8.out3;
+		int64_t got = __ref8.result;
+		if ((got != 0) && ((last.right + s_platform_win32___px(4, k.dpi)) > s.cx)) {
+			s.cx = (last.right + s_platform_win32___px(4, k.dpi));
+		}
+	}
+	return s;
+}
+
 static int64_t s_platform_win32___px(int64_t n, int64_t dpi) {
 	if (n >= 0) {
 		return sngl_div(((n * dpi) + 48), 96);
@@ -2414,6 +2460,36 @@ static s_platform_win32___Size s_platform_win32___textSize(HWND w) {
 	s_platform_win32_api__SIZE s = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
 	s = sngl_ccall_sngl_win32_text_size__textExtent(w, s);
 	return (s_platform_win32___Size){.cx = s.cx, .cy = s.cy};
+}
+
+static s_platform_win32___Size s_platform_win32___tableSize(HWND w, s_platform_win32___Ctl k) {
+	HWND header = sngl_win32_window_of((LPARAM)((int64_t)SendMessageW(w, (UINT)(4127), (WPARAM)(0), (LPARAM)(0))));
+	int64_t cols = (int64_t)SendMessageW(header, (UINT)(4608), (WPARAM)(0), (LPARAM)(0));
+	int64_t cx = 0;
+	int64_t i = 0;
+	while (i < cols) {
+		cx += (int64_t)SendMessageW(w, (UINT)(4125), (WPARAM)(i), (LPARAM)(0));
+		i += 1;
+	}
+	s_platform_win32_api__RECT hr = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
+	if (cols > 0) {
+		s__sendRect__result __ref9 = sngl_ccall_SendMessageW__sendRect(header, (UINT)(4615), (WPARAM)(0), hr);
+		hr = __ref9.out3;
+	}
+	int64_t head = (((hr.bottom - hr.top) > 0) ? (hr.bottom - hr.top) : ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(8, k.dpi)));
+	int64_t rows = (int64_t)SendMessageW(w, (UINT)(4100), (WPARAM)(0), (LPARAM)(0));
+	int64_t row = ((int64_t)sngl_win32_line_height(w) + s_platform_win32___px(4, k.dpi));
+	if (rows > 0) {
+		s_platform_win32_api__RECT ir = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
+		s__sendRect__result __ref10 = sngl_ccall_SendMessageW__sendRect(w, (UINT)(4110), (WPARAM)(0), ir);
+		ir = __ref10.out3;
+		int64_t got = __ref10.result;
+		if ((got != 0) && (ir.bottom > ir.top)) {
+			row = (ir.bottom - ir.top);
+		}
+	}
+	cx += ((2 * (int64_t)GetSystemMetrics((int)(45))) + (int64_t)GetSystemMetrics((int)(2)));
+	return (s_platform_win32___Size){.cx = cx, .cy = (((head + (rows * row)) + (2 * (int64_t)GetSystemMetrics((int)(46)))) + s_platform_win32___px(2, k.dpi))};
 }
 
 static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
@@ -2465,15 +2541,15 @@ static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 			si.nMax = ((ih + (h - ph)) - 1);
 			si.nPage = h;
 			si.nPos = posY;
-			s__setScrollInfo__result __ref6 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(1), si, (int)(1));
-			si = __ref6.out2;
+			s__setScrollInfo__result __ref11 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(1), si, (int)(1));
+			si = __ref11.out2;
 		}
 		if (k.scrollH) {
 			si.nMax = ((iw + (w - pw)) - 1);
 			si.nPage = w;
 			si.nPos = posX;
-			s__setScrollInfo__result __ref7 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(0), si, (int)(1));
-			si = __ref7.out2;
+			s__setScrollInfo__result __ref12 = sngl_ccall_SetScrollInfo__setScrollInfo(box, (int)(0), si, (int)(1));
+			si = __ref12.out2;
 		}
 		x0 -= posX;
 		y0 -= posY;
@@ -2823,8 +2899,8 @@ static double s_platform_win32___flexOf(HWND w) {
 static void s_platform_win32___layOutTabs(HWND tabs, int64_t w, int64_t h) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, tabs);
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = w, .bottom = h};
-	s__sendRect__result __ref8 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
-	r = __ref8.out3;
+	s__sendRect__result __ref13 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
+	r = __ref13.out3;
 	for (struct { sngl_list_HWND l; int64_t i; } __loop33 = {k.kids, 0}; __loop33.i < __loop33.l.len; __loop33.i++) { int64_t i = __loop33.i; HWND page = __loop33.l.data[__loop33.i];
 		if (i == k.selected) {
 			(void)(int64_t)SetWindowPos(page, NULL, (int)(r.left), (int)(r.top), (int)((r.right - r.left)), (int)((r.bottom - r.top)), (UINT)(80));
@@ -2857,8 +2933,8 @@ static int64_t s_platform_win32___boxProc(HWND w, int64_t msg, int64_t wp, int64
 		HBRUSH b = s_platform_win32___inherited(w);
 		if (b != NULL) {
 			s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-			s_GetClientRect__result __ref9 = sngl_ccall_GetClientRect_GetClientRect(w, r);
-			r = __ref9.out1;
+			s_GetClientRect__result __ref14 = sngl_ccall_GetClientRect_GetClientRect(w, r);
+			r = __ref14.out1;
 			sngl_win32_fill(w, sngl_win32_dc_of((WPARAM)(wp)), sngl_to_platform_win32_api__RECT(r), b);
 			return 1;
 		}
@@ -3247,8 +3323,8 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 	}
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, w);
 	s_platform_win32___ScrollInfo si = (s_platform_win32___ScrollInfo){.cbSize = 28, .fMask = 23, .nMin = 0, .nMax = 0, .nPage = 0, .nPos = 0, .nTrackPos = 0};
-	s__getScrollInfo__result __ref10 = sngl_ccall_GetScrollInfo__getScrollInfo(w, (int)(bar), si);
-	si = __ref10.out2;
+	s__getScrollInfo__result __ref15 = sngl_ccall_GetScrollInfo__getScrollInfo(w, (int)(bar), si);
+	si = __ref15.out2;
 	int64_t pos = si.nPos;
 	int64_t line = s_platform_win32___px(20, k.dpi);
 	if (request == 0) {
@@ -3303,7 +3379,7 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 			(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), child)).placedB += dy;
 		}
 	}
-	sngl_win32_scroll_children(w, (int)(dx), (int)(dy));
+	(void)(int64_t)ScrollWindowEx(w, (int)(dx), (int)(dy), NULL, NULL, NULL, NULL, (UINT)(7));
 	s_platform_win32___reach(w);
 }
 
@@ -3360,9 +3436,9 @@ static void s_platform_win32___showModal(HWND m) {
 		int64_t y = 0;
 		if (owner != NULL) {
 			s_platform_win32_api__RECT o = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-			s_GetWindowRect__result __ref11 = sngl_ccall_GetWindowRect_GetWindowRect((HWND)(owner), o);
-			o = __ref11.out1;
-			if (__ref11.result != 0) {
+			s_GetWindowRect__result __ref16 = sngl_ccall_GetWindowRect_GetWindowRect((HWND)(owner), o);
+			o = __ref16.out1;
+			if (__ref16.result != 0) {
 				x = (o.left + sngl_div(((o.right - o.left) - ww), 2));
 				y = (o.top + sngl_div(((o.bottom - o.top) - wh), 2));
 			}
@@ -3516,8 +3592,8 @@ static void s_platform_win32___tabChosen(HWND tabs) {
 static void s_platform_win32___fit(HWND top) {
 	s_platform_win32___Size s = s_platform_win32___measure(top);
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetClientRect__result __ref12 = sngl_ccall_GetClientRect_GetClientRect(top, r);
-	r = __ref12.out1;
+	s_GetClientRect__result __ref17 = sngl_ccall_GetClientRect_GetClientRect(top, r);
+	r = __ref17.out1;
 	int64_t w = (r.right - r.left);
 	int64_t h = (r.bottom - r.top);
 	if ((s.cx <= w) && (s.cy <= h)) {
@@ -3575,8 +3651,8 @@ static HWND s_platform_win32___findEntry(HWND w, int64_t id) {
 
 static void s_platform_win32___layOutNow(HWND w) {
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = 0, .bottom = 0};
-	s_GetWindowRect__result __ref13 = sngl_ccall_GetWindowRect_GetWindowRect(w, r);
-	r = __ref13.out1;
+	s_GetWindowRect__result __ref18 = sngl_ccall_GetWindowRect_GetWindowRect(w, r);
+	r = __ref18.out1;
 	s_platform_win32___place(w, (r.right - r.left), (r.bottom - r.top));
 }
 
@@ -3774,4 +3850,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:6ab3839986ad7e68314c5ddf0b6757b4
+pass sha256:5dec63f109ac221a021f9bb24adf327c
