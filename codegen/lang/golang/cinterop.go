@@ -130,15 +130,18 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			if !ok || p.Type.Kind != ir.TypeStruct || sd.IsCStruct() || sd.Foreign.C == nil || wrapper(&sd.Foreign, gc.calls()) == nil {
 				continue
 			}
-			// A scalar typedef the wrapper package names (cgo.CGboolean) is
-			// a number, converted to the program's own cgo type as one: a
-			// gir: class's boolean set by name crossed as a pointer.
-			// (cmd/sngl/testdata/gtk4_prop_by_name_runs.txt)
+			gc.RequireImport("unsafe")
+			// A typedef whose declaration says nothing of a pointer is a
+			// number (GLib's gboolean, which a gir: class's boolean set by
+			// name crossed as, cmd/sngl/testdata/gtk4_prop_by_name_runs.txt)
+			// or a pointer (Win32's HWND, cmd/sngl/testdata/
+			// c_win32_interop_runs.txt), which Go converts alike only as
+			// what each is: its bits, the two packages' one C type.
 			if sd.Foreign.C.Ptr == 0 && !sd.Foreign.CPointer {
-				args[off+i] = gc.CType(sd.Foreign.C) + "(" + args[off+i] + ")"
+				ct := gc.CType(sd.Foreign.C)
+				args[off+i] = "func(v " + gc.goType(p.Type) + ") " + ct + " { return *(*" + ct + ")(unsafe.Pointer(&v)) }(" + args[off+i] + ")"
 				continue
 			}
-			gc.RequireImport("unsafe")
 			args[off+i] = "(" + gc.CType(sd.Foreign.C) + ")(unsafe.Pointer(" + args[off+i] + "))"
 		}
 	}
@@ -210,14 +213,14 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			continue
 		}
 		if gc.Wrapping != "" {
-			args[off+i] = staticArg(WrapperStaticName(fn, p), args[off+i])
+			args[off+i] = staticArg(WrapperStaticName(fn, p), p, args[off+i])
 			continue
 		}
 		callee := ir.StaticCallee(c.Args[off+i].Value)
 		if callee == nil {
 			panic(fmt.Sprintf("calling %s, whose static callback %s is handed no function of a package", fn.Foreign.Name, p.Name))
 		}
-		args[off+i] = staticArg(staticName(callee), args[off+i])
+		args[off+i] = staticArg(staticName(callee), p, args[off+i])
 	}
 	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool {
 		return !p.CompilerPassed() && !p.CStatic && p.Type != nil && p.Type.Kind == ir.TypeFunc

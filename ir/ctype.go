@@ -151,6 +151,26 @@ func IsCIdent(s string) bool {
 	return true
 }
 
+// CIdentToken is s, free C text such as a calling convention
+// (`__attribute__((stdcall))`), as a part of a C identifier: each run of
+// what an identifier cannot hold is one `_`, and none leads or trails.
+func CIdentToken(s string) string {
+	var b strings.Builder
+	sep := false
+	for _, r := range s {
+		if r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+			if sep && b.Len() > 0 {
+				b.WriteByte('_')
+			}
+			sep = false
+			b.WriteRune(r)
+			continue
+		}
+		sep = true
+	}
+	return b.String()
+}
+
 // String is t as C writes it: `const char *`, `cairo_t *`, `int`.
 func (t *CType) String() string {
 	if t == nil {
@@ -392,7 +412,8 @@ func CalledCStatics(pkg *Package, skip func(*Func) bool) []CStatic {
 				continue
 			}
 			callee := StaticCallee(c.Args[off+i].Value)
-			if callee != nil && !slices.ContainsFunc(out, func(s CStatic) bool { return s.Callee == callee }) {
+			// One handed with a convention is another function C calls.
+			if callee != nil && !slices.ContainsFunc(out, func(s CStatic) bool { return s.Callee == callee && s.Param.CConvention == p.CConvention }) {
 				out = append(out, CStatic{Callee: callee, Param: p})
 			}
 		}

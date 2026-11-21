@@ -451,6 +451,32 @@ declaration itself. Two things about the name that are easy to get wrong:
   `codegen/lang/c`'s `static` run). gtk4 lays a scroll's probe out by three
   of its functions handed to `gtk_custom_layout_new`, and lets a flow's
   span store go through one handed to `g_object_set_data_full`.
+  A static callback C calls with a convention other than the platform's
+  default -- Win32's `CALLBACK`, `__stdcall` on 32-bit x86, for a window
+  procedure or a timer's -- names it, `#[c.static(convention="CALLBACK")]`
+  (`Param.CConvention`), free text written as given and judged by C's
+  compiler, an empty one refused (`markCStatic`). C writes it into the
+  function's definition (`static LRESULT CALLBACK sngl_static_CALLBACK_f`)
+  and hands that function at the `#[c.type]` typedef with no cast: the
+  `void (*)(void)` one a conventionless static, a dispatcher or a release
+  still goes through is what had hidden a cdecl function handed where 386
+  calls `__stdcall`, and without it MinGW's i686 compiler refuses the
+  mismatch as an incompatible pointer. cgo exports only the default
+  convention, so Go hands C a `static` C function of the convention in the
+  callbacks' preamble calling the export (`staticTrampoline`), found
+  through a function answering it, since a static function has no symbol
+  cgo could take the address of; a wrapper package's callbacks hold the
+  same for each wrapper's parameter. A callback's signature records the
+  aliases it is written with (`Param.CAlias` on each of its parameters,
+  `FuncSig.ReturnCAlias`), and a static's C function and Go export take and
+  answer those C types, so the function is of the typedef's type and a
+  `WPARAM`, `LPARAM` or `LRESULT` crosses whole rather than as a C `int`
+  (`codegen/lang/c`'s `static_convention` run, under a convention no
+  compiler calls with by default on each of its targets;
+  `testdata/c_static_convention.txtar`, `cgogen_user_package_runs.txt`,
+  and `cmd/sngl/testdata/c_win32_interop_runs.txt`, where a `TIMERPROC`
+  ticks and a `WNDPROC` the fixture's C registers answers under Wine on
+  both architectures, in C and in Go).
   A function pointer the caller hands C NULL for -- `g_source_set_callback`'s
   `GDestroyNotify` where nothing is let go -- is no callback, since none is
   handed: it is declared an option of a pointer at the typedef `#[c.type]`

@@ -167,8 +167,21 @@ func context() ir.Macro
 //
 // A function takes as many as it likes, and no `#[context]` for them. Beside
 // what any callback takes, one may take a `string`, C's `const char *`,
-// copied as C calls.
-func static() ir.Macro
+// copied as C calls. A parameter or result its type writes with a
+// `#[native]` alias (`UINT`, `LPARAM`) crosses as that C type, so the
+// function C is handed is of the type C's own typedef declares.
+//
+// `convention` is the calling convention C calls the function with, where
+// it is not the platform's default: Win32's `CALLBACK`, which is
+// `__stdcall` on 32-bit x86, for a window procedure or a timer's. It is
+// written as it is given into the definition of the function C is handed --
+// `static LRESULT CALLBACK f(…)` -- and is free text, so a misspelled one is
+// an error of C's compiler, not SNGL's. With one, that function is handed
+// at the type its parameter's `#[type]` names with no cast, so C refuses a
+// function whose convention or parameters differ from the typedef's.
+// `#[static(convention="CALLBACK")] tick func(h HWND, msg UINT, id UINT_PTR, time DWORD)`
+// is a `TIMERPROC`.
+func static(convention string = "") ir.Macro
 
 // Marks a `#[static]` callback whose answer C reads through pointers: its
 // result is a struct of `int`, `float` and `bool` fields, and C hands the

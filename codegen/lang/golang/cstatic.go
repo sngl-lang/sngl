@@ -72,10 +72,22 @@ func WrapperOutsName(name string, p *ir.Param) string {
 }
 
 // staticArg is fn, a function value as the program names it, as the function
-// pointer C is handed for callee: the export, once the variable it calls
-// through holds fn.
-func staticArg(n, fn string) string {
-	return "func() *[0]byte { " + n + "Fn = " + fn + "; return " + n + "Ptr() }()"
+// pointer C is handed for p, a static callback whose export is n: the
+// export, once the variable it calls through holds fn, or the C function
+// calling it with p's convention (staticTrampoline).
+func staticArg(n string, p *ir.Param, fn string) string {
+	return "func() *[0]byte { " + n + "Fn = " + fn + "; return " + staticTrampoline(n, p) + "Ptr() }()"
+}
+
+// staticTrampoline is the C function C is handed for p where p names a
+// calling convention (#[c.static(convention=…)]): cgo exports only the
+// platform's default, so a static C function of that convention, which the
+// callbacks' preamble defines, calls the export n. Without one, n itself.
+func staticTrampoline(n string, p *ir.Param) string {
+	if p.CConvention == "" {
+		return n
+	}
+	return n + "_" + ir.CIdentToken(p.CConvention)
 }
 
 // staticCType is the C type t crosses a static callback as: a handle as the
@@ -86,6 +98,25 @@ func staticCType(t *ir.Type) *ir.CType {
 		return &ir.CType{Name: "char", Ptr: 1}
 	}
 	return callbackCType(t)
+}
+
+// staticAliasedCType is staticCType written with alias where the callback's
+// signature names one: a Win32 `LPARAM` crosses whole, as a C `int` would
+// not.
+func staticAliasedCType(t *ir.Type, alias *ir.Alias) *ir.CType {
+	if alias != nil && alias.C != nil {
+		return alias.C
+	}
+	return staticCType(t)
+}
+
+// staticTypedefCType is the C type C's typedef declares for what crosses as
+// t with alias: as the export takes it, but a string's `const char *`.
+func staticTypedefCType(t *ir.Type, alias *ir.Alias) string {
+	if alias == nil && t.Kind == ir.TypeString {
+		return "const char *"
+	}
+	return staticAliasedCType(t, alias).String()
 }
 
 // staticsSource is the externs the callbacks' preamble declares for statics,
@@ -115,14 +146,16 @@ func staticsSource(statics []Static, calls ir.CCalls) (externs, source string, i
 		}
 		return IRTypeToGo(t)
 	}
+	exported := map[string]bool{}
 	for _, s := range statics {
 		sig := s.Param.Type.Sig
 		n := s.Name
-		var cparams, params, args []string
+		var cparams, params, args, tparams []string
 		for i, p := range sig.Params {
 			a := fmt.Sprintf("a%d", i)
-			ct := staticCType(p.Type)
+			ct := staticAliasedCType(p.Type, p.CAlias)
 			cparams = append(cparams, exportedC(ct))
+			tparams = append(tparams, staticTypedefCType(p.Type, p.CAlias))
 			params = append(params, a+" "+CTypeToGo(ct))
 			switch {
 			case p.Type.Kind == ir.TypeString:
@@ -147,6 +180,7 @@ func staticsSource(statics []Static, calls ir.CCalls) (externs, source string, i
 				o := fmt.Sprintf("o%d", k)
 				ct := staticCType(f.Type)
 				cparams = append(cparams, exportedC(ct)+" *")
+				tparams = append(tparams, exportedC(ct)+" *")
 				params = append(params, o+" *"+CTypeToGo(ct))
 				v := CTypeToGo(ct) + "(r." + ExportName(f.Name) + ")"
 				if f.Type.Kind == ir.TypeBool {
@@ -155,7 +189,7 @@ func staticsSource(statics []Static, calls ir.CCalls) (externs, source string, i
 				body += "\tif " + o + " != nil {\n\t\t*" + o + " = " + v + "\n\t}\n"
 			}
 		case r != nil && r.Kind != ir.TypeVoid:
-			ct := staticCType(r)
+			ct := staticAliasedCType(r, sig.ReturnCAlias)
 			cret, ret = exportedC(ct), " "+CTypeToGo(ct)
 			switch {
 			case wrapped(r) != nil:
@@ -168,6 +202,35 @@ func staticsSource(statics []Static, calls ir.CCalls) (externs, source string, i
 				body = "\treturn " + CTypeToGo(ct) + "(" + call + ")\n"
 			}
 		}
+		var tExt, tSrc string
+		if t := staticTrampoline(n, s.Param); t != n {
+			// The function of the convention C calls, which calls the
+			// export, and a function answering it, since a static one has
+			// no symbol cgo could take the address of.
+			var named, passed []string
+			for k, tp := range tparams {
+				named = append(named, fmt.Sprintf("%s a%d", tp, k))
+				passed = append(passed, fmt.Sprintf("(%s)a%d", cparams[k], k))
+			}
+			if len(tparams) == 0 {
+				named, tparams = []string{"void"}, []string{"void"}
+			}
+			tret, call := "void", n+"("+strings.Join(passed, ", ")+");"
+			if cret != "void" {
+				tret, call = staticTypedefCType(sig.Return, sig.ReturnCAlias), "return "+call
+			}
+			tExt = fmt.Sprintf("\nstatic %s %s %s(%s) {\n\t%s\n}\n\ntypedef %s (%s *%s_t)(%s);\n\nstatic %s_t %s_get(void) {\n\treturn %s;\n}\n",
+				tret, s.Param.CConvention, t, strings.Join(named, ", "), call,
+				tret, s.Param.CConvention, t, strings.Join(tparams, ", "),
+				t, t, t)
+			tSrc = fmt.Sprintf("\n// %sPtr is %s as the function pointer C calls: %s, which calls it %s.\nfunc %sPtr() *[0]byte { return (*[0]byte)(C.%s_get()) }\n", t, n, t, s.Param.CConvention, t, t)
+		}
+		if exported[n] {
+			ext.WriteString(tExt)
+			src.WriteString(tSrc)
+			continue
+		}
+		exported[n] = true
 		if len(cparams) == 0 {
 			cparams = []string{"void"}
 		}
@@ -183,6 +246,8 @@ func staticsSource(statics []Static, calls ir.CCalls) (externs, source string, i
 		fmt.Fprintf(&src, "\n// %sFn is the program's function C calls %s for, which the call handing it to C sets.\nvar %sFn %s\n", n, n, n, fnType)
 		fmt.Fprintf(&src, "\n//export %s\nfunc %s(%s)%s {\n%s}\n", n, n, strings.Join(params, ", "), ret, body)
 		fmt.Fprintf(&src, "\n// %sPtr is %s as the function pointer C calls.\nfunc %sPtr() *[0]byte { return (*[0]byte)(C.%s) }\n", n, n, n, n)
+		ext.WriteString(tExt)
+		src.WriteString(tSrc)
 	}
 	return ext.String(), src.String(), imports
 }

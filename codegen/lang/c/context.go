@@ -1625,10 +1625,13 @@ func (c *Context) staticCallback(fn *ir.Func, i int, arg ir.Expr) string {
 	}
 	sig := p.Type.Sig
 	name := "sngl_static_" + funcName(callee)
+	if p.CConvention != "" {
+		name = "sngl_static_" + ir.CIdentToken(p.CConvention) + "_" + funcName(callee)
+	}
 	var params, args []string
 	for j, sp := range sig.Params {
 		a := fmt.Sprintf("a%d", j)
-		params = append(params, staticCType(sp.Type)+" "+a)
+		params = append(params, aliasedCType(sp.Type, sp.CAlias)+" "+a)
 		switch {
 		case sp.Type.Kind == ir.TypeString:
 			args = append(args, "sngl_string_copy("+a+")")
@@ -1652,7 +1655,7 @@ func (c *Context) staticCallback(fn *ir.Func, i int, arg ir.Expr) string {
 			body += "\tif (" + o + " != NULL) {\n\t\t*" + o + " = (" + staticCType(f.Type) + ")r." + Local(f.Name) + ";\n\t}\n"
 		}
 	case r != nil && r.Kind != ir.TypeVoid:
-		ret = staticCType(r)
+		ret = aliasedCType(r, sig.ReturnCAlias)
 		body = "\t" + ret + " r = (" + ret + ")" + call + ";\n"
 	}
 	if len(params) == 0 {
@@ -1663,11 +1666,28 @@ func (c *Context) staticCallback(fn *ir.Func, i int, arg ir.Expr) string {
 	if ret != "void" {
 		body += "\treturn r;\n"
 	}
-	c.file.helper(name, "static "+ret+" "+name+"("+strings.Join(params, ", ")+") {\n"+body+"}\n")
-	if p.CFuncType != nil {
+	conv := ""
+	if p.CConvention != "" {
+		conv = p.CConvention + " "
+	}
+	c.file.helper(name, "static "+ret+" "+conv+name+"("+strings.Join(params, ", ")+") {\n"+body+"}\n")
+	// A function whose convention is written is handed as it is: C holds
+	// it to the typedef, convention and parameters, which a cast through
+	// `void (*)(void)` would let differ unseen -- a __stdcall window
+	// procedure of 32-bit Windows called as cdecl.
+	if p.CFuncType != nil && p.CConvention == "" {
 		return c.fnPointer(fn, i, name)
 	}
 	return name
+}
+
+// aliasedCType is the C type t crosses a static callback as, written with
+// alias where its signature names one (`UINT`), and staticCType's otherwise.
+func aliasedCType(t *ir.Type, alias *ir.Alias) string {
+	if alias != nil && alias.C != nil {
+		return alias.C.String()
+	}
+	return staticCType(t)
 }
 
 // staticCType is the C type t crosses a static callback as: a handle as the

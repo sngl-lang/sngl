@@ -1,0 +1,219 @@
+# C interop under Wine, on 64- and 32-bit Windows, in C and in Go, the
+# program calling its own declarations as a Go program calling the wrappers
+# does and as one calling C directly does.
+#
+# A callback Win32 calls is CALLBACK, which is __stdcall on 32-bit x86:
+# #[c.static(convention="CALLBACK")] writes it into the function C is
+# handed, which C takes at the typedef #[c.type] names with no cast (a
+# __stdcall mismatch is an incompatible pointer to MinGW's i686 compiler),
+# and Go hands C a static C function of that convention calling its export.
+# A timer's procedure ticks once through SetTimer and the fixture's message
+# loop, and a window procedure, handed to RegisterClassW by the fixture's C,
+# answers a message SendMessageW sends, its WPARAM, LPARAM and LRESULT
+# crossing as those types.
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=c --opt arch=386 app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt arch=386 app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct --opt arch=386 app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import api "sngl:platform/win32/api"
+import c "sngl:x/c"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="interop.h", sources=["interop.c", "interop.h"])
+
+#[c.native("UINT_PTR")]
+struct UINT_PTR = int
+
+#[c.native("SetTimer")]
+func _setTimer(h api.HWND, id UINT_PTR, ms api.UINT, #[c.type("TIMERPROC")] #[c.static(convention="CALLBACK")] tick func(h api.HWND, msg api.UINT, id UINT_PTR, time api.DWORD)) UINT_PTR
+
+#[c.native("KillTimer")]
+func _killTimer(h api.HWND, id UINT_PTR) api.WINBOOL
+
+#[c.native("DefWindowProcW")]
+func _defProc(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT
+
+#[c.native("interop_window")]
+func _window(#[c.type("WNDPROC")] #[c.static(convention="CALLBACK")] proc func(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT) api.HWND
+
+#[c.native("interop_pump")]
+func _pump(h api.HWND, ms int) int
+
+#[c.native("interop_stop")]
+func _stop()
+
+var ticks = 0
+var tickedId = 0
+
+func _tick(h api.HWND, msg api.UINT, id UINT_PTR, time api.DWORD) {
+    ticks += 1
+    tickedId = id
+    _killTimer(h, id)
+    _stop()
+}
+
+func _proc(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT {
+    if msg == 1031 {
+        return w * 2 + l
+    }
+    return _defProc(h, msg, w, l)
+}
+
+ui.window(title="interop") {
+    ui.text("interop")
+}
+
+func testATimerTicks(t test.Test) {
+    var h = _window(_proc)
+    _setTimer(h, 7, 10, _tick)
+    t.assert(_pump(h, 5000) == 1)
+    t.assert(ticks == 1)
+    t.assert(tickedId == 7)
+}
+
+func testAWindowProcedureAnswers(t test.Test) {
+    var h = _window(_proc)
+    t.assert(api.SendMessage(h, 1031, 20, 2) == 42)
+}
+-- interop.h --
+#include <windows.h>
+
+// A message-only window of a class whose procedure is proc.
+HWND interop_window(WNDPROC proc);
+
+// Runs h's messages until interop_stop is called, answering 1, or ms pass,
+// answering 0.
+int interop_pump(HWND h, int ms);
+void interop_stop(void);
+-- interop.c --
+#include "interop.h"
+
+static int stopped;
+
+HWND interop_window(WNDPROC proc) {
+	static int n;
+	wchar_t name[32];
+	wsprintfW(name, L"interop%d", n++);
+	WNDCLASSW wc = {0};
+	wc.lpfnWndProc = proc;
+	wc.hInstance = GetModuleHandleW(NULL);
+	wc.lpszClassName = name;
+	if (!RegisterClassW(&wc)) {
+		return NULL;
+	}
+	return CreateWindowExW(0, name, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL);
+}
+
+int interop_pump(HWND h, int ms) {
+	DWORD start = GetTickCount();
+	stopped = 0;
+	while (!stopped && GetTickCount() - start < (DWORD)ms) {
+		MSG m;
+		if (PeekMessageW(&m, h, 0, 0, PM_REMOVE)) {
+			DispatchMessageW(&m);
+		} else {
+			Sleep(1);
+		}
+	}
+	return stopped;
+}
+
+void interop_stop(void) {
+	stopped = 1;
+}
+-- testrun/win32/c/app.sngl/_/1 --
+sha256:492f4a5f445921dedd9d5673d8bc4801
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/_/2 --
+sha256:9a05701619f1900c00a3ca868608061e
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/1 --
+sha256:5c2745a18fd8d25075a51afc0d3db9b0
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/2 --
+sha256:aa9381821b9a495a13490dd599b901c9
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/3 --
+sha256:04a2de4a2fe92ad7410684786f2755b2
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/4 --
+sha256:bd89731f4b52007b9aa6a4b1e47ae937
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    }
+  ]
+}

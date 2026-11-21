@@ -84,7 +84,6 @@ file, in these cases:
 Each such call stays in `lib/platform/win32/rt`, where C calls it directly.
 That is also where everything goes that interop does not reach at all:
 
-- a callback with no context (a `WNDPROC`), which is `__stdcall` on 386;
 - arrays and unions;
 - WIC and the common controls' notification structs.
 
@@ -120,16 +119,13 @@ the canvas's decoded pictures off the runtime's record, is still C.
 
 **What holds the rest in C.** Each is a gap in the language, not a choice:
 
-- **A Win32 callback is `__stdcall` on 386.** `CALLBACK` and `WINAPI` are
-  nothing on amd64 and arm64, but the platform builds and runs 386, where a
-  window procedure, a subclass procedure, a thread's and an enumeration's
-  are `__stdcall`, and a `#[c.static]` function is the default convention in
-  both languages: the C target hands it through a `(T)(void (*)(void))`
-  cast, which silences what MinGW reports without one (`initialization of 'WNDENUMPROC' ... from incompatible pointer type`), and a Go export is
-  cdecl. Wine restores the stack around such a call, so a run would pass;
-  Windows promises nothing. Every window procedure, the timers' and posts'
-  dispatch (`box_proc`), the fetch thread and http's threads stay C until
-  the language can say a callback's convention.
+- **A Win32 callback is `__stdcall` on 386**, which a `#[c.static]`
+  callback says with `convention="CALLBACK"` (`design/nodes.md`): C writes
+  it into the function it hands Win32 and hands it at the typedef with no
+  cast, and Go hands a C function of that convention calling its export.
+  Before it, the C target's cast through `void (*)(void)` silenced what
+  MinGW reports (`initialization of 'WNDENUMPROC' ... from incompatible pointer type`) and a Go export was cdecl; Wine restores the stack around
+  such a call, so a run passed, and Windows promises nothing.
 - **A window's record stays the runtime's** (`ctl`). `c.held` needs a
   `#[c.release]` parameter ("is a copy C holds until it calls the function
   a #[c.release] parameter is handed"), and none of Win32's per-window slots
@@ -202,7 +198,12 @@ package's headers, and the headers its link ships, and none of its C, which
 is the wrapper package's (`golang.CLinks`); a handle it holds as the wrapper
 package's type crosses through `unsafe.Pointer` to its own cgo's, since
 `C.HWND` in two packages is two types, and one C answers crosses back the
-same way (`cmd/sngl/testdata/gir_scheme.txt`).
+same way (`cmd/sngl/testdata/gir_scheme.txt`). A typedef the declaration
+does not flag a pointer is either -- GLib's `gboolean` a number, Win32's
+`HWND` a pointer -- so it crosses as its bits, which are one C type's in
+both packages: `C.HWND(h)` did not compile, and a program declaring a
+Win32 function of its own taking api's `HWND` built only calling C
+directly (`cmd/sngl/testdata/c_win32_interop_runs.txt`).
 
 **A static callback is wrapped, and so is a variadic function.** A declaration
 taking a `#[c.static]` callback (`design/nodes.md`) is wrapped, though the

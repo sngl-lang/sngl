@@ -2,6 +2,7 @@ package checker
 
 import (
 	"fmt"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -285,8 +286,15 @@ func markCRelease(m *mark) error {
 // markCStatic implements sngl:x/c's #[static]: the parameter is a callback
 // C calls with no context, so its argument names a function of a package.
 // checkCCallbacks judges the function and checkCStaticArgs each call.
+//
+// Its convention, where given, is written into the definition of the
+// function C is handed, and is C's to judge: only an empty one is refused.
 func markCStatic(m *mark) error {
-	return markCallbackParam(m, "static", func(p *ir.Param) { p.CStatic = true })
+	conv := m.args.String("convention")
+	if m.args.Has("convention") && strings.TrimSpace(conv) == "" {
+		return fmt.Errorf("#[c.static(convention=%q)] names no calling convention: leave it out for the platform's default, or name one as C writes it (`CALLBACK`)", conv)
+	}
+	return markCallbackParam(m, "static", func(p *ir.Param) { p.CStatic, p.CConvention = true, conv })
 }
 
 // markCOuts implements sngl:x/c's #[outs]: C reads the callback's result

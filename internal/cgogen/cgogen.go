@@ -294,7 +294,7 @@ func (g *gen) wrapperFunc(fn *ir.Func, name string) *ir.Func {
 					np.Type = ir.FuncOf(np.Type.Sig.Params, &ir.Type{Kind: ir.TypeStruct, Decl: def})
 				}
 			}
-			g.statics[fn] = append(g.statics[fn], golang.Static{Name: golang.WrapperStaticName(fn, p), Param: &ir.Param{Name: p.Name, Type: np.Type, CStatic: true, COuts: p.COuts}})
+			g.statics[fn] = append(g.statics[fn], golang.Static{Name: golang.WrapperStaticName(fn, p), Param: &ir.Param{Name: p.Name, Type: np.Type, CStatic: true, COuts: p.COuts, CConvention: p.CConvention}})
 			continue
 		}
 		if p.Type != nil && p.Type.Kind == ir.TypeFunc && p.Type.Sig != nil {

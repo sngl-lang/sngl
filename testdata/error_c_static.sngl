@@ -2,7 +2,8 @@
 // names a function of a package, since nothing C hands back would find a
 // closure, and it takes what any callback does and a string. Marked
 // `#[c.outs]` it answers a struct of scalars, which C reads through the
-// pointers it hands the callback. A `variadic` C function is a function,
+// pointers it hands the callback. Its `convention`, where written, names
+// how C calls it. A `variadic` C function is a function,
 // and `pointer` says a struct's typedef is a pointer.
 import c "sngl:x/c"
 
@@ -37,6 +38,19 @@ func answersString(#[c.static] f func() string) // ERROR(check) "callback \"f\" 
 
 #[c.static] // ERROR(check) "#[c.static] cannot mark"
 func marked() {}
+
+// A convention is free text C's compiler judges, but not an empty one.
+#[c.native("conv_ok")]
+func convOk(#[c.static(convention="CALLBACK")] f func(of int) int)
+
+#[c.native("conv_empty")]
+func convEmpty(#[c.static(convention="")] f func()) // ERROR(check) "#[c.static(convention=\"\")] names no calling convention: leave it out for the platform's default, or name one as C writes it (`CALLBACK`)"
+
+#[c.native("conv_blank")]
+func convBlank(#[c.static(convention=" ")] f func()) // ERROR(check) "#[c.static(convention=\" \")] names no calling convention"
+
+#[c.static(convention="CALLBACK")] // ERROR(check) "#[c.static] cannot mark"
+func conventionMarked() {}
 
 func bodied(#[c.static] f func()) { // ERROR(check) "#[c.static] cannot mark a parameter of a function with a body"
 }

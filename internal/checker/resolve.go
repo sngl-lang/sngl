@@ -366,17 +366,23 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	params := make([]*ir.Param, len(t.Params))
 	for i, p := range t.Params {
-		params[i] = &ir.Param{Name: p.Name, Type: c.resolveTypeRequired(p.Type, ast.Pos{}, "function-type parameter")}
+		typ := c.resolveTypeRequired(p.Type, ast.Pos{}, "function-type parameter")
+		// A static callback's C function takes each as the alias spells
+		// it, which the type alone no longer says.
+		params[i] = &ir.Param{Name: p.Name, Type: typ, CAlias: c.cAliasOf(p.Type, typ)}
 	}
 	var ret *ir.Type
+	var retAlias *ir.Alias
 	if t.Return != nil {
 		ret = c.resolveType(t.Return)
+		retAlias = c.cAliasOf(t.Return, ret)
 	}
 	return &ir.Type{
 		Kind: ir.TypeFunc,
 		Sig: &ir.FuncSig{
-			Params: params,
-			Return: ret,
+			Params:       params,
+			Return:       ret,
+			ReturnCAlias: retAlias,
 		},
 	}
 }

@@ -1833,6 +1833,11 @@ type Param struct {
 	// #[static]: the argument names a function of a package, and the
 	// translator hands C a function of its own that calls it.
 	CStatic bool `json:",omitempty"`
+	// CConvention is the calling convention of a static callback C calls
+	// with one other than the platform's default, #[static(convention=…)]:
+	// written as given into the definition of the function C is handed
+	// (Win32's `CALLBACK`), which is then handed with no cast.
+	CConvention string `json:",omitempty"`
 	// COuts marks a static callback whose result C reads through the
 	// pointers it hands the callback after its arguments, one for each
 	// field of the struct it answers, sngl:x/c's #[outs].
