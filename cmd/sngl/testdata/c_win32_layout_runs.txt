@@ -1,0 +1,1111 @@
+# Where the runtime's layout puts every window, read off Win32 by the
+# fixture's own C (peek.c) as each window's class, its place in the window
+# holding it and whether it is hidden, after the window's client size: a
+# line's gap, padding, flex and alignment, a child its style sizes across a
+# line, a least and an exact size, a framed box's edge, a node hidden by its
+# style or its prop, a component's several nodes in a line; a grid's
+# columns and their change, a flow wrapping, a stack, equal shares down and
+# across; the natural size of each kind of control, a flow of rich text and
+# an image's picture; tabs showing the page selected, a scroll moved by its
+# bar's requests and by the wheel, along each axis, reporting its end; a
+# click on a text bubbling through the clickable cards holding it, a click
+# on a box doing the same, a loop's buttons replaced and reordered, and a
+# modal's own window sized to what it holds. In C and Go, on 64- and 32-bit
+# Windows under Wine, and in Go calling C directly: each lays out the same.
+
+exec sh -c 'echo iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAALElEQVR4nGNgGJ7ghIbGf1yYIs0EDSFGM15DRg0YDAYQawhOzcQYQlAz3QEA+63jzIuGVSkAAAAASUVORK5CYII= | base64 -d > logo.png'
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +5 tests, 0 failures'
+sngl test --platform=win32 --language=c --opt arch=386 app.sngl
+stdout 'ok +5 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +5 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
+stdout 'ok +5 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import c "sngl:x/c"
+import test "sngl:test"
+import time "sngl:time"
+import draw "sngl:ui/draw"
+import markup "sngl:ui/markup"
+import here "file:."
+
+output {
+    c {
+        win32
+    }
+}
+
+c.link(include="peek.h", sources=["peek.c", "peek.h"])
+
+// Every window in the window `n` is in, in z-order, each its class, its
+// place in the client area of the window holding it, and `-` where it is
+// hidden, after the window's client size.
+#[c.native("peek_layout")]
+func layout(n ui.node) string
+
+// A scroll bar's request (SB_LINEDOWN 1, SB_PAGEDOWN 3, SB_THUMBPOSITION 4,
+// SB_BOTTOM 7) to the first scroll of n's window along that axis, and a
+// wheel's turn.
+#[c.native("peek_scroll")]
+func scroll(n ui.node, vertical bool, code int) int
+
+#[c.native("peek_wheel")]
+func wheel(n ui.node, delta int) int
+
+// The text labeled `text` clicked as the user clicks it, and the box
+// holding it.
+#[c.native("peek_press")]
+func press(n ui.node, text string) int
+
+#[c.native("peek_lbutton")]
+func release(n ui.node, text string) int
+
+component pair ui.node {
+    ui.text(value="one")
+    ui.text(value="two", style={flex=1})
+}
+
+component lines ui.node {
+    var label = "short"
+    var p ui.measurement = 8px
+    var hide = false
+    ui.vbox #root(style={padding=p, gap=4px}) {
+        ui.text #name(value=label)
+        ui.hbox(style={gap=10px}) {
+            ui.button(text="A")
+            ui.spacer()
+            ui.button(text="Bee", style={flex=2})
+            ui.text(value="flex1", style={flex=1})
+        }
+        ui.hbox(style={alignItems=center, height=60px}) {
+            ui.text(value="c")
+            ui.button(text="mid")
+        }
+        ui.hbox(style={alignItems=end, height=60px}) {
+            ui.text(value="e")
+            ui.button(text="end")
+        }
+        ui.hbox(style={alignItems=start, height=60px}) {
+            ui.text(value="s")
+            ui.button(text="start")
+        }
+        ui.vbox(style={alignItems=center}) {
+            ui.text(value="centered")
+            ui.button(text="a wide button here")
+        }
+        ui.hbox {
+            ui.button(text="sized", style={height=40px})
+            ui.text(value="stretch")
+        }
+        ui.text(value="exact", style={width=120px, height=30px})
+        ui.text(value="min", style={minWidth=150px})
+        ui.text(value="padded", style={padding=6px, paddingLeft=20px})
+        ui.card(style={padding=4px}) {
+            ui.text(value="in card")
+        }
+        ui.text(value="hidden", style={display=hide ? ui.Display.none : ui.Display.flex})
+        ui.drawer(open=false) {
+            component content {
+                ui.text(value="drawer")
+            }
+        }
+        ui.hbox(style={height=50px}) {
+            pair()
+        }
+        ui.text(value="multi\nline")
+    }
+}
+
+component grids ui.node {
+    var cols = 3
+    ui.vbox #root {
+        ui.grid(columns=cols, style={gap=3px}) {
+            for var w = ["a", "bb", "ccc", "dddd", "eeeee", "f", "gg"] {
+                ui.button(text=w)
+            }
+        }
+        ui.grid(style={width=200px}) {
+            for var w = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota"] {
+                ui.button(text=w)
+            }
+        }
+        ui.stack(style={height=40px}) {
+            ui.text(value="under")
+            ui.button(text="over")
+        }
+        ui.splitview(style={width=300px}) {
+            ui.text(value="left")
+            ui.button(text="right")
+            ui.text(value="third")
+        }
+        ui.splitview(direction="vertical", style={height=90px}) {
+            ui.text(value="top")
+            ui.button(text="bottom")
+        }
+    }
+}
+
+enum Fruit { apple, banana, cherry }
+
+component controls ui.node {
+    var fruit = Fruit.banana
+    var on = false
+    var day option[time.date] = "2024-03-05"
+    var row = -1
+    var node = ""
+    var notes = "a\nb"
+    ui.vbox #root {
+        ui.text(value="text")
+        ui.button(text="button")
+        ui.checkbox(label="check", :checked=on)
+        ui.radio(:value=fruit, direction=ui.Orientation.horizontal) {
+            ui.choice(label="apple", value=Fruit.apple)
+            ui.choice(label="banana", value=Fruit.banana)
+        }
+        ui.input(value="typed")
+        ui.textarea(rows=4, :value=notes)
+        ui.textarea(:value=notes)
+        ui.select(:value=fruit) {
+            for var f = Fruit {
+                ui.choice(label="{f} fruit", value=f)
+            }
+        }
+        ui.progress(value=3, max=10, showValue=true)
+        ui.progress(value=3, max=10)
+        ui.progress(label="a long label for the bar", showValue=true)
+        ui.divider()
+        ui.hbox(style={height=30px}) {
+            ui.text(value="x")
+            ui.divider(direction="vertical")
+            ui.text(value="y")
+        }
+        ui.link(text="link", href="https://example.com")
+        ui.table(columns=["Name", "Age"], :selected=row) {
+            ui.tableRow(cells=["Ann", "34"])
+            ui.tableRow(cells=["Bob", "27"])
+        }
+        ui.tree(:selected=node, expanded=[0]) {
+            ui.treeItem(label="src") {
+                ui.treeItem(label="main.sngl")
+            }
+            ui.treeItem(label="README")
+        }
+        ui.datepicker(:value=day)
+        draw.canvas(width=64px, height=32px) {
+            draw.rect(x=0.0, y=0.0, w=10.0, h=10.0)
+        }
+        markup.richText(style={width=160px}) {
+            markup.text(value="Some words that wrap at the width the flow is given, ")
+            markup.run(style={fontWeight=markup.Weight.bold}) {
+                markup.text(value="bold words")
+            }
+            markup.link(href="https://example.com") {
+                markup.text(value=" and a link")
+            }
+        }
+        ui.image(style={height=24px}) {
+            ui.file(path=here.path("logo.png"))
+        }
+        ui.image {
+            ui.file(path=here.path("logo.png"))
+        }
+        ui.spacer(style={height=7px})
+    }
+}
+
+component panels ui.node {
+    var idx = 0
+    var ends = 0
+    var rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    ui.vbox #root {
+        ui.tabs(:selected=idx) {
+            ui.tab(label="One") {
+                ui.text(value="first panel")
+            }
+            ui.tab(label="Two") {
+                ui.button(text="second panel button")
+                ui.text(value="more")
+            }
+        }
+        ui.scroll(style={height=60px}, @reachEnd { ends += 1 }) {
+            ui.vbox {
+                for var r = rows {
+                    ui.text(value="row {r}")
+                }
+            }
+        }
+        ui.scroll(direction=ui.ScrollDirection.horizontal, style={width=120px}) {
+            ui.hbox {
+                for var r = rows {
+                    ui.button(text="col {r}")
+                }
+            }
+        }
+        ui.text(value="ends {ends}")
+    }
+}
+
+component presses ui.node {
+    var cards = 0
+    var inner = 0
+    var texts = 0
+    var items = ["one", "two", "three"]
+    var asking = false
+    ui.vbox #root {
+        ui.menubar {
+            ui.menuItem(label="File") {
+                ui.menuItem(label="Open")
+            }
+        }
+        ui.hbox {
+            for var it = items {
+                ui.button(text=it)
+            }
+        }
+        ui.modal(open=asking, title="Ask") {
+            component content {
+                ui.text #asked(value="a question in a modal")
+                ui.button(text="answer")
+            }
+        }
+        ui.card(clickable=true, @click { cards += 1 }) {
+            ui.text(value="card text", @click { texts += 1 })
+            ui.card(clickable=true, @click { inner += 1 }) {
+                ui.text(value="inner text")
+            }
+        }
+        ui.text(value="{cards} {inner} {texts}")
+    }
+}
+
+func testLines(t test.Test, c lines) {
+    t.wait(func() => false, 50)
+    t.assert(layout(c.name) == """
+        top 221x548
+          SnglBox 0,0 221x548
+            Static 8,514 205x26
+            SnglBox 8,460 205x50
+              Static 26,0 179x50
+              Static 0,0 20x50
+            SnglBox 0,0 0x0 -
+              Static 0,0 0x0
+            Static 8,443 205x13
+            SnglBox 8,414 205x25
+              Static 6,6 193x13
+            Static 8,385 205x25
+            Static 8,368 205x13
+            Static 8,334 120x30
+            SnglBox 8,290 205x40
+              Static 81,0 37x40
+              Button 0,0 75x40
+            SnglBox 8,244 205x42
+              Button 42,19 120x23
+              Static 78,0 49x13
+            SnglBox 8,180 205x60
+              Button 11,0 75x23
+              Static 0,0 5x13
+            SnglBox 8,116 205x60
+              Button 13,37 75x23
+              Static 0,47 7x13
+            SnglBox 8,52 205x60
+              Button 12,18 75x23
+              Static 0,23 6x13
+            SnglBox 8,25 205x23
+              Static 180,0 25x23
+              Button 95,0 75x23
+              SnglBox 85,0 0x23
+              Button 0,0 75x23
+            Static 8,8 205x13
+        """)
+    c.label = "a label much longer than it was"
+    c.p = 2px
+    c.hide = true
+    t.wait(func() => false, 50)
+    t.assert(layout(c.name) == """
+        top 221x548
+          SnglBox 0,0 221x519
+            Static 2,491 217x26
+            SnglBox 2,437 217x50
+              Static 26,0 191x50
+              Static 0,0 20x50
+            SnglBox 0,0 0x0 -
+              Static 0,0 0x0
+            Static 8,443 205x13 -
+            SnglBox 2,408 217x25
+              Static 6,6 205x13
+            Static 2,379 217x25
+            Static 2,362 217x13
+            Static 2,328 120x30
+            SnglBox 2,284 217x40
+              Static 81,0 37x40
+              Button 0,0 75x40
+            SnglBox 2,238 217x42
+              Button 48,19 120x23
+              Static 84,0 49x13
+            SnglBox 2,174 217x60
+              Button 11,0 75x23
+              Static 0,0 5x13
+            SnglBox 2,110 217x60
+              Button 13,37 75x23
+              Static 0,47 7x13
+            SnglBox 2,46 217x60
+              Button 12,18 75x23
+              Static 0,23 6x13
+            SnglBox 2,19 217x23
+              Static 189,0 28x23
+              Button 98,0 81x23
+              SnglBox 85,0 3x23
+              Button 0,0 75x23
+            Static 2,2 217x13
+        """)
+}
+
+func testGrids(t test.Test, c grids) {
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 300x391
+          SnglBox 0,0 300x391
+            SnglBox 0,301 300x90
+              Button 0,45 300x45
+              Static 0,0 300x45
+            SnglBox 0,272 300x23
+              Static 200,0 100x23
+              Button 100,0 100x23
+              Static 0,0 100x23
+            SnglBox 0,226 300x40
+              Button 0,0 300x40
+              Static 0,0 300x40
+            SnglBox 0,81 200x139
+              Button 0,116 75x23
+              Button 81,87 75x23
+              Button 0,87 75x23
+              Button 81,58 75x23
+              Button 0,58 75x23
+              Button 81,29 75x23
+              Button 0,29 75x23
+              Button 81,0 75x23
+              Button 0,0 75x23
+            SnglBox 0,0 300x75
+              Button 0,52 98x23
+              Button 202,26 98x23
+              Button 101,26 98x23
+              Button 0,26 98x23
+              Button 202,0 98x23
+              Button 101,0 98x23
+              Button 0,0 98x23
+        """)
+    c.cols = 2
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 300x417
+          SnglBox 0,0 300x417
+            SnglBox 0,327 300x90
+              Button 0,45 300x45
+              Static 0,0 300x45
+            SnglBox 0,298 300x23
+              Static 200,0 100x23
+              Button 100,0 100x23
+              Static 0,0 100x23
+            SnglBox 0,252 300x40
+              Button 0,0 300x40
+              Static 0,0 300x40
+            SnglBox 0,107 200x139
+              Button 0,116 75x23
+              Button 81,87 75x23
+              Button 0,87 75x23
+              Button 81,58 75x23
+              Button 0,58 75x23
+              Button 81,29 75x23
+              Button 0,29 75x23
+              Button 81,0 75x23
+              Button 0,0 75x23
+            SnglBox 0,0 300x101
+              Button 0,78 148x23
+              Button 151,52 148x23
+              Button 0,52 148x23
+              Button 151,26 148x23
+              Button 0,26 148x23
+              Button 151,0 148x23
+              Button 0,0 148x23
+        """)
+}
+
+func testControls(t test.Test, c controls) {
+    t.wait(func() => false, 300)
+    t.assert(layout(c.root) == """
+        top 200x700
+          SnglBox 0,0 200x700
+            SnglBox 0,693 200x7
+            SnglBox 0,671 200x16
+              SnglBox 0,0 200x16
+            SnglBox 0,641 200x24
+              SnglBox 0,0 200x24
+            SnglBox 0,596 160x39
+              SnglBox 0,0 0x0 -
+                SnglBox 0,0 0x0 -
+              SnglBox 0,0 0x0 -
+                SnglBox 0,0 0x0 -
+              SnglBox 0,0 0x0 -
+            SnglBox 0,558 200x32
+            SysDateTimePick32 0,531 200x21
+              Button 2,2 13x13
+            SysTreeView32 0,457 200x68
+            SysListView32 0,400 200x51
+              SysHeader32 0,0 196x17
+            Static 0,381 200x13
+            SnglBox 0,345 200x30
+              Static 19,0 5x30
+              Static 11,0 2x30
+              Static 0,0 5x30
+            Static 0,337 200x2
+            msctls_progress32 0,314 200x17
+            msctls_progress32 0,292 200x16
+            msctls_progress32 0,269 200x17
+            ComboBox 0,240 200x21
+            Edit 0,187 200x47
+            Edit 0,121 200x60
+            Edit 0,94 200x21
+            SnglBox 0,71 200x17
+              Button 56,0 62x17
+              Button 0,0 50x17
+              SnglBox 0,0 0x0 -
+            Button 0,48 200x17
+            Button 0,19 200x23
+            Static 0,0 200x13
+        """)
+}
+
+func testPanels(t test.Test, c panels) {
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 200x193
+          SnglBox 0,0 200x193
+            Static 0,180 200x13
+            SnglBox 0,134 120x40
+              SnglBox 0,0 966x23
+                Button 891,0 75x23
+                Button 810,0 75x23
+                Button 729,0 75x23
+                Button 648,0 75x23
+                Button 567,0 75x23
+                Button 486,0 75x23
+                Button 405,0 75x23
+                Button 324,0 75x23
+                Button 243,0 75x23
+                Button 162,0 75x23
+                Button 81,0 75x23
+                Button 0,0 75x23
+                SnglBox 0,0 0x0 -
+            SnglBox 0,68 200x60
+              SnglBox 0,0 183x222
+                Static 0,209 183x13
+                Static 0,190 183x13
+                Static 0,171 183x13
+                Static 0,152 183x13
+                Static 0,133 183x13
+                Static 0,114 183x13
+                Static 0,95 183x13
+                Static 0,76 183x13
+                Static 0,57 183x13
+                Static 0,38 183x13
+                Static 0,19 183x13
+                Static 0,0 183x13
+                SnglBox 0,0 0x0 -
+            SysTabControl32 0,0 200x62
+              SnglBox 4,22 192x36
+                Static 0,0 192x13
+              SnglBox 0,0 0x0 -
+                Static 0,0 0x0
+                Button 0,0 0x0
+              msctls_updown32 -34,1 34x17 -
+        """)
+    c.idx = 1
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 200x193
+          SnglBox 0,0 200x193
+            Static 0,180 200x13
+            SnglBox 0,134 120x40
+              SnglBox 0,0 966x23
+                Button 891,0 75x23
+                Button 810,0 75x23
+                Button 729,0 75x23
+                Button 648,0 75x23
+                Button 567,0 75x23
+                Button 486,0 75x23
+                Button 405,0 75x23
+                Button 324,0 75x23
+                Button 243,0 75x23
+                Button 162,0 75x23
+                Button 81,0 75x23
+                Button 0,0 75x23
+                SnglBox 0,0 0x0 -
+            SnglBox 0,68 200x60
+              SnglBox 0,0 183x222
+                Static 0,209 183x13
+                Static 0,190 183x13
+                Static 0,171 183x13
+                Static 0,152 183x13
+                Static 0,133 183x13
+                Static 0,114 183x13
+                Static 0,95 183x13
+                Static 0,76 183x13
+                Static 0,57 183x13
+                Static 0,38 183x13
+                Static 0,19 183x13
+                Static 0,0 183x13
+                SnglBox 0,0 0x0 -
+            SysTabControl32 0,0 200x62
+              SnglBox 4,22 192x36
+                Static 0,23 192x13
+                Button 0,0 192x23
+              SnglBox 4,22 192x36 -
+                Static 0,0 192x13
+              msctls_updown32 -34,1 34x17 -
+        """)
+    scroll(c.root, true, 1)
+    scroll(c.root, true, 1)
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 200x193
+          SnglBox 0,0 200x193
+            Static 0,180 200x13
+            SnglBox 0,134 120x40
+              SnglBox 0,0 966x23
+                Button 891,0 75x23
+                Button 810,0 75x23
+                Button 729,0 75x23
+                Button 648,0 75x23
+                Button 567,0 75x23
+                Button 486,0 75x23
+                Button 405,0 75x23
+                Button 324,0 75x23
+                Button 243,0 75x23
+                Button 162,0 75x23
+                Button 81,0 75x23
+                Button 0,0 75x23
+                SnglBox 0,0 0x0 -
+            SnglBox 0,68 200x60
+              SnglBox 0,-40 183x222
+                Static 0,209 183x13
+                Static 0,190 183x13
+                Static 0,171 183x13
+                Static 0,152 183x13
+                Static 0,133 183x13
+                Static 0,114 183x13
+                Static 0,95 183x13
+                Static 0,76 183x13
+                Static 0,57 183x13
+                Static 0,38 183x13
+                Static 0,19 183x13
+                Static 0,0 183x13
+                SnglBox 0,0 0x0 -
+            SysTabControl32 0,0 200x62
+              SnglBox 4,22 192x36
+                Static 0,23 192x13
+                Button 0,0 192x23
+              SnglBox 4,22 192x36 -
+                Static 0,0 192x13
+              msctls_updown32 -34,1 34x17 -
+        """)
+    wheel(c.root, -240)
+    scroll(c.root, false, 3)
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 200x193
+          SnglBox 0,0 200x193
+            Static 0,180 200x13
+            SnglBox 0,134 120x40
+              SnglBox -160,0 966x23
+                Button 891,0 75x23
+                Button 810,0 75x23
+                Button 729,0 75x23
+                Button 648,0 75x23
+                Button 567,0 75x23
+                Button 486,0 75x23
+                Button 405,0 75x23
+                Button 324,0 75x23
+                Button 243,0 75x23
+                Button 162,0 75x23
+                Button 81,0 75x23
+                Button 0,0 75x23
+                SnglBox 0,0 0x0 -
+            SnglBox 0,68 200x60
+              SnglBox 0,-40 183x222
+                Static 0,209 183x13
+                Static 0,190 183x13
+                Static 0,171 183x13
+                Static 0,152 183x13
+                Static 0,133 183x13
+                Static 0,114 183x13
+                Static 0,95 183x13
+                Static 0,76 183x13
+                Static 0,57 183x13
+                Static 0,38 183x13
+                Static 0,19 183x13
+                Static 0,0 183x13
+                SnglBox 0,0 0x0 -
+            SysTabControl32 0,0 200x62
+              SnglBox 4,22 192x36
+                Static 0,23 192x13
+                Button 0,0 192x23
+              SnglBox 4,22 192x36 -
+                Static 0,0 192x13
+              msctls_updown32 -34,1 34x17 -
+        """)
+    scroll(c.root, true, 7)
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 200x193
+          SnglBox 0,0 200x193
+            Static 0,180 200x13
+            SnglBox 0,134 120x40
+              SnglBox -160,0 966x23
+                Button 891,0 75x23
+                Button 810,0 75x23
+                Button 729,0 75x23
+                Button 648,0 75x23
+                Button 567,0 75x23
+                Button 486,0 75x23
+                Button 405,0 75x23
+                Button 324,0 75x23
+                Button 243,0 75x23
+                Button 162,0 75x23
+                Button 81,0 75x23
+                Button 0,0 75x23
+                SnglBox 0,0 0x0 -
+            SnglBox 0,68 200x60
+              SnglBox 0,-162 183x222
+                Static 0,209 183x13
+                Static 0,190 183x13
+                Static 0,171 183x13
+                Static 0,152 183x13
+                Static 0,133 183x13
+                Static 0,114 183x13
+                Static 0,95 183x13
+                Static 0,76 183x13
+                Static 0,57 183x13
+                Static 0,38 183x13
+                Static 0,19 183x13
+                Static 0,0 183x13
+                SnglBox 0,0 0x0 -
+            SysTabControl32 0,0 200x62
+              SnglBox 4,22 192x36
+                Static 0,23 192x13
+                Button 0,0 192x23
+              SnglBox 4,22 192x36 -
+                Static 0,0 192x13
+              msctls_updown32 -34,1 34x17 -
+        """)
+    t.assert(c.ends == 1)
+}
+
+func testPresses(t test.Test, c presses) {
+    t.wait(func() => false, 50)
+    press(c.root, "card text")
+    t.assert(c.cards == 1)
+    t.assert(c.texts == 1)
+    press(c.root, "inner text")
+    t.assert(c.cards == 2)
+    t.assert(c.inner == 1)
+    release(c.root, "inner text")
+    t.assert(c.cards == 3)
+    t.assert(c.inner == 2)
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 237x100
+          SnglBox 0,0 237x88
+            Static 0,75 237x13
+            SnglBox 0,29 237x40
+              SnglBox 2,21 233x17
+                Static 2,2 229x13
+              Static 2,2 233x13
+            SnglBox 0,0 0x0 -
+            SnglBox 0,0 237x23
+              Button 162,0 75x23
+              Button 81,0 75x23
+              Button 0,0 75x23
+              SnglBox 0,0 0x0 -
+            SnglBox 0,0 0x0 -
+              SnglBox 0,0 0x0 -
+                SnglBox 0,0 0x0 -
+        """)
+    c.items = ["zero", "one", "three", "four"]
+    c.asking = true
+    t.wait(func() => false, 50)
+    t.assert(layout(c.root) == """
+        top 399x100
+          SnglBox 0,0 399x88
+            Static 0,75 399x13
+            SnglBox 0,29 399x40
+              SnglBox 2,21 395x17
+                Static 2,2 391x13
+              Static 2,2 395x13
+            SnglBox 0,0 0x0 -
+            SnglBox 0,0 399x23
+              Button 243,0 75x23
+              Button 324,0 75x23
+              Button 0,0 75x23
+              Button 81,0 75x23
+              SnglBox 0,0 0x0 -
+            SnglBox 0,0 0x0 -
+              SnglBox 0,0 0x0 -
+                SnglBox 0,0 0x0 -
+        owned 240x80
+          Button 12,31 216x23
+          Static 12,12 216x13
+        """)
+}
+-- peek.h --
+#include <windows.h>
+
+const char *peek_layout(HWND any);
+int peek_scroll(HWND any, int vertical, int code);
+int peek_wheel(HWND any, int delta);
+int peek_press(HWND any, const char *text);
+int peek_lbutton(HWND any, const char *text);
+-- peek.c --
+#include "peek.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static char out[65536];
+static size_t used;
+
+static void put(const char *s) {
+	size_t n = strlen(s);
+	if (used + n < sizeof out) {
+		memcpy(out + used, s, n + 1);
+		used += n;
+	}
+}
+
+/* walk writes w and each window under it, in z-order: its class, its rect
+ * in its parent's client area, and "-" where its style hides it. */
+static void walk(HWND w, int depth) {
+	char cls[64], line[160];
+	GetClassNameA(w, cls, sizeof cls);
+	RECT r;
+	GetWindowRect(w, &r);
+	MapWindowPoints(HWND_DESKTOP, GetParent(w), (POINT *)&r, 2);
+	int shown = (GetWindowLongW(w, GWL_STYLE) & WS_VISIBLE) != 0;
+	snprintf(line, sizeof line, "\n%*s%s %ld,%ld %ldx%ld%s", 2 * depth, "", cls, r.left, r.top, r.right - r.left, r.bottom - r.top, shown ? "" : " -");
+	put(line);
+	for (HWND k = GetWindow(w, GW_CHILD); k; k = GetWindow(k, GW_HWNDNEXT)) {
+		walk(k, depth + 1);
+	}
+}
+
+static void window(HWND top, const char *what) {
+	RECT c;
+	GetClientRect(top, &c);
+	char line[64];
+	snprintf(line, sizeof line, "%s%s %ldx%ld", used ? "\n" : "", what, c.right, c.bottom);
+	put(line);
+	for (HWND k = GetWindow(top, GW_CHILD); k; k = GetWindow(k, GW_HWNDNEXT)) {
+		walk(k, 1);
+	}
+}
+
+/* owned writes each window shown that top owns: a modal's. */
+static BOOL CALLBACK owned(HWND w, LPARAM lp) {
+	if (GetWindow(w, GW_OWNER) == (HWND)lp && IsWindowVisible(w)) {
+		window(w, "owned");
+	}
+	return TRUE;
+}
+
+const char *peek_layout(HWND any) {
+	HWND top = GetAncestor(any, GA_ROOT);
+	used = 0;
+	out[0] = 0;
+	window(top, "top");
+	EnumWindows(owned, (LPARAM)top);
+	/* PEEK_OUT, a Windows path, collects each dump, as these tests
+	 * were written from. */
+	const char *path = getenv("PEEK_OUT");
+	if (path) {
+		FILE *f = fopen(path, "a");
+		if (f) {
+			fprintf(f, "%s\n\n", out);
+			fclose(f);
+		}
+	}
+	return out;
+}
+
+struct find {
+	const char *text;
+	LONG style;
+	HWND found;
+};
+
+static BOOL CALLBACK match(HWND w, LPARAM lp) {
+	struct find *f = (struct find *)lp;
+	char cls[64], text[128] = {0};
+	GetClassNameA(w, cls, sizeof cls);
+	if (f->text) {
+		GetWindowTextA(w, text, sizeof text);
+		if (lstrcmpiA(cls, "STATIC") == 0 && strcmp(text, f->text) == 0) {
+			f->found = w;
+			return FALSE;
+		}
+		return TRUE;
+	}
+	if (strcmp(cls, "SnglBox") == 0 && (GetWindowLongW(w, GWL_STYLE) & f->style)) {
+		f->found = w;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static HWND find(HWND any, const char *text, LONG style) {
+	struct find f = {text, style, NULL};
+	EnumChildWindows(GetAncestor(any, GA_ROOT), match, (LPARAM)&f);
+	return f.found;
+}
+
+int peek_scroll(HWND any, int vertical, int code) {
+	HWND s = find(any, NULL, vertical ? WS_VSCROLL : WS_HSCROLL);
+	if (!s) {
+		return 0;
+	}
+	SendMessageW(s, vertical ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(code, 0), 0);
+	return 1;
+}
+
+int peek_wheel(HWND any, int delta) {
+	HWND s = find(any, NULL, WS_VSCROLL | WS_HSCROLL);
+	if (!s) {
+		return 0;
+	}
+	SendMessageW(s, WM_MOUSEWHEEL, MAKEWPARAM(0, (WORD)(short)delta), 0);
+	return 1;
+}
+
+/* peek_press clicks the text labeled text as the user does: its STN_CLICKED
+ * to the window it is in. */
+int peek_press(HWND any, const char *text) {
+	HWND t = find(any, text, 0);
+	if (!t) {
+		return 0;
+	}
+	SendMessageW(GetParent(t), WM_COMMAND, MAKEWPARAM(GetDlgCtrlID(t), STN_CLICKED), (LPARAM)t);
+	return 1;
+}
+
+/* peek_lbutton releases the mouse over the box holding the text labeled
+ * text, as a click on the box around it does. */
+int peek_lbutton(HWND any, const char *text) {
+	HWND t = find(any, text, 0);
+	if (!t) {
+		return 0;
+	}
+	SendMessageW(GetParent(t), WM_LBUTTONUP, 0, MAKELPARAM(1, 1));
+	return 1;
+}
+-- testrun/win32/c/app.sngl/controls/1 --
+sha256:4dfc8c68fc45cb2ab0cd4c7bd85095d2
+{
+  "results": [
+    {
+      "Desc": "Controls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/controls/2 --
+sha256:44c021546595434faa929c5474bbda26
+{
+  "results": [
+    {
+      "Desc": "Controls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/grids/1 --
+sha256:5a86a39eeec57e4d6f0f5f27ffcbac55
+{
+  "results": [
+    {
+      "Desc": "Grids",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/grids/2 --
+sha256:63c4812e057d3a06839354ab81a577bb
+{
+  "results": [
+    {
+      "Desc": "Grids",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/lines/1 --
+sha256:f7635c99d666a03a5446af7e833e36eb
+{
+  "results": [
+    {
+      "Desc": "Lines",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/lines/2 --
+sha256:400e5c0e650b460c95314958d9bcf679
+{
+  "results": [
+    {
+      "Desc": "Lines",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panels/1 --
+sha256:6ed5d7c86c263e6452c7d045ca643754
+{
+  "results": [
+    {
+      "Desc": "Panels",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panels/2 --
+sha256:5185d5d7aef4fb7cf37635f7cc5f9d2e
+{
+  "results": [
+    {
+      "Desc": "Panels",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/presses/1 --
+sha256:8995ab77a3b4ba158eaee18ef47a0071
+{
+  "results": [
+    {
+      "Desc": "Presses",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/presses/2 --
+sha256:60012d985d9aa7a336d26b4b4a04c08a
+{
+  "results": [
+    {
+      "Desc": "Presses",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/controls/1 --
+sha256:d630686241459c0f917029ecea90444b
+{
+  "results": [
+    {
+      "Desc": "Controls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/controls/2 --
+sha256:ee922d86838b8e2a1ca9ea03f8783dda
+{
+  "results": [
+    {
+      "Desc": "Controls",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/grids/1 --
+sha256:59b9304e8557addca5739d4af0319954
+{
+  "results": [
+    {
+      "Desc": "Grids",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/grids/2 --
+sha256:42c0b8ee96e264aa8f61c1098b7c7385
+{
+  "results": [
+    {
+      "Desc": "Grids",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/lines/1 --
+sha256:3cf1e145170908429747a76726eaa2fc
+{
+  "results": [
+    {
+      "Desc": "Lines",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/lines/2 --
+sha256:3397eb74eeca65af90abd6aca47b4032
+{
+  "results": [
+    {
+      "Desc": "Lines",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/panels/1 --
+sha256:e73ca566ab7eb70f6ee3b1c61318bebb
+{
+  "results": [
+    {
+      "Desc": "Panels",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/panels/2 --
+sha256:dd854a7f64700ce0d8917011261271d0
+{
+  "results": [
+    {
+      "Desc": "Panels",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/presses/1 --
+sha256:3afd1334de7b28760e6b0caae1bc9f24
+{
+  "results": [
+    {
+      "Desc": "Presses",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/presses/2 --
+sha256:1893fb76687ad68123bdff3569885ca7
+{
+  "results": [
+    {
+      "Desc": "Presses",
+      "Passed": true
+    }
+  ]
+}
