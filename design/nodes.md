@@ -296,7 +296,19 @@ declaration itself. Two things about the name that are easy to get wrong:
 - **It carries its own qualifier.** `#[go.native("strings", "strings.ToUpper")]`,
   not `("strings", "ToUpper")` — a Go package's name is not a function of its
   import path (`gopkg.in/yaml.v3` is package `yaml`), so the path cannot supply
-  it. The path is what `RequireImport` adds.
+  it. The path is what `RequireImport` adds. The qualifier names the
+  package as the mark's author knew it, and the file writes it with the name
+  the import has there (`GoIRContext.Qualified`, through `site.qualify` for a
+  type): two packages of one name, the platform's wrapper package and a
+  program's own (`sngl tool cgogen`), both `cgo`, are imported as `cgo` and
+  `cgo2`, and every reference to the second says `cgo2`. Written literally,
+  the second import was aliased and unused while its calls and types named
+  the first (`cmd/sngl/testdata/cgogen_beside_platform_runs.txt`). A name
+  no other import collides with is written as the mark spells it, and a
+  method's qualifier, never written, claims nothing. fyne and bubbletea
+  hand their emitter the paths alone, and a type spelled with no file to
+  ask (`IRTypeToGo`) is written as the mark spells it, so a collision there
+  is untested.
 - **Every language has one.** `go.native` and `js.native` were joined by
   `kotlin.native`, which android needs to describe Compose, and by
   **`#[c.native]` in `sngl:macro`** — C is an ABI rather than a target, so a

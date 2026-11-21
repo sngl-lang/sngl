@@ -74,7 +74,7 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 			for _, p := range typeImports(fd.Type, pkg.CCalls) {
 				gc.RequireImport(p)
 			}
-			fmt.Fprintf(&b, "\t%s %s\n", ExportName(fd.Name), typeToGo(fd.Type, site{calls: pkg.CCalls}))
+			fmt.Fprintf(&b, "\t%s %s\n", ExportName(fd.Name), typeToGo(fd.Type, site{calls: pkg.CCalls, qualify: gc.Qualified}))
 		}
 		b.WriteString("}\n\n")
 	}
@@ -85,7 +85,7 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 		for _, p := range typeImports(v.Type, pkg.CCalls) {
 			gc.RequireImport(p)
 		}
-		fmt.Fprintf(&b, "\t%s %s\n", gc.StateFieldName(v.Name), typeToGo(v.Type, site{calls: pkg.CCalls}))
+		fmt.Fprintf(&b, "\t%s %s\n", gc.StateFieldName(v.Name), typeToGo(v.Type, site{calls: pkg.CCalls, qualify: gc.Qualified}))
 	}
 	fmt.Fprintf(&b, "}\n\nvar %s = &snglState{}\n", gc.RecvName())
 

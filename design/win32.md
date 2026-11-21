@@ -187,7 +187,10 @@ the directory's files, which a `//go:generate sngl tool cgogen .` beside them
 keeps in step (`cgogen.Dir`). A program reaches the wrapper package through
 the temporary module it builds in, which replaces the host module with its
 root as it replaced sngl's checkout (`codegen.WriteGoMod`;
-`cmd/sngl/testdata/cgogen_user_package_runs.txt`).
+`cmd/sngl/testdata/cgogen_user_package_runs.txt`). Beside a platform's
+wrapper package, also `cgo`, it is imported as `cgo2`, which its calls and
+types are written with (`design/nodes.md`'s `go.native` qualifier;
+`cgogen_beside_platform_runs.txt`, gtk4 and win32).
 
 **A wrapper's body is the call a direct one makes.** The tool builds a SNGL
 function per wrapper whose body calls the declaration, lowers it with
