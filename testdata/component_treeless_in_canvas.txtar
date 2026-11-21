@@ -10709,7 +10709,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/c/gtk4 --
 pass sha256:348f611255760e5766302d57cf0cb1c4
 -- run/c/win32 --
-pass sha256:30b0da10585fcb4204dfb942ee3fcf4b
+pass sha256:542dbb4fa7f11ce9f306777a88791a4f
 -- run/go/bubbletea --
 pass sha256:4050baaf343b3789637964efbf3dbf2e
 -- run/go/fyne --

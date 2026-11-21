@@ -434,7 +434,7 @@ func testItFreesWhatCHandsOver(t test.Test) {
 }
 
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:026e80c67dda5be6942d3e4d2fd2f4b7
+sha256:9c34ac140d6c520894080a394a914509
 {
   "results": [
     {

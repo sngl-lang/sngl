@@ -82,7 +82,7 @@ func testDraws(t test.Test, c main) {
     t.snapshot("flipped")
 }
 -- testrun/win32/c/states.sngl/main/1 --
-sha256:a7de33f78561af37a45da9509afa76b2
+sha256:7844f0ddee5f8b2218fd12c9b783a298
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:a7de33f78561af37a45da9509afa76b2
   }
 }
 -- testrun/win32/c/states.sngl/main/2 --
-sha256:f92019602dcf7a5910b4de49a0f368f7
+sha256:4555ba15a1a5bac8922e9e78290d3f3b
 {
   "results": [
     {
@@ -142,7 +142,7 @@ sha256:f06931974fba7b08c0cf83ede801fc9a
   ]
 }
 -- testrun/win32/go/states.sngl/main/2 --
-sha256:a4d157efa963dceab8999c1df60d86fe
+sha256:c93077fc84cd8876b027a7b52a6aedb5
 {
   "results": [
     {

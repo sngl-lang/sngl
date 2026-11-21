@@ -9320,7 +9320,7 @@ body { font-family: system-ui, sans-serif; }
 -- run/c/gtk4 --
 pass sha256:a6b9cfb130a8a34877cba473f9e1756c
 -- run/c/win32 --
-pass sha256:002dc893b075a5ce12ca6245d2357dbd
+pass sha256:8325bed508456d6c0f32b1488ea32f0b
 -- run/go/fyne --
 pass sha256:d4fcbe1607e64da4cbe835a1a43a8871
 -- run/go/gtk4 --
