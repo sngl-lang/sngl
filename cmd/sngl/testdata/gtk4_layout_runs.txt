@@ -133,7 +133,7 @@ sha256:f92849404aafd6205677cd6a3f81bce1
   }
 }
 -- testrun/gtk4/c/pictures.sngl/pictures/1 --
-sha256:920f35d024c50f5b9ea25a0a6ee9247f
+sha256:2e0c9bc5693be9700a63394d7da4355b
 {
   "results": [
     {

@@ -88,6 +88,7 @@ func testRemoveRunsOnEveryLanguage(t test.Test, c main) {
 #include "sngl.h"
 #include "sngl_gtk.h"
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 typedef struct s___ref_map_int_string s___ref_map_int_string;
@@ -162,6 +163,7 @@ typedef struct sngl_map_int__string {
 	sngl_string *vals;
 	int64_t len;
 	int64_t cap;
+	uint32_t *idx;
 } sngl_map_int__string;
 
 typedef struct s___ref_map_int_string {
@@ -196,6 +198,7 @@ typedef struct sngl_map_string__int {
 	int64_t *vals;
 	int64_t len;
 	int64_t cap;
+	uint32_t *idx;
 } sngl_map_string__int;
 
 typedef struct s___ref_map_string_int {
@@ -765,13 +768,102 @@ static void s___lambda0_caps__env__release(void *p);
 static void s___lambda0_caps__env__rekeep(void *p);
 static void s___lambda0_caps__env__visit(void *p, sngl_visit fn);
 
+static uint64_t sngl_mapidx_mix(uint64_t h) {
+	h ^= h >> 33;
+	h *= UINT64_C(0xff51afd7ed558ccd);
+	h ^= h >> 33;
+	h *= UINT64_C(0xc4ceb9fe1a85ec53);
+	h ^= h >> 33;
+	return h;
+}
+
+static uint64_t sngl_mapidx_bytes(const void *p, size_t n) {
+	const unsigned char *b = p;
+	uint64_t h = UINT64_C(14695981039346656037);
+	for (size_t i = 0; i < n; i++) {
+		h ^= b[i];
+		h *= UINT64_C(1099511628211);
+	}
+	return sngl_mapidx_mix(h);
+}
+
+static uint64_t sngl_mapidx_word(const void *p, size_t n) {
+	if (n > sizeof(uint64_t)) {
+		return sngl_mapidx_bytes(p, n);
+	}
+	uint64_t x = 0;
+	memcpy(&x, p, n);
+	return sngl_mapidx_mix(x);
+}
+
+static uint64_t sngl_mapidx_join(uint64_t h, uint64_t x) {
+	return sngl_mapidx_mix(h ^ (x + UINT64_C(0x9e3779b97f4a7c15) + (h << 6) + (h >> 2)));
+}
+
+static uint64_t sngl_mapidx_float(double x) {
+	if (x == 0) {
+		return 0;
+	}
+	return sngl_mapidx_bytes(&x, sizeof x);
+}
+
+static size_t sngl_mapidx_slots(int64_t cap) {
+	if (cap <= 8) {
+		return 0;
+	}
+	size_t n = 32;
+	while (n < (size_t)cap * 2) {
+		n *= 2;
+	}
+	return n;
+}
+
+static size_t sngl_mapidx_at(size_t key, int64_t cap) {
+	return (key * (size_t)(cap + 1) + 7) & ~(size_t)7;
+}
+
+static size_t sngl_map_int__string_keys_size(int64_t cap) {
+	size_t n = sngl_mapidx_slots(cap);
+	return sngl_mapidx_at(sizeof(int64_t), cap) + (n == 0 ? 0 : sizeof(uint32_t) * (2 + n));
+}
+
+static void sngl_map_int__string_index_put(sngl_map_int__string *m, int64_t i) {
+	uint64_t mask = m->idx[-2];
+	if (((uint64_t)m->idx[-1] + 1) * 2 > mask + 1) {
+		m->idx = NULL;
+		return;
+	}
+	m->idx[-1]++;
+	for (uint64_t s = sngl_mapidx_mix((uint64_t)(m->keys[i])) & mask;; s = (s + 1) & mask) {
+		if (m->idx[s] == 0) {
+			m->idx[s] = (uint32_t)(i + 1);
+			return;
+		}
+	}
+}
+
+static void sngl_map_int__string_reindex(sngl_map_int__string *m) {
+	size_t n = sngl_mapidx_slots(m->cap);
+	if (n == 0) {
+		m->idx = NULL;
+		return;
+	}
+	uint32_t *h = (uint32_t *)(void *)((char *)m->keys + sngl_mapidx_at(sizeof(int64_t), m->cap));
+	memset(h, 0, sizeof(uint32_t) * (2 + n));
+	h[0] = (uint32_t)(n - 1);
+	m->idx = h + 2;
+	for (int64_t i = 0; i < m->len; i++) {
+		sngl_map_int__string_index_put(m, i);
+	}
+}
+
 static void sngl_map_int__string__unshare(sngl_map_int__string *l) {
 	if (!sngl_shared(l->keys)) {
 		return;
 	}
 	sngl_map_int__string v = *l;
 	sngl_let_go_shared_map(v.keys, v.vals);
-	int64_t *keys = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+	int64_t *keys = sngl_keep_alloc(sngl_map_int__string_keys_size(v.len));
 	if (v.len > 0) {
 		memcpy(keys, v.keys, sizeof(int64_t) * (size_t)v.len);
 	}
@@ -787,16 +879,29 @@ static void sngl_map_int__string__unshare(sngl_map_int__string *l) {
 	for (int64_t i = 0; i < v.len; i++) {
 		v.vals[i] = sngl_string_keep(v.vals[i]);
 	}
+	sngl_map_int__string_reindex(&v);
 	*l = v;
 }
 
 static int64_t sngl_map_int__string_find(sngl_map_int__string m, int64_t k) {
-	for (int64_t i = 0; i < m.len; i++) {
-		if (m.keys[i] == k) {
-			return i;
+	if (m.idx == NULL) {
+		for (int64_t i = 0; i < m.len; i++) {
+			if (m.keys[i] == k) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	uint64_t mask = m.idx[-2];
+	for (uint64_t s = sngl_mapidx_mix((uint64_t)(k)) & mask;; s = (s + 1) & mask) {
+		uint32_t p = m.idx[s];
+		if (p == 0) {
+			return -1;
+		}
+		if ((int64_t)p <= m.len && (m.keys[p - 1] == k)) {
+			return (int64_t)p - 1;
 		}
 	}
-	return -1;
 }
 
 static void sngl_map_int__string_remove_kept(sngl_map_int__string *m, int64_t k) {
@@ -805,7 +910,7 @@ static void sngl_map_int__string_remove_kept(sngl_map_int__string *m, int64_t k)
 		return;
 	}
 	sngl_map_int__string__unshare(m);
-	int64_t *keys = sngl_keep_alloc(sizeof(int64_t) * (size_t)m->len);
+	int64_t *keys = sngl_keep_alloc(sngl_map_int__string_keys_size(m->len));
 	sngl_string *vals = sngl_keep_alloc(sizeof(sngl_string) * (size_t)m->len);
 	memcpy(keys, m->keys, sizeof(int64_t) * (size_t)i);
 	memcpy(vals, m->vals, sizeof(sngl_string) * (size_t)i);
@@ -818,6 +923,7 @@ static void sngl_map_int__string_remove_kept(sngl_map_int__string *m, int64_t k)
 	m->len--;
 	m->keys = keys;
 	m->vals = vals;
+	sngl_map_int__string_reindex(m);
 	sngl_kept_len(m->keys, m->len);
 	sngl_kept_len(m->vals, m->len);
 }
@@ -855,12 +961,59 @@ static sngl_string sngl_list_string_join(sngl_list_string l, sngl_string sep) {
 }
 
 static int64_t sngl_map_string__int_find(sngl_map_string__int m, sngl_string k) {
-	for (int64_t i = 0; i < m.len; i++) {
-		if (sngl_string_eq(m.keys[i], k)) {
-			return i;
+	if (m.idx == NULL) {
+		for (int64_t i = 0; i < m.len; i++) {
+			if (sngl_string_eq(m.keys[i], k)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	uint64_t mask = m.idx[-2];
+	for (uint64_t s = sngl_mapidx_bytes((k).ptr, (k).len) & mask;; s = (s + 1) & mask) {
+		uint32_t p = m.idx[s];
+		if (p == 0) {
+			return -1;
+		}
+		if ((int64_t)p <= m.len && sngl_string_eq(m.keys[p - 1], k)) {
+			return (int64_t)p - 1;
 		}
 	}
-	return -1;
+}
+
+static size_t sngl_map_string__int_keys_size(int64_t cap) {
+	size_t n = sngl_mapidx_slots(cap);
+	return sngl_mapidx_at(sizeof(sngl_string), cap) + (n == 0 ? 0 : sizeof(uint32_t) * (2 + n));
+}
+
+static void sngl_map_string__int_index_put(sngl_map_string__int *m, int64_t i) {
+	uint64_t mask = m->idx[-2];
+	if (((uint64_t)m->idx[-1] + 1) * 2 > mask + 1) {
+		m->idx = NULL;
+		return;
+	}
+	m->idx[-1]++;
+	for (uint64_t s = sngl_mapidx_bytes((m->keys[i]).ptr, (m->keys[i]).len) & mask;; s = (s + 1) & mask) {
+		if (m->idx[s] == 0) {
+			m->idx[s] = (uint32_t)(i + 1);
+			return;
+		}
+	}
+}
+
+static void sngl_map_string__int_reindex(sngl_map_string__int *m) {
+	size_t n = sngl_mapidx_slots(m->cap);
+	if (n == 0) {
+		m->idx = NULL;
+		return;
+	}
+	uint32_t *h = (uint32_t *)(void *)((char *)m->keys + sngl_mapidx_at(sizeof(sngl_string), m->cap));
+	memset(h, 0, sizeof(uint32_t) * (2 + n));
+	h[0] = (uint32_t)(n - 1);
+	m->idx = h + 2;
+	for (int64_t i = 0; i < m->len; i++) {
+		sngl_map_string__int_index_put(m, i);
+	}
 }
 
 static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k) {
@@ -870,7 +1023,7 @@ static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k
 	}
 	if (m->len == m->cap) {
 		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
-		sngl_string *keys = sngl_alloc(sizeof(sngl_string) * (size_t)cap);
+		sngl_string *keys = sngl_alloc(sngl_map_string__int_keys_size(cap));
 		int64_t *vals = sngl_alloc(sizeof(int64_t) * (size_t)cap);
 		if (m->len > 0) {
 			memcpy(keys, m->keys, sizeof(sngl_string) * (size_t)m->len);
@@ -879,10 +1032,14 @@ static int64_t *sngl_map_string__int_slot(sngl_map_string__int *m, sngl_string k
 		m->keys = keys;
 		m->vals = vals;
 		m->cap = cap;
+		sngl_map_string__int_reindex(m);
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(int64_t));
 	m->len++;
+	if (m->idx != NULL) {
+		sngl_map_string__int_index_put(m, m->len - 1);
+	}
 	return &m->vals[m->len - 1];
 }
 
@@ -899,7 +1056,7 @@ static void sngl_map_string__int_remove(sngl_map_string__int *m, sngl_string k) 
 	if (i < 0) {
 		return;
 	}
-	sngl_string *keys = sngl_alloc(sizeof(sngl_string) * (size_t)m->len);
+	sngl_string *keys = sngl_alloc(sngl_map_string__int_keys_size(m->len));
 	int64_t *vals = sngl_alloc(sizeof(int64_t) * (size_t)m->len);
 	memcpy(keys, m->keys, sizeof(sngl_string) * (size_t)i);
 	memcpy(vals, m->vals, sizeof(int64_t) * (size_t)i);
@@ -909,14 +1066,16 @@ static void sngl_map_string__int_remove(sngl_map_string__int *m, sngl_string k) 
 	m->len--;
 	m->keys = keys;
 	m->vals = vals;
+	sngl_map_string__int_reindex(m);
 }
 
 static sngl_map_string__int sngl_map_string__int_copy(sngl_map_string__int m) {
-	sngl_map_string__int out = {sngl_alloc(sizeof(sngl_string) * (size_t)(m.len + 1)), sngl_alloc(sizeof(int64_t) * (size_t)(m.len + 1)), m.len, m.len};
+	sngl_map_string__int out = {sngl_alloc(sngl_map_string__int_keys_size(m.len)), sngl_alloc(sizeof(int64_t) * (size_t)(m.len + 1)), m.len, m.len, NULL};
 	for (int64_t i = 0; i < m.len; i++) {
 		out.keys[i] = m.keys[i];
 		out.vals[i] = m.vals[i];
 	}
+	sngl_map_string__int_reindex(&out);
 	return out;
 }
 
@@ -1713,7 +1872,7 @@ static void sngl_map_string__int__unshare(sngl_map_string__int *l) {
 	}
 	sngl_map_string__int v = *l;
 	sngl_let_go_shared_map(v.keys, v.vals);
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+	sngl_string *keys = sngl_keep_alloc(sngl_map_string__int_keys_size(v.len));
 	if (v.len > 0) {
 		memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
 	}
@@ -1729,6 +1888,7 @@ static void sngl_map_string__int__unshare(sngl_map_string__int *l) {
 	for (int64_t i = 0; i < v.len; i++) {
 		v.keys[i] = sngl_string_keep(v.keys[i]);
 	}
+	sngl_map_string__int_reindex(&v);
 	*l = v;
 }
 
@@ -1738,7 +1898,7 @@ static void sngl_map_string__int_remove_kept(sngl_map_string__int *m, sngl_strin
 		return;
 	}
 	sngl_map_string__int__unshare(m);
-	sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)m->len);
+	sngl_string *keys = sngl_keep_alloc(sngl_map_string__int_keys_size(m->len));
 	int64_t *vals = sngl_keep_alloc(sizeof(int64_t) * (size_t)m->len);
 	memcpy(keys, m->keys, sizeof(sngl_string) * (size_t)i);
 	memcpy(vals, m->vals, sizeof(int64_t) * (size_t)i);
@@ -1751,6 +1911,7 @@ static void sngl_map_string__int_remove_kept(sngl_map_string__int *m, sngl_strin
 	m->len--;
 	m->keys = keys;
 	m->vals = vals;
+	sngl_map_string__int_reindex(m);
 	sngl_kept_len(m->keys, m->len);
 	sngl_kept_len(m->vals, m->len);
 }
@@ -1762,7 +1923,7 @@ static sngl_string *sngl_map_int__string_slot(sngl_map_int__string *m, int64_t k
 	}
 	if (m->len == m->cap) {
 		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
-		int64_t *keys = sngl_alloc(sizeof(int64_t) * (size_t)cap);
+		int64_t *keys = sngl_alloc(sngl_map_int__string_keys_size(cap));
 		sngl_string *vals = sngl_alloc(sizeof(sngl_string) * (size_t)cap);
 		if (m->len > 0) {
 			memcpy(keys, m->keys, sizeof(int64_t) * (size_t)m->len);
@@ -1771,10 +1932,14 @@ static sngl_string *sngl_map_int__string_slot(sngl_map_int__string *m, int64_t k
 		m->keys = keys;
 		m->vals = vals;
 		m->cap = cap;
+		sngl_map_int__string_reindex(m);
 	}
 	m->keys[m->len] = k;
 	memset(&m->vals[m->len], 0, sizeof(sngl_string));
 	m->len++;
+	if (m->idx != NULL) {
+		sngl_map_int__string_index_put(m, m->len - 1);
+	}
 	return &m->vals[m->len - 1];
 }
 
@@ -1788,7 +1953,7 @@ static sngl_map_int__string sngl_map_int__string_of(int64_t n, int64_t const *ks
 
 static sngl_map_int__string sngl_map_int__string__keep(sngl_map_int__string v) {
 	if (!sngl_share_map(v.keys, v.vals, v.len)) {
-		int64_t *keys = sngl_keep_alloc(sizeof(int64_t) * (size_t)(v.len + 1));
+		int64_t *keys = sngl_keep_alloc(sngl_map_int__string_keys_size(v.len));
 		if (v.len > 0) {
 			memcpy(keys, v.keys, sizeof(int64_t) * (size_t)v.len);
 		}
@@ -1804,6 +1969,7 @@ static sngl_map_int__string sngl_map_int__string__keep(sngl_map_int__string v) {
 		for (int64_t i = 0; i < v.len; i++) {
 			v.vals[i] = sngl_string_keep(v.vals[i]);
 		}
+		sngl_map_int__string_reindex(&v);
 	}
 	return v;
 }
@@ -1845,7 +2011,7 @@ static sngl_list_GtkWidget_p sngl_list_GtkWidget_p__keep(sngl_list_GtkWidget_p v
 
 static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v) {
 	if (!sngl_share_map(v.keys, v.vals, v.len)) {
-		sngl_string *keys = sngl_keep_alloc(sizeof(sngl_string) * (size_t)(v.len + 1));
+		sngl_string *keys = sngl_keep_alloc(sngl_map_string__int_keys_size(v.len));
 		if (v.len > 0) {
 			memcpy(keys, v.keys, sizeof(sngl_string) * (size_t)v.len);
 		}
@@ -1861,6 +2027,7 @@ static sngl_map_string__int sngl_map_string__int__keep(sngl_map_string__int v) {
 		for (int64_t i = 0; i < v.len; i++) {
 			v.keys[i] = sngl_string_keep(v.keys[i]);
 		}
+		sngl_map_string__int_reindex(&v);
 	}
 	return v;
 }
@@ -5109,7 +5276,7 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/c/gtk4 --
-pass sha256:a28f88207f96b6c29d96261a0cb44fe3
+pass sha256:ee7382cbe1f99fd6d59eb4ba87db09c7
 -- run/go/bubbletea --
 pass sha256:6652632b61d9ff949127d4597068ba66
 -- run/kotlin/android --

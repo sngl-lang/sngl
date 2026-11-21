@@ -660,7 +660,7 @@ sha256:145811fb6e60fd49ab69ba27fddfdd12
   }
 }
 -- testrun/win32/c/panels.sngl/main/1 --
-sha256:856f784d823e5313c45147f287405c45
+sha256:902b0a52f05154a375551e933941160c
 {
   "results": [
     {

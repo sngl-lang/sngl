@@ -484,6 +484,9 @@ func (c *Context) Select(n *ir.Select, operand string) string {
 	if t == nil || (t.Kind != ir.TypeStruct && !multiBase(t)) {
 		return c.fail("selecting %s of %s", n.Field, t)
 	}
+	if entry, ok := c.mapEntry(n.Operand, operand); ok {
+		return entry + "->" + Local(n.Field)
+	}
 	return operand + "." + Local(n.Field)
 }
 

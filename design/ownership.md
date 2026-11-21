@@ -998,6 +998,33 @@ copied that map into each of 237 rows for each answer: two minutes of the
 CPU for one page. `codegen/lang/c/testdata/run/shares.txtar` holds each
 write through a shared buffer, and the clear.
 
+**A map past eight keys finds one through an index in its keys' block.**
+The index is an open-addressed table of positions in `keys`, probed from a
+hash that agrees with the keys' equality (`hash` in
+`codegen/lang/c/collections.go`: a string by its bytes, a struct by its
+fields, a float with its two zeros alike, a pointer or a handle by its
+bits), and it is the tail of the keys' own block, so it is allocated in the
+arena or kept, shared, dropped and given back with the keys and nothing
+else changes. Whatever makes a keys block -- a growth, a remove, a copy, a
+keep or an unshare -- makes its index (`mapReindex`), and an append in place
+adds to it; the struct's `idx` points into the block, and a map whose `idx`
+is NULL walks its keys, which a map of eight or fewer does. A copy of the
+struct sharing the block -- a loop's, a value read before a write -- finds
+only what its length covers: a position past it is the writer's append, and
+the probe goes past it as it goes past a position whose key is another's.
+The index holds at most half its slots, and an append that would fill past
+that -- only where two copies of a struct appended to one block -- lets the
+index go rather than probe forever. A map's order is still the order first
+set, and a remove still copies the entries into new arrays. Walking the keys,
+the win32 runtime's per-window record held in a `map[HWND, _Ctl]` made a
+relayout over 900 windows 5.5 ms under Wine where Go's map took 0.27 ms; the
+index takes it to 0.37 ms as the C target compiles (no `-O`), 0.15 ms at
+`-O2`. A field read of an entry (`m[k].f`) reads through a pointer to it
+(`mapEntry`) rather than copying the whole value out. Pinned by
+`codegen/lang/c/testdata/run/map_index.txtar`: many keys, removal and
+re-adding, copies diverging, a loop removing what it walks, each kind of
+key, a holder's map across turns keeping no block more.
+
 **A record gives back its box and what its fields kept as it is
 destroyed.** A component built at run time -- a row a keyed `for` keeps -- is
 a record (`internal/lower/placerecords.go`), a box whose fields the

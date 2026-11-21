@@ -613,7 +613,7 @@ sha256:fa0f87fb9c00d692dd58e5960d741ad2
   ]
 }
 -- testrun/gtk4/c/canvas.sngl/main/1 --
-sha256:8b86dc4db4b522614caea46f16bf2c89
+sha256:b59c6d7452bd03a45f66508c15bded04
 {
   "results": [
     {
@@ -680,7 +680,7 @@ sha256:334672a1743dfbb884150aad9ff7fd54
   }
 }
 -- testrun/gtk4/c/scroll.sngl/main/1 --
-sha256:0900b62f6707baa615e42f6cd9cfaf29
+sha256:76b513502fb0010394d7cdccfdb656f6
 {
   "results": [
     {

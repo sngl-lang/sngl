@@ -1,0 +1,341 @@
+A map past a few entries finds a key through an index over its keys
+(mapFind) rather than by walking them, and answers as the walk did: every
+key found and no other, the order first set kept, a copy and its original
+apart after either is written, a loop removing what it walks, and a holder's
+map across turns, shared, written, emptied and filled again, keeping no
+block more. Each kind of key hashes as it compares: a string by its bytes,
+an int, a float whose zero has two signs, a bool, an enum, a payload enum, a
+struct of a string, an enum and a list, a unit, and a C handle. Ints apart
+only in their high bits are keys too.
+
+-- app.sngl --
+import c "sngl:x/c"
+import seq "sngl:seq"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_win *")]
+struct Win {}
+
+#[c.native("test_win_at")]
+func winAt(i int) Win
+
+enum Color {
+    red
+    green
+    blue
+}
+
+enum Shape {
+    dot
+    square int
+    named  string
+}
+
+struct Key {
+    name  string
+    color Color
+    tags  list[string]
+}
+
+struct Rec {
+    name string
+    n    int
+    tags list[string]
+}
+
+unit span { pt, inch = 72pt }
+
+func many() string {
+    var m map[int, int] = {}
+    for var i = seq.count(1000) {
+        m[i * 7919 % 1000] = i
+    }
+    var found = 0
+    var absent = 0
+    for var i = seq.count(1000) {
+        if m[i * 7919 % 1000] == i {
+            found += 1
+        }
+        if !m.contains(i + 1000) && !m.contains(0 - i - 1) {
+            absent += 1
+        }
+    }
+    var ks = m.keys()
+    var vs = m.values()
+    return "{m.length} {found} {absent} {ks[0]} {ks[1]} {ks[999]} {vs[0]} {vs[999]}"
+}
+
+func removed() string {
+    var m map[int, string] = {}
+    for var i = seq.count(300) {
+        m[i] = "v{i}"
+    }
+    for var i = seq.count(300) {
+        if i % 3 == 0 {
+            m.remove(i)
+        }
+    }
+    var ok = 0
+    for var i = seq.count(300) {
+        if i % 3 == 0 && !m.contains(i) || i % 3 != 0 && m[i] == "v{i}" {
+            ok += 1
+        }
+    }
+    m[0] = "again"
+    m[150] = "again"
+    m.remove(1)
+    m[1] = "one"
+    m.remove(299)
+    var ks = m.keys()
+    var n = ks.length
+    return "{m.length} {ok} {ks[0]} {ks[n - 3]} {ks[n - 2]} {ks[n - 1]} {m[150]} {m.get(3, "none")} {m.get(299, "gone")} {m[1]}"
+}
+
+func diverged() string {
+    var a map[string, int] = {}
+    for var i = seq.count(100) {
+        a["k{i}"] = i
+    }
+    var b = a
+    b["k5"] = 500
+    b["new"] = 1
+    b.remove("k7")
+    a.remove("k9")
+    a["other"] = 2
+    var c = b
+    for var i = seq.count(100) {
+        c.remove("k{i}")
+    }
+    return "{a.length} {b.length} {c.length} {a["k5"]} {b["k5"]} {a.contains("k7")} {b.contains("k7")} {a.contains("k9")} {b.contains("k9")} {a.contains("new")} {b.contains("new")} {a.contains("other")} {b.contains("other")} {c.keys()}"
+}
+
+func looped() string {
+    var m map[int, int] = {}
+    for var i = seq.count(40) {
+        m[i] = i
+    }
+    var seen = 0
+    var found = 0
+    for var k, v = m {
+        seen += v - k + 1
+        if k % 2 == 0 {
+            m.remove(k)
+        }
+        if k == 10 {
+            m.remove(31)
+        }
+        if k == 20 {
+            m[100] = 1
+        }
+        if m.contains(k + 1) {
+            found += 1
+        }
+    }
+    var hits = 0
+    for var i = seq.count(101) {
+        if m.contains(i) {
+            hits += 1
+        }
+    }
+    return "{seen} {found} {m.length} {hits} {m[100]} {m.contains(31)} {m.contains(33)}"
+}
+
+func floats() string {
+    var m map[float, int] = {}
+    for var i = seq.count(30) {
+        m[float(i) * 0.5] = i
+    }
+    var z = 0.0
+    m[0.0 - z] = 100
+    var neg = -z
+    return "{m.length} {m[neg]} {m[0.0]} {m[7.5]} {m.contains(7.25)}"
+}
+
+func keyed() string {
+    var colors map[Color, int] = {Color.red=1}
+    colors[Color.blue] = 3
+    var flags map[bool, string] = {}
+    flags[true] = "yes"
+    flags[false] = "no"
+    var shapes map[Shape, int] = {}
+    shapes[Shape.dot] = -1
+    for var i = seq.count(30) {
+        shapes[Shape{square=i}] = i
+        shapes[Shape{named="s{i}"}] = 100 + i
+    }
+    var keys map[Key, int] = {}
+    for var i = seq.count(40) {
+        keys[Key{name="n{i % 10}", color=i % 4 == 0 ? Color.red : Color.green, tags=["t{i}"]}] = i
+    }
+    var spans map[span, int] = {}
+    for var i = seq.count(20) {
+        spans[float(i) * 1pt] = i
+    }
+    var wins map[Win, int] = {}
+    for var i = seq.count(50) {
+        wins[winAt(i)] = i * 2
+    }
+    return "{colors.get(Color.blue, 0)} {colors.get(Color.green, 0)} {flags[true]} {flags[false]} {shapes.length} {shapes[Shape.dot]} {shapes[Shape{square=12}]} {shapes[Shape{named="s12"}]} {shapes.get(Shape{named="s30"}, 0)} {keys.length} {keys[Key{name="n3", color=Color.green, tags=["t13"]}]} {keys.get(Key{name="n3", color=Color.red, tags=["t13"]}, -1)} {spans.length} {spans[1inch * 0.125]} {wins.length} {wins[winAt(33)]} {wins.contains(winAt(50))}"
+}
+
+func high() string {
+    var m map[int, int] = {}
+    for var i = seq.count(64) {
+        m[i * 4294967296] = i
+        m[0 - i * 4294967296 - 1] = 0 - i
+    }
+    var sum = 0
+    for var i = seq.count(64) {
+        sum += m[i * 4294967296] - m[0 - i * 4294967296 - 1]
+    }
+    return "{m.length} {sum}"
+}
+
+func literal() string {
+    var m map[string, int] = {a=1, b=2, c=3, d=4, e=5, f=6, g=7, h=8, i=9, j=10, k=11, l=12}
+    return "{m["a"]} {m["l"]} {m.get("m", 0)} {m.keys()}"
+}
+
+func snapshot() string {
+    var m map[int, int] = {}
+    for var i = seq.count(20) {
+        m[i] = i
+    }
+    var before = m
+    m[20] = 20
+    m[21] = 21
+    return "{before.length} {before.contains(20)} {before.get(21, -1)} {m.contains(20)} {m[21]}"
+}
+
+func fields() string {
+    var m map[int, Rec] = {}
+    for var i = seq.count(20) {
+        m[i] = Rec{name="r{i}", n=i * 2, tags=["t{i}"]}
+    }
+    m[5].n = 50
+    return "{m[3].name} {m[5].n} {m[7].tags} {m[99].name.length} {m[99].n} {m[99].tags.length}"
+}
+
+// The steps main takes, a turn each, over maps the closure holds.
+func steps() func(int) string {
+    var a map[int, string] = {}
+    var b map[int, string] = {}
+    var c map[int, string] = {}
+    var d map[int, string] = {}
+    return func(step int) string {
+        if step == 0 {
+            for var i = seq.count(50) {
+                a[i] = "a{i}"
+            }
+        } else if step == 1 {
+            b = a
+        } else if step == 2 {
+            b[7] = "b7"
+            b.remove(8)
+            a.remove(9)
+            a[60] = "a60"
+        } else if step == 3 {
+            for var i = seq.count(50) {
+                a.remove(i)
+            }
+            for var i = seq.count(50) {
+                a[i + 100] = "c"
+            }
+        } else if step == 4 {
+            for var i = seq.count(50) {
+                a.remove(i + 100)
+            }
+            for var i = seq.count(50) {
+                a[i + 100] = "c"
+            }
+        } else if step == 5 {
+            c = a
+            var t map[int, string] = {}
+            for var i = seq.count(30) {
+                t[i] = "t{i}"
+            }
+            d = t
+        } else if step == 6 {
+            c[200] = "x"
+        } else if step == 7 {
+            a = {}
+        }
+        return "{d.get(17, "-")} {d.contains(30)} {c.length} {c.get(120, "-")} {c.get(200, "-")} {c.contains(149)} {a.length} {b.length} {a.get(7, "-")} {b.get(7, "-")} {a.contains(8)} {b.contains(8)} {a.contains(9)} {b.contains(9)} {a.get(60, "-")} {b.get(60, "-")} {a.get(120, "-")} {b.get(49, "-")}"
+    }
+}
+-- main.c --
+#include <stdint.h>
+#include <stdio.h>
+
+typedef struct test_win {
+	int64_t n;
+} test_win;
+
+static test_win test_wins[64];
+
+static test_win *test_win_at(int64_t i) { return &test_wins[i]; }
+
+#include "program.c"
+
+static void print(sngl_string s) { printf("%.*s\n", (int)s.len, s.ptr); }
+
+static sngl_fn_int__string step;
+
+static void take(int n) {
+	sngl_turn_enter();
+	print(step.fn(step.env, n));
+	sngl_turn_leave();
+}
+
+int main(void) {
+	sngl_turn_enter();
+	print(s_many());
+	print(s_removed());
+	print(s_diverged());
+	print(s_looped());
+	print(s_floats());
+	print(s_keyed());
+	print(s_high());
+	print(s_literal());
+	print(s_snapshot());
+	print(s_fields());
+	step = s_steps();
+	step.env = sngl_env_keep(step.env);
+	sngl_turn_leave();
+	take(0);
+	take(1);
+	take(2);
+	take(3);
+	int64_t before = sngl_kept_blocks();
+	take(4);
+	take(4);
+	printf("refilling kept %lld more\n", (long long)(sngl_kept_blocks() - before));
+	take(5);
+	take(6);
+	take(7);
+	take(8);
+	return 0;
+}
+-- want --
+1000 1000 1000 0 919 81 0 999
+201 300 2 0 150 1 again none gone one
+100 100 1 5 500 true false false true false true true false new
+40 38 20 20 1 false true
+30 100 100 15 false
+3 0 yes no 61 -1 12 112 0 40 13 -1 20 9 50 66 false
+128 4032
+1 12 0 a, b, c, d, e, f, g, h, i, j, k, l
+20 false -1 true 21
+r3 50 t7 0 0 0
+- false 0 - - false 50 0 a7 - true false true false - - - -
+- false 0 - - false 50 50 a7 a7 true true true true - - - a49
+- false 0 - - false 50 49 a7 b7 true false false true a60 - - a49
+- false 0 - - false 51 49 - b7 false false false true a60 - c a49
+- false 0 - - false 51 49 - b7 false false false true a60 - c a49
+- false 0 - - false 51 49 - b7 false false false true a60 - c a49
+refilling kept 0 more
+t17 false 51 c - true 51 49 - b7 false false false true a60 - c a49
+t17 false 52 c x true 51 49 - b7 false false false true a60 - c a49
+t17 false 52 c x true 0 49 - b7 false false false true - - - a49
+t17 false 52 c x true 0 49 - b7 false false false true - - - a49
