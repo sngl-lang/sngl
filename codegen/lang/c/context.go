@@ -1339,6 +1339,10 @@ func (c *Context) cStruct(t *ir.Type) string {
 			v = "(char *)" + v + ".ptr"
 		// A handle, or an option of a `*` one, is the pointer it holds.
 		case ir.IsCPointerOption(f.Type) || ir.CTypeOf(f.Type) != nil && ir.CStructOf(f.Type) == nil:
+		// A C struct it holds -- NMDATETIMECHANGE's NMHDR and SYSTEMTIME --
+		// is written by its own helper.
+		case ir.CStructOf(f.Type) != nil:
+			v = c.cStruct(f.Type) + "(" + v + ")"
 		case f.CAlias != nil && f.CAlias.C != nil:
 			v = "(" + f.CAlias.C.String() + ")" + v
 		case f.Type.Kind == ir.TypeFloat:
@@ -1372,6 +1376,12 @@ func (c *Context) fromCStruct(t *ir.Type) string {
 		// which C had for the call (fromCStructKeeps).
 		case f.Type.Kind == ir.TypeString:
 			v, kept = "o."+Local(f.Name), true
+		// A C struct it holds is read by its own helper, which keeps the
+		// strings of the one the program handed in as this one does.
+		case ir.CStructOf(f.Type) != nil && fromCStructKeeps(f.Type):
+			v, kept = c.fromCStruct(f.Type)+"("+v+", o."+Local(f.Name)+")", true
+		case ir.CStructOf(f.Type) != nil:
+			v = c.fromCStruct(f.Type) + "(" + v + ")"
 		default:
 			v = "(" + c.typeName(f.Type) + ")" + v
 		}
@@ -1387,10 +1397,12 @@ func (c *Context) fromCStruct(t *ir.Type) string {
 
 // fromCStructKeeps reports whether fromCStruct's helper for t takes the
 // struct the program handed C beside the one C wrote: a string field of it,
-// which is not read back from C.
+// or of a C struct it holds, which is not read back from C.
 func fromCStructKeeps(t *ir.Type) bool {
 	sd := ir.CStructOf(t)
-	return sd != nil && slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool { return f.Type.Kind == ir.TypeString })
+	return sd != nil && slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool {
+		return f.Type.Kind == ir.TypeString || fromCStructKeeps(f.Type)
+	})
 }
 
 // CCall is a call of the C function c names, whose number comes back as the
@@ -1479,8 +1491,13 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 				return c.cStringOut(fn.CFrees, true) + "(" + call + ")"
 			}
 		case ir.TypeStruct:
+			// Read back field by field; one holding a string the checker
+			// refuses, there being no string of the program's to keep.
 			if ir.CStructOf(fn.Return) != nil {
-				return c.fail("a C struct returned by %s", fn.Foreign.Name)
+				if fromCStructKeeps(fn.Return) {
+					return c.fail("a C struct holding a string returned by %s", fn.Foreign.Name)
+				}
+				return c.fromCStruct(fn.Return) + "(" + call + ")"
 			}
 		}
 	}

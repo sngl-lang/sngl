@@ -361,7 +361,12 @@ declaration itself. Two things about the name that are easy to get wrong:
   (`ir.StructDef.IsCStruct`): the program's own struct, `Foreign.Marked`
   so a backend declares it, converted field by field where a call takes one
   (`CConvertStruct`) or returns one, each field as its alias
-  (`StructField.CAlias`) or scalar. Held as cgo's type instead, its fields
+  (`StructField.CAlias`) or scalar, and a C struct it holds by value through
+  that struct's own conversion, as Win32's `NMDATETIMECHANGE` holds an
+  `NMHDR` and a `SYSTEMTIME` (`codegen/lang/c`'s `nested_structs` run,
+  `testdata/c_nested_structs.txtar`, `cgogen_user_package_runs.txt`): C had
+  written such a field `(int)v.f`, and refused a C struct a function
+  answers. Held as cgo's type instead, its fields
   would be `C.int` in every SNGL expression reading one. A field may also
   be a string, as a `char *` or its UTF-16 alias, a handle, or an option of
   a `*` handle (`cPointerField`), as Win32's `LVITEMW` holds its text. A

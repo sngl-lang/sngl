@@ -20,7 +20,8 @@
 # A pointer C takes as an integer typedef (#[c.type]) is cast in C, by a
 # function of the preamble's the wrapper calls, as a number made a pointer
 # by a cast is. A struct holding a string hands C a copy pinned for the
-# call, which is not read back, and a handle read back.
+# call, which is not read back, and a handle read back. A struct holding
+# structs crosses each field by field, in, back and answered.
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -52,7 +53,7 @@ grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +10 tests, 0 failures'
+stdout 'ok +11 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
@@ -116,6 +117,20 @@ typedef struct split_named {
 } split_named;
 int split_named_len(split_named nm);
 void split_rename(split_named *nm);
+
+// A struct holding structs: turned, its pair is swapped, its named
+// renamed and k doubled; split_pairs_of answers a pair of pairs.
+typedef struct split_nest {
+	split_pair pair;
+	split_named named;
+	int k;
+} split_nest;
+void split_nest_turn(split_nest *n);
+typedef struct split_pairs {
+	split_pair a;
+	split_pair b;
+} split_pairs;
+split_pairs split_pairs_of(int n);
 -- mathx/split.c --
 #include <stdio.h>
 #include <stdlib.h>
@@ -204,6 +219,17 @@ void split_rename(split_named *nm) {
 	nm->n = (int)strlen(nm->name);
 	nm->name = "zz";
 	nm->thing = split_thing_new(nm->n);
+}
+
+void split_nest_turn(split_nest *n) {
+	split_swap(&n->pair);
+	split_rename(&n->named);
+	n->k *= 2;
+}
+
+split_pairs split_pairs_of(int n) {
+	split_pairs p = {{n, n + 1}, {n + 2, n + 3}};
+	return p;
 }
 
 split_param split_noted(void) {
@@ -368,6 +394,32 @@ func named() string {
     return "{l} {nm.name} {nm.n} {_code(nm.thing)}"
 }
 
+#[c.native("split_nest")]
+struct _Nest {
+    pair  _Pair
+    named _Named
+    k     int
+}
+
+#[c.native("split_nest_turn")]
+func _turn(n ref[_Nest])
+
+#[c.native("split_pairs")]
+struct _Pairs {
+    a _Pair
+    b _Pair
+}
+
+#[c.native("split_pairs_of")]
+func _pairsOf(n int) _Pairs
+
+func nested() string {
+    var n = _Nest{pair=_Pair{lo=1, hi=2}, named=_Named{name="abc", thing=_thingNew(5), n=0}, k=21}
+    _turn(&n)
+    var p = _pairsOf(6)
+    return "{n.pair.lo}{n.pair.hi} {n.named.name} {n.named.n} {_code(n.named.thing)} {n.k} {p.a.lo}{p.a.hi}{p.b.lo}{p.b.hi}"
+}
+
 func sent() string {
     var p = _Pair{lo=3, hi=4}
     var r = _sendPair(2, &p)
@@ -428,13 +480,17 @@ func testItHandsAStructHoldingAString(t test.Test) {
     t.assert(m.named() == "43 abcd 4 4")
 }
 
+func testItCrossesNestedStructs(t test.Test) {
+    t.assert(m.nested() == "21 abc 3 3 42 6789")
+}
+
 func testItFreesWhatCHandsOver(t test.Test) {
     t.assert(m.names() == "n3 n4")
     t.assert(m.freed() == 2)
 }
 
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:9c34ac140d6c520894080a394a914509
+sha256:f7690c56ac1fc62f908ae8487a35c4e6
 {
   "results": [
     {
@@ -443,6 +499,10 @@ sha256:9c34ac140d6c520894080a394a914509
     },
     {
       "Desc": "ItCallsWithAConvention",
+      "Passed": true
+    },
+    {
+      "Desc": "ItCrossesNestedStructs",
       "Passed": true
     },
     {
