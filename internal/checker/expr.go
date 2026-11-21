@@ -1133,7 +1133,10 @@ func (c *checker) isAddressable(e ir.Expr) bool {
 }
 
 func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
-	condExpr := c.checkExpr(x.Cond)
+	// The condition is a bool whatever the ternary is expected to be: read
+	// expecting the float `g = n != 0 ? 1.0 : 0.0` assigns, its 0 was a float
+	// beside the int n.
+	condExpr := c.checkExprExpecting(x.Cond, ir.TypBool)
 	// The arms of a ternary are the two branches of an if, so a null test in
 	// the condition narrows them the same way.
 	restorePrelude := c.noPrelude()

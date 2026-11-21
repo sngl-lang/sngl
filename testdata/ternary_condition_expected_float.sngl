@@ -1,0 +1,32 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A ternary's condition is a bool whatever the ternary is expected to be:
+// assigned to a float, `n != 0`'s 0 was read as a float beside the int n.
+struct Share {
+    flex float = 0.0
+}
+
+var share = Share{}
+
+func grow(n int) float {
+    var g = 0.0
+    g = n != 0 ? 1.0 : 0.0
+    share.flex = n != 0 ? 2.0 : 0.0
+    var h float = n > 1 ? 3.0 : 0.0
+    return g + share.flex + h
+}
+
+component page ui.node {
+    ui.text(value="{grow(2)}")
+}
+
+func testAConditionIsABool(t test.Test) {
+    t.assert(grow(0) == 0.0)
+    t.assert(grow(1) == 3.0)
+    t.assert(grow(2) == 6.0)
+}
+
+ui.window {
+    page
+}
