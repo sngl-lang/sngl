@@ -83,6 +83,14 @@ func RegisterPlatformIntrinsic(platform, id string, e IntrinsicEmitter) {
 	byID[id] = e
 }
 
+// RegisterPlatformLangIntrinsic registers an emitter for an id a platform
+// owns in one of its languages alone: what a Go test's wait spells on win32
+// and gtk4 is Go, and their C writes its own. Registered for the platform,
+// the C a test helper's wait was written in was that Go.
+func RegisterPlatformLangIntrinsic(platform, lang, id string, e IntrinsicEmitter) {
+	RegisterPlatformIntrinsic(platform+"/"+lang, id, e)
+}
+
 // LookupPlatformIntrinsic returns the emitter registered for (platform, id), or
 // nil. An empty id always returns nil.
 func LookupPlatformIntrinsic(platform, id string) IntrinsicEmitter {
@@ -283,6 +291,9 @@ func EmitIntrinsicCall(lang, platform string, c *ir.Call, translate func(ir.Expr
 		return "", nil, false
 	}
 	e := LookupIntrinsic(lang, c.Func.Intrinsic)
+	if e == nil {
+		e = LookupPlatformIntrinsic(platform+"/"+lang, c.Func.Intrinsic)
+	}
 	if e == nil {
 		e = LookupPlatformIntrinsic(platform, c.Func.Intrinsic)
 	}

@@ -104,6 +104,31 @@ func IsTestCall(c *Call, id string) bool {
 	return c != nil && c.Func != nil && c.Func.Intrinsic == id
 }
 
+// IsTestType reports whether t is sngl:test's Test, the value a test's
+// first parameter is and a helper it calls takes.
+func IsTestType(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "Test" && sd.PkgPath() == "sngl:test"
+}
+
+// TakesTest reports whether fn, not itself a test, takes a test's Test: a
+// helper a test hands it to, which asserts and waits through it as the test
+// does, and is written with the tests.
+func TakesTest(fn *Func) bool {
+	if fn == nil || fn.IsTest {
+		return false
+	}
+	for _, p := range fn.Params {
+		if IsTestType(p.Type) {
+			return true
+		}
+	}
+	return false
+}
+
 // IsTestMethodCall reports whether c calls any sngl:test method.
 func IsTestMethodCall(c *Call) bool {
 	if c == nil || c.Func == nil {

@@ -32,7 +32,9 @@ func WriteProgram(fe *FileEmitter, pkg *ir.Package) error {
 	written := map[*ir.Func]bool{}
 	var write func(fn *ir.Func)
 	write = func(fn *ir.Func) {
-		if written[fn] || fn.IsTest || Bodiless(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
+		// A helper a test hands its Test is written with the tests
+		// (WriteTests), whose calls of it are the agent's.
+		if written[fn] || fn.IsTest || ir.TakesTest(fn) || Bodiless(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
 			return
 		}
 		written[fn] = true
@@ -96,10 +98,9 @@ func strayClosures(root any, write func(*ir.Func)) {
 // (passPlacement), so nothing here knows a platform.
 func WriteTests(fe *FileEmitter, pkg *ir.Package, step, reset string) error {
 	ctx := fe.Context()
-	var tName string
-	prev := ctx.Native
+	prev, prevTypes := ctx.Native, ctx.Types
 	ctx.Native = func(c *Context, n *ir.Call) (string, bool) {
-		if out, ok := testCall(c, n, tName, step); ok {
+		if out, ok := testCall(c, n, step); ok {
 			return out, true
 		}
 		if prev != nil {
@@ -107,7 +108,23 @@ func WriteTests(fe *FileEmitter, pkg *ir.Package, step, reset string) error {
 		}
 		return "", false
 	}
-	defer func() { ctx.Native = prev }()
+	// A helper's Test is the agent's test, as a test's own is.
+	ctx.Types = func(t *ir.Type) (string, bool) {
+		if ir.IsTestType(t) {
+			return "sngl_t *", true
+		}
+		if prevTypes != nil {
+			return prevTypes(t)
+		}
+		return "", false
+	}
+	defer func() { ctx.Native, ctx.Types = prev, prevTypes }()
+	for _, fn := range pkg.Funcs {
+		if ir.TakesTest(fn) && !Bodiless(fn) {
+			fe.Func(fn)
+			strayClosures(fn.Block, func(cl *ir.Func) { fe.Func(cl) })
+		}
+	}
 	teardown := ""
 	if reset != "" {
 		teardown = "\t\t" + reset + ";\n"
@@ -129,7 +146,7 @@ func WriteTests(fe *FileEmitter, pkg *ir.Package, step, reset string) error {
 		if !fn.IsTest {
 			continue
 		}
-		tName = "t"
+		tName := "t"
 		if len(fn.Params) > 0 {
 			tName = fn.Params[0].Name
 		}
@@ -179,7 +196,10 @@ func mounts(fn *ir.Func) bool {
 
 // testCall is n as the test being written makes it, or false where n is no
 // call only a test makes.
-func testCall(ctx *Context, n *ir.Call, tName, step string) (string, bool) {
+func testCall(ctx *Context, n *ir.Call, step string) (string, bool) {
+	// The test a call is made through: the test's own, or a helper's
+	// parameter it was handed.
+	t := func() string { return ctx.EvalExpr(n.Args[0].Value) }
 	switch {
 	case ir.IsTestCall(n, ir.TestMountID):
 		return "sngl_build()", true
@@ -189,7 +209,7 @@ func testCall(ctx *Context, n *ir.Call, tName, step string) (string, bool) {
 		if ir.IsTestCall(n, ir.TestMustID) {
 			fail, word = "sngl_test_fail_now", "must"
 		}
-		return "((" + cond + ") ? (void)0 : " + fail + "(" + Local(tName) + ", " + StringLiteral(word+" failed: "+cond) + "))", true
+		return "((" + cond + ") ? (void)0 : " + fail + "(" + t() + ", " + StringLiteral(word+" failed: "+cond) + "))", true
 	case ir.IsTestCall(n, ir.TestWaitID):
 		pred := n.Args[1].Value
 		fnT := ctx.TypeName(pred.ExprType())
@@ -197,7 +217,7 @@ func testCall(ctx *Context, n *ir.Call, tName, step string) (string, bool) {
 		ctx.Helper(name, "static void "+name+"("+fnT+" p, int64_t ms) {\n\tlong long end = sngl_test_now_ms() + ms;\n\twhile (!p.fn(p.env) && sngl_test_now_ms() < end) {\n\t\t"+step+";\n\t}\n}\n")
 		return name + "(" + ctx.EvalExpr(pred) + ", " + ctx.EvalExpr(n.Args[2].Value) + ")", true
 	case ir.IsTestCall(n, ir.TestSnapshotID):
-		return "sngl_test_snapshot(" + Local(tName) + ", " + ctx.EvalExpr(n.Args[1].Value) + ")", true
+		return "sngl_test_snapshot(" + t() + ", " + ctx.EvalExpr(n.Args[1].Value) + ")", true
 	case ir.IsTestMethodCall(n):
 		ctx.fail("a test's t.%s", n.Func.Name)
 		return "(void)0", true

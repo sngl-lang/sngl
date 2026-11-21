@@ -90,23 +90,12 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 	fmt.Fprintf(&b, "}\n\nvar %s = &snglState{}\n", gc.RecvName())
 
 	for _, fn := range pkg.Funcs {
-		if fn.IsTest || !codegen.HasBody(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
+		// A helper a test hands its Test is written with the tests
+		// (WriteTests), whose calls of it are the agent's.
+		if fn.IsTest || ir.TakesTest(fn) || !codegen.HasBody(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
 			continue
 		}
-		// A method is the free function its call site names (LiftsToFreeFunc),
-		// as on every Go platform.
-		var lines []string
-		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
-			lines = gc.EmitTypeMethodDef(fn)
-		} else {
-			free := *fn
-			free.Name = gc.FreeFuncName(fn.Name)
-			lines = gc.EmitFuncDef(&free)
-		}
-		b.WriteByte('\n')
-		for _, l := range lines {
-			b.WriteString(l + "\n")
-		}
+		writeFunc(&b, gc, pkg, fn)
 	}
 
 	fmt.Fprintf(&b, "\nfunc snglInit() {\n\t%s = &snglState{}\n", gc.RecvName())
@@ -162,6 +151,24 @@ func RunsHandler(pkg *ir.Package) bool {
 	return pkg.Run != nil && len(pkg.Run.Block) > 0 && len(pkg.Run.Params) == 2
 }
 
+// writeFunc writes fn into b as a function of the placed program. A method
+// is the free function its call site names (LiftsToFreeFunc), as on every Go
+// platform.
+func writeFunc(b *strings.Builder, gc *GoIRContext, pkg *ir.Package, fn *ir.Func) {
+	var lines []string
+	if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
+		lines = gc.EmitTypeMethodDef(fn)
+	} else {
+		free := *fn
+		free.Name = gc.FreeFuncName(fn.Name)
+		lines = gc.EmitFuncDef(&free)
+	}
+	b.WriteByte('\n')
+	for _, l := range lines {
+		b.WriteString(l + "\n")
+	}
+}
+
 // WriteTests writes pkg's tests into fe as the agent's, after WriteProgram,
 // as the C language's WriteTests does: a function each, registered with
 // testagent under its name. A test builds the program where it mounts the
@@ -184,13 +191,26 @@ func WriteTests(fe codegen.FileEmitter, pkg *ir.Package, reset string) error {
 		reset = "\t\t" + reset + "\n"
 	}
 	b.WriteString("\nvar snglRan bool\n\nfunc snglReset() {\n\tif snglRan {\n" + reset + "\t\tsnglTeardown()\n\t}\n\tsnglRan = true\n\tsnglInit()\n}\n")
+	// A helper a test hands its Test asserts and waits through it as the
+	// test does: its Test is the agent's.
+	for _, fn := range pkg.Funcs {
+		if ir.TakesTest(fn) && codegen.HasBody(fn) {
+			writeFunc(&b, &gc, pkg, fn)
+		}
+	}
 	var register strings.Builder
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {
 			continue
 		}
 		name := "snglTest" + ExportName(strings.TrimPrefix(fn.Name, "test"))
-		fmt.Fprintf(&b, "\nfunc %s(t *testagent.T) {\n\tsnglReset()\n", name)
+		// The test is its parameter's, as a helper it is handed to names it.
+		tParam := "t"
+		if len(fn.Params) > 0 {
+			p := fn.Params[0]
+			tParam = gc.WithLocal(p.Name).EvalExpr(&ir.Ident{Name: p.Name, Sym: p, Type: p.Type})
+		}
+		fmt.Fprintf(&b, "\nfunc %s(%s *testagent.T) {\n\tsnglReset()\n", name, tParam)
 		if !mountsProgram(fn) {
 			b.WriteString("\tsnglBuild()\n")
 		}

@@ -21,7 +21,7 @@ func init() {
 // A Go test waiting for what the loop drives runs the loop while it waits,
 // since the test runs on the loop's own thread, as C's does.
 func init() {
-	codegen.RegisterPlatformIntrinsic(platformName, ir.TestWaitID, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+	codegen.RegisterPlatformLangIntrinsic(platformName, "go", ir.TestWaitID, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		if len(args) != 3 {
 			return "", nil
 		}

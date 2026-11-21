@@ -612,6 +612,11 @@ func (gc *GoIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
 }
 func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
+	// A placed program's test, and a helper it hands its Test, call the
+	// agent's test.
+	if gc.placedTests && n.Call != nil && ir.IsTestMethodCall(n.Call) {
+		return lowerTestStmt(n, gc)
+	}
 	if lines, ok := gc.selectLines(n); ok {
 		return lines
 	}
@@ -2331,6 +2336,10 @@ func (gc *GoIRContext) calls() ir.CCalls {
 func typeToGo(t *ir.Type, at site) string {
 	if t == nil {
 		return "any"
+	}
+	// A test's Test, which a helper it is handed to takes, is the agent's.
+	if ir.IsTestType(t) {
+		return "*testagent.T"
 	}
 	switch t.Kind {
 	case ir.TypeAny:
