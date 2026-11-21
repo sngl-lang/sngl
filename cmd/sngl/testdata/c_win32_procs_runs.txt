@@ -1,0 +1,661 @@
+# What a window's procedure answers, read off it by the fixture's own C
+# (peek.c) as Win32 asks it: a box's WM_CTLCOLORSTATIC and WM_CTLCOLOREDIT
+# for a text in the background of the box holding it, one with its own,
+# and an edit, which shows none of its box's; a button given a background,
+# drawn by its box on WM_DRAWITEM, flat and darker while pressed; the hand
+# WM_SETCURSOR shows over a link and over what a clickable card holds, and
+# the arrow over the rest; a picture letting WM_NCHITTEST through to its
+# image; the tips a tooltip's box gives its children, and takes back as one
+# goes; Enter in an input, which its WM_GETDLGCODE claims and its
+# WM_KEYDOWN reports, where a text area's does not; a table no row of which
+# can be selected refusing one; a tree's TVN_ITEMEXPANDED reaching
+# `@expand`; a modal's close box, which reports `@close` only where it is
+# closable; and WM_DPICHANGED, which sizes the window as Windows suggests
+# and lays it out at the new DPI. The snapshot holds what the procedures
+# paint: the colors, the drawn button, a card's frame and a bar's text. In
+# C and Go, on 64- and 32-bit Windows under Wine, and in Go calling C
+# directly.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +9 tests, 0 failures'
+exists app.sngl.snapshots/painted.png
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=c --opt arch=386 app.sngl
+stdout 'ok +9 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +9 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt arch=386 app.sngl
+stdout 'ok +9 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
+stdout 'ok +9 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import c "sngl:x/c"
+import test "sngl:test"
+
+output {
+    c {
+        win32
+    }
+}
+
+c.link(include="peek.h", sources=["peek.c", "peek.h"])
+
+// What the window holding the first window of class `cls` labeled `text`
+// answers its WM_CTLCOLOR*: the color of the brush it answers, the text
+// color, background mode and background color it leaves a DC in.
+#[c.native("peek_color")]
+func colorOf(n ui.node, cls string, text string) string
+
+// The pixel at x, y of the button labeled `text`, drawn by its box on
+// WM_DRAWITEM, pressed or not, or -1 where it is not owner-drawn.
+#[c.native("peek_drawn")]
+func drawn(n ui.node, text string, pressed bool, x int, y int) int
+
+// What the window labeled `text` answers WM_SETCURSOR over its client area,
+// and whether the cursor is then the hand.
+#[c.native("peek_cursor")]
+func cursor(n ui.node, text string) string
+
+// How many of the windows of n's window holding none answer WM_NCHITTEST
+// with HTTRANSPARENT.
+#[c.native("peek_transparent")]
+func transparent(n ui.node) int
+
+// Each tool of the thread's tooltips for a window in n's: the class and
+// text of the window it is for, and its tip.
+#[c.native("peek_tips")]
+func tips(n ui.node) string
+
+// What the first edit, a multi-line one or not, answers WM_GETDLGCODE for
+// Enter, and Enter pressed in it.
+#[c.native("peek_claims")]
+func claims(n ui.node, multi bool) int
+
+#[c.native("peek_enter")]
+func enter(n ui.node, multi bool) int
+
+// What the window holding the first table answers its LVN_ITEMCHANGING for
+// row `row` selected: TRUE where it refuses it.
+#[c.native("peek_changing")]
+func changing(n ui.node, row int) int
+
+// The first tree's first node expanded, as TVN_ITEMEXPANDED reports it.
+#[c.native("peek_expand")]
+func expand(n ui.node) int
+
+// WM_CLOSE to each window shown that n's window owns, how many there were.
+#[c.native("peek_close_owned")]
+func closeOwned(n ui.node) int
+
+// WM_DPICHANGED to n's window, `dpi` and a frame 300 by 400, and then its
+// client size and the size of the text labeled `text`.
+#[c.native("peek_dpi")]
+func dpiChanged(n ui.node, dpi int, text string) string
+
+component main ui.node {
+    var submits = 0
+    var commits = 0
+    var name = ""
+    var notes = ""
+    var cards = 0
+    var expands = 0
+    var node = ""
+    var open = false
+    var closable = false
+    var closes = 0
+    var tipped = true
+    var tip = "tip text"
+    ui.vbox(style={background=#204060, padding=4px, gap=2px}) {
+        ui.text #status(value="ink", style={color=#ff8000})
+        ui.text(value="own", style={color=#00ff00, background=#0000ff})
+        ui.input(value=name, @change(v) { submits += 1 })
+        ui.textarea(value=notes, rows=2, @change(v) { commits += 1 })
+        ui.button(text="Paint", style={background=#c03030, color=#ffffff})
+        ui.button(text="Plain")
+        ui.link(text="Site", href="https://example.com")
+        ui.tooltip(text=tip) {
+            if tipped {
+                ui.text(value="tipped")
+            } else {
+                ui.text(value="untipped")
+            }
+        }
+        ui.card(clickable=true, @click { cards += 1 }) {
+            ui.text(value="card")
+        }
+        ui.vbox {
+            ui.text(value="plain")
+        }
+        ui.image {
+            ui.file(path="missing.png")
+        }
+        ui.table(columns=["A"], selectable=false) {
+            ui.tableRow(cells=["x"])
+            ui.tableRow(cells=["y"])
+        }
+        ui.tree(:selected=node, @expand { expands += 1 }) {
+            ui.treeItem(label="root") {
+                ui.treeItem(label="leaf")
+            }
+        }
+        ui.progress(value=0.5, showValue=true, style={color=#0000ff})
+        ui.modal(open=open, title="Ask", closable=closable, @close { closes += 1 }) {
+            component content {
+                ui.text(value="inside")
+            }
+        }
+    }
+}
+
+ui.window(title="Procedures") {
+    main()
+}
+
+func testColorsAreTheBoxes(t test.Test, c main) {
+    t.assert(colorOf(c.status, "Static", "ink") == "brush 204060 text ff8000 mode 1 bk f5f5f5")
+    t.assert(colorOf(c.status, "Static", "own") == "brush 0000ff text 00ff00 mode 2 bk 0000ff")
+    t.assert(colorOf(c.status, "Edit", "") == "brush ffffff text 000000 mode 2 bk ffffff")
+}
+
+func testAButtonGivenABackgroundIsDrawn(t test.Test, c main) {
+    t.assert(drawn(c.status, "Paint", false, 2, 2) == 12595248)
+    t.assert(drawn(c.status, "Paint", true, 2, 2) == 10233639)
+    t.assert(drawn(c.status, "Plain", false, 2, 2) == -1)
+}
+
+func testTheCursorIsAHandOverWhatIsClicked(t test.Test, c main) {
+    t.assert(cursor(c.status, "Site") == "answer 1 hand 1")
+    t.assert(cursor(c.status, "card") == "answer 1 hand 1")
+    t.assert(cursor(c.status, "plain") == "answer 0 hand 0")
+}
+
+func testAPictureLetsItsClickThrough(t test.Test, c main) {
+    t.assert(transparent(c.status) == 1)
+}
+
+func testATipIsEachChilds(t test.Test, c main) {
+    t.assert(tips(c.status) == "SnglBox : tip text\nStatic tipped: tip text")
+    c.tip = "another"
+    t.assert(tips(c.status) == "Static tipped: another\nSnglBox : another")
+    c.tipped = false
+    t.assert(tips(c.status) == "SnglBox : another\nStatic untipped: another")
+}
+
+func testEnterIsAnInputsOnly(t test.Test, c main) {
+    t.assert(claims(c.status, false) == 141)
+    t.assert(claims(c.status, true) == 141)
+    t.assert(enter(c.status, false) == 0)
+    t.assert(c.submits == 1)
+    t.assert(c.commits == 0)
+}
+
+func testTreesAndTablesReport(t test.Test, c main) {
+    t.assert(changing(c.status, 1) == 1)
+    t.assert(expand(c.status) == 1)
+    t.assert(c.expands == 1)
+}
+
+func testAModalClosesWhereItIsClosable(t test.Test, c main) {
+    c.open = true
+    t.wait(func() => false, 50)
+    t.assert(closeOwned(c.status) == 1)
+    t.assert(c.closes == 0)
+    c.closable = true
+    t.assert(closeOwned(c.status) == 1)
+    t.assert(c.closes == 1)
+}
+
+func testDraws(t test.Test, c main) {
+    t.wait(func() => false, 50)
+    t.snapshot("painted")
+    t.assert(dpiChanged(c.status, 144, "ink") == "top 292x366 text 280x21")
+}
+-- peek.h --
+#include <windows.h>
+
+const char *peek_color(HWND any, const char *cls, const char *text);
+int peek_drawn(HWND any, const char *text, int pressed, int x, int y);
+const char *peek_cursor(HWND any, const char *text);
+int peek_transparent(HWND any);
+const char *peek_tips(HWND any);
+int peek_claims(HWND any, int multi);
+int peek_enter(HWND any, int multi);
+int peek_changing(HWND any, int row);
+int peek_expand(HWND any);
+int peek_close_owned(HWND any);
+const char *peek_dpi(HWND any, int dpi, const char *text);
+-- peek.c --
+#include "peek.h"
+
+#include <commctrl.h>
+#include <stdio.h>
+#include <string.h>
+
+static char out[1024];
+
+struct find {
+	const char *cls, *text;
+	LONG mask, style;
+	HWND found;
+};
+
+static BOOL CALLBACK match(HWND w, LPARAM lp) {
+	struct find *f = (struct find *)lp;
+	char cls[64], text[128] = {0};
+	GetClassNameA(w, cls, sizeof cls);
+	GetWindowTextA(w, text, sizeof text);
+	if (lstrcmpiA(cls, f->cls) == 0 && (GetWindowLongW(w, GWL_STYLE) & f->mask) == f->style && (!f->text[0] || strcmp(text, f->text) == 0)) {
+		f->found = w;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+/* first is the first window of class cls whose style's mask bits are
+ * style, and whose text is text where it is not "", in the toplevel any is
+ * in. */
+static HWND first(HWND any, const char *cls, LONG mask, LONG style, const char *text) {
+	struct find f = {cls, text, mask, style, NULL};
+	EnumChildWindows(GetAncestor(any, GA_ROOT), match, (LPARAM)&f);
+	return f.found;
+}
+
+static int rgb(COLORREF c) { return GetRValue(c) << 16 | GetGValue(c) << 8 | GetBValue(c); }
+
+const char *peek_color(HWND any, const char *cls, const char *text) {
+	HWND w = first(any, cls, 0, 0, text);
+	UINT msg = lstrcmpiA(cls, "Edit") == 0 ? WM_CTLCOLOREDIT : lstrcmpiA(cls, "Button") == 0 ? WM_CTLCOLORBTN : WM_CTLCOLORSTATIC;
+	HDC dc = CreateCompatibleDC(NULL);
+	HBRUSH b = (HBRUSH)SendMessageW(GetParent(w), msg, (WPARAM)dc, (LPARAM)w);
+	LOGBRUSH lb;
+	memset(&lb, 0, sizeof lb);
+	if (!b || !GetObjectW(b, sizeof lb, &lb)) {
+		lb.lbColor = 0xffffffff;
+	}
+	snprintf(out, sizeof out, "brush %06x text %06x mode %d bk %06x", b ? rgb(lb.lbColor) : 0, rgb(GetTextColor(dc)), GetBkMode(dc), rgb(GetBkColor(dc)));
+	DeleteDC(dc);
+	return out;
+}
+
+int peek_drawn(HWND any, const char *text, int pressed, int x, int y) {
+	HWND w = first(any, "Button", 0, 0, text);
+	if (!w || (GetWindowLongW(w, GWL_STYLE) & BS_TYPEMASK) != BS_OWNERDRAW) {
+		return -1;
+	}
+	BITMAPINFO bi;
+	memset(&bi, 0, sizeof bi);
+	bi.bmiHeader.biSize = sizeof bi.bmiHeader;
+	bi.bmiHeader.biWidth = 40;
+	bi.bmiHeader.biHeight = -20;
+	bi.bmiHeader.biPlanes = 1;
+	bi.bmiHeader.biBitCount = 32;
+	bi.bmiHeader.biCompression = BI_RGB;
+	HDC dc = CreateCompatibleDC(NULL);
+	void *bits = NULL;
+	HBITMAP bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+	HGDIOBJ old = SelectObject(dc, bmp);
+	DRAWITEMSTRUCT di;
+	memset(&di, 0, sizeof di);
+	di.CtlType = ODT_BUTTON;
+	di.CtlID = (UINT)GetDlgCtrlID(w);
+	di.itemAction = ODA_DRAWENTIRE;
+	di.itemState = pressed ? ODS_SELECTED : 0;
+	di.hwndItem = w;
+	di.hDC = dc;
+	SetRect(&di.rcItem, 0, 0, 40, 20);
+	SendMessageW(GetParent(w), WM_DRAWITEM, (WPARAM)di.CtlID, (LPARAM)&di);
+	int px = rgb(GetPixel(dc, x, y));
+	SelectObject(dc, old);
+	DeleteObject(bmp);
+	DeleteDC(dc);
+	return px;
+}
+
+const char *peek_cursor(HWND any, const char *text) {
+	HWND w = first(any, "Static", 0, 0, text);
+	SetCursor(NULL);
+	LRESULT r = SendMessageW(w, WM_SETCURSOR, (WPARAM)w, MAKELPARAM(HTCLIENT, WM_MOUSEMOVE));
+	snprintf(out, sizeof out, "answer %d hand %d", (int)r, GetCursor() == LoadCursorW(NULL, (LPCWSTR)IDC_HAND));
+	return out;
+}
+
+static BOOL CALLBACK through(HWND w, LPARAM lp) {
+	char cls[64];
+	GetClassNameA(w, cls, sizeof cls);
+	if (strcmp(cls, "SnglBox") == 0 && !GetWindow(w, GW_CHILD)) {
+		RECT r;
+		GetWindowRect(w, &r);
+		if (SendMessageW(w, WM_NCHITTEST, 0, MAKELPARAM(r.left, r.top)) == HTTRANSPARENT) {
+			(*(int *)lp)++;
+		}
+	}
+	return TRUE;
+}
+
+int peek_transparent(HWND any) {
+	int n = 0;
+	EnumChildWindows(GetAncestor(any, GA_ROOT), through, (LPARAM)&n);
+	return n;
+}
+
+static BOOL CALLBACK tool_windows(HWND w, LPARAM lp) {
+	char cls[64];
+	GetClassNameA(w, cls, sizeof cls);
+	if (lstrcmpiA(cls, TOOLTIPS_CLASSA) != 0) {
+		return TRUE;
+	}
+	int n = (int)SendMessageW(w, TTM_GETTOOLCOUNT, 0, 0);
+	for (int i = 0; i < n; i++) {
+		WCHAR tip[80] = {0};
+		TOOLINFOW ti;
+		memset(&ti, 0, sizeof ti);
+		ti.cbSize = sizeof ti;
+		ti.lpszText = tip;
+		if (!SendMessageW(w, TTM_ENUMTOOLSW, (WPARAM)i, (LPARAM)&ti) || !IsChild((HWND)lp, ti.hwnd)) {
+			continue;
+		}
+		char of[64], text[64] = {0}, said[80];
+		GetClassNameA((HWND)ti.uId, of, sizeof of);
+		GetWindowTextA((HWND)ti.uId, text, sizeof text);
+		WideCharToMultiByte(CP_UTF8, 0, tip, -1, said, sizeof said, NULL, NULL);
+		size_t used = strlen(out);
+		snprintf(out + used, sizeof out - used, "%s%s %s: %s", used ? "\n" : "", of, text, said);
+	}
+	return TRUE;
+}
+
+const char *peek_tips(HWND any) {
+	out[0] = 0;
+	EnumThreadWindows(GetCurrentThreadId(), tool_windows, (LPARAM)GetAncestor(any, GA_ROOT));
+	return out;
+}
+
+static HWND edit(HWND any, int multi) { return first(any, "Edit", ES_MULTILINE, multi ? ES_MULTILINE : 0, ""); }
+
+int peek_claims(HWND any, int multi) {
+	HWND w = edit(any, multi);
+	MSG m;
+	memset(&m, 0, sizeof m);
+	m.hwnd = w;
+	m.message = WM_KEYDOWN;
+	m.wParam = VK_RETURN;
+	return (int)SendMessageW(w, WM_GETDLGCODE, VK_RETURN, (LPARAM)&m);
+}
+
+int peek_enter(HWND any, int multi) { return (int)SendMessageW(edit(any, multi), WM_KEYDOWN, VK_RETURN, 0); }
+
+int peek_changing(HWND any, int row) {
+	HWND w = first(any, WC_LISTVIEWA, 0, 0, "");
+	NMLISTVIEW nm;
+	memset(&nm, 0, sizeof nm);
+	nm.hdr.hwndFrom = w;
+	nm.hdr.idFrom = (UINT_PTR)GetDlgCtrlID(w);
+	nm.hdr.code = LVN_ITEMCHANGING;
+	nm.iItem = row;
+	nm.uChanged = LVIF_STATE;
+	nm.uNewState = LVIS_SELECTED;
+	return (int)SendMessageW(GetParent(w), WM_NOTIFY, nm.hdr.idFrom, (LPARAM)&nm);
+}
+
+int peek_expand(HWND any) {
+	HWND w = first(any, WC_TREEVIEWA, 0, 0, "");
+	NMTREEVIEWW nm;
+	memset(&nm, 0, sizeof nm);
+	nm.hdr.hwndFrom = w;
+	nm.hdr.idFrom = (UINT_PTR)GetDlgCtrlID(w);
+	nm.hdr.code = TVN_ITEMEXPANDEDW;
+	nm.action = TVE_EXPAND;
+	nm.itemNew.hItem = (HTREEITEM)SendMessageW(w, TVM_GETNEXTITEM, TVGN_ROOT, 0);
+	SendMessageW(GetParent(w), WM_NOTIFY, nm.hdr.idFrom, (LPARAM)&nm);
+	return nm.itemNew.hItem != NULL;
+}
+
+struct owned {
+	HWND top;
+	int n;
+};
+
+static BOOL CALLBACK close_owned(HWND w, LPARAM lp) {
+	struct owned *o = (struct owned *)lp;
+	if (GetWindow(w, GW_OWNER) == o->top && IsWindowVisible(w)) {
+		SendMessageW(w, WM_CLOSE, 0, 0);
+		o->n++;
+	}
+	return TRUE;
+}
+
+int peek_close_owned(HWND any) {
+	struct owned o = {GetAncestor(any, GA_ROOT), 0};
+	EnumWindows(close_owned, (LPARAM)&o);
+	return o.n;
+}
+
+const char *peek_dpi(HWND any, int dpi, const char *text) {
+	HWND top = GetAncestor(any, GA_ROOT);
+	RECT r;
+	GetWindowRect(top, &r);
+	RECT suggested = {r.left, r.top, r.left + 300, r.top + 400};
+	SendMessageW(top, WM_DPICHANGED, MAKEWPARAM(dpi, dpi), (LPARAM)&suggested);
+	RECT c, t;
+	GetClientRect(top, &c);
+	GetWindowRect(first(any, "Static", 0, 0, text), &t);
+	snprintf(out, sizeof out, "top %ldx%ld text %ldx%ld", c.right, c.bottom, t.right - t.left, t.bottom - t.top);
+	return out;
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:88c8fdd888c78ce25563d599cad728d8
+{
+  "results": [
+    {
+      "Desc": "ColorsAreTheBoxes",
+      "Passed": true
+    },
+    {
+      "Desc": "AButtonGivenABackgroundIsDrawn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCursorIsAHandOverWhatIsClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "APictureLetsItsClickThrough",
+      "Passed": true
+    },
+    {
+      "Desc": "ATipIsEachChilds",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterIsAnInputsOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "TreesAndTablesReport",
+      "Passed": true
+    },
+    {
+      "Desc": "AModalClosesWhereItIsClosable",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "painted.png": "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"
+  }
+}
+-- testrun/win32/c/app.sngl/main/2 --
+sha256:47f24588de3c4e102ae2cddc11ee7aa8
+{
+  "results": [
+    {
+      "Desc": "ColorsAreTheBoxes",
+      "Passed": true
+    },
+    {
+      "Desc": "AButtonGivenABackgroundIsDrawn",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCursorIsAHandOverWhatIsClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "APictureLetsItsClickThrough",
+      "Passed": true
+    },
+    {
+      "Desc": "ATipIsEachChilds",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterIsAnInputsOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "TreesAndTablesReport",
+      "Passed": true
+    },
+    {
+      "Desc": "AModalClosesWhereItIsClosable",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:59ab5b44181cc8fb975c838238620da4
+{
+  "results": [
+    {
+      "Desc": "AButtonGivenABackgroundIsDrawn",
+      "Passed": true
+    },
+    {
+      "Desc": "AModalClosesWhereItIsClosable",
+      "Passed": true
+    },
+    {
+      "Desc": "APictureLetsItsClickThrough",
+      "Passed": true
+    },
+    {
+      "Desc": "ATipIsEachChilds",
+      "Passed": true
+    },
+    {
+      "Desc": "ColorsAreTheBoxes",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterIsAnInputsOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCursorIsAHandOverWhatIsClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "TreesAndTablesReport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/2 --
+sha256:70403140438ad2e3a4889e79ff1c73d9
+{
+  "results": [
+    {
+      "Desc": "AButtonGivenABackgroundIsDrawn",
+      "Passed": true
+    },
+    {
+      "Desc": "AModalClosesWhereItIsClosable",
+      "Passed": true
+    },
+    {
+      "Desc": "APictureLetsItsClickThrough",
+      "Passed": true
+    },
+    {
+      "Desc": "ATipIsEachChilds",
+      "Passed": true
+    },
+    {
+      "Desc": "ColorsAreTheBoxes",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterIsAnInputsOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCursorIsAHandOverWhatIsClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "TreesAndTablesReport",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/3 --
+sha256:2990d066a3ba01a137986627f5f100e2
+{
+  "results": [
+    {
+      "Desc": "AButtonGivenABackgroundIsDrawn",
+      "Passed": true
+    },
+    {
+      "Desc": "AModalClosesWhereItIsClosable",
+      "Passed": true
+    },
+    {
+      "Desc": "APictureLetsItsClickThrough",
+      "Passed": true
+    },
+    {
+      "Desc": "ATipIsEachChilds",
+      "Passed": true
+    },
+    {
+      "Desc": "ColorsAreTheBoxes",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterIsAnInputsOnly",
+      "Passed": true
+    },
+    {
+      "Desc": "TheCursorIsAHandOverWhatIsClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "TreesAndTablesReport",
+      "Passed": true
+    }
+  ]
+}
