@@ -212,9 +212,29 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 			outs = append(outs, "func(p "+ct+") *"+t+" { if p == nil { return nil }; v := "+v+"; return &v }("+tmp+")")
 			continue
 		}
+		// A struct holding a string keeps it, which is not read back:
+		// the value handed in, read once.
+		if cStructPins(elem) {
+			in := fmt.Sprintf("__snglIn%d", i)
+			body = append(body, in+" := "+args[off+i], tmp+" := "+gc.cValueIn(elem, p.CAlias, in))
+			args[off+i] = "&" + tmp
+			outs = append(outs, gc.cValueOut(elem, p.CAlias, tmp, in))
+			continue
+		}
 		body = append(body, tmp+" := "+gc.cValueIn(elem, p.CAlias, args[off+i]))
 		args[off+i] = "&" + tmp
 		outs = append(outs, gc.cValueOut(elem, p.CAlias, tmp))
+	}
+	// What a C struct's string fields point to is pinned for the call.
+	if slices.ContainsFunc(fn.Params, func(p *ir.Param) bool {
+		t := p.Type
+		if t != nil && t.Kind == ir.TypeRef {
+			t = t.Elems[0]
+		}
+		return cStructPins(t)
+	}) {
+		gc.RequireImport("duckfam.us/sngl/pkg/go/cbind")
+		body = append([]string{"var " + pinsName + " cbind.Pins", "defer " + pinsName + ".Unpin()"}, body...)
 	}
 	// A callback C calls with no context is the function cgo exports for
 	// the program's function the argument names (cstatic.go).
@@ -453,13 +473,44 @@ func cScalar(t *ir.Type, alias *ir.Alias) *ir.CType {
 
 // cValueIn is v, a SNGL scalar or C struct of type t, as the C value it
 // crosses as: a struct field by field, through a function so v is read once.
+//
+// A string field points to a copy pinned for the call (cbind.Pins, which
+// the call declares as pinsName: cStructPins), stored through
+// unsafe.Pointer, since Go spells the field's own pointer type -- LVITEMW's
+// LPWSTR -- only as cgo names it. A handle field is the handle.
 func (gc *GoIRContext) cValueIn(t *ir.Type, alias *ir.Alias, v string) string {
 	if sd := ir.CStructOf(t); sd != nil {
+		ct := gc.CType(sd.Foreign.C)
+		if cStructPins(t) {
+			gc.RequireImport("unsafe")
+			var body strings.Builder
+			body.WriteString("var c " + ct)
+			for _, f := range sd.Fields {
+				fv := "v." + ExportName(f.Name)
+				switch {
+				case f.Type.Kind == ir.TypeString && f.CAlias != nil && f.CAlias.C != nil:
+					body.WriteString("; *(*unsafe.Pointer)(unsafe.Pointer(&c." + f.Name + ")) = unsafe.Pointer(" + pinsName + ".UTF16(" + fv + "))")
+				case f.Type.Kind == ir.TypeString:
+					body.WriteString("; *(*unsafe.Pointer)(unsafe.Pointer(&c." + f.Name + ")) = unsafe.Pointer(" + pinsName + ".CString(" + fv + "))")
+				default:
+					body.WriteString("; c." + f.Name + " = " + gc.cValueIn(f.Type, f.CAlias, fv))
+				}
+			}
+			return "func(v " + gc.goType(t) + ") " + ct + " { " + body.String() + "; return c }(" + v + ")"
+		}
 		var fields []string
 		for _, f := range sd.Fields {
 			fields = append(fields, f.Name+": "+gc.cValueIn(f.Type, f.CAlias, "v."+ExportName(f.Name)))
 		}
-		return "func(v " + gc.goType(t) + ") " + gc.CType(sd.Foreign.C) + " { return " + gc.CType(sd.Foreign.C) + "{" + strings.Join(fields, ", ") + "} }(" + v + ")"
+		return "func(v " + gc.goType(t) + ") " + ct + " { return " + ct + "{" + strings.Join(fields, ", ") + "} }(" + v + ")"
+	}
+	// An option of a `*` handle is NULL for none; Go's is a pointer to it.
+	if ir.IsCPointerOption(t) {
+		p := gc.pointerOptionElem(t)
+		return "func(p *" + p + ") " + p + " { if p == nil { return nil }; return *p }(" + v + ")"
+	}
+	if ir.CTypeOf(t) != nil {
+		return v
 	}
 	ct := gc.CType(cScalar(t, alias))
 	if t.Kind == ir.TypeBool {
@@ -469,14 +520,33 @@ func (gc *GoIRContext) cValueIn(t *ir.Type, alias *ir.Alias, v string) string {
 }
 
 // cValueOut is v, a C value, as the SNGL scalar or C struct of type t it
-// crosses back as.
-func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string) string {
+// crosses back as. A string field is not read back: it is the one orig,
+// the value the program handed C, holds.
+func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string, orig ...string) string {
 	if sd := ir.CStructOf(t); sd != nil {
 		var fields []string
+		keep := len(orig) > 0 && cStructPins(t)
 		for _, f := range sd.Fields {
-			fields = append(fields, ExportName(f.Name)+": "+gc.cValueOut(f.Type, f.CAlias, "c."+f.Name))
+			switch {
+			case keep && f.Type.Kind == ir.TypeString:
+				fields = append(fields, ExportName(f.Name)+": o."+ExportName(f.Name))
+			case keep && cStructPins(f.Type):
+				fields = append(fields, ExportName(f.Name)+": "+gc.cValueOut(f.Type, f.CAlias, "c."+f.Name, "o."+ExportName(f.Name)))
+			default:
+				fields = append(fields, ExportName(f.Name)+": "+gc.cValueOut(f.Type, f.CAlias, "c."+f.Name))
+			}
+		}
+		if keep {
+			return "func(c " + gc.CType(sd.Foreign.C) + ", o " + gc.goType(t) + ") " + gc.goType(t) + " { return " + gc.goType(t) + "{" + strings.Join(fields, ", ") + "} }(" + v + ", " + orig[0] + ")"
 		}
 		return "func(c " + gc.CType(sd.Foreign.C) + ") " + gc.goType(t) + " { return " + gc.goType(t) + "{" + strings.Join(fields, ", ") + "} }(" + v + ")"
+	}
+	if ir.IsCPointerOption(t) {
+		p := gc.pointerOptionElem(t)
+		return "func(p " + p + ") *" + p + " { if p == nil { return nil }; return &p }(" + v + ")"
+	}
+	if ir.CTypeOf(t) != nil {
+		return v
 	}
 	switch t.Kind {
 	case ir.TypeBool:
@@ -485,6 +555,19 @@ func (gc *GoIRContext) cValueOut(t *ir.Type, alias *ir.Alias, v string) string {
 		return "float64(" + v + ")"
 	}
 	return "int(" + v + ")"
+}
+
+// pinsName is the cbind.Pins a call handing C a struct holding a string
+// declares, which its conversion pins the string's copy with (cValueIn).
+const pinsName = "__snglPins"
+
+// cStructPins reports whether t is a C struct holding a string, itself or
+// in a C struct it holds: one a call pins a copy of for C (cValueIn).
+func cStructPins(t *ir.Type) bool {
+	sd := ir.CStructOf(t)
+	return sd != nil && slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool {
+		return f.Type.Kind == ir.TypeString || cStructPins(f.Type)
+	})
 }
 
 // wrapper is the Go wrapper of a C declaration f describes, which `sngl tool

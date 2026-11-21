@@ -362,7 +362,27 @@ declaration itself. Two things about the name that are easy to get wrong:
   so a backend declares it, converted field by field where a call takes one
   (`CConvertStruct`) or returns one, each field as its alias
   (`StructField.CAlias`) or scalar. Held as cgo's type instead, its fields
-  would be `C.int` in every SNGL expression reading one. A C function's
+  would be `C.int` in every SNGL expression reading one. A field may also
+  be a string, as a `char *` or its UTF-16 alias, a handle, or an option of
+  a `*` handle (`cPointerField`), as Win32's `LVITEMW` holds its text. A
+  string is valid for the call the struct is handed to and is not read
+  back, the program's struct keeping the string it held: C hands its bytes,
+  which a NUL ends, or their UTF-16 in the turn's arena, as an argument's
+  is, written without const so the field fits C's `LPWSTR` or `LPCWSTR`,
+  and reads back through a helper handed the struct the program handed in
+  (`fromCStructKeeps`). Go copies each into Go memory pinned for the call
+  (`cbind.Pins`, declared by the call, `cStructPins`), stored through
+  `unsafe.Pointer` since it can spell the field's pointer type only as cgo
+  names it, and builds the struct read back from the value handed in. A C
+  function answering such a struct is refused, having no string of the
+  program's to keep (`cStringField`); a held copy is sound, being the
+  program's value and never the C struct (`codegen/lang/c`'s
+  `struct_strings` run, `testdata/c_struct_strings.txtar`,
+  `error_c_struct.sngl`, `cgogen_user_package_runs.txt`, and
+  `cmd/sngl/testdata/c_win32_interop_runs.txt`, which inserts rows into a
+  real list view through LVM_INSERTITEMW and reads their text back). A
+  program's own C struct in a test build calling C directly was declared
+  twice, once more as another package's (`libraryCStructs`). A C function's
   `ref` parameter is a pointer it fills: `passRefParams` makes it an out
   (`cOuts`), so the call hands back what C wrote and the caller's variable
   is assigned as a bodied function's write-back is -- an assignment every

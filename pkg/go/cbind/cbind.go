@@ -10,6 +10,7 @@
 package cbind
 
 import (
+	"runtime"
 	"sync"
 	"unicode/utf16"
 	"unsafe"
@@ -116,3 +117,30 @@ func UTF16(s string) *uint16 {
 	u := append(utf16.Encode([]rune(s)), 0)
 	return &u[0]
 }
+
+// Pins keeps the strings a C struct's fields point to where they are for
+// the one call the struct is handed to: cgo lets C have Go memory holding a
+// Go pointer only where that pointer is pinned. The zero is ready, and
+// Unpin, deferred around the call, lets them go.
+type Pins struct {
+	p runtime.Pinner
+}
+
+// UTF16 is s as UTF16 encodes it, pinned.
+func (p *Pins) UTF16(s string) *uint16 {
+	u := UTF16(s)
+	p.p.Pin(u)
+	return u
+}
+
+// CString is s with a NUL after it, the first byte's address, pinned: the
+// `char *` a C struct's field holds.
+func (p *Pins) CString(s string) *byte {
+	b := make([]byte, len(s)+1)
+	copy(b, s)
+	p.p.Pin(&b[0])
+	return &b[0]
+}
+
+// Unpin lets go of everything p pinned.
+func (p *Pins) Unpin() { p.p.Unpin() }

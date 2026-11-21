@@ -141,12 +141,13 @@ the canvas's decoded pictures off the runtime's record, is still C.
   integer would keep nothing alive for the call; a cast takes a
   WM_NOTIFY's LPARAM back to its NMHDR. It holds only for a message sent,
   never one posted.
-- **What C writes as UTF-16 or holds in a struct.** A C function answers no
-  `utf16`, and a wide buffer C fills (`GetWindowTextW`, `CB_GETLBTEXT`) has
-  no type, so the runtime answers UTF-8 (`sngl_win32_get_text`). A C
-  struct's field is a scalar, an alias or a C struct: `WNDCLASSEXW`'s window
-  procedure and class name, `LVITEMW`'s text, `ACTCTXW`'s source and
-  `BITMAPINFO`'s array of colors are none.
+- **What C writes as UTF-16.** A C function answers no `utf16`, and a
+  wide buffer C fills (`GetWindowTextW`, `CB_GETLBTEXT`, `LVM_GETITEMTEXTW`)
+  has no type, so the runtime answers UTF-8 (`sngl_win32_get_text`). A C
+  struct's field may be a string or a handle (`LVITEMW`'s text, `NMHDR`'s
+  window) but no function pointer (`WNDCLASSEXW`'s window procedure: a
+  class is registered by a C function taking the procedure as a
+  `#[c.static]` parameter) and no array (`BITMAPINFO`'s colors).
 - **The language runtime's ABI.** `sngl_post`, `sngl_loop_wait`, http's
   `sngl_http_start` (`rt/http.c`) and the C test agent's channel
   (`rt/sngl_win32_agent.c`) are what C's own runtime calls.

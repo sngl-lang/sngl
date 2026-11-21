@@ -20,19 +20,24 @@
 # procedure reads and writes a RECT handed by ref and answers whether an
 # LPARAM is a window; and a WM_NOTIFY's LPARAM is cast back to the NMHDR it
 # points to, whose members `field` reads.
+#
+# A C struct's field may be a string or a handle: an LVITEMW whose text is
+# a c.utf16, handed by ref through LVM_INSERTITEMW's LPARAM, inserts a row
+# into a real list view, whose text the fixture's C reads back. The string
+# is valid for the call, and not read back into the program's struct.
 
 sngl test --platform=win32 --language=c app.sngl
-stdout 'ok +6 tests, 0 failures'
+stdout 'ok +7 tests, 0 failures'
 sngl test --platform=win32 --language=c --opt arch=386 app.sngl
-stdout 'ok +6 tests, 0 failures'
+stdout 'ok +7 tests, 0 failures'
 sngl test --platform=win32 --language=go app.sngl
-stdout 'ok +6 tests, 0 failures'
+stdout 'ok +7 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt arch=386 app.sngl
-stdout 'ok +6 tests, 0 failures'
+stdout 'ok +7 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
-stdout 'ok +6 tests, 0 failures'
+stdout 'ok +7 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt cgo=direct --opt arch=386 app.sngl
-stdout 'ok +6 tests, 0 failures'
+stdout 'ok +7 tests, 0 failures'
 
 -- app.sngl --
 import api "sngl:platform/win32/api"
@@ -92,6 +97,25 @@ func _code(h _Nmhdr) api.UINT
 
 #[c.native("NMHDR.idFrom", field)]
 func _from(h _Nmhdr) UINT_PTR
+
+#[c.native("LVITEMW")]
+struct _LvItem {
+    mask      api.UINT
+    iItem     int
+    iSubItem  int
+    state     api.UINT
+    stateMask api.UINT
+    pszText   c.utf16
+}
+
+#[c.native("SendMessageW")]
+func _sendItem(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] item ref[_LvItem]) api.LRESULT
+
+#[c.native("interop_list")]
+func _list() api.HWND
+
+#[c.native("interop_item_text")]
+func _itemText(list api.HWND, i int) string
 
 var noted = 0
 var notedFrom = 0
@@ -164,8 +188,21 @@ func testANotifyIsReadThroughItsLparam(t test.Test) {
     t.assert(noted == 1234)
     t.assert(notedFrom == 5)
 }
+
+func testAnItemsTextCrossesInItsStruct(t test.Test) {
+    var list = _list()
+    var item = _LvItem{mask=1, iItem=0, iSubItem=0, state=0, stateMask=0, pszText="café 世"}
+    t.assert(_sendItem(list, 4173, 0, &item) == 0)
+    item.pszText = "second"
+    item.iItem = 1
+    t.assert(_sendItem(list, 4173, 0, &item) == 1)
+    t.assert(item.pszText == "second")
+    t.assert(_itemText(list, 0) == "café 世")
+    t.assert(_itemText(list, 1) == "second")
+}
 -- interop.h --
 #include <windows.h>
+#include <commctrl.h>
 
 // A message-only window of a class whose procedure is proc.
 HWND interop_window(WNDPROC proc);
@@ -182,6 +219,11 @@ HWND interop_c_window(void);
 
 // Sends to a WM_NOTIFY from window 5 carrying code.
 void interop_notify(HWND to, int code);
+
+// A list view of one column in a window never shown, and the text of its
+// row i as UTF-8, in a buffer of its own.
+HWND interop_list(void);
+const char *interop_item_text(HWND list, int i);
 -- interop.c --
 #include "interop.h"
 
@@ -244,8 +286,33 @@ void interop_notify(HWND to, int code) {
 	nm.code = (UINT)code;
 	SendMessageW(to, WM_NOTIFY, 5, (LPARAM)&nm);
 }
+
+HWND interop_list(void) {
+	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_LISTVIEW_CLASSES};
+	InitCommonControlsEx(&icc);
+	HWND top = CreateWindowExW(0, L"STATIC", L"", WS_POPUP, 0, 0, 200, 200, NULL, NULL, GetModuleHandleW(NULL), NULL);
+	HWND list = CreateWindowExW(0, WC_LISTVIEWW, L"", WS_CHILD | LVS_REPORT, 0, 0, 200, 200, top, NULL, GetModuleHandleW(NULL), NULL);
+	LVCOLUMNW col = {0};
+	col.mask = LVCF_WIDTH;
+	col.cx = 100;
+	SendMessageW(list, LVM_INSERTCOLUMNW, 0, (LPARAM)&col);
+	return list;
+}
+
+const char *interop_item_text(HWND list, int i) {
+	static char out[64];
+	wchar_t text[32] = {0};
+	LVITEMW item = {0};
+	item.iSubItem = 0;
+	item.pszText = text;
+	item.cchTextMax = 32;
+	SendMessageW(list, LVM_GETITEMTEXTW, (WPARAM)i, (LPARAM)&item);
+	WideCharToMultiByte(CP_UTF8, 0, text, -1, out, sizeof out, NULL, NULL);
+	return out;
+}
+
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:577db978705e614eec5cee3067b1c16c
+sha256:addb6f54ce620e0670972be33936fbc1
 {
   "results": [
     {
@@ -270,12 +337,16 @@ sha256:577db978705e614eec5cee3067b1c16c
     },
     {
       "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
       "Passed": true
     }
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:3b38257cc664ec346149753404fb56df
+sha256:9772b5b26b6365e69685ec7d6515679c
 {
   "results": [
     {
@@ -300,12 +371,16 @@ sha256:3b38257cc664ec346149753404fb56df
     },
     {
       "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
       "Passed": true
     }
   ]
 }
 -- testrun/win32/go/app.sngl/_/1 --
-sha256:f4ca50009e2748f58437ab89855b089d
+sha256:d4db4347c490308ddec02cab7b2ea564
 {
   "results": [
     {
@@ -330,12 +405,16 @@ sha256:f4ca50009e2748f58437ab89855b089d
     },
     {
       "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
       "Passed": true
     }
   ]
 }
 -- testrun/win32/go/app.sngl/_/2 --
-sha256:12894471129629301754f0a41d1a01e0
+sha256:ed9fd47a9fe18020a80dd6ece96d0e02
 {
   "results": [
     {
@@ -360,12 +439,16 @@ sha256:12894471129629301754f0a41d1a01e0
     },
     {
       "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
       "Passed": true
     }
   ]
 }
 -- testrun/win32/go/app.sngl/_/3 --
-sha256:a2b137395a1989060e7b4c926b5f237c
+sha256:b9f2bb69b1103df016e2143bd6b0ec22
 {
   "results": [
     {
@@ -390,12 +473,16 @@ sha256:a2b137395a1989060e7b4c926b5f237c
     },
     {
       "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
       "Passed": true
     }
   ]
 }
 -- testrun/win32/go/app.sngl/_/4 --
-sha256:3f7f06ae89b2b160d62031d821c21d12
+sha256:b38e8fbab0c9ff401e0d790e276fef8e
 {
   "results": [
     {
@@ -420,6 +507,10 @@ sha256:3f7f06ae89b2b160d62031d821c21d12
     },
     {
       "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
       "Passed": true
     }
   ]

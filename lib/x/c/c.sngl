@@ -58,6 +58,17 @@ component link(const include string, const system bool = false, const cflags lis
 // `ref[RECT]` parameter is a pointer C fills, which the call writes back to
 // the variable `&r` names.
 //
+// A field may also be a `string` (a `char *`) or its `utf16` alias (a wide
+// one), a handle, or an option of a handle written with a `*`, NULL for
+// none, as Win32's `LVITEMW` holds its text. A string is valid for the call
+// the struct is handed to, by value or by `ref`, and no longer, and is not
+// read back: what C writes there is lost, and the program's struct keeps
+// the string it held, where a handle C wrote is read back. So a C function
+// answering such a struct is refused, having no string to keep, and a
+// buffer C fills with text is no field of one. A struct holding a string
+// is the program's value everywhere else -- kept, or handed C as a `held`
+// copy C cannot read as the C struct -- since only a call makes the C one.
+//
 // A function's `func` parameter is a callback, which C calls through a
 // function pointer and the `void *` it hands back: the parameter
 // `#[context]` marks, which no caller passes.

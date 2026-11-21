@@ -994,9 +994,60 @@ func (c *checker) checkCStructs(pkg *ir.Package) {
 			}
 		}
 		for _, f := range sd.Fields {
-			if !cFieldValue(f.Type, f.CAlias) {
-				c.error(pos[f.Name], "field %q of %s, the C struct %s, is a %s: a C struct's field is an int, float or bool, a #[c.native] alias of one, or a C struct", f.Name, sd.Name, sd.Foreign.C, f.Type)
+			if !cFieldValue(f.Type, f.CAlias) && !cPointerField(f) {
+				c.error(pos[f.Name], "field %q of %s, the C struct %s, is a %s: a C struct's field is an int, float or bool, a #[c.native] alias of one, a C struct, a string, a handle or an option of a `*` handle", f.Name, sd.Name, sd.Foreign.C, f.Type)
 			}
 		}
 	}
+	// A string a struct C answers holds is not read back, and a struct C
+	// answers has no value of the program's to keep the string of.
+	for _, fn := range pkg.Funcs {
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.AST == nil {
+			continue
+		}
+		if f := cStringField(fn.Return); f != "" {
+			at := fn.AST.Pos
+			if nt, ok := fn.AST.ReturnType.(*ast.NamedType); ok {
+				at = nt.Pos
+			}
+			c.error(at, "C function %q answers a %s, whose field %q is a string, which is not read back from C: answer a handle, or fill a ref to the struct the program holds", fn.Foreign.Name, fn.Return, f)
+		}
+	}
+}
+
+// cPointerField reports whether f, a C struct's field, is one crossing as a
+// pointer valid for the call the struct is handed to: a string, as a `char
+// *` or its UTF-16 alias's, which C reads and the program does not read
+// back; a handle; or an option of a handle written with a `*`, NULL for
+// none. A callback, which C would call after the call, is none.
+func cPointerField(f *ir.StructField) bool {
+	t := f.Type
+	if t == nil {
+		return false
+	}
+	if t.Kind == ir.TypeString {
+		return f.CAlias == nil || f.CAlias.C != nil && f.CAlias.C.IsUTF16Pointer()
+	}
+	if ir.IsCPointerOption(t) {
+		return true
+	}
+	return t.Kind == ir.TypeStruct && ir.CTypeOf(t) != nil && ir.CStructOf(t) == nil
+}
+
+// cStringField is the first field of t, a C struct, or of a C struct it
+// holds, that is a string, or "".
+func cStringField(t *ir.Type) string {
+	sd := ir.CStructOf(t)
+	if sd == nil {
+		return ""
+	}
+	for _, f := range sd.Fields {
+		if f.Type != nil && f.Type.Kind == ir.TypeString {
+			return f.Name
+		}
+		if n := cStringField(f.Type); n != "" {
+			return f.Name + "." + n
+		}
+	}
+	return ""
 }

@@ -1329,6 +1329,16 @@ func (c *Context) cStruct(t *ir.Type) string {
 		switch {
 		case f.Type.Kind == ir.TypeBool:
 			v = "(" + v + " ? 1 : 0)"
+		// A string is valid for the call the struct is handed to: its
+		// bytes, which a NUL ends, or its UTF-16 in the turn's arena, as an
+		// argument's is. Written without const, it fits a field C declares
+		// either way (LVITEMW's LPWSTR).
+		case f.Type.Kind == ir.TypeString && f.CAlias != nil && f.CAlias.C != nil:
+			v = "(unsigned short *)sngl_utf16(" + v + ")"
+		case f.Type.Kind == ir.TypeString:
+			v = "(char *)" + v + ".ptr"
+		// A handle, or an option of a `*` one, is the pointer it holds.
+		case ir.IsCPointerOption(f.Type) || ir.CTypeOf(f.Type) != nil && ir.CStructOf(f.Type) == nil:
 		case f.CAlias != nil && f.CAlias.C != nil:
 			v = "(" + f.CAlias.C.String() + ")" + v
 		case f.Type.Kind == ir.TypeFloat:
@@ -1352,17 +1362,35 @@ func (c *Context) fromCStruct(t *ir.Type) string {
 	to, from := c.typeName(t), sd.Foreign.C.String()
 	fn := "sngl_from_" + strings.TrimPrefix(to, "s_")
 	var fields []string
+	kept := false
 	for _, f := range sd.Fields {
 		v := "v." + f.Name
-		if f.Type.Kind == ir.TypeBool {
+		switch {
+		case f.Type.Kind == ir.TypeBool:
 			v = "(" + v + " != 0)"
-		} else {
+		// A string is not read back: the program's struct keeps its own,
+		// which C had for the call (fromCStructKeeps).
+		case f.Type.Kind == ir.TypeString:
+			v, kept = "o."+Local(f.Name), true
+		default:
 			v = "(" + c.typeName(f.Type) + ")" + v
 		}
 		fields = append(fields, "."+Local(f.Name)+" = "+v)
 	}
-	c.file.helper(fn, "static "+to+" "+fn+"("+from+" v) {\n\treturn ("+to+"){"+strings.Join(fields, ", ")+"};\n}\n")
+	params := from + " v"
+	if kept {
+		params += ", " + to + " o"
+	}
+	c.file.helper(fn, "static "+to+" "+fn+"("+params+") {\n\treturn ("+to+"){"+strings.Join(fields, ", ")+"};\n}\n")
 	return fn
+}
+
+// fromCStructKeeps reports whether fromCStruct's helper for t takes the
+// struct the program handed C beside the one C wrote: a string field of it,
+// which is not read back from C.
+func fromCStructKeeps(t *ir.Type) bool {
+	sd := ir.CStructOf(t)
+	return sd != nil && slices.ContainsFunc(sd.Fields, func(f *ir.StructField) bool { return f.Type.Kind == ir.TypeString })
 }
 
 // CCall is a call of the C function c names, whose number comes back as the
@@ -1538,7 +1566,11 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 			}
 			if sd := ir.CStructOf(elem); sd != nil {
 				fmt.Fprintf(&body, "\t%s t%d = %s(%s);\n", sd.Foreign.C.String(), i, c.cStruct(elem), a)
-				outs = append(outs, fmt.Sprintf("%s(t%d)", c.fromCStruct(elem), i))
+				if fromCStructKeeps(elem) {
+					outs = append(outs, fmt.Sprintf("%s(t%d, %s)", c.fromCStruct(elem), i, a))
+				} else {
+					outs = append(outs, fmt.Sprintf("%s(t%d)", c.fromCStruct(elem), i))
+				}
 				continue
 			}
 			switch elem.Kind {

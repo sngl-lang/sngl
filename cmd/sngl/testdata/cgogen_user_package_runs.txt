@@ -19,7 +19,8 @@
 # convention the wrapper package's callbacks define, calling the export.
 # A pointer C takes as an integer typedef (#[c.type]) is cast in C, by a
 # function of the preamble's the wrapper calls, as a number made a pointer
-# by a cast is.
+# by a cast is. A struct holding a string hands C a copy pinned for the
+# call, which is not read back, and a handle read back.
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -51,7 +52,7 @@ grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +9 tests, 0 failures'
+stdout 'ok +10 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
@@ -103,6 +104,18 @@ split_wide split_widen(split_wide_fn f);
 typedef intptr_t split_param;
 split_param split_send(int msg, split_param l);
 split_param split_noted(void);
+
+// A struct holding a string and a handle: its name's length times ten
+// plus its thing's code; and, renamed, its n set to that length, its
+// thing one of code n, and its name another, which the program does not
+// read back.
+typedef struct split_named {
+	const char *name;
+	split_thing *thing;
+	int n;
+} split_named;
+int split_named_len(split_named nm);
+void split_rename(split_named *nm);
 -- mathx/split.c --
 #include <stdio.h>
 #include <stdlib.h>
@@ -181,6 +194,16 @@ split_param split_send(int msg, split_param l) {
 		return ((split_thing *)l)->code;
 	}
 	return 0;
+}
+
+int split_named_len(split_named nm) {
+	return (int)strlen(nm.name) * 10 + nm.thing->code;
+}
+
+void split_rename(split_named *nm) {
+	nm->n = (int)strlen(nm->name);
+	nm->name = "zz";
+	nm->thing = split_thing_new(nm->n);
 }
 
 split_param split_noted(void) {
@@ -325,6 +348,26 @@ func _noted() _Param
 #[c.native("split_thing *", cast)]
 func _asThing(p _Param) _Thing
 
+#[c.native("split_named")]
+struct _Named {
+    name  string
+    thing _Thing
+    n     int
+}
+
+#[c.native("split_named_len")]
+func _namedLen(nm _Named) int
+
+#[c.native("split_rename")]
+func _rename(nm ref[_Named])
+
+func named() string {
+    var nm = _Named{name="abcd", thing=_thingNew(3), n=0}
+    var l = _namedLen(nm)
+    _rename(&nm)
+    return "{l} {nm.name} {nm.n} {_code(nm.thing)}"
+}
+
 func sent() string {
     var p = _Pair{lo=3, hi=4}
     var r = _sendPair(2, &p)
@@ -381,13 +424,17 @@ func testItSendsPointersAsIntegers(t test.Test) {
     t.assert(m.sent() == "3 1 43 9 11")
 }
 
+func testItHandsAStructHoldingAString(t test.Test) {
+    t.assert(m.named() == "43 abcd 4 4")
+}
+
 func testItFreesWhatCHandsOver(t test.Test) {
     t.assert(m.names() == "n3 n4")
     t.assert(m.freed() == 2)
 }
 
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:434a9be9864fed20020bbfee7a44bb46
+sha256:026e80c67dda5be6942d3e4d2fd2f4b7
 {
   "results": [
     {
@@ -404,6 +451,10 @@ sha256:434a9be9864fed20020bbfee7a44bb46
     },
     {
       "Desc": "ItFreesWhatCHandsOver",
+      "Passed": true
+    },
+    {
+      "Desc": "ItHandsAStructHoldingAString",
       "Passed": true
     },
     {

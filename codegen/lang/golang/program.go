@@ -60,7 +60,13 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 	b.WriteString(EmitEnumTypeDecls(a.Enums))
 	structs := a.Structs
 	if pkg.CCalls != ir.CCallsWrapper {
-		structs = append(structs, libraryCStructs(pkg)...)
+		// A test build's copy of the program's own is the program's,
+		// declared already, whatever package the copy names.
+		for _, sd := range libraryCStructs(pkg) {
+			if !slices.ContainsFunc(structs, func(s *ir.StructDef) bool { return s.Name == sd.Name }) {
+				structs = append(structs, sd)
+			}
+		}
 	}
 	for _, sd := range structs {
 		fmt.Fprintf(&b, "type %s struct {\n", ExportName(sd.Name))
