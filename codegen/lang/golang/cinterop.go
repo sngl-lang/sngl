@@ -78,6 +78,16 @@ func (gc *GoIRContext) CConvert(x *ir.CConvert) string {
 		gc.RequireImport("unsafe")
 		return "(" + gc.CType(x.To) + ")(unsafe.Pointer(cbind.UTF16(" + operand + ")))"
 	}
+	// A number made a pointer -- a WM_NOTIFY's LPARAM the NMHDR it points
+	// to -- is C's to make, through the integer type it is (CShims).
+	if x.Via != nil && x.Via.CCastFromInt() {
+		v := "C." + shimName(x.Via) + "(" + gc.CType(&ir.CType{Name: x.Via.CIntOf()}) + "(" + operand + "))"
+		if t := gc.castType(x); t != gc.CType(x.To) {
+			gc.RequireImport("unsafe")
+			v = "(" + t + ")(unsafe.Pointer(" + v + "))"
+		}
+		return v
+	}
 	gc.RequireImport("unsafe")
 	if x.To.IsVoidPointer() {
 		return "unsafe.Pointer(" + operand + ")"
@@ -302,7 +312,7 @@ func (gc *GoIRContext) CCall(c *ir.Call, args []string) string {
 
 func (gc *GoIRContext) cCall(fn *ir.Func, args []string) string {
 	name := fn.Foreign.Name
-	if fn.Foreign.Variadic || fn.Foreign.Field {
+	if shimmedCall(fn) {
 		name = shimName(fn)
 	}
 	call := "C." + name + "(" + strings.Join(args, ", ") + ")"
@@ -403,7 +413,7 @@ func optionOfPointer(t *ir.Type) bool {
 // where C takes the function-pointer typedef its #[c.type] names: no
 // callback, release or held value, which cross as their own.
 func cFuncPointer(p *ir.Param) bool {
-	if p.CFuncType == nil || p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() {
+	if p.CFuncType == nil || p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() || p.CIntPointer() {
 		return false
 	}
 	t := p.Type

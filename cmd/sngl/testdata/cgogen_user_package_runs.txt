@@ -17,6 +17,9 @@
 # pointer to NULL and read back null or the handle. A static callback C
 # calls with a convention of its own is the static C function of that
 # convention the wrapper package's callbacks define, calling the export.
+# A pointer C takes as an integer typedef (#[c.type]) is cast in C, by a
+# function of the preamble's the wrapper calls, as a number made a pointer
+# by a cast is.
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -33,6 +36,7 @@ grep 'func SplitThingTwice\(t Thing, n int\) int' mathx/cgo/wrappers.go
 grep 'func SplitTry\(n int, err \*Thing\) SplitTryResult' mathx/cgo/wrappers.go
 grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.State"\)\]' mathx/mathx.sngl
 grep 'static split_wide SPLIT_CC snglStatic__widen_f_SPLIT_CC\(split_wide a0\)' mathx/cgo/callbacks.go
+grep 'return split_send\(a0, \(split_param\)a1\);' mathx/cgo/wrappers.go
 
 # A second run, reading the marks the first wrote, changes nothing.
 cp mathx/mathx.sngl marked.sngl
@@ -47,7 +51,7 @@ grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +8 tests, 0 failures'
+stdout 'ok +9 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
@@ -92,9 +96,17 @@ int split_try(int n, split_thing **err);
 typedef long long split_wide;
 typedef split_wide (SPLIT_CC *split_wide_fn)(split_wide);
 split_wide split_widen(split_wide_fn f);
+
+// As Win32's SendMessageW: what l points to is what msg says. split_noted
+// answers a thing of code 11 as such an integer.
+#include <stdint.h>
+typedef intptr_t split_param;
+split_param split_send(int msg, split_param l);
+split_param split_noted(void);
 -- mathx/split.c --
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "split.h"
 
@@ -156,6 +168,23 @@ int split_try(int n, split_thing **err) {
 	}
 	*err = split_thing_new(n);
 	return 0;
+}
+
+split_param split_send(int msg, split_param l) {
+	switch (msg) {
+	case 1:
+		return (split_param)strlen((const char *)l);
+	case 2:
+		split_swap((split_pair *)l);
+		return 1;
+	case 3:
+		return ((split_thing *)l)->code;
+	}
+	return 0;
+}
+
+split_param split_noted(void) {
+	return (split_param)split_thing_new(11);
 }
 
 split_wide split_widen(split_wide_fn f) {
@@ -277,6 +306,30 @@ func _widen(#[c.type("split_wide_fn")] #[c.static(convention="SPLIT_CC")] f func
 func _plusOne(n int) => n + 1
 
 func widened() => _widen(_plusOne)
+
+#[c.native("split_param")]
+struct _Param = int
+
+#[c.native("split_send")]
+func _sendText(msg int, #[c.type("split_param")] text string) _Param
+
+#[c.native("split_send")]
+func _sendPair(msg int, #[c.type("split_param")] p ref[_Pair]) _Param
+
+#[c.native("split_send")]
+func _sendThing(msg int, #[c.type("split_param")] t _Thing) _Param
+
+#[c.native("split_noted")]
+func _noted() _Param
+
+#[c.native("split_thing *", cast)]
+func _asThing(p _Param) _Thing
+
+func sent() string {
+    var p = _Pair{lo=3, hi=4}
+    var r = _sendPair(2, &p)
+    return "{_sendText(1, "abc")} {r} {p.lo}{p.hi} {_sendThing(3, _thingNew(9))} {_code(_asThing(_noted()))}"
+}
 -- mathx/gen.go --
 package mathx
 
@@ -324,13 +377,17 @@ func testItCallsWithAConvention(t test.Test) {
     t.assert(m.widened() == 5000000001)
 }
 
+func testItSendsPointersAsIntegers(t test.Test) {
+    t.assert(m.sent() == "3 1 43 9 11")
+}
+
 func testItFreesWhatCHandsOver(t test.Test) {
     t.assert(m.names() == "n3 n4")
     t.assert(m.freed() == 2)
 }
 
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:6cf2f6292fbfbd480ffce879579d0d04
+sha256:434a9be9864fed20020bbfee7a44bb46
 {
   "results": [
     {
@@ -355,6 +412,10 @@ sha256:6cf2f6292fbfbd480ffce879579d0d04
     },
     {
       "Desc": "ItReadsAndCallsMembers",
+      "Passed": true
+    },
+    {
+      "Desc": "ItSendsPointersAsIntegers",
       "Passed": true
     },
     {

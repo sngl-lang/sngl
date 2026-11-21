@@ -702,6 +702,9 @@ func (c *checker) checkCCallbacks(pkg *ir.Package) {
 			}
 		}
 		for i, p := range fn.Params {
+			if p.CFuncType != nil && !cTypeNames(p) {
+				c.error(pos(i), "parameter %q is a %s, and #[c.type(%q)] names the C type of a callback, a release, a held value or a function pointer handed NULL (an option[c.pointer]), or the integer typedef a string, a ref to a C struct or a handle is cast to", p.Name, p.Type, p.CFuncType.String())
+			}
 			// NULL is a pointer's: an option crosses as one where its alias
 			// is a string, and a number or bool has none to be.
 			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && !p.CAlias.IsCHeld() && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
@@ -736,6 +739,27 @@ func (c *checker) checkCCallbacks(pkg *ir.Package) {
 			}
 		}
 	}
+}
+
+// cTypeNames reports whether p is a parameter sngl:x/c's #[type] says the C
+// type of: a callback's, a release's or a held value's; a generic pointer's
+// (`void *`, or a typedef flagged `pointer`), the function-pointer typedef
+// a caller hands NULL for; or the integer typedef a pointer is cast to
+// (ir.Param.CIntPointer).
+func cTypeNames(p *ir.Param) bool {
+	if p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() || p.CIntPointer() || p.Type == nil || p.Type.Kind == ir.TypeFunc {
+		return true
+	}
+	t := p.Type
+	if t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	ct := ir.CTypeOf(t)
+	if ct == nil || ir.CStructOf(t) != nil {
+		return false
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return ct.IsVoidPointer() || sd != nil && sd.Foreign.CPointer
 }
 
 // checkCFrees judges sngl:x/c's #[frees] on fn: it marks a C function

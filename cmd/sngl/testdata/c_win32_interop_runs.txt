@@ -11,19 +11,28 @@
 # loop, and a window procedure, handed to RegisterClassW by the fixture's C,
 # answers a message SendMessageW sends, its WPARAM, LPARAM and LRESULT
 # crossing as those types.
+#
+# A pointer in a message's LPARAM: #[c.type("LPARAM")] on a string, its
+# UTF-16 alias, a ref to a C struct or a handle says C takes it as that
+# integer, and the call casts it, in C (Go through a C function taking the
+# pointer, so cgo keeps what it points to). WM_SETTEXT sets a window's text
+# both ways and WM_GETTEXTLENGTH counts it; the fixture's own window
+# procedure reads and writes a RECT handed by ref and answers whether an
+# LPARAM is a window; and a WM_NOTIFY's LPARAM is cast back to the NMHDR it
+# points to, whose members `field` reads.
 
 sngl test --platform=win32 --language=c app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 sngl test --platform=win32 --language=c --opt arch=386 app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 sngl test --platform=win32 --language=go app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt arch=386 app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 sngl test --platform=win32 --language=go --opt cgo=direct --opt arch=386 app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +6 tests, 0 failures'
 
 -- app.sngl --
 import api "sngl:platform/win32/api"
@@ -54,6 +63,39 @@ func _pump(h api.HWND, ms int) int
 #[c.native("interop_stop")]
 func _stop()
 
+#[c.native("SendMessageW")]
+func _sendWide(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] text c.utf16) api.LRESULT
+
+#[c.native("SendMessageA")]
+func _sendAnsi(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] text string) api.LRESULT
+
+#[c.native("SendMessageW")]
+func _sendRect(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] r ref[api.RECT]) api.LRESULT
+
+#[c.native("SendMessageW")]
+func _sendWindow(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] other api.HWND) api.LRESULT
+
+#[c.native("interop_c_window")]
+func _cWindow() api.HWND
+
+#[c.native("interop_notify")]
+func _notify(to api.HWND, code int)
+
+#[c.native("NMHDR *")]
+struct _Nmhdr {}
+
+#[c.native("NMHDR *", cast)]
+func _header(l api.LPARAM) _Nmhdr
+
+#[c.native("NMHDR.code", field)]
+func _code(h _Nmhdr) api.UINT
+
+#[c.native("NMHDR.idFrom", field)]
+func _from(h _Nmhdr) UINT_PTR
+
+var noted = 0
+var notedFrom = 0
+
 var ticks = 0
 var tickedId = 0
 
@@ -67,6 +109,12 @@ func _tick(h api.HWND, msg api.UINT, id UINT_PTR, time api.DWORD) {
 func _proc(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT {
     if msg == 1031 {
         return w * 2 + l
+    }
+    if msg == 78 {
+        var hdr = _header(l)
+        noted = _code(hdr)
+        notedFrom = _from(hdr)
+        return 0
     }
     return _defProc(h, msg, w, l)
 }
@@ -87,6 +135,35 @@ func testAWindowProcedureAnswers(t test.Test) {
     var h = _window(_proc)
     t.assert(api.SendMessage(h, 1031, 20, 2) == 42)
 }
+
+func testAStringIsAnLparam(t test.Test) {
+    var h = _window(_proc)
+    _sendWide(h, 12, 0, "héllo")
+    t.assert(api.SendMessage(h, 14, 0, 0) == 5)
+    _sendAnsi(h, 12, 0, "abc")
+    t.assert(api.SendMessage(h, 14, 0, 0) == 3)
+}
+
+func testAStructIsReadAndWrittenThroughAnLparam(t test.Test) {
+    var h = _cWindow()
+    var r = api.RECT{left=4, top=5, right=0, bottom=0}
+    var got = _sendRect(h, 1032, 0, &r)
+    t.assert(got == 9)
+    t.assert(r.right == 8)
+    t.assert(r.bottom == 6)
+}
+
+func testAWindowIsAnLparam(t test.Test) {
+    var h = _cWindow()
+    t.assert(_sendWindow(h, 1034, 0, _window(_proc)) == 1)
+}
+
+func testANotifyIsReadThroughItsLparam(t test.Test) {
+    var h = _window(_proc)
+    _notify(h, 1234)
+    t.assert(noted == 1234)
+    t.assert(notedFrom == 5)
+}
 -- interop.h --
 #include <windows.h>
 
@@ -97,6 +174,14 @@ HWND interop_window(WNDPROC proc);
 // answering 0.
 int interop_pump(HWND h, int ms);
 void interop_stop(void);
+
+// A message-only window whose procedure is the fixture's own: 1032 reads
+// the RECT its LPARAM points to and writes it, and 1034 answers whether its
+// LPARAM is a window.
+HWND interop_c_window(void);
+
+// Sends to a WM_NOTIFY from window 5 carrying code.
+void interop_notify(HWND to, int code);
 -- interop.c --
 #include "interop.h"
 
@@ -133,8 +218,34 @@ int interop_pump(HWND h, int ms) {
 void interop_stop(void) {
 	stopped = 1;
 }
+
+static LRESULT CALLBACK c_proc(HWND h, UINT msg, WPARAM w, LPARAM l) {
+	switch (msg) {
+	case 1032: {
+		RECT *r = (RECT *)l;
+		r->right = r->left * 2;
+		r->bottom = r->top + 1;
+		return r->left + r->top;
+	}
+	case 1034:
+		return IsWindow((HWND)l) ? 1 : 0;
+	}
+	return DefWindowProcW(h, msg, w, l);
+}
+
+HWND interop_c_window(void) {
+	return interop_window(c_proc);
+}
+
+void interop_notify(HWND to, int code) {
+	NMHDR nm = {0};
+	nm.hwndFrom = to;
+	nm.idFrom = 5;
+	nm.code = (UINT)code;
+	SendMessageW(to, WM_NOTIFY, 5, (LPARAM)&nm);
+}
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:492f4a5f445921dedd9d5673d8bc4801
+sha256:577db978705e614eec5cee3067b1c16c
 {
   "results": [
     {
@@ -143,12 +254,28 @@ sha256:492f4a5f445921dedd9d5673d8bc4801
     },
     {
       "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
       "Passed": true
     }
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:9a05701619f1900c00a3ca868608061e
+sha256:3b38257cc664ec346149753404fb56df
 {
   "results": [
     {
@@ -158,15 +285,47 @@ sha256:9a05701619f1900c00a3ca868608061e
     {
       "Desc": "AWindowProcedureAnswers",
       "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
     }
   ]
 }
 -- testrun/win32/go/app.sngl/_/1 --
-sha256:5c2745a18fd8d25075a51afc0d3db9b0
+sha256:f4ca50009e2748f58437ab89855b089d
 {
   "results": [
     {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
       "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
       "Passed": true
     },
     {
@@ -176,11 +335,27 @@ sha256:5c2745a18fd8d25075a51afc0d3db9b0
   ]
 }
 -- testrun/win32/go/app.sngl/_/2 --
-sha256:aa9381821b9a495a13490dd599b901c9
+sha256:12894471129629301754f0a41d1a01e0
 {
   "results": [
     {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
       "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
       "Passed": true
     },
     {
@@ -190,11 +365,27 @@ sha256:aa9381821b9a495a13490dd599b901c9
   ]
 }
 -- testrun/win32/go/app.sngl/_/3 --
-sha256:04a2de4a2fe92ad7410684786f2755b2
+sha256:a2b137395a1989060e7b4c926b5f237c
 {
   "results": [
     {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
       "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
       "Passed": true
     },
     {
@@ -204,11 +395,27 @@ sha256:04a2de4a2fe92ad7410684786f2755b2
   ]
 }
 -- testrun/win32/go/app.sngl/_/4 --
-sha256:bd89731f4b52007b9aa6a4b1e47ae937
+sha256:3f7f06ae89b2b160d62031d821c21d12
 {
   "results": [
     {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
       "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
       "Passed": true
     },
     {

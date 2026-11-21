@@ -304,14 +304,30 @@ func CShims(fns []*ir.Func) string {
 		}
 		// Two declarations of one name are one function: a library's and
 		// the copy a test build promotes of it.
-		if !fn.Foreign.Variadic && !fn.Foreign.Field || slices.Contains(shimmed, shimName(fn)) {
+		if !fn.Foreign.Variadic && !fn.Foreign.Field && !fn.CIntPointers() && !fn.CCastFromInt() || slices.Contains(shimmed, shimName(fn)) {
 			continue
 		}
 		shimmed = append(shimmed, shimName(fn))
+		// A number made a pointer: through the integer type it is, since
+		// Go makes no pointer of a number.
+		if fn.CCastFromInt() {
+			to, from := fn.Foreign.C.String(), fn.CIntOf()
+			if from == "intptr_t" {
+				b.WriteString("\n#include <stdint.h>\n")
+			}
+			fmt.Fprintf(&b, "\nstatic inline %s %s(%s a0) {\n\treturn (%s)a0;\n}\n", to, shimName(fn), from, to)
+			continue
+		}
 		var params, args []string
 		for i, p := range fn.Params {
 			a := fmt.Sprintf("a%d", i)
 			params = append(params, shimCType(p.Type, p.CAlias)+" "+a)
+			// A pointer C takes as an integer typedef (#[c.type("LPARAM")])
+			// is cast here, in C: cgo sees the pointer it is handed, and
+			// keeps what it points to for the call.
+			if p.CIntPointer() {
+				a = "(" + p.CFuncType.String() + ")" + a
+			}
 			args = append(args, a)
 		}
 		if len(params) == 0 {
@@ -328,12 +344,22 @@ func CShims(fns []*ir.Func) string {
 }
 
 // shimName is the C function of one shape a Go call of fn goes through: a
-// variadic one's, or a member's of a C struct.
+// variadic one's, a member's of a C struct, or one casting a pointer to
+// the integer typedef C takes, or a number to a pointer.
 func shimName(fn *ir.Func) string {
-	if fn.Foreign.Field {
+	switch {
+	case fn.Foreign.Field:
 		return "snglF_" + fn.Name
+	case fn.Foreign.Variadic:
+		return variadicName(fn)
 	}
-	return variadicName(fn)
+	return "snglP_" + fn.Name
+}
+
+// shimmedCall reports whether a Go call of fn calls shimName's function
+// rather than fn's own.
+func shimmedCall(fn *ir.Func) bool {
+	return fn.Foreign.Variadic || fn.Foreign.Field || fn.CIntPointers()
 }
 
 // shimCType is the C type a parameter or result of type t, written with

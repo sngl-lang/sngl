@@ -187,6 +187,12 @@ func translate(t *testing.T, src []byte) []byte {
 		if len(fn.TypeParams) > 0 {
 			continue
 		}
+		// Nor need a C function be kept, which C defines: called with a
+		// zero string, its constant would be a package temp the program
+		// declares and this file does not.
+		if fn.Foreign.Name != "" {
+			continue
+		}
 		// Nor has a `ref` a zero: a C function taking one is reached
 		// through the function calling it.
 		args := make([]ir.CallArg, len(fn.Params))

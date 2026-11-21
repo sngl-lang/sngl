@@ -1285,6 +1285,12 @@ func (c *Context) CConvert(x *ir.CConvert) string {
 		// that waits for strings to be owned on C (design/ownership.md).
 		return "sngl_cstring(" + operand + ")"
 	case ir.CConvertNumber, ir.CConvertPointer:
+		// A number made a pointer -- a WM_NOTIFY's LPARAM the NMHDR it
+		// points to -- goes through the integer type its parameter names
+		// first: a SNGL int is 64 bits, wider than a 32-bit pointer.
+		if x.Via != nil && x.Via.CCastFromInt() {
+			return "(" + x.To.String() + ")(" + x.Via.CIntOf() + ")(" + operand + ")"
+		}
 		return "(" + x.To.String() + ")(" + operand + ")"
 	case ir.CConvertCallback, ir.CConvertContext, ir.CConvertRelease:
 		// CCall writes all three from the closure.
@@ -1378,6 +1384,9 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 			}
 		}
 	}
+	if off >= 0 {
+		args = c.intPointerArgs(fn, args[:off:off], args[off:])
+	}
 	cb := slices.IndexFunc(fn.Params, func(p *ir.Param) bool {
 		return !p.CompilerPassed() && !p.CStatic && p.Type != nil && p.Type.Kind == ir.TypeFunc
 	})
@@ -1448,6 +1457,18 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		}
 	}
 	return call
+}
+
+// intPointerArgs is head, then args, each argument for a parameter of fn
+// C takes as an integer typedef (ir.Param.CIntPointer) cast to it.
+func (c *Context) intPointerArgs(fn *ir.Func, head, args []string) []string {
+	out := append(head, args...)
+	for i, p := range fn.Params {
+		if p.CIntPointer() {
+			out[len(head)+i] = "(" + p.CFuncType.String() + ")" + out[len(head)+i]
+		}
+	}
+	return out
 }
 
 // cStringOut is the function copying a `char *` C answered or stored into
@@ -1564,7 +1585,7 @@ func (c *Context) refCall(n *ir.Call, args []string) string {
 			cargs = append(cargs, a)
 		}
 	}
-	call := ir.CCallExpr(fn, cargs)
+	call := ir.CCallExpr(fn, c.intPointerArgs(fn, nil, cargs))
 	void := fn.Return == nil || fn.Return.Kind == ir.TypeVoid
 	ret := c.typeName(n.Type)
 	switch {

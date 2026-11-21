@@ -134,13 +134,13 @@ the canvas's decoded pictures off the runtime's record, is still C.
   `WM_NCDESTROY`, in a window procedure. `SetWindowLongPtrW` is a macro on
   386, which cgo cannot call. Everything reading the record -- layout,
   painting, events, the tree -- stays C with it.
-- **A pointer in a message's WPARAM or LPARAM.** A cast to an opaque
-  `#[c.native("LPARAM")]` handle compiles in C, but Go writes
-  `C.LPARAM(p)`, which converts no pointer to an integer, and an integer
-  would not keep Go's memory alive for the call. A cast to api's `LPARAM`,
-  an alias of `int`, is refused. So a message carrying a string, a struct or
-  a handle (`CB_ADDSTRING`, `LVM_*`, `TVM_*`, `DTM_SETSYSTEMTIME`,
-  `WM_SETFONT`, `WM_COMMAND`'s control, `WM_NOTIFY`) stays C.
+- **A pointer in a message's WPARAM or LPARAM** crosses where the
+  declaration marks the parameter `#[c.type("LPARAM")]`
+  (`design/nodes.md`): C casts it, and Go calls a C function taking the
+  pointer and casting it, since `C.LPARAM(p)` converts no pointer and an
+  integer would keep nothing alive for the call; a cast takes a
+  WM_NOTIFY's LPARAM back to its NMHDR. It holds only for a message sent,
+  never one posted.
 - **What C writes as UTF-16 or holds in a struct.** A C function answers no
   `utf16`, and a wide buffer C fills (`GetWindowTextW`, `CB_GETLBTEXT`) has
   no type, so the runtime answers UTF-8 (`sngl_win32_get_text`). A C

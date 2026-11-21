@@ -174,6 +174,9 @@ func puregoSources(pkg *ir.Package, generated map[string][]byte) (map[string][]b
 		if fn.Foreign.Field {
 			return nil, fmt.Errorf("%s is a member of a C struct (field): purego opens a C function by its name, and a member has none", fn.Foreign.Name)
 		}
+		if i := slices.IndexFunc(fn.Params, (*ir.Param).CIntPointer); i >= 0 {
+			return nil, fmt.Errorf("%s takes %s as the integer %s (#[c.type]): purego casts no pointer to an integer, which would keep nothing it points to for the call", fn.Foreign.Name, fn.Params[i].Name, fn.Params[i].CFuncType)
+		}
 		if freed := fn.CFreed(); len(freed) > 0 {
 			return nil, fmt.Errorf("%s hands over a string %s frees (#[c.frees]): purego copies a string C answers and hands back no pointer to free", fn.Foreign.Name, freed[0])
 		}

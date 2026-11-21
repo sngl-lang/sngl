@@ -41,7 +41,9 @@ component link(const include string, const system bool = false, const cflags lis
 // `cast` declares a conversion rather than a function: a bodyless function of
 // one parameter whose name is the C type it converts to, which is the C type
 // its return type declares. `#[native("cairo_line_cap_t", cast)] const func toLineCap(v int) LineCap` makes a number one, and a pointer type makes a
-// pointer, or a node, one.
+// pointer, or a node, one, and a number, written with the integer alias it
+// is (`LPARAM`), a pointer handle, as a Win32 message's `LPARAM` is the
+// `NMHDR *` it carries.
 //
 // An alias carries it too, naming a C typedef of a type SNGL has:
 // `#[native("UINT")] struct UINT = int` is an `int` wherever it is written,
@@ -244,6 +246,21 @@ struct held[T any] = T
 // `void *`. On an `option[pointer]` it names the function-pointer typedef
 // a caller hands NULL for, writing `null`: GLib's `GDestroyNotify` where
 // nothing is let go.
+//
+// On a parameter that crosses as a pointer -- a string or its `utf16`
+// alias, an option of one, a `ref` to a C struct, a handle, or an option of
+// a handle whose C type is written with a `*` -- it names the integer
+// typedef the C parameter is, and the call casts the pointer to it, as
+// Win32's `SendMessageW` takes a string, a struct or a window in its
+// `LPARAM`: `#[type("LPARAM")] text utf16`. A language that cannot make an
+// integer of a pointer itself without letting go of what it points to
+// casts it in a C function of the declaration's one shape, which its build
+// writes. What the pointer points to lives for the call and no longer -- a
+// string copied for it is freed once it returns, a `ref` read back -- so
+// this is for a C function that is done with it when it returns, as a sent
+// message is; handed to one that keeps it, as `PostMessageW` does, it
+// dangles, which no compiler sees. A `cast` makes such an integer a pointer
+// handle again (`#[native("NMHDR *", cast)] func header(l LPARAM) Nmhdr`).
 func type(name string) ir.Macro
 
 #[native("void *", cast)]

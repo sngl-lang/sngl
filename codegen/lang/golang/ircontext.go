@@ -1239,7 +1239,9 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	// A cast lower.CMarshal never saw: a library body a pass promoted after
 	// it ran, which is the library's own and not rewritten -- c.free's.
-	if n.Func.IsCCast() && len(n.Args) == 1 {
+	// One a wrapper makes -- a number made a pointer -- is called as any
+	// wrapper is.
+	if n.Func.IsCCast() && len(n.Args) == 1 && f.Path == ir.CPath {
 		return gc.CConvert(ir.NewCConvert(n.Func, n.Args[0].Value)), true
 	}
 	args := gc.evalCallArgs(n.Args)

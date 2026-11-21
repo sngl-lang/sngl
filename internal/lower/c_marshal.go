@@ -167,7 +167,14 @@ func (m *cMarshal) rewriteCasts(n ir.Node) (ir.Node, error) {
 		// is: nothing to convert. Anything else -- a pointer cast to another
 		// class, a number to an enum -- is converted to the wrapper's type.
 		if m.language == cPurego {
+			if c.Func.CCastFromInt() {
+				return n, fmt.Errorf("%s makes a %s of a number, which purego cannot: only C makes a pointer of one", c.Func.Name, c.Func.Foreign.C)
+			}
 			return c.Args[0].Value, nil
+		}
+		// A number made a pointer is C's to make, so a wrapper makes it.
+		if c.Func.CCastFromInt() && m.wrapped(&c.Func.Foreign) {
+			return n, nil
 		}
 		if sd, ok := c.Func.Return.Decl.(*ir.StructDef); ok && m.wrapped(&sd.Foreign) {
 			if t := c.Args[0].Value.ExprType(); t == nil || t.Kind == ir.TypeComponent || t.Decl == sd {

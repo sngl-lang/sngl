@@ -170,6 +170,14 @@ func (g *gen) collect(p *ir.Package) {
 	// declares another of it.
 	for _, canonical := range []bool{true, false} {
 		for _, fn := range p.Funcs {
+			// A cast is its operand to Go, but one making a pointer of a
+			// number, which only C makes: a wrapper named for it.
+			if fn.CCastFromInt() && fn.Foreign.Path == ir.CPath {
+				if !canonical {
+					g.add(fn)
+				}
+				continue
+			}
 			if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
 				continue
 			}
@@ -185,6 +193,9 @@ func (g *gen) collect(p *ir.Package) {
 // g_signal_connect_data with a callback of each signal's shape.
 func (g *gen) add(fn *ir.Func) {
 	name := GoName(fn.Foreign.Name)
+	if fn.IsCCast() {
+		name = GoName(fn.Name)
+	}
 	w := g.wrapperFunc(fn, name)
 	sig := g.goSig(w, false)
 	if g.funcs == nil {

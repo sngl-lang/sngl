@@ -508,6 +508,34 @@ declaration itself. Two things about the name that are easy to get wrong:
   a function by its name alone (`testdata/c_field.txtar`,
   `error_c_field.sngl`, `codegen/lang/c`'s `fields` run,
   `cgogen_user_package_runs.txt`, `go_cgo_purego_refused.txt`).
+  A pointer C takes as an integer typedef -- a Win32 message's `LPARAM`
+  carrying a string, a struct or a window -- is a parameter crossing as a
+  pointer (a string or its UTF-16 alias, an option of one, a `ref` to a C
+  struct, a handle, or an option of a `*` handle) that `#[c.type("LPARAM")]`
+  marks (`Param.CIntPointer`); on a generic pointer (`void *`, a typedef
+  flagged `pointer`) the mark still names the function-pointer typedef a
+  NULL is handed for, and on anything else it is refused (`cTypeNames`). C
+  casts the argument, `(LPARAM)p`, a `ref`'s temp's address included
+  (`intPointerArgs`). Go makes no integer of a pointer it hands C -- an
+  integer would keep nothing it points to for the call, Go's UTF-16 copy
+  and a ref's temp among them -- so the call goes through a C function of
+  the declaration's shape taking the pointer and casting it
+  (`snglP_<name>`, `CShims`), as a variadic call does; a wrapper package's
+  preamble defines it alike. The pointer is good for the call alone: this
+  is for a function done with it when it returns, as a sent message is,
+  and handed to `PostMessageW` it dangles, which nothing polices. A cast
+  takes such an integer back to a pointer handle, written with the alias it
+  is (`#[c.native("NMHDR *", cast)] func header(l LPARAM) Nmhdr`,
+  `Func.CCastFromInt`): C casts through the alias first, `(NMHDR *)(LPARAM)l`,
+  since a SNGL int is wider than a 32-bit pointer, and Go calls a C function
+  making it, which a wrapper package wraps as it wraps a function, though it
+  wraps no other cast. purego refuses both
+  (`codegen/lang/c`'s `int_pointers` run, `testdata/c_int_pointer.txtar`,
+  `error_c_type_mark.sngl`, `cgogen_user_package_runs.txt`,
+  `go_cgo_purego_refused.txt`, and `cmd/sngl/testdata/c_win32_interop_runs.txt`,
+  which sets and counts a window's text with WM_SETTEXT and
+  WM_GETTEXTLENGTH, hands a RECT the fixture's window procedure reads and
+  writes, and reads a WM_NOTIFY's NMHDR, under Wine on both architectures).
   A value C holds -- what `g_object_set_data_full` keeps on a widget -- is
   `sngl:x/c`'s `held`, a generic alias of its one parameter marked
   `#[builtin("cHeld")]` (`ir.Alias.IsCHeld`). `cAliasOf` records it as

@@ -435,6 +435,11 @@ func CalledCShimmed(pkg *Package) []*Func {
 		if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Foreign.Path == CPath && c.Func.CShimmed() && !slices.Contains(out, c.Func) {
 			out = append(out, c.Func)
 		}
+		// A cast is a conversion once lowered, and one making a pointer of a
+		// number is C's to make.
+		if c, ok := n.(*CConvert); ok && c.Via != nil && c.Via.CCastFromInt() && !slices.Contains(out, c.Via) {
+			out = append(out, c.Via)
+		}
 		return nil
 	})
 	return out
@@ -459,7 +464,68 @@ func CCallExpr(fn *Func, args []string) string {
 
 // CShimmed reports whether fn, a C function, is one CalledCShimmed collects.
 func (fn *Func) CShimmed() bool {
-	return fn.Foreign.Variadic || fn.Foreign.Field || len(fn.CFreed()) > 0
+	return fn.Foreign.Variadic || fn.Foreign.Field || len(fn.CFreed()) > 0 || fn.CIntPointers() || fn.CCastFromInt()
+}
+
+// CIntPointer reports whether p crosses as a pointer C takes as the integer
+// typedef its #[c.type] names, as Win32's SendMessageW takes a string, a
+// struct or a window in its LPARAM: the call casts the pointer to it. It is
+// a string (its UTF-16 alias among them) or an option of one, a ref to a C
+// struct, or a handle -- an option of one whose C type is written with a
+// `*`. A generic pointer, `void *` or a typedef flagged `pointer`, is the
+// function-pointer typedef a caller hands NULL for, as a callback, a
+// release and a held value are their own.
+func (p *Param) CIntPointer() bool {
+	if p.CFuncType == nil || p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() || p.Type == nil {
+		return false
+	}
+	t := p.Type
+	switch t.Kind {
+	case TypeString:
+		return true
+	case TypeRef:
+		return len(t.Elems) == 1 && CStructOf(t.Elems[0]) != nil
+	case TypeOption:
+		if len(t.Elems) != 1 {
+			return false
+		}
+		if t.Elems[0].Kind == TypeString {
+			return true
+		}
+		ct := CTypeOf(t.Elems[0])
+		return ct != nil && ct.Ptr > 0 && !ct.IsVoidPointer() && CStructOf(t.Elems[0]) == nil
+	}
+	ct := CTypeOf(t)
+	if ct == nil || CStructOf(t) != nil || ct.IsVoidPointer() {
+		return false
+	}
+	sd, _ := t.Decl.(*StructDef)
+	return sd == nil || !sd.Foreign.CPointer
+}
+
+// CIntPointers reports whether fn takes a parameter CIntPointer.
+func (fn *Func) CIntPointers() bool {
+	return slices.ContainsFunc(fn.Params, (*Param).CIntPointer)
+}
+
+// CCastFromInt reports whether fn is a `#[c.native(…, cast)]` making a
+// pointer of a number, as a WM_NOTIFY's LPARAM is made the NMHDR it
+// points to: C casts the number to the pointer through the integer type
+// its parameter's alias names.
+func (fn *Func) CCastFromInt() bool {
+	if !fn.IsCCast() || fn.Foreign.C == nil || fn.Foreign.C.Ptr == 0 || len(fn.Params) != 1 || fn.Params[0].Type == nil {
+		return false
+	}
+	return fn.Params[0].Type.Kind == TypeInt
+}
+
+// CIntOf is the integer type a cast making a pointer of a number
+// (CCastFromInt) casts it through: its parameter's alias, or C's intptr_t.
+func (fn *Func) CIntOf() string {
+	if a := fn.Params[0].CAlias; a != nil && a.C != nil {
+		return a.C.String()
+	}
+	return "intptr_t"
 }
 
 // CFreed is each C function freeing a string fn, a C function, hands over
