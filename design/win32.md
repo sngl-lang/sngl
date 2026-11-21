@@ -117,6 +117,15 @@ keeps a float, rounded to `REAL` at each call, where C had rounded it, so
 the pixels are C's (`c_win32_paint_runs.txt`). Only `Gfx.image`, which reads
 the canvas's decoded pictures off the runtime's record, is still C.
 
+**A date picker's date is read in SNGL.** `shownDate` sends
+`DTM_GETSYSTEMTIME` a `SYSTEMTIME` by `ref` through its `LPARAM`
+(`#[c.type("LPARAM")]`) and formats it; setting a date and its range stays
+C, which parses ISO text into a `SYSTEMTIME` and, for the range, an array
+of two. cgogen names the wrapper of a declaration casting a pointer to an
+integer for the declaration (`cgo.DtmGetSystemTime`): named for
+`SendMessageW`, it took that name from api's `SendMessage`
+(`c_win32_controls_runs.txt`'s `testADayIsPicked`).
+
 **What holds the rest in C.** Each is a gap in the language, not a choice:
 
 - **A Win32 callback is `__stdcall` on 386**, which a `#[c.static]`

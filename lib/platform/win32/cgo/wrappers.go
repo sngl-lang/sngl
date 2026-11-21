@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 1b0581eee470bba8446c7330
+// The C sources, as a change to them builds this package again: 7612d45c4450d1ab5d441f30
 
 package cgo
 
@@ -23,6 +23,10 @@ static inline void * snglF__gfxPath(sngl_win32_gfx * a0) {
 
 static inline int snglF__gfxSerial(sngl_win32_gfx * a0) {
 	return (a0)->serial;
+}
+
+static inline LRESULT snglP__dtmGetSystemTime(HWND a0, UINT a1, WPARAM a2, SYSTEMTIME * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
 }
 */
 import "C"
@@ -97,6 +101,24 @@ type RECT struct {
 type SIZE struct {
 	Cx int
 	Cy int
+}
+
+// SystemTime is C's SYSTEMTIME, field by field.
+type SystemTime struct {
+	WYear         int
+	WMonth        int
+	WDayOfWeek    int
+	WDay          int
+	WHour         int
+	WMinute       int
+	WSecond       int
+	WMilliseconds int
+}
+
+// DtmGetSystemTimeResult is what DtmGetSystemTime hands back.
+type DtmGetSystemTimeResult struct {
+	Result int
+	Out3   SystemTime
 }
 
 // GdipCreateFontFamilyFromNameResult is what GdipCreateFontFamilyFromName hands back.
@@ -196,6 +218,19 @@ func DeleteObject(ho HGDIOBJ) int {
 // DestroyWindow calls DestroyWindow.
 func DestroyWindow(hWnd HWND) int {
 	return int(C.DestroyWindow(hWnd))
+}
+
+// DtmGetSystemTime calls SendMessageW.
+func DtmGetSystemTime(d HWND, msg int, w int, st SystemTime) DtmGetSystemTimeResult {
+	return func() DtmGetSystemTimeResult {
+		__snglOut3 := func(v SystemTime) C.SYSTEMTIME {
+			return C.SYSTEMTIME{wYear: C.WORD(v.WYear), wMonth: C.WORD(v.WMonth), wDayOfWeek: C.WORD(v.WDayOfWeek), wDay: C.WORD(v.WDay), wHour: C.WORD(v.WHour), wMinute: C.WORD(v.WMinute), wSecond: C.WORD(v.WSecond), wMilliseconds: C.WORD(v.WMilliseconds)}
+		}(st)
+		__snglResult := int(C.snglP__dtmGetSystemTime(d, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return DtmGetSystemTimeResult{Result: __snglResult, Out3: func(c C.SYSTEMTIME) SystemTime {
+			return SystemTime{WYear: int(c.wYear), WMonth: int(c.wMonth), WDayOfWeek: int(c.wDayOfWeek), WDay: int(c.wDay), WHour: int(c.wHour), WMinute: int(c.wMinute), WSecond: int(c.wSecond), WMilliseconds: int(c.wMilliseconds)}
+		}(__snglOut3)}
+	}()
 }
 
 // EnableWindow calls EnableWindow.
@@ -707,11 +742,6 @@ func SnglWin32Contents() HWND {
 // SnglWin32Date calls sngl_win32_date.
 func SnglWin32Date() HWND {
 	return C.sngl_win32_date()
-}
-
-// SnglWin32DateOf calls sngl_win32_date_of.
-func SnglWin32DateOf(d HWND) string {
-	return C.GoString(C.sngl_win32_date_of(d))
 }
 
 // SnglWin32Detach calls sngl_win32_detach.

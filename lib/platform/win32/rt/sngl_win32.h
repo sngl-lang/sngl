@@ -224,13 +224,12 @@ const char *sngl_win32_chosen(HWND w);
 
 /* sngl_win32_date is a date picker, whose check box unchecked is no date.
  * Dates are "YYYY-MM-DD", or "" for none: sngl_win32_set_date shows one
- * unreported, sngl_win32_set_date_range bounds the ones it offers, and
- * sngl_win32_date_of is the one it shows. A date the user picks reports
+ * unreported, and sngl_win32_set_date_range bounds the ones it offers; the
+ * one it shows is win32.sngl's shownDate. A date the user picks reports
  * the change handler. */
 HWND sngl_win32_date(void);
 void sngl_win32_set_date(HWND w, const unsigned short *iso);
 void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned short *max);
-const char *sngl_win32_date_of(HWND w);
 
 /* A test's choice, as the user's, in the first table, tree or date picker
  * of the toplevel w is in: a row selected, a column header clicked, a node

@@ -193,7 +193,11 @@ func (g *gen) collect(p *ir.Package) {
 // g_signal_connect_data with a callback of each signal's shape.
 func (g *gen) add(fn *ir.Func) {
 	name := GoName(fn.Foreign.Name)
-	if fn.IsCCast() {
+	// A cast is named for its declaration, and so is a call casting a
+	// pointer to an integer, a shape of the C function's own (SendMessageW
+	// handed a SYSTEMTIME): named for the C function, the first met would
+	// take the name from the declaration crossing what C does.
+	if fn.IsCCast() || fn.CIntPointers() {
 		name = GoName(fn.Name)
 	}
 	w := g.wrapperFunc(fn, name)

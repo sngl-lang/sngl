@@ -1446,10 +1446,47 @@ func showDate(d DatePicker, iso c.utf16)
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetDateRange")]
 func boundDates(d DatePicker, min c.utf16, max c.utf16)
 
-// The date a picker shows, "YYYY-MM-DD", or "" for none.
-#[c.native("sngl_win32_date_of")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DateOf")]
-func shownDate(d DatePicker) string
+#[c.native("WORD")]
+struct _Word = int
+
+// What DTM_GETSYSTEMTIME fills.
+#[c.native("SYSTEMTIME")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SystemTime")]
+struct _SystemTime {
+    wYear         _Word
+    wMonth        _Word
+    wDayOfWeek    _Word
+    wDay          _Word
+    wHour         _Word
+    wMinute       _Word
+    wSecond       _Word
+    wMilliseconds _Word
+}
+
+// DTM_GETSYSTEMTIME: GDT_VALID, 0, where it filled st with a date.
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DtmGetSystemTime")]
+func _dtmGetSystemTime(d api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] st ref[_SystemTime]) api.LRESULT
+
+// n in decimal, zeros before it to make width digits.
+func _padded(n int, width int) string {
+    var s = "{n}"
+    for s.length() < width {
+        s = "0{s}"
+    }
+    return s
+}
+
+// The date a picker shows, "YYYY-MM-DD", or "" for none: its check box
+// unchecked.
+func shownDate(d DatePicker) string {
+    var st = _SystemTime{wYear=0, wMonth=0, wDayOfWeek=0, wDay=0, wHour=0, wMinute=0, wSecond=0, wMilliseconds=0}
+    var got = _dtmGetSystemTime(_handle(d), 4097, 0, &st)
+    if got != 0 {
+        return ""
+    }
+    return "{_padded(st.wYear, 4)}-{_padded(st.wMonth, 2)}-{_padded(st.wDay, 2)}"
+}
 
 #[gen.protocol(create)]
 func _create_DatePicker() DatePicker {

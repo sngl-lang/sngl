@@ -3583,16 +3583,6 @@ void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned
 	SendMessageW(w, DTM_SETRANGE, has, (LPARAM)st);
 }
 
-const char *sngl_win32_date_of(HWND w) {
-	SYSTEMTIME st;
-	if (SendMessageW(w, DTM_GETSYSTEMTIME, 0, (LPARAM)&st) != GDT_VALID) {
-		return "";
-	}
-	WCHAR buf[16];
-	swprintf(buf, 16, L"%04d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
-	return utf8(buf);
-}
-
 /* find_kind is the first node of kind under w, w itself included, or NULL. */
 static HWND find_kind(HWND w, enum sngl_kind kind) {
 	ctl *c = ctl_of(w);
