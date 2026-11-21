@@ -149,17 +149,13 @@ func _handle(n ui.node) api.HWND
 // attaches it and destroyed, with everything in it, when it detaches it. Any
 // other node attached -- a test's component, a program with no window -- is
 // shown in a window of its own, which goes with it.
-#[c.native("sngl_win32_attach")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Attach")]
-func _rtAttach(n ui.node)
-
 #[c.native("sngl_win32_detach")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Detach")]
 func _rtDetach(n ui.node)
 
 #[gen.protocol(attach)]
 func _attach(n ui.node) {
-    _rtAttach(n)
+    _attachNode(_handle(n))
 }
 
 #[gen.protocol(detach)]
@@ -167,32 +163,29 @@ func _detach(n ui.node) {
     _rtDetach(n)
 }
 
-// The runtime's way into a node's children, which every container shares: a
-// child appended last, put ahead of another, and destroyed as it is taken
-// out.
-#[c.native("sngl_win32_append")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]
-func _rtAppend(parent ui.node, child ui.node)
-
-#[c.native("sngl_win32_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Insert")]
-func _rtInsert(parent ui.node, child ui.node, before ui.node)
-
-#[c.native("sngl_win32_slot_anchor")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SlotAnchor")]
-func _rtSlotAnchor(parent ui.node, anchor ui.node) ui.node
-
-// A render slot's entries go before an anchor the runtime keeps among its
-// container's children, so a slot emptied and filled again comes back in
-// its place.
-#[gen.protocol(anchor)]
-func _anchor(parent ui.node, anchor ui.node) ui.node {
-    return _rtSlotAnchor(parent, anchor)
+// A node's children, which every container shares: a child appended last,
+// put ahead of another, and destroyed as it is taken out (layout.sngl).
+func _rtAppend(parent ui.node, child ui.node) {
+    _appendTo(_handle(parent), _handle(child))
 }
 
-#[c.native("sngl_win32_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Remove")]
-func _rtRemove(parent ui.node, child ui.node)
+func _rtInsert(parent ui.node, child ui.node, before ui.node) {
+    _insertTo(_handle(parent), _handle(child), _handle(before))
+}
+
+// A render slot's entries go before an anchor kept among its container's
+// children, so a slot emptied and filled again comes back in its place.
+#[gen.protocol(anchor)]
+func _anchor(parent ui.node, anchor ui.node) ui.node {
+    return _asNode(_slotAnchor(_handle(parent), _handle(anchor)))
+}
+
+#[c.native("HWND", cast)]
+func _asNode(w api.HWND) ui.node
+
+func _rtRemove(parent ui.node, child ui.node) {
+    _removeFrom(_handle(parent), _handle(child))
+}
 
 // A handler the runtime calls with its context, which it releases when the
 // window it was connected to goes.
@@ -252,14 +245,11 @@ struct Look {
     hidden     int
 }
 
+// What of a look the runtime paints a node by: its colors and font size
+// (_look, layout.sngl, sets the rest).
 #[c.native("sngl_win32_set_look")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetLook")]
-func _look(w ui.node, look Look)
-
-// A node hidden takes no room in its box until it is shown again.
-#[c.native("sngl_win32_set_shown")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetShown")]
-func _rtSetShown(w ui.node, shown bool)
+func _paintLook(w ui.node, look Look)
 
 // What a window's paint is asked to cover again: all of it, where NULL.
 // win32gen writes no InvalidateRect, whose rectangle is a `const RECT *`.
@@ -336,12 +326,6 @@ func _header(w api.HWND, code int) _Nmhdr {
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendNotify")]
 func _sendNotify(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] nm ref[_Nmhdr]) api.LRESULT
 
-// Asks for the layout of the window w is in once whatever is changing it
-// has: what changes w's size calls it.
-#[c.native("sngl_win32_relayout")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Relayout")]
-func _relayout(w api.HWND)
-
 // --- Windows ---
 
 // A toplevel: the window a `ui.window` is. The window manager's close hides
@@ -363,17 +347,17 @@ func _rtSetVisible(w Window, visible bool)
 #[c.native("HWND", cast)]
 func _windowHandle(w Window) api.HWND
 
-#[c.native("sngl_win32_append")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]
-func _rtWindowAppend(parent Window, child ui.node)
+func _rtWindowAppend(parent Window, child ui.node) {
+    _appendTo(_windowHandle(parent), _handle(child))
+}
 
-#[c.native("sngl_win32_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Remove")]
-func _rtWindowRemove(parent Window, child ui.node)
+func _rtWindowRemove(parent Window, child ui.node) {
+    _removeFrom(_windowHandle(parent), _handle(child))
+}
 
-#[c.native("sngl_win32_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Insert")]
-func _rtWindowInsert(parent Window, child ui.node, before ui.node)
+func _rtWindowInsert(parent Window, child ui.node, before ui.node) {
+    _insertTo(_windowHandle(parent), _handle(child), _handle(before))
+}
 
 #[c.native("sngl_win32_on_closed")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnClosed")]
@@ -484,34 +468,48 @@ component Box(
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetTip")]
 func _rtSetTip(b Box, tip c.utf16)
 
-#[c.native("sngl_win32_set_mode")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetMode")]
-func _rtSetMode(b Box, mode int)
+func _rtSetMode(b Box, mode int) {
+    _setMode(_handle(b), mode)
+}
 
-#[c.native("sngl_win32_set_columns")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetColumns")]
-func _rtSetColumns(b Box, columns int)
+func _rtSetColumns(b Box, columns int) {
+    _setColumns(_handle(b), columns)
+}
 
-#[c.native("sngl_win32_set_framed")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetFramed")]
-func _rtSetFramed(b Box, framed bool)
+func _rtSetFramed(b Box, framed bool) {
+    _setFramed(_handle(b), framed)
+}
 
 #[c.native("sngl_win32_box")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Box")]
-func _rtBox(vertical bool) Box
+func _rtBoxWindow() Box
 
-#[c.native("sngl_win32_set_vertical")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetVertical")]
-func _rtSetVertical(b Box, vertical bool)
+func _rtBox(vertical bool) Box {
+    var b = _rtBoxWindow()
+    var w = _handle(b)
+    if _ctls.contains(w) {
+        _ctls[w].vertical = vertical
+    }
+    return b
+}
+
+func _rtSetVertical(b Box, vertical bool) {
+    _setVertical(_handle(b), vertical)
+}
 
 #[gen.protocol(create)]
 func _create_Box() Box {
     return _rtBox(true)
 }
 
-#[c.native("sngl_win32_contents")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Contents")]
-func _rtContents() Box
+func _rtContents() Box {
+    var b = _rtBox(true)
+    var w = _handle(b)
+    if _ctls.contains(w) {
+        _ctls[w].contents = true
+    }
+    return b
+}
 
 // What a component renders several nodes, or a slot, at its top into: a box
 // down the page, as a window lays out what it holds, growing by the most any
@@ -804,9 +802,9 @@ component Divider(vertical bool, look Look) ui.node
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Divider")]
 func _rtDivider() Divider
 
-#[c.native("sngl_win32_set_vertical")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetVertical")]
-func _rtSetDividerVertical(d Divider, vertical bool)
+func _rtSetDividerVertical(d Divider, vertical bool) {
+    _setVertical(_handle(d), vertical)
+}
 
 #[gen.protocol(create)]
 func _create_Divider() Divider {
@@ -1099,9 +1097,9 @@ component TabPage(title string, enabled bool, @change(), content ...component ui
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Tabs")]
 func _rtTabs() Tabs
 
-#[c.native("sngl_win32_set_selected")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetSelected")]
-func _rtSetSelected(t Tabs, selected int)
+func _rtSetSelected(t Tabs, selected int) {
+    _setSelected(_handle(t), selected)
+}
 
 // Chooses the tab at `index` as the user's click on it does, which reports
 // it: TCM_SETCURSEL, then TCN_SELCHANGE.
@@ -1115,7 +1113,16 @@ func pickTab(t Tabs, index int) {
 // A page is a box, its title its text.
 #[c.native("sngl_win32_box")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Box")]
-func _rtTabPage(vertical bool) TabPage
+func _rtTabPageWindow() TabPage
+
+func _rtTabPage(vertical bool) TabPage {
+    var p = _rtTabPageWindow()
+    var w = _handle(p)
+    if _ctls.contains(w) {
+        _ctls[w].vertical = vertical
+    }
+    return p
+}
 
 #[gen.protocol(create)]
 func _create_Tabs() Tabs {
@@ -1194,11 +1201,18 @@ component Scroll(
 
 #[c.native("sngl_win32_scroll")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Scroll")]
-func _rtScroll() Scroll
+func _rtScrollWindow() Scroll
 
-#[c.native("sngl_win32_set_scroll")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetScroll")]
-func _rtSetScroll(s Scroll, vertical bool, horizontal bool)
+// Down, until its axes are set.
+func _rtScroll() Scroll {
+    var s = _rtScrollWindow()
+    _setScroll(_handle(s), true, false)
+    return s
+}
+
+func _rtSetScroll(s Scroll, vertical bool, horizontal bool) {
+    _setScroll(_handle(s), vertical, horizontal)
+}
 
 #[c.native("sngl_win32_on_reach_end")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnReachEnd")]
@@ -1262,7 +1276,21 @@ component Modal(title string, open bool, closable bool, @closed(), content ...co
 
 #[c.native("sngl_win32_modal")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Modal")]
-func _rtModal() Modal
+func _rtModalWindow() Modal
+
+// Its window lays out what it holds down it, spaced as a dialog is.
+func _rtModal() Modal {
+    var m = _rtModalWindow()
+    var d = _dialogOf(_handle(m))
+    if _ctls.contains(d) {
+        _ctls[d].gap = 6
+        _ctls[d].padTop = 12
+        _ctls[d].padRight = 12
+        _ctls[d].padBottom = 12
+        _ctls[d].padLeft = 12
+    }
+    return m
+}
 
 #[c.native("sngl_win32_set_open")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetOpen")]
@@ -1604,10 +1632,6 @@ func _found(f _Found) api.HWND
 
 // The first node of `kind`, the runtime's `enum sngl_kind`, in the window
 // `n` is in.
-#[c.native("sngl_win32_find_kind")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FindKind")]
-func _findKind(w api.HWND, kind int) option[_Found]
-
 func _firstOf(w api.HWND, kind int) option[_Found] {
     return _findKind(_ancestor(w, 2), kind)
 }
@@ -2269,7 +2293,19 @@ func _rtSetCanvasHeight(w Canvas, height int)
 
 #[c.native("sngl_win32_set_scaling")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetScaling")]
-func _rtSetScaling(w Canvas, mode int)
+func _rtScalingChanged(w Canvas, mode int) int
+
+// A drawing that scales grows into the room its box has spare.
+func _rtSetScaling(w Canvas, mode int) {
+    if _rtScalingChanged(w, mode) != 0 {
+        var h = _handle(w)
+        if _ctls.contains(h) {
+            var scales = mode != 0
+            _ctls[h].flex = scales ? 1.0 : 0.0
+        }
+        _relayout(h)
+    }
+}
 
 #[c.native("sngl_win32_on_paint")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OnPaint")]
@@ -2400,29 +2436,32 @@ func _rtSetWords(w Span, words c.utf16)
 
 // The runtime's calls on a span, which is no `ui.node` but a window all the
 // same: put into a flow or a span, and written.
-#[c.native("sngl_win32_append")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]
-func _rtSpanAppend(parent ui.node, child markup.span)
+#[c.native("HWND", cast)]
+func _spanHandle(s markup.span) api.HWND
 
-#[c.native("sngl_win32_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Insert")]
-func _rtSpanInsert(parent ui.node, child markup.span, before markup.span)
+func _rtSpanAppend(parent ui.node, child markup.span) {
+    _appendTo(_handle(parent), _spanHandle(child))
+}
 
-#[c.native("sngl_win32_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Remove")]
-func _rtSpanRemove(parent ui.node, child markup.span)
+func _rtSpanInsert(parent ui.node, child markup.span, before markup.span) {
+    _insertTo(_handle(parent), _spanHandle(child), _spanHandle(before))
+}
 
-#[c.native("sngl_win32_append")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Append")]
-func _rtSpanAppendIn(parent markup.span, child markup.span)
+func _rtSpanRemove(parent ui.node, child markup.span) {
+    _removeFrom(_handle(parent), _spanHandle(child))
+}
 
-#[c.native("sngl_win32_insert")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Insert")]
-func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span)
+func _rtSpanAppendIn(parent markup.span, child markup.span) {
+    _appendTo(_spanHandle(parent), _spanHandle(child))
+}
 
-#[c.native("sngl_win32_remove")]
-#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Remove")]
-func _rtSpanRemoveIn(parent markup.span, child markup.span)
+func _rtSpanInsertIn(parent markup.span, child markup.span, before markup.span) {
+    _insertTo(_spanHandle(parent), _spanHandle(child), _spanHandle(before))
+}
+
+func _rtSpanRemoveIn(parent markup.span, child markup.span) {
+    _removeFrom(_spanHandle(parent), _spanHandle(child))
+}
 
 #[c.native("sngl_win32_set_href")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetHref")]

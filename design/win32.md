@@ -462,20 +462,40 @@ they include.
 ## The runtime's layout
 
 **Win32 has no layout manager.** A child window sits at the pixel position it
-was given, and nothing moves it when its parent is resized. So
-`lib/platform/win32/rt/sngl_win32.c` keeps a record beside every window it
-makes. The record is a `ctl` the runtime's own table finds by the window's
-handle (`ctl_of`). It was a window property, which under Wine is a trip to
-its server on each read, and a layout reads thousands. It holds:
+was given, and nothing moves it when its parent is resized. So the platform
+keeps a record beside every window the runtime makes: a `_Ctl` in the package
+var `_ctls`, a `map[HWND, _Ctl]` (`layout.sngl`), added as the runtime makes
+the window and removed as it is destroyed (`WM_NCDESTROY`). It was a `ctl` the
+runtime's own C table found by the handle, and before that a window property,
+which under Wine is a trip to its server on each read, and a layout reads
+thousands. It holds:
 
 - the node's kind;
 - its children in order, since `GetWindow(GW_CHILD)`'s order is z-order;
-- what its look asks for (`sngl_win32_set_look`, from `style.sngl`'s
-  `lookOf`): flex, gap, padding, least width, the width and height its
-  style gives, how a line box aligns its children, hidden, color, background
-  and font size;
-- for a box, how it lays its children out: its mode and direction
-  (`sngl_win32_set_mode`, `sngl_win32_set_vertical`).
+- what its look asks for (`_look`, from `style.sngl`'s `lookOf`): flex, gap,
+  padding, least width, the width and height its style gives, how a line box
+  aligns its children, and hidden;
+- for a box, how it lays its children out: its mode, direction and columns;
+- what its last layout found: its measured size, where it was put, a scroll's
+  position and extent.
+
+What the runtime paints a window by -- its colors, font and brush, a
+picture's bitmap, a flow's words -- and the handlers the program connected
+stay in the runtime's `ctl` beside the record, which keeps the record's kind
+and DPI as well, since its painting and fonts read them.
+
+**The runtime reaches the record through functions SNGL hands it.** C cannot
+call SNGL by name, so `_ctls`'s initializer hands the runtime, through
+`sngl_win32_hooks`, `#[c.static]` functions for what it still asks of the
+record: a window made and gone, a layout asked for and run, a toplevel's
+layout and DPI, a scroll's bar and wheel, a tab chosen, the tabs a page's
+title is in, a window's measure (`#[c.outs]`), its children and its padding.
+Each goes when its last C reader moves. The layout asks the runtime, the other
+way, for what only it measures: a control's text in its font
+(`sngl_win32_natural`), a picture's size, a flow's height, a font for a DPI.
+A relayout of 250 cards, some 1,000 windows, takes about 14 ms a round in C
+and 18 ms in Go, against 13 and 15 with the layout in C (`tmp/realbench`,
+November 2026).
 
 Layout reads only these records and each control's measured size. The shape
 is gtk4's `_flexMeasure` and `_flexAllocate`, measure then
