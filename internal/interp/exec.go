@@ -309,6 +309,39 @@ func (env *Env) exec(s ir.Stmt) error {
 	}
 }
 
+// selectTarget is what a field write's operand names: a map's entry, where
+// the map holds none under the key, is the value's zero, which the write
+// makes its entry, as every target makes it (testdata/map_entry_writes_runs).
+// Read like any other operand, it was nil, and the write failed.
+func (env *Env) selectTarget(operand ir.Expr) (any, error) {
+	ix, ok := operand.(*ir.Index)
+	if !ok {
+		return env.Eval(operand)
+	}
+	obj, err := env.Eval(ix.Operand)
+	if err != nil {
+		return nil, err
+	}
+	m, ok := obj.(map[string]any)
+	if !ok {
+		return env.Eval(operand)
+	}
+	idx, err := env.Eval(ix.Idx)
+	if err != nil {
+		return nil, err
+	}
+	key := fmt.Sprintf("%v", idx)
+	if v, present := m[key]; present {
+		return v, nil
+	}
+	z, err := env.zeroOf(ix.Type)
+	if err != nil {
+		return nil, err
+	}
+	m[key] = z
+	return z, nil
+}
+
 func (env *Env) execAssign(s *ir.Assign) error {
 	val, err := env.Eval(s.Value)
 	if err != nil {
@@ -330,7 +363,7 @@ func (env *Env) execAssign(s *ir.Assign) error {
 		env.noteWrite(target, writeReplace, 0, nil)
 		return owner.writeBound(target.Sym, nv)
 	case *ir.Select:
-		obj, err := env.Eval(target.Operand)
+		obj, err := env.selectTarget(target.Operand)
 		if err != nil {
 			return err
 		}
@@ -437,7 +470,7 @@ func (env *Env) execToggle(s *ir.Toggle) error {
 		env.noteWrite(target, writeReplace, 0, nil)
 		return owner.writeBound(target.Sym, !b)
 	case *ir.Select:
-		obj, err := env.Eval(target.Operand)
+		obj, err := env.selectTarget(target.Operand)
 		if err != nil {
 			return err
 		}
