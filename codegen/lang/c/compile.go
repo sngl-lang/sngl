@@ -275,13 +275,31 @@ func (c Compiler) BuildDir(dir, out, std, optimize string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("pkg-config %s: %w", name, err)
 			}
-			extra = append(extra, strings.Fields(string(flags))...)
+			extra = append(extra, systemIncludes(strings.Fields(string(flags)))...)
 		}
 	}
 	if err := c.Build(dir, sources, out, std, extra...); err != nil {
 		return "", err
 	}
 	return "", nil
+}
+
+// systemIncludes is pkg-config's flags with each directory it adds to the
+// include path made a system one: a library's headers are not the program's,
+// and -pedantic -Werror holds only the program to the standard. Under -O2
+// GLib's G_UNLIKELY expands through __COUNTER__, which clang calls a C2y
+// extension, so judged as the program's own its headers did not compile
+// (cmd/sngl/testdata/c_optimize_runs.txt).
+func systemIncludes(flags []string) []string {
+	out := make([]string, 0, len(flags))
+	for _, f := range flags {
+		if dir, ok := strings.CutPrefix(f, "-I"); ok && dir != "" {
+			out = append(out, "-isystem", dir)
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
 }
 
 // Host is the compiler a build runs where none is named: $CC, or cc.

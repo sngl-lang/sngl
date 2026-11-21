@@ -32,6 +32,14 @@ sngl build -v --release --lang c --platform gtk4 app.sngl -o out
 [toolchain] stderr ' -O2 '
 [toolchain] exists out/app
 
+# A library's headers pkg-config names are system headers, which the
+# program's -pedantic -Werror does not judge: under -O2 GLib's G_UNLIKELY
+# expands through __COUNTER__, which clang calls a C2y extension.
+
+[exec:clang] sngl build -v --release --lang c --platform gtk4 --opt cc=clang app.sngl -o clang
+[exec:clang] [toolchain] stderr 'msg=exec cmd=clang .* -O2 .*-isystem /usr/include/glib-2.0'
+[exec:clang] [toolchain] exists clang/app
+
 # A test builds the program as a run does, and its record is a release
 # build's own.
 
@@ -159,6 +167,11 @@ ui.window {
 }
 -- testrun/build/gtk4/c/app.sngl/1 --
 sha256:ab82ee08ce2ae963210c790d10eee043
+{
+  "stdout": "app"
+}
+-- testrun/build/gtk4/c/app.sngl/2 --
+sha256:d38316fb5331a8d3e97d02247596641d
 {
   "stdout": "app"
 }
