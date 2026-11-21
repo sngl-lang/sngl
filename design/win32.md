@@ -155,8 +155,16 @@ functions by what keeps them C, lines in their bodies):
 - the record (`ctl`), and what only it calls: 192 functions, 3,295 lines --
   the window procedures, layout, measuring, painting, menus, tips, fonts,
   every constructor (`control` makes the record) and every setter keeping
-  a prop in it. A map dropping an entry on `WM_NCDESTROY` would open most
-  of it; of those, `SetWindowLongPtrW` (a macro on 386), the filled
+  a prop in it. A map dropping an entry on `WM_NCDESTROY` (`map.remove`)
+  would open most of it, and SNGL can write such a map's entries field by
+  field on every language now (`passEntryWrites`), but the C target's map
+  finds a key by walking its keys: a relayout reading the record as
+  `measure` and `lay_out` do took, under Wine, 0.18, 1.3 and 9 ms in C over
+  a map of 100, 300 and 900 records, against 0.003 to 0.02 ms over the
+  runtime's hashed table, and 0.03 to 0.2 ms in Go (November 2026, 200
+  relayouts each, `measure` and a vertical `lay_out` written alike in C and
+  in SNGL). A Pokédex page holds some 750 windows, so the record waits on a
+  hashed C map rather than costing C's layout its 3 ms several times over; of those, `SetWindowLongPtrW` (a macro on 386), the filled
   buffers (`fit_columns`, `entry_labeled`) and the pictures' raw pixels
   would still hold roughly 300 lines;
 - wide strings C fills, answered as UTF-8 or as a place: 7, 97;
