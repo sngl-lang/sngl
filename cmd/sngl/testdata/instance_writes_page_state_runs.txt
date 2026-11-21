@@ -210,7 +210,7 @@ sha256:1c14b974840b2f26e5ced4e7d6bb7368
   ]
 }
 -- testrun/android/kotlin/cache.sngl/page/1 --
-sha256:d2ff9522a321f6312d308d8e36ba76c1
+sha256:968cb86a1bab444b6ce9450cf03a50aa
 {
   "results": [
     {
