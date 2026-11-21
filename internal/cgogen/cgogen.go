@@ -83,6 +83,16 @@ func Generate(opts Options) (*Result, error) {
 	for _, p := range opts.Pkgs {
 		g.collect(p)
 	}
+	// A declaration named for its C function (`_gtk_box_new`, api's
+	// `GetParent`) is wrapped first, whichever package declares it, so it
+	// keeps the wrapper named for the C function whatever file declares
+	// another of it: win32's `_parentOf`, wrapped first, took `GetParent`,
+	// and api's own declaration was left with no wrapper.
+	for _, canonical := range []bool{true, false} {
+		for _, p := range opts.Pkgs {
+			g.collectFuncs(p, canonical)
+		}
+	}
 	if err := g.write(); err != nil {
 		return nil, err
 	}
@@ -165,24 +175,24 @@ func (g *gen) collect(p *ir.Package) {
 			g.goType(&ir.Type{Kind: ir.TypeStruct, Decl: sd})
 		}
 	}
-	// A declaration named for its C function (`_gtk_box_new`) is wrapped
-	// first, so it keeps the wrapper named for the C function whatever file
-	// declares another of it.
-	for _, canonical := range []bool{true, false} {
-		for _, fn := range p.Funcs {
-			// A cast is its operand to Go, but one making a pointer of a
-			// number, which only C makes: a wrapper named for it.
-			if fn.CCastFromInt() && fn.Foreign.Path == ir.CPath {
-				if !canonical {
-					g.add(fn)
-				}
-				continue
+}
+
+// collectFuncs wraps p's declarations that are named for their C function,
+// or those that are not.
+func (g *gen) collectFuncs(p *ir.Package, canonical bool) {
+	for _, fn := range p.Funcs {
+		// A cast is its operand to Go, but one making a pointer of a
+		// number, which only C makes: a wrapper named for it.
+		if fn.CCastFromInt() && fn.Foreign.Path == ir.CPath {
+			if !canonical {
+				g.add(fn)
 			}
-			if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
-				continue
-			}
-			g.add(fn)
+			continue
 		}
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
+			continue
+		}
+		g.add(fn)
 	}
 }
 
