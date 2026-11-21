@@ -161,8 +161,10 @@ func init() {
 	reg("list.filter", func(a []string) string { return a[0] + ".filter(" + a[1] + ")" })
 	reg("list.map", func(a []string) string { return a[0] + ".map(" + a[1] + ")" })
 	reg("map.length", func(a []string) string { return a[0] + ".size" })
-	reg("map.keys", func(a []string) string { return a[0] + ".keys.toList()" })
-	reg("map.values", func(a []string) string { return a[0] + ".values.toList()" })
+	// A new list, which a SNGL list local is free to push to or sort: mutable,
+	// as a list literal a local holds is (LocalVarText).
+	reg("map.keys", func(a []string) string { return a[0] + ".keys.toMutableList()" })
+	reg("map.values", func(a []string) string { return a[0] + ".values.toMutableList()" })
 	reg("map.contains", func(a []string) string { return a[0] + ".containsKey(" + a[1] + ")" })
 	reg("map.get", func(a []string) string { return a[0] + ".getOrDefault(" + a[1] + ", " + a[2] + ")" })
 

@@ -1134,7 +1134,7 @@ fun MainScreen() {
 
 
     fun maps__inst0() {
-        mm__inst0 = m__inst0.mapValues { _e1 -> _e1.value.let { _s2 -> _s2.copy(items = _s2.items.toMutableList()) } }.toMutableMap()
+        mm__inst0 = m__inst0.mapValues { _e1 -> _e1.value.let { _s2 -> _s2.copy(items = _s2.items.toMutableList()) } }
         m__inst0 = m__inst0 + ("a" to Row(n = 7, items = listOf<Int>()))
         out__inst0 = mm__inst0.getOrDefault("a", Row(items = listOf<Int>())).n.toString()
     }
@@ -1404,6 +1404,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:6d153b9696e22c70ba404d713cb0cfde
 -- run/kotlin/android --
-pass sha256:6cc3d13c657a78c38974b1e675122468
+pass sha256:2fea9eb3d416db996be23dbd1759a0bb
 -- run/none/html --
 pass sha256:df8593510c89f171ce19989d5887393b
