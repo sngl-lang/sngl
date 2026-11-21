@@ -2536,6 +2536,14 @@ func (env *Env) evalBuiltinMethodFromRecv(recvExpr ir.Expr, method string, recv 
 	}
 	// --- Map methods ---
 	if m, ok := recv.(map[string]any); ok {
+		// The one map method that writes its receiver: the map is the
+		// holder's own (a store copies it), so the entry goes in place and
+		// the write is noted as an entry assignment's is.
+		if method == "remove" && len(rest) == 1 {
+			delete(m, fmt.Sprintf("%v", rest[0]))
+			env.noteWrite(recvExpr, writeReplace, 0, nil)
+			return nil, nil
+		}
 		return mapMethodResult(method, m, rest)
 	}
 	return nil, fmt.Errorf("unsupported method %q on %T", method, recv)

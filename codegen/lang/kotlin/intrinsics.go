@@ -167,6 +167,9 @@ func init() {
 	reg("map.values", func(a []string) string { return a[0] + ".values.toMutableList()" })
 	reg("map.contains", func(a []string) string { return a[0] + ".containsKey(" + a[1] + ")" })
 	reg("map.get", func(a []string) string { return a[0] + ".getOrDefault(" + a[1] + ", " + a[2] + ")" })
+	// A statement, which KtIRContext.mapRemove writes with the holder's path;
+	// this is the spelling where the receiver is a plain var.
+	reg("map.remove", func(a []string) string { return a[0] + " = " + a[0] + " - (" + a[1] + ")" })
 
 	// --- numeric ---
 	regVariadicMinMax("int.min", "min")

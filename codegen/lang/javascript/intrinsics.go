@@ -154,6 +154,8 @@ func init() {
 	reg("map.keys", func(a []string) string { return "Array.from(" + a[0] + ".keys())" })
 	reg("map.values", func(a []string) string { return "Array.from(" + a[0] + ".values())" })
 	reg("map.contains", func(a []string) string { return a[0] + ".has(" + a[1] + ")" })
+	// Map.delete answers whether the key was there, which a statement drops.
+	reg("map.remove", func(a []string) string { return a[0] + ".delete(" + a[1] + ")" })
 	reg("map.get", func(a []string) string {
 		return "(" + a[0] + ".has(" + a[1] + ") ? " + a[0] + ".get(" + a[1] + ") : " + a[2] + ")"
 	})

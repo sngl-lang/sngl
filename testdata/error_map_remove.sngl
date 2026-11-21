@@ -1,0 +1,26 @@
+// A map's `remove` takes a key of the map's key type, writes its receiver --
+// so it is called on a var or a field of one, never a const or a call's
+// result, nor a loop's read-only variable -- and returns nothing.
+import ui "sngl:ui"
+
+const fixed map[string, int] = {a=1}
+
+func make() map[string, int] {
+    return {a=1}
+}
+
+var m map[string, int] = {a=1}
+var nested map[string, map[string, int]] = {}
+
+func misuse() {
+    m.remove(1)           // ERROR(check) "cannot pass int as string"
+    fixed.remove("a")     // ERROR(check) "remove writes its receiver, which is ref[map[string, int]], so call it on a var or a field of one"
+    make().remove("a")    // ERROR(check) "remove writes its receiver, which is ref[map[string, int]], so call it on a var or a field of one"
+    var n = m.remove("a") // ERROR(check) "expression yields no value"
+    for var k, inner = nested {
+        inner.remove("a") // ERROR(check) "cannot remove the loop variable \"inner\""
+    }
+}
+
+ui.window(title="t") {
+}

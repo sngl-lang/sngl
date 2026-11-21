@@ -468,6 +468,12 @@ struct literal by the expected type at its position. The key type `K` must be
 *comparable*: primitives, enums, units, and named structs are comparable;
 lists, maps, and functions are not.
 
+An entry is set by assigning to it, `m[k] = v`, and taken out by
+`m.remove(k)`; removing a key the map does not hold leaves it unchanged. Like
+a list's `push` and `remove`, `remove` writes its receiver in place and
+returns nothing, so it is a statement, called on a variable or a field of
+one. A map's entries come in no defined order, before a removal or after it.
+
 ### Function types
 
 A function type is written `func(P1, P2, …) R`, where each `Pi` is a parameter
@@ -1886,6 +1892,11 @@ holds and in no defined order, so two renders of one map may lay it out
 differently. Walk the map in a function or a handler and render the list that
 comes back.
 
+A loop over a map may remove entries from the map it walks. The entry being
+visited, or one already visited, may be removed, and the loop goes on to reach
+every entry still in the map when its turn comes, once; whether it reaches
+an entry the body removed before its turn came is not specified.
+
 A head expression may not begin with `{`: that brace is the body's. A map or
 anonymous-struct literal in the head of a `for` — or of an `if` — is written
 parenthesized.
@@ -2597,8 +2608,8 @@ four lifetimes that holds it:
 **A write into a collection moves the value in.** `push` and `insert` hand the
 list what they are given, and it is released with the list. An assignment to
 an element of a list, to a map entry or to a field releases what stood there
-once the new value is in place; `remove` releases what it took out, and
-`clear` what the list held. A value stored in two places -- pushed from a var,
+once the new value is in place; a list's or a map's `remove` releases what
+it took out, and `clear` what the list held. A value stored in two places -- pushed from a var,
 or assigned to an element from another -- is released by each, as a var
 assigned another var's value is, unless the type names a retain.
 

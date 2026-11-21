@@ -739,6 +739,60 @@ func (c *Context) mapIntrinsic(n *ir.Call, t *ir.Type, m string) string {
 	return c.fail("the intrinsic %s", n.Func.Intrinsic)
 }
 
+// mapRemove renders a map's `remove`: the entries but the key's, in their
+// order, into arrays of their own. Not moved along in place: a loop over the
+// map walks a copy of its struct, the same arrays, and would skip the entry
+// after the one removed and read the last twice; it walks the arrays it began
+// with instead. A holder's map is its own first (unshare), gives back the key
+// and the value it took out, and the arrays it outgrew, as the turn ends.
+func (c *Context) mapRemove(n *ir.Call) string {
+	recv := n.Args[0].Value
+	if u, ok := recv.(*ir.Unary); ok && u.Op == ast.UnaryAddr {
+		recv = u.Operand
+	}
+	t := recv.ExprType()
+	if t != nil && t.Kind == ir.TypeRef {
+		t = t.Elems[0]
+	}
+	if t == nil || t.Kind != ir.TypeMap {
+		return c.fail("map.remove of a %s", t)
+	}
+	m := c.EvalExpr(recv)
+	suffix, held := c.kept(recv)
+	alloc, before, drop, after := "sngl_alloc", "", "", ""
+	if held {
+		m = irwalk.EvalMutTarget(c, recv)
+		alloc = "sngl_keep_alloc"
+		if u := c.unshare(t); u != "" {
+			before = "\t" + u + "(m);\n"
+		}
+		for _, d := range []string{c.drop(t.Elems[0], "m->keys[i]"), c.drop(t.Elems[1], "m->vals[i]")} {
+			if d != "" {
+				drop += "\t" + d + "\n"
+			}
+		}
+		drop += "\tsngl_drop(m->keys);\n\tsngl_drop(m->vals);\n"
+		after = "\tsngl_kept_len(m->keys, m->len);\n\tsngl_kept_len(m->vals, m->len);\n"
+	}
+	find := c.mapFind(t)
+	rm := c.mapOp(t, "remove"+suffix, "void NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
+	if (i < 0) {
+		return;
+	}
+`+before+`	K *keys = `+alloc+`(sizeof(K) * (size_t)m->len);
+	V *vals = `+alloc+`(sizeof(V) * (size_t)m->len);
+	memcpy(keys, m->keys, sizeof(K) * (size_t)i);
+	memcpy(vals, m->vals, sizeof(V) * (size_t)i);
+	memcpy(keys + i, m->keys + i + 1, sizeof(K) * (size_t)(m->len - i - 1));
+	memcpy(vals + i, m->vals + i + 1, sizeof(V) * (size_t)(m->len - i - 1));
+`+drop+`	m->cap = m->len;
+	m->len--;
+	m->keys = keys;
+	m->vals = vals;
+`+after)
+	return rm + "(&(" + m + "), " + c.EvalExpr(n.Args[1].Value) + ")"
+}
+
 // mapLoop is the head of a loop over a map, its key and value bound in the
 // order they were first set.
 func (c *Context) mapLoop(n *ir.For) string {

@@ -44,6 +44,26 @@ The tiers, and the split between them is the whole point of the system:
   `int.parse`, found by that mark as every string method is
   (`testdata/string_from_code_point.sngl`, its FOLD lines and tests;
   `string_from_code_point_runs.txtar` in C, Go, Kotlin and JavaScript).
+
+  **`m.remove(k)` is the one map method that writes its receiver**,
+  declared as a list's `remove` is: `#[_intrinsic("map.remove", mutates, mutatesReceiver)]` on `this ref[map[K, V]]`, so the checker, purity,
+  reactivity and the value-copy pass treat it as they treat `push`, and a
+  write a component observes is an update of the whole map (no per-entry
+  effect event). An owned value it takes out is released after it
+  (`takeOutOfMap` in `internal/lower/owned_state.go`), as an entry
+  assignment releases what it replaces. The interpreter deletes in place, Go
+  writes `delete`, JavaScript `Map.delete`, Kotlin reassigns the holder with
+  `m - k` (up a data class path as an entry write does), and C copies the
+  entries but the key's into arrays of their own rather than moving them
+  along in place: a loop over a C map walks a copy of its struct, which
+  shares the arrays, and an in-place shift skipped the entry after the one
+  removed and read the last twice. So a loop that removes from the map it
+  walks still reaches an entry removed ahead of it on C and Kotlin, which
+  walk the map they began with, and does not on Go, JavaScript and the
+  interpreter: the spec leaves that unspecified and promises only that the
+  entry being visited may go (`testdata/map_remove.sngl`,
+  `error_map_remove.sngl`, `owned_containers.sngl`;
+  `map_remove_runs.txtar` in C, Go, Kotlin and JavaScript).
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums and `measurement`. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialized surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialized surface; see **Markup and the `md:` scheme** below.

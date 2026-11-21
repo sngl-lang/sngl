@@ -620,6 +620,9 @@ func (st *ownedStateRun) takeOut(s *ir.CallStmt) []ir.Stmt {
 	}
 	list := call.Args[0].Value
 	lt := list.ExprType()
+	if call.Func.Intrinsic == "map.remove" {
+		return st.takeOutOfMap(s, lt)
+	}
 	if lt == nil || lt.Kind != ir.TypeList || !ir.Owned(lt) {
 		return nil
 	}
@@ -651,6 +654,35 @@ func (st *ownedStateRun) takeOut(s *ir.CallStmt) []ir.Stmt {
 		}
 	}
 	return nil
+}
+
+// takeOutOfMap is s, a map's `remove`, with the value it takes out released
+// once it is out, as an entry assignment releases what it replaces: a key
+// the map does not hold takes nothing out.
+func (st *ownedStateRun) takeOutOfMap(s *ir.CallStmt, mt *ir.Type) []ir.Stmt {
+	call := s.Call
+	if mt == nil || mt.Kind != ir.TypeMap || len(mt.Elems) != 2 || !ir.Owned(mt.Elems[1]) || len(call.Args) != 2 {
+		return nil
+	}
+	m, val := call.Args[0].Value, mt.Elems[1]
+	keyT := mt.Elems[0]
+	key := &ir.Var{Name: st.name("__key"), Type: keyT, Synthesized: true}
+	bound := &ir.LocalVar{Name: key.Name, Type: keyT, Init: call.Args[1].Value, Sym: key}
+	call.Args[1].Value = identOf(key)
+	old := &ir.Var{Name: st.name("__old"), Type: ir.OptionOf(val), Synthesized: true}
+	take := &ir.Assign{Target: identOf(old), Value: &ir.Conversion{Type: old.Type, Operand: &ir.Index{Type: val, Operand: ir.CloneExprSharingDecls(m), Idx: identOf(key)}}}
+	st.written[take] = true
+	had := &ir.If{
+		Cond: &ir.Call{Type: ir.TypBool, Func: ir.IntrinsicMethod("contains", "map.contains", mt, ir.TypBool), Args: []ir.CallArg{{Value: ir.CloneExprSharingDecls(m)}, {Value: identOf(key)}}},
+		Body: []ir.Stmt{take},
+	}
+	return []ir.Stmt{
+		bound,
+		&ir.LocalVar{Name: old.Name, Type: old.Type, Init: nullLit(), Sym: old},
+		had,
+		s,
+		st.releaseIfHeld(identOf(old), val),
+	}
 }
 
 // assigned is the owned var a plainly assigns, nil when it assigns none.

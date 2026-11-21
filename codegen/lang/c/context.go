@@ -702,6 +702,9 @@ func (c *Context) Call(n *ir.Call) string {
 			return "sngl_" + strings.ReplaceAll(n.Func.Intrinsic, ".", "_") + "(" + c.EvalExpr(n.Args[0].Value) + ")"
 		}
 	}
+	if n.Func.Intrinsic == "map.remove" && len(n.Args) == 2 {
+		return c.mapRemove(n)
+	}
 	if strings.HasPrefix(n.Func.Intrinsic, "map.") && len(n.Args) > 0 {
 		if t := n.Args[0].Value.ExprType(); t != nil && t.Kind == ir.TypeMap {
 			return c.mapIntrinsic(n, t, c.EvalExpr(n.Args[0].Value))

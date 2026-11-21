@@ -23,3 +23,13 @@ const func map[K, V].contains(this map[K, V], key K) bool
 // declared value type.
 #[_intrinsic("map.get")]
 const func map[K, V].get(this map[K, V], key K, default V) V
+
+// Removes key's entry from the receiver map (`this`), in place; a key the map
+// does not hold leaves it unchanged. The entries left keep the order they had.
+// It writes its receiver as an entry assignment (`m[k] = v`) does, and
+// observers are notified as they are of one.
+//
+// Returns nothing, for the reason a list's `remove` does not: a method that
+// mutates its receiver and also returns it invites `m = m.remove(k)`.
+#[_intrinsic("map.remove", mutates, mutatesReceiver)]
+func map[K, V].remove(this ref[map[K, V]], key K)

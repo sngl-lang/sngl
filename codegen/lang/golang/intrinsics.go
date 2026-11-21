@@ -214,6 +214,9 @@ func init() {
 	reg("map.contains", func(a []string) string {
 		return "func() bool { _, __ok := " + a[0] + "[" + a[1] + "]; return __ok }()"
 	})
+	// In place, as the receiver's own map: a store copies one (ValueCopy).
+	// Removing an entry a range has yet to reach means it is not reached.
+	reg("map.remove", func(a []string) string { return "delete(" + a[0] + ", " + a[1] + ")" })
 	regTyped("map.get", nil, func(a []string, ts []*ir.Type) string {
 		v := goVal(ts[0])
 		return "func() " + v + " { if __v, __ok := " + a[0] + "[" + a[1] + "]; __ok { return __v }; return " + a[2] + " }()"
