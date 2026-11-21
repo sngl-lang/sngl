@@ -155,16 +155,20 @@ functions by what keeps them C, lines in their bodies):
 - the record (`ctl`), and what only it calls: 192 functions, 3,295 lines --
   the window procedures, layout, measuring, painting, menus, tips, fonts,
   every constructor (`control` makes the record) and every setter keeping
-  a prop in it. A map dropping an entry on `WM_NCDESTROY` (`map.remove`)
-  would open most of it, and SNGL can write such a map's entries field by
-  field on every language now (`passEntryWrites`), but the C target's map
-  finds a key by walking its keys: a relayout reading the record as
-  `measure` and `lay_out` do took, under Wine, 0.18, 1.3 and 9 ms in C over
-  a map of 100, 300 and 900 records, against 0.003 to 0.02 ms over the
-  runtime's hashed table, and 0.03 to 0.2 ms in Go (November 2026, 200
-  relayouts each, `measure` and a vertical `lay_out` written alike in C and
-  in SNGL). A Pokédex page holds some 750 windows, so the record waits on a
-  hashed C map rather than costing C's layout its 3 ms several times over; of those, `SetWindowLongPtrW` (a macro on 386), the filled
+  a prop in it. A map drops an entry on `WM_NCDESTROY` (`map.remove`),
+  SNGL writes a map's entries field by field on every language
+  (`passEntryWrites`), and the C target's map finds a key through an index
+  (`design/ownership.md`), so a `map[HWND, _Ctl]` package var can hold it.
+  A relayout reading the record as `measure` and a vertical `lay_out` do,
+  over 100, 300 and 900 records of 45 fields under Wine, takes 0.045, 0.12
+  and 0.37 ms in C as the target builds it (no `-O`; 0.017, 0.045 and 0.15 ms
+  at `-O2`), against 0.027, 0.083 and 0.27 ms in Go; walking the keys, C took
+  0.11, 0.74 and 5.5 ms (November 2026, 200 relayouts each, the record
+  read whole; read field by field, through a pointer to the entry, it is
+  0.054 ms at `-O2`). A page of 250 cards (some 1,000 windows)
+  re-rendered takes about 15 ms a round in render and layout through the
+  runtime's table, in C and in Go alike, the figure the port is held to. Of
+  the record's functions, `SetWindowLongPtrW` (a macro on 386), the filled
   buffers (`fit_columns`, `entry_labeled`) and the pictures' raw pixels
   would still hold roughly 300 lines;
 - wide strings C fills, answered as UTF-8 or as a place: 7, 97;
