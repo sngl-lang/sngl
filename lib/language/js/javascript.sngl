@@ -85,6 +85,7 @@ const words = [
     implicitRecv,
     structSpread,
     viewStatements,
+    entryWrites,
     genericFuncs,
     genericComponents,
     matches,

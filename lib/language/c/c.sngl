@@ -74,6 +74,7 @@ const macros = [
     declarative,
     inlineComponents,
     viewStatements,
+    entryWrites,
 )]
 #[gen.name("c")]
 #[gen.native("c")]

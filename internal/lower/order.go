@@ -35,6 +35,10 @@ func (c orderConstraint) String() string {
 
 // orderConstraints is every ordering the pipeline actually depends on.
 var orderConstraints = []orderConstraint{
+	{"ValueCopy", "EntryWrites",
+		"the local an entry is read into and the store back are the entry itself; copied first, ValueCopy would copy both, a deep copy of everything the entry holds for each write"},
+	{"LibFuncs", "EntryWrites",
+		"a library body the program carries writes through its maps' entries too, and is the program's to rewrite only once LibFuncs has promoted it"},
 	{"BuiltinMethods", "StringBuilders",
 		"an appendFormat it makes a function of the package takes a builder, which is a string on a target without builders only once StringBuilders has seen it"},
 	{"BuiltinMethods", "CallDefaults",

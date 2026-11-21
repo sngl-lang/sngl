@@ -30,7 +30,7 @@ import marks "sngl:internal/marks"
 // trigger is refused rather than handed to an invoker taking a label, and
 // held, refused only through one copy of a loop's.
 //
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches, stringBuilders, unreadLocals, valueTriggers }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches, stringBuilders, entryWrites, unreadLocals, valueTriggers }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component

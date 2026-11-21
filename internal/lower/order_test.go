@@ -278,6 +278,7 @@ var soleGate = map[string][]string{
 	"OptionMatch": nil,
 
 	"StringBuilders": {"StringBuilders"},
+	"EntryWrites":    {"EntryWrites"},
 	"UnreadLocals":   {"UnreadLocals"},
 	// Read inside passNoInlineComponents, where a test's trigger that
 	// reaches no override is refused or kept.

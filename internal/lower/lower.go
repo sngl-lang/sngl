@@ -131,6 +131,9 @@ var passes = []pass{
 	// After LibFuncs, so that a library helper's spread is lowered with the
 	// program's.
 	passFlattenStructSpread,
+	// After LibFuncs, so a library body the program carries is rewritten
+	// with the program's.
+	passEntryWrites,
 	passCMarshal,
 	passDirectCalls,
 	passAsyncProps,

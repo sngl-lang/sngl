@@ -64,6 +64,16 @@ The tiers, and the split between them is the whole point of the system:
   entry being visited may go (`testdata/map_remove.sngl`,
   `error_map_remove.sngl`, `owned_containers.sngl`;
   `map_remove_runs.txtar` in C, Go, Kotlin and JavaScript).
+
+  **A write through a map's entry** -- `m[k].f = v`, `m[k].xs.push(x)` --
+  is C's through the entry's slot and JavaScript's through the object the
+  Map holds, which `#[gen.can(entryWrites)]` says. Go's map entry is no
+  place and Kotlin's map a read-only `Map`, so for them `passEntryWrites`
+  reads the entry into a local, writes the local and stores it back, root
+  of the path first (`internal/lower/entry_writes.go`;
+  `map_entry_writes_runs.txtar`). A key the map lacks reads as the host's
+  zero of the value, so a field write makes the entry, but a write into a
+  map or a list held in that zero is each host's own: Go's nil map panics.
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums and `measurement`. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialized surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialized surface; see **Markup and the `md:` scheme** below.

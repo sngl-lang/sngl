@@ -161,6 +161,13 @@ type Features struct {
 	// answers its intrinsics. Withheld, passStringBuilders writes a builder
 	// as the string it builds, and each add as a `+=`.
 	StringBuilders bool
+	// EntryWrites says the language writes through a map's entry in place --
+	// `m[k].f = v`, `m[k].xs.push(x)` -- as C does through the entry's slot
+	// and JavaScript through the object the Map holds. Withheld,
+	// passEntryWrites writes such a write as a read of the entry into a
+	// local, the write to the local and the local stored back: Go's map
+	// entry is no place, and Kotlin's map is a read-only Map.
+	EntryWrites bool
 	// UnreadLocals says the language declares a local nothing reads, as
 	// JavaScript and Kotlin do. Withheld, passUnreadLocals makes such a
 	// local the call it was bound to, or drops it: Go refuses one.
@@ -276,6 +283,7 @@ func NoLowering() Features {
 		ViewMatch:         true,
 		OptionMatch:       true,
 		StringBuilders:    true,
+		EntryWrites:       true,
 		UnreadLocals:      true,
 		ValueTriggers:     true,
 	}
@@ -338,6 +346,7 @@ func (f Features) String() string {
 		{"ViewMatch", f.ViewMatch},
 		{"OptionMatch", f.OptionMatch},
 		{"StringBuilders", f.StringBuilders},
+		{"EntryWrites", f.EntryWrites},
 		{"UnreadLocals", f.UnreadLocals},
 		{"ValueTriggers", f.ValueTriggers},
 		{"StructComponents", f.StructComponents},
