@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,12 +12,46 @@ import (
 	"slices"
 	"strings"
 
+	"duckfam.us/sngl/internal/checker"
 	"duckfam.us/sngl/ir"
 )
 
 // Standards are the C standards a program compiles as. The output holds to
 // both: a construct only the later admits needs a build option of its own.
 var Standards = []string{"c11", "c17"}
+
+// OptimizeFlag is the flag the optimize option's member names: the value
+// sngl:language/c's Optimization declares for it, so the enum is the one list
+// of levels, and o0's, its first, where member is empty -- a harness that
+// names none compiles as an unset option does.
+func OptimizeFlag(member string) (string, error) {
+	pkg, _ := checker.CheckLibPackage("language/c")
+	if pkg == nil {
+		return "", fmt.Errorf("sngl:language/c is not linked in")
+	}
+	for _, e := range pkg.Enums {
+		if e.Name != "Optimization" || len(e.Members) == 0 {
+			continue
+		}
+		m := e.Members[0]
+		if member != "" {
+			m = nil
+			for _, x := range e.Members {
+				if x.Name == member {
+					m = x
+				}
+			}
+		}
+		if m == nil {
+			return "", fmt.Errorf("optimize=%s: no member of %s", member, e.Name)
+		}
+		if lit, ok := m.Value.(*ir.Literal); ok && lit.Value != "" {
+			return lit.Value, nil
+		}
+		return "", fmt.Errorf("%s.%s declares no flag", e.Name, m.Name)
+	}
+	return "", fmt.Errorf("sngl:language/c declares no Optimization")
+}
 
 // Flags are what every build of a program passes its compiler for std: the
 // standard, strictly, and signed arithmetic that wraps as it does on Go and
@@ -92,6 +127,7 @@ func (c Compiler) Build(dir string, sources []string, out, std string, extra ...
 	args = append(args, sources...)
 	args = append(args, extra...)
 	args = append(args, "-lm")
+	slog.Info("exec", "cmd", c.Name, "args", args, "dir", dir)
 	cmd := exec.Command(c.Path, args...)
 	cmd.Dir = dir
 	var stderr bytes.Buffer
@@ -205,9 +241,14 @@ func Launch(exe string) []string {
 	return []string{exe}
 }
 
-// BuildDir compiles the program written in dir into out under std: every .c
-// file there is a translation unit, and its BuildFile says what it links.
-func (c Compiler) BuildDir(dir, out, std string) (string, error) {
+// BuildDir compiles the program written in dir into out under std at the
+// optimize option's member (OptimizeFlag): every .c file there is a
+// translation unit, and its BuildFile says what it links.
+func (c Compiler) BuildDir(dir, out, std, optimize string) (string, error) {
+	opt, err := OptimizeFlag(optimize)
+	if err != nil {
+		return "", err
+	}
 	sources, err := filepath.Glob(filepath.Join(dir, "*.c"))
 	if err != nil || len(sources) == 0 {
 		return "", fmt.Errorf("no C sources in %s", dir)
@@ -215,7 +256,7 @@ func (c Compiler) BuildDir(dir, out, std string) (string, error) {
 	for i, s := range sources {
 		sources[i] = filepath.Base(s)
 	}
-	var extra []string
+	extra := []string{opt}
 	if data, err := os.ReadFile(filepath.Join(dir, BuildFile)); err == nil {
 		for line := range strings.SplitSeq(string(data), "\n") {
 			line = strings.TrimSpace(line)

@@ -47,6 +47,10 @@ type Config struct {
 	// Records, when set, answers each launch from a record of an earlier one
 	// with the same inputs.
 	Records *Records
+
+	// Release builds the program under test as `sngl build --release` would:
+	// an option left unset takes its release default (build.Target.Release).
+	Release bool
 }
 
 // Launcher is what launches a pair's tests, or nil when neither half can.
@@ -175,8 +179,15 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 	// The directory is kept after the run (what SNGL_KEEP_TEST_DIR used
 	// to ask for) and emptied on the next use of the same key; `sngl -v`
 	// logs the path. See codegen.BuildDir.
-	tmpDir, release, mkErr := codegen.BuildDir("test",
-		plat.PlatformIdentifier(), LangIdent(lang), cfg.File, group.Component)
+	// A release build is a key of its own, in the directory and the record
+	// both, so neither replays the other.
+	dirKey := []string{plat.PlatformIdentifier(), LangIdent(lang), cfg.File, group.Component}
+	key := []string{plat.PlatformIdentifier(), LangIdent(lang), cfg.File, cmp.Or(group.Component, "_")}
+	if cfg.Release {
+		dirKey = append(dirKey, "release")
+		key = append(key, "release")
+	}
+	tmpDir, release, mkErr := codegen.BuildDir("test", dirKey...)
 	if mkErr != nil {
 		return nil, fmt.Errorf("build dir: %w", mkErr)
 	}
@@ -200,8 +211,14 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 		return nil, fmt.Errorf("generate: %w", err)
 	}
 
+	// The launcher compiles outside the language node's own command, so it is
+	// handed the options with their defaults as this build reads them.
+	launchOpts, err := build.ResolveOptions(build.Target{Lang: LangIdent(lang), Platform: plat.PlatformIdentifier(), Options: opts, Release: cfg.Release})
+	if err != nil {
+		return nil, err
+	}
 	launch := func() ([]*codegen.TestResult, error) {
-		ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, opts)
+		ch, cleanup, err := launcher.LaunchTest(ctx, tmpDir, lang, launchOpts)
 		if err != nil {
 			if _, ok := errors.AsType[*codegen.SkipError](err); ok {
 				return nil, err
@@ -212,7 +229,7 @@ func launchOneGroup(ctx context.Context, cfg Config, launcher codegen.TestLaunch
 		return driveRPC(ch, cfg.Dir, cfg.File)
 	}
 	if cfg.Records != nil {
-		key := strings.Join([]string{plat.PlatformIdentifier(), LangIdent(lang), cfg.File, cmp.Or(group.Component, "_")}, "/")
+		key := strings.Join(key, "/")
 		snapDir := filepath.Join(cfg.Dir, cfg.File+".snapshots")
 		return cfg.Records.answer(key, tmpDir, snapDir, launch)
 	}

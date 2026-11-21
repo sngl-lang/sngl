@@ -158,6 +158,28 @@ The tiers, and the split between them is the whole point of the system:
   would read it, and a repository may not choose what `sngl build` runs. A
   build node is never rendered, which is why it may have a body and is exempt
   from the const-component rule.
+  **A release build changes the defaults its target declares, nothing else.**
+  `--release` on `build`, `run` and `test` sets `build.Target.Release`, which
+  `gen.release()` (`lib/x/gen/command.sngl`) answers; an option whose default
+  should differ in a release build reads it there, as C's `optimize` does,
+  `gen.release() ? Optimization.o2 : Optimization.o0`, and one the program or
+  the command line sets wins either way. The CLI names no option: what
+  release means is each target's. Such a default is the build's to answer, so
+  `outputOptions` leaves it out of the output block's record and the command
+  reads it off the node (`command.bind`); a test launcher, which compiles
+  outside the command, is handed the language's scalar and enum options with
+  their defaults resolved the same way (`build.ResolveOptions`). `--release`
+  is part of the build directory's key and of a recorded build's or test's,
+  so neither replays the other (`cmd/sngl/testdata/c_optimize_runs.txt`).
+  **An option may be an enum.** The program writes a member as it writes any
+  enum's, `c(optimize=size)`, and the checker refuses anything else; on the
+  command line `--opt optimize=size` names one, which `enumOption` resolves
+  against the type the node declares and refuses, naming the members, where
+  it names none -- for `sngl test`, whose options no output block types, in
+  `ResolveOptions`, before a record could answer for the launch. A member's
+  value is what the target passes on: C's `Optimization` writes each flag,
+  `o2 = "-O2"`, which the checker records where it is a literal and
+  `clang.OptimizeFlag` reads, so the enum is the one list of levels.
 - **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`); `openapi` writes a package from an OpenAPI 3 document (see *The `openapi:` scheme* in `design/import-schemes.md`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
 - **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[c.native]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`). Also the conversions a C call's arguments cross through, `#[builtin]` functions `lower.CMarshal` finds by kind (`cString`, `cInt`, `cDouble`, `cBool`), and the owned `str` with its `free`. And the marks a `#[c.native]` function's parameters carry -- `context`, `release`, `type`, `static`, `outs` -- the `held` alias, and `NativeFlag`'s `cast` and `variadic`, each described in `design/nodes.md`.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.

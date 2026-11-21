@@ -39,6 +39,7 @@ func init() {
 	testCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
 	testCmd.Flags().StringSlice("skip-platform", nil, "platforms to leave out of --platform=all")
 	testCmd.Flags().String("simulate", "", "run on the interpreter with this platform's overrides, its C natives stubbed")
+	addReleaseFlag(testCmd)
 }
 
 // Unlike compile, test validates nothing against the per-target option
@@ -79,6 +80,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	format, _ := cmd.Flags().GetString("format")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
 	opts := parseTestOpts(optSlice)
+	isRelease, _ := cmd.Flags().GetBool("release")
 
 	if simulate, _ := cmd.Flags().GetString("simulate"); simulate != "" {
 		if platform != "none" {
@@ -88,13 +90,13 @@ func runTest(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), codegen.LookupPlatform(plat), simulatedTests{plat}, codegen.LookupLang(lang), units, runFilter, opts)
+		totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), codegen.LookupPlatform(plat), simulatedTests{plat}, codegen.LookupLang(lang), units, runFilter, opts, isRelease)
 		return reportResults(allResults, totalTests, totalFail, format, verbose)
 	}
 
 	if platform == "all" {
 		skip, _ := cmd.Flags().GetStringSlice("skip-platform")
-		return runTestAll(language, units, runFilter, verbose, format, opts, skip)
+		return runTestAll(language, units, runFilter, verbose, format, opts, skip, isRelease)
 	}
 
 	plat := codegen.LookupPlatform(platform)
@@ -111,7 +113,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("platform %q does not support testing", platform)
 	}
 
-	totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), plat, runner, lang, units, runFilter, opts)
+	totalTests, totalFail, allResults := runOnPlatform(cmd.Context(), plat, runner, lang, units, runFilter, opts, isRelease)
 
 	return reportResults(allResults, totalTests, totalFail, format, verbose)
 }
@@ -120,7 +122,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 // absent is already skipped by its own ProbeTest; this is for one that *can*
 // run and is being left out on purpose -- android builds a Gradle project per
 // fixture, which is minutes rather than seconds.
-func runTestAll(language string, units []unit, runFilter string, verbose bool, format string, opts *ir.StructLit, skip []string) error {
+func runTestAll(language string, units []unit, runFilter string, verbose bool, format string, opts *ir.StructLit, skip []string, release bool) error {
 	names := codegen.Platforms()
 	skipOut := make(map[string]struct{}, len(skip))
 	for _, n := range skip {
@@ -158,7 +160,7 @@ func runTestAll(language string, units []unit, runFilter string, verbose bool, f
 			continue
 		}
 		fmt.Printf("=== platform=%s\n", name)
-		tests, fails, results := runOnPlatform(context.Background(), plat, runner, lang, units, runFilter, opts)
+		tests, fails, results := runOnPlatform(context.Background(), plat, runner, lang, units, runFilter, opts, release)
 		ran++
 		grandTests += tests
 		grandFail += fails
@@ -238,7 +240,7 @@ func resolveTestLang(plat codegen.PlatformGenerator, language string) (codegen.L
 // A unit is a package, so a test function reads the whole package it was
 // written in: `sngl test` used to read every file alone, and a test could not
 // name a component declared in the file next to it.
-func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner codegen.TestRunner, lang codegen.LangTranslator, units []unit, runFilter string, opts *ir.StructLit) (int, int, []*codegen.TestResult) {
+func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner codegen.TestRunner, lang codegen.LangTranslator, units []unit, runFilter string, opts *ir.StructLit, release bool) (int, int, []*codegen.TestResult) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -317,6 +319,7 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 				Dir:      filepath.Dir(filename),
 				File:     filepath.Base(filename),
 				Records:  testRuns,
+				Release:  release,
 			})
 		} else {
 			results, err = safeRunTests(runner, pkg, lang, opts)

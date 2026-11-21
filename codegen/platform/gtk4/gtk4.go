@@ -90,7 +90,7 @@ func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.P
 		return "", nil, &codegen.SkipError{Reason: err.Error()}
 	}
 	bin := filepath.Join(dir, "app")
-	if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+	if out, err := cc.BuildDir(dir, bin, "c17", ""); err != nil {
 		return out, nil, err
 	}
 	bin = cc.Exe(bin)

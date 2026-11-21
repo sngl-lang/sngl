@@ -619,8 +619,19 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	for i, m := range astMembers {
 		var val ir.Expr
 		if m.Value != nil {
-			// Placeholder; actual value checked later when scope is ready.
+			// The host value a member records: a literal is that literal,
+			// which a target reads (sngl:language/c's Optimization names its
+			// flags so); anything else is a placeholder, since the scope it
+			// would resolve in is not ready.
 			val = &ir.Literal{Type: TypInvalid}
+			if t := literalConstType(m.Value); t != nil {
+				lit := m.Value.(*ast.LiteralExpr)
+				v := lit.Raw
+				if s, ok := lit.StringValue(); ok {
+					v = s
+				}
+				val = &ir.Literal{Type: t, Value: v}
+			}
 		}
 		members[i] = &ir.EnumMember{
 			Name:  m.Name,

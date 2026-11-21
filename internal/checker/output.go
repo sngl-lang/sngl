@@ -225,8 +225,12 @@ func outputOptions(nodes ...*ir.NodeInst) *ir.StructLit {
 	}
 	// A declared default is part of the schema, so it lands in the record the
 	// same as a written one. Merging the two by hand is what the props replaced.
+	// One that asks the build -- `gen.release()` -- is not: only the build's
+	// command can answer it (build.RunCommand), so it is left for that to read
+	// off the node, as it is where no output block is written at all.
+	memo := map[*ir.Func]bool{}
 	for _, f := range def.Fields {
-		if f.Default != nil && !written(f.Name) {
+		if f.Default != nil && !written(f.Name) && !asksBuild(f.Default, memo) {
 			set(f.Name, f.Default, ast.Pos{})
 		}
 	}
@@ -294,4 +298,17 @@ func targetName(node *ir.Component) string {
 		return name
 	}
 	return node.Name
+}
+
+// asksBuild reports whether e calls what only the build answers.
+func asksBuild(e ir.Expr, memo map[*ir.Func]bool) bool {
+	found := false
+	ir.Walk(e, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && ir.IsBuildCall(c.Func, memo) {
+			found = true
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return found
 }

@@ -89,14 +89,18 @@ func OptionBool(opts *ir.StructLit, name string) bool {
 	return lit != nil && lit.Value == "true"
 }
 
-// OptionString reads a string-valued option from opts, returning "" if absent
-// or non-string. Strips a single pair of surrounding double quotes since
+// OptionString reads a string-valued option from opts, or an enum-valued one's
+// member name, returning "" if absent or neither. Strips a single pair of surrounding double quotes since
 // source-parsed string literals store Raw with quotes while CLI/programmatic
 // values store it without.
 func OptionString(opts *ir.StructLit, name string) string {
 	v, ok := OptionField(opts, name)
 	if !ok {
 		return ""
+	}
+	if id, ok := v.(*ir.Ident); ok && id.Member != "" {
+		// An enum's member, `optimize=o2`, reads as its name.
+		return id.Member
 	}
 	lit, _ := v.(*ir.Literal)
 	if lit == nil {

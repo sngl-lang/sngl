@@ -58,6 +58,22 @@ const macros = [
     "offsetof",
 ]
 
+// How hard a C compiler optimizes: each member's value is the flag it is
+// passed as. Every level means the same program, since -fwrapv and
+// -fstack-clash-protection hold at each.
+enum Optimization {
+    // None, which a debugger reads best.
+    o0 = "-O0"
+    o1 = "-O1"
+    // What a release build optimizes at.
+    o2 = "-O2"
+    o3 = "-O3"
+    // For size.
+    size = "-Os"
+    // What does not get in a debugger's way.
+    debug = "-Og"
+}
+
 // The `c` node of a build directive: `output { c { gtk4() } }`. Its props are
 // the build options every C target accepts, and its slot is the platforms
 // built with them.
@@ -85,13 +101,17 @@ component language(
     // The standard the program is compiled as, `c11` or `c17`; it compiles
     // as either.
     const std           string = "c17",
+    // How hard the compiler optimizes. Left unset it is o0, which a debugger
+    // reads best, and o2 in a release build (`sngl build --release`); one set
+    // is what it says in either.
+    const optimize      Optimization = gen.release() ? Optimization.o2 : Optimization.o0,
     // Names a program's declaration is renamed away from in generated C: C's
     // keywords and the macros its headers define.
     const reservedWords list[string] = [...keywords, ...macros],
     const platforms     ...component build.platform,
 ) build.language {
     gen.run(@run(dir, args) {
-        var cmd = launch(buildProgram(dir, dir + "/app", cc, std))
+        var cmd = launch(buildProgram(dir, dir + "/app", cc, std, optimize))
         for var a = args {
             cmd.push(a)
         }
@@ -101,16 +121,17 @@ component language(
         }
     })
     gen.build(@build(dir, out) {
-        buildProgram(dir, out, cc, std)
+        buildProgram(dir, out, cc, std, optimize)
     })
 }
 
 // Compiles the program the build wrote to dir into the executable out with
-// cc under std, and returns its path: every .c file there, linking what its
-// sngl.build names. A program built for another system is compiled by the
-// compiler for it, whatever cc says, and a Windows one's path ends `.exe`.
+// cc under std at the optimize level, and returns its path: every .c file
+// there, linking what its sngl.build names. A program built for another
+// system is compiled by the compiler for it, whatever cc says, and a Windows
+// one's path ends `.exe`.
 #[marks.intrinsic("c.buildProgram", build)]
-func buildProgram(dir string, out string, cc string, std string) string
+func buildProgram(dir string, out string, cc string, std string, optimize Optimization) string
 
 // The command running the program at path: itself, or under Wine where it is
 // a Windows program and the host is not Windows.

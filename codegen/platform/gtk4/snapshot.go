@@ -55,7 +55,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", platformName, err)
 		}
-		if out, err := cc.BuildDir(dir, exe, "c17"); err != nil {
+		if out, err := cc.BuildDir(dir, exe, "c17", ""); err != nil {
 			return nil, fmt.Errorf("%s: %w\n%s", platformName, err, out)
 		}
 		exe = cc.Exe(exe)

@@ -225,7 +225,7 @@ func cBuild(dir string) (string, error) {
 		}
 		built = true
 		for _, std := range clang.Standards {
-			o, err := cc.BuildDir(dir, filepath.Join(dir, "app-"+cc.Name+"-"+std), std)
+			o, err := cc.BuildDir(dir, filepath.Join(dir, "app-"+cc.Name+"-"+std), std, "")
 			out.WriteString(o)
 			if err != nil {
 				return out.String(), err

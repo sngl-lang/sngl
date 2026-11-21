@@ -15,6 +15,10 @@ type Target struct {
 	Lang     string
 	Platform string
 	Options  *ir.StructLit
+	// Release says the build is a release one (`--release`), which
+	// `gen.release()` answers: an option its node declares a release default
+	// for takes that default where nothing sets it.
+	Release bool
 }
 
 // IsInterpreted reports whether a target runs the IR rather than being
@@ -129,7 +133,9 @@ func ResolveTargets(pkg *ir.Package, cliLang, cliPlat string, cliOpts map[string
 		// Errors from per-target validation are deferred — an opt may be
 		// valid for one target's schema and unknown to another. Below we
 		// only error if no target accepts the key.
-		_ = applyCLIOpts(opts, cliOpts)
+		if err := applyCLIOpts(opts, cliOpts); err != nil {
+			return nil, err
+		}
 		targets = append(targets, Target{Lang: o.Lang, Platform: o.Platform, Options: opts})
 	}
 	if err := validateCLIOptsAcrossTargets(cliOpts, targets); err != nil {
@@ -223,6 +229,14 @@ func applyCLIOpts(opts *ir.StructLit, kv map[string]string) error {
 		if opts != nil && opts.Def != nil && ft == nil && !buildOnlyOpts[k] {
 			continue
 		}
+		if ft != nil && ft.Kind == ir.TypeEnum {
+			member, err := enumOption(k, v, ft)
+			if err != nil {
+				return err
+			}
+			codegen.SetOptionField(opts, k, member)
+			continue
+		}
 		if ft != nil && ft.Kind != ir.TypeString {
 			parsed, err := parseConstOption(v, ft)
 			if err == nil {
@@ -261,6 +275,33 @@ func optionFieldType(opts *ir.StructLit, name string) *ir.Type {
 		}
 	}
 	return nil
+}
+
+// enumOption is the member of t that raw, an option name's value on the
+// command line, names: the expression the program would have written for it
+// in its output block, `optimize=o2`. A name that is no member is refused,
+// naming the members; so is one that carries a payload, which no command line
+// can write.
+func enumOption(name, raw string, t *ir.Type) (ir.Expr, error) {
+	def, _ := t.Decl.(*ir.EnumDef)
+	if def == nil {
+		return nil, fmt.Errorf("--opt %s=%q: its type declares no members", name, raw)
+	}
+	var names []string
+	for _, m := range def.Members {
+		if m.Payload != nil {
+			continue
+		}
+		if m.Name == raw {
+			return &ir.Ident{Name: m.Name, Member: m.Name, Type: t}, nil
+		}
+		names = append(names, m.Name)
+	}
+	list := strings.Join(names, ", ")
+	if n := len(names); n > 1 {
+		list = strings.Join(names[:n-1], ", ") + " or " + names[n-1]
+	}
+	return nil, fmt.Errorf("--opt %s=%q: %s is no member of %s: %s", name, raw, raw, def.Name, list)
 }
 
 // Raw is set so codegen.ApplyOptions reads the same shape as a source-declared
