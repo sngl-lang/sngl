@@ -2569,9 +2569,16 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	case operand != nil && operand.Kind == ir.TypeMap && len(operand.Elems) == 2:
 		want = operand.Elems[0]
 	}
+	// The index is a value read even where the indexing is storage, an
+	// assignment's target or `&`'s operand, which suspend narrowing for
+	// what they name: `nodes[k].seen = true` under `if k != null` read k as
+	// the option.
 	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
 	if len(x.Indices) > 0 {
+		suspended := c.noNarrow
+		c.noNarrow = 0
 		indexExpr = c.checkExprExpecting(x.Indices[0], want)
+		c.noNarrow = suspended
 	}
 
 	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
