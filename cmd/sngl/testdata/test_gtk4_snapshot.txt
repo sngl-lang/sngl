@@ -28,7 +28,7 @@ func testGreeterSnapshot(t Test, c greeter) {
 window {
 }
 -- testrun/gtk4/go/app.sngl/greeter/1 --
-sha256:0d5fee56fbde708fc6473d447fcd9c3f
+sha256:3e6ec47e3313672ba45cef1415c725ea
 {
   "results": [
     {
@@ -41,7 +41,7 @@ sha256:0d5fee56fbde708fc6473d447fcd9c3f
   }
 }
 -- testrun/gtk4/go/app.sngl/greeter/2 --
-sha256:a007faa68903a5785ce20d65db312672
+sha256:45b272c08fec1807de9a77f6bc4a4c5d
 {
   "results": [
     {

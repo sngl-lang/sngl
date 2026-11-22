@@ -1,0 +1,55 @@
+The parts of an interpolated string are evaluated left to right, as on
+every other target and the interpreter: C evaluates a call's arguments in
+no order it promises, so a concatenation of two calls' strings may run the
+second first (gcc did), which a program whose parts each change what the
+next reads would see.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_next")]
+func next() int
+
+#[c.native("test_word")]
+func word() string
+
+func numbered() => "{next()} {next()} {next()}"
+
+func parts() => "{word()}-{next()}{word()}"
+
+func added() string {
+    var a = "<"
+    return a + "{next()}" + "{word()}" + ">"
+}
+-- main.c --
+#include <stdio.h>
+
+static int counter;
+static const char *const words[] = {"a", "b", "c", "d", "e"};
+static int nwords;
+
+static int test_next(void) {
+	return ++counter;
+}
+
+static const char *test_word(void) {
+	return words[nwords++ % 5];
+}
+
+#include "program.c"
+
+int main(void) {
+	sngl_string s = s_numbered();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	s = s_parts();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	s = s_added();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	return 0;
+}
+-- want --
+1 2 3
+a-4b
+<5c>

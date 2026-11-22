@@ -32,6 +32,48 @@ The tiers, and the split between them is the whole point of the system:
   `+=` as a rope (`testdata/builder.sngl`, `builder.txtar`,
   `error_builder_state.sngl`). The optimizer does not rewrite a `s = s + x`
   loop into one.
+
+  **`string.fromCodePoint(c)` answers U+FFFD for a number no character
+  is** -- negative, past U+10FFFF, a surrogate half -- because the hosts
+  disagree on it: Go's `string(rune(n))` replaces a half but keeps a wide
+  int's low 32 bits, JavaScript's `String.fromCodePoint` throws past the
+  range and answers a lone half, and Kotlin's `Character.toChars` does the
+  same. Each language's intrinsic guards what its host gets wrong, C's is
+  a function of the file writing the bytes, and the interpreter and the
+  folder share `interp.FromCodePoint`. It is an `#[_intrinsic]` beside
+  `int.parse`, found by that mark as every string method is
+  (`testdata/string_from_code_point.sngl`, its FOLD lines and tests;
+  `string_from_code_point_runs.txtar` in C, Go, Kotlin and JavaScript).
+
+  **`m.remove(k)` is the one map method that writes its receiver**,
+  declared as a list's `remove` is: `#[_intrinsic("map.remove", mutates, mutatesReceiver)]` on `this ref[map[K, V]]`, so the checker, purity,
+  reactivity and the value-copy pass treat it as they treat `push`, and a
+  write a component observes is an update of the whole map (no per-entry
+  effect event). An owned value it takes out is released after it
+  (`takeOutOfMap` in `internal/lower/owned_state.go`), as an entry
+  assignment releases what it replaces. The interpreter deletes in place, Go
+  writes `delete`, JavaScript `Map.delete`, Kotlin reassigns the holder with
+  `m - k` (up a data class path as an entry write does), and C copies the
+  entries but the key's into arrays of their own rather than moving them
+  along in place: a loop over a C map walks a copy of its struct, which
+  shares the arrays, and an in-place shift skipped the entry after the one
+  removed and read the last twice. So a loop that removes from the map it
+  walks still reaches an entry removed ahead of it on C and Kotlin, which
+  walk the map they began with, and does not on Go, JavaScript and the
+  interpreter: the spec leaves that unspecified and promises only that the
+  entry being visited may go (`testdata/map_remove.sngl`,
+  `error_map_remove.sngl`, `owned_containers.sngl`;
+  `map_remove_runs.txtar` in C, Go, Kotlin and JavaScript).
+
+  **A write through a map's entry** -- `m[k].f = v`, `m[k].xs.push(x)` --
+  is C's through the entry's slot and JavaScript's through the object the
+  Map holds, which `#[gen.can(entryWrites)]` says. Go's map entry is no
+  place and Kotlin's map a read-only `Map`, so for them `passEntryWrites`
+  reads the entry into a local, writes the local and stores it back, root
+  of the path first (`internal/lower/entry_writes.go`;
+  `map_entry_writes_runs.txtar`). A key the map lacks reads as the host's
+  zero of the value, so a field write makes the entry, but a write into a
+  map or a list held in that zero is each host's own: Go's nil map panics.
 - **`lib/ui/` → `sngl:ui`** — the portable components most applications are built from, the `node` family they belong to, the `window` that is a member of `sngl:builtin`'s `root`, and the vocabulary every one of them refers to: `Style`, the style enums and `measurement`. Those sit here rather than in packages of their own precisely because every component in every package under `sngl:ui/` names them. Reaches user code only through `import <alias> "sngl:ui"` (qualifies) or `import . "sngl:ui"` (flattens).
 - **`lib/ui/draw/` → `sngl:ui/draw`** — `canvas`, the `shape` tree it hosts, and the 2D shapes that are members of it. It is the first *specialized surface* under `sngl:ui/`: a program pays for a drawing canvas only by importing it.
 - **`lib/ui/markup/` → `sngl:ui/markup`** — inline rich text: the `span` family, the `richText` node that shows one flow of it, and the bodied block components a document is written in. The second specialized surface; see **Markup and the `md:` scheme** below.
@@ -92,7 +134,7 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/test/mobile/` → `sngl:test/mobile`** — what a person does to a phone, done by a test: `swipe` across a node, answered by android's Compose test and by html as a phone's browser has it, so a fixture importing it builds for those two. A gesture is not an event a component declares but the platform's to turn into one -- a swipe across a `ui.tabs`' panels chooses a tab -- and the system back, a relaunch and the lifecycle are what it is for next.
 - **`lib/i18n/` → `sngl:i18n`** — the translation surface `$"..."` lowers to.
 - **`lib/macro/` → `sngl:macro`** — the public mark vocabulary a package writes to describe its own declarations (`foreign`, `wildcard`, `construct`). Only the vocabulary: `sngl:platform/<name>` and `sngl:language/<name>` are not this vocabulary but targets, described below — under `lib/platform/` and `lib/language/` once moved.
-- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. `#[gen.protocol(op)]` is what a platform writes on functions rather than the node: how it makes, fills, writes and connects an `#[intrinsic]` component's widget, as SNGL calling the host, so every call is one a pass sees (`design/nodes.md`). Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`), and what a handler writes through (`scheme.sngl`): `out.file(name)` opens one file and hands back a `gen.File` handle whose `add` and `line` write into a buffer the build host owns (`buildhost.Output`), so a file built a line at a time costs its length; each file is written when the handler returns, and a name opened twice is an error at the open (`cmd/sngl/testdata/scheme_errors.txt`). Where a mark may be written is checked in `finishFamilyMarks` rather than in the handler, which measures it against the return position `bindFamily` read, beside the other rules about what a component's marks say of its tree.
+- **`lib/x/gen/` → `sngl:x/gen`** — what a target package says about what it generates: `#[gen.can]` and `#[gen.cannot]` name the SNGL constructs it emits natively, `#[gen.wants]` the lowering passes it asks for. Written on the build-tree node the package already declares (`component go(…) build.language`), and read by `codegen.CapsFor` into `lower.Features` — there is no `Capabilities()` method, because a target that is a command rather than a linked-in package cannot answer one. **A capability not written is not held**: there is no base set to subtract from, so a target that says nothing gets every lowering pass. That is what lets the language grow — a new construct arrives with a lowering pass that converts it away, and every target that has not heard of it keeps working unedited, opting in only when its code generator can do better than the pass -- `navigation` is that shape: every target gets `passNavigation` until it says it renders `sngl:ui/nav` itself. Under the other polarity, silence would mean "I emit this" on every declaration written before the construct existed, so adding one would break every target at once. A plugin answering nothing, or answering a vocabulary older than the compiler asking, is the same argument with a version skew in place of a new construct. A platform overrules a language per capability, which is what lets html take back the `ternary` Go withdrew; naming one both ways on one declaration is an error. `#[gen.protocol(op)]` is what a platform writes on functions rather than the node: how it makes, fills, writes and connects an `#[intrinsic]` component's widget, as SNGL calling the host, so every call is one a pass sees (`design/nodes.md`). `#[gen.entry]` marks a target's bodied function, no method, native or protocol operation (`markGenEntry`), that no SNGL calls and the generated entry does by name -- gtk4's `_main`, the application's loop handed the program's build, and the `_init`, `_hold`, `_present`, `_run`, `_step`, `_reset` and `_capture…` an `@run` handler's entry, a test agent's and a snapshot's call. `passLibFuncs` promotes each of the build's platform's as a root of its own into `ir.Package.Entries` in every build, each entry calling the ones it needs; Go writes each under a name an entry can call (`snglEntryMain`, `golang.EntryName`), and gtk4's Go and C mains call them (`testdata/error_gen_entry.sngl`). An entry runs outside the application's lifetime -- before `sngl_init` sets the program's state, or after teardown -- so ReleaseTemps makes a constant temp in what one reaches where it is used, as it does after an `@run` handler's `run` (`runReach`). Not `sngl:build`, whose audience is the same: that package is the build-target *tree*, and what generating for a target involves is a different subject — `sngl:x/gen/cache`, the inputs a generated file records (see *Performance*), is the second member, and `sngl:x/gen/trust`, the user's grants (see *Trust*), the third. It also holds the host API a build-time function reads the machine through (`host.sngl`), and what a handler writes through (`scheme.sngl`): `out.file(name)` opens one file and hands back a `gen.File` handle whose `add` and `line` write into a buffer the build host owns (`buildhost.Output`), so a file built a line at a time costs its length; each file is written when the handler returns, and a name opened twice is an error at the open (`cmd/sngl/testdata/scheme_errors.txt`). Where a mark may be written is checked in `finishFamilyMarks` rather than in the handler, which measures it against the return position `bindFamily` read, beside the other rules about what a component's marks say of its tree.
   **`sngl run` and `sngl build` are commands a target writes**, not Go
   interfaces: a `gen.run(@run(dir, args))` or `gen.build(@build(dir, out))` in
   the body of its build-tree node (`lib/x/gen/command.sngl`). The platform
@@ -116,8 +158,30 @@ The tiers, and the split between them is the whole point of the system:
   would read it, and a repository may not choose what `sngl build` runs. A
   build node is never rendered, which is why it may have a body and is exempt
   from the const-component rule.
+  **A release build changes the defaults its target declares, nothing else.**
+  `--release` on `build`, `run` and `test` sets `build.Target.Release`, which
+  `gen.release()` (`lib/x/gen/command.sngl`) answers; an option whose default
+  should differ in a release build reads it there, as C's `optimize` does,
+  `gen.release() ? Optimization.o2 : Optimization.o0`, and one the program or
+  the command line sets wins either way. The CLI names no option: what
+  release means is each target's. Such a default is the build's to answer, so
+  `outputOptions` leaves it out of the output block's record and the command
+  reads it off the node (`command.bind`); a test launcher, which compiles
+  outside the command, is handed the language's scalar and enum options with
+  their defaults resolved the same way (`build.ResolveOptions`). `--release`
+  is part of the build directory's key and of a recorded build's or test's,
+  so neither replays the other (`cmd/sngl/testdata/c_optimize_runs.txt`).
+  **An option may be an enum.** The program writes a member as it writes any
+  enum's, `c(optimize=size)`, and the checker refuses anything else; on the
+  command line `--opt optimize=size` names one, which `enumOption` resolves
+  against the type the node declares and refuses, naming the members, where
+  it names none -- for `sngl test`, whose options no output block types, in
+  `ResolveOptions`, before a record could answer for the launch. A member's
+  value is what the target passes on: C's `Optimization` writes each flag,
+  `o2 = "-O2"`, which the checker records where it is a literal and
+  `clang.OptimizeFlag` reads, so the enum is the one list of levels.
 - **`lib/x/scheme/<name>/` → `sngl:x/scheme/<name>`** — the library's own import-scheme plugins, each serving `<name>:` with no import (see *Import schemes*). `c` runs pkg-config and writes a `c.link`; `gir` writes gtk4's widget declarations from GIR through a build intrinsic gtk4's Go answers (`buildhost.RegisterIntrinsic`); `openapi` writes a package from an OpenAPI 3 document (see *The `openapi:` scheme* in `design/import-schemes.md`). Checked as a package of its own when its scheme is first asked for -- against no target, since it is a build tool -- and left out of the merged stdlib documents. It may import `sngl:internal/`, and what it writes is library source in all but origin (`Config.byLibrary`): it may too. A check with no build resolver -- `sngl doc`, the LSP's library path, `CapsFor` -- still resolves one, through the runner `internal/plugin` registers with `checker.RegisterLibraryRunner`, which is what lets library source import a library scheme.
-- **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[c.native]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`). Also the conversions a C call's arguments cross through, `#[builtin]` functions `lower.CMarshal` finds by kind (`cString`, `cInt`, `cDouble`, `cBool`), and the owned `str` with its `free`.
+- **`lib/x/c/` → `sngl:x/c`** — `link`, the directive a package writes to say which C header its `#[c.native]` declarations come from and the flags compiling and linking against it need; read onto `ir.Package.CLinks`, from which a Go target writes its cgo preamble (`ir.ReachedCLinks`). Also the conversions a C call's arguments cross through, `#[builtin]` functions `lower.CMarshal` finds by kind (`cString`, `cInt`, `cDouble`, `cBool`), and the owned `str` with its `free`. And the marks a `#[c.native]` function's parameters carry -- `context`, `release`, `type`, `static`, `outs` -- the `held` alias, and `NativeFlag`'s `cast` and `variadic`, each described in `design/nodes.md`.
 - **`lib/internal/` → `sngl:internal/<name>`** — the compiler's own tier, importable only from lib source.
 
 A package documents itself with a **package comment**: a run of line comments
@@ -239,6 +303,31 @@ write. TestGolden fingerprints the checked package, and the library it
 reaches, around `Emit`. A target's copy keeps other targets' override entries
 emptied, since a build still asks whether a declaration is overridden for
 *some* target (`cmd/sngl/testdata/emit_family_refused.txt`).
+A package var names the package that declares it (`Var.Pkg`), and
+`promoteVars` takes each top-level var of another package a body names --
+an import's, or a target package's, which the program imports none of --
+into the program's `Vars`. As a promoted function stands for every
+declaration of its name (`repointPromoted`), so does a promoted var
+(`libVarKey`): a body thawed from the frozen library -- a placed node's
+protocol function, a `#[gen.entry]` -- names the library's declaration where
+the program's copy names the build's, and ReleaseTemps' second run of
+LibFuncs meets one already promoted. Each reference is repointed at one
+declaration, the build's copy, or a copy of the frozen one where the build
+made none; two had C declare the var twice and write a thawed body's write
+to an undeclared local, since C matches a package var by pointer
+(`testdata/gtk4_keys_runs.txtar`, whose `@key` state is a gtk4 package var
+that every gtk4 golden's program, importing no gtk4, also reaches).
+A library declaration is folded only where the build reached it as it copied
+the library, and a protocol function lowering splices in later reaches a
+struct whose declaration nothing folded: frozen, or copied and not folded for
+this target. Its defaults name `false` and `null`, builtin consts, which a
+backend spelling a field left out read as identifiers: C's `false_`, and "C
+does not yet write a null" for an `option[Widget] = null`. So a field whose
+default names a const (`ir.StructField.DefaultFolded`, false) is written out
+folded by the literal leaving it out (`unfoldedDefaults`), and kept by one
+the fold evaluates whole (`StructLit.HoldsOmitted`); the optimizer folds a
+package's struct defaults before its bodies, so the program's own read as
+folded (`testdata/select_under_tabs.txtar`, `gtk4_tabs_runs.txtar`).
 
 A `#[builtin("kind")]` mark says which IR construct a declaration dispatches to, **not** which tier it lives in nor what the declaration is called — the builtin visual nodes are spread across tiers, `sngl:ui/nav`'s three in `ui/nav`, and `effect`, `context`, `output` and `boundary` in `builtin`. `boundary` is the case that makes the second half plain: it carries the `errorBoundary` kind, because the kind names the role and `ir.ErrorBoundary` is the construct it dispatches to, while the name a program writes is the declaration's own.
 

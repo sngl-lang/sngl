@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -27,6 +28,7 @@ func init() {
 	buildCmd.Flags().String("platform", "", "target platform")
 	buildCmd.Flags().StringP("out", "o", ".", "directory to place built binaries")
 	buildCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
+	addReleaseFlag(buildCmd)
 }
 
 func runBuild(cmd *cobra.Command, args []string) error {
@@ -34,11 +36,15 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	cliPlat, _ := cmd.Flags().GetString("platform")
 	outDir, _ := cmd.Flags().GetString("out")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
+	isRelease, _ := cmd.Flags().GetBool("release")
 
 	// Stable, key-derived build directory so repeated invocations reuse
 	// the Go build cache instead of relinking from scratch every time.
-	// See codegen.BuildDir.
+	// See codegen.BuildDir. A release build is a key of its own.
 	key := append([]string{cliLang, cliPlat, strings.Join(optSlice, ",")}, args...)
+	if isRelease {
+		key = append(key, "--release")
+	}
 	tmpDir, release, err := codegen.BuildDir("build", key...)
 	if err != nil {
 		return fmt.Errorf("creating build directory: %w", err)
@@ -57,6 +63,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		main:    true,
 		quiet:   true, // suppress per-file print; only print artifact path
 		onTarget: func(target build.Target, _ *ir.Package, _, srcDir string) error {
+			target.Release = isRelease
 			finalName := binaryName(target.Options, target.Platform, multiTarget)
 			finalPath, err := filepath.Abs(filepath.Join(outDir, finalName))
 			if err != nil {
@@ -90,7 +97,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 			if testRuns != nil {
 				run := compile
 				compile = func() (string, error) {
-					return testRuns.AnswerTool(toolKey("build", target, args), srcDir, optSlice, run)
+					return testRuns.AnswerTool(toolKey("build", target, args), srcDir, releaseArgs(optSlice, isRelease), run)
 				}
 			}
 			built, err := compile()
@@ -201,6 +208,16 @@ func moveFile(src, dst string) error {
 
 // toolKey names a script's build or run of target in its records: the
 // command, the target and the files it was handed.
+// releaseArgs is what a record of a build is keyed on beside its program:
+// the options, and --release where it was one, so a release build never
+// replays a debug one's record or the reverse.
+func releaseArgs(opts []string, release bool) []string {
+	if !release {
+		return opts
+	}
+	return append(slices.Clone(opts), "--release")
+}
+
 func toolKey(command string, target build.Target, files []string) string {
 	return path.Join(command, target.Platform, target.Lang, strings.Join(files, "+"))
 }

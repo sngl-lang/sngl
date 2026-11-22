@@ -1,0 +1,1065 @@
+import ui "sngl:ui"
+import c "sngl:x/c"
+import api "sngl:platform/win32/api"
+import go "sngl:language/go"
+
+// --- The window procedures ---
+
+// A box's and a toplevel's window procedure, and the one each control is
+// subclassed with, are the platform's, which the runtime registers its
+// classes with (`sngl_win32_procs`, as `_ctls` starts). Each control's
+// notifications reach the window it is in, which hands them to the
+// handlers the program connected to the control (`_on`); what the runtime
+// draws -- a flow's words, a canvas, a picture, a progress bar's text -- it
+// asks the runtime to paint.
+
+// The handlers the program connected to a window, kept beside its record
+// rather than in it, since a layout copies records by the thousand: a
+// click, a change, an activation (Enter in an edit, a multi-line one's
+// focus leaving it, a tree's node expanded), a close, a scroll's end, a
+// picture loaded and failed, and a toplevel's `:visible`. `clicks` and
+// `activates` say one was connected, which the cursor and Enter ask.
+struct _On {
+    click     func() = func() {}
+    clicks    bool = false
+    change    func() = func() {}
+    activate  func() = func() {}
+    activates bool = false
+    closed    func() = func() {}
+    reach     func() = func() {}
+    load      func() = func() {}
+    failed    func() = func() {}
+    visible   func(visible bool) = func(visible bool) {}
+}
+
+var _on map[api.HWND, _On] = {}
+
+// Set while a test raises a click, which opens no link and bubbles no
+// further than the node it is on.
+var _firing = false
+
+#[c.native("DWORD_PTR")]
+struct _DwordPtr = int
+
+// Hands the runtime the window procedures and what rich text reads of a
+// record, which `_ctls` starts as.
+#[c.native("sngl_win32_procs")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Procs")]
+func _procs(
+    #[c.type("WNDPROC")] #[c.static(convention="CALLBACK")] box func(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT,
+    #[c.type("SUBCLASSPROC")] #[c.static(convention="CALLBACK")] control func(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM, id _UintPtr, data _DwordPtr) api.LRESULT,
+    #[c.type("sngl_win32_count_hook")] #[c.static] nkids func(w api.HWND) int,
+    #[c.type("sngl_win32_kid_hook")] #[c.static] kid func(w api.HWND, at int) api.HWND,
+)
+
+#[c.native("DefWindowProcW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DefWindowProcW")]
+func _defProc(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT
+
+#[c.native("DefSubclassProc")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DefSubclassProc")]
+func _defSubclass(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT
+
+#[c.native("IsWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.IsWindow")]
+func _isWindow(w api.HWND) api.WINBOOL
+
+#[c.native("GetWindow")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetWindow")]
+func _getWindow(w api.HWND, cmd api.UINT) option[_Found]
+
+#[c.native("HINSTANCE")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Instance")]
+struct _Instance {}
+
+#[c.native("ShellExecuteW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ShellExecuteW")]
+func _shellExecute(w option[_Found], op c.utf16, file c.utf16, params option[c.utf16], dir option[c.utf16], show int) _Instance
+
+// What a link leads to opened, as the user's click opens it.
+func _open(href string) {
+    _shellExecute(null, "open", href, null, null, api.SW_SHOWNORMAL)
+}
+
+// What the runtime paints and keeps, and what a message's parameters hold
+// (sngl_win32.h).
+#[c.native("sngl_win32_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Paint")]
+func _paint(w api.HWND, msg api.UINT, wp api.WPARAM, own option[_Brush], backdrop option[_Brush], fit int, padTop int, padRight int, padLeft int) api.LRESULT
+
+#[c.native("sngl_win32_paint_bar")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PaintBar")]
+func _paintBar(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT
+
+#[c.native("sngl_win32_loaded")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Loaded")]
+func _loaded(picture api.HWND, frame api.HWND) int
+
+#[c.native("sngl_win32_fetched")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Fetched")]
+func _fetched(w api.HWND, wp api.WPARAM, lp api.LPARAM)
+
+#[c.native("sngl_win32_posted")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Posted")]
+func _posted(lp api.LPARAM)
+
+#[c.native("sngl_win32_timer")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Timer")]
+func _timer(w api.HWND, wp api.WPARAM) int
+
+#[c.native("sngl_win32_link_under")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32LinkUnder")]
+func _linkUnder(flow api.HWND, x int, y int) option[_Found]
+
+#[c.native("sngl_win32_over_link")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OverLink")]
+func _overLink(flow api.HWND) int
+
+#[c.native("sngl_win32_hand")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Hand")]
+func _hand()
+
+#[c.native("sngl_win32_window_of")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32WindowOf")]
+func _windowOf(lp api.LPARAM) api.HWND
+
+#[c.native("sngl_win32_dc_of")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DcOf")]
+func _dcOf(wp api.WPARAM) api.HDC
+
+// A brush, which Win32 may make none of, and what a WM_CTLCOLOR* answers
+// with it.
+#[c.native("HBRUSH", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Brush")]
+struct _Brush {}
+
+#[c.native("sngl_win32_brush_answer")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32BrushAnswer")]
+func _brushAnswer(b _Brush) api.LRESULT
+
+#[c.native("sngl_win32_brush")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Brush")]
+func _brush(rgb int) option[_Brush]
+
+#[c.native("sngl_win32_drop_brush")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DropBrush")]
+func _dropBrush(b _Brush)
+
+#[c.native("sngl_win32_fill")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Fill")]
+func _fill(w api.HWND, dc api.HDC, r api.RECT, b option[_Brush])
+
+#[c.native("sngl_win32_focus_rect")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FocusRect")]
+func _focusRect(dc api.HDC, r api.RECT)
+
+#[c.native("sngl_win32_draw_label")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DrawLabel")]
+func _drawLabel(w api.HWND, dc api.HDC, text c.utf16, r api.RECT, format api.UINT)
+
+#[c.native("sngl_win32_quiet")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Quiet")]
+func _quiet(w api.HWND) int
+
+#[c.native("sngl_win32_unsubclass")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Unsubclass")]
+func _unsubclass(w api.HWND)
+
+#[c.native("sngl_win32_forget")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Forget")]
+func _forgetKept(w api.HWND, counted bool)
+
+// What a message's LPARAM points to: a notification's header and a list
+// view's, an owner-drawn button's paint, the message a dialog asks an edit
+// about, and the frame Windows suggests at another DPI.
+#[c.native("NMHDR *")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NmPtr")]
+struct _NmPtr {}
+
+#[c.native("NMHDR *", cast)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NmOf")]
+func _nmOf(lp api.LPARAM) _NmPtr
+
+#[c.native("NMHDR.hwndFrom", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMHDRHwndFrom")]
+func _nmFrom(nm _NmPtr) api.HWND
+
+#[c.native("NMHDR.code", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMHDRCode")]
+func _nmCode(nm _NmPtr) api.UINT
+
+#[c.native("NMLISTVIEW *")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.LvPtr")]
+struct _LvPtr {}
+
+#[c.native("NMLISTVIEW *", cast)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.LvOf")]
+func _lvOf(lp api.LPARAM) _LvPtr
+
+#[c.native("NMLISTVIEW.iItem", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMLISTVIEWIItem")]
+func _lvItem(lv _LvPtr) int
+
+#[c.native("NMLISTVIEW.iSubItem", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMLISTVIEWISubItem")]
+func _lvSubItem(lv _LvPtr) int
+
+#[c.native("NMLISTVIEW.uNewState", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMLISTVIEWUNewState")]
+func _lvNewState(lv _LvPtr) api.UINT
+
+#[c.native("NMLISTVIEW.uOldState", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMLISTVIEWUOldState")]
+func _lvOldState(lv _LvPtr) api.UINT
+
+#[c.native("NMLISTVIEW.uChanged", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.NMLISTVIEWUChanged")]
+func _lvChanged(lv _LvPtr) api.UINT
+
+#[c.native("DRAWITEMSTRUCT *")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DrawPtr")]
+struct _DrawPtr {}
+
+#[c.native("DRAWITEMSTRUCT *", cast)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DrawOf")]
+func _drawOf(lp api.LPARAM) _DrawPtr
+
+#[c.native("DRAWITEMSTRUCT.hwndItem", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DRAWITEMSTRUCTHwndItem")]
+func _drawWindow(di _DrawPtr) api.HWND
+
+#[c.native("DRAWITEMSTRUCT.hDC", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DRAWITEMSTRUCTHDC")]
+func _drawDc(di _DrawPtr) api.HDC
+
+#[c.native("DRAWITEMSTRUCT.itemState", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DRAWITEMSTRUCTItemState")]
+func _drawState(di _DrawPtr) api.UINT
+
+#[c.native("DRAWITEMSTRUCT.rcItem", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DRAWITEMSTRUCTRcItem")]
+func _drawRect(di _DrawPtr) api.RECT
+
+#[c.native("MSG *")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.MsgPtr")]
+struct _MsgPtr {}
+
+#[c.native("MSG *", cast)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.MsgOf")]
+func _msgOf(lp api.LPARAM) _MsgPtr
+
+#[c.native("MSG.message", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.MSGMessage")]
+func _msgMessage(m _MsgPtr) api.UINT
+
+#[c.native("MSG.wParam", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.MSGWParam")]
+func _msgWparam(m _MsgPtr) api.WPARAM
+
+#[c.native("RECT *")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RectPtr")]
+struct _RectPtr {}
+
+#[c.native("RECT *", cast)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RectOf")]
+func _rectOf(lp api.LPARAM) _RectPtr
+
+#[c.native("RECT.left", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RECTLeft")]
+func _rectLeft(r _RectPtr) int
+
+#[c.native("RECT.top", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RECTTop")]
+func _rectTop(r _RectPtr) int
+
+#[c.native("RECT.right", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RECTRight")]
+func _rectRight(r _RectPtr) int
+
+#[c.native("RECT.bottom", field)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.RECTBottom")]
+func _rectBottom(r _RectPtr) int
+
+// The runtime's messages beyond the layout's: work sngl_post queued, a
+// modal's open applied once it is in the window it shows over, a picture's
+// load reported to its image, a fetch arrived, and a toplevel's
+// `:visible` told.
+const _wmPost = 32770
+
+const _wmOpen = 32772
+
+const _wmLoaded = 32773
+
+const _wmFetched = 32774
+
+const _wmVisible = 32775
+
+// A message's parameter's low and high 16 bits (LOWORD, HIWORD), and those
+// read as a signed number, as a wheel's turn and a point are.
+func _loword(n int) int {
+    var lo = n % 65536
+    return lo < 0 ? lo + 65536 : lo
+}
+
+func _hiword(n int) int {
+    return _loword((n - _loword(n)) / 65536)
+}
+
+func _signed16(n int) int {
+    return n >= 32768 ? n - 65536 : n
+}
+
+// A UINT a notification's code is, as the negative number commctrl.h
+// writes it, whether the int it was read into holds 32 bits or more.
+func _signed32(n int) int {
+    return _signed16(_hiword(n)) * 65536 + _loword(n)
+}
+
+// Whether `flag`, a power of two, is set in `n`.
+func _has(n int, flag int) bool {
+    return (n / flag) % 2 == 1
+}
+
+// 0xRRGGBB as Win32's COLORREF, 0x00BBGGRR.
+func _colorRef(rgb int) api.COLORREF {
+    return (rgb / 65536) % 256 + (rgb / 256) % 256 * 256 + rgb % 256 * 65536
+}
+
+// --- Handlers ---
+
+func _handlers(w api.HWND) _On {
+    return _on.contains(w) ? _on[w] : _On{}
+}
+
+func _onClick(w api.HWND, click func()) {
+    var h = _handlers(w)
+    h.click = click
+    h.clicks = true
+    _on[w] = h
+}
+
+func _onChange(w api.HWND, change func()) {
+    var h = _handlers(w)
+    h.change = change
+    _on[w] = h
+}
+
+func _onActivate(w api.HWND, activate func()) {
+    var h = _handlers(w)
+    h.activate = activate
+    h.activates = true
+    _on[w] = h
+}
+
+func _onClosed(w api.HWND, closed func()) {
+    var h = _handlers(w)
+    h.closed = closed
+    _on[w] = h
+}
+
+func _onReach(w api.HWND, reach func()) {
+    var h = _handlers(w)
+    h.reach = reach
+    _on[w] = h
+}
+
+func _onLoad(w api.HWND, load func()) {
+    var h = _handlers(w)
+    h.load = load
+    _on[w] = h
+}
+
+func _onFailed(w api.HWND, failed func()) {
+    var h = _handlers(w)
+    h.failed = failed
+    _on[w] = h
+}
+
+func _onVisible(w api.HWND, visible func(visible bool)) {
+    var h = _handlers(w)
+    h.visible = visible
+    _on[w] = h
+}
+
+// Each handler of a window called, where it has one.
+func _clicked(w api.HWND) {
+    if _on.contains(w) {
+        var f = _on[w].click
+        f()
+    }
+}
+
+func _changed(w api.HWND) {
+    if _on.contains(w) {
+        var f = _on[w].change
+        f()
+    }
+}
+
+func _activated(w api.HWND) {
+    if _on.contains(w) {
+        var f = _on[w].activate
+        f()
+    }
+}
+
+func _reached(w api.HWND) {
+    if _on.contains(w) {
+        var f = _on[w].reach
+        f()
+    }
+}
+
+// w's click, and then each of the boxes' holding it, as a browser bubbles
+// one: every override connects a node's @click whether the program wrote
+// one or not, so a text or a picture in a clickable card holds an empty
+// one. Each is found before any is called, and called only while its
+// window stands, since a handler may close the page it is on.
+func _press(w api.HWND) {
+    var chain list[api.HWND] = []
+    var p = w
+    var going = true
+    for going && chain.length() < 64 {
+        if !_ctls.contains(p) || _ctls[p].kind == _kTop {
+            going = false
+        } else {
+            chain.push(p)
+            var up = _parentOf(p)
+            if up != null {
+                p = _found(up)
+            } else {
+                going = false
+            }
+        }
+    }
+    for var at = chain {
+        if _isWindow(at) != 0 {
+            _clicked(at)
+        }
+    }
+}
+
+// A test's click: the control's notification, which opens no link and
+// bubbles no further than the node it is on.
+func _fireClick(w api.HWND) {
+    _firing = true
+    _notify(w, api.BN_CLICKED)
+    _firing = false
+}
+
+// --- Colors ---
+
+// The brush of the nearest background among w and the boxes holding it,
+// as a node with none of its own shows its box's in a browser, or none
+// where none of them has one.
+func _inherited(w api.HWND) option[_Brush] {
+    var p = w
+    var going = true
+    var found option[_Brush] = null
+    for going {
+        if !_ctls.contains(p) {
+            going = false
+        } else if _ctls[p].brush != null {
+            found = _ctls[p].brush
+            going = false
+        } else if _ctls[p].kind == _kTop {
+            going = false
+        } else {
+            var up = _parentOf(p)
+            if up != null {
+                p = _found(up)
+            } else {
+                going = false
+            }
+        }
+    }
+    return found
+}
+
+// What a control's WM_CTLCOLOR* answers where it has a look: its text's
+// color, a link's where it has none, and its background's brush, or
+// `otherwise` where it has none.
+func _color(src api.HWND, dc api.HDC, otherwise api.LRESULT) api.LRESULT {
+    if !_ctls.contains(src) {
+        return otherwise
+    }
+    var k = _ctls[src]
+    if k.color >= 0 {
+        api.SetTextColor(dc, _colorRef(k.color))
+    } else if k.kind == _kLink {
+        api.SetTextColor(dc, api.IsWindowEnabled(src) != 0 ? api.GetSysColor(26) : api.GetSysColor(17))
+    }
+    var b = k.brush
+    if b != null {
+        api.SetBkColor(dc, _colorRef(k.background))
+        return _brushAnswer(b)
+    }
+    return otherwise
+}
+
+// A control asking its box what it is drawn in: one with no background of
+// its own shows its box's, or the nearest one holding it.
+func _colored(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT {
+    var otherwise = _defProc(w, msg, wp, lp)
+    var src = _windowOf(lp)
+    var dc = _dcOf(wp)
+    if _ctls.contains(src) && _ctls[src].brush == null && msg != api.WM_CTLCOLOREDIT {
+        var under = _inherited(src)
+        if under != null {
+            api.SetBkMode(dc, 1)
+            _color(src, dc, 0)
+            return _brushAnswer(under)
+        }
+    }
+    return _color(src, dc, otherwise)
+}
+
+// What a look sets of a node's paint: its text's color, its background's
+// brush, a button with one drawn by its box, and its font's size, which
+// the runtime draws it by; then it is drawn again, with what it holds
+// (`_look` sets the rest).
+func _paintLook(n ui.node, look Look) {
+    var w = _handle(n)
+    if !_ctls.contains(w) {
+        return
+    }
+    _ctls[w].color = look.color
+    var old = _ctls[w].brush
+    if old != null {
+        _dropBrush(old)
+    }
+    _ctls[w].brush = null
+    _ctls[w].background = look.background
+    if look.background >= 0 {
+        _ctls[w].brush = _brush(look.background)
+    }
+    if _ctls[w].kind == _kButton {
+        _ownerDraw(w, _ctls[w].brush != null)
+    }
+    _setPaint(w, look.color, look.fontPx)
+}
+
+#[c.native("sngl_win32_owner_draw")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32OwnerDraw")]
+func _ownerDraw(w api.HWND, on bool)
+
+#[c.native("sngl_win32_set_paint")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetPaint")]
+func _setPaint(w api.HWND, color int, fontPx int)
+
+// rgb, 0xRRGGBB, darkened by a share of 256.
+func _shade(rgb int, by int) int {
+    var r = (rgb / 65536) % 256 * (256 - by) / 256
+    var g = (rgb / 256) % 256 * (256 - by) / 256
+    var b = rgb % 256 * (256 - by) / 256
+    return r * 65536 + g * 256 + b
+}
+
+// A button given a background, which a push button's theme paints over,
+// drawn by its box: flat in its background, darker while pressed, as
+// gtk4's shades one under :active, and its text centered in its color.
+func _paintButton(di _DrawPtr, w api.HWND) {
+    var k = _ctls[w]
+    var dc = _drawDc(di)
+    var r = _drawRect(di)
+    var state = int(_drawState(di))
+    var filled = false
+    if _has(state, 1) {
+        var fill = _brush(_shade(k.background, 48))
+        if fill != null {
+            _fill(w, dc, r, fill)
+            _dropBrush(fill)
+            filled = true
+        }
+    }
+    if !filled {
+        _fill(w, dc, r, k.brush)
+    }
+    api.SetBkMode(dc, 1)
+    if _has(state, 4) {
+        api.SetTextColor(dc, api.GetSysColor(17))
+    } else if k.color >= 0 {
+        api.SetTextColor(dc, _colorRef(k.color))
+    } else {
+        api.SetTextColor(dc, api.GetSysColor(18))
+    }
+    _drawLabel(w, dc, k.text, r, 2085)
+    if _has(state, 16) && !_has(state, 512) {
+        var d = _px(3, k.dpi)
+        _focusRect(dc, api.RECT{left=r.left + d, top=r.top + d, right=r.right - d, bottom=r.bottom - d})
+    }
+}
+
+// --- Tips ---
+
+// What a box's children show as the pointer rests on them; empty, nothing.
+func _setTip(box api.HWND, tip string) {
+    if !_ctls.contains(box) {
+        return
+    }
+    _ctls[box].tip = tip
+    _ctls[box].tipped = true
+    for var child = _ctls[box].kids {
+        _tipTool(box, child, tip)
+    }
+}
+
+// child, one of box's, given box's tip, or it taken away.
+func _tipChild(box api.HWND, child api.HWND, on bool) {
+    if _ctls.contains(box) && _ctls[box].tipped {
+        _tipTool(box, child, on ? _ctls[box].tip : "")
+    }
+}
+
+#[c.native("sngl_win32_tip_tool")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TipTool")]
+func _tipTool(box api.HWND, child api.HWND, tip c.utf16)
+
+// --- Modals ---
+
+#[c.native("sngl_win32_set_owner")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetOwner")]
+func _setOwner(dialog api.HWND, owner option[_Found])
+
+#[c.native("sngl_win32_closable")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Closable")]
+func _closable(dialog api.HWND, closable bool)
+
+#[c.native("sngl_win32_frame_size")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FrameSize")]
+func _frameSize(w api.HWND, cw int, ch int, out ref[api.SIZE])
+
+#[c.native("sngl_win32_set_visible")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32SetVisible")]
+func _setVisible(top api.HWND, visible bool)
+
+// The window a modal shows what it holds in, and the window what is put in
+// parent goes in: a modal's, and otherwise parent.
+func _dialogOf(m api.HWND) api.HWND {
+    var d = _ctls.contains(m) ? _ctls[m].dialog : null
+    return d != null ? _found(d) : m
+}
+
+func _host(parent api.HWND) api.HWND {
+    return _ctls.contains(parent) && _ctls[parent].kind == _kModal ? _dialogOf(parent) : parent
+}
+
+// A modal's window shown over the window the modal is in, sized to what it
+// holds and centered over that window, which is disabled while it is open;
+// or hidden, and that window enabled again.
+func _showModal(m api.HWND) {
+    var k = _ctls[m]
+    var dialog = k.dialog
+    if dialog == null {
+        return
+    }
+    var d = _found(dialog)
+    var root = _ancestor(m, 2)
+    var owner option[_Found] = _ctls.contains(root) ? _asFound(root) : null
+    var was = _getWindow(d, 4)
+    if k.open {
+        if api.IsWindowVisible(d) != 0 {
+            return
+        }
+        _setOwner(d, owner)
+        _refresh(d, owner != null ? _dpiOf(_found(owner)) : _dpiOf(_nothing()))
+        var s = _measure(d)
+        var dpi = _ctls[d].dpi
+        var cw = s.cx < _px(240, dpi) ? _px(240, dpi) : s.cx
+        var ch = s.cy < _px(80, dpi) ? _px(80, dpi) : s.cy
+        var frame = api.SIZE{cx=0, cy=0}
+        _frameSize(d, cw, ch, &frame)
+        var ww = int(frame.cx)
+        var wh = int(frame.cy)
+        var x = 0
+        var y = 0
+        if owner != null {
+            var o = api.RECT{left=0, top=0, right=0, bottom=0}
+            if api.GetWindowRect(_found(owner), &o) != 0 {
+                x = o.left + (o.right - o.left - ww) / 2
+                y = o.top + (o.bottom - o.top - wh) / 2
+            }
+        }
+        _setWindowPos(d, null, x, y, ww, wh, api.SWP_NOACTIVATE)
+        api.ShowWindow(d, api.SW_SHOW)
+        _layOutTop(d)
+        if owner != null {
+            api.EnableWindow(_found(owner), false)
+        }
+    } else if api.IsWindowVisible(d) != 0 {
+        if was != null {
+            api.EnableWindow(_found(was), true)
+        }
+        api.ShowWindow(d, api.SW_HIDE)
+    }
+}
+
+// A toplevel's close, the window manager's or a test's: a modal's is its
+// window's, which reports `@closed` where it is closable and leaves hiding
+// it to the program; a toplevel's hides it, which `:visible` hears, and
+// then reports `@closed`.
+func _close(w api.HWND) bool {
+    if !_ctls.contains(w) {
+        return false
+    }
+    var k = _ctls[w]
+    var of = k.modalOf
+    if of != null {
+        var m = _found(of)
+        if _ctls.contains(m) && _ctls[m].closable && _on.contains(m) {
+            var closed = _on[m].closed
+            closed()
+        }
+        return true
+    }
+    if k.kind != _kTop {
+        return false
+    }
+    _setVisible(w, false)
+    var h = _handlers(w)
+    var visible = h.visible
+    var closed = h.closed
+    visible(false)
+    closed()
+    return true
+}
+
+func _fireClose(w api.HWND) {
+    api.SendMessage(_host(w), api.WM_CLOSE, 0, 0)
+}
+
+// A window gone: what the runtime and the record kept beside it, a
+// toplevel shown counted out of those on screen.
+func _gone(w api.HWND, counted bool) {
+    _forgetKept(w, counted)
+    _forget(w)
+}
+
+// The toplevel a node the program attached is shown in destroyed, hidden
+// first, so it is counted out of what is on screen: Windows hides a window
+// it destroys before telling it, which no count sees.
+func _detachNode(node api.HWND) {
+    var top = node
+    if _ctls.contains(node) && _ctls[node].kind != _kTop {
+        var made = _ancestor(node, 2)
+        if _ctls.contains(made) {
+            top = made
+        }
+    }
+    if _ctls.contains(top) && _ctls[top].kind == _kTop && _ctls[top].modalOf == null {
+        _setVisible(top, false)
+    }
+    api.DestroyWindow(top)
+}
+
+// --- A box's procedure ---
+
+func _boxProc(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT {
+    var has = _ctls.contains(w)
+    var kind = has ? _ctls[w].kind : -1
+    if msg == api.WM_COMMAND {
+        return _command(w, msg, wp, lp, kind)
+    }
+    if msg == api.WM_CTLCOLORSTATIC || msg == api.WM_CTLCOLORBTN || msg == api.WM_CTLCOLOREDIT {
+        return _colored(w, msg, wp, lp)
+    }
+    if msg == api.WM_ERASEBKGND && has {
+        // A canvas's and a picture's paint fills what it draws over, off
+        // screen, so it does not flicker.
+        if kind == _kCanvas || kind == _kPicture {
+            return 1
+        }
+        var b = _inherited(w)
+        if b != null {
+            var r = api.RECT{left=0, top=0, right=0, bottom=0}
+            api.GetClientRect(w, &r)
+            _fill(w, _dcOf(wp), r, b)
+            return 1
+        }
+    }
+    if msg == api.WM_DRAWITEM {
+        var di = _drawOf(lp)
+        var item = _drawWindow(di)
+        if _ctls.contains(item) && _ctls[item].kind == _kButton {
+            _paintButton(di, item)
+            return 1
+        }
+    }
+    if msg == api.WM_NCHITTEST && kind == _kPicture {
+        // Its image takes the click.
+        return -1
+    }
+    if msg == _wmLoaded {
+        if kind == _kPicture {
+            _pictureLoaded(w)
+        }
+        return 0
+    }
+    if msg == _wmFetched {
+        _fetched(w, wp, lp)
+        return 0
+    }
+    if (msg == api.WM_PAINT || msg == api.WM_PRINTCLIENT) && has {
+        var k = _ctls[w]
+        if k.kind == _kFlow || k.kind == _kCanvas || k.kind == _kPicture || k.framed {
+            var fit = 0
+            var up = _parentOf(w)
+            if up != null && _ctls.contains(_found(up)) {
+                fit = _ctls[_found(up)].fit
+            }
+            var backdrop option[_Brush] = k.kind == _kPicture ? _inherited(w) : null
+            return _paint(w, msg, wp, k.brush, backdrop, fit, k.padTop, k.padRight, k.padLeft)
+        }
+    }
+    if msg == api.WM_LBUTTONUP {
+        if kind == _kFlow {
+            // A link's words open where it leads.
+            var span = _linkUnder(w, _signed16(_loword(lp)), _signed16(_hiword(lp)))
+            if span != null {
+                var s = _found(span)
+                if _ctls.contains(s) && _ctls[s].href != "" {
+                    _open(_ctls[s].href)
+                }
+            }
+            return 0
+        }
+        // A box with a click handler, a clickable card, is pressed as a
+        // button is, wherever in it the click lands: on a box it holds, or
+        // a picture, which lets the click through to its image.
+        if has && kind != _kTop {
+            _press(w)
+            return 0
+        }
+    }
+    if msg == api.WM_SETCURSOR && has && _on.contains(w) && _on[w].clicks && _loword(lp) == 1 {
+        _hand()
+        return 1
+    }
+    if msg == api.WM_SIZE {
+        if kind == _kTop {
+            _layOutTop(w)
+        }
+        return 0
+    }
+    if msg == api.WM_NOTIFY {
+        return _notified(w, msg, wp, lp)
+    }
+    if (msg == api.WM_VSCROLL || msg == api.WM_HSCROLL) && kind == _kScroll {
+        _scrolled(w, msg == api.WM_VSCROLL ? 1 : 0, _loword(wp))
+        return 0
+    }
+    if msg == api.WM_MOUSEWHEEL && kind == _kScroll {
+        _wheeled(w, _signed16(_hiword(wp)))
+        return 0
+    }
+    if msg == _wmReached {
+        _reached(w)
+        return 0
+    }
+    if msg == _wmOpen {
+        if kind == _kModal {
+            _showModal(w)
+        }
+        return 0
+    }
+    if msg == _wmPost {
+        _posted(lp)
+        return 0
+    }
+    if msg == api.WM_TIMER && _timer(w, wp) != 0 {
+        return 0
+    }
+    if msg == _wmLayout {
+        if has {
+            _layoutMessage(w)
+        }
+        return 0
+    }
+    if msg == _wmVisible {
+        if _on.contains(w) {
+            var visible = _on[w].visible
+            visible(wp != 0)
+        }
+        return 0
+    }
+    if msg == api.WM_DPICHANGED && kind == _kTop {
+        // Moved to a monitor of another DPI: the size Windows suggests, and
+        // everything in it measured again at the new one.
+        var r = _rectOf(lp)
+        _refresh(w, _hiword(wp))
+        _setWindowPos(w, null, _rectLeft(r), _rectTop(r), _rectRight(r) - _rectLeft(r), _rectBottom(r) - _rectTop(r), api.SWP_NOZORDER + api.SWP_NOACTIVATE)
+        _layOutTop(w)
+        return 0
+    }
+    if msg == api.WM_CLOSE && _close(w) {
+        return 0
+    }
+    if msg == api.WM_NCDESTROY {
+        _gone(w, has && kind == _kTop && _ctls[w].modalOf == null && api.IsWindowVisible(w) != 0)
+    }
+    return _defProc(w, msg, wp, lp)
+}
+
+// A control's WM_COMMAND to the window it is in, or a menu's command, its
+// entry's id, to a toplevel.
+func _command(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM, kind int) api.LRESULT {
+    var code = _hiword(wp)
+    if lp == 0 && code == 0 && kind == _kTop {
+        _menuCommand(w, _loword(wp))
+        return 0
+    }
+    var src = _windowOf(lp)
+    if !_ctls.contains(src) {
+        return _defProc(w, msg, wp, lp)
+    }
+    var k = _ctls[src]
+    if code == 0 {
+        // BN_CLICKED, and STN_CLICKED, a text's or a link's. A test's click
+        // reports it without opening anything.
+        if k.kind == _kLink && k.href != "" && !_firing {
+            _open(k.href)
+        }
+        if k.kind == _kText && !_firing {
+            _press(src)
+        } else {
+            _clicked(src)
+        }
+        return 0
+    }
+    if code == 768 {
+        // EN_CHANGE, which the runtime's own writes do not report.
+        if _quiet(src) == 0 {
+            _changed(src)
+        }
+        return 0
+    }
+    if code == 512 && k.kind == _kArea {
+        // EN_KILLFOCUS: a multi-line edit's text is committed as it is
+        // left, Enter being a line of it.
+        _activated(src)
+        return 0
+    }
+    if code == 1 && k.kind == _kSelect {
+        // CBN_SELCHANGE, which is BN_PAINT's code too.
+        _changed(src)
+        return 0
+    }
+    return _defProc(w, msg, wp, lp)
+}
+
+// A control's WM_NOTIFY: a tab chosen; a table's row about to be selected,
+// which one no row of which can be selected refuses, a row selected and a
+// column header clicked; a tree's node selected and expanded; a date
+// picked. What the runtime writes reports nothing.
+func _notified(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM) api.LRESULT {
+    var nm = _nmOf(lp)
+    var src = _nmFrom(nm)
+    if !_ctls.contains(src) {
+        return _defProc(w, msg, wp, lp)
+    }
+    var k = _ctls[src]
+    var code = _signed32(int(_nmCode(nm)))
+    if k.kind == _kTabs && code == -551 {
+        _tabChosen(src)
+        return 0
+    }
+    if k.kind == _kTable {
+        var lv = _lvOf(lp)
+        var stated = _has(int(_lvChanged(lv)), 8)
+        var selected = _has(int(_lvNewState(lv)), 2)
+        if code == -100 && stated && selected && !k.selectable && _quiet(src) == 0 {
+            return 1
+        }
+        if code == -101 && stated && selected && !_has(int(_lvOldState(lv)), 2) && _quiet(src) == 0 {
+            _ctls[src].row = _lvItem(lv)
+            _changed(src)
+            return 0
+        }
+        if code == -108 && k.sortable {
+            _ctls[src].sortCol = _lvSubItem(lv)
+            _clicked(src)
+            return 0
+        }
+    }
+    if k.kind == _kTree && code == -451 && _quiet(src) == 0 {
+        _changed(src)
+        return 0
+    }
+    if k.kind == _kTree && code == -455 && _quiet(src) == 0 {
+        _activated(src)
+        _relayout(src)
+        return 0
+    }
+    if k.kind == _kDate && code == -759 && _quiet(src) == 0 {
+        _changed(src)
+        return 0
+    }
+    return _defProc(w, msg, wp, lp)
+}
+
+// A picture's load, posted once it is in its image: why it failed, the
+// image's `@load` or `@failed`, and its layout again.
+func _pictureLoaded(w api.HWND) {
+    var up = _parentOf(w)
+    if up != null {
+        var frame = _found(up)
+        if _ctls.contains(frame) && _ctls[frame].kind == _kImage {
+            var got = _loaded(w, frame)
+            if got != 0 && _on.contains(frame) {
+                var h = _on[frame]
+                if got == 1 {
+                    var load = h.load
+                    load()
+                } else {
+                    var failed = h.failed
+                    failed()
+                }
+            }
+            _relayout(w)
+        }
+    }
+}
+
+// --- A control's procedure ---
+
+// Each control the runtime makes is subclassed with this: Enter in an edit
+// is its activation, a link and a flow's link show the hand, a progress
+// bar writes its text over itself, and a control going takes what is kept
+// beside it with it.
+func _controlProc(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM, id _UintPtr, data _DwordPtr) api.LRESULT {
+    var kind = _ctls.contains(w) ? _ctls[w].kind : -1
+    var activates = kind == _kEdit && _on.contains(w) && _on[w].activates
+    if msg == api.WM_GETDLGCODE && activates && lp != 0 {
+        // An edit taking Enter as its activation claims the key, which
+        // IsDialogMessage would take as the dialog's default button and
+        // send the window, where it does nothing.
+        var m = _msgOf(lp)
+        var what = int(_msgMessage(m))
+        if (what == api.WM_KEYDOWN || what == api.WM_CHAR) && int(_msgWparam(m)) == 13 {
+            var r = _defSubclass(w, msg, wp, lp)
+            return _has(r, 4) ? r : r + 4
+        }
+    }
+    if msg == api.WM_KEYDOWN && wp == 13 && activates {
+        _activated(w)
+        return 0
+    }
+    if msg == api.WM_CHAR && wp == 13 && kind == _kEdit {
+        // No beep for the Enter the activation took.
+        return 0
+    }
+    if msg == api.WM_SETCURSOR {
+        if kind == _kLink || kind == _kFlow && _overLink(w) != 0 {
+            _hand()
+            return 1
+        }
+    }
+    if (msg == api.WM_PAINT || msg == api.WM_PRINTCLIENT) && kind == _kProgress {
+        return _paintBar(w, msg, wp, lp)
+    }
+    if msg == api.WM_NCDESTROY {
+        _unsubclass(w)
+        _gone(w, false)
+    }
+    return _defSubclass(w, msg, wp, lp)
+}

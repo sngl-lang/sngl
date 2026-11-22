@@ -58,6 +58,12 @@ const func string.replace(s string, old string, new string) string
 #[_intrinsic("string.split")]
 const func string.split(s string, sep string) list[string]
 
+// The string of the one code point c, as its UTF-8: `string.fromCodePoint(233)`
+// is "é". A number no character is -- negative, past 0x10FFFF, or one of the
+// surrogate halves 0xD800 to 0xDFFF -- is U+FFFD, the replacement character.
+#[_intrinsic("string.fromCodePoint")]
+const func string.fromCodePoint(c int) string
+
 // True if sub appears anywhere in s. Equivalent to
 // `string.indexOf(s, sub) >= 0`.
 const func string.contains(s string, sub string) bool { return string.indexOf(s, sub) >= 0 }

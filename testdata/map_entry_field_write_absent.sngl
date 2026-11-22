@@ -1,0 +1,33 @@
+import test "sngl:test"
+import ui "sngl:ui"
+
+// A write of a field of a key a map does not hold makes its entry, its other
+// fields their defaults, on the interpreter as on every target: it read the
+// entry as nil and refused the write.
+struct Node {
+    hits int = 0
+    seen bool = false
+}
+
+var nodes map[int, Node] = {}
+
+func touch(k int) {
+    nodes[k].hits += 2
+    nodes[k].seen = true
+}
+
+component page ui.node {
+    ui.text(value="{nodes.length()}")
+}
+
+func testAFieldWriteMakesTheEntry(t test.Test) {
+    touch(3)
+    t.assert(nodes.length() == 1)
+    t.assert(nodes[3].hits == 2 && nodes[3].seen)
+    touch(3)
+    t.assert(nodes[3].hits == 4)
+}
+
+ui.window {
+    page
+}

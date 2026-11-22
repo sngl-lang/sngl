@@ -334,9 +334,7 @@ func CheckPackage(docs []*ast.Document, cfg *Config) (*ir.Package, []ir.Diagnost
 	c.checkAsyncRules()
 	c.checkOwnedDerived()
 	c.checkRetainsOutsideNode()
-	c.checkCCasts()
-	c.checkCCallbacks()
-	c.checkCStructs()
+	c.checkCDeclarations(c.pkg)
 	c.pkg.Symbols = c.symtab
 	// Last, because it needs every lib package loaded and every target's
 	// overrides merged.
@@ -786,6 +784,10 @@ type checker struct {
 	narrowUsed   map[narrowKey]bool
 	narrowChecks []narrowCheck
 	noNarrow     int
+	// untilAssigned is what a `for` head's null test establishes, which the
+	// loop's body takes as it starts and holds until it assigns the value
+	// (checkBlockScoped).
+	untilAssigned map[narrowKey]narrowFact
 
 	// Deferred const(expr) assertions. Const-ness can depend on function
 	// purity, which is only assigned after all bodies are checked, so the
@@ -2636,6 +2638,7 @@ func (c *checker) registerVars(decl *ast.VarDecl) {
 				AST:  decl,
 				Name: name,
 				Type: typ,
+				Pkg:  c.declPkg(),
 			}
 			c.applyMarks(decl, v)
 			c.refuseVarHandlers(spec, name)
@@ -3932,6 +3935,7 @@ func (c *checker) pass2() {
 	c.checkGenSchemes()
 	c.checkCLinks()
 	c.reportUnlinkedCNativeCalls()
+	c.checkCStaticArgs()
 	c.checkGenericCodecs()
 	c.checkOwnedReleases()
 

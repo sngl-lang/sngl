@@ -41,7 +41,9 @@ component link(const include string, const system bool = false, const cflags lis
 // `cast` declares a conversion rather than a function: a bodyless function of
 // one parameter whose name is the C type it converts to, which is the C type
 // its return type declares. `#[native("cairo_line_cap_t", cast)] const func toLineCap(v int) LineCap` makes a number one, and a pointer type makes a
-// pointer, or a node, one.
+// pointer, or a node, one, and a number, written with the integer alias it
+// is (`LPARAM`), a pointer handle, as a Win32 message's `LPARAM` is the
+// `NMHDR *` it carries.
 //
 // An alias carries it too, naming a C typedef of a type SNGL has:
 // `#[native("UINT")] struct UINT = int` is an `int` wherever it is written,
@@ -56,6 +58,17 @@ component link(const include string, const system bool = false, const cflags lis
 // `ref[RECT]` parameter is a pointer C fills, which the call writes back to
 // the variable `&r` names.
 //
+// A field may also be a `string` (a `char *`) or its `utf16` alias (a wide
+// one), a handle, or an option of a handle written with a `*`, NULL for
+// none, as Win32's `LVITEMW` holds its text. A string is valid for the call
+// the struct is handed to, by value or by `ref`, and no longer, and is not
+// read back: what C writes there is lost, and the program's struct keeps
+// the string it held, where a handle C wrote is read back. So a C function
+// answering such a struct is refused, having no string to keep, and a
+// buffer C fills with text is no field of one. A struct holding a string
+// is the program's value everywhere else -- kept, or handed C as a `held`
+// copy C cannot read as the C struct -- since only a call makes the C one.
+//
 // A function's `func` parameter is a callback, which C calls through a
 // function pointer and the `void *` it hands back: the parameter
 // `#[context]` marks, which no caller passes.
@@ -68,6 +81,32 @@ enum NativeFlag {
     // The function is a conversion to the C type its name spells, which its
     // return type declares, rather than a C function to call.
     cast
+
+    // The C function takes a variable argument list, as `printf` and GLib's
+    // `g_object_set` do. A declaration lists the arguments one call of it
+    // passes, so a function called two ways is declared twice; a language
+    // that cannot call one itself calls a C function of that one shape, which
+    // its build writes.
+    variadic
+
+    // The struct's C type is a typedef of a pointer, as GLib's `gpointer`
+    // is, which its name does not say: an option of it is the pointer, NULL
+    // where it holds none, as an option of a type written with a `*` is.
+    // Unflagged, NULL is a value of the typedef like any other, as it is of
+    // a Win32 `HWND` a function is handed for "no window".
+    pointer
+
+    // The function reads a member of a C struct, which its name spells as
+    // the struct and the member joined by a dot (`GError.message`): its
+    // first parameter is a handle whose C type is a pointer to that struct,
+    // and a call is `first->member`. With that one parameter it answers the
+    // member, read as a C function's result of its type is (a `char *`
+    // copied); with more, the member is a function pointer, called with the
+    // rest as a C function is, as GTK's class functions are
+    // (`GtkWidgetClass.measure`). A language that cannot read a member
+    // itself calls a C function of the declaration's one shape, which its
+    // build writes.
+    field
 }
 
 // A C string: a NUL-terminated copy of a `string` the program allocated, which
@@ -132,6 +171,55 @@ struct pointer {}
 // where the function takes `#[release]`, until C calls it.
 func context() ir.Macro
 
+// Marks a callback C calls with no context to find a closure by: the measure
+// of a GTK custom layout, a Win32 window procedure. The argument names a
+// function of a package, which C is handed as a function pointer of its own;
+// a lambda, or a method of a component, is refused, since nothing C hands
+// back would find what it captured. What such a function works on it reads
+// off what C hands it: a `held` value kept on the widget or the window.
+//
+// A function takes as many as it likes, and no `#[context]` for them. Beside
+// what any callback takes, one may take a `string`, C's `const char *`,
+// copied as C calls. A parameter or result its type writes with a
+// `#[native]` alias (`UINT`, `LPARAM`) crosses as that C type, so the
+// function C is handed is of the type C's own typedef declares.
+//
+// `convention` is the calling convention C calls the function with, where
+// it is not the platform's default: Win32's `CALLBACK`, which is
+// `__stdcall` on 32-bit x86, for a window procedure or a timer's. It is
+// written as it is given into the definition of the function C is handed --
+// `static LRESULT CALLBACK f(…)` -- and is free text, so a misspelled one is
+// an error of C's compiler, not SNGL's. With one, that function is handed
+// at the type its parameter's `#[type]` names with no cast, so C refuses a
+// function whose convention or parameters differ from the typedef's.
+// `#[static(convention="CALLBACK")] tick func(h HWND, msg UINT, id UINT_PTR, time DWORD)`
+// is a `TIMERPROC`.
+func static(convention string = "") ir.Macro
+
+// Marks a `#[static]` callback whose answer C reads through pointers: its
+// result is a struct of `int`, `float` and `bool` fields, and C hands the
+// callback one pointer for each, in order, after its arguments, as GTK hands
+// a layout's measure `int *minimum, int *natural`. A field whose pointer is
+// NULL is not written. The C function itself answers nothing.
+func outs() ir.Macro
+
+// Marks a `#[native]` function answering a C string it hands over, which
+// the program frees: the call copies the string, then hands C's pointer to
+// the C function `name` names (GLib's `g_free`, `free`), and NULL to none.
+// It answers a `string`, or an `option[string]` that is `null` where C
+// answers NULL. `#[frees("g_free")] func format(n int) string` declares
+// GLib's `g_strdup_printf`.
+//
+// On a `ref[string]` parameter it says the same of the string C stores
+// through the pointer it is handed, which it fills: C is handed a pointer
+// to NULL, and what it stored is copied once it returns and freed. GLib's
+// `g_file_get_contents` fills its `contents` so.
+//
+// Unmarked, a string C answers is C's own, which the call copies and never
+// frees, and a `ref[string]` is refused, since nothing says whose the
+// string C stores is.
+func frees(name string) ir.Macro
+
 // Marks the parameter a `#[native]` function taking a callback is handed the
 // function C calls, with the context, once it is done with the callback:
 // GLib's `GClosureNotify` and `GDestroyNotify`. The compiler passes one that
@@ -166,7 +254,24 @@ struct held[T any] = T
 // C refuses a function of another type. Go needs none, since cgo takes any
 // function there. On a `held` parameter it names the pointer typedef the C
 // function takes, as GLib's `gpointer` is, which cgo holds apart from
-// `void *`.
+// `void *`. On an `option[pointer]` it names the function-pointer typedef
+// a caller hands NULL for, writing `null`: GLib's `GDestroyNotify` where
+// nothing is let go.
+//
+// On a parameter that crosses as a pointer -- a string or its `utf16`
+// alias, an option of one, a `ref` to a C struct, a handle, or an option of
+// a handle whose C type is written with a `*` -- it names the integer
+// typedef the C parameter is, and the call casts the pointer to it, as
+// Win32's `SendMessageW` takes a string, a struct or a window in its
+// `LPARAM`: `#[type("LPARAM")] text utf16`. A language that cannot make an
+// integer of a pointer itself without letting go of what it points to
+// casts it in a C function of the declaration's one shape, which its build
+// writes. What the pointer points to lives for the call and no longer -- a
+// string copied for it is freed once it returns, a `ref` read back -- so
+// this is for a C function that is done with it when it returns, as a sent
+// message is; handed to one that keeps it, as `PostMessageW` does, it
+// dangles, which no compiler sees. A `cast` makes such an integer a pointer
+// handle again (`#[native("NMHDR *", cast)] func header(l LPARAM) Nmhdr`).
 func type(name string) ir.Macro
 
 #[native("void *", cast)]

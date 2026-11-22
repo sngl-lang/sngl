@@ -8,8 +8,8 @@
 // the SNGL declaration takes as Go spells it. Its body is the call a Go
 // program in direct mode would make: the tool runs lower.CMarshal over a call
 // of the declaration and writes it with the Go language's own emitter, so a
-// string, a struct and a callback cross exactly as they do there. A handle
-// type the functions cross is an alias of cgo's (`type HWND = C.HWND`), and
+// string, a struct and a callback cross exactly as they do there. Each handle
+// type the package declares is an alias of cgo's (`type HWND = C.HWND`), and
 // each C struct with fields the package declares is a Go struct declared
 // here, which a program's own literal of one names too.
 //
@@ -28,7 +28,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
@@ -79,10 +78,20 @@ func Generate(opts Options) (*Result, error) {
 	if len(opts.Pkgs) == 0 {
 		return nil, fmt.Errorf("cgogen: no package to wrap")
 	}
-	g := &gen{opts: opts, res: &Result{Files: map[string][]byte{}}, types: map[string]*ir.StructDef{}}
+	g := &gen{opts: opts, res: &Result{Files: map[string][]byte{}}, types: map[string]*ir.StructDef{}, statics: map[*ir.Func][]golang.Static{}}
 	g.handle = handleType(opts.Pkgs)
 	for _, p := range opts.Pkgs {
 		g.collect(p)
+	}
+	// A declaration named for its C function (`_gtk_box_new`, api's
+	// `GetParent`) is wrapped first, whichever package declares it, so it
+	// keeps the wrapper named for the C function whatever file declares
+	// another of it: win32's `_parentOf`, wrapped first, took `GetParent`,
+	// and api's own declaration was left with no wrapper.
+	for _, canonical := range []bool{true, false} {
+		for _, p := range opts.Pkgs {
+			g.collectFuncs(p, canonical)
+		}
 	}
 	if err := g.write(); err != nil {
 		return nil, err
@@ -109,6 +118,12 @@ type gen struct {
 	results map[string]*ir.StructDef
 	links   []*ir.CLink
 	sigs    []*ir.FuncSig
+	// statics are the functions the package exports for each wrapped
+	// declaration's static callbacks.
+	statics map[*ir.Func][]golang.Static
+	// shimmed are the wrapped declarations cgo cannot call as they are
+	// (ir.CalledCShimmed), whose C functions the preamble defines.
+	shimmed []*ir.Func
 	// held says a wrapper takes or answers a value C holds (sngl:x/c's
 	// held), which the package registers as it does a callback's closure.
 	held bool
@@ -143,18 +158,7 @@ func handleType(pkgs []*ir.Package) *ir.Type {
 
 // GoName is the exported Go name a C identifier is wrapped as:
 // `sngl_win32_append` is `SnglWin32Append`, `CreateWindowExW` itself.
-func GoName(c string) string {
-	var b strings.Builder
-	for part := range strings.SplitSeq(c, "_") {
-		if part == "" {
-			continue
-		}
-		r := []rune(part)
-		r[0] = unicode.ToUpper(r[0])
-		b.WriteString(string(r))
-	}
-	return b.String()
-}
+func GoName(c string) string { return golang.WrapperName(c) }
 
 func (g *gen) collect(p *ir.Package) {
 	for _, l := range p.CLinks {
@@ -162,23 +166,33 @@ func (g *gen) collect(p *ir.Package) {
 			g.links = append(g.links, l)
 		}
 	}
-	// Each C struct with fields, crossed or not: a Go program's own literal
-	// of one names the wrapper package's, as a call crossing it does.
+	// Each C struct with fields and each handle, crossed or not: a Go
+	// program's own literal of a struct names the wrapper package's, as a
+	// call crossing it does, and a program holding a handle no wrapper
+	// crosses spells it by its mark, or as cgo's type it has no `C` for.
 	for _, sd := range p.Structs {
-		if sd.Foreign.Path == ir.CPath && sd.IsCStruct() {
+		if sd.Foreign.Path == ir.CPath && sd.Foreign.C != nil {
 			g.goType(&ir.Type{Kind: ir.TypeStruct, Decl: sd})
 		}
 	}
-	// A declaration named for its C function (`_gtk_box_new`) is wrapped
-	// first, so it keeps the wrapper named for the C function whatever file
-	// declares another of it.
-	for _, canonical := range []bool{true, false} {
-		for _, fn := range p.Funcs {
-			if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
-				continue
+}
+
+// collectFuncs wraps p's declarations that are named for their C function,
+// or those that are not.
+func (g *gen) collectFuncs(p *ir.Package, canonical bool) {
+	for _, fn := range p.Funcs {
+		// A cast is its operand to Go, but one making a pointer of a
+		// number, which only C makes: a wrapper named for it.
+		if fn.CCastFromInt() && fn.Foreign.Path == ir.CPath {
+			if !canonical {
+				g.add(fn)
 			}
-			g.add(fn)
+			continue
 		}
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.Foreign.C != nil || (GoName(fn.Name) == GoName(fn.Foreign.Name)) != canonical {
+			continue
+		}
+		g.add(fn)
 	}
 }
 
@@ -189,31 +203,58 @@ func (g *gen) collect(p *ir.Package) {
 // g_signal_connect_data with a callback of each signal's shape.
 func (g *gen) add(fn *ir.Func) {
 	name := GoName(fn.Foreign.Name)
+	// A cast is named for its declaration, and so is a call casting a
+	// pointer to an integer, a shape of the C function's own (SendMessageW
+	// handed a SYSTEMTIME): named for the C function, the first met would
+	// take the name from the declaration crossing what C does.
+	if fn.IsCCast() || fn.CIntPointers() {
+		name = GoName(fn.Name)
+	}
 	w := g.wrapperFunc(fn, name)
 	sig := g.goSig(w, false)
 	if g.funcs == nil {
 		g.funcs = map[string]*wrapper{}
 	}
-	if prev, ok := g.funcs[name]; ok && g.goSig(prev.fn, false) != sig {
+	// A wrapper taking a static callback calls the function the last call
+	// handed it, from the pointer C kept: two declarations handing it
+	// different functions are two wrappers, or C calls the second's where
+	// it kept the first's (gtk4's custom layouts).
+	if prev, ok := g.funcs[name]; ok && (g.goSig(prev.fn, false) != sig || takesStatic(fn) || takesStatic(prev.decl)) {
 		own := GoName(fn.Name)
 		if other, taken := g.funcs[own]; taken && other.decl != fn {
 			g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): its Go signature differs from %s's, which wraps the C function, and %s is taken", fn.Name, fn.Foreign.Name, prev.decl.Name, own))
 			return
 		}
 		name = own
+		// The first wrapperFunc registered fn's static callbacks under
+		// the C function's name; the wrapper named for fn registers them
+		// again, which would export each twice.
+		delete(g.statics, fn)
 		w = g.wrapperFunc(fn, name)
 	}
 	if prev, ok := g.funcs[name]; ok {
-		if g.goSig(prev.fn, false) != sig {
+		if g.goSig(prev.fn, false) != sig || prev.decl != fn && (takesStatic(fn) || takesStatic(prev.decl)) {
 			g.res.Skipped = append(g.res.Skipped, fmt.Sprintf("%s (%s): its Go signature differs from %s's, which wraps the C function", fn.Name, fn.Foreign.Name, prev.decl.Name))
 			return
 		}
 	} else {
 		g.funcs[name] = &wrapper{decl: fn, fn: w, sig: g.goSig(w, true)}
+		// cgo calls no variadic function, nor a freeing function at its
+		// parameter's type: the wrapper calls a C function of the
+		// declaration's one shape, which the preamble defines as a
+		// program's own cgo would (golang.CShims).
+		if fn.CShimmed() {
+			g.shimmed = append(g.shimmed, fn)
+		}
 	}
 	if fn.AST != nil {
 		g.res.Marks = append(g.res.Marks, g.mark(fn.AST.Pos, name))
 	}
+}
+
+// takesStatic reports whether fn takes a callback C calls with no context.
+func takesStatic(fn *ir.Func) bool {
+	return slices.ContainsFunc(fn.Params, func(p *ir.Param) bool { return p.CStatic })
 }
 
 // wrapperFunc is the SNGL function the wrapper is: fn's parameters but the
@@ -255,10 +296,32 @@ func (g *gen) wrapperFunc(fn *ir.Func, name string) *ir.Func {
 			np.Type, g.held = ir.TypAny, true
 		}
 		w.Params = append(w.Params, np)
-		if np.Type != nil && np.Type.Kind == ir.TypeOption {
+		// An option a ref holds is the ref's, whose temp C is handed NULL
+		// in (golang's CCall), so the call need not split on it.
+		if np.Type != nil && np.Type.Kind == ir.TypeOption && p.Type.Kind != ir.TypeRef {
 			opts = append(opts, len(args))
 		}
 		args = append(args, &ir.Ident{Name: np.Name, Sym: np, Type: np.Type})
+		// A callback C calls with no context is a function of the program's,
+		// which this package cannot name: the wrapper takes it as a Go
+		// value, and the package exports a function calling whichever the
+		// last call handed it. What a `#[c.outs]` one answers is the
+		// program's record, declared here field for field.
+		if p.CStatic && p.Type != nil && p.Type.Sig != nil {
+			if p.COuts {
+				if sd, ok := p.Type.Sig.Return.Decl.(*ir.StructDef); ok {
+					def := &ir.StructDef{Fields: sd.Fields}
+					def.Name = golang.WrapperOutsName(name, p)
+					if g.results == nil {
+						g.results = map[string]*ir.StructDef{}
+					}
+					g.results[def.Name] = def
+					np.Type = ir.FuncOf(np.Type.Sig.Params, &ir.Type{Kind: ir.TypeStruct, Decl: def})
+				}
+			}
+			g.statics[fn] = append(g.statics[fn], golang.Static{Name: golang.WrapperStaticName(fn, p), Param: &ir.Param{Name: p.Name, Type: np.Type, CStatic: true, COuts: p.COuts, CConvention: p.CConvention}})
+			continue
+		}
 		if p.Type != nil && p.Type.Kind == ir.TypeFunc && p.Type.Sig != nil {
 			g.sigs = append(g.sigs, p.Type.Sig)
 		}
@@ -414,15 +477,8 @@ func (g *gen) goSig(w *ir.Func, named bool) string {
 	return "(" + strings.Join(ps, ", ") + ")" + r
 }
 
-// typeName is the exported Go name of the type a SNGL struct named n is: n
-// capitalized, or, where n is a package's own (`_p_GtkWidget`), each of its
-// words capitalized (`PGtkWidget`), as GoName spells a C function.
-func typeName(n string) string {
-	if strings.HasPrefix(n, "_") {
-		return GoName(n)
-	}
-	return golang.ExportName(n)
-}
+// typeName is the exported Go name of the type a SNGL struct named n is.
+func typeName(n string) string { return golang.WrapperTypeName(n) }
 
 // pkgName is the Go package's name, the last element of its import path.
 func (g *gen) pkgName() string {
@@ -494,7 +550,11 @@ func (g *gen) write() error {
 		types.WriteString("}\n")
 	}
 	for _, name := range slices.Sorted(maps.Keys(g.results)) {
-		fmt.Fprintf(&types, "\n// %s is what %s hands back.\ntype %s struct {\n", name, strings.TrimSuffix(name, "Result"), name)
+		if w, ok := strings.CutSuffix(name, "Result"); ok {
+			fmt.Fprintf(&types, "\n// %s is what %s hands back.\ntype %s struct {\n", name, w, name)
+		} else {
+			fmt.Fprintf(&types, "\n// %s is what a callback answers where C reads the answer through pointers, field for field the program's record.\ntype %s struct {\n", name, name)
+		}
 		for _, f := range g.results[name].Fields {
 			fmt.Fprintf(&types, "\t%s %s\n", golang.ExportName(f.Name), g.goType(f.Type))
 		}
@@ -504,7 +564,7 @@ func (g *gen) write() error {
 	if !slices.ContainsFunc(links, func(l *ir.CLink) bool { return l.Include == "stdlib.h" }) {
 		links = append(slices.Clip(links), &ir.CLink{Include: "stdlib.h", System: true})
 	}
-	cgo := g.cflags() + golang.CPreambleLines(links)
+	cgo := g.cflags() + golang.CPreambleLines(links) + golang.CShims(g.shimmed)
 	var src strings.Builder
 	src.WriteString(g.header(cgo))
 	if imps := gc.Imports(); len(imps) > 0 {
@@ -526,7 +586,11 @@ func (g *gen) write() error {
 		return fmt.Errorf("cgogen: the wrappers do not parse: %w\n%s", err, src.String())
 	}
 	g.res.Files["wrappers.go"] = out
-	if cb := golang.CallbacksSource(g.pkgName(), links, g.sigs, g.held, true); cb != nil {
+	var statics []golang.Static
+	for _, name := range slices.Sorted(maps.Keys(g.funcs)) {
+		statics = append(statics, g.statics[g.funcs[name].decl]...)
+	}
+	if cb := golang.CallbacksSource(g.pkgName(), links, g.sigs, statics, ir.CCallsDirect, g.held, true); cb != nil {
 		cb = []byte(strings.Replace(string(cb), "// Code generated by sngl; DO NOT EDIT.\n\n", strings.TrimSuffix(g.header(""), "package "+g.pkgName()+"\n\n"), 1))
 		out, err := format.Source(cb)
 		if err != nil {

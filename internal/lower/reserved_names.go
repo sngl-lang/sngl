@@ -280,6 +280,7 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 	for _, v := range pkg.Vars {
 		r.variable(v, nil)
 	}
+	r.libFuncs(pkg)
 	for _, fn := range pkg.Funcs {
 		r.fn(fn, nil)
 	}
@@ -399,6 +400,50 @@ func (r *reservedRenamer) collect(pkg *ir.Package) {
 		_ = ir.Walk(comp, visit)
 	}
 	r.outer = nil
+}
+
+// libFuncs renames a library function passLibFuncs promoted whose name the
+// program's top level, or a function another package promoted first, already
+// spells. Each package names its own, but a target writes them all in one
+// namespace: Go's package main, where a program's `hover` beside
+// `gtk4.hover` was `Hover` declared twice. Go exports both, so a name is
+// compared as Go spells it, its first letter upper case.
+// (testdata/gtk4_func_named_as_platform_runs.txtar)
+func (r *reservedRenamer) libFuncs(pkg *ir.Package) {
+	spelled := func(name string) string {
+		if name == "" {
+			return ""
+		}
+		return strings.ToUpper(name[:1]) + name[1:]
+	}
+	taken := map[string]bool{}
+	for _, v := range append(append([]*ir.Var{}, pkg.Consts...), pkg.Vars...) {
+		taken[spelled(v.Name)] = true
+	}
+	var lib []*ir.Func
+	for _, fn := range pkg.Funcs {
+		if fn.IsMethod() || fn.IsTest || fn.Name == "" {
+			continue
+		}
+		if fn.PkgPath() != "" && !hostOwned(fn) {
+			lib = append(lib, fn)
+			continue
+		}
+		taken[spelled(fn.Name)] = true
+	}
+	for _, fn := range lib {
+		if _, done := r.syms[fn]; done {
+			continue
+		}
+		if !taken[spelled(fn.Name)] {
+			taken[spelled(fn.Name)] = true
+			continue
+		}
+		n := r.fresh(fn.Name)
+		r.syms[fn] = n
+		fn.Name = n
+		taken[spelled(n)] = true
+	}
 }
 
 // local renames a body's local or loop variable whose name is reserved or

@@ -38,25 +38,14 @@ func _fire_GtkBox_destroy(w GtkBox) {
     _rtSignalEmit(w, "destroy")
 }
 
-#[c.native("void *", cast)]
-const func _ptr_GtkBox(w GtkBox) c.pointer
-
-#[c.native("sngl_box_append")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxAppend")]
-func _sngl_box_append(parent _p_GtkWidget, child _p_GtkWidget)
-
 #[gen.protocol(append)]
 func _append_GtkBox(parent GtkBox, child ui.node) {
-    _sngl_box_append(_as_GtkWidget(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))
+    boxAppend(parent, child)
 }
-
-#[c.native("sngl_box_insert_before")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglBoxInsertBefore")]
-func _sngl_box_insert_before(parent _p_GtkWidget, anchor _p_GtkWidget, child _p_GtkWidget)
 
 #[gen.protocol(insertBefore)]
 func _insert_GtkBox(parent GtkBox, child ui.node, before ui.node) {
-    _sngl_box_insert_before(_as_GtkWidget(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(before)), _as_GtkWidget(_widget(child)))
+    boxInsertBefore(parent, child, before)
 }
 
 #[c.native("gtk_box_remove")]
@@ -67,6 +56,9 @@ func _gtk_box_remove(parent _p_GtkBox, child _p_GtkWidget)
 func _remove_GtkBox(parent GtkBox, child ui.node) {
     _gtk_box_remove(_as_GtkBox(_ptr_GtkBox(parent)), _as_GtkWidget(_widget(child)))
 }
+
+#[c.native("void *", cast)]
+const func _ptr_GtkBox(w GtkBox) c.pointer
 
 #[c.native("gtk_box_set_spacing")]
 #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GtkBoxSetSpacing")]
@@ -1758,30 +1750,58 @@ struct _p_GtkWindow {}
 #[c.native("GtkWindow *", cast)]
 const func _as_GtkWindow(p c.pointer) _p_GtkWindow
 
-#[c.native("sngl_signal_connect")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSignalConnect")]
-func _rtSignalConnect(
-    w      ui.node,
-    signal string,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+#[c.native("gpointer", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SignalPointer")]
+struct _SignalPointer {}
 
-#[c.native("sngl_notify_connect")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglNotifyConnect")]
-func _rtNotifyConnect(
-    w      ui.node,
-    signal string,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+#[c.native("gpointer", cast)]
+func _signalPointer(p c.pointer) _SignalPointer
+
+#[c.native("gulong")]
+struct _SignalHandler = int
+
+#[c.native("GConnectFlags")]
+struct _SignalFlags = int
+
+#[c.native("g_signal_connect_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.GSignalConnectData")]
+func _signalConnectData(
+    instance _SignalPointer,
+    signal   string,
+    #[c.type("GCallback")] fn func(self _SignalPointer),
+    #[c.context] ctx _SignalPointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags    _SignalFlags,
+) _SignalHandler
+
+#[c.native("g_signal_connect_data")]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.NotifyConnectData")]
+func _notifyConnectData(
+    instance _SignalPointer,
+    signal   string,
+    #[c.type("GCallback")] fn func(self _SignalPointer, spec _SignalPointer),
+    #[c.context] ctx _SignalPointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags    _SignalFlags,
+) _SignalHandler
+
+func _rtSignalConnect(w ui.node, signal string, fn func()) {
+    _signalConnectData(_signalPointer(_widget(w)), signal, func(self _SignalPointer) { fn() }, _SignalFlags(0))
+}
+
+func _rtNotifyConnect(w ui.node, signal string, fn func()) {
+    _notifyConnectData(_signalPointer(_widget(w)), signal, func(self _SignalPointer, spec _SignalPointer) { fn() }, _SignalFlags(0))
+}
 
 // Emits w's signal as GTK would, which a test fires an event with.
-#[c.native("sngl_signal_emit")]
-#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglSignalEmit")]
-func _rtSignalEmit(w ui.node, signal string)
+func _rtSignalEmit(w ui.node, signal string) {
+    _signalEmitByName(_as_GtkWidget(_widget(w)), signal)
+}
+
+// g_signal_emit_by_name with no argument beyond the signal's name.
+#[c.native("g_signal_emit_by_name", variadic)]
+#[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SignalEmitByName")]
+func _signalEmitByName(w _p_GtkWidget, signal string)
 
 // Connects handler to w's signal, as the connect protocol does. A property
 // notification is its event's own protocol.

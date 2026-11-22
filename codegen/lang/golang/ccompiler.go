@@ -85,7 +85,10 @@ func CPreambleLines(links []*ir.CLink) string {
 // the platform's wrappers do not cover -- is called directly, as `direct`
 // calls every one: the program includes that package's links' headers, and
 // the headers they ship, but none of their C, which the wrapper package
-// compiles.
+// compiles. A program's own package is wrapped the same way where one of its
+// functions has a Go spelling beside its C name (puts in C, fmt.Println in
+// Go), but no wrapper package compiles its C: a call of one of its others
+// links that package's own links whole.
 func CLinks(pkg *ir.Package) []*ir.CLink {
 	if pkg.CCalls == ir.CCallsPurego {
 		return nil
@@ -103,12 +106,20 @@ func CLinks(pkg *ir.Package) []*ir.CLink {
 				continue
 			}
 			headers[l] = true
+			if !c.Func.Pkg.Library && slices.Contains(c.Func.Pkg.CLinks, l) {
+				out = append(out, l)
+				continue
+			}
 			h := *l
 			h.Sources = slices.DeleteFunc(slices.Clone(l.Sources), func(src ir.CSource) bool { return !strings.HasSuffix(src.Name, ".h") })
 			out = append(out, &h)
 		}
 		return nil
 	})
+	// After the headers declaring what it calls.
+	if l := shimsLink(pkg); l != nil {
+		out = append(out, l)
+	}
 	return out
 }
 
@@ -150,7 +161,11 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		}
 	}
 	wrapped := func(fn *ir.Func) bool { return wrapper(&fn.Foreign, pkg.CCalls) != nil }
-	if sigs, held := ir.ReachedCCallbacks(pkg, wrapped), ir.ReachesCHeld(pkg, wrapped); len(sigs) > 0 || held {
+	var statics []Static
+	for _, s := range ir.CalledCStatics(pkg, wrapped) {
+		statics = append(statics, Static{Name: staticName(s.Callee), Param: s.Param})
+	}
+	if sigs, held := ir.ReachedCCallbacks(pkg, wrapped), ir.ReachesCHeld(pkg, wrapped); len(sigs) > 0 || held || len(statics) > 0 {
 		name, err := generatedPackage(generated)
 		if err != nil {
 			return nil, err
@@ -161,7 +176,7 @@ func (t *Translator) CSources(pkg *ir.Package, generated map[string][]byte) (map
 		if out == nil {
 			out = map[string][]byte{}
 		}
-		out[callbacksFile] = CallbacksSource(name, links, sigs, held, pkg.CCalls == ir.CCallsDirect)
+		out[callbacksFile] = CallbacksSource(name, links, sigs, statics, pkg.CCalls, held, pkg.CCalls == ir.CCallsDirect)
 	}
 	return out, nil
 }

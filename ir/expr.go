@@ -469,12 +469,16 @@ func (lit *StructLit) EachField(fn func(FieldInit)) {
 
 // HoldsOmitted reports whether f, a field of lit, holds what lit would hold
 // with f left out, so that a literal spelled from a value need not write it.
+//
+// Not where the declaration's default is unfolded (DefaultFolded): what lit
+// would hold is the same, but a backend spells a field left out from the
+// declaration, and could not spell that one.
 func (lit *StructLit) HoldsOmitted(f FieldInit) bool {
 	if f.Spread || !lit.declared() {
 		return false
 	}
 	d := FieldNamed(lit.Def.Fields, f.Name)
-	return d != nil && SameConstant(f.Value, FieldZero(lit.Type, d))
+	return d != nil && d.DefaultFolded() && SameConstant(f.Value, FieldZero(lit.Type, d))
 }
 
 // declared reports whether lit's declaration says what a field it leaves out

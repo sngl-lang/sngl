@@ -1133,7 +1133,10 @@ func (c *checker) isAddressable(e ir.Expr) bool {
 }
 
 func (c *checker) inferTernary(x *ast.TernaryExpr) ir.Expr {
-	condExpr := c.checkExpr(x.Cond)
+	// The condition is a bool whatever the ternary is expected to be: read
+	// expecting the float `g = n != 0 ? 1.0 : 0.0` assigns, its 0 was a float
+	// beside the int n.
+	condExpr := c.checkExprExpecting(x.Cond, ir.TypBool)
 	// The arms of a ternary are the two branches of an if, so a null test in
 	// the condition narrows them the same way.
 	restorePrelude := c.noPrelude()
@@ -1607,7 +1610,19 @@ func (c *checker) inferQualifiedCall(sel *ast.SelectExpr, call *ast.CallExpr, ns
 			if target, ok := stringReprCast(fsym); ok {
 				return c.inferBuiltinConversion(call, target, ident.Name+"."+sel.Field)
 			}
+			// An alias of a scalar converts as the bare name does:
+			// `api.UINT(n)` is `UINT(n)`.
+			if typ, kind, ok := scalarOf(c.aliasedDecl(fsym)); ok && kind.IsConvertibleScalar() {
+				return c.inferBuiltinConversion(call, typ, ident.Name+"."+sel.Field)
+			}
 			t := c.symType(fsym)
+			// What is neither a function nor a value holding one is no
+			// call, as a bare name is none: a struct named through its
+			// package had been a call of nothing every backend refused.
+			if _, isVar := fsym.(*ir.Var); !isVar && t != nil && t.Kind != ir.TypeFunc && t.Kind != ir.TypeInvalid {
+				c.errorNotCallable(call, &ir.Ident{Type: t, Name: sel.Field, Sym: fsym}, t)
+				return &ir.Call{AST: call, Type: TypInvalid, Args: c.checkCallArgs(call.Args, nil)}
+			}
 			var sig *ir.FuncSig
 			if t != nil && t.Kind == ir.TypeFunc && t.Sig != nil {
 				sig = t.Sig
@@ -2557,9 +2572,16 @@ func (c *checker) inferIndex(x *ast.IndexExpr) ir.Expr {
 	case operand != nil && operand.Kind == ir.TypeMap && len(operand.Elems) == 2:
 		want = operand.Elems[0]
 	}
+	// The index is a value read even where the indexing is storage, an
+	// assignment's target or `&`'s operand, which suspend narrowing for
+	// what they name: `nodes[k].seen = true` under `if k != null` read k as
+	// the option.
 	var indexExpr ir.Expr = &ir.Literal{Type: TypInvalid}
 	if len(x.Indices) > 0 {
+		suspended := c.noNarrow
+		c.noNarrow = 0
 		indexExpr = c.checkExprExpecting(x.Indices[0], want)
+		c.noNarrow = suspended
 	}
 
 	// An index on nothing: `xs.push(v)[0]` reaches here with a void operand,
@@ -3858,6 +3880,8 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 	if block == nil || !block.IsDefined() {
 		return nil
 	}
+	until := c.untilAssigned
+	c.untilAssigned = nil
 	c.pushScope()
 	defer c.popScope()
 	if isScope {
@@ -3867,6 +3891,23 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 		}
 	}
 	var out []ir.Stmt
+	// What narrows to the end of the block: each null test whose branch
+	// always leaves, from the statement after it.
+	type leftNarrowing struct {
+		restore func()
+		region  []ir.Stmt
+		start   int
+	}
+	var left []*leftNarrowing
+	// A loop head's null test holds in its body until the body assigns
+	// what it tested: the statements before that one are its region, and
+	// the value assigned is read under it.
+	var untilRegion []ir.Stmt
+	var untilExpr ir.Expr
+	var restoreUntil func()
+	if len(until) > 0 {
+		restoreUntil = c.pushNarrowings(until, &untilRegion, &untilExpr)
+	}
 	for _, stmt := range block.Stmts {
 		var prelude []ir.Stmt
 		restore := c.preludeFor(&prelude)
@@ -3878,7 +3919,42 @@ func (c *checker) checkBlockScoped(block *ast.StmtBlock, isScope bool, headNames
 		}
 		restore()
 		out = append(out, prelude...)
+		at := len(out)
 		out = append(out, checked...)
+		if restoreUntil != nil {
+			for i, s := range checked {
+				if a, ok := s.(*ir.Assign); ok && assignsNarrowed(a, until) {
+					untilRegion, untilExpr = out[:at+i], a.Value
+					restoreUntil()
+					restoreUntil = nil
+					break
+				}
+			}
+		}
+		if c.funcDepth == 0 {
+			continue
+		}
+		for _, s := range checked {
+			facts := narrowingsAfter(s)
+			for k := range facts {
+				if _, held := until[k]; held && restoreUntil != nil {
+					delete(facts, k)
+				}
+			}
+			if len(facts) > 0 {
+				l := &leftNarrowing{start: len(out)}
+				l.restore = c.pushNarrowings(facts, &l.region, nil)
+				left = append(left, l)
+			}
+		}
+	}
+	for _, l := range slices.Backward(left) {
+		l.region = out[l.start:]
+		l.restore()
+	}
+	if restoreUntil != nil {
+		untilRegion = out
+		restoreUntil()
 	}
 	return out
 }
@@ -5921,7 +5997,17 @@ func (c *checker) checkHeadlessFor(x *ast.ForStmt, cond ir.Expr) *ir.For {
 	}
 	c.pushScope()
 	c.loopDepth++
+	// The head is tested before each turn, so what it establishes holds in
+	// the body until the body assigns it.
+	if cond != nil {
+		facts := map[narrowKey]narrowFact{}
+		narrowingsFrom(cond, true, facts)
+		if len(facts) > 0 {
+			c.untilAssigned = facts
+		}
+	}
 	body := c.checkScopeBlockIR(&x.Body)
+	c.untilAssigned = nil
 	c.loopDepth--
 	var elseBody []ir.Stmt
 	if cond != nil && x.Else.IsDefined() {
@@ -6086,6 +6172,12 @@ func (c *checker) errorNotCallable(x *ast.CallExpr, callee ir.Expr, t *ir.Type) 
 		// their own, so the struct-literal hint would be wrong for them.
 		if sym.Builtin.IsGeneric() {
 			c.error(x.Pos, "cannot cast to %s", t)
+			return
+		}
+		// A handle is C's pointer, which C hands out or a cast function
+		// makes; it has no fields a literal could fill either.
+		if ct := ir.CTypeOf(t); ct != nil && ir.CStructOf(t) == nil {
+			c.error(x.Pos, "cannot convert to %s, a C handle: a handle is made by a cast function, #[c.native(%q, cast)] func f(v T) %s", t, ct.String(), t)
 			return
 		}
 		c.error(x.Pos, "cannot cast to struct %s (use a struct literal: {field = value})", t)

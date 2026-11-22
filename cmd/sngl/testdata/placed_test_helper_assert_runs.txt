@@ -1,0 +1,157 @@
+# A function a test hands its `Test` asserts and waits through it as the
+# test body does, on a placed program in C and Go, on win32 and gtk4: the
+# helper is written with the tests, its `t` the agent's test, where C wrote
+# win32's Go wait loop into it, or refused its `t.assert`, and Go had no
+# implementation of `t.assert`. A helper's failure fails the test calling it.
+
+! sngl test --platform=win32 --language=c app.sngl
+stdout '--- PASS: /AHelperPasses'
+stdout '--- FAIL: /AHelperFails'
+stdout '2 tests, 1 failures'
+
+! sngl test --platform=win32 --language=go app.sngl
+stdout '--- PASS: /AHelperPasses'
+stdout '--- FAIL: /AHelperFails'
+stdout '2 tests, 1 failures'
+
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+
+! sngl test --platform=gtk4 --language=c app.sngl
+stdout '--- PASS: /AHelperPasses'
+stdout '--- FAIL: /AHelperFails'
+stdout '2 tests, 1 failures'
+
+! sngl test --platform=gtk4 --language=go app.sngl
+stdout '--- PASS: /AHelperPasses'
+stdout '--- FAIL: /AHelperFails'
+stdout '2 tests, 1 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component counter ui.node {
+    var hits = 0
+
+    ui.button #b(text="{hits}", @click { hits += 1 })
+}
+
+var asked = 0
+
+func atLeast(t test.Test, got int, want int) {
+    t.assert(got >= want)
+}
+
+func settle(t test.Test) {
+    asked = 0
+    t.wait(
+        func() bool {
+            asked += 1
+            return asked > 2
+        },
+        2000,
+    )
+    t.assert(asked == 3)
+}
+
+func testAHelperPasses(t test.Test, c counter) {
+    c.b.click()
+    settle(t)
+    atLeast(t, c.hits, 1)
+}
+
+func testAHelperFails(t test.Test, c counter) {
+    atLeast(t, c.hits, 1)
+}
+
+ui.window {
+    counter
+}
+-- testrun/gtk4/c/app.sngl/counter/1 --
+sha256:585235e3b9ac1af60ef34fd1d3007702
+{
+  "results": [
+    {
+      "Desc": "AHelperPasses",
+      "Passed": true
+    },
+    {
+      "Desc": "AHelperFails",
+      "Error": "assert failed: (got \u003e= want)",
+      "Failures": [
+        {
+          "Message": "assert failed: (got \u003e= want)"
+        }
+      ],
+      "Log": [
+        "assert failed: (got \u003e= want)"
+      ]
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/counter/1 --
+sha256:a9be2ef4a8361b2ab4cebe0a6b9b45d4
+{
+  "results": [
+    {
+      "Desc": "AHelperFails",
+      "Error": "assert failed: (got \u003e= want)",
+      "Failures": [
+        {
+          "Message": "assert failed: (got \u003e= want)"
+        }
+      ],
+      "Log": [
+        "assert failed: (got \u003e= want)"
+      ]
+    },
+    {
+      "Desc": "AHelperPasses",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/counter/1 --
+sha256:7540be5731592da4ff4f54a7d9ead4e8
+{
+  "results": [
+    {
+      "Desc": "AHelperPasses",
+      "Passed": true
+    },
+    {
+      "Desc": "AHelperFails",
+      "Error": "assert failed: (got \u003e= want)",
+      "Failures": [
+        {
+          "Message": "assert failed: (got \u003e= want)"
+        }
+      ],
+      "Log": [
+        "assert failed: (got \u003e= want)"
+      ]
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/counter/1 --
+sha256:6c71a4732d76ae9f4cd8569d420f6a00
+{
+  "results": [
+    {
+      "Desc": "AHelperFails",
+      "Error": "assert failed: (got \u003e= want)",
+      "Failures": [
+        {
+          "Message": "assert failed: (got \u003e= want)"
+        }
+      ],
+      "Log": [
+        "assert failed: (got \u003e= want)"
+      ]
+    },
+    {
+      "Desc": "AHelperPasses",
+      "Passed": true
+    }
+  ]
+}

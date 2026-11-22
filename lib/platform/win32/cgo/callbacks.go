@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 65b14598f64ae71d1ed35a39
+// The C sources, as a change to them builds this package again: e4abb333a9cf62667fb0d216
 
 package cgo
 
@@ -13,9 +13,32 @@ package cgo
 #include <stdlib.h>
 #include <stdint.h>
 
-extern void snglCallback_bool__void(int, void *);
 extern void snglCallback_sngl_win32_gfx_p__void(sngl_win32_gfx *, void *);
 extern void snglCallback_void__void(void *);
+extern LRESULT snglStatic__procs_box(HWND, UINT, WPARAM, LPARAM);
+
+static LRESULT CALLBACK snglStatic__procs_box_CALLBACK(HWND a0, UINT a1, WPARAM a2, LPARAM a3) {
+	return snglStatic__procs_box((HWND)a0, (UINT)a1, (WPARAM)a2, (LPARAM)a3);
+}
+
+typedef LRESULT (CALLBACK *snglStatic__procs_box_CALLBACK_t)(HWND, UINT, WPARAM, LPARAM);
+
+static snglStatic__procs_box_CALLBACK_t snglStatic__procs_box_CALLBACK_get(void) {
+	return snglStatic__procs_box_CALLBACK;
+}
+extern LRESULT snglStatic__procs_control(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+
+static LRESULT CALLBACK snglStatic__procs_control_CALLBACK(HWND a0, UINT a1, WPARAM a2, LPARAM a3, UINT_PTR a4, DWORD_PTR a5) {
+	return snglStatic__procs_control((HWND)a0, (UINT)a1, (WPARAM)a2, (LPARAM)a3, (UINT_PTR)a4, (DWORD_PTR)a5);
+}
+
+typedef LRESULT (CALLBACK *snglStatic__procs_control_CALLBACK_t)(HWND, UINT, WPARAM, LPARAM, UINT_PTR, DWORD_PTR);
+
+static snglStatic__procs_control_CALLBACK_t snglStatic__procs_control_CALLBACK_get(void) {
+	return snglStatic__procs_control_CALLBACK;
+}
+extern int snglStatic__procs_nkids(HWND);
+extern HWND snglStatic__procs_kid(HWND, int);
 extern void snglRelease(void *);
 
 static void *sngl_context(uintptr_t i) { return (void *)i; }
@@ -55,17 +78,6 @@ func snglRelease(ctx unsafe.Pointer) { cbind.Release(int(uintptr(ctx)) - snglCon
 // snglReleasePtr is snglRelease as the function pointer C calls.
 func snglReleasePtr() *[0]byte { return (*[0]byte)(C.snglRelease) }
 
-//export snglCallback_bool__void
-func snglCallback_bool__void(a0 C.int, ctx unsafe.Pointer) {
-	fn, ok := snglClosure(ctx).(func(bool))
-	if ok {
-		fn(a0 != 0)
-	}
-}
-
-// snglCallback_bool__voidPtr is snglCallback_bool__void as the function pointer C calls.
-func snglCallback_bool__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_bool__void) }
-
 //export snglCallback_sngl_win32_gfx_p__void
 func snglCallback_sngl_win32_gfx_p__void(a0 *C.sngl_win32_gfx, ctx unsafe.Pointer) {
 	fn, ok := snglClosure(ctx).(func(*C.sngl_win32_gfx))
@@ -89,3 +101,57 @@ func snglCallback_void__void(ctx unsafe.Pointer) {
 
 // snglCallback_void__voidPtr is snglCallback_void__void as the function pointer C calls.
 func snglCallback_void__voidPtr() *[0]byte { return (*[0]byte)(C.snglCallback_void__void) }
+
+// snglStatic__procs_boxFn is the program's function C calls snglStatic__procs_box for, which the call handing it to C sets.
+var snglStatic__procs_boxFn func(C.HWND, int, int, int) int
+
+//export snglStatic__procs_box
+func snglStatic__procs_box(a0 C.HWND, a1 C.UINT, a2 C.WPARAM, a3 C.LPARAM) C.LRESULT {
+	return C.LRESULT(snglStatic__procs_boxFn(a0, int(a1), int(a2), int(a3)))
+}
+
+// snglStatic__procs_boxPtr is snglStatic__procs_box as the function pointer C calls.
+func snglStatic__procs_boxPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_box) }
+
+// snglStatic__procs_box_CALLBACKPtr is snglStatic__procs_box as the function pointer C calls: snglStatic__procs_box_CALLBACK, which calls it CALLBACK.
+func snglStatic__procs_box_CALLBACKPtr() *[0]byte {
+	return (*[0]byte)(C.snglStatic__procs_box_CALLBACK_get())
+}
+
+// snglStatic__procs_controlFn is the program's function C calls snglStatic__procs_control for, which the call handing it to C sets.
+var snglStatic__procs_controlFn func(C.HWND, int, int, int, int, int) int
+
+//export snglStatic__procs_control
+func snglStatic__procs_control(a0 C.HWND, a1 C.UINT, a2 C.WPARAM, a3 C.LPARAM, a4 C.UINT_PTR, a5 C.DWORD_PTR) C.LRESULT {
+	return C.LRESULT(snglStatic__procs_controlFn(a0, int(a1), int(a2), int(a3), int(a4), int(a5)))
+}
+
+// snglStatic__procs_controlPtr is snglStatic__procs_control as the function pointer C calls.
+func snglStatic__procs_controlPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_control) }
+
+// snglStatic__procs_control_CALLBACKPtr is snglStatic__procs_control as the function pointer C calls: snglStatic__procs_control_CALLBACK, which calls it CALLBACK.
+func snglStatic__procs_control_CALLBACKPtr() *[0]byte {
+	return (*[0]byte)(C.snglStatic__procs_control_CALLBACK_get())
+}
+
+// snglStatic__procs_nkidsFn is the program's function C calls snglStatic__procs_nkids for, which the call handing it to C sets.
+var snglStatic__procs_nkidsFn func(C.HWND) int
+
+//export snglStatic__procs_nkids
+func snglStatic__procs_nkids(a0 C.HWND) C.int {
+	return C.int(snglStatic__procs_nkidsFn(a0))
+}
+
+// snglStatic__procs_nkidsPtr is snglStatic__procs_nkids as the function pointer C calls.
+func snglStatic__procs_nkidsPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_nkids) }
+
+// snglStatic__procs_kidFn is the program's function C calls snglStatic__procs_kid for, which the call handing it to C sets.
+var snglStatic__procs_kidFn func(C.HWND, int) C.HWND
+
+//export snglStatic__procs_kid
+func snglStatic__procs_kid(a0 C.HWND, a1 C.int) C.HWND {
+	return snglStatic__procs_kidFn(a0, int(a1))
+}
+
+// snglStatic__procs_kidPtr is snglStatic__procs_kid as the function pointer C calls.
+func snglStatic__procs_kidPtr() *[0]byte { return (*[0]byte)(C.snglStatic__procs_kid) }

@@ -1,0 +1,112 @@
+A `ref` to an option of a C pointer handle is a pointer to a pointer C
+fills, as GLib's `GError **` is: C is handed the address of a temp holding
+NULL, whatever the caller's variable held, and the caller reads back null
+where C stored nothing and the handle where it stored one. Its error is
+freed, or the sanitized build reports a leak.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_error *")]
+struct Error {}
+
+#[c.native("test_try")]
+func try(i int, err ref[option[Error]]) bool
+
+#[c.native("test_find")]
+func find(i int, err ref[option[Error]])
+
+#[c.native("test_error_code")]
+func code(e Error) int
+
+#[c.native("test_error_free")]
+func release(e Error)
+
+func tried(i int) int {
+    var err option[Error] = null
+    var ok = try(i, &err)
+    if err != null {
+        var n = code(err)
+        release(err)
+        return n
+    }
+    if ok {
+        return 1
+    }
+    return 0
+}
+
+func found(i int) int {
+    var err option[Error] = null
+    find(i, &err)
+    if err == null {
+        return 0
+    }
+    var n = code(err)
+    release(err)
+    return n
+}
+
+func reused() int {
+    var err option[Error] = null
+    var first = try(3, &err)
+    var held = err
+    var second = try(2, &err)
+    var n = 0
+    if held != null {
+        n = code(held) * 10
+        release(held)
+    }
+    if err == null && !first && second {
+        n = n + 1
+    }
+    return n
+}
+-- main.c --
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct {
+	int code;
+} test_error;
+
+// Answers 1 for an even i, and for an odd one stores an error of code i in
+// *err and answers 0; -1 where *err was not NULL on entry.
+static int test_try(int i, test_error **err) {
+	if (*err != NULL) {
+		return -1;
+	}
+	if (i % 2 == 0) {
+		return 1;
+	}
+	*err = malloc(sizeof(test_error));
+	(*err)->code = i;
+	return 0;
+}
+
+static void test_find(int i, test_error **err) {
+	(void)test_try(i, err);
+}
+
+static int test_error_code(test_error *e) {
+	return e->code;
+}
+
+static void test_error_free(test_error *e) {
+	free(e);
+}
+
+#include "program.c"
+
+int main(void) {
+	printf("%d %d\n", (int)s_tried(2), (int)s_tried(3));
+	printf("%d %d\n", (int)s_found(4), (int)s_found(5));
+	printf("%d\n", (int)s_reused());
+	return 0;
+}
+-- want --
+1 3
+0 5
+31

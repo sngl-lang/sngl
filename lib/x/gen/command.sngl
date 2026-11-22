@@ -33,3 +33,14 @@ component build[F any](@build(dir string, out string)) F
 // handler.
 #[marks.intrinsic("gen.shell", build)]
 func shell(cmd list[string], dir string = "") int
+
+// Whether this is a release build: `sngl build --release`, and `run` and
+// `test` with it. A target node's option reads it in its default, so a release
+// build changes what an option left unset means, while one a program or the
+// command line sets is what it says in either: C's `optimize` defaults to
+// `gen.release() ? Optimization.o2 : Optimization.o0`. It is a constant of the build, as `PLATFORM`
+// is, and answers where `shell` does and in a target node's option defaults;
+// a program's own code cannot ask it, since what a program generates is the
+// same in either build.
+#[marks.intrinsic("gen.release", build)]
+const func release() bool

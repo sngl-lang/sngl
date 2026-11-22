@@ -351,6 +351,12 @@ when the one before exits; a served page never exits, and Ctrl-C stops
 `sngl run` altogether, so pass `--platform` to run just one. The flags still win over the block:
 `sngl generate --platform bubbletea` builds only that pair.
 
+`sngl build`, `sngl run` and `sngl test` build for debugging unless told
+otherwise: a C program compiles at `-O0`. `--release` changes the default of
+each option a target gives a release default to, C's `optimize` becoming
+`o2`, and an option the block or `--opt` sets keeps its value either way:
+`sngl build --release --opt optimize=size` builds for size.
+
 ## Build a todo app
 
 Now the full thing: a list of todos with an input field, an add button, and a

@@ -1,0 +1,92 @@
+A static callback C calls with a calling convention other than the
+platform's default, as Win32 calls a window procedure `CALLBACK`
+(`__stdcall` on 32-bit x86): `#[c.static(convention=…)]` writes it into the
+function C is handed, which is handed at the typedef `#[c.type]` names with
+no cast, so C holds the two alike. TEST_CC is a convention no compiler
+calls with by default -- the Microsoft one on x86-64 Linux, System V's on
+x86-64 Windows, stdcall on 32-bit x86 -- so a function of the default
+convention handed there is refused as an incompatible pointer, and called
+anyway would read its arguments from the wrong registers. A parameter or
+result written with an alias crosses as its C type: a `long long` whole,
+which a C `int` would cut.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_count")]
+struct Count = int
+
+#[c.native("test_wide")]
+struct Wide = int
+
+struct Size {
+    minimum int
+    natural int
+}
+
+#[c.native("test_tick")]
+func tick(#[c.type("test_tick_fn")] #[c.static(convention="TEST_CC")] f func(id Count, when Wide, name string) Wide) Wide
+
+#[c.native("test_measure")]
+func measure(#[c.type("test_measure_fn")] #[c.static(convention="TEST_CC")] #[c.outs] f func(forSize int) Size) int
+
+#[c.native("test_plain")]
+func plain(#[c.static(convention="TEST_CC")] f func(n int) int) int
+
+func ticked(id int, when int, name string) => id * 1000 + when + name.length()
+
+func sized(forSize int) => Size{minimum=forSize, natural=forSize * 2}
+
+func doubled(n int) => n * 2
+
+func ran() => tick(ticked)
+
+func measured() => measure(sized)
+
+func plained() => plain(doubled)
+-- main.c --
+#include <stdio.h>
+
+#if defined(__x86_64__) && defined(_WIN32)
+#define TEST_CC __attribute__((sysv_abi))
+#elif defined(__x86_64__)
+#define TEST_CC __attribute__((ms_abi))
+#elif defined(__i386__)
+#define TEST_CC __attribute__((stdcall))
+#else
+#define TEST_CC
+#endif
+
+typedef unsigned test_count;
+typedef long long test_wide;
+
+typedef test_wide (TEST_CC *test_tick_fn)(test_count, test_wide, const char *);
+typedef void (TEST_CC *test_measure_fn)(int, int *, int *);
+
+static test_wide test_tick(test_tick_fn f) {
+	return f(7, 5000000000LL, "ab");
+}
+
+static int test_measure(test_measure_fn f) {
+	int min = 0, nat = 0, only = 0;
+	f(4, &only, NULL);
+	f(5, &min, &nat);
+	return only * 100 + min * 10 + nat;
+}
+
+static int test_plain(int (TEST_CC *f)(int)) {
+	return f(21);
+}
+
+#include "program.c"
+
+int main(void) {
+	printf("%lld\n", (long long)s_ran());
+	printf("%d %d\n", (int)s_measured(), (int)s_plained());
+	return 0;
+}
+-- want --
+5000007002
+460 42

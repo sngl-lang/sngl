@@ -471,6 +471,28 @@ JavaScript it spread `async` from the arrow up through the settle. The closure's
 own `ir.Func` is colored in its own right, which is what makes the descent
 redundant as well as wrong.
 
+**A condition loop's null test narrows its body until the body assigns
+it.** `checkHeadlessFor` hands what `n != null` establishes to the body's
+block (`checker.untilAssigned`), and `checkBlockScoped` holds it from the
+body's start to the first statement of the body itself that assigns the
+tested path (`assignsNarrowed`): that statement's value is read narrowed --
+`n = n.next` -- and nothing after it is. The region `validateNarrowings`
+judges is the statements before it, so a write nested in a block there --
+an `if` assigning `n` before `continue` -- is the branch's error it is
+anywhere, rather than a narrowing ending on one path. The same block loop
+narrows what follows an `if` one of whose branches always leaves
+(`narrowingsAfter`, `blockLeaves`: a last `return`, `break` or `continue`,
+or an `if` or `match` ending so every way) to the end of the block, by the
+facts the branch that falls through would have, with the rest of the block
+as its region. Both reuse `pushNarrowings` and its soundness check: a read
+is the `ir.Conversion` a branch's is, so no backend learned anything
+(`testdata/option_narrow_after_leave.sngl`, `error_narrow_after_leave.sngl`,
+`option_narrow_after_leave_runs.txtar` on C, Go, Kotlin and JavaScript). A
+raise is not leaving: the spec has a raise in an expression answer its
+type's zero and go on. The ports of the gtk4 runtime walked a widget's
+children by recursion, and nested every read under `if x != null`, for want
+of these.
+
 ### A copy's identity
 
 A view loop matched its copies by position, so a list that dropped an element

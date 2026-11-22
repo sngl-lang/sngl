@@ -88,7 +88,7 @@ sha256:aff7f03255da45ba0e40017c04db243b
   ]
 }
 -- testrun/gtk4/c/app.sngl/panes/1 --
-sha256:0f358018879d7e328e0bb3352d6fd404
+sha256:4e0a4e924c00f0f6c135d19ce87284b1
 {
   "results": [
     {
@@ -98,7 +98,7 @@ sha256:0f358018879d7e328e0bb3352d6fd404
   ]
 }
 -- testrun/gtk4/go/app.sngl/panes/1 --
-sha256:6e28e648627040b3ce54349da7ce8c8c
+sha256:45a369f307bf87302989d444439da317
 {
   "results": [
     {

@@ -31,10 +31,11 @@ can hold one, which is html's `display:contents` wrapper and what
 `#[gen.can(inlineSlots)]` says. Withheld, `slotFlows` makes the flow holding it
 the slot -- wrapped in a one-pass loop over a const, which re-renders its body
 on any state it reads -- and the `if` inside is an ordinary one: fyne builds
-the flow around it, and gtk4 builds its spans, the runtime's own objects
-(rt's `markup.c`), each holding its words and the Pango tags its style
-writes, which set the flow's label again whenever one changes, so a `for`
-there is as ordinary (`testdata/markup_reactive_span.txtar`,
+the flow around it, and gtk4 builds its spans, each a `GListStore` of the
+spans in it rather than a widget or a GObject subclass, holding its words
+and the Pango tags its style writes as a `c.held` value on it (`_SpanState`
+in `gtk4.sngl`), which set the flow's label again whenever one changes, so
+a `for` there is as ordinary (`testdata/gtk4_markup_span_runs.txtar`, `markup_reactive_span.txtar`,
 `cmd/sngl/testdata/markup_reactive_runs.txt`). Only the flow's own content is asked:
 an `if` holding a whole paragraph is its container's ordinary slot
 (`testdata/markup_flow_under_reactive_if.txtar`).
@@ -58,7 +59,7 @@ the light half. A kind the program sets wins on all five. An unset or constant
 palette is a literal by the time it is emitted -- `UnprovidedContext` folds the
 first, and an inlined body reads a provider's value in place of the context --
 so only a palette read from state reaches an emitter as a run-time value:
-gtk4's span style (`sngl_span_set_style`), `style.color`, fyne's `SetColor`, and a fallback chain on
+gtk4's span style (`_rtSpanStyle`), `style.color`, fyne's `SetColor`, and a fallback chain on
 bubbletea and android.
 
 **Text in the family is literal.** Every character of a `markup.text` renders

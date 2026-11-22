@@ -156,3 +156,29 @@ func TestPackageMarksWithItsOwnMacro(t *testing.T) {
 	}
 	t.Fatal("sngl:language/go declares no DrawContext")
 }
+
+// A library's C declarations are judged as a program's are. They were judged
+// for a program alone, so a library cast answering an option -- gtk4 wrote
+// one -- passed the check and miscompiled in Go's wrapper mode, its option a
+// cgo pointer the program has no `C` to name.
+func TestLibPackageJudgesItsCasts(t *testing.T) {
+	_, diags := libParityConfig(t, `
+import c "sngl:x/c"
+
+#[c.native("FILE *")]
+struct File {}
+
+#[c.native("FILE *", cast)]
+func asFile(p c.pointer) option[File]
+`)
+	errs := libParityErrors(t, diags)
+	var found bool
+	for _, e := range errs {
+		if strings.Contains(e, "so asFile returns a #[c.native(\"FILE *\")] struct, not option[File]") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("a library cast answering an option was accepted; diagnostics: %v", errs)
+	}
+}

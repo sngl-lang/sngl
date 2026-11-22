@@ -1,0 +1,83 @@
+// A callback C calls with no context is marked `#[c.static]`: its argument
+// names a function of a package, since nothing C hands back would find a
+// closure, and it takes what any callback does and a string. Marked
+// `#[c.outs]` it answers a struct of scalars, which C reads through the
+// pointers it hands the callback. Its `convention`, where written, names
+// how C calls it. A `variadic` C function is a function,
+// and `pointer` says a struct's typedef is a pointer.
+import c "sngl:x/c"
+
+c.link(include="calls.h")
+
+struct Size {
+    minimum int
+    natural int
+}
+
+struct Named {
+    name string
+}
+
+#[c.native("good")]
+func good(#[c.static] mode func(of int) int, #[c.static] #[c.outs] measure func(forSize int) Size, #[c.static] hear func(name string))
+
+#[c.native("lone_outs")]
+func loneOuts(#[c.outs] f func() Size, #[c.context] data c.pointer) // ERROR(check) "callback \"f\" is marked #[c.outs], which a callback C calls with no context has: mark it #[c.static] as well"
+
+#[c.native("outs_scalar")]
+func outsScalar(#[c.static] #[c.outs] f func() int) // ERROR(check) "is marked #[c.outs] and answers a int: what C reads through the pointers it hands the callback is a struct of the program's, a field for each"
+
+#[c.native("outs_string")]
+func outsString(#[c.static] #[c.outs] f func() Named) // ERROR(check) "whose field \"name\" is a string: C reads an int, float or bool through a pointer"
+
+#[c.native("takes_list")]
+func takesList(#[c.static] f func(xs list[int])) // ERROR(check) "callback \"f\" takes a list[int]: a static callback crosses an int, float, bool, string or #[c.native] handle"
+
+#[c.native("answers_string")]
+func answersString(#[c.static] f func() string) // ERROR(check) "callback \"f\" answers a string"
+
+#[c.static] // ERROR(check) "#[c.static] cannot mark"
+func marked() {}
+
+// A convention is free text C's compiler judges, but not an empty one.
+#[c.native("conv_ok")]
+func convOk(#[c.static(convention="CALLBACK")] f func(of int) int)
+
+#[c.native("conv_empty")]
+func convEmpty(#[c.static(convention="")] f func()) // ERROR(check) "#[c.static(convention=\"\")] names no calling convention: leave it out for the platform's default, or name one as C writes it (`CALLBACK`)"
+
+#[c.native("conv_blank")]
+func convBlank(#[c.static(convention=" ")] f func()) // ERROR(check) "#[c.static(convention=\" \")] names no calling convention"
+
+#[c.static(convention="CALLBACK")] // ERROR(check) "#[c.static] cannot mark"
+func conventionMarked() {}
+
+func bodied(#[c.static] f func()) { // ERROR(check) "#[c.static] cannot mark a parameter of a function with a body"
+}
+
+#[c.native("not_func")]
+func notFunc(#[c.static] n int) // ERROR(check) "#[c.static] cannot mark a parameter that is no func"
+
+#[c.native("Named", variadic)] // ERROR(check) "carries variadic, which describes a C function taking a variable argument list"
+struct Handle {}
+
+func mode(of int) => of
+
+func measure(forSize int) => Size{minimum=forSize, natural=forSize}
+
+#[c.native("gpointer", pointer)]
+struct Pointer {}
+
+#[c.native("void *", pointer)] // ERROR(check) "carries pointer, which a C type written with a `*` already is"
+struct Starred {}
+
+#[c.native("pointed", pointer)] // ERROR(check) "carries pointer, which describes a struct declaring no fields whose C type is a typedef of a pointer"
+func pointed()
+
+func hear(name string) {}
+
+func calls() {
+    var k = 2
+    good(mode, measure, hear)
+    good(func(of int) => of * k, measure, hear) // ERROR(check) "callback \"mode\" of C function \"good\" is called with no context, so its argument names a function of a package"
+}

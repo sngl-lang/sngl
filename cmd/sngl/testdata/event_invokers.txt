@@ -3,7 +3,7 @@
 # Each platform fires the event by the mechanism it already exposes, and none
 # of them needs layout or a synthetic pointer:
 #
-#   gtk4       g_signal_emit_by_name on the widget (the runtime's sngl_signal_emit)
+#   gtk4       g_signal_emit_by_name on the widget
 #   fyne       the widget's own callback field (what test.Tap calls)
 #   html       .click() on the element, through its addEventListener
 #   bubbletea  the activating key through Update, with focus set
@@ -114,7 +114,7 @@ sha256:7521ea1f673cf40d7144af4cf23dafc8
   ]
 }
 -- testrun/gtk4/go/click.sngl/counter/1 --
-sha256:6760fc9dfffb80f0fa6a662ef06d9fe7
+sha256:12e3c9e458f440d00119cea2c99f4685
 {
   "results": [
     {

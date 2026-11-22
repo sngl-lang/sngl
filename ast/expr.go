@@ -322,6 +322,14 @@ type ListExpr struct {
 	Pos         Pos
 	Elements    []Expr
 	IsMultiline bool
+	// ElemLeading are the comments written on their own lines above each
+	// element and ElemTrailing the comment written after each on its line,
+	// indexed as Elements is; Tail are those written after the last element,
+	// before the closing bracket. A list written on one line has none: it
+	// shares its line with what follows, whose comment it is.
+	ElemLeading  [][]*Comment `json:"-"`
+	ElemTrailing []*Comment   `json:"-"`
+	Tail         []*Comment   `json:"-"`
 }
 
 // MapLit is a map literal: {<keyExpr>: <valueExpr>, ...}.

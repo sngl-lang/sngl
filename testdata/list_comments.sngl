@@ -1,0 +1,39 @@
+import . "sngl:test"
+
+// A list written across lines keeps the comments written among its
+// elements where they were written: after an element on its line, on lines
+// of their own above one, and after the last, before the closing bracket.
+// `sngl fmt` moved each after the statement, joining two to a line.
+struct Key {
+    keyval int
+    name   string
+}
+
+const keys = [
+    Key{keyval=65293, name="Enter"}, // GDK_KEY_Return
+    Key{keyval=65421, name="Enter"}, // GDK_KEY_KP_Enter
+    Key{keyval=65307, name="Escape"},
+    // The keypad's beside the main one's.
+    Key{keyval=65439, name="Delete"}, // GDK_KEY_KP_Delete
+    Key{
+        keyval = 65535,
+        name = "Delete",
+    }, // GDK_KEY_Delete
+    // More to come.
+]
+
+func names() list[string] {
+    var out = [
+        "first",  // one
+        "second", // two
+    ]
+    for var k = keys {
+        out.push(k.name)
+    }
+    return out
+}
+
+func testCommentsAreNoElements(t Test) {
+    t.assert(keys.length == 5)
+    t.assert(names().length == 7)
+}

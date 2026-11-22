@@ -1,20 +1,26 @@
 /* sngl_win32.h is sngl:platform/win32's runtime: what a program on Win32
- * needs that is no single Win32 call. It keeps a record beside each control
- * (sngl_win32.c), holding the handlers the program connected and what the
- * layout reads, and lays a box's children out itself, since Win32 places a
- * child window where it is told and moves it for nothing.
+ * needs that is no single Win32 call and that sngl:platform/win32 does not do
+ * itself. The platform keeps a record beside each window (_Ctl) and lays a
+ * box's children out by it, since Win32 places a child window where it is
+ * told and moves it for nothing, and its window procedures read the record
+ * and fire the handlers the program connected; the runtime keeps beside it
+ * what its fonts, its rich text and its pictures read (sngl_win32.c's
+ * ctl).
  *
  * Every node is a window: a control, a box (a window of the runtime's own
  * class that lays out its children), or a toplevel. A node is made hidden,
  * parented to a window no one sees, and moved under its parent when it is
  * appended. Removing a node destroys it and everything in it.
  *
- * A handler is a function C calls with the context it was connected with,
- * which the runtime releases when the window it was connected to goes. */
+ * A handler C keeps -- a canvas's paint, a post, a timer's tick -- is a
+ * function C calls with the context it was connected with, which the runtime
+ * releases when it is done with it. */
 #ifndef SNGL_WIN32_H
 #define SNGL_WIN32_H
 
 #include <windows.h>
+#include <commctrl.h>
+#include <gdiplus.h>
 
 #include "sngl_http.h"
 
@@ -53,21 +59,81 @@ void sngl_win32_refuse_run_again(const char *pos);
 void sngl_win32_pump(void);
 void sngl_win32_step(void);
 
+/* --- The record ---
+ *
+ * What sngl:platform/win32 hands the runtime as its package starts: the
+ * window procedures (procs.sngl), a box's and a toplevel's and the one each
+ * control is subclassed with, which its classes are registered with; and
+ * what rich text reads of each window's record, its children in order.
+ * Before they are handed over, the runtime makes no window. */
+typedef int (*sngl_win32_count_hook)(HWND w);
+typedef HWND (*sngl_win32_kid_hook)(HWND w, int at);
+void sngl_win32_procs(WNDPROC box, SUBCLASSPROC control, sngl_win32_count_hook nkids, sngl_win32_kid_hook kid);
+
+/* What the window procedures ask of the runtime: a window painted, a
+ * progress bar's text written over it, a picture's load handed to its
+ * image, a fetch arrived, a post run, a timer's tick, the span a flow's link
+ * leads to and whether the pointer is over one, the hand shown; a message's
+ * parameter as the window, the DC or the brush it holds; a brush made and
+ * deleted, a rectangle filled and focused, a label drawn in a window's
+ * font; whether the runtime is writing a window; a window's subclass taken
+ * off, and what it keeps beside a window freed. */
+LRESULT sngl_win32_paint(HWND w, UINT msg, WPARAM wp, HBRUSH own, HBRUSH backdrop, int fit, int pad_top, int pad_right, int pad_left);
+LRESULT sngl_win32_paint_bar(HWND w, UINT msg, WPARAM wp, LPARAM lp);
+int sngl_win32_loaded(HWND picture, HWND frame);
+void sngl_win32_fetched(HWND w, WPARAM wp, LPARAM lp);
+void sngl_win32_posted(LPARAM lp);
+int sngl_win32_timer(HWND w, WPARAM wp);
+HWND sngl_win32_link_under(HWND flow, int x, int y);
+int sngl_win32_over_link(HWND flow);
+void sngl_win32_hand(void);
+HWND sngl_win32_window_of(LPARAM lp);
+HDC sngl_win32_dc_of(WPARAM wp);
+LRESULT sngl_win32_brush_answer(HBRUSH b);
+HBRUSH sngl_win32_brush(int rgb);
+void sngl_win32_drop_brush(HBRUSH b);
+void sngl_win32_fill(HWND w, HDC dc, RECT r, HBRUSH b);
+void sngl_win32_focus_rect(HDC dc, RECT r);
+void sngl_win32_draw_label(HWND w, HDC dc, const unsigned short *text, RECT r, UINT format);
+int sngl_win32_quiet(HWND w);
+void sngl_win32_unsubclass(HWND w);
+void sngl_win32_forget(HWND w, int counted);
+
+/* What the record's layout asks of the runtime: a control's content
+ * measured, in device pixels; a picture's bitmap's size, where it has one;
+ * the height a flow wraps to; a
+ * window's font for a DPI, and the DPI it is shown at; a toplevel's frame for
+ * a client area of w by h, and the size it takes; a box's tip
+ * given to a child, or taken away where it is empty; a submenu appended; no
+ * window; a toplevel attach sized shown, or held back for an @run handler; a
+ * window shown or hidden, answering whether that changed it; a divider's
+ * line down or across, a scroll's bars; a modal's window owned, and given a
+ * close button; a button drawn by its box. */
+void sngl_win32_natural(HWND w, SIZE *out);
+void sngl_win32_text_size(HWND w, SIZE *out);
+int sngl_win32_line_height(HWND w);
+int sngl_win32_check_width(int dpi);
+int sngl_win32_picture_size(HWND w, SIZE *out);
+int sngl_win32_flow_height(HWND w, int width);
+void sngl_win32_refont(HWND w, int dpi);
+int sngl_win32_dpi_of(HWND w);
+void sngl_win32_resize_client(HWND top, int w, int h);
+void sngl_win32_frame_size(HWND w, int cw, int ch, SIZE *out);
+void sngl_win32_tip_tool(HWND box, HWND child, const unsigned short *tip);
+void sngl_win32_append_popup(HMENU m, UINT flags, HMENU sub, const unsigned short *label);
+HWND sngl_win32_nothing(void);
+void sngl_win32_show_attached(HWND top, HWND node);
+int sngl_win32_show(HWND w, int on);
+void sngl_win32_divider_style(HWND w, int vertical);
+void sngl_win32_scroll_style(HWND w, int vertical, int horizontal);
+void sngl_win32_set_owner(HWND dialog, HWND owner);
+void sngl_win32_closable(HWND dialog, int closable);
+void sngl_win32_owner_draw(HWND w, int on);
+
 /* --- Nodes --- */
 
 HWND sngl_win32_toplevel(void);
-HWND sngl_win32_box(int vertical);
-HWND sngl_win32_contents(void);
-/* sngl_win32_set_vertical is a box's axis, or a divider's. */
-void sngl_win32_set_vertical(HWND box, int vertical);
-/* sngl_win32_set_mode is how a box lays its children out: 0 along its axis,
- * 1 in a grid of sngl_win32_set_columns columns, 2 in rows that wrap, 3
- * one over another, each the box's whole room, and 4 along its axis in
- * equal shares. */
-void sngl_win32_set_mode(HWND box, int mode);
-void sngl_win32_set_columns(HWND box, int columns);
-/* sngl_win32_set_framed draws an etched edge inside a box's bounds. */
-void sngl_win32_set_framed(HWND box, int framed);
+HWND sngl_win32_box(void);
 HWND sngl_win32_text(void);
 HWND sngl_win32_button(void);
 HWND sngl_win32_edit(void);
@@ -86,35 +152,32 @@ HWND sngl_win32_link(void);
 HWND sngl_win32_radio(void);
 /* sngl_win32_tabs is a tab control, which shows a tab for each page
  * appended to it, titled with the page's text, and the page of the one
- * selected; a page, sngl_win32_tab_page, is a box. */
+ * selected; a page is a box (win32.sngl's _rtTabPage). */
 HWND sngl_win32_tabs(void);
-HWND sngl_win32_tab_page(void);
-/* sngl_win32_scroll is a box that scrolls what it holds along the axes
- * sngl_win32_set_scroll gives it, vertically where it is given none. */
+/* sngl_win32_scroll is a box that scrolls what it holds along the axes its
+ * record gives it (_setScroll). */
 HWND sngl_win32_scroll(void);
 /* sngl_win32_modal is a node taking no room in its box, whose children are
- * shown in a window of their own over the window it is in, which is
- * disabled while the modal is open. */
+ * shown in a window of their own, sngl_win32_dialog, over the window it is
+ * in, which is disabled while the modal is open (win32.sngl's _showModal). */
 HWND sngl_win32_modal(void);
+HWND sngl_win32_dialog(void);
 /* sngl_win32_entry is a menu entry, its label its text: a node taking no
  * room, which the toplevel it is in shows in its menu bar, wherever in it
  * it is, and an entry holding entries as their submenu. Its click handler
- * is its command. sngl_win32_set_entry_* gray it or check it.
- * sngl_win32_menu_items is how many items the menu bar of the toplevel w
- * is in holds, and sngl_win32_choose chooses the entry labeled label in it
- * as the user does, answering whether there was one to choose. */
+ * is its command; its label, its state and the menu bar are win32.sngl's
+ * (_setText, _menuSync). */
 HWND sngl_win32_entry(void);
 
 /* sngl_win32_image is an image: a node holding the picture it shows, which
- * fills it, painted as sngl_win32_set_fit says -- 0 contain, 1 cover, 2
- * fill, 3 none, 4 scaleDown -- and measured at the picture's size. A
+ * fills it, painted as its record's fit says -- 0 contain, 1 cover, 2 fill,
+ * 3 none, 4 scaleDown -- and measured at the picture's size. A
  * picture, sngl_win32_picture, shows what sngl_win32_set_url names: a file
  * the program carries, one of sngl_win32_assets; one fetched, for an http or
  * https URL; or a file on disk. Its image hears that it loaded, or that it
  * failed and why (sngl_win32_image_failure), once the picture is in it. */
 HWND sngl_win32_image(void);
 HWND sngl_win32_picture(void);
-void sngl_win32_set_fit(HWND w, int fit);
 
 /* sngl_win32_canvas is a drawing: a window painted, each time Win32 asks,
  * by the function sngl_win32_on_paint connects, handed a drawing context
@@ -123,15 +186,27 @@ void sngl_win32_set_fit(HWND w, int fit);
  * it is, centered (mode 0), scaled evenly to fit inside the area (1) or to
  * fill it (2), or stretched over it (3), as sngl_win32_set_scaling says. It
  * measures as that size, a pixel a SNGL px, and takes a share of its box's
- * spare room where it scales. sngl_win32_redraw asks it to paint again. */
-typedef struct sngl_win32_gfx sngl_win32_gfx;
+ * spare room where it scales. Each setter answers whether it changed what
+ * the canvas measures. */
+/* A drawing context is GDI+'s graphics and the path being built, which
+ * sngl:platform/win32 paints through as cairo is painted (Gfx), keeping the
+ * rest of what it draws in -- the current point, the color, the line, the
+ * font, what save kept -- itself, afresh for each paint's serial. */
+typedef struct sngl_win32_gfx {
+	GpGraphics *g;
+	/* The window whose drawing this is, which a picture fetched for it is
+	 * posted to. */
+	HWND owner;
+	GpPath *path;
+	/* Each paint's own, counted from 1. */
+	int serial;
+} sngl_win32_gfx;
 typedef void (*sngl_win32_paint_fn)(sngl_win32_gfx *g, void *ctx);
 HWND sngl_win32_canvas(void);
-void sngl_win32_set_canvas_width(HWND w, int width);
-void sngl_win32_set_canvas_height(HWND w, int height);
-void sngl_win32_set_scaling(HWND w, int mode);
+int sngl_win32_set_canvas_width(HWND w, int width);
+int sngl_win32_set_canvas_height(HWND w, int height);
+int sngl_win32_set_scaling(HWND w, int mode);
 void sngl_win32_on_paint(HWND w, sngl_win32_paint_fn fn, void *ctx, sngl_win32_release release);
-void sngl_win32_redraw(HWND w);
 
 /* sngl_win32_drawing is a picture, as sngl_win32_picture is, whose bitmap is
  * painted by the function sngl_win32_drawing_on_paint connects, at the size
@@ -155,50 +230,19 @@ void sngl_win32_drawing_redraw(HWND w);
  * A flow's own span style is the one its spans start from. Every character
  * of a span's words is drawn as written, a newline ending the line; the
  * lines wrap between words at the flow's width, and a link is drawn as one
- * and opened as it is clicked. */
+ * and opened as it is clicked. What changes a span draws its flow again
+ * (win32.sngl's _touched). */
 HWND sngl_win32_flow(void);
 HWND sngl_win32_span(void);
 void sngl_win32_set_words(HWND w, const unsigned short *words);
 void sngl_win32_set_span_style(HWND w, int color, int size, int weight, int slant, int underline, int strike, const unsigned short *family);
 
-/* A drawing context's calls are cairo's, over GDI+: a path built and then
- * filled or stroked, in the color, line and font last set, which save and
- * restore keep. Angles are radians, clockwise from the positive x axis;
- * colors are 0..255 a channel; a line's cap is 0 butt, 1 round or 2 square
- * and its join 0 miter, 1 round or 2 bevel. Text is drawn from the current
- * point, on its baseline, in a family named as CSS's generic ones are or as
- * the system knows one, sans-serif where it knows none. */
-void sngl_win32_gfx_save(sngl_win32_gfx *g);
-void sngl_win32_gfx_restore(sngl_win32_gfx *g);
-void sngl_win32_gfx_color(sngl_win32_gfx *g, int r, int gr, int b, int a);
-void sngl_win32_gfx_line_width(sngl_win32_gfx *g, double w);
-void sngl_win32_gfx_line_cap(sngl_win32_gfx *g, int cap);
-void sngl_win32_gfx_line_join(sngl_win32_gfx *g, int join);
-void sngl_win32_gfx_rect(sngl_win32_gfx *g, double x, double y, double w, double h);
-void sngl_win32_gfx_new_sub_path(sngl_win32_gfx *g);
-void sngl_win32_gfx_move_to(sngl_win32_gfx *g, double x, double y);
-void sngl_win32_gfx_line_to(sngl_win32_gfx *g, double x, double y);
-void sngl_win32_gfx_curve_to(sngl_win32_gfx *g, double x1, double y1, double x2, double y2, double x3, double y3);
-void sngl_win32_gfx_arc(sngl_win32_gfx *g, double cx, double cy, double r, double start, double end);
-void sngl_win32_gfx_arc_negative(sngl_win32_gfx *g, double cx, double cy, double r, double start, double end);
-void sngl_win32_gfx_close_path(sngl_win32_gfx *g);
-void sngl_win32_gfx_fill(sngl_win32_gfx *g, int preserve);
-void sngl_win32_gfx_stroke(sngl_win32_gfx *g);
-void sngl_win32_gfx_font(sngl_win32_gfx *g, const unsigned short *family, double size);
-void sngl_win32_gfx_text(sngl_win32_gfx *g, const unsigned short *text);
-/* translate and scale map the space drawn in afterwards, and clip limits
- * what is drawn to the current path, which it ends; restore undoes each.
- * image paints the picture a URL names into the box at x, y sized w by h,
- * as sngl_win32_set_url finds one, and repaints the drawing once a fetched
- * one arrives. */
-void sngl_win32_gfx_translate(sngl_win32_gfx *g, double x, double y);
-void sngl_win32_gfx_scale(sngl_win32_gfx *g, double x, double y);
-void sngl_win32_gfx_clip(sngl_win32_gfx *g);
+/* sngl_win32_gfx_image paints the picture a URL names into the box at x, y
+ * sized w by h, as sngl_win32_set_url finds one, and repaints the drawing
+ * once a fetched one arrives. */
 void sngl_win32_gfx_image(sngl_win32_gfx *g, const unsigned short *url, double x, double y, double w, double h);
 void sngl_win32_set_url(HWND w, const unsigned short *url);
 const char *sngl_win32_image_failure(HWND w);
-void sngl_win32_on_load(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-void sngl_win32_on_failed(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
 
 /* The files a program carries, each by the path its URL names. A C program's
  * build defines sngl_win32_assets, ending at a NULL name, and its entry hands
@@ -215,18 +259,16 @@ void sngl_win32_carry_file(const char *name, const char *data, int len);
 
 /* sngl_win32_table is a list view of rows and columns. sngl_win32_fill_table
  * gives it its columns, one a line, and its rows, one a line of cells
- * separated by tabs, reporting nothing; sngl_win32_set_row selects a row,
- * or none where it is negative, also unreported, and sngl_win32_row is the
- * one selected. sngl_win32_set_table says whether a row can be selected,
- * which reports its change handler, and whether a column header's click
- * asks for the rows sorted by it, which reports its click handler, and
- * sngl_win32_sorted is the header last clicked. */
+ * separated by tabs, and selects `row`, reporting nothing;
+ * sngl_win32_select_row selects a row, or none where it is negative, also
+ * unreported. sngl_win32_sort_header lets its column headers be clicked,
+ * and sngl_win32_column is a column's header. Which row is selected and
+ * which column was clicked are its record's. */
 HWND sngl_win32_table(void);
-void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned short *rows);
-void sngl_win32_set_row(HWND w, int row);
-int sngl_win32_row(HWND w);
-void sngl_win32_set_table(HWND w, int selectable, int sortable);
-const char *sngl_win32_sorted(HWND w);
+void sngl_win32_fill_table(HWND w, const unsigned short *columns, const unsigned short *rows, int row);
+void sngl_win32_select_row(HWND w, int row);
+void sngl_win32_sort_header(HWND w, int sortable);
+const char *sngl_win32_column(HWND w, int col);
 
 /* sngl_win32_tree is a tree view. sngl_win32_fill_tree gives it its nodes,
  * one a line, each indented by a tab a level, expanding those whose places
@@ -241,52 +283,19 @@ const char *sngl_win32_chosen(HWND w);
 
 /* sngl_win32_date is a date picker, whose check box unchecked is no date.
  * Dates are "YYYY-MM-DD", or "" for none: sngl_win32_set_date shows one
- * unreported, sngl_win32_set_date_range bounds the ones it offers, and
- * sngl_win32_date_of is the one it shows. A date the user picks reports
+ * unreported, and sngl_win32_set_date_range bounds the ones it offers; the
+ * one it shows is win32.sngl's shownDate. A date the user picks reports
  * the change handler. */
 HWND sngl_win32_date(void);
 void sngl_win32_set_date(HWND w, const unsigned short *iso);
 void sngl_win32_set_date_range(HWND w, const unsigned short *min, const unsigned short *max);
-const char *sngl_win32_date_of(HWND w);
 
 /* A test's choice, as the user's, in the first table, tree or date picker
- * of the toplevel w is in: a row selected, a column header clicked, a node
- * selected by its label, a date picked. Each answers whether there was one
- * to choose. */
-int sngl_win32_pick_row(HWND w, int row);
-int sngl_win32_click_column(HWND w, int col);
-int sngl_win32_pick_node(HWND w, const unsigned short *label);
-int sngl_win32_pick_date(HWND w, const unsigned short *iso);
-void sngl_win32_set_entry_disabled(HWND w, int disabled);
-void sngl_win32_set_entry_checked(HWND w, int checked);
-int sngl_win32_menu_items(HWND w);
-int sngl_win32_choose(HWND w, const unsigned short *label);
-
-/* sngl_win32_append makes child the last of parent's children, and
- * sngl_win32_insert puts it before before, which is one of them. Either lays
- * the window they are in out again. */
-void sngl_win32_append(HWND parent, HWND child);
-void sngl_win32_insert(HWND parent, HWND child, HWND before);
-
-/* sngl_win32_slot_anchor is the hidden child of parent a render slot's
- * entries go before: anchor, the one it answered last, while parent still
- * holds it, and a new one otherwise; NULL for a container that keeps none.
- * gtk4's sngl_slot_anchor is the same. */
-HWND sngl_win32_slot_anchor(HWND parent, HWND anchor);
-
-/* sngl_win32_remove destroys child, which is one of parent's children. */
-void sngl_win32_remove(HWND parent, HWND child);
-
-/* sngl_win32_attach shows a toplevel the program holds, or any other node
- * in a toplevel of its own, and sngl_win32_detach destroys the toplevel. */
-void sngl_win32_attach(HWND top);
-void sngl_win32_detach(HWND top);
+ * of the toplevel w is in is win32.sngl's (pickRow and on).
+ * sngl_win32_tree_find is the item of tree w labeled label, or NULL. */
+HTREEITEM sngl_win32_tree_find(HWND w, const unsigned short *label);
 
 /* --- Props --- */
-
-/* sngl_win32_set_text sets a window's text -- a toplevel's title, a
- * control's caption, an edit's content -- and lays it out again. */
-void sngl_win32_set_text(HWND w, const unsigned short *text);
 
 /* sngl_win32_get_text is a window's text as UTF-8, in a buffer the next call
  * overwrites. */
@@ -296,45 +305,23 @@ const char *sngl_win32_get_text(HWND w);
  * and only where it differs, so the caret stays where it is. */
 void sngl_win32_set_edit_text(HWND w, const unsigned short *text);
 
-/* sngl_win32_set_rows is the lines a multi-line edit is measured to show, 0
- * for the runtime's three. */
-void sngl_win32_set_rows(HWND w, int rows);
-
 /* sngl_win32_set_fraction fills a progress bar to fraction, 0 to 1, and a
  * negative one makes it indeterminate. sngl_win32_set_show_text writes its
- * text over it, or how far along it is where it has none. */
-void sngl_win32_set_fraction(HWND w, double fraction);
-void sngl_win32_set_show_text(HWND w, int show);
+ * text over it, or how far along it is where it has none. Each answers
+ * whether that changed what the bar measures. */
+int sngl_win32_set_fraction(HWND w, double fraction);
+int sngl_win32_set_show_text(HWND w, int show);
 
-/* sngl_win32_offer gives a drop-down the choices labels holds, one a line,
- * and selects the one labeled chosen, or none; it reports neither.
+/* A drop-down's choices are offered by win32.sngl's offerChoices.
  * sngl_win32_selected is the label of its choice selected, or "", as UTF-8 in
- * a buffer the next call overwrites. */
-void sngl_win32_offer(HWND w, const unsigned short *labels, const unsigned short *chosen);
+ * a buffer the next call overwrites, and sngl_win32_find_choice the index of
+ * the one labeled label, or -1. */
 const char *sngl_win32_selected(HWND w);
+int sngl_win32_find_choice(HWND w, const unsigned short *label);
 
-/* sngl_win32_set_shown hides a node, which then takes no room in its box,
- * or shows it again; sngl_win32_is_shown is whether it is shown. */
-void sngl_win32_set_shown(HWND w, int shown);
-int sngl_win32_is_shown(HWND w);
-void sngl_win32_set_enabled(HWND w, int enabled);
-/* sngl_win32_set_selected is the page a tabs shows. */
-void sngl_win32_set_selected(HWND tabs, int selected);
-void sngl_win32_set_scroll(HWND w, int vertical, int horizontal);
-/* sngl_win32_set_tip is what a box's children show as the pointer rests
- * on them; empty, nothing. */
-void sngl_win32_set_tip(HWND box, const unsigned short *tip);
-/* sngl_win32_set_open shows a modal or hides it, and sngl_win32_is_open is
- * whether it is shown. A closable one's window has a close button, which
- * reports its closed handler and leaves it to the program to hide it. */
-void sngl_win32_set_open(HWND m, int open);
-int sngl_win32_is_open(HWND m);
-void sngl_win32_set_closable(HWND m, int closable);
-/* sngl_win32_set_href is what a link opens. */
+/* sngl_win32_set_href is what a span leads to. */
 void sngl_win32_set_href(HWND w, const unsigned short *href);
 
-void sngl_win32_set_checked(HWND w, int checked);
-int sngl_win32_checked(HWND w);
 void sngl_win32_set_visible(HWND top, int visible);
 /* sngl_win32_shown is the toplevel shown last, while it is, or NULL. */
 HWND sngl_win32_shown(void);
@@ -352,7 +339,9 @@ int sngl_win32_capture(unsigned char **rgba, int *width, int *height, const char
  * it wrote them. */
 int sngl_win32_snapshot(const char *path, int width, int height);
 
-/* sngl_win32_look is what a node's style asks of the layout and the paint:
+/* sngl_win32_look is what a node's style asks of the layout and the paint,
+ * of which sngl_win32_set_paint takes what C draws it by (_look and
+ * _paintLook the rest):
  * how much of a box's spare room it takes (flex), the gap a box leaves
  * between its children, the room inside its edges, its least size and the
  * size its style gives it, where a line box places its children across it,
@@ -371,52 +360,19 @@ typedef struct sngl_win32_look {
 	int hidden;
 } sngl_win32_look;
 
-void sngl_win32_set_look(HWND w, sngl_win32_look look);
-
-/* --- Events --- */
-
-/* sngl_win32_on_click calls fn when a button or a checkbox is pressed, and
- * sngl_win32_on_change when an edit's text changes, which a set does not
- * report. sngl_win32_on_closed calls fn when a toplevel's close is asked
- * for, after hiding it. */
-void sngl_win32_on_click(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-void sngl_win32_on_change(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-/* sngl_win32_on_activate calls fn when Enter is pressed in an edit, or as a
- * multi-line edit loses the focus. A drop-down's change is a choice the user
- * selects. */
-void sngl_win32_on_activate(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-void sngl_win32_on_closed(HWND top, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-/* sngl_win32_on_visible calls fn with 0 when a toplevel the window manager
- * closes is hidden, ahead of its closed handler. */
-/* sngl_win32_on_reach_end calls fn when a scroll's end comes within half
- * a page of showing, as it is scrolled there or what it holds shrinks. */
-void sngl_win32_on_reach_end(HWND w, sngl_win32_fn fn, void *ctx, sngl_win32_release release);
-void sngl_win32_on_visible(HWND top, sngl_win32_bool_fn fn, void *ctx, sngl_win32_release release);
+void sngl_win32_set_paint(HWND w, int color, int font_px);
 
 /* --- A test's events ---
  *
  * Each puts what the test hands the event where Win32 keeps it and raises
  * the notification the control would, which reaches the handler the program
- * connected through the window the control is in, as the user's does. */
+ * connected through the window the control is in, as the user's does. The
+ * rest are win32.sngl's (_rtFireClick, _rtFireCheck and on). */
 
-/* sngl_win32_fire_click is a button's press, or a check box's, which is
- * checked first. */
-void sngl_win32_fire_click(HWND w);
-void sngl_win32_fire_check(HWND w, int checked);
 /* sngl_win32_fire_change is text typed into an edit, and
  * sngl_win32_fire_activate Enter pressed in it after. */
 void sngl_win32_fire_change(HWND w, const unsigned short *text);
 void sngl_win32_fire_activate(HWND w, const unsigned short *text);
-/* sngl_win32_fire_select is the choice labeled label picked from a
- * drop-down. */
-void sngl_win32_fire_select(HWND w, const unsigned short *label);
-/* sngl_win32_fire_close is the window manager's close of a toplevel, or
- * of a modal's window. */
-void sngl_win32_fire_close(HWND top);
-/* sngl_win32_fire_tab is the tab at index chosen, and
- * sngl_win32_fire_reach_end a scroll's end arriving. */
-void sngl_win32_fire_tab(HWND tabs, int index);
-void sngl_win32_fire_reach_end(HWND w);
 
 /* --- Timers --- */
 

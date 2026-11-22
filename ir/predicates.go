@@ -104,6 +104,31 @@ func IsTestCall(c *Call, id string) bool {
 	return c != nil && c.Func != nil && c.Func.Intrinsic == id
 }
 
+// IsTestType reports whether t is sngl:test's Test, the value a test's
+// first parameter is and a helper it calls takes.
+func IsTestType(t *Type) bool {
+	if t == nil || t.Kind != TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return ok && sd.Name == "Test" && sd.PkgPath() == "sngl:test"
+}
+
+// TakesTest reports whether fn, not itself a test, takes a test's Test: a
+// helper a test hands it to, which asserts and waits through it as the test
+// does, and is written with the tests.
+func TakesTest(fn *Func) bool {
+	if fn == nil || fn.IsTest {
+		return false
+	}
+	for _, p := range fn.Params {
+		if IsTestType(p.Type) {
+			return true
+		}
+	}
+	return false
+}
+
 // IsTestMethodCall reports whether c calls any sngl:test method.
 func IsTestMethodCall(c *Call) bool {
 	if c == nil || c.Func == nil {
@@ -215,6 +240,16 @@ func ReleaseOf(t *Type) *Func {
 		return sd.Release
 	}
 	return nil
+}
+
+// WroteBody reports whether fn's declaration was written with a body, `{}`
+// included. A function whose block is empty may be either: one the program
+// wrote `{}`, which is a function like any other wherever it is a value,
+// since only its calls are inlined away; or a declaration with nothing behind
+// it -- a native, a handler lowering attached where none was written --
+// which no output defines. The block cannot tell them apart.
+func WroteBody(fn *Func) bool {
+	return fn != nil && fn.AST != nil && (fn.AST.Body != nil || fn.AST.Block.IsDefined())
 }
 
 // IsRelease reports whether fn is the release some owned type declares, or

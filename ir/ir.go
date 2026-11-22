@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"maps"
 	"slices"
 	"strings"
 
@@ -236,6 +237,10 @@ type Package struct {
 	// calls it before anything the program renders exists. Nil where the
 	// program wrote none, and the host starts as it always has.
 	Run *Func `json:"-"`
+	// Entries are the target's functions the generated entry calls
+	// (Func.GenEntry), as the build promoted them: a generator finds one by
+	// its name (Entry).
+	Entries []*Func `json:"-"`
 	// RunPos is where the handler Run was made from is written, which a host
 	// names when the handler calls `run` a second time.
 	RunPos ast.Pos `json:"-"`
@@ -288,12 +293,23 @@ func (p *Package) EntryPoints() []*Func {
 		return nil
 	}
 	out := make([]*Func, 0, 2+len(p.Mounts))
-	for _, fn := range append([]*Func{p.Teardown, p.Run}, p.Mounts...) {
+	for _, fn := range slices.Concat([]*Func{p.Teardown, p.Run}, p.Mounts, p.Entries) {
 		if fn != nil {
 			out = append(out, fn)
 		}
 	}
 	return out
+}
+
+// Entry is the function named name among those the generated entry calls
+// (Entries), or nil.
+func (p *Package) Entry(name string) *Func {
+	for _, fn := range p.Entries {
+		if fn.Name == name {
+			return fn
+		}
+	}
+	return nil
 }
 
 // AsyncKickerEntry records one async-reactive kicker produced by NoAsyncReactive.
@@ -852,6 +868,19 @@ type Foreign struct {
 	// function converts to, parsed from Name. Nil for a C function, whose
 	// Name is the identifier to call.
 	C *CType
+	// Variadic says a C function takes a variable argument list, written
+	// `#[c.native(…, variadic)]`: the declaration lists the arguments one
+	// call of it passes.
+	Variadic bool `json:",omitempty"`
+	// CPointer says a C type no `*` is written in is a typedef of a pointer,
+	// written `#[c.native(…, pointer)]`: an option of it is the pointer,
+	// NULL for none.
+	CPointer bool `json:",omitempty"`
+	// Field says a C function's Name is a member of a C struct,
+	// `Struct.member`, read through its first parameter, a pointer to the
+	// struct, written `#[c.native(…, field)]`: called with more, the member
+	// is a function pointer.
+	Field bool `json:",omitempty"`
 	// Also is the declaration's spelling in each other language that has
 	// one: today a Go wrapper's (`#[go.native]`) beside a C declaration's,
 	// which stays the primary, since every C pass reads it there. In finds
@@ -903,7 +932,11 @@ type Func struct {
 	// type the alias spells, or, for sngl:x/c's `held` written as an
 	// option's element, as the value a held parameter handed C.
 	ReturnCAlias *Alias `json:",omitempty"`
-	Block        []Stmt // type-checked statements (expression bodies become a single Return)
+	// CFrees is the C function freeing the string a C function answers,
+	// sngl:x/c's #[frees]: the call copies the string and hands C's pointer
+	// to it, NULL to none. Empty where the string is C's own.
+	CFrees string `json:",omitempty"`
+	Block  []Stmt // type-checked statements (expression bodies become a single Return)
 	// PlatformOverrides holds the body each target implements this function
 	// with, keyed by platform. The checker collects every registered target's;
 	// ir.SpecializeForTarget swaps the chosen one into Block. Empty for a
@@ -979,6 +1012,10 @@ type Func struct {
 	// Protocol is the operation a #[gen.protocol] mark names, ProtocolNone
 	// otherwise. The component it serves holds it (Component.Protocol).
 	Protocol ProtocolOp `json:",omitempty"`
+	// GenEntry marks a function of a target's package the generated entry
+	// calls, sngl:x/gen's #[entry]: lower.LibFuncs promotes it into every
+	// build for the target (Package.Entries).
+	GenEntry bool `json:",omitempty"`
 }
 
 // ProtocolOp is one operation of the protocol a platform builds an
@@ -1050,6 +1087,27 @@ type NodeProtocol struct {
 	// what the test hands the event, put where the host reads it, and the
 	// host's report raised (passPlacement).
 	Fire map[string]*Func
+}
+
+// Funcs is every function declared for an operation, in a stable order: the
+// operations', then each prop's set, event's connect and event's fire by
+// name.
+func (p *NodeProtocol) Funcs() []*Func {
+	if p == nil {
+		return nil
+	}
+	var out []*Func
+	for _, fn := range []*Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw, p.Connect, p.Handle, p.Attach, p.Detach} {
+		if fn != nil {
+			out = append(out, fn)
+		}
+	}
+	for _, m := range []map[string]*Func{p.Set, p.On, p.Fire} {
+		for _, k := range slices.Sorted(maps.Keys(m)) {
+			out = append(out, m[k])
+		}
+	}
+	return out
 }
 
 // Handler is the function declared to connect event, nil where none is.
@@ -1771,6 +1829,23 @@ type Param struct {
 	// parameter is, sngl:x/c's #[type]: what a language passing a function
 	// of its own there casts it to, which its SNGL type does not say.
 	CFuncType *CType `json:",omitempty"`
+	// CStatic marks a callback C calls with no context, sngl:x/c's
+	// #[static]: the argument names a function of a package, and the
+	// translator hands C a function of its own that calls it.
+	CStatic bool `json:",omitempty"`
+	// CConvention is the calling convention of a static callback C calls
+	// with one other than the platform's default, #[static(convention=…)]:
+	// written as given into the definition of the function C is handed
+	// (Win32's `CALLBACK`), which is then handed with no cast.
+	CConvention string `json:",omitempty"`
+	// COuts marks a static callback whose result C reads through the
+	// pointers it hands the callback after its arguments, one for each
+	// field of the struct it answers, sngl:x/c's #[outs].
+	COuts bool `json:",omitempty"`
+	// CFrees is the C function freeing the string C stores through a
+	// `ref[string]` parameter, sngl:x/c's #[frees]: C is handed a pointer
+	// to NULL, and what it stored is copied once it returns and freed.
+	CFrees string `json:",omitempty"`
 }
 
 // CompilerPassed reports whether the translator, not a caller, passes p: a C

@@ -1,6 +1,7 @@
-// `#[c.type]` names the function-pointer typedef a `#[c.native]` function's
-// parameter is, which C casts a function of its own to: a function with a
-// body is SNGL's, and a pointer to one is no typedef of it.
+// `#[c.type]` names the C type a `#[c.native]` function's parameter is where
+// its SNGL type does not say it: the function-pointer typedef C casts a
+// function of its own to, or the integer typedef a pointer is cast to. A
+// function with a body is SNGL's, and a pointer to one is no typedef of it.
 import c "sngl:x/c"
 
 func bodied(#[c.type("GCallback")] f func()) { // ERROR(check) "#[c.type] cannot mark a parameter of a function with a body"
@@ -8,3 +9,26 @@ func bodied(#[c.type("GCallback")] f func()) { // ERROR(check) "#[c.type] cannot
 
 #[c.native("pointed")]
 func pointed(#[c.type("GCallback *")] f func(), #[c.context] data c.pointer) // ERROR(check) "#[c.type(\"GCallback *\")] names a pointer; name the function-pointer typedef, as GLib's GCallback is one"
+
+// On a parameter crossing as a pointer -- a string, a ref to a C struct, a
+// handle -- it names the integer typedef C takes it as (Win32's LPARAM).
+// A number, a list or a ref to a scalar crosses as no pointer.
+#[c.native("thing *")]
+struct Thing {}
+
+#[c.native("item")]
+struct Item {
+    n int
+}
+
+#[c.native("send_text")]
+func sendText(#[c.type("LPARAM")] text string, #[c.type("LPARAM")] item ref[Item], #[c.type("LPARAM")] thing option[Thing], #[c.type("LPARAM")] t Thing)
+
+#[c.native("send_int")]
+func sendInt(#[c.type("LPARAM")] n int) // ERROR(check) "parameter \"n\" is a int, and #[c.type(\"LPARAM\")] names the C type of a callback, a release, a held value or a function pointer handed NULL (an option[c.pointer]), or the integer typedef a string, a ref to a C struct or a handle is cast to"
+
+#[c.native("send_ref")]
+func sendRef(#[c.type("LPARAM")] n ref[int]) // ERROR(check) "parameter \"n\" is a ref[int], and #[c.type(\"LPARAM\")] names"
+
+#[c.native("send_list")]
+func sendList(#[c.type("LPARAM")] xs list[string]) // ERROR(check) "parameter \"xs\" is a list[string], and #[c.type(\"LPARAM\")] names"

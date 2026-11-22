@@ -60,7 +60,13 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 	b.WriteString(EmitEnumTypeDecls(a.Enums))
 	structs := a.Structs
 	if pkg.CCalls != ir.CCallsWrapper {
-		structs = append(structs, libraryCStructs(pkg)...)
+		// A test build's copy of the program's own is the program's,
+		// declared already, whatever package the copy names.
+		for _, sd := range libraryCStructs(pkg) {
+			if !slices.ContainsFunc(structs, func(s *ir.StructDef) bool { return s.Name == sd.Name }) {
+				structs = append(structs, sd)
+			}
+		}
 	}
 	for _, sd := range structs {
 		fmt.Fprintf(&b, "type %s struct {\n", ExportName(sd.Name))
@@ -68,7 +74,7 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 			for _, p := range typeImports(fd.Type, pkg.CCalls) {
 				gc.RequireImport(p)
 			}
-			fmt.Fprintf(&b, "\t%s %s\n", ExportName(fd.Name), typeToGo(fd.Type, site{calls: pkg.CCalls}))
+			fmt.Fprintf(&b, "\t%s %s\n", ExportName(fd.Name), typeToGo(fd.Type, site{calls: pkg.CCalls, qualify: gc.Qualified}))
 		}
 		b.WriteString("}\n\n")
 	}
@@ -79,28 +85,17 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 		for _, p := range typeImports(v.Type, pkg.CCalls) {
 			gc.RequireImport(p)
 		}
-		fmt.Fprintf(&b, "\t%s %s\n", gc.StateFieldName(v.Name), typeToGo(v.Type, site{calls: pkg.CCalls}))
+		fmt.Fprintf(&b, "\t%s %s\n", gc.StateFieldName(v.Name), typeToGo(v.Type, site{calls: pkg.CCalls, qualify: gc.Qualified}))
 	}
 	fmt.Fprintf(&b, "}\n\nvar %s = &snglState{}\n", gc.RecvName())
 
 	for _, fn := range pkg.Funcs {
-		if fn.IsTest || !codegen.HasBody(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
+		// A helper a test hands its Test is written with the tests
+		// (WriteTests), whose calls of it are the agent's.
+		if fn.IsTest || ir.TakesTest(fn) || !codegen.HasBody(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
 			continue
 		}
-		// A method is the free function its call site names (LiftsToFreeFunc),
-		// as on every Go platform.
-		var lines []string
-		if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
-			lines = gc.EmitTypeMethodDef(fn)
-		} else {
-			free := *fn
-			free.Name = gc.FreeFuncName(fn.Name)
-			lines = gc.EmitFuncDef(&free)
-		}
-		b.WriteByte('\n')
-		for _, l := range lines {
-			b.WriteString(l + "\n")
-		}
+		writeFunc(&b, gc, pkg, fn)
 	}
 
 	fmt.Fprintf(&b, "\nfunc snglInit() {\n\t%s = &snglState{}\n", gc.RecvName())
@@ -124,8 +119,28 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 		args, run := pkg.Run.Params[0], pkg.Run.Params[1]
 		fmt.Fprintf(&b, "\nfunc snglRun(args %s, run %s) {\n\t%s(args, run)\n}\n", gc.goType(args.Type), gc.goType(run.Type), gc.FreeFuncName(pkg.Run.Name))
 	}
+	// What the target's generated entry calls (sngl:x/gen's #[entry]), each
+	// under a name the entry can write: `_main` is snglEntryMain.
+	for _, fn := range pkg.Entries {
+		var params, args []string
+		for _, p := range fn.Params {
+			params = append(params, p.Name+" "+gc.goType(p.Type))
+			args = append(args, p.Name)
+		}
+		ret, pre := "", ""
+		if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+			ret, pre = " "+gc.goType(fn.Return), "return "
+		}
+		fmt.Fprintf(&b, "\nfunc %s(%s)%s {\n\t%s%s(%s)\n}\n", EntryName(fn), strings.Join(params, ", "), ret, pre, gc.FreeFuncName(fn.Name), strings.Join(args, ", "))
+	}
 	_, err := io.WriteString(fe, b.String())
 	return err
+}
+
+// EntryName is the Go function WriteProgram writes for fn, one the target's
+// generated entry calls: `_main` is snglEntryMain.
+func EntryName(fn *ir.Func) string {
+	return "snglEntry" + ExportName(strings.TrimLeft(fn.Name, "_"))
 }
 
 // RunsHandler reports whether pkg's `@run` handler is one an entry calls,
@@ -134,6 +149,24 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 // as snglRun.
 func RunsHandler(pkg *ir.Package) bool {
 	return pkg.Run != nil && len(pkg.Run.Block) > 0 && len(pkg.Run.Params) == 2
+}
+
+// writeFunc writes fn into b as a function of the placed program. A method
+// is the free function its call site names (LiftsToFreeFunc), as on every Go
+// platform.
+func writeFunc(b *strings.Builder, gc *GoIRContext, pkg *ir.Package, fn *ir.Func) {
+	var lines []string
+	if fn.IsMethod() && LiftsToFreeFunc(pkg, fn) {
+		lines = gc.EmitTypeMethodDef(fn)
+	} else {
+		free := *fn
+		free.Name = gc.FreeFuncName(fn.Name)
+		lines = gc.EmitFuncDef(&free)
+	}
+	b.WriteByte('\n')
+	for _, l := range lines {
+		b.WriteString(l + "\n")
+	}
 }
 
 // WriteTests writes pkg's tests into fe as the agent's, after WriteProgram,
@@ -158,13 +191,26 @@ func WriteTests(fe codegen.FileEmitter, pkg *ir.Package, reset string) error {
 		reset = "\t\t" + reset + "\n"
 	}
 	b.WriteString("\nvar snglRan bool\n\nfunc snglReset() {\n\tif snglRan {\n" + reset + "\t\tsnglTeardown()\n\t}\n\tsnglRan = true\n\tsnglInit()\n}\n")
+	// A helper a test hands its Test asserts and waits through it as the
+	// test does: its Test is the agent's.
+	for _, fn := range pkg.Funcs {
+		if ir.TakesTest(fn) && codegen.HasBody(fn) {
+			writeFunc(&b, &gc, pkg, fn)
+		}
+	}
 	var register strings.Builder
 	for _, fn := range pkg.Funcs {
 		if !fn.IsTest {
 			continue
 		}
 		name := "snglTest" + ExportName(strings.TrimPrefix(fn.Name, "test"))
-		fmt.Fprintf(&b, "\nfunc %s(t *testagent.T) {\n\tsnglReset()\n", name)
+		// The test is its parameter's, as a helper it is handed to names it.
+		tParam := "t"
+		if len(fn.Params) > 0 {
+			p := fn.Params[0]
+			tParam = gc.WithLocal(p.Name).EvalExpr(&ir.Ident{Name: p.Name, Sym: p, Type: p.Type})
+		}
+		fmt.Fprintf(&b, "\nfunc %s(%s *testagent.T) {\n\tsnglReset()\n", name, tParam)
 		if !mountsProgram(fn) {
 			b.WriteString("\tsnglBuild()\n")
 		}

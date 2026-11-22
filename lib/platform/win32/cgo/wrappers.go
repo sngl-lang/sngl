@@ -2,7 +2,7 @@
 
 //go:build windows
 
-// The C sources, as a change to them builds this package again: 65b14598f64ae71d1ed35a39
+// The C sources, as a change to them builds this package again: e4abb333a9cf62667fb0d216
 
 package cgo
 
@@ -12,6 +12,150 @@ package cgo
 #include "sngl_win32.h"
 #include <windows.h>
 #include <stdlib.h>
+
+static inline void * snglF__gfxGraphics(sngl_win32_gfx * a0) {
+	return (a0)->g;
+}
+
+static inline void * snglF__gfxPath(sngl_win32_gfx * a0) {
+	return (a0)->path;
+}
+
+static inline int snglF__gfxSerial(sngl_win32_gfx * a0) {
+	return (a0)->serial;
+}
+
+static inline LRESULT snglP__sendRect(HWND a0, UINT a1, WPARAM a2, RECT * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendSize(HWND a0, UINT a1, WPARAM a2, SIZE * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendTabItem(HWND a0, UINT a1, WPARAM a2, TCITEMW * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline NMHDR * snglP__nmOf(LPARAM a0) {
+	return (NMHDR *)a0;
+}
+
+static inline HWND snglF__nmFrom(NMHDR * a0) {
+	return (a0)->hwndFrom;
+}
+
+static inline UINT snglF__nmCode(NMHDR * a0) {
+	return (a0)->code;
+}
+
+static inline NMLISTVIEW * snglP__lvOf(LPARAM a0) {
+	return (NMLISTVIEW *)a0;
+}
+
+static inline int snglF__lvItem(NMLISTVIEW * a0) {
+	return (a0)->iItem;
+}
+
+static inline int snglF__lvSubItem(NMLISTVIEW * a0) {
+	return (a0)->iSubItem;
+}
+
+static inline UINT snglF__lvNewState(NMLISTVIEW * a0) {
+	return (a0)->uNewState;
+}
+
+static inline UINT snglF__lvOldState(NMLISTVIEW * a0) {
+	return (a0)->uOldState;
+}
+
+static inline UINT snglF__lvChanged(NMLISTVIEW * a0) {
+	return (a0)->uChanged;
+}
+
+static inline DRAWITEMSTRUCT * snglP__drawOf(LPARAM a0) {
+	return (DRAWITEMSTRUCT *)a0;
+}
+
+static inline HWND snglF__drawWindow(DRAWITEMSTRUCT * a0) {
+	return (a0)->hwndItem;
+}
+
+static inline HDC snglF__drawDc(DRAWITEMSTRUCT * a0) {
+	return (a0)->hDC;
+}
+
+static inline UINT snglF__drawState(DRAWITEMSTRUCT * a0) {
+	return (a0)->itemState;
+}
+
+static inline RECT snglF__drawRect(DRAWITEMSTRUCT * a0) {
+	return (a0)->rcItem;
+}
+
+static inline MSG * snglP__msgOf(LPARAM a0) {
+	return (MSG *)a0;
+}
+
+static inline UINT snglF__msgMessage(MSG * a0) {
+	return (a0)->message;
+}
+
+static inline WPARAM snglF__msgWparam(MSG * a0) {
+	return (a0)->wParam;
+}
+
+static inline RECT * snglP__rectOf(LPARAM a0) {
+	return (RECT *)a0;
+}
+
+static inline int snglF__rectLeft(RECT * a0) {
+	return (a0)->left;
+}
+
+static inline int snglF__rectTop(RECT * a0) {
+	return (a0)->top;
+}
+
+static inline int snglF__rectRight(RECT * a0) {
+	return (a0)->right;
+}
+
+static inline int snglF__rectBottom(RECT * a0) {
+	return (a0)->bottom;
+}
+
+static inline LRESULT snglP__sendCommand(HWND a0, UINT a1, WPARAM a2, HWND a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendNotify(HWND a0, UINT a1, WPARAM a2, NMHDR * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__addString(HWND a0, UINT a1, WPARAM a2, const unsigned short * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__dtmGetSystemTime(HWND a0, UINT a1, WPARAM a2, SYSTEMTIME * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendItemState(HWND a0, UINT a1, WPARAM a2, LVITEMW * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendListView(HWND a0, UINT a1, WPARAM a2, NMLISTVIEW * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendTreeItem(HWND a0, UINT a1, WPARAM a2, HTREEITEM a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
+
+static inline LRESULT snglP__sendDateChange(HWND a0, UINT a1, WPARAM a2, NMDATETIMECHANGE * a3) {
+	return SendMessageW(a0, a1, a2, (LPARAM)a3);
+}
 */
 import "C"
 
@@ -20,8 +164,28 @@ import (
 	"unsafe"
 )
 
+// Brush is C's HBRUSH.
+type Brush = C.HBRUSH
+
+// ConstRect is C's const RECT *.
+type ConstRect = *C.RECT
+
+// DrawPtr is C's DRAWITEMSTRUCT *.
+type DrawPtr = *C.DRAWITEMSTRUCT
+
+// Found is C's HWND.
+type Found = C.HWND
+
 // Gfx is C's sngl_win32_gfx *.
 type Gfx = *C.sngl_win32_gfx
+
+// GpRectF is C's RectF, field by field.
+type GpRectF struct {
+	X      float64
+	Y      float64
+	Width  float64
+	Height float64
+}
 
 // HBRUSH is C's HBRUSH.
 type HBRUSH = C.HBRUSH
@@ -37,6 +201,12 @@ type HMODULE = C.HMODULE
 
 // HWND is C's HWND.
 type HWND = C.HWND
+
+// Hdwp is C's HDWP.
+type Hdwp = C.HDWP
+
+// Instance is C's HINSTANCE.
+type Instance = C.HINSTANCE
 
 // Look is C's sngl_win32_look, field by field.
 type Look struct {
@@ -56,6 +226,48 @@ type Look struct {
 	Hidden     int
 }
 
+// LvPtr is C's NMLISTVIEW *.
+type LvPtr = *C.NMLISTVIEW
+
+// LvState is C's LVITEMW, field by field.
+type LvState struct {
+	Mask      int
+	IItem     int
+	ISubItem  int
+	State     int
+	StateMask int
+}
+
+// Menu is C's HMENU.
+type Menu = C.HMENU
+
+// MsgPtr is C's MSG *.
+type MsgPtr = *C.MSG
+
+// NmDateTimeChange is C's NMDATETIMECHANGE, field by field.
+type NmDateTimeChange struct {
+	Nmhdr   Nmhdr
+	DwFlags int
+	St      SystemTime
+}
+
+// NmListView is C's NMLISTVIEW, field by field.
+type NmListView struct {
+	Hdr      Nmhdr
+	IItem    int
+	ISubItem int
+}
+
+// NmPtr is C's NMHDR *.
+type NmPtr = *C.NMHDR
+
+// Nmhdr is C's NMHDR, field by field.
+type Nmhdr struct {
+	HwndFrom HWND
+	IdFrom   int
+	Code     int
+}
+
 // POINT is C's POINT, field by field.
 type POINT struct {
 	X int
@@ -70,10 +282,129 @@ type RECT struct {
 	Bottom int
 }
 
+// RectPtr is C's RECT *.
+type RectPtr = *C.RECT
+
+// Region is C's HRGN.
+type Region = C.HRGN
+
 // SIZE is C's SIZE, field by field.
 type SIZE struct {
 	Cx int
 	Cy int
+}
+
+// ScrollInfo is C's SCROLLINFO, field by field.
+type ScrollInfo struct {
+	CbSize    int
+	FMask     int
+	NMin      int
+	NMax      int
+	NPage     int
+	NPos      int
+	NTrackPos int
+}
+
+// SystemTime is C's SYSTEMTIME, field by field.
+type SystemTime struct {
+	WYear         int
+	WMonth        int
+	WDayOfWeek    int
+	WDay          int
+	WHour         int
+	WMinute       int
+	WSecond       int
+	WMilliseconds int
+}
+
+// TabItem is C's TCITEMW, field by field.
+type TabItem struct {
+	Mask    int
+	PszText string
+}
+
+// TreeFound is C's HTREEITEM.
+type TreeFound = C.HTREEITEM
+
+// TreeItem is C's HTREEITEM.
+type TreeItem = C.HTREEITEM
+
+// DtmGetSystemTimeResult is what DtmGetSystemTime hands back.
+type DtmGetSystemTimeResult struct {
+	Result int
+	Out3   SystemTime
+}
+
+// GdipCreateFontFamilyFromNameResult is what GdipCreateFontFamilyFromName hands back.
+type GdipCreateFontFamilyFromNameResult struct {
+	Result int
+	Out2   *unsafe.Pointer
+}
+
+// GdipCreateFontResult is what GdipCreateFont hands back.
+type GdipCreateFontResult struct {
+	Result int
+	Out4   *unsafe.Pointer
+}
+
+// GdipCreatePen1Result is what GdipCreatePen1 hands back.
+type GdipCreatePen1Result struct {
+	Result int
+	Out3   *unsafe.Pointer
+}
+
+// GdipCreateSolidFillResult is what GdipCreateSolidFill hands back.
+type GdipCreateSolidFillResult struct {
+	Result int
+	Out1   *unsafe.Pointer
+}
+
+// GdipDrawStringResult is what GdipDrawString hands back.
+type GdipDrawStringResult struct {
+	Result int
+	Out4   GpRectF
+}
+
+// GdipGetCellAscentResult is what GdipGetCellAscent hands back.
+type GdipGetCellAscentResult struct {
+	Result int
+	Out2   int
+}
+
+// GdipGetEmHeightResult is what GdipGetEmHeight hands back.
+type GdipGetEmHeightResult struct {
+	Result int
+	Out2   int
+}
+
+// GdipGetGenericFontFamilyMonospaceResult is what GdipGetGenericFontFamilyMonospace hands back.
+type GdipGetGenericFontFamilyMonospaceResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
+// GdipGetGenericFontFamilySansSerifResult is what GdipGetGenericFontFamilySansSerif hands back.
+type GdipGetGenericFontFamilySansSerifResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
+// GdipGetGenericFontFamilySerifResult is what GdipGetGenericFontFamilySerif hands back.
+type GdipGetGenericFontFamilySerifResult struct {
+	Result int
+	Out0   *unsafe.Pointer
+}
+
+// GdipSaveGraphicsResult is what GdipSaveGraphics hands back.
+type GdipSaveGraphicsResult struct {
+	Result int
+	Out1   int
+}
+
+// GdipStringFormatGetGenericTypographicResult is what GdipStringFormatGetGenericTypographic hands back.
+type GdipStringFormatGetGenericTypographicResult struct {
+	Result int
+	Out0   *unsafe.Pointer
 }
 
 // GetClientRectResult is what GetClientRect hands back.
@@ -82,10 +413,113 @@ type GetClientRectResult struct {
 	Out1   RECT
 }
 
+// GetScrollInfoResult is what GetScrollInfo hands back.
+type GetScrollInfoResult struct {
+	Result int
+	Out2   ScrollInfo
+}
+
 // GetWindowRectResult is what GetWindowRect hands back.
 type GetWindowRectResult struct {
 	Result int
 	Out1   RECT
+}
+
+// SendDateChangeResult is what SendDateChange hands back.
+type SendDateChangeResult struct {
+	Result int
+	Out3   NmDateTimeChange
+}
+
+// SendItemStateResult is what SendItemState hands back.
+type SendItemStateResult struct {
+	Result int
+	Out3   LvState
+}
+
+// SendListViewResult is what SendListView hands back.
+type SendListViewResult struct {
+	Result int
+	Out3   NmListView
+}
+
+// SendNotifyResult is what SendNotify hands back.
+type SendNotifyResult struct {
+	Result int
+	Out3   Nmhdr
+}
+
+// SendRectResult is what SendRect hands back.
+type SendRectResult struct {
+	Result int
+	Out3   RECT
+}
+
+// SendSizeResult is what SendSize hands back.
+type SendSizeResult struct {
+	Result int
+	Out3   SIZE
+}
+
+// SendTabItemResult is what SendTabItem hands back.
+type SendTabItemResult struct {
+	Result int
+	Out3   TabItem
+}
+
+// SetScrollInfoResult is what SetScrollInfo hands back.
+type SetScrollInfoResult struct {
+	Result int
+	Out2   ScrollInfo
+}
+
+// SnglWin32PictureSizeResult is what SnglWin32PictureSize hands back.
+type SnglWin32PictureSizeResult struct {
+	Result int
+	Out1   SIZE
+}
+
+// AddString calls SendMessageW.
+func AddString(s HWND, msg int, w int, label string) int {
+	return int(C.snglP__addString(s, C.UINT(msg), C.WPARAM(w), (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
+}
+
+// AppendMenuW calls AppendMenuW.
+func AppendMenuW(m Menu, flags int, id int, label string) int {
+	return int(C.AppendMenuW(m, C.UINT(flags), C.UINT_PTR(id), (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
+}
+
+// BeginDeferWindowPos calls BeginDeferWindowPos.
+func BeginDeferWindowPos(n int) *Hdwp {
+	return func() *C.HDWP {
+		p := (C.HDWP)(C.BeginDeferWindowPos(C.int(n)))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// CreateMenu calls CreateMenu.
+func CreateMenu() *Menu {
+	return func() *C.HMENU {
+		p := (C.HMENU)(C.CreateMenu())
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// CreatePopupMenu calls CreatePopupMenu.
+func CreatePopupMenu() *Menu {
+	return func() *C.HMENU {
+		p := (C.HMENU)(C.CreatePopupMenu())
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
 }
 
 // CreateSolidBrush calls CreateSolidBrush.
@@ -93,14 +527,95 @@ func CreateSolidBrush(color int) HBRUSH {
 	return C.CreateSolidBrush(C.COLORREF(color))
 }
 
+// DRAWITEMSTRUCTHDC calls DRAWITEMSTRUCT.hDC.
+func DRAWITEMSTRUCTHDC(di DrawPtr) HDC {
+	return C.snglF__drawDc(di)
+}
+
+// DRAWITEMSTRUCTHwndItem calls DRAWITEMSTRUCT.hwndItem.
+func DRAWITEMSTRUCTHwndItem(di DrawPtr) HWND {
+	return C.snglF__drawWindow(di)
+}
+
+// DRAWITEMSTRUCTItemState calls DRAWITEMSTRUCT.itemState.
+func DRAWITEMSTRUCTItemState(di DrawPtr) int {
+	return int(C.snglF__drawState(di))
+}
+
+// DRAWITEMSTRUCTRcItem calls DRAWITEMSTRUCT.rcItem.
+func DRAWITEMSTRUCTRcItem(di DrawPtr) RECT {
+	return func(c C.RECT) RECT {
+		return RECT{Left: int(c.left), Top: int(c.top), Right: int(c.right), Bottom: int(c.bottom)}
+	}(C.snglF__drawRect(di))
+}
+
+// DefSubclassProc calls DefSubclassProc.
+func DefSubclassProc(w HWND, msg int, wp int, lp int) int {
+	return int(C.DefSubclassProc(w, C.UINT(msg), C.WPARAM(wp), C.LPARAM(lp)))
+}
+
+// DefWindowProcW calls DefWindowProcW.
+func DefWindowProcW(w HWND, msg int, wp int, lp int) int {
+	return int(C.DefWindowProcW(w, C.UINT(msg), C.WPARAM(wp), C.LPARAM(lp)))
+}
+
+// DeferWindowPos calls DeferWindowPos.
+func DeferWindowPos(d Hdwp, w HWND, after *Found, x int, y int, cx int, cy int, flags int) *Hdwp {
+	if after == nil {
+		return func() *C.HDWP {
+			p := (C.HDWP)(C.DeferWindowPos(d, w, nil, C.int(x), C.int(y), C.int(cx), C.int(cy), C.UINT(flags)))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}()
+	} else {
+		return func() *C.HDWP {
+			p := (C.HDWP)(C.DeferWindowPos(d, w, (*(after)), C.int(x), C.int(y), C.int(cx), C.int(cy), C.UINT(flags)))
+			if p == nil {
+				return nil
+			}
+			return &p
+		}()
+	}
+}
+
 // DeleteObject calls DeleteObject.
 func DeleteObject(ho HGDIOBJ) int {
 	return int(C.DeleteObject(ho))
 }
 
+// DestroyMenu calls DestroyMenu.
+func DestroyMenu(m Menu) int {
+	return int(C.DestroyMenu(m))
+}
+
 // DestroyWindow calls DestroyWindow.
 func DestroyWindow(hWnd HWND) int {
 	return int(C.DestroyWindow(hWnd))
+}
+
+// DrawMenuBar calls DrawMenuBar.
+func DrawMenuBar(w HWND) int {
+	return int(C.DrawMenuBar(w))
+}
+
+// DrawOf calls DRAWITEMSTRUCT *.
+func DrawOf(lp int) DrawPtr {
+	return C.snglP__drawOf(C.LPARAM(C.LPARAM(lp)))
+}
+
+// DtmGetSystemTime calls SendMessageW.
+func DtmGetSystemTime(d HWND, msg int, w int, st SystemTime) DtmGetSystemTimeResult {
+	return func() DtmGetSystemTimeResult {
+		__snglOut3 := func(v SystemTime) C.SYSTEMTIME {
+			return C.SYSTEMTIME{wYear: C.WORD(v.WYear), wMonth: C.WORD(v.WMonth), wDayOfWeek: C.WORD(v.WDayOfWeek), wDay: C.WORD(v.WDay), wHour: C.WORD(v.WHour), wMinute: C.WORD(v.WMinute), wSecond: C.WORD(v.WSecond), wMilliseconds: C.WORD(v.WMilliseconds)}
+		}(st)
+		__snglResult := int(C.snglP__dtmGetSystemTime(d, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return DtmGetSystemTimeResult{Result: __snglResult, Out3: func(c C.SYSTEMTIME) SystemTime {
+			return SystemTime{WYear: int(c.wYear), WMonth: int(c.wMonth), WDayOfWeek: int(c.wDayOfWeek), WDay: int(c.wDay), WHour: int(c.wHour), WMinute: int(c.wMinute), WSecond: int(c.wSecond), WMilliseconds: int(c.wMilliseconds)}
+		}(__snglOut3)}
+	}()
 }
 
 // EnableWindow calls EnableWindow.
@@ -112,6 +627,290 @@ func EnableWindow(hWnd HWND, bEnable bool) int {
 		__lt0 = 0
 	}
 	return int(C.EnableWindow(hWnd, C.int(__lt0)))
+}
+
+// EndDeferWindowPos calls EndDeferWindowPos.
+func EndDeferWindowPos(d Hdwp) int {
+	return int(C.EndDeferWindowPos(d))
+}
+
+// GdipAddPathBezier calls GdipAddPathBezier.
+func GdipAddPathBezier(p unsafe.Pointer, x1 float64, y1 float64, x2 float64, y2 float64, x3 float64, y3 float64, x4 float64, y4 float64) int {
+	return int(C.GdipAddPathBezier(p, C.REAL(x1), C.REAL(y1), C.REAL(x2), C.REAL(y2), C.REAL(x3), C.REAL(y3), C.REAL(x4), C.REAL(y4)))
+}
+
+// GdipAddPathLine calls GdipAddPathLine.
+func GdipAddPathLine(p unsafe.Pointer, x1 float64, y1 float64, x2 float64, y2 float64) int {
+	return int(C.GdipAddPathLine(p, C.REAL(x1), C.REAL(y1), C.REAL(x2), C.REAL(y2)))
+}
+
+// GdipAddPathRectangle calls GdipAddPathRectangle.
+func GdipAddPathRectangle(p unsafe.Pointer, x float64, y float64, w float64, h float64) int {
+	return int(C.GdipAddPathRectangle(p, C.REAL(x), C.REAL(y), C.REAL(w), C.REAL(h)))
+}
+
+// GdipClosePathFigure calls GdipClosePathFigure.
+func GdipClosePathFigure(p unsafe.Pointer) int {
+	return int(C.GdipClosePathFigure(p))
+}
+
+// GdipCreateFont calls GdipCreateFont.
+func GdipCreateFont(family unsafe.Pointer, size float64, style int, units int, font *unsafe.Pointer) GdipCreateFontResult {
+	return func() GdipCreateFontResult {
+		__snglOut4 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipCreateFont(family, C.REAL(size), C.int(style), C.Unit(units), &__snglOut4))
+		return GdipCreateFontResult{Result: __snglResult, Out4: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut4)}
+	}()
+}
+
+// GdipCreateFontFamilyFromName calls GdipCreateFontFamilyFromName.
+func GdipCreateFontFamilyFromName(name string, collection *unsafe.Pointer, family *unsafe.Pointer) GdipCreateFontFamilyFromNameResult {
+	if collection == nil {
+		return func() GdipCreateFontFamilyFromNameResult {
+			__snglOut2 := (unsafe.Pointer)(nil)
+			__snglResult := int(C.GdipCreateFontFamilyFromName((*C.ushort)(unsafe.Pointer(cbind.UTF16(name))), nil, &__snglOut2))
+			return GdipCreateFontFamilyFromNameResult{Result: __snglResult, Out2: func(p unsafe.Pointer) *unsafe.Pointer {
+				if p == nil {
+					return nil
+				}
+				v := p
+				return &v
+			}(__snglOut2)}
+		}()
+	} else {
+		return func() GdipCreateFontFamilyFromNameResult {
+			__snglOut2 := (unsafe.Pointer)(nil)
+			__snglResult := int(C.GdipCreateFontFamilyFromName((*C.ushort)(unsafe.Pointer(cbind.UTF16(name))), (*(collection)), &__snglOut2))
+			return GdipCreateFontFamilyFromNameResult{Result: __snglResult, Out2: func(p unsafe.Pointer) *unsafe.Pointer {
+				if p == nil {
+					return nil
+				}
+				v := p
+				return &v
+			}(__snglOut2)}
+		}()
+	}
+}
+
+// GdipCreatePen1 calls GdipCreatePen1.
+func GdipCreatePen1(color int, width float64, units int, pen *unsafe.Pointer) GdipCreatePen1Result {
+	return func() GdipCreatePen1Result {
+		__snglOut3 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipCreatePen1(C.ARGB(color), C.REAL(width), C.GpUnit(units), &__snglOut3))
+		return GdipCreatePen1Result{Result: __snglResult, Out3: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut3)}
+	}()
+}
+
+// GdipCreateSolidFill calls GdipCreateSolidFill.
+func GdipCreateSolidFill(color int, brush *unsafe.Pointer) GdipCreateSolidFillResult {
+	return func() GdipCreateSolidFillResult {
+		__snglOut1 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipCreateSolidFill(C.ARGB(color), &__snglOut1))
+		return GdipCreateSolidFillResult{Result: __snglResult, Out1: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut1)}
+	}()
+}
+
+// GdipDeleteBrush calls GdipDeleteBrush.
+func GdipDeleteBrush(brush unsafe.Pointer) int {
+	return int(C.GdipDeleteBrush(brush))
+}
+
+// GdipDeleteFont calls GdipDeleteFont.
+func GdipDeleteFont(font unsafe.Pointer) int {
+	return int(C.GdipDeleteFont(font))
+}
+
+// GdipDeleteFontFamily calls GdipDeleteFontFamily.
+func GdipDeleteFontFamily(family unsafe.Pointer) int {
+	return int(C.GdipDeleteFontFamily(family))
+}
+
+// GdipDeletePen calls GdipDeletePen.
+func GdipDeletePen(pen unsafe.Pointer) int {
+	return int(C.GdipDeletePen(pen))
+}
+
+// GdipDeleteStringFormat calls GdipDeleteStringFormat.
+func GdipDeleteStringFormat(format unsafe.Pointer) int {
+	return int(C.GdipDeleteStringFormat(format))
+}
+
+// GdipDrawPath calls GdipDrawPath.
+func GdipDrawPath(g unsafe.Pointer, pen unsafe.Pointer, p unsafe.Pointer) int {
+	return int(C.GdipDrawPath(g, pen, p))
+}
+
+// GdipDrawString calls GdipDrawString.
+func GdipDrawString(g unsafe.Pointer, text string, length int, font unsafe.Pointer, at GpRectF, format unsafe.Pointer, brush unsafe.Pointer) GdipDrawStringResult {
+	return func() GdipDrawStringResult {
+		__snglOut4 := func(v GpRectF) C.RectF {
+			return C.RectF{X: C.REAL(v.X), Y: C.REAL(v.Y), Width: C.REAL(v.Width), Height: C.REAL(v.Height)}
+		}(at)
+		__snglResult := int(C.GdipDrawString(g, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))), C.int(length), font, &__snglOut4, format, brush))
+		return GdipDrawStringResult{Result: __snglResult, Out4: func(c C.RectF) GpRectF {
+			return GpRectF{X: float64(c.X), Y: float64(c.Y), Width: float64(c.Width), Height: float64(c.Height)}
+		}(__snglOut4)}
+	}()
+}
+
+// GdipFillPath calls GdipFillPath.
+func GdipFillPath(g unsafe.Pointer, brush unsafe.Pointer, p unsafe.Pointer) int {
+	return int(C.GdipFillPath(g, brush, p))
+}
+
+// GdipGetCellAscent calls GdipGetCellAscent.
+func GdipGetCellAscent(family unsafe.Pointer, style int, ascent int) GdipGetCellAscentResult {
+	return func() GdipGetCellAscentResult {
+		__snglOut2 := C.UINT16(ascent)
+		__snglResult := int(C.GdipGetCellAscent(family, C.int(style), &__snglOut2))
+		return GdipGetCellAscentResult{Result: __snglResult, Out2: int(__snglOut2)}
+	}()
+}
+
+// GdipGetEmHeight calls GdipGetEmHeight.
+func GdipGetEmHeight(family unsafe.Pointer, style int, em int) GdipGetEmHeightResult {
+	return func() GdipGetEmHeightResult {
+		__snglOut2 := C.UINT16(em)
+		__snglResult := int(C.GdipGetEmHeight(family, C.int(style), &__snglOut2))
+		return GdipGetEmHeightResult{Result: __snglResult, Out2: int(__snglOut2)}
+	}()
+}
+
+// GdipGetGenericFontFamilyMonospace calls GdipGetGenericFontFamilyMonospace.
+func GdipGetGenericFontFamilyMonospace(family *unsafe.Pointer) GdipGetGenericFontFamilyMonospaceResult {
+	return func() GdipGetGenericFontFamilyMonospaceResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipGetGenericFontFamilyMonospace(&__snglOut0))
+		return GdipGetGenericFontFamilyMonospaceResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipGetGenericFontFamilySansSerif calls GdipGetGenericFontFamilySansSerif.
+func GdipGetGenericFontFamilySansSerif(family *unsafe.Pointer) GdipGetGenericFontFamilySansSerifResult {
+	return func() GdipGetGenericFontFamilySansSerifResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipGetGenericFontFamilySansSerif(&__snglOut0))
+		return GdipGetGenericFontFamilySansSerifResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipGetGenericFontFamilySerif calls GdipGetGenericFontFamilySerif.
+func GdipGetGenericFontFamilySerif(family *unsafe.Pointer) GdipGetGenericFontFamilySerifResult {
+	return func() GdipGetGenericFontFamilySerifResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipGetGenericFontFamilySerif(&__snglOut0))
+		return GdipGetGenericFontFamilySerifResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipResetPath calls GdipResetPath.
+func GdipResetPath(p unsafe.Pointer) int {
+	return int(C.GdipResetPath(p))
+}
+
+// GdipRestoreGraphics calls GdipRestoreGraphics.
+func GdipRestoreGraphics(g unsafe.Pointer, state int) int {
+	return int(C.GdipRestoreGraphics(g, C.GraphicsState(state)))
+}
+
+// GdipSaveGraphics calls GdipSaveGraphics.
+func GdipSaveGraphics(g unsafe.Pointer, state int) GdipSaveGraphicsResult {
+	return func() GdipSaveGraphicsResult {
+		__snglOut1 := C.GraphicsState(state)
+		__snglResult := int(C.GdipSaveGraphics(g, &__snglOut1))
+		return GdipSaveGraphicsResult{Result: __snglResult, Out1: int(__snglOut1)}
+	}()
+}
+
+// GdipScaleWorldTransform calls GdipScaleWorldTransform.
+func GdipScaleWorldTransform(g unsafe.Pointer, x float64, y float64, order int) int {
+	return int(C.GdipScaleWorldTransform(g, C.REAL(x), C.REAL(y), C.GpMatrixOrder(order)))
+}
+
+// GdipSetClipPath calls GdipSetClipPath.
+func GdipSetClipPath(g unsafe.Pointer, p unsafe.Pointer, mode int) int {
+	return int(C.GdipSetClipPath(g, p, C.CombineMode(mode)))
+}
+
+// GdipSetPathFillMode calls GdipSetPathFillMode.
+func GdipSetPathFillMode(p unsafe.Pointer, mode int) int {
+	return int(C.GdipSetPathFillMode(p, C.GpFillMode(mode)))
+}
+
+// GdipSetPenLineCap197819 calls GdipSetPenLineCap197819.
+func GdipSetPenLineCap197819(pen unsafe.Pointer, start int, end int, dash int) int {
+	return int(C.GdipSetPenLineCap197819(pen, C.GpLineCap(start), C.GpLineCap(end), C.GpDashCap(dash)))
+}
+
+// GdipSetPenLineJoin calls GdipSetPenLineJoin.
+func GdipSetPenLineJoin(pen unsafe.Pointer, join int) int {
+	return int(C.GdipSetPenLineJoin(pen, C.GpLineJoin(join)))
+}
+
+// GdipStartPathFigure calls GdipStartPathFigure.
+func GdipStartPathFigure(p unsafe.Pointer) int {
+	return int(C.GdipStartPathFigure(p))
+}
+
+// GdipStringFormatGetGenericTypographic calls GdipStringFormatGetGenericTypographic.
+func GdipStringFormatGetGenericTypographic(format *unsafe.Pointer) GdipStringFormatGetGenericTypographicResult {
+	return func() GdipStringFormatGetGenericTypographicResult {
+		__snglOut0 := (unsafe.Pointer)(nil)
+		__snglResult := int(C.GdipStringFormatGetGenericTypographic(&__snglOut0))
+		return GdipStringFormatGetGenericTypographicResult{Result: __snglResult, Out0: func(p unsafe.Pointer) *unsafe.Pointer {
+			if p == nil {
+				return nil
+			}
+			v := p
+			return &v
+		}(__snglOut0)}
+	}()
+}
+
+// GdipTranslateWorldTransform calls GdipTranslateWorldTransform.
+func GdipTranslateWorldTransform(g unsafe.Pointer, x float64, y float64, order int) int {
+	return int(C.GdipTranslateWorldTransform(g, C.REAL(x), C.REAL(y), C.GpMatrixOrder(order)))
+}
+
+// GetAncestor calls GetAncestor.
+func GetAncestor(w HWND, flags int) HWND {
+	return C.GetAncestor(w, C.UINT(flags))
 }
 
 // GetClientRect calls GetClientRect.
@@ -127,9 +926,24 @@ func GetClientRect(hWnd HWND, lpRect RECT) GetClientRectResult {
 	}()
 }
 
+// GetDlgCtrlID calls GetDlgCtrlID.
+func GetDlgCtrlID(w HWND) int {
+	return int(C.GetDlgCtrlID(w))
+}
+
 // GetFocus calls GetFocus.
 func GetFocus() HWND {
 	return C.GetFocus()
+}
+
+// GetMenuItemCount calls GetMenuItemCount.
+func GetMenuItemCount(m Menu) int {
+	return int(C.GetMenuItemCount(m))
+}
+
+// GetMenuState calls GetMenuState.
+func GetMenuState(m Menu, id int, flags int) int {
+	return int(C.GetMenuState(m, C.UINT(id), C.UINT(flags)))
 }
 
 // GetModuleHandleW calls GetModuleHandleW.
@@ -146,6 +960,19 @@ func GetParent(hWnd HWND) HWND {
 	return C.GetParent(hWnd)
 }
 
+// GetScrollInfo calls GetScrollInfo.
+func GetScrollInfo(w HWND, bar int, si ScrollInfo) GetScrollInfoResult {
+	return func() GetScrollInfoResult {
+		__snglOut2 := func(v ScrollInfo) C.SCROLLINFO {
+			return C.SCROLLINFO{cbSize: C.UINT(v.CbSize), fMask: C.UINT(v.FMask), nMin: C.int(v.NMin), nMax: C.int(v.NMax), nPage: C.UINT(v.NPage), nPos: C.int(v.NPos), nTrackPos: C.int(v.NTrackPos)}
+		}(si)
+		__snglResult := int(C.GetScrollInfo(w, C.int(bar), &__snglOut2))
+		return GetScrollInfoResult{Result: __snglResult, Out2: func(c C.SCROLLINFO) ScrollInfo {
+			return ScrollInfo{CbSize: int(c.cbSize), FMask: int(c.fMask), NMin: int(c.nMin), NMax: int(c.nMax), NPage: int(c.nPage), NPos: int(c.nPos), NTrackPos: int(c.nTrackPos)}
+		}(__snglOut2)}
+	}()
+}
+
 // GetSysColor calls GetSysColor.
 func GetSysColor(nIndex int) int {
 	return int(C.GetSysColor(C.int(nIndex)))
@@ -154,6 +981,17 @@ func GetSysColor(nIndex int) int {
 // GetSystemMetrics calls GetSystemMetrics.
 func GetSystemMetrics(nIndex int) int {
 	return int(C.GetSystemMetrics(C.int(nIndex)))
+}
+
+// GetWindow calls GetWindow.
+func GetWindow(w HWND, cmd int) *Found {
+	return func() *C.HWND {
+		p := (C.HWND)(C.GetWindow(w, C.UINT(cmd)))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
 }
 
 // GetWindowRect calls GetWindowRect.
@@ -174,6 +1012,32 @@ func GetWindowTextLengthW(hWnd HWND) int {
 	return int(C.GetWindowTextLengthW(hWnd))
 }
 
+// InvalidateRect calls InvalidateRect.
+func InvalidateRect(w HWND, r *ConstRect, erase bool) int {
+	if r == nil {
+		var __lt1 int
+		if erase {
+			__lt1 = 1
+		} else {
+			__lt1 = 0
+		}
+		return int(C.InvalidateRect(w, nil, C.int(__lt1)))
+	} else {
+		var __lt2 int
+		if erase {
+			__lt2 = 1
+		} else {
+			__lt2 = 0
+		}
+		return int(C.InvalidateRect(w, (*(r)), C.int(__lt2)))
+	}
+}
+
+// IsWindow calls IsWindow.
+func IsWindow(w HWND) int {
+	return int(C.IsWindow(w))
+}
+
 // IsWindowEnabled calls IsWindowEnabled.
 func IsWindowEnabled(hWnd HWND) int {
 	return int(C.IsWindowEnabled(hWnd))
@@ -184,15 +1048,86 @@ func IsWindowVisible(hWnd HWND) int {
 	return int(C.IsWindowVisible(hWnd))
 }
 
+// LvOf calls NMLISTVIEW *.
+func LvOf(lp int) LvPtr {
+	return C.snglP__lvOf(C.LPARAM(C.LPARAM(lp)))
+}
+
+// MSGMessage calls MSG.message.
+func MSGMessage(m MsgPtr) int {
+	return int(C.snglF__msgMessage(m))
+}
+
+// MSGWParam calls MSG.wParam.
+func MSGWParam(m MsgPtr) int {
+	return int(C.snglF__msgWparam(m))
+}
+
 // MoveWindow calls MoveWindow.
 func MoveWindow(hWnd HWND, X int, Y int, nWidth int, nHeight int, bRepaint bool) int {
-	var __lt1 int
+	var __lt3 int
 	if bRepaint {
-		__lt1 = 1
+		__lt3 = 1
 	} else {
-		__lt1 = 0
+		__lt3 = 0
 	}
-	return int(C.MoveWindow(hWnd, C.int(X), C.int(Y), C.int(nWidth), C.int(nHeight), C.int(__lt1)))
+	return int(C.MoveWindow(hWnd, C.int(X), C.int(Y), C.int(nWidth), C.int(nHeight), C.int(__lt3)))
+}
+
+// MsgOf calls MSG *.
+func MsgOf(lp int) MsgPtr {
+	return C.snglP__msgOf(C.LPARAM(C.LPARAM(lp)))
+}
+
+// NMHDRCode calls NMHDR.code.
+func NMHDRCode(nm NmPtr) int {
+	return int(C.snglF__nmCode(nm))
+}
+
+// NMHDRHwndFrom calls NMHDR.hwndFrom.
+func NMHDRHwndFrom(nm NmPtr) HWND {
+	return C.snglF__nmFrom(nm)
+}
+
+// NMLISTVIEWIItem calls NMLISTVIEW.iItem.
+func NMLISTVIEWIItem(lv LvPtr) int {
+	return int(C.snglF__lvItem(lv))
+}
+
+// NMLISTVIEWISubItem calls NMLISTVIEW.iSubItem.
+func NMLISTVIEWISubItem(lv LvPtr) int {
+	return int(C.snglF__lvSubItem(lv))
+}
+
+// NMLISTVIEWUChanged calls NMLISTVIEW.uChanged.
+func NMLISTVIEWUChanged(lv LvPtr) int {
+	return int(C.snglF__lvChanged(lv))
+}
+
+// NMLISTVIEWUNewState calls NMLISTVIEW.uNewState.
+func NMLISTVIEWUNewState(lv LvPtr) int {
+	return int(C.snglF__lvNewState(lv))
+}
+
+// NMLISTVIEWUOldState calls NMLISTVIEW.uOldState.
+func NMLISTVIEWUOldState(lv LvPtr) int {
+	return int(C.snglF__lvOldState(lv))
+}
+
+// NmOf calls NMHDR *.
+func NmOf(lp int) NmPtr {
+	return C.snglP__nmOf(C.LPARAM(C.LPARAM(lp)))
+}
+
+// ParentOf calls GetParent.
+func ParentOf(w HWND) *Found {
+	return func() *C.HWND {
+		p := (C.HWND)(C.GetParent(w))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
 }
 
 // PostMessageW calls PostMessageW.
@@ -200,9 +1135,206 @@ func PostMessageW(hWnd HWND, Msg int, wParam int, lParam int) int {
 	return int(C.PostMessageW(hWnd, C.UINT(Msg), C.WPARAM(wParam), C.LPARAM(lParam)))
 }
 
+// RECTBottom calls RECT.bottom.
+func RECTBottom(r RectPtr) int {
+	return int(C.snglF__rectBottom(r))
+}
+
+// RECTLeft calls RECT.left.
+func RECTLeft(r RectPtr) int {
+	return int(C.snglF__rectLeft(r))
+}
+
+// RECTRight calls RECT.right.
+func RECTRight(r RectPtr) int {
+	return int(C.snglF__rectRight(r))
+}
+
+// RECTTop calls RECT.top.
+func RECTTop(r RectPtr) int {
+	return int(C.snglF__rectTop(r))
+}
+
+// RectOf calls RECT *.
+func RectOf(lp int) RectPtr {
+	return C.snglP__rectOf(C.LPARAM(C.LPARAM(lp)))
+}
+
+// ScrollWindowEx calls ScrollWindowEx.
+func ScrollWindowEx(w HWND, dx int, dy int, scroll *ConstRect, clip *ConstRect, update *Region, updated *RectPtr, flags int) int {
+	if scroll == nil {
+		if clip == nil {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, nil, (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		} else {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), nil, (*(clip)), (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		}
+	} else {
+		if clip == nil {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), nil, (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		} else {
+			if update == nil {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), nil, nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), nil, (*(updated)), C.UINT(flags)))
+				}
+			} else {
+				if updated == nil {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), (*(update)), nil, C.UINT(flags)))
+				} else {
+					return int(C.ScrollWindowEx(w, C.int(dx), C.int(dy), (*(scroll)), (*(clip)), (*(update)), (*(updated)), C.UINT(flags)))
+				}
+			}
+		}
+	}
+}
+
+// SendCommand calls SendMessageW.
+func SendCommand(to HWND, msg int, w int, from HWND) int {
+	return int(C.snglP__sendCommand(to, C.UINT(msg), C.WPARAM(w), from))
+}
+
+// SendDateChange calls SendMessageW.
+func SendDateChange(to HWND, msg int, w int, ch NmDateTimeChange) SendDateChangeResult {
+	return func() SendDateChangeResult {
+		__snglOut3 := func(v NmDateTimeChange) C.NMDATETIMECHANGE {
+			return C.NMDATETIMECHANGE{nmhdr: func(v Nmhdr) C.NMHDR {
+				return C.NMHDR{hwndFrom: v.HwndFrom, idFrom: C.UINT_PTR(v.IdFrom), code: C.UINT(v.Code)}
+			}(v.Nmhdr), dwFlags: C.DWORD(v.DwFlags), st: func(v SystemTime) C.SYSTEMTIME {
+				return C.SYSTEMTIME{wYear: C.WORD(v.WYear), wMonth: C.WORD(v.WMonth), wDayOfWeek: C.WORD(v.WDayOfWeek), wDay: C.WORD(v.WDay), wHour: C.WORD(v.WHour), wMinute: C.WORD(v.WMinute), wSecond: C.WORD(v.WSecond), wMilliseconds: C.WORD(v.WMilliseconds)}
+			}(v.St)}
+		}(ch)
+		__snglResult := int(C.snglP__sendDateChange(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendDateChangeResult{Result: __snglResult, Out3: func(c C.NMDATETIMECHANGE) NmDateTimeChange {
+			return NmDateTimeChange{Nmhdr: func(c C.NMHDR) Nmhdr { return Nmhdr{HwndFrom: c.hwndFrom, IdFrom: int(c.idFrom), Code: int(c.code)} }(c.nmhdr), DwFlags: int(c.dwFlags), St: func(c C.SYSTEMTIME) SystemTime {
+				return SystemTime{WYear: int(c.wYear), WMonth: int(c.wMonth), WDayOfWeek: int(c.wDayOfWeek), WDay: int(c.wDay), WHour: int(c.wHour), WMinute: int(c.wMinute), WSecond: int(c.wSecond), WMilliseconds: int(c.wMilliseconds)}
+			}(c.st)}
+		}(__snglOut3)}
+	}()
+}
+
+// SendItemState calls SendMessageW.
+func SendItemState(t HWND, msg int, w int, it LvState) SendItemStateResult {
+	return func() SendItemStateResult {
+		__snglOut3 := func(v LvState) C.LVITEMW {
+			return C.LVITEMW{mask: C.UINT(v.Mask), iItem: C.int(v.IItem), iSubItem: C.int(v.ISubItem), state: C.UINT(v.State), stateMask: C.UINT(v.StateMask)}
+		}(it)
+		__snglResult := int(C.snglP__sendItemState(t, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendItemStateResult{Result: __snglResult, Out3: func(c C.LVITEMW) LvState {
+			return LvState{Mask: int(c.mask), IItem: int(c.iItem), ISubItem: int(c.iSubItem), State: int(c.state), StateMask: int(c.stateMask)}
+		}(__snglOut3)}
+	}()
+}
+
+// SendListView calls SendMessageW.
+func SendListView(to HWND, msg int, w int, lv NmListView) SendListViewResult {
+	return func() SendListViewResult {
+		__snglOut3 := func(v NmListView) C.NMLISTVIEW {
+			return C.NMLISTVIEW{hdr: func(v Nmhdr) C.NMHDR {
+				return C.NMHDR{hwndFrom: v.HwndFrom, idFrom: C.UINT_PTR(v.IdFrom), code: C.UINT(v.Code)}
+			}(v.Hdr), iItem: C.int(v.IItem), iSubItem: C.int(v.ISubItem)}
+		}(lv)
+		__snglResult := int(C.snglP__sendListView(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendListViewResult{Result: __snglResult, Out3: func(c C.NMLISTVIEW) NmListView {
+			return NmListView{Hdr: func(c C.NMHDR) Nmhdr { return Nmhdr{HwndFrom: c.hwndFrom, IdFrom: int(c.idFrom), Code: int(c.code)} }(c.hdr), IItem: int(c.iItem), ISubItem: int(c.iSubItem)}
+		}(__snglOut3)}
+	}()
+}
+
 // SendMessageW calls SendMessageW.
 func SendMessageW(hWnd HWND, Msg int, wParam int, lParam int) int {
 	return int(C.SendMessageW(hWnd, C.UINT(Msg), C.WPARAM(wParam), C.LPARAM(lParam)))
+}
+
+// SendNotify calls SendMessageW.
+func SendNotify(to HWND, msg int, w int, nm Nmhdr) SendNotifyResult {
+	return func() SendNotifyResult {
+		__snglOut3 := func(v Nmhdr) C.NMHDR {
+			return C.NMHDR{hwndFrom: v.HwndFrom, idFrom: C.UINT_PTR(v.IdFrom), code: C.UINT(v.Code)}
+		}(nm)
+		__snglResult := int(C.snglP__sendNotify(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendNotifyResult{Result: __snglResult, Out3: func(c C.NMHDR) Nmhdr { return Nmhdr{HwndFrom: c.hwndFrom, IdFrom: int(c.idFrom), Code: int(c.code)} }(__snglOut3)}
+	}()
+}
+
+// SendRect calls SendMessageW.
+func SendRect(to HWND, msg int, w int, r RECT) SendRectResult {
+	return func() SendRectResult {
+		__snglOut3 := func(v RECT) C.RECT {
+			return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+		}(r)
+		__snglResult := int(C.snglP__sendRect(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendRectResult{Result: __snglResult, Out3: func(c C.RECT) RECT {
+			return RECT{Left: int(c.left), Top: int(c.top), Right: int(c.right), Bottom: int(c.bottom)}
+		}(__snglOut3)}
+	}()
+}
+
+// SendSize calls SendMessageW.
+func SendSize(to HWND, msg int, w int, s SIZE) SendSizeResult {
+	return func() SendSizeResult {
+		__snglOut3 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(s)
+		__snglResult := int(C.snglP__sendSize(to, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendSizeResult{Result: __snglResult, Out3: func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut3)}
+	}()
+}
+
+// SendTabItem calls SendMessageW.
+func SendTabItem(tabs HWND, msg int, w int, item TabItem) SendTabItemResult {
+	return func() SendTabItemResult {
+		var __snglPins cbind.Pins
+		defer __snglPins.Unpin()
+		__snglIn3 := item
+		__snglOut3 := func(v TabItem) C.TCITEMW {
+			var c C.TCITEMW
+			c.mask = C.UINT(v.Mask)
+			*(*unsafe.Pointer)(unsafe.Pointer(&c.pszText)) = unsafe.Pointer(__snglPins.UTF16(v.PszText))
+			return c
+		}(__snglIn3)
+		__snglResult := int(C.snglP__sendTabItem(tabs, C.UINT(msg), C.WPARAM(w), &__snglOut3))
+		return SendTabItemResult{Result: __snglResult, Out3: func(c C.TCITEMW, o TabItem) TabItem { return TabItem{Mask: int(c.mask), PszText: o.PszText} }(__snglOut3, __snglIn3)}
+	}()
+}
+
+// SendTreeItem calls SendMessageW.
+func SendTreeItem(t HWND, msg int, w int, it TreeItem) int {
+	return int(C.snglP__sendTreeItem(t, C.UINT(msg), C.WPARAM(w), it))
 }
 
 // SetBkColor calls SetBkColor.
@@ -220,9 +1352,68 @@ func SetFocus(hWnd HWND) HWND {
 	return C.SetFocus(hWnd)
 }
 
+// SetMenu calls SetMenu.
+func SetMenu(w HWND, m *Menu) int {
+	if m == nil {
+		return int(C.SetMenu(w, nil))
+	} else {
+		return int(C.SetMenu(w, (*(m))))
+	}
+}
+
+// SetParent calls SetParent.
+func SetParent(child HWND, parent HWND) *Found {
+	return func() *C.HWND {
+		p := (C.HWND)(C.SetParent(child, parent))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// SetScrollInfo calls SetScrollInfo.
+func SetScrollInfo(w HWND, bar int, si ScrollInfo, redraw bool) SetScrollInfoResult {
+	var __lt4 int
+	if redraw {
+		__lt4 = 1
+	} else {
+		__lt4 = 0
+	}
+	return func() SetScrollInfoResult {
+		__snglOut2 := func(v ScrollInfo) C.SCROLLINFO {
+			return C.SCROLLINFO{cbSize: C.UINT(v.CbSize), fMask: C.UINT(v.FMask), nMin: C.int(v.NMin), nMax: C.int(v.NMax), nPage: C.UINT(v.NPage), nPos: C.int(v.NPos), nTrackPos: C.int(v.NTrackPos)}
+		}(si)
+		__snglResult := int(C.SetScrollInfo(w, C.int(bar), &__snglOut2, C.int(__lt4)))
+		return SetScrollInfoResult{Result: __snglResult, Out2: func(c C.SCROLLINFO) ScrollInfo {
+			return ScrollInfo{CbSize: int(c.cbSize), FMask: int(c.fMask), NMin: int(c.nMin), NMax: int(c.nMax), NPage: int(c.nPage), NPos: int(c.nPos), NTrackPos: int(c.nTrackPos)}
+		}(__snglOut2)}
+	}()
+}
+
+// SetScrollPos calls SetScrollPos.
+func SetScrollPos(w HWND, bar int, pos int, redraw bool) int {
+	var __lt5 int
+	if redraw {
+		__lt5 = 1
+	} else {
+		__lt5 = 0
+	}
+	return int(C.SetScrollPos(w, C.int(bar), C.int(pos), C.int(__lt5)))
+}
+
 // SetTextColor calls SetTextColor.
 func SetTextColor(hdc HDC, color int) int {
 	return int(C.SetTextColor(hdc, C.COLORREF(color)))
+}
+
+// SetWindowPos calls SetWindowPos.
+func SetWindowPos(w HWND, after *Found, x int, y int, cx int, cy int, flags int) int {
+	if after == nil {
+		return int(C.SetWindowPos(w, nil, C.int(x), C.int(y), C.int(cx), C.int(cy), C.UINT(flags)))
+	} else {
+		return int(C.SetWindowPos(w, (*(after)), C.int(x), C.int(y), C.int(cx), C.int(cy), C.UINT(flags)))
+	}
 }
 
 // SetWindowTextW calls SetWindowTextW.
@@ -231,6 +1422,39 @@ func SetWindowTextW(hWnd HWND, lpString *string) int {
 		return int(C.SetWindowTextW(hWnd, nil))
 	} else {
 		return int(C.SetWindowTextW(hWnd, (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(lpString)))))))
+	}
+}
+
+// ShellExecuteW calls ShellExecuteW.
+func ShellExecuteW(w *Found, op string, file string, params *string, dir *string, show int) Instance {
+	if w == nil {
+		if params == nil {
+			if dir == nil {
+				return C.ShellExecuteW(nil, (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), nil, nil, C.int(show))
+			} else {
+				return C.ShellExecuteW(nil, (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), nil, (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(dir))))), C.int(show))
+			}
+		} else {
+			if dir == nil {
+				return C.ShellExecuteW(nil, (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(params))))), nil, C.int(show))
+			} else {
+				return C.ShellExecuteW(nil, (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(params))))), (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(dir))))), C.int(show))
+			}
+		}
+	} else {
+		if params == nil {
+			if dir == nil {
+				return C.ShellExecuteW((*(w)), (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), nil, nil, C.int(show))
+			} else {
+				return C.ShellExecuteW((*(w)), (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), nil, (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(dir))))), C.int(show))
+			}
+		} else {
+			if dir == nil {
+				return C.ShellExecuteW((*(w)), (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(params))))), nil, C.int(show))
+			} else {
+				return C.ShellExecuteW((*(w)), (*C.ushort)(unsafe.Pointer(cbind.UTF16(op))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(file))), (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(params))))), (*C.ushort)(unsafe.Pointer(cbind.UTF16((*(dir))))), C.int(show))
+			}
+		}
 	}
 }
 
@@ -244,25 +1468,30 @@ func SnglPost(fn func()) {
 	C.sngl_post(snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
 }
 
-// SnglWin32Append calls sngl_win32_append.
-func SnglWin32Append(parent HWND, child HWND) {
-	C.sngl_win32_append(parent, child)
-}
-
-// SnglWin32Attach calls sngl_win32_attach.
-func SnglWin32Attach(n HWND) {
-	C.sngl_win32_attach(n)
+// SnglWin32AppendPopup calls sngl_win32_append_popup.
+func SnglWin32AppendPopup(m Menu, flags int, sub Menu, label string) {
+	C.sngl_win32_append_popup(m, C.UINT(flags), sub, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label))))
 }
 
 // SnglWin32Box calls sngl_win32_box.
-func SnglWin32Box(vertical bool) HWND {
-	var __lt2 int
-	if vertical {
-		__lt2 = 1
-	} else {
-		__lt2 = 0
-	}
-	return C.sngl_win32_box(C.int(__lt2))
+func SnglWin32Box() HWND {
+	return C.sngl_win32_box()
+}
+
+// SnglWin32Brush calls sngl_win32_brush.
+func SnglWin32Brush(rgb int) *Brush {
+	return func() *C.HBRUSH {
+		p := (C.HBRUSH)(C.sngl_win32_brush(C.int(rgb)))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// SnglWin32BrushAnswer calls sngl_win32_brush_answer.
+func SnglWin32BrushAnswer(b Brush) int {
+	return int(C.sngl_win32_brush_answer(b))
 }
 
 // SnglWin32Button calls sngl_win32_button.
@@ -289,19 +1518,14 @@ func SnglWin32CarryFile(name string, data string, len int) {
 	free(__rel0)
 }
 
+// SnglWin32CheckWidth calls sngl_win32_check_width.
+func SnglWin32CheckWidth(dpi int) int {
+	return int(C.sngl_win32_check_width(C.int(dpi)))
+}
+
 // SnglWin32Checkbox calls sngl_win32_checkbox.
 func SnglWin32Checkbox() HWND {
 	return C.sngl_win32_checkbox()
-}
-
-// SnglWin32Checked calls sngl_win32_checked.
-func SnglWin32Checked(b HWND) bool {
-	return (C.sngl_win32_checked(b) != 0)
-}
-
-// SnglWin32Choose calls sngl_win32_choose.
-func SnglWin32Choose(n HWND, label string) bool {
-	return (C.sngl_win32_choose(n, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))) != 0)
 }
 
 // SnglWin32Chosen calls sngl_win32_chosen.
@@ -309,14 +1533,20 @@ func SnglWin32Chosen(t HWND) string {
 	return C.GoString(C.sngl_win32_chosen(t))
 }
 
-// SnglWin32ClickColumn calls sngl_win32_click_column.
-func SnglWin32ClickColumn(n HWND, column int) bool {
-	return (C.sngl_win32_click_column(n, C.int(column)) != 0)
+// SnglWin32Closable calls sngl_win32_closable.
+func SnglWin32Closable(dialog HWND, closable bool) {
+	var __lt6 int
+	if closable {
+		__lt6 = 1
+	} else {
+		__lt6 = 0
+	}
+	C.sngl_win32_closable(dialog, C.int(__lt6))
 }
 
-// SnglWin32Contents calls sngl_win32_contents.
-func SnglWin32Contents() HWND {
-	return C.sngl_win32_contents()
+// SnglWin32Column calls sngl_win32_column.
+func SnglWin32Column(w HWND, col int) string {
+	return C.GoString(C.sngl_win32_column(w, C.int(col)))
 }
 
 // SnglWin32Date calls sngl_win32_date.
@@ -324,19 +1554,42 @@ func SnglWin32Date() HWND {
 	return C.sngl_win32_date()
 }
 
-// SnglWin32DateOf calls sngl_win32_date_of.
-func SnglWin32DateOf(d HWND) string {
-	return C.GoString(C.sngl_win32_date_of(d))
+// SnglWin32DcOf calls sngl_win32_dc_of.
+func SnglWin32DcOf(wp int) HDC {
+	return C.sngl_win32_dc_of(C.WPARAM(wp))
 }
 
-// SnglWin32Detach calls sngl_win32_detach.
-func SnglWin32Detach(n HWND) {
-	C.sngl_win32_detach(n)
+// SnglWin32Dialog calls sngl_win32_dialog.
+func SnglWin32Dialog() HWND {
+	return C.sngl_win32_dialog()
 }
 
 // SnglWin32Divider calls sngl_win32_divider.
 func SnglWin32Divider() HWND {
 	return C.sngl_win32_divider()
+}
+
+// SnglWin32DividerStyle calls sngl_win32_divider_style.
+func SnglWin32DividerStyle(w HWND, vertical bool) {
+	var __lt7 int
+	if vertical {
+		__lt7 = 1
+	} else {
+		__lt7 = 0
+	}
+	C.sngl_win32_divider_style(w, C.int(__lt7))
+}
+
+// SnglWin32DpiOf calls sngl_win32_dpi_of.
+func SnglWin32DpiOf(w HWND) int {
+	return int(C.sngl_win32_dpi_of(w))
+}
+
+// SnglWin32DrawLabel calls sngl_win32_draw_label.
+func SnglWin32DrawLabel(w HWND, dc HDC, text string, r RECT, format int) {
+	C.sngl_win32_draw_label(w, dc, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))), func(v RECT) C.RECT {
+		return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+	}(r), C.UINT(format))
 }
 
 // SnglWin32Drawing calls sngl_win32_drawing.
@@ -354,6 +1607,11 @@ func SnglWin32DrawingRedraw(w HWND) {
 	C.sngl_win32_drawing_redraw(w)
 }
 
+// SnglWin32DropBrush calls sngl_win32_drop_brush.
+func SnglWin32DropBrush(b Brush) {
+	C.sngl_win32_drop_brush(b)
+}
+
 // SnglWin32Edit calls sngl_win32_edit.
 func SnglWin32Edit() HWND {
 	return C.sngl_win32_edit()
@@ -369,14 +1627,37 @@ func SnglWin32Every(ms int, fn func()) int {
 	return int(C.sngl_win32_every(C.int(ms), snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr()))
 }
 
+// SnglWin32Fetched calls sngl_win32_fetched.
+func SnglWin32Fetched(w HWND, wp int, lp int) {
+	C.sngl_win32_fetched(w, C.WPARAM(wp), C.LPARAM(lp))
+}
+
+// SnglWin32Fill calls sngl_win32_fill.
+func SnglWin32Fill(w HWND, dc HDC, r RECT, b *Brush) {
+	if b == nil {
+		C.sngl_win32_fill(w, dc, func(v RECT) C.RECT {
+			return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+		}(r), nil)
+	} else {
+		C.sngl_win32_fill(w, dc, func(v RECT) C.RECT {
+			return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+		}(r), (*(b)))
+	}
+}
+
 // SnglWin32FillTable calls sngl_win32_fill_table.
-func SnglWin32FillTable(t HWND, columns string, rows string) {
-	C.sngl_win32_fill_table(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(columns))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(rows))))
+func SnglWin32FillTable(w HWND, columns string, rows string, row int) {
+	C.sngl_win32_fill_table(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(columns))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(rows))), C.int(row))
 }
 
 // SnglWin32FillTree calls sngl_win32_fill_tree.
-func SnglWin32FillTree(t HWND, lines string, expanded string) {
-	C.sngl_win32_fill_tree(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(lines))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(expanded))))
+func SnglWin32FillTree(w HWND, lines string, expanded string) {
+	C.sngl_win32_fill_tree(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(lines))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(expanded))))
+}
+
+// SnglWin32FindChoice calls sngl_win32_find_choice.
+func SnglWin32FindChoice(s HWND, label string) int {
+	return int(C.sngl_win32_find_choice(s, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
 }
 
 // SnglWin32FireActivate calls sngl_win32_fire_activate.
@@ -389,45 +1670,41 @@ func SnglWin32FireChange(e HWND, text string) {
 	C.sngl_win32_fire_change(e, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
 }
 
-// SnglWin32FireCheck calls sngl_win32_fire_check.
-func SnglWin32FireCheck(b HWND, checked bool) {
-	var __lt3 int
-	if checked {
-		__lt3 = 1
-	} else {
-		__lt3 = 0
-	}
-	C.sngl_win32_fire_check(b, C.int(__lt3))
-}
-
-// SnglWin32FireClick calls sngl_win32_fire_click.
-func SnglWin32FireClick(w HWND) {
-	C.sngl_win32_fire_click(w)
-}
-
-// SnglWin32FireClose calls sngl_win32_fire_close.
-func SnglWin32FireClose(w HWND) {
-	C.sngl_win32_fire_close(w)
-}
-
-// SnglWin32FireReachEnd calls sngl_win32_fire_reach_end.
-func SnglWin32FireReachEnd(s HWND) {
-	C.sngl_win32_fire_reach_end(s)
-}
-
-// SnglWin32FireSelect calls sngl_win32_fire_select.
-func SnglWin32FireSelect(s HWND, label string) {
-	C.sngl_win32_fire_select(s, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label))))
-}
-
-// SnglWin32FireTab calls sngl_win32_fire_tab.
-func SnglWin32FireTab(t HWND, index int) {
-	C.sngl_win32_fire_tab(t, C.int(index))
-}
-
 // SnglWin32Flow calls sngl_win32_flow.
 func SnglWin32Flow() HWND {
 	return C.sngl_win32_flow()
+}
+
+// SnglWin32FlowHeight calls sngl_win32_flow_height.
+func SnglWin32FlowHeight(w HWND, width int) int {
+	return int(C.sngl_win32_flow_height(w, C.int(width)))
+}
+
+// SnglWin32FocusRect calls sngl_win32_focus_rect.
+func SnglWin32FocusRect(dc HDC, r RECT) {
+	C.sngl_win32_focus_rect(dc, func(v RECT) C.RECT {
+		return C.RECT{left: C.LONG(v.Left), top: C.LONG(v.Top), right: C.LONG(v.Right), bottom: C.LONG(v.Bottom)}
+	}(r))
+}
+
+// SnglWin32Forget calls sngl_win32_forget.
+func SnglWin32Forget(w HWND, counted bool) {
+	var __lt8 int
+	if counted {
+		__lt8 = 1
+	} else {
+		__lt8 = 0
+	}
+	C.sngl_win32_forget(w, C.int(__lt8))
+}
+
+// SnglWin32FrameSize calls sngl_win32_frame_size.
+func SnglWin32FrameSize(w HWND, cw int, ch int, out SIZE) SIZE {
+	return func() SIZE {
+		__snglOut3 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(out)
+		C.sngl_win32_frame_size(w, C.int(cw), C.int(ch), &__snglOut3)
+		return func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut3)
+	}()
 }
 
 // SnglWin32GetText calls sngl_win32_get_text.
@@ -435,50 +1712,9 @@ func SnglWin32GetText(e HWND) string {
 	return C.GoString(C.sngl_win32_get_text(e))
 }
 
-// SnglWin32GfxArc calls sngl_win32_gfx_arc.
-func SnglWin32GfxArc(recv Gfx, cx float64, cy float64, r float64, start float64, end float64) {
-	C.sngl_win32_gfx_arc(recv, C.double(cx), C.double(cy), C.double(r), C.double(start), C.double(end))
-}
-
-// SnglWin32GfxArcNegative calls sngl_win32_gfx_arc_negative.
-func SnglWin32GfxArcNegative(recv Gfx, cx float64, cy float64, r float64, start float64, end float64) {
-	C.sngl_win32_gfx_arc_negative(recv, C.double(cx), C.double(cy), C.double(r), C.double(start), C.double(end))
-}
-
-// SnglWin32GfxClip calls sngl_win32_gfx_clip.
-func SnglWin32GfxClip(recv Gfx) {
-	C.sngl_win32_gfx_clip(recv)
-}
-
-// SnglWin32GfxClosePath calls sngl_win32_gfx_close_path.
-func SnglWin32GfxClosePath(recv Gfx) {
-	C.sngl_win32_gfx_close_path(recv)
-}
-
-// SnglWin32GfxColor calls sngl_win32_gfx_color.
-func SnglWin32GfxColor(recv Gfx, r int, g int, b int, a int) {
-	C.sngl_win32_gfx_color(recv, C.int(r), C.int(g), C.int(b), C.int(a))
-}
-
-// SnglWin32GfxCurveTo calls sngl_win32_gfx_curve_to.
-func SnglWin32GfxCurveTo(recv Gfx, x1 float64, y1 float64, x2 float64, y2 float64, x3 float64, y3 float64) {
-	C.sngl_win32_gfx_curve_to(recv, C.double(x1), C.double(y1), C.double(x2), C.double(y2), C.double(x3), C.double(y3))
-}
-
-// SnglWin32GfxFill calls sngl_win32_gfx_fill.
-func SnglWin32GfxFill(recv Gfx, preserve bool) {
-	var __lt4 int
-	if preserve {
-		__lt4 = 1
-	} else {
-		__lt4 = 0
-	}
-	C.sngl_win32_gfx_fill(recv, C.int(__lt4))
-}
-
-// SnglWin32GfxFont calls sngl_win32_gfx_font.
-func SnglWin32GfxFont(recv Gfx, family string, size float64) {
-	C.sngl_win32_gfx_font(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))), C.double(size))
+// SnglWin32GfxG calls sngl_win32_gfx.g.
+func SnglWin32GfxG(g Gfx) unsafe.Pointer {
+	return C.snglF__gfxGraphics(g)
 }
 
 // SnglWin32GfxImage calls sngl_win32_gfx_image.
@@ -486,69 +1722,19 @@ func SnglWin32GfxImage(recv Gfx, url string, x float64, y float64, w float64, h 
 	C.sngl_win32_gfx_image(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(url))), C.double(x), C.double(y), C.double(w), C.double(h))
 }
 
-// SnglWin32GfxLineCap calls sngl_win32_gfx_line_cap.
-func SnglWin32GfxLineCap(recv Gfx, cap int) {
-	C.sngl_win32_gfx_line_cap(recv, C.int(cap))
+// SnglWin32GfxPath calls sngl_win32_gfx.path.
+func SnglWin32GfxPath(g Gfx) unsafe.Pointer {
+	return C.snglF__gfxPath(g)
 }
 
-// SnglWin32GfxLineJoin calls sngl_win32_gfx_line_join.
-func SnglWin32GfxLineJoin(recv Gfx, join int) {
-	C.sngl_win32_gfx_line_join(recv, C.int(join))
+// SnglWin32GfxSerial calls sngl_win32_gfx.serial.
+func SnglWin32GfxSerial(g Gfx) int {
+	return int(C.snglF__gfxSerial(g))
 }
 
-// SnglWin32GfxLineTo calls sngl_win32_gfx_line_to.
-func SnglWin32GfxLineTo(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_line_to(recv, C.double(x), C.double(y))
-}
-
-// SnglWin32GfxLineWidth calls sngl_win32_gfx_line_width.
-func SnglWin32GfxLineWidth(recv Gfx, w float64) {
-	C.sngl_win32_gfx_line_width(recv, C.double(w))
-}
-
-// SnglWin32GfxMoveTo calls sngl_win32_gfx_move_to.
-func SnglWin32GfxMoveTo(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_move_to(recv, C.double(x), C.double(y))
-}
-
-// SnglWin32GfxNewSubPath calls sngl_win32_gfx_new_sub_path.
-func SnglWin32GfxNewSubPath(recv Gfx) {
-	C.sngl_win32_gfx_new_sub_path(recv)
-}
-
-// SnglWin32GfxRect calls sngl_win32_gfx_rect.
-func SnglWin32GfxRect(recv Gfx, x float64, y float64, w float64, h float64) {
-	C.sngl_win32_gfx_rect(recv, C.double(x), C.double(y), C.double(w), C.double(h))
-}
-
-// SnglWin32GfxRestore calls sngl_win32_gfx_restore.
-func SnglWin32GfxRestore(recv Gfx) {
-	C.sngl_win32_gfx_restore(recv)
-}
-
-// SnglWin32GfxSave calls sngl_win32_gfx_save.
-func SnglWin32GfxSave(recv Gfx) {
-	C.sngl_win32_gfx_save(recv)
-}
-
-// SnglWin32GfxScale calls sngl_win32_gfx_scale.
-func SnglWin32GfxScale(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_scale(recv, C.double(x), C.double(y))
-}
-
-// SnglWin32GfxStroke calls sngl_win32_gfx_stroke.
-func SnglWin32GfxStroke(recv Gfx) {
-	C.sngl_win32_gfx_stroke(recv)
-}
-
-// SnglWin32GfxText calls sngl_win32_gfx_text.
-func SnglWin32GfxText(recv Gfx, content string) {
-	C.sngl_win32_gfx_text(recv, (*C.ushort)(unsafe.Pointer(cbind.UTF16(content))))
-}
-
-// SnglWin32GfxTranslate calls sngl_win32_gfx_translate.
-func SnglWin32GfxTranslate(recv Gfx, x float64, y float64) {
-	C.sngl_win32_gfx_translate(recv, C.double(x), C.double(y))
+// SnglWin32Hand calls sngl_win32_hand.
+func SnglWin32Hand() {
+	C.sngl_win32_hand()
 }
 
 // SnglWin32Hold calls sngl_win32_hold.
@@ -566,14 +1752,9 @@ func SnglWin32ImageFailure(i HWND) string {
 	return C.GoString(C.sngl_win32_image_failure(i))
 }
 
-// SnglWin32Insert calls sngl_win32_insert.
-func SnglWin32Insert(parent HWND, child HWND, before HWND) {
-	C.sngl_win32_insert(parent, child, before)
-}
-
-// SnglWin32IsOpen calls sngl_win32_is_open.
-func SnglWin32IsOpen(m HWND) bool {
-	return (C.sngl_win32_is_open(m) != 0)
+// SnglWin32LineHeight calls sngl_win32_line_height.
+func SnglWin32LineHeight(w HWND) int {
+	return int(C.sngl_win32_line_height(w))
 }
 
 // SnglWin32Link calls sngl_win32_link.
@@ -581,9 +1762,20 @@ func SnglWin32Link() HWND {
 	return C.sngl_win32_link()
 }
 
-// SnglWin32MenuItems calls sngl_win32_menu_items.
-func SnglWin32MenuItems(n HWND) int {
-	return int(C.sngl_win32_menu_items(n))
+// SnglWin32LinkUnder calls sngl_win32_link_under.
+func SnglWin32LinkUnder(flow HWND, x int, y int) *Found {
+	return func() *C.HWND {
+		p := (C.HWND)(C.sngl_win32_link_under(flow, C.int(x), C.int(y)))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// SnglWin32Loaded calls sngl_win32_loaded.
+func SnglWin32Loaded(picture HWND, frame HWND) int {
+	return int(C.sngl_win32_loaded(picture, frame))
 }
 
 // SnglWin32Modal calls sngl_win32_modal.
@@ -591,39 +1783,18 @@ func SnglWin32Modal() HWND {
 	return C.sngl_win32_modal()
 }
 
-// SnglWin32Offer calls sngl_win32_offer.
-func SnglWin32Offer(s HWND, labels string, chosen string) {
-	C.sngl_win32_offer(s, (*C.ushort)(unsafe.Pointer(cbind.UTF16(labels))), (*C.ushort)(unsafe.Pointer(cbind.UTF16(chosen))))
+// SnglWin32Natural calls sngl_win32_natural.
+func SnglWin32Natural(w HWND, out SIZE) SIZE {
+	return func() SIZE {
+		__snglOut1 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(out)
+		C.sngl_win32_natural(w, &__snglOut1)
+		return func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut1)
+	}()
 }
 
-// SnglWin32OnActivate calls sngl_win32_on_activate.
-func SnglWin32OnActivate(w HWND, fn func()) {
-	C.sngl_win32_on_activate(w, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
-}
-
-// SnglWin32OnChange calls sngl_win32_on_change.
-func SnglWin32OnChange(w HWND, fn func()) {
-	C.sngl_win32_on_change(w, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
-}
-
-// SnglWin32OnClick calls sngl_win32_on_click.
-func SnglWin32OnClick(w HWND, fn func()) {
-	C.sngl_win32_on_click(w, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
-}
-
-// SnglWin32OnClosed calls sngl_win32_on_closed.
-func SnglWin32OnClosed(w HWND, fn func()) {
-	C.sngl_win32_on_closed(w, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
-}
-
-// SnglWin32OnFailed calls sngl_win32_on_failed.
-func SnglWin32OnFailed(i HWND, fn func()) {
-	C.sngl_win32_on_failed(i, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
-}
-
-// SnglWin32OnLoad calls sngl_win32_on_load.
-func SnglWin32OnLoad(i HWND, fn func()) {
-	C.sngl_win32_on_load(i, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
+// SnglWin32Nothing calls sngl_win32_nothing.
+func SnglWin32Nothing() HWND {
+	return C.sngl_win32_nothing()
 }
 
 // SnglWin32OnPaint calls sngl_win32_on_paint.
@@ -631,29 +1802,42 @@ func SnglWin32OnPaint(w HWND, fn func(Gfx)) {
 	C.sngl_win32_on_paint(w, snglCallback_sngl_win32_gfx_p__voidPtr(), snglContext(fn), snglReleasePtr())
 }
 
-// SnglWin32OnReachEnd calls sngl_win32_on_reach_end.
-func SnglWin32OnReachEnd(w HWND, fn func()) {
-	C.sngl_win32_on_reach_end(w, snglCallback_void__voidPtr(), snglContext(fn), snglReleasePtr())
+// SnglWin32OverLink calls sngl_win32_over_link.
+func SnglWin32OverLink(flow HWND) int {
+	return int(C.sngl_win32_over_link(flow))
 }
 
-// SnglWin32OnVisible calls sngl_win32_on_visible.
-func SnglWin32OnVisible(w HWND, fn func(bool)) {
-	C.sngl_win32_on_visible(w, snglCallback_bool__voidPtr(), snglContext(fn), snglReleasePtr())
+// SnglWin32OwnerDraw calls sngl_win32_owner_draw.
+func SnglWin32OwnerDraw(w HWND, on bool) {
+	var __lt9 int
+	if on {
+		__lt9 = 1
+	} else {
+		__lt9 = 0
+	}
+	C.sngl_win32_owner_draw(w, C.int(__lt9))
 }
 
-// SnglWin32PickDate calls sngl_win32_pick_date.
-func SnglWin32PickDate(n HWND, iso string) bool {
-	return (C.sngl_win32_pick_date(n, (*C.ushort)(unsafe.Pointer(cbind.UTF16(iso)))) != 0)
+// SnglWin32Paint calls sngl_win32_paint.
+func SnglWin32Paint(w HWND, msg int, wp int, own *Brush, backdrop *Brush, fit int, padTop int, padRight int, padLeft int) int {
+	if own == nil {
+		if backdrop == nil {
+			return int(C.sngl_win32_paint(w, C.UINT(msg), C.WPARAM(wp), nil, nil, C.int(fit), C.int(padTop), C.int(padRight), C.int(padLeft)))
+		} else {
+			return int(C.sngl_win32_paint(w, C.UINT(msg), C.WPARAM(wp), nil, (*(backdrop)), C.int(fit), C.int(padTop), C.int(padRight), C.int(padLeft)))
+		}
+	} else {
+		if backdrop == nil {
+			return int(C.sngl_win32_paint(w, C.UINT(msg), C.WPARAM(wp), (*(own)), nil, C.int(fit), C.int(padTop), C.int(padRight), C.int(padLeft)))
+		} else {
+			return int(C.sngl_win32_paint(w, C.UINT(msg), C.WPARAM(wp), (*(own)), (*(backdrop)), C.int(fit), C.int(padTop), C.int(padRight), C.int(padLeft)))
+		}
+	}
 }
 
-// SnglWin32PickNode calls sngl_win32_pick_node.
-func SnglWin32PickNode(n HWND, label string) bool {
-	return (C.sngl_win32_pick_node(n, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))) != 0)
-}
-
-// SnglWin32PickRow calls sngl_win32_pick_row.
-func SnglWin32PickRow(n HWND, row int) bool {
-	return (C.sngl_win32_pick_row(n, C.int(row)) != 0)
+// SnglWin32PaintBar calls sngl_win32_paint_bar.
+func SnglWin32PaintBar(w HWND, msg int, wp int, lp int) int {
+	return int(C.sngl_win32_paint_bar(w, C.UINT(msg), C.WPARAM(wp), C.LPARAM(lp)))
 }
 
 // SnglWin32Picture calls sngl_win32_picture.
@@ -661,14 +1845,38 @@ func SnglWin32Picture() HWND {
 	return C.sngl_win32_picture()
 }
 
+// SnglWin32PictureSize calls sngl_win32_picture_size.
+func SnglWin32PictureSize(w HWND, out SIZE) SnglWin32PictureSizeResult {
+	return func() SnglWin32PictureSizeResult {
+		__snglOut1 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(out)
+		__snglResult := int(C.sngl_win32_picture_size(w, &__snglOut1))
+		return SnglWin32PictureSizeResult{Result: __snglResult, Out1: func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut1)}
+	}()
+}
+
+// SnglWin32Posted calls sngl_win32_posted.
+func SnglWin32Posted(lp int) {
+	C.sngl_win32_posted(C.LPARAM(lp))
+}
+
 // SnglWin32Present calls sngl_win32_present.
 func SnglWin32Present() {
 	C.sngl_win32_present()
 }
 
+// SnglWin32Procs calls sngl_win32_procs.
+func SnglWin32Procs(box func(HWND, int, int, int) int, control func(HWND, int, int, int, int, int) int, nkids func(HWND) int, kid func(HWND, int) HWND) {
+	C.sngl_win32_procs(func() *[0]byte { snglStatic__procs_boxFn = box; return snglStatic__procs_box_CALLBACKPtr() }(), func() *[0]byte { snglStatic__procs_controlFn = control; return snglStatic__procs_control_CALLBACKPtr() }(), func() *[0]byte { snglStatic__procs_nkidsFn = nkids; return snglStatic__procs_nkidsPtr() }(), func() *[0]byte { snglStatic__procs_kidFn = kid; return snglStatic__procs_kidPtr() }())
+}
+
 // SnglWin32Progress calls sngl_win32_progress.
 func SnglWin32Progress() HWND {
 	return C.sngl_win32_progress()
+}
+
+// SnglWin32Quiet calls sngl_win32_quiet.
+func SnglWin32Quiet(w HWND) int {
+	return int(C.sngl_win32_quiet(w))
 }
 
 // SnglWin32Quit calls sngl_win32_quit.
@@ -681,19 +1889,14 @@ func SnglWin32Radio() HWND {
 	return C.sngl_win32_radio()
 }
 
-// SnglWin32Redraw calls sngl_win32_redraw.
-func SnglWin32Redraw(w HWND) {
-	C.sngl_win32_redraw(w)
+// SnglWin32Refont calls sngl_win32_refont.
+func SnglWin32Refont(w HWND, dpi int) {
+	C.sngl_win32_refont(w, C.int(dpi))
 }
 
-// SnglWin32Remove calls sngl_win32_remove.
-func SnglWin32Remove(parent HWND, child HWND) {
-	C.sngl_win32_remove(parent, child)
-}
-
-// SnglWin32Row calls sngl_win32_row.
-func SnglWin32Row(t HWND) int {
-	return int(C.sngl_win32_row(t))
+// SnglWin32ResizeClient calls sngl_win32_resize_client.
+func SnglWin32ResizeClient(top HWND, w int, h int) {
+	C.sngl_win32_resize_client(top, C.int(w), C.int(h))
 }
 
 // SnglWin32Run calls sngl_win32_run.
@@ -706,9 +1909,31 @@ func SnglWin32Scroll() HWND {
 	return C.sngl_win32_scroll()
 }
 
+// SnglWin32ScrollStyle calls sngl_win32_scroll_style.
+func SnglWin32ScrollStyle(w HWND, vertical bool, horizontal bool) {
+	var __lt10 int
+	if vertical {
+		__lt10 = 1
+	} else {
+		__lt10 = 0
+	}
+	var __lt11 int
+	if horizontal {
+		__lt11 = 1
+	} else {
+		__lt11 = 0
+	}
+	C.sngl_win32_scroll_style(w, C.int(__lt10), C.int(__lt11))
+}
+
 // SnglWin32Select calls sngl_win32_select.
 func SnglWin32Select() HWND {
 	return C.sngl_win32_select()
+}
+
+// SnglWin32SelectRow calls sngl_win32_select_row.
+func SnglWin32SelectRow(w HWND, row int) {
+	C.sngl_win32_select_row(w, C.int(row))
 }
 
 // SnglWin32Selected calls sngl_win32_selected.
@@ -717,45 +1942,18 @@ func SnglWin32Selected(s HWND) string {
 }
 
 // SnglWin32SetCanvasHeight calls sngl_win32_set_canvas_height.
-func SnglWin32SetCanvasHeight(w HWND, height int) {
-	C.sngl_win32_set_canvas_height(w, C.int(height))
+func SnglWin32SetCanvasHeight(w HWND, height int) int {
+	return int(C.sngl_win32_set_canvas_height(w, C.int(height)))
 }
 
 // SnglWin32SetCanvasWidth calls sngl_win32_set_canvas_width.
-func SnglWin32SetCanvasWidth(w HWND, width int) {
-	C.sngl_win32_set_canvas_width(w, C.int(width))
-}
-
-// SnglWin32SetChecked calls sngl_win32_set_checked.
-func SnglWin32SetChecked(b HWND, checked bool) {
-	var __lt5 int
-	if checked {
-		__lt5 = 1
-	} else {
-		__lt5 = 0
-	}
-	C.sngl_win32_set_checked(b, C.int(__lt5))
+func SnglWin32SetCanvasWidth(w HWND, width int) int {
+	return int(C.sngl_win32_set_canvas_width(w, C.int(width)))
 }
 
 // SnglWin32SetChosen calls sngl_win32_set_chosen.
 func SnglWin32SetChosen(t HWND, label string) {
 	C.sngl_win32_set_chosen(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label))))
-}
-
-// SnglWin32SetClosable calls sngl_win32_set_closable.
-func SnglWin32SetClosable(m HWND, closable bool) {
-	var __lt6 int
-	if closable {
-		__lt6 = 1
-	} else {
-		__lt6 = 0
-	}
-	C.sngl_win32_set_closable(m, C.int(__lt6))
-}
-
-// SnglWin32SetColumns calls sngl_win32_set_columns.
-func SnglWin32SetColumns(b HWND, columns int) {
-	C.sngl_win32_set_columns(b, C.int(columns))
 }
 
 // SnglWin32SetDate calls sngl_win32_set_date.
@@ -783,189 +1981,61 @@ func SnglWin32SetEditText(e HWND, text string) {
 	C.sngl_win32_set_edit_text(e, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
 }
 
-// SnglWin32SetEnabled calls sngl_win32_set_enabled.
-func SnglWin32SetEnabled(w HWND, enabled bool) {
-	var __lt7 int
-	if enabled {
-		__lt7 = 1
-	} else {
-		__lt7 = 0
-	}
-	C.sngl_win32_set_enabled(w, C.int(__lt7))
-}
-
-// SnglWin32SetEntryChecked calls sngl_win32_set_entry_checked.
-func SnglWin32SetEntryChecked(e HWND, checked bool) {
-	var __lt8 int
-	if checked {
-		__lt8 = 1
-	} else {
-		__lt8 = 0
-	}
-	C.sngl_win32_set_entry_checked(e, C.int(__lt8))
-}
-
-// SnglWin32SetEntryDisabled calls sngl_win32_set_entry_disabled.
-func SnglWin32SetEntryDisabled(e HWND, disabled bool) {
-	var __lt9 int
-	if disabled {
-		__lt9 = 1
-	} else {
-		__lt9 = 0
-	}
-	C.sngl_win32_set_entry_disabled(e, C.int(__lt9))
-}
-
-// SnglWin32SetFit calls sngl_win32_set_fit.
-func SnglWin32SetFit(i HWND, fit int) {
-	C.sngl_win32_set_fit(i, C.int(fit))
-}
-
 // SnglWin32SetFraction calls sngl_win32_set_fraction.
-func SnglWin32SetFraction(p HWND, fraction float64) {
-	C.sngl_win32_set_fraction(p, C.double(fraction))
-}
-
-// SnglWin32SetFramed calls sngl_win32_set_framed.
-func SnglWin32SetFramed(b HWND, framed bool) {
-	var __lt10 int
-	if framed {
-		__lt10 = 1
-	} else {
-		__lt10 = 0
-	}
-	C.sngl_win32_set_framed(b, C.int(__lt10))
+func SnglWin32SetFraction(p HWND, fraction float64) int {
+	return int(C.sngl_win32_set_fraction(p, C.double(fraction)))
 }
 
 // SnglWin32SetHref calls sngl_win32_set_href.
-func SnglWin32SetHref(l HWND, href string) {
-	C.sngl_win32_set_href(l, (*C.ushort)(unsafe.Pointer(cbind.UTF16(href))))
+func SnglWin32SetHref(w HWND, href string) {
+	C.sngl_win32_set_href(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(href))))
 }
 
-// SnglWin32SetLook calls sngl_win32_set_look.
-func SnglWin32SetLook(w HWND, look Look) {
-	C.sngl_win32_set_look(w, func(v Look) C.sngl_win32_look {
-		return C.sngl_win32_look{flex: C.double(v.Flex), gap: C.int(v.Gap), padTop: C.int(v.PadTop), padRight: C.int(v.PadRight), padBottom: C.int(v.PadBottom), padLeft: C.int(v.PadLeft), minWidth: C.int(v.MinWidth), width: C.int(v.Width), height: C.int(v.Height), align: C.int(v.Align), color: C.int(v.Color), background: C.int(v.Background), fontPx: C.int(v.FontPx), hidden: C.int(v.Hidden)}
-	}(look))
-}
-
-// SnglWin32SetMode calls sngl_win32_set_mode.
-func SnglWin32SetMode(b HWND, mode int) {
-	C.sngl_win32_set_mode(b, C.int(mode))
-}
-
-// SnglWin32SetOpen calls sngl_win32_set_open.
-func SnglWin32SetOpen(m HWND, open bool) {
-	var __lt11 int
-	if open {
-		__lt11 = 1
+// SnglWin32SetOwner calls sngl_win32_set_owner.
+func SnglWin32SetOwner(dialog HWND, owner *Found) {
+	if owner == nil {
+		C.sngl_win32_set_owner(dialog, nil)
 	} else {
-		__lt11 = 0
+		C.sngl_win32_set_owner(dialog, (*(owner)))
 	}
-	C.sngl_win32_set_open(m, C.int(__lt11))
 }
 
-// SnglWin32SetRow calls sngl_win32_set_row.
-func SnglWin32SetRow(t HWND, row int) {
-	C.sngl_win32_set_row(t, C.int(row))
-}
-
-// SnglWin32SetRows calls sngl_win32_set_rows.
-func SnglWin32SetRows(e HWND, rows int) {
-	C.sngl_win32_set_rows(e, C.int(rows))
+// SnglWin32SetPaint calls sngl_win32_set_paint.
+func SnglWin32SetPaint(w HWND, color int, fontPx int) {
+	C.sngl_win32_set_paint(w, C.int(color), C.int(fontPx))
 }
 
 // SnglWin32SetScaling calls sngl_win32_set_scaling.
-func SnglWin32SetScaling(w HWND, mode int) {
-	C.sngl_win32_set_scaling(w, C.int(mode))
+func SnglWin32SetScaling(w HWND, mode int) int {
+	return int(C.sngl_win32_set_scaling(w, C.int(mode)))
 }
 
-// SnglWin32SetScroll calls sngl_win32_set_scroll.
-func SnglWin32SetScroll(s HWND, vertical bool, horizontal bool) {
+// SnglWin32SetShowText calls sngl_win32_set_show_text.
+func SnglWin32SetShowText(p HWND, show bool) int {
 	var __lt12 int
-	if vertical {
+	if show {
 		__lt12 = 1
 	} else {
 		__lt12 = 0
 	}
-	var __lt13 int
-	if horizontal {
-		__lt13 = 1
-	} else {
-		__lt13 = 0
-	}
-	C.sngl_win32_set_scroll(s, C.int(__lt12), C.int(__lt13))
-}
-
-// SnglWin32SetSelected calls sngl_win32_set_selected.
-func SnglWin32SetSelected(t HWND, selected int) {
-	C.sngl_win32_set_selected(t, C.int(selected))
-}
-
-// SnglWin32SetShowText calls sngl_win32_set_show_text.
-func SnglWin32SetShowText(p HWND, show bool) {
-	var __lt14 int
-	if show {
-		__lt14 = 1
-	} else {
-		__lt14 = 0
-	}
-	C.sngl_win32_set_show_text(p, C.int(__lt14))
-}
-
-// SnglWin32SetShown calls sngl_win32_set_shown.
-func SnglWin32SetShown(w HWND, shown bool) {
-	var __lt15 int
-	if shown {
-		__lt15 = 1
-	} else {
-		__lt15 = 0
-	}
-	C.sngl_win32_set_shown(w, C.int(__lt15))
+	return int(C.sngl_win32_set_show_text(p, C.int(__lt12)))
 }
 
 // SnglWin32SetSpanStyle calls sngl_win32_set_span_style.
 func SnglWin32SetSpanStyle(w HWND, color int, size int, weight int, slant int, underline bool, strike bool, family string) {
-	var __lt16 int
+	var __lt13 int
 	if underline {
-		__lt16 = 1
+		__lt13 = 1
 	} else {
-		__lt16 = 0
+		__lt13 = 0
 	}
-	var __lt17 int
+	var __lt14 int
 	if strike {
-		__lt17 = 1
+		__lt14 = 1
 	} else {
-		__lt17 = 0
+		__lt14 = 0
 	}
-	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt16), C.int(__lt17), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
-}
-
-// SnglWin32SetTable calls sngl_win32_set_table.
-func SnglWin32SetTable(t HWND, selectable bool, sortable bool) {
-	var __lt18 int
-	if selectable {
-		__lt18 = 1
-	} else {
-		__lt18 = 0
-	}
-	var __lt19 int
-	if sortable {
-		__lt19 = 1
-	} else {
-		__lt19 = 0
-	}
-	C.sngl_win32_set_table(t, C.int(__lt18), C.int(__lt19))
-}
-
-// SnglWin32SetText calls sngl_win32_set_text.
-func SnglWin32SetText(w HWND, text string) {
-	C.sngl_win32_set_text(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(text))))
-}
-
-// SnglWin32SetTip calls sngl_win32_set_tip.
-func SnglWin32SetTip(b HWND, tip string) {
-	C.sngl_win32_set_tip(b, (*C.ushort)(unsafe.Pointer(cbind.UTF16(tip))))
+	C.sngl_win32_set_span_style(w, C.int(color), C.int(size), C.int(weight), C.int(slant), C.int(__lt13), C.int(__lt14), (*C.ushort)(unsafe.Pointer(cbind.UTF16(family))))
 }
 
 // SnglWin32SetUrl calls sngl_win32_set_url.
@@ -973,26 +2043,15 @@ func SnglWin32SetUrl(p HWND, url string) {
 	C.sngl_win32_set_url(p, (*C.ushort)(unsafe.Pointer(cbind.UTF16(url))))
 }
 
-// SnglWin32SetVertical calls sngl_win32_set_vertical.
-func SnglWin32SetVertical(b HWND, vertical bool) {
-	var __lt20 int
-	if vertical {
-		__lt20 = 1
-	} else {
-		__lt20 = 0
-	}
-	C.sngl_win32_set_vertical(b, C.int(__lt20))
-}
-
 // SnglWin32SetVisible calls sngl_win32_set_visible.
-func SnglWin32SetVisible(w HWND, visible bool) {
-	var __lt21 int
+func SnglWin32SetVisible(top HWND, visible bool) {
+	var __lt15 int
 	if visible {
-		__lt21 = 1
+		__lt15 = 1
 	} else {
-		__lt21 = 0
+		__lt15 = 0
 	}
-	C.sngl_win32_set_visible(w, C.int(__lt21))
+	C.sngl_win32_set_visible(top, C.int(__lt15))
 }
 
 // SnglWin32SetWords calls sngl_win32_set_words.
@@ -1000,9 +2059,20 @@ func SnglWin32SetWords(w HWND, words string) {
 	C.sngl_win32_set_words(w, (*C.ushort)(unsafe.Pointer(cbind.UTF16(words))))
 }
 
-// SnglWin32SlotAnchor calls sngl_win32_slot_anchor.
-func SnglWin32SlotAnchor(parent HWND, anchor HWND) HWND {
-	return C.sngl_win32_slot_anchor(parent, anchor)
+// SnglWin32Show calls sngl_win32_show.
+func SnglWin32Show(w HWND, on bool) int {
+	var __lt16 int
+	if on {
+		__lt16 = 1
+	} else {
+		__lt16 = 0
+	}
+	return int(C.sngl_win32_show(w, C.int(__lt16)))
+}
+
+// SnglWin32ShowAttached calls sngl_win32_show_attached.
+func SnglWin32ShowAttached(top HWND, node HWND) {
+	C.sngl_win32_show_attached(top, node)
 }
 
 // SnglWin32Snapshot calls sngl_win32_snapshot.
@@ -1013,9 +2083,15 @@ func SnglWin32Snapshot(path string, width int, height int) int {
 	return __ret3
 }
 
-// SnglWin32Sorted calls sngl_win32_sorted.
-func SnglWin32Sorted(t HWND) string {
-	return C.GoString(C.sngl_win32_sorted(t))
+// SnglWin32SortHeader calls sngl_win32_sort_header.
+func SnglWin32SortHeader(w HWND, sortable bool) {
+	var __lt17 int
+	if sortable {
+		__lt17 = 1
+	} else {
+		__lt17 = 0
+	}
+	C.sngl_win32_sort_header(w, C.int(__lt17))
 }
 
 // SnglWin32Spacer calls sngl_win32_spacer.
@@ -1033,11 +2109,6 @@ func SnglWin32Step() {
 	C.sngl_win32_step()
 }
 
-// SnglWin32TabPage calls sngl_win32_tab_page.
-func SnglWin32TabPage() HWND {
-	return C.sngl_win32_tab_page()
-}
-
 // SnglWin32Table calls sngl_win32_table.
 func SnglWin32Table() HWND {
 	return C.sngl_win32_table()
@@ -1053,9 +2124,28 @@ func SnglWin32Text() HWND {
 	return C.sngl_win32_text()
 }
 
+// SnglWin32TextSize calls sngl_win32_text_size.
+func SnglWin32TextSize(w HWND, out SIZE) SIZE {
+	return func() SIZE {
+		__snglOut1 := func(v SIZE) C.SIZE { return C.SIZE{cx: C.LONG(v.Cx), cy: C.LONG(v.Cy)} }(out)
+		C.sngl_win32_text_size(w, &__snglOut1)
+		return func(c C.SIZE) SIZE { return SIZE{Cx: int(c.cx), Cy: int(c.cy)} }(__snglOut1)
+	}()
+}
+
 // SnglWin32Textarea calls sngl_win32_textarea.
 func SnglWin32Textarea() HWND {
 	return C.sngl_win32_textarea()
+}
+
+// SnglWin32Timer calls sngl_win32_timer.
+func SnglWin32Timer(w HWND, wp int) int {
+	return int(C.sngl_win32_timer(w, C.WPARAM(wp)))
+}
+
+// SnglWin32TipTool calls sngl_win32_tip_tool.
+func SnglWin32TipTool(box HWND, child HWND, tip string) {
+	C.sngl_win32_tip_tool(box, child, (*C.ushort)(unsafe.Pointer(cbind.UTF16(tip))))
 }
 
 // SnglWin32Toplevel calls sngl_win32_toplevel.
@@ -1066,6 +2156,27 @@ func SnglWin32Toplevel() HWND {
 // SnglWin32Tree calls sngl_win32_tree.
 func SnglWin32Tree() HWND {
 	return C.sngl_win32_tree()
+}
+
+// SnglWin32TreeFind calls sngl_win32_tree_find.
+func SnglWin32TreeFind(t HWND, label string) *TreeFound {
+	return func() *C.HTREEITEM {
+		p := (C.HTREEITEM)(C.sngl_win32_tree_find(t, (*C.ushort)(unsafe.Pointer(cbind.UTF16(label)))))
+		if p == nil {
+			return nil
+		}
+		return &p
+	}()
+}
+
+// SnglWin32Unsubclass calls sngl_win32_unsubclass.
+func SnglWin32Unsubclass(w HWND) {
+	C.sngl_win32_unsubclass(w)
+}
+
+// SnglWin32WindowOf calls sngl_win32_window_of.
+func SnglWin32WindowOf(lp int) HWND {
+	return C.sngl_win32_window_of(C.LPARAM(lp))
 }
 
 // UpdateWindow calls UpdateWindow.

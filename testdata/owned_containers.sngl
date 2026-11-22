@@ -110,6 +110,10 @@ component maps ui.node {
         fs[k] = open(fd)
     }
 
+    func take(k string) {
+        fs.remove(k)
+    }
+
     ui.text(value="{fs.length}")
 }
 
@@ -123,6 +127,19 @@ func testMapAssignmentReleasesTheReplaced(t test.Test, c maps) {
     c.put("b", 3)
     t.assert(c.fs.length == 2)
     t.assert(closed == [1])
+}
+
+func testMapRemoveReleasesTheRemoved(t test.Test, c maps) {
+    c.put("b", 2)
+    c.take("a")
+    t.assert(c.fs.length == 1)
+    t.assert(closed == [1])
+}
+
+func testMapRemoveOfAnAbsentKeyReleasesNothing(t test.Test, c maps) {
+    c.take("z")
+    t.assert(c.fs.length == 1)
+    t.assert(closed.length == 0)
 }
 
 component options ui.node {

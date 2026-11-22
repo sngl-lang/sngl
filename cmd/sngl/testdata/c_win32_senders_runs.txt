@@ -1,0 +1,382 @@
+# What a test raises in a window's controls, and what the program sends
+# them, as the user's does, in C and Go, on 64- and 32-bit Windows under
+# Wine, and in Go calling C directly: a drop-down offered its choices and
+# one picked, a check box pressed, a tab chosen, a table's row selected and
+# its column header clicked, a tree's node selected and a date picked. What
+# each control then shows its fixture's own C reads off it (peek.c), and
+# what each handler heard the program records.
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +6 tests, 0 failures'
+sngl test --platform=win32 --language=c --opt arch=386 app.sngl
+stdout 'ok +6 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +6 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt arch=386 app.sngl
+stdout 'ok +6 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
+stdout 'ok +6 tests, 0 failures'
+
+-- app.sngl --
+import ui "sngl:ui"
+import c "sngl:x/c"
+import test "sngl:test"
+import time "sngl:time"
+import win32 "sngl:platform/win32"
+
+output {
+    c {
+        win32
+    }
+}
+
+c.link(include="peek.h", sources=["peek.c", "peek.h"])
+
+// What the first control of a class in n's window shows: a drop-down's
+// choice selected and how many it has, a tab control's tab selected, the
+// check of the check box labeled Run (a date picker holds one of its own), and a date picker's day of the month, 0 for none.
+#[c.native("peek_cursel")]
+func cursel(n ui.node) int
+
+#[c.native("peek_choices")]
+func choices(n ui.node) int
+
+#[c.native("peek_tab")]
+func tabShown(n ui.node) int
+
+#[c.native("peek_checked")]
+func checked(n ui.node) int
+
+#[c.native("peek_day")]
+func dayShown(n ui.node) int
+
+component main ui.node {
+    var fruits = ["apple", "banana", "cherry"]
+    var fruit = "banana"
+    var picks = 0
+    var on = false
+    var flips = 0
+    var idx = 0
+    var changed = -1
+    var row = -1
+    var rowPicks = 0
+    var sortedBy = ""
+    var node = ""
+    var day option[time.date] = null
+    var seen = "none"
+    ui.vbox {
+        ui.select #pick(:value=fruit, @change(v) { picks += 1 }) {
+            for var f = fruits {
+                ui.choice(label=f, value=f)
+            }
+        }
+        ui.checkbox #box(label="Run", checked=on, @change(v) {
+            on = v
+            flips += 1
+        })
+        ui.tabs #tabs(:selected=idx, @change(i) { changed = i }) {
+            ui.tab(label="One") {
+                ui.text(value="first")
+            }
+            ui.tab(label="Two") {
+                ui.text(value="second")
+            }
+        }
+        ui.table(columns=["Name", "Age"], selectable=true, sortable=true, :selected=row, @select { rowPicks += 1 }, @sort(col) { sortedBy = col }) {
+            ui.tableRow(cells=["Ann", "34"])
+            ui.tableRow(cells=["Bob", "27"])
+        }
+        ui.tree(:selected=node, expanded=[0]) {
+            ui.treeItem(label="src") {
+                ui.treeItem(label="main.sngl")
+            }
+            ui.treeItem(label="README")
+        }
+        ui.datepicker(:value=day, @change(v) { seen = v == null ? "no day" : "day" })
+        ui.text #status(value="{fruit} {on} {idx} {row} {node}")
+    }
+}
+
+ui.window(title="Senders") {
+    main()
+}
+
+func testADropDownIsOfferedAndPicked(t test.Test, c main) {
+    t.assert(choices(c.status) == 3)
+    t.assert(cursel(c.status) == 1)
+    c.pick.change("cherry")
+    t.assert(c.fruit == "cherry")
+    t.assert(c.picks == 1)
+    t.assert(cursel(c.status) == 2)
+    c.fruits = ["kiwi", "cherry"]
+    t.assert(choices(c.status) == 2)
+    t.assert(cursel(c.status) == 1)
+    c.fruit = "plum"
+    t.assert(cursel(c.status) == -1)
+    c.fruits = []
+    t.assert(choices(c.status) == 0)
+}
+
+func testACheckBoxIsPressed(t test.Test, c main) {
+    c.box.change(true)
+    t.assert(c.on)
+    t.assert(c.flips == 1)
+    t.assert(checked(c.status) == 1)
+    c.box.change(false)
+    t.assert(!c.on)
+    t.assert(checked(c.status) == 0)
+}
+
+func testATabIsChosen(t test.Test, c main) {
+    c.tabs.change(1)
+    t.assert(c.idx == 1)
+    t.assert(c.changed == 1)
+    t.assert(tabShown(c.status) == 1)
+}
+
+func testARowIsPickedAndAColumnClicked(t test.Test, c main) {
+    t.assert(win32.pickRow(c.status, 1))
+    t.assert(c.row == 1)
+    t.assert(c.rowPicks == 1)
+    t.assert(win32.clickColumn(c.status, 0))
+    t.assert(c.sortedBy == "Name")
+}
+
+func testANodeIsPicked(t test.Test, c main) {
+    t.assert(win32.pickNode(c.status, "main.sngl"))
+    t.assert(c.node == "main.sngl")
+    t.assert(win32.pickNode(c.status, "README"))
+    t.assert(c.node == "README")
+    t.assert(!win32.pickNode(c.status, "nowhere"))
+    t.assert(c.node == "README")
+}
+
+func testADateIsPicked(t test.Test, c main) {
+    t.assert(win32.pickDate(c.status, "2024-03-05"))
+    var d time.date = "2024-03-05"
+    t.assert(c.day == d)
+    t.assert(c.seen == "day")
+    t.assert(dayShown(c.status) == 5)
+    t.assert(win32.pickDate(c.status, ""))
+    t.assert(c.day == null)
+    t.assert(c.seen == "no day")
+    t.assert(dayShown(c.status) == 0)
+}
+-- peek.h --
+#include <windows.h>
+
+int peek_cursel(HWND any);
+int peek_choices(HWND any);
+int peek_tab(HWND any);
+int peek_checked(HWND any);
+int peek_day(HWND any);
+-- peek.c --
+#include "peek.h"
+
+#include <commctrl.h>
+#include <string.h>
+
+struct find {
+	const WCHAR *cls, *text;
+	LONG mask, style;
+	HWND found;
+};
+
+static BOOL CALLBACK match(HWND w, LPARAM lp) {
+	struct find *f = (struct find *)lp;
+	WCHAR cls[64];
+	GetClassNameW(w, cls, 64);
+	WCHAR text[64] = {0};
+	if (f->text) {
+		GetWindowTextW(w, text, 64);
+	}
+	if (lstrcmpiW(cls, f->cls) == 0 && (GetWindowLongW(w, GWL_STYLE) & f->mask) == f->style && (!f->text || lstrcmpW(text, f->text) == 0)) {
+		f->found = w;
+		return FALSE;
+	}
+	return TRUE;
+}
+
+/* first is the first window of class cls whose style's mask bits are
+ * style, and whose text is text where it is not NULL, in the toplevel any
+ * is in. */
+static HWND first(HWND any, const WCHAR *cls, LONG mask, LONG style, const WCHAR *text) {
+	struct find f = {cls, text, mask, style, NULL};
+	EnumChildWindows(GetAncestor(any, GA_ROOT), match, (LPARAM)&f);
+	return f.found;
+}
+
+int peek_cursel(HWND any) {
+	return (int)SendMessageW(first(any, WC_COMBOBOXW, 0, 0, NULL), CB_GETCURSEL, 0, 0);
+}
+
+int peek_choices(HWND any) {
+	return (int)SendMessageW(first(any, WC_COMBOBOXW, 0, 0, NULL), CB_GETCOUNT, 0, 0);
+}
+
+int peek_tab(HWND any) {
+	return (int)SendMessageW(first(any, WC_TABCONTROLW, 0, 0, NULL), TCM_GETCURSEL, 0, 0);
+}
+
+int peek_checked(HWND any) {
+	return (int)SendMessageW(first(any, WC_BUTTONW, BS_TYPEMASK, BS_AUTOCHECKBOX, L"Run"), BM_GETCHECK, 0, 0);
+}
+
+int peek_day(HWND any) {
+	SYSTEMTIME st;
+	memset(&st, 0, sizeof st);
+	if (SendMessageW(first(any, DATETIMEPICK_CLASSW, 0, 0, NULL), DTM_GETSYSTEMTIME, 0, (LPARAM)&st) != GDT_VALID) {
+		return 0;
+	}
+	return st.wDay;
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:5527eb604d3a0c6abd9824c12878bfa8
+{
+  "results": [
+    {
+      "Desc": "ADropDownIsOfferedAndPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ACheckBoxIsPressed",
+      "Passed": true
+    },
+    {
+      "Desc": "ATabIsChosen",
+      "Passed": true
+    },
+    {
+      "Desc": "ARowIsPickedAndAColumnClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodeIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ADateIsPicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/2 --
+sha256:9e0662c81cc7782b5fa350110ae09829
+{
+  "results": [
+    {
+      "Desc": "ADropDownIsOfferedAndPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ACheckBoxIsPressed",
+      "Passed": true
+    },
+    {
+      "Desc": "ATabIsChosen",
+      "Passed": true
+    },
+    {
+      "Desc": "ARowIsPickedAndAColumnClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodeIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ADateIsPicked",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:6e9558333a16a897f4939a8879841725
+{
+  "results": [
+    {
+      "Desc": "ACheckBoxIsPressed",
+      "Passed": true
+    },
+    {
+      "Desc": "ADateIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ADropDownIsOfferedAndPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodeIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ARowIsPickedAndAColumnClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ATabIsChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/2 --
+sha256:9b5aef79e37e807233e6849d9ae640e8
+{
+  "results": [
+    {
+      "Desc": "ACheckBoxIsPressed",
+      "Passed": true
+    },
+    {
+      "Desc": "ADateIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ADropDownIsOfferedAndPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodeIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ARowIsPickedAndAColumnClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ATabIsChosen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/3 --
+sha256:385ce26baff4b5c945763e21bb380605
+{
+  "results": [
+    {
+      "Desc": "ACheckBoxIsPressed",
+      "Passed": true
+    },
+    {
+      "Desc": "ADateIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ADropDownIsOfferedAndPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ANodeIsPicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ARowIsPickedAndAColumnClicked",
+      "Passed": true
+    },
+    {
+      "Desc": "ATabIsChosen",
+      "Passed": true
+    }
+  ]
+}

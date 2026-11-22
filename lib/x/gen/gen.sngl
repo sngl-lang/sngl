@@ -30,7 +30,7 @@ import marks "sngl:internal/marks"
 // trigger is refused rather than handed to an invoker taking a label, and
 // held, refused only through one copy of a loop's.
 //
-enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches, stringBuilders, unreadLocals, valueTriggers }
+enum Capability { toggle, ternary, lambda, ref, unitType, enumType, asyncReactive, asyncCalls, computed, listLambdas, reactivity, declarative, inlineComponents, implicitRecv, structSpread, viewStatements, instanceState, insertBefore, inlineSlots, asyncPost, asyncSpawn, effects, navigation, genericFuncs, genericComponents, matches, matchValues, viewMatches, optionMatches, stringBuilders, entryWrites, unreadLocals, valueTriggers }
 
 // What a *primitive* can do with the nodes it renders, as against what a
 // target can do with the language. Written on an `#[intrinsic]` component
@@ -227,9 +227,9 @@ enum Protocol {
 // A platform author writes one unexported function per operation, over the
 // host's own calls, as gtk4 writes its image:
 //
-//     #[c.native("sngl_image_new")]
-//     #[go.native("duckfam.us/sngl/lib/platform/gtk4/cgo", "cgo.SnglImageNew")]
-//     func _rtImageNew() Image
+//     func _rtImageNew() Image {
+//         ...
+//     }
 //
 //     #[gen.protocol(create)]
 //     func _create_Image() Image {
@@ -262,6 +262,18 @@ func protocol(op Protocol) ir.Macro
 //
 // Its body is one call, as a protocol function's is.
 func fires(event string) ir.Macro
+
+// Says the generated entry calls the function: a function of a target's
+// package, with a body, that no SNGL code calls and the target's generator
+// does, by its name -- an application's loop, run around the program's
+// build. The build keeps it, and what it calls, in every program for the
+// target that starts as the target's own entry does.
+//
+//     #[gen.entry]
+//     func _main(build func()) int {
+//         return _rtMain(build)
+//     }
+func entry() ir.Macro
 
 // Names an event as its host knows it, where that is no SNGL name: GTK's
 // `notify::active` is `@notifyActive`. The `connect` operation is handed this

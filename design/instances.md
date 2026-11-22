@@ -609,7 +609,11 @@ a lambda before the inliner runs, and a method called through a `#id` in one
 captures nothing (`analyzeCaptures`): captured, the call reached the handle
 through the closure's state, which repointHandleCalls never looked in, and
 the closure held a node no scope declared
-(`cmd/sngl/testdata/menu_item_calls_its_window_node_runs.txt`). An
+(`cmd/sngl/testdata/menu_item_calls_its_window_node_runs.txt`). Nor does a
+`const`, which is one value wherever it is read: sngl:builtin's `false`, in
+an override's condition spliced into a handler, was a field the closure was
+initialized from a `false_` nothing declared
+(`cmd/sngl/testdata/c_gtk4_radio_disabled_runs.txt`). An
 openapi adapter's `refresh` under a `for` called its query's short an
 argument on bubbletea (`cmd/sngl/testdata/handle_call_in_spliced_copies_runs.txt`). On every
 target a function a splice hoists out of loops takes the loop variables it

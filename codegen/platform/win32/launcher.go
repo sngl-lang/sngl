@@ -29,7 +29,8 @@ var _ codegen.TestLauncher = (*Generator)(nil)
 // Wine, off Windows -- with the port of a loopback listener as its argument,
 // which it connects back to and serves the driver over. Wine hands a Windows
 // program none of the host's pipes, so the channel is TCP, as android's is.
-func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
+// C compiles at the level opts' `optimize` names.
+func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	if ok, reason := g.ProbeTest(); !ok {
 		return nil, nil, &codegen.SkipError{Reason: reason}
 	}
@@ -44,7 +45,7 @@ func (g *Generator) LaunchTest(ctx context.Context, dir string, lang codegen.Lan
 			return nil, nil, err
 		}
 	} else {
-		if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		if _, err := cc.BuildDir(dir, bin, "c17", codegen.OptionString(opts, "optimize")); err != nil {
 			return nil, nil, err
 		}
 		bin = cc.Exe(bin)
@@ -148,7 +149,7 @@ func (g *Generator) RunProgram(ctx context.Context, dir string, runs []codegen.P
 			return "", nil, err
 		}
 	} else {
-		if out, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+		if out, err := cc.BuildDir(dir, bin, "c17", ""); err != nil {
 			return out, nil, err
 		}
 		bin = cc.Exe(bin)

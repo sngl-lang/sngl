@@ -75,8 +75,8 @@ prop, whose report reaches the node as an event of its name (`bindOn`,
 one per event. `passDeclarative` splices it in place of the platform's
 connect, with the node bound and the handler left for the platform as
 `connect` leaves it. gtk4's scroll is the first: GTK raises no signal for
-the end of the content arriving, so `@reachEnd` is the runtime's
-`sngl_scroll_on_reach_end`, not a `g_signal_connect`.
+the end of the content arriving, so `@reachEnd` is gtk4.sngl's
+`_rtScrollOnReachEnd`, not a `g_signal_connect`.
 
 `set` writes one prop: a function of the widget, typed as the component, and
 the value, whose parameter is named as the prop it sets (`bindSet`,
@@ -86,7 +86,13 @@ view's first: an updater and a handler write a node's prop as well, and
 `passReactivity` made both before `passDeclarative` runs, so `spliceSets`
 walks the whole package once the view is flattened and makes the write's
 value the set's call, with the node and the written value bound. A write that
-two blocks share is spliced once. `ReleaseTemps` visits an assignment's
+two blocks share is spliced once. A write is made only of a node the build renders:
+an arm of a plain `if` whose condition the build reads (`foldedBool`, which
+takes two enum members, or the two ints `passEnum` made of them on C) gets no
+updater, since the arm is folded away; gtk4's radio, its `direction`
+defaulted, wrote `sensitive` to the horizontal box it never built on each
+write of `disabled`, which GTK reported as a critical
+(`cmd/sngl/testdata/c_gtk4_radio_disabled_runs.txt`). `ReleaseTemps` visits an assignment's
 value, so a string the call hands C is bound before the write and freed after
 it, or made once for the application where it is a literal. The passes that
 lower a ternary and a match ran before the op existed: a match in a set
@@ -290,7 +296,19 @@ declaration itself. Two things about the name that are easy to get wrong:
 - **It carries its own qualifier.** `#[go.native("strings", "strings.ToUpper")]`,
   not `("strings", "ToUpper")` — a Go package's name is not a function of its
   import path (`gopkg.in/yaml.v3` is package `yaml`), so the path cannot supply
-  it. The path is what `RequireImport` adds.
+  it. The path is what `RequireImport` adds. The qualifier names the
+  package as the mark's author knew it, and the file writes it with the name
+  the import has there (`GoIRContext.Qualified`, through `site.qualify` for a
+  type): two packages of one name, the platform's wrapper package and a
+  program's own (`sngl tool cgogen`), both `cgo`, are imported as `cgo` and
+  `cgo2`, and every reference to the second says `cgo2`. Written literally,
+  the second import was aliased and unused while its calls and types named
+  the first (`cmd/sngl/testdata/cgogen_beside_platform_runs.txt`). A name
+  no other import collides with is written as the mark spells it, and a
+  method's qualifier, never written, claims nothing. fyne and bubbletea
+  hand their emitter the paths alone, and a type spelled with no file to
+  ask (`IRTypeToGo`) is written as the mark spells it, so a collision there
+  is untested.
 - **Every language has one.** `go.native` and `js.native` were joined by
   `kotlin.native`, which android needs to describe Compose, and by
   **`#[c.native]` in `sngl:macro`** — C is an ABI rather than a target, so a
@@ -312,7 +330,25 @@ declaration itself. Two things about the name that are easy to get wrong:
   hands back a `const char *` it keeps, which the call copies -- `C.GoString`
   in Go, the turn's `sngl_string_copy` in C -- and one returning a `bool`
   its `int` (`testdata/c_string_return.txtar`, `codegen/lang/c`'s
-  `cinterop` run). The alias is expanded where
+  `cinterop` run). One answering a string it hands over, which the program
+  frees, is marked `#[c.frees("g_free")]` (`Func.CFrees`): the call copies
+  the string, then hands C's pointer to the named function, but NULL, which
+  is what lets gtk4 call `g_strdup_printf` or read an input method's
+  preedit. An `option[string]` result is `null` for NULL, freed or not. On
+  a `ref[string]` parameter (`Param.CFrees`) the mark says the same of what
+  C stores: C is handed a pointer to NULL, and what it stored is copied and
+  freed as the call writes back (`refCall`'s temp in C, `cStringOut` in
+  Go); an unmarked `ref[string]` stays refused, since nothing says whose
+  that string is (`checkCFrees`). C frees through a helper per function
+  (`sngl_freed_<f>`); Go cannot hand the function the pointer at a type it
+  does not know (GLib's gpointer is no `unsafe.Pointer` to cgo), so it calls
+  a C function freeing all but NULL (`snglFree_<f>`), which the
+  `sngl_shims.h` it writes beside a variadic call's shape defines, and a
+  wrapper package's preamble likewise (`ir.CalledCShimmed`, `CShims`).
+  purego refuses one, keeping no pointer to free
+  (`testdata/c_frees.txtar`, `error_c_frees.sngl`, `codegen/lang/c`'s
+  `frees` run, `cgogen_user_package_runs.txt`,
+  `go_cgo_purego_refused.txt`). The alias is expanded where
   it is written, so `ir.Param.CAlias` remembers it. It records the alias
   rather than its C type because the alias's mark may run after the parameter
   is built, and it is shared by every clone, its package being the library's
@@ -337,15 +373,65 @@ declaration itself. Two things about the name that are easy to get wrong:
   (`ir.StructDef.IsCStruct`): the program's own struct, `Foreign.Marked`
   so a backend declares it, converted field by field where a call takes one
   (`CConvertStruct`) or returns one, each field as its alias
-  (`StructField.CAlias`) or scalar. Held as cgo's type instead, its fields
-  would be `C.int` in every SNGL expression reading one. A C function's
+  (`StructField.CAlias`) or scalar, and a C struct it holds by value through
+  that struct's own conversion, as Win32's `NMDATETIMECHANGE` holds an
+  `NMHDR` and a `SYSTEMTIME` (`codegen/lang/c`'s `nested_structs` run,
+  `testdata/c_nested_structs.txtar`, `cgogen_user_package_runs.txt`): C had
+  written such a field `(int)v.f`, and refused a C struct a function
+  answers. Held as cgo's type instead, its fields
+  would be `C.int` in every SNGL expression reading one. A field may also
+  be a string, as a `char *` or its UTF-16 alias, a handle, or an option of
+  a `*` handle (`cPointerField`), as Win32's `LVITEMW` holds its text. A
+  string is valid for the call the struct is handed to and is not read
+  back, the program's struct keeping the string it held: C hands its bytes,
+  which a NUL ends, or their UTF-16 in the turn's arena, as an argument's
+  is, written without const so the field fits C's `LPWSTR` or `LPCWSTR`,
+  and reads back through a helper handed the struct the program handed in
+  (`fromCStructKeeps`). Go copies each into Go memory pinned for the call
+  (`cbind.Pins`, declared by the call, `cStructPins`), stored through
+  `unsafe.Pointer` since it can spell the field's pointer type only as cgo
+  names it, and builds the struct read back from the value handed in. A C
+  function answering such a struct is refused, having no string of the
+  program's to keep (`cStringField`); a held copy is sound, being the
+  program's value and never the C struct (`codegen/lang/c`'s
+  `struct_strings` run, `testdata/c_struct_strings.txtar`,
+  `error_c_struct.sngl`, `cgogen_user_package_runs.txt`, and
+  `cmd/sngl/testdata/c_win32_interop_runs.txt`, which inserts rows into a
+  real list view through LVM_INSERTITEMW and reads their text back). A
+  program's own C struct in a test build calling C directly was declared
+  twice, once more as another package's (`libraryCStructs`). A C function's
   `ref` parameter is a pointer it fills: `passRefParams` makes it an out
   (`cOuts`), so the call hands back what C wrote and the caller's variable
   is assigned as a bodied function's write-back is -- an assignment every
   later pass sees -- and the translator hands C the address of a C temp
   (`CInterop.CCall`). `rewriteBody` leaves a C function's signature alone,
   since its pointers are the translator's (`testdata/c_struct_argument.txtar`,
-  `error_c_struct.sngl`, `error_c_struct_mark.sngl`).
+  `error_c_struct.sngl`, `error_c_struct_mark.sngl`). The C target defines a
+  function per such C function (`sngl_ccall_<name>_<func>`, `refCall`)
+  taking each argument as the call renders it, handing C the address of a
+  C temp for each `ref` -- a scalar's, or a C struct's, converted into it
+  and back field by field (`cStruct`, `fromCStruct`; gtk4's `_place` hands
+  `gtk_widget_size_allocate` a GtkAllocation) -- and answering what the
+  pass made of the call. A ref to an option of a pointer handle
+  (`ir.IsCPointerOption`) is a pointer to the pointer, GLib's `GError **`:
+  C is handed the address of a temp holding NULL, whatever the variable held,
+  as GLib asks of an error and as a `ref[string]` is, and reads back null or
+  the handle; Go's temp is cgo's pointer, read back as the pointer to it
+  Go's option of one is, and a wrapper takes the option without splitting
+  its call on null (`codegen/lang/c/testdata/run/ref_options.txtar`,
+  `testdata/c_ref_option.txtar`, `cgogen_user_package_runs.txt`). `passNoRef` leaves a C function's signature alone
+  too (`cRefs`): boxed, a program's own C function was handed a box where C
+  takes a pointer to its type (`codegen/lang/c/testdata/run/refs.txtar`). `passRefParams` runs before `passLibFuncs`, so a promoted
+  library function's `&x` reached no translator -- gtk4's probe measures
+  its child through `gtk_widget_measure` that way -- and `passCRefCalls`,
+  after it, lowers the calls of C functions still handing an address, and
+  each promoted library function taking a `ref` with the calls of it, as
+  `passRefParams` lowers a program's (`internal/lower/ref_params.go`). Any
+  other call it leaves alone: it took the `&` off every call, so gtk4's
+  `_layoutKidsInto(&kids, c)` handed a list where passNoRef's box was
+  declared. A promoted copy's call of itself names the copy
+  (`promoteFuncs`), or the pass met the frozen original, which writes
+  nothing back (`gtk4_look_runs.txtar`).
   A `func` parameter is a callback: C calls a function pointer and hands it
   back a `void *`, which the declaration marks `#[c.context]` (`sngl:x/c`) and
   no caller passes. The mark gives the parameter a placeholder default, so the
@@ -375,6 +461,118 @@ declaration itself. Two things about the name that are easy to get wrong:
   `error_c_context_mark.sngl`, `error_c_context_argument.sngl`). gtk4
   connects every handler through its runtime's `sngl_signal_connect` this
   way.
+  A callback C calls with no context -- a GTK custom layout's measure, a
+  `GDestroyNotify`, a Win32 window procedure -- is marked `#[c.static]`
+  (`sngl:x/c`), and has nothing to find a closure by, so its argument is a
+  function of a package by name (`ir.StaticCallee`): a lambda or a method is
+  refused at the call (`checkCStaticArgs`), its captures and its receiver
+  having nowhere to come from. What it works on it reads off what C hands
+  it, a `held` value on the widget. It takes what any callback takes and a
+  `string`, copied as C calls, and answers a scalar or a handle
+  (`cStaticRefusal`); the mark goes only on a `func` parameter of a bodiless
+  function (`markCallbackParam`), and `checkCCallbacks` refuses it on a
+  function that is not C's. Marked `#[c.outs]` as well, it answers a struct
+  of the program's whose fields are `int`, `float` and `bool`, which C reads
+  through one pointer a field handed after the arguments, as GTK hands a
+  measure `int *minimum, int *natural`; a NULL one is not written, and an
+  `outs` without `static` is an error, since a context-finding callback
+  answers as it returns. C defines a function per function handed to one
+  (`sngl_static_<name>`, `staticCallback` in `codegen/lang/c/context.go`),
+  which enters a turn as a dispatcher does, copies a string into it, and
+  writes each out. Go exports one per function from the callbacks' file
+  (`snglStatic_<Name>`, `codegen/lang/golang/cstatic.go`), calling through
+  a package variable the call sets before it hands C the export's pointer:
+  the file is written from the package alone, and how the function is named
+  -- free, or a platform's Model's -- is the call's writer's to say
+  (`testdata/error_c_static.sngl`, `c_static_callback.txtar`,
+  `codegen/lang/c`'s `static` run). gtk4 lays a scroll's probe out by three
+  of its functions handed to `gtk_custom_layout_new`, and lets a flow's
+  span store go through one handed to `g_object_set_data_full`.
+  A static callback C calls with a convention other than the platform's
+  default -- Win32's `CALLBACK`, `__stdcall` on 32-bit x86, for a window
+  procedure or a timer's -- names it, `#[c.static(convention="CALLBACK")]`
+  (`Param.CConvention`), free text written as given and judged by C's
+  compiler, an empty one refused (`markCStatic`). C writes it into the
+  function's definition (`static LRESULT CALLBACK sngl_static_CALLBACK_f`)
+  and hands that function at the `#[c.type]` typedef with no cast: the
+  `void (*)(void)` one a conventionless static, a dispatcher or a release
+  still goes through is what had hidden a cdecl function handed where 386
+  calls `__stdcall`, and without it MinGW's i686 compiler refuses the
+  mismatch as an incompatible pointer. cgo exports only the default
+  convention, so Go hands C a `static` C function of the convention in the
+  callbacks' preamble calling the export (`staticTrampoline`), found
+  through a function answering it, since a static function has no symbol
+  cgo could take the address of; a wrapper package's callbacks hold the
+  same for each wrapper's parameter. A callback's signature records the
+  aliases it is written with (`Param.CAlias` on each of its parameters,
+  `FuncSig.ReturnCAlias`), and a static's C function and Go export take and
+  answer those C types, so the function is of the typedef's type and a
+  `WPARAM`, `LPARAM` or `LRESULT` crosses whole rather than as a C `int`
+  (`codegen/lang/c`'s `static_convention` run, under a convention no
+  compiler calls with by default on each of its targets;
+  `testdata/c_static_convention.txtar`, `cgogen_user_package_runs.txt`,
+  and `cmd/sngl/testdata/c_win32_interop_runs.txt`, where a `TIMERPROC`
+  ticks and a `WNDPROC` the fixture's C registers answers under Wine on
+  both architectures, in C and in Go).
+  A function pointer the caller hands C NULL for -- `g_source_set_callback`'s
+  `GDestroyNotify` where nothing is let go -- is no callback, since none is
+  handed: it is declared an option of a pointer at the typedef `#[c.type]`
+  names, `#[c.type("GDestroyNotify")] notify option[c.pointer]`, and handed
+  `null`. C passes NULL; Go converts what it hands to the typedef, cgo's
+  `*[0]byte`, which no data pointer is (`cFuncPointer`): a wrapper package
+  hands the option's pointer on, and refused to compile handing a
+  `gpointer` there (`c_static_callback.txtar`, `codegen/lang/c`'s `static`
+  run). A static callback with an empty body did the job before.
+  A C function taking a variable argument list -- `printf`,
+  `g_object_set` -- is `#[c.native(name, variadic)]`, on a function and
+  never beside `cast` (`markCNative`). The declaration lists what one call
+  passes, so a function called two ways is declared twice. C calls it as
+  it is; cgo calls no variadic function, so Go calls a `static inline` C
+  function of the declaration's one shape (`snglV_<name>`), which the
+  `sngl_shims.h` it writes after the program's links defines
+  (`shimsLink`).
+  A member of a C struct is read by a function flagged `field`, named
+  `Struct.member` (`Foreign.Field`): its first parameter is a handle whose
+  C type is a pointer to the struct (`checkCFields`), and a call is
+  `first->member`, or, handed more, a call of the function pointer the
+  member holds with the rest (`ir.CCallExpr`), converted as a C function's
+  call is: gtk4 reads `GError.message` and calls GtkLabel's class
+  `measure` that way. cgo reads a member but calls no function pointer, so
+  Go goes through a C function of the declaration's shape (`snglF_<name>`)
+  in `sngl_shims.h`, as a variadic call does, a ref crossing it as a
+  pointer to its element's C type; a wrapper package's preamble defines it
+  (cgogen names the wrapper `GErrorMessage`). purego refuses one, finding
+  a function by its name alone (`testdata/c_field.txtar`,
+  `error_c_field.sngl`, `codegen/lang/c`'s `fields` run,
+  `cgogen_user_package_runs.txt`, `go_cgo_purego_refused.txt`).
+  A pointer C takes as an integer typedef -- a Win32 message's `LPARAM`
+  carrying a string, a struct or a window -- is a parameter crossing as a
+  pointer (a string or its UTF-16 alias, an option of one, a `ref` to a C
+  struct, a handle, or an option of a `*` handle) that `#[c.type("LPARAM")]`
+  marks (`Param.CIntPointer`); on a generic pointer (`void *`, a typedef
+  flagged `pointer`) the mark still names the function-pointer typedef a
+  NULL is handed for, and on anything else it is refused (`cTypeNames`). C
+  casts the argument, `(LPARAM)p`, a `ref`'s temp's address included
+  (`intPointerArgs`). Go makes no integer of a pointer it hands C -- an
+  integer would keep nothing it points to for the call, Go's UTF-16 copy
+  and a ref's temp among them -- so the call goes through a C function of
+  the declaration's shape taking the pointer and casting it
+  (`snglP_<name>`, `CShims`), as a variadic call does; a wrapper package's
+  preamble defines it alike. The pointer is good for the call alone: this
+  is for a function done with it when it returns, as a sent message is,
+  and handed to `PostMessageW` it dangles, which nothing polices. A cast
+  takes such an integer back to a pointer handle, written with the alias it
+  is (`#[c.native("NMHDR *", cast)] func header(l LPARAM) Nmhdr`,
+  `Func.CCastFromInt`): C casts through the alias first, `(NMHDR *)(LPARAM)l`,
+  since a SNGL int is wider than a 32-bit pointer, and Go calls a C function
+  making it, which a wrapper package wraps as it wraps a function, though it
+  wraps no other cast. purego refuses both
+  (`codegen/lang/c`'s `int_pointers` run, `testdata/c_int_pointer.txtar`,
+  `error_c_type_mark.sngl`, `cgogen_user_package_runs.txt`,
+  `go_cgo_purego_refused.txt`, and `cmd/sngl/testdata/c_win32_interop_runs.txt`,
+  which sets and counts a window's text with WM_SETTEXT and
+  WM_GETTEXTLENGTH, hands a RECT the fixture's window procedure reads and
+  writes, and reads a WM_NOTIFY's NMHDR, under Wine on both architectures).
   A value C holds -- what `g_object_set_data_full` keeps on a widget -- is
   `sngl:x/c`'s `held`, a generic alias of its one parameter marked
   `#[builtin("cHeld")]` (`ir.Alias.IsCHeld`). `cAliasOf` records it as
@@ -388,7 +586,16 @@ declaration itself. Two things about the name that are easy to get wrong:
   parameter names its pointer typedef with `#[c.type]` where cgo needs it
   spelled (`gpointer`). A result is `option[c.held[T]]`, since C answers
   NULL where it holds nothing, read back as the `T` the pointer finds, and
-  `null` in Go where the registry holds nothing there. A Go wrapper (`sngl tool cgogen`) cannot name the program's `T`, so it takes and answers
+  `null` in Go where the registry holds nothing there. An option of an
+  opaque handle whose C type is written with a `*` is the pointer, NULL for
+  none, and so is one of a typedef that spells no `*` where its declaration
+  says it is a pointer, `#[c.native("gpointer", pointer)]`, in C (`cHandle`,
+  `codegen/lang/c/collections.go`) and in Go's cgo call (`cCall`), as gtk4's
+  `g_object_get_data` answering `option[_Pointer]` is. The flag is written,
+  not inferred from the struct declaring no fields: NULL is a value of
+  Win32's `HWND`, which a keyed loop hands `sngl_win32_insert` for "at the
+  end", and reading every handle's NULL as none moved a win32 snapshot
+  (`dropped.png` in `cmd/sngl/testdata/c_win32_loops_runs.txt`). A Go wrapper (`sngl tool cgogen`) cannot name the program's `T`, so it takes and answers
   `any` and the program's call asserts it back (`heldOut`). purego takes
   the value's index as a `uintptr` (`cload.Hold`) and the one release
   callback cload makes. `CMarshal` writes a compiler-passed argument under
@@ -695,9 +902,9 @@ matched. Each target reads its host its own way, in its own `.sngl`:
 - **gtk4**'s GIR signals hand their callback the instance they fired on, which
   is what every generated event now declares, `@toggled(self GtkCheckButton)`; a component may name itself in its own signature for this.
   The override reads that widget with a getter `gtk4.sngl` declares --
-  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- the
-  runtime's C, `sngl_check_active` and its kin, taking the widget a node is,
-  which each language calls as it calls C. The trampoline passes nothing, so
+  `checkActive`, `switchActive`, `entryText`, `calendarDate` -- SNGL calling
+  GTK's own getters on the widget a node is, which each language calls as it
+  calls C. The trampoline passes nothing, so
   a signal handler's `self` is the node it is connected on: placement wraps a
   handler taking the widget in one taking nothing that hands it the node
   (`handedTheNode`).
@@ -722,8 +929,8 @@ overrides do not bind `text` but push it from
 "changed", because gtk_editable_set_text deletes and reinserts and a runtime
 instance's handler writing the text back re-entered itself until the stack
 overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
-`sngl_calendar_select` blocks "day-selected" the same way; a test's fire
-puts the value in place first and emits the signal itself (`sngl_fire_day`).
+`selectDay` blocks "day-selected" the same way; a test's fire
+puts the value in place first and emits the signal itself (`_rtFireDay`).
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
@@ -740,7 +947,7 @@ bound (`Env.writeBound`). `testdata/toggle_change_payload.txtar`,
 **An event no host widget reports is a primitive of the platform's own.**
 `ui.scroll`'s `@reachEnd` has no signal on any target, so each answers it with
 something it ships: android's `SnglScroll` (`scroll.kt`), html's
-`sngl-reach-end` element (`reachend.go`), gtk4's runtime's scroll (`rt/scroll.c`) and fynelayout's
+`sngl-reach-end` element (`reachend.go`), gtk4's scroll (`_rtScrollNew`) and fynelayout's
 `ReachScroll`. Each fires as the end arrives and again when the content
 grows while it is there, so a short first page loads the next without a
 scroll; content shrinking while it is there -- a row removed, a filter
@@ -779,7 +986,7 @@ holds is the override's to convert: it shows `ui.choiceLabel(options, value)`
 and writes the value of the choice `ui.choiceLabeled(options, label)` finds.
 A test hands a value, and each target's override of the event says how its
 control takes it (`func ui.select[T].change[platform](value)`, see
-design/testing.md): gtk4 selects the label through the runtime's `sngl_drop_down_select`
+design/testing.md): gtk4 selects the label through `selectLabel`
 and fyne through `Select.SetSelected`, each of which reports the change as a
 pick does; html sets the `<select>`'s value to the label and dispatches
 `change`, and checks the radio button at the choice's index under the
@@ -804,8 +1011,8 @@ holds the bound value even before a choice carries it, since choices may
 be state that arrives later, and neither offering choices nor writing the
 value is reported as a choice:
 
-- **gtk4** offers a GtkStringList through `offerChoices`, the runtime's
-  `sngl_drop_down_offer`, which blocks `notify::selected` meanwhile; the
+- **gtk4** offers a GtkStringList through `offerChoices`, which blocks
+  `notify::selected` meanwhile (`testdata/gtk4_choose_runs.txtar`); the
   handler reads `dropDownLabel`. The invoker selects the label, which
   notifies, and fires nothing after it. Each splice of the override has its
   own `#drop` (`freshNodeHandles`, as datepicker's `#cal`): the declaration's
@@ -944,8 +1151,8 @@ displayed none (design/instances.md's *A stop that draws nothing is passed
 over*; `TestTabPassesOverAHiddenTabPanel`).
 
 A page reaches the stack, or the AppTabs, however the render slot of the
-strip's loop hands it to the tabs: the runtime's `sngl_box_append`, `sngl_box_insert_before` and
-`sngl_box_remove` route a child of a `Tabs` to its stack (`rt/tabs.c`), and fynelayout's `Tabs`
+strip's loop hands it to the tabs: gtk4.sngl's box append, insert and remove
+(`_rtBoxAppend` and its kin) route a child of a `Tabs` to its stack (`testdata/gtk4_tabs_runs.txtar`), and fynelayout's `Tabs`
 is a widget drawing the AppTabs whose `Container` -- the box the slot inserts
 into, drawn nowhere -- holds the pages, its layout making their items the
 AppTabs'. A `Tabs` that embedded the box drew nothing, since Fyne walks into a

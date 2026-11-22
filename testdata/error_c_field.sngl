@@ -1,0 +1,65 @@
+// A member of a C struct is read through `#[c.native("Struct.member",
+// field)]`: a bodyless function whose first parameter is a handle to that
+// struct. With one parameter it reads the member; with more, the member is a
+// function pointer called with the rest. The name is the struct and the
+// member, joined by one dot; the flag goes on a function, never beside
+// `variadic` or `cast`.
+import c "sngl:x/c"
+
+c.link(include="things.h")
+
+#[c.native("thing *")]
+struct Thing {}
+
+#[c.native("other *")]
+struct Other {}
+
+#[c.native("thing")]
+struct Value {
+    code int
+}
+
+#[c.native("const thing *")]
+struct ConstThing {}
+
+#[c.native("thing.message", field)]
+func message(t Thing) string
+
+#[c.native("thing.message", field)]
+func constMessage(t ConstThing) string
+
+#[c.native("thing.twice", field)]
+func twice(t Thing, n int) int
+
+#[c.native("thing.split", field)]
+func split(t Thing, n int, lo ref[int], hi ref[int])
+
+#[c.native("thing.code", field)] // ERROR(check) "#[c.native(\"thing.code\", field)] reads a member of the struct its first parameter points to, and none takes none"
+func none() int
+
+#[c.native("thing.code", field)] // ERROR(check) "#[c.native(\"thing.code\", field)] reads a member of a thing, so its first parameter is a #[c.native(\"thing *\")] handle, not int"
+func notHandle(n int) int
+
+#[c.native("thing.code", field)] // ERROR(check) "#[c.native(\"thing.code\", field)] reads a member of a thing, so its first parameter is a #[c.native(\"thing *\")] handle, not Other"
+func otherHandle(o Other) int
+
+#[c.native("thing.code", field)] // ERROR(check) "#[c.native(\"thing.code\", field)] reads a member of a thing, so its first parameter is a #[c.native(\"thing *\")] handle, not Value"
+func byValue(v Value) int
+
+#[c.native("thing", field)] // ERROR(check) "#[c.native(\"thing\", field)] names no member: a field is the struct and the member, joined by one dot"
+func undotted(t Thing) int
+
+#[c.native("thing.inner.code", field)] // ERROR(check) "#[c.native(\"thing.inner.code\", field)] names no member: a field is the struct and the member, joined by one dot"
+func twoDots(t Thing) int
+
+#[c.native("thing.code", field, variadic)] // ERROR(check) "carries field beside variadic"
+func fieldVariadic(t Thing) int
+
+#[c.native("int", field, cast)] // ERROR(check) "carries field beside cast"
+func fieldCast(t Thing) int
+
+#[c.native("thing *", field)] // ERROR(check) "carries field, which describes a function reading a member of a C struct"
+struct Fielded {}
+
+#[c.native("thing.code")] // ERROR(check) "#[c.native(\"thing.code\")] names no C function: a function is its C identifier, and a member of a C struct is #[c.native(\"thing.code\", field)]"
+func unflagged(t Thing) int

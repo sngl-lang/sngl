@@ -276,7 +276,7 @@ func testAMethodReadsItsCopy(t test.Test, c main) {
     t.assert(c.r[1].shown == "<")
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:4adab804ef8bf6ae30bc51449991e14f
+sha256:bed48a9a9034d29af5f6bbc57d8dbca8
 {
   "results": [
     {
@@ -289,11 +289,11 @@ sha256:4adab804ef8bf6ae30bc51449991e14f
     }
   ],
   "snapshots": {
-    "dropped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAAByCAIAAACZawnaAAAC9klEQVR4nOzcz8riPBQHYBO8AenKvW68/wvwJlz1DsQ/K3HXfog0hJp+6tsqM/M+JzC00ZnVwzmRIb/54XDY7Xan06lt25lS4yqEUFXVZrMJ2+12uVyuVqsYY/epUj+spmnqut7v9/F8PlNF1SSqZrNZjHG9Xh+Px9i2LVVUTaIq2bqhSu+WNeECCyywwALrH4AVQugewQJrOlg6lo71kY5ljVnz7sH4Gxx/+Wb6/4niJlhgFWCFEHIidzqPm23bFje7N6PQKDQKjcLvjMJi5VPv/zfBAusNWMUxZ/b1Zp9R+NIoHGpIxf2hL+tYOtatY91P5b3nfDM1quImWGCVYfWIpOd88/FTo9AofGMUWiMXWGCBBdZfBCuE0DRN96rU2GqaJsYYq6qq65ottiaxdb9MsVgsgutfrn995PrX5XLpNh3eHd4d3h3e//DDe/egY+lYOpaOpWPpWDqWjqVjTdax5tfrVdqMtBlpM9JmpM1Im5E2I21G2oy0GWkz0makzUibkTYjbUbazDfSZtSYcpnidpkiv3LjosTTixJgvQqrh0kWw2MWg1E4wShM1wbzP++vqdJOvt/9AzqWjtV1rKFK3avXxor7+bOOpWP1O1ZeT6GQdJcE1nuw1M8KLLDA+hYsR6V0VHJ4H3t4z3/TFVWln4q97zz9i2D9XlhDIHr7xa8VN41Co7AwCp2xnLE+csZ6fWlXxXYF1lhYaqikzUibkTYjbUbajLQZaTPSZqTNSJuRNiNtRtqMtBlpM9JmpM1Im5E2I23m16bNgAUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBRZYYIEFFlhggQUWWGCBBdZIWDqWjqVj6Vg6lo6lY+lYOpaOpWP9UR3rvwEARjAAhsyfL2UAAAAASUVORK5CYII="
+    "dropped.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAABuCAIAAADtf8s6AAAC1ElEQVR4nOzcS6riTBgGYKtwA5KRc524/wW4CUfZgXgZibPk55A/1SG31iRCH3zqg0arz5k9vFXQXe/6crmcTqfb7VaW5cqy5q0QQpZlh8MhHI/H7Xa72+1ijPXfWtbEVRRFnufn8zne73eqqFpE1Wq1ijHu9/vr9RrLsqSKqkVUJVs/qNJ3YxYcsMACCyywfjusEEL9ESywloMlsSTWRxLLzJx1/cEJ2H8Cpp30LxPdHbDAGoMVQmjpae2UZdndqX8bLLAGYPVOyqeRHbDAehtWN5Ok1FBKubxPubyLrreiS2L9SazqCjW0UwVVdwcssP4C68WDr7vjKHQUTj8KrbcWWGCBBdYvghVCKIqi/mpZc1dRFDHGmGVZnudssbWIrer/vG82m+CVjlc6H3ml83g86k2Xd5d3l3eX93/88l5/kFgSS2JJLIklsSSWxJJYiyXW+vl8KgVRCqIURCmIUhClIEpBlIIoBVEKohREKYhSEKUgSkGUgigF+XgpiJk5HlP8/5givb3xXOLF5xJgvQSr6cnb+ZG3847C6UdhejzY/LP6Wk3ra9qRWBKrJ7F6J6VXM8bS5+6OxJJYg4nVHFyaXMBaDJaZNmD1wHKutc41d6xZd6x0B+9VlW70zR8Y/xWwvhzWD6xeGa3N7s90dxyFjsLBo9Adyx3rI3esF0dcDcUVWLNgmZFRCqIURCmIUhClIEpBlIIoBVEKohREKYhSEKUgSkGUgigFUQqiFEQpiFKQry0FAQsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILLLDAAgsssMACCyywwAILrK+B5YMPMz78NwCP7PdsgcHMiAAAAABJRU5ErkJggg=="
   }
 }
 -- testrun/win32/c/methods.sngl/main/1 --
-sha256:cf9f5c60d643e83fcba31bf107045ef9
+sha256:40bd36b4385643b3511c717d3d9179e6
 {
   "results": [
     {
@@ -303,7 +303,7 @@ sha256:cf9f5c60d643e83fcba31bf107045ef9
   ]
 }
 -- testrun/win32/c/nested.sngl/main/1 --
-sha256:bb2b143aa6ea2cd4f2d79da6caba9da5
+sha256:245e6fa11bd1b714fafe186133d5d43d
 {
   "results": [
     {
@@ -321,7 +321,7 @@ sha256:bb2b143aa6ea2cd4f2d79da6caba9da5
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:d66602eeaaf4578923396b133acd916c
+sha256:8a84b6abd8b32e7a50634eb757b47d8e
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:d66602eeaaf4578923396b133acd916c
   ]
 }
 -- testrun/win32/c/seq.sngl/main/1 --
-sha256:9ae617b90b7fa353cd5f10672dfff24c
+sha256:685e3c3234b24a63deb75f0e8d899c18
 {
   "results": [
     {
@@ -345,7 +345,7 @@ sha256:9ae617b90b7fa353cd5f10672dfff24c
   ]
 }
 -- testrun/win32/c/top.sngl/main/1 --
-sha256:1d908ac9d4c7cebed962fd823434daf2
+sha256:ac728d5370e8cfe8c8df2e519b0f6dcf
 {
   "results": [
     {
@@ -355,7 +355,7 @@ sha256:1d908ac9d4c7cebed962fd823434daf2
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:267f97c9db67e15622b687f4f9e64cec
+sha256:644b938b089a96cf125bb05d342d48a7
 {
   "results": [
     {
@@ -369,7 +369,7 @@ sha256:267f97c9db67e15622b687f4f9e64cec
   ]
 }
 -- testrun/win32/go/methods.sngl/main/1 --
-sha256:1bde48869b442bbc975d7282ba66a989
+sha256:90a05ad8d5ad620ebebc92cd50f79851
 {
   "results": [
     {
@@ -379,7 +379,7 @@ sha256:1bde48869b442bbc975d7282ba66a989
   ]
 }
 -- testrun/win32/go/nested.sngl/main/1 --
-sha256:82bcbc590deb3b17bcf2dbc4369a86d8
+sha256:da95239fe3390c97ceaa6207febb5609
 {
   "results": [
     {
@@ -397,7 +397,7 @@ sha256:82bcbc590deb3b17bcf2dbc4369a86d8
   ]
 }
 -- testrun/win32/go/rows.sngl/main/1 --
-sha256:b430329a27c550eac8abc7ae6d09dd39
+sha256:3a038763df536e602a938c01c4076fd0
 {
   "results": [
     {
@@ -411,7 +411,7 @@ sha256:b430329a27c550eac8abc7ae6d09dd39
   ]
 }
 -- testrun/win32/go/seq.sngl/main/1 --
-sha256:4009d4e98340f2eb63e31fd0daac8b59
+sha256:c51818e47b73841d9ddc295fcba78656
 {
   "results": [
     {
@@ -421,7 +421,7 @@ sha256:4009d4e98340f2eb63e31fd0daac8b59
   ]
 }
 -- testrun/win32/go/top.sngl/main/1 --
-sha256:a5a319ffaf97ea74e66fce4103706f02
+sha256:21ab388c795cd9a5fd845d6541b59dd3
 {
   "results": [
     {

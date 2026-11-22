@@ -1626,6 +1626,43 @@ func (b *builder) attachParamComments(openLine int, pl *ast.ParamList) {
 	}
 }
 
+// attachListComments hands the elements of a list written across lines, from
+// its opening bracket's line to its closing one's, the comments written among
+// them: on lines of their own between one element's end and the next one's
+// start, after an element on the line it ends on (its comma's, ends), and
+// after the last. A comment inside an element -- a lambda's body -- is the
+// element's own.
+func (b *builder) attachListComments(le *ast.ListExpr, ends []int, openLine, closeLine int) {
+	n := len(le.Elements)
+	le.ElemLeading = make([][]*ast.Comment, n)
+	le.ElemTrailing = make([]*ast.Comment, n)
+	prev := openLine
+	for i, el := range le.Elements {
+		if el == nil || el.ExprPos() == nil || el.ExprPos().Line == 0 {
+			return
+		}
+		start := el.ExprPos().Line
+		if start >= prev {
+			le.ElemLeading[i] = b.claimComments(prev, start)
+		}
+		end := 0
+		if i < len(ends) {
+			end = ends[i]
+		}
+		if end == 0 {
+			// No comma after the last: it ends where the bracket's line
+			// begins, or on the bracket's line itself.
+			end = max(start, closeLine-1)
+		}
+		// Elements sharing a line share its comment: the last one's.
+		if i+1 >= n || le.Elements[i+1] == nil || le.Elements[i+1].ExprPos() == nil || le.Elements[i+1].ExprPos().Line > end {
+			le.ElemTrailing[i] = b.claimInlineComment(end)
+		}
+		prev = end + 1
+	}
+	le.Tail = b.claimComments(prev, closeLine)
+}
+
 // propPos is the source position of a component prop, whichever form it takes.
 func propPos(p ast.ParamOrEventDecl) ast.Pos {
 	switch v := p.(type) {
@@ -2681,14 +2718,16 @@ func (b *builder) buildPrimaryInner(it nodeIter, exprContext bool) ast.Expr {
 	case LBRACKET:
 		open := it.shift() // lbracket
 		le := &ast.ListExpr{Pos: ast.Pos(b.posFromToken(open))}
+		var ends []int
 		if !it.done() && it.isNonTerminal() && it.symbol() == ListBody {
-			le.Elements = b.buildListBody(it.enter(), &le.IsMultiline)
+			le.Elements, ends = b.buildListBodyEnds(it.enter(), &le.IsMultiline)
 		}
 		if !it.done() {
 			// The brackets say whether the list was written across lines; a
 			// trailing comma inserts no semicolon for the body to see.
 			if !it.isNonTerminal() && it.token().Line > open.Line {
 				le.IsMultiline = true
+				b.attachListComments(le, ends, open.Line, it.token().Line)
 			}
 			it.skip() // rbracket
 		}
@@ -2880,19 +2919,35 @@ func (b *builder) buildAnonField(it nodeIter) anonFieldResult {
 }
 
 func (b *builder) buildListBody(it nodeIter, multiline *bool) []ast.Expr {
+	elems, _ := b.buildListBodyEnds(it, multiline)
+	return elems
+}
+
+// buildListBodyEnds is buildListBody, and the line of the comma after each
+// element, which is the line it ends on, or 0 where none follows it.
+func (b *builder) buildListBodyEnds(it nodeIter, multiline *bool) ([]ast.Expr, []int) {
 	// ListBody = [ ListElem { comma ListElem } ] .
 	var elems []ast.Expr
+	var ends []int
 	for !it.done() {
 		if it.isNonTerminal() && it.symbol() == ListElem {
 			elems = append(elems, b.buildListElem(it.enter()))
+			ends = append(ends, 0)
 		} else {
-			if !it.isNonTerminal() && it.tokenType() == SEMICOLON {
-				*multiline = true
+			if !it.isNonTerminal() {
+				switch it.tokenType() {
+				case SEMICOLON:
+					*multiline = true
+				case COMMA:
+					if n := len(ends); n > 0 && ends[n-1] == 0 {
+						ends[n-1] = it.token().Line
+					}
+				}
 			}
 			it.skip() // comma or semi
 		}
 	}
-	return elems
+	return elems, ends
 }
 
 func (b *builder) buildListElem(it nodeIter) ast.Expr {

@@ -1,0 +1,217 @@
+# C's `optimize` option is the level the compiler is run at, a member of
+# c.Optimization whose host value is the flag: o0 is -O0, size -Os, debug -Og.
+# Left unset it is o0, which a debugger reads best, and a release build
+# (`--release`) changes that default to o2: the option's default asks
+# gen.release() (lib/language/c/c.sngl). One the program or the command line
+# sets is what it says in either. Each run prints what it printed at -O0, and
+# `-v` logs the compiler's command line where the toolchain runs.
+
+[!gtk4] skip 'gtk4 needs its development libraries to build'
+[toolchain] [!headless] skip 'running it needs the headless compositor go tool verify provides'
+
+sngl run -v --lang c --platform gtk4 app.sngl
+stdout '^squares 385$'
+[toolchain] stderr 'msg=exec cmd=\S+ args="\[-std=c17 .* -O0 '
+
+sngl run -v --lang c --platform gtk4 --opt optimize=o2 app.sngl
+stdout '^squares 385$'
+[toolchain] stderr 'msg=exec cmd=\S+ args="\[-std=c17 .* -O2 '
+
+sngl run -v --release --lang c --platform gtk4 app.sngl
+stdout '^squares 385$'
+[toolchain] stderr 'msg=exec cmd=\S+ args="\[-std=c17 .* -O2 '
+
+# An option set explicitly wins over the release default.
+
+sngl run -v --release --lang c --platform gtk4 --opt optimize=o0 app.sngl
+stdout '^squares 385$'
+[toolchain] stderr 'msg=exec cmd=\S+ args="\[-std=c17 .* -O0 '
+! stderr ' -O2 '
+
+sngl build -v --release --lang c --platform gtk4 app.sngl -o out
+[toolchain] stderr ' -O2 '
+[toolchain] exists out/app
+
+# A library's headers pkg-config names are system headers, which the
+# program's -pedantic -Werror does not judge: under -O2 GLib's G_UNLIKELY
+# expands through __COUNTER__, which clang calls a C2y extension.
+
+[exec:clang] sngl build -v --release --lang c --platform gtk4 --opt cc=clang app.sngl -o clang
+[exec:clang] [toolchain] stderr 'msg=exec cmd=clang .* -O2 .*-isystem /usr/include/glib-2.0'
+[exec:clang] [toolchain] exists clang/app
+
+# A test builds the program as a run does, and its record is a release
+# build's own.
+
+sngl test --release --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+# The program sets it in its output block by the member's name, as it sets
+# any enum, and the checker refuses what is no member.
+
+sngl build -v size.sngl -o size
+[toolchain] stderr 'msg=exec cmd=\S+ args="\[-std=c17 .* -Os '
+[toolchain] exists size/app
+! sngl check notmember.sngl
+stderr 'notmember.sngl:4:16: cannot use string as Optimization for prop "optimize"'
+! sngl check nosuch.sngl
+stderr 'nosuch.sngl:4:16: undefined: fast'
+
+# The command line names a member too, and one that is none is refused,
+# naming the members, before anything is compiled.
+
+! sngl build --lang c --platform gtk4 --opt optimize=2 app.sngl -o out
+stderr '--opt optimize="2": 2 is no member of Optimization: o0, o1, o2, o3, size or debug'
+! sngl run --opt optimize=fast app.sngl
+stderr '--opt optimize="fast": fast is no member of Optimization: o0, o1, o2, o3, size or debug'
+! sngl test --platform=gtk4 --language=c --opt optimize=fast app.sngl
+stderr '--opt optimize="fast": fast is no member of Optimization: o0, o1, o2, o3, size or debug'
+
+# win32's C is MinGW's compile, at the same level.
+
+[!exec:x86_64-w64-mingw32-gcc] stop 'MinGW (x86_64) required'
+
+sngl build -v --release --lang c --platform win32 app.sngl -o win
+stdout 'win/app.exe'
+[toolchain] stderr 'msg=exec cmd=x86_64-w64-mingw32-gcc args="\[-std=c17 .* -O2 '
+[toolchain] exists win/app.exe
+
+-- app.sngl --
+import c "sngl:x/c"
+import test "sngl:test"
+import time "sngl:time"
+import ui "sngl:ui"
+
+c.link(include="stdio.h")
+c.link(include="stdlib.h")
+
+#[c.native("puts")]
+func puts(s string) int
+
+#[c.native("exit")]
+func exit(code int)
+
+output {
+    c {
+        gtk4
+        win32
+    }
+}
+
+// The sum of the squares up to n, a loop an optimizer may fold.
+func squares(n int) int {
+    var total = 0
+    for var i = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] {
+        if i <= n {
+            total += i * i
+        }
+    }
+    return total
+}
+
+component main ui.node {
+    var n = 0
+    ui.button #more(text="{n}", @click {
+        n = squares(n + 3)
+    })
+}
+
+time.timer(interval=100ms, @tick {
+    puts("squares {squares(10)}")
+    exit(0)
+})
+
+ui.window {
+    main()
+}
+
+func testSquares(t test.Test, c main) {
+    c.more.click()
+    t.assert(c.n == 14)
+}
+-- size.sngl --
+import ui "sngl:ui"
+
+output {
+    c(optimize=size) {
+        gtk4
+    }
+}
+
+ui.window {
+    ui.text(value="small")
+}
+-- nosuch.sngl --
+import ui "sngl:ui"
+
+output {
+    c(optimize=fast) {
+        gtk4
+    }
+}
+
+ui.window {
+    ui.text(value="small")
+}
+-- notmember.sngl --
+import ui "sngl:ui"
+
+output {
+    c(optimize="2") {
+        gtk4
+    }
+}
+
+ui.window {
+    ui.text(value="small")
+}
+-- testrun/build/gtk4/c/app.sngl/1 --
+sha256:ab82ee08ce2ae963210c790d10eee043
+{
+  "stdout": "app"
+}
+-- testrun/build/gtk4/c/app.sngl/2 --
+sha256:d38316fb5331a8d3e97d02247596641d
+{
+  "stdout": "app"
+}
+-- testrun/build/gtk4/c/size.sngl/1 --
+sha256:8b83575d67d0e0f60702ca8fdc32ebde
+{
+  "stdout": "app"
+}
+-- testrun/build/win32/c/app.sngl/1 --
+sha256:ee90b0fe1d7ad35c0e3f73683ad5d153
+{
+  "stdout": "app.exe"
+}
+-- testrun/gtk4/c/app.sngl/main/release/1 --
+sha256:ab49b7f68ab0254c5a389fc6d22e6abb
+{
+  "results": [
+    {
+      "Desc": "Squares",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/run/gtk4/c/app.sngl/1 --
+sha256:8a707d86fdbdea0c71b1de36300ff88e
+{
+  "stdout": "squares 385\n"
+}
+-- testrun/run/gtk4/c/app.sngl/2 --
+sha256:372ddaff9176b51f4a998b75a10bd529
+{
+  "stdout": "squares 385\n"
+}
+-- testrun/run/gtk4/c/app.sngl/3 --
+sha256:ab82ee08ce2ae963210c790d10eee043
+{
+  "stdout": "squares 385\n"
+}
+-- testrun/run/gtk4/c/app.sngl/4 --
+sha256:499dfd1f4ac92b2a6efedac54590c566
+{
+  "stdout": "squares 385\n"
+}

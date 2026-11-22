@@ -96,7 +96,7 @@ window {
     form()
 }
 -- testrun/gtk4/c/app.sngl/form/1 --
-sha256:942416d0965dee4ac666916bc1b710a8
+sha256:bd4ac33bfed8ddeaffbc1e23488224ec
 {
   "results": [
     {
@@ -110,7 +110,7 @@ sha256:942416d0965dee4ac666916bc1b710a8
   ]
 }
 -- testrun/gtk4/go/app.sngl/form/1 --
-sha256:1c5b09d2c670476bc2bf5e26ce4c5ffb
+sha256:e46377affd03f38a8fe1dce81220edca
 {
   "results": [
     {

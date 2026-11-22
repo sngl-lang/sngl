@@ -241,7 +241,8 @@ draws is the toplevel shown last, and a test taking a component has one: a
 placed build rooted at a component attaches what it renders to the
 application, as the package body's nodes are (`lowerDeclarative`), and win32's attach shows
 a node that is no window in a window of its own, which grows as what it holds
-does. gtk4's capture is Go's agent's (`sngl_capture`): what the test shows
+does. gtk4's capture is the platform's (`_captureWindow`, drawn by rt's
+`sngl_draw`): what the test shows
 in a window of 800 by 600, rendered by GSK's cairo renderer -- the one widget
 a component's body makes and attaches nowhere (`sngl_test_root`), or the
 content of the toplevel a test of the program attached last, which the agent

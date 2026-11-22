@@ -215,3 +215,11 @@ func quiet(cmd *cobra.Command) bool {
 	q, _ := cmd.Flags().GetBool("quiet")
 	return q
 }
+
+// addReleaseFlag declares --release on a command that builds a program:
+// build, run and test. What it changes is each target's to say, in the
+// defaults its node declares (gen.release), so the command only carries it to
+// the target (build.Target.Release).
+func addReleaseFlag(c *cobra.Command) {
+	c.Flags().Bool("release", false, "a release build: an option left unset takes the release default its target declares")
+}

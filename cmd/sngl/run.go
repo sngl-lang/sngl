@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strings"
 
 	"duckfam.us/sngl/codegen"
@@ -26,12 +25,14 @@ func init() {
 	runCmd.Flags().String("lang", "", "target language")
 	runCmd.Flags().String("platform", "", "target platform")
 	runCmd.Flags().StringSlice("opt", nil, "generator options (key=value)")
+	addReleaseFlag(runCmd)
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
 	cliLang, _ := cmd.Flags().GetString("lang")
 	cliPlat, _ := cmd.Flags().GetString("platform")
 	optSlice, _ := cmd.Flags().GetStringSlice("opt")
+	isRelease, _ := cmd.Flags().GetBool("release")
 
 	file := args[0]
 	// Cobra takes the `--` out of args, and says where it stood.
@@ -42,8 +43,11 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	// Stable, key-derived build directory so repeated invocations reuse
 	// the Go build cache instead of relinking from scratch every time.
-	// See codegen.BuildDir.
+	// See codegen.BuildDir. A release build is a key of its own.
 	key := []string{cliLang, cliPlat, strings.Join(optSlice, ","), file}
+	if isRelease {
+		key = append(key, "--release")
+	}
 	tmpDir, release, err := codegen.BuildDir("run", key...)
 	if err != nil {
 		return fmt.Errorf("creating build directory: %w", err)
@@ -58,6 +62,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		main:    true,
 		quiet:   true,
 		onTarget: func(target build.Target, pkg *ir.Package, _, outDir string) error {
+			target.Release = isRelease
 			if build.IsInterpreted(target) {
 				dir, err := os.Getwd()
 				if err != nil {
@@ -78,7 +83,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 			if testRuns == nil {
 				return build.RunCommand(target, ir.BuiltinGenRun, outDir, args)
 			}
-			out, err := testRuns.AnswerTool(toolKey("run", target, []string{file}), outDir, append(slices.Clone(optSlice), progArgs...), func() (string, error) {
+			out, err := testRuns.AnswerTool(toolKey("run", target, []string{file}), outDir, append(releaseArgs(optSlice, isRelease), progArgs...), func() (string, error) {
 				return captureStdout(func() error {
 					return build.RunCommand(target, ir.BuiltinGenRun, outDir, args)
 				})

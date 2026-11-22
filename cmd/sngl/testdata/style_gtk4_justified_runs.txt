@@ -4,7 +4,7 @@
 # between the ones that expand, so each pair below drew the same picture: a
 # row justified to its end as one packed at its start, and children flexing
 # 1 and 3 as children flexing 1 and 1. gtk4's runtime lays such a box out
-# itself now (lib/platform/gtk4/rt/look.c).
+# itself now (lib/platform/gtk4/gtk4.sngl).
 
 env SNGL_UPDATE_SNAPSHOTS=1
 sngl test --platform=gtk4 app.sngl
@@ -67,7 +67,7 @@ ui.window {
     packed
 }
 -- testrun/gtk4/go/app.sngl/even/1 --
-sha256:f28790aa5acc15857c105f9218128d38
+sha256:01fd1eaf546344c918c0766b64eb3a04
 {
   "results": [
     {
@@ -80,7 +80,7 @@ sha256:f28790aa5acc15857c105f9218128d38
   }
 }
 -- testrun/gtk4/go/app.sngl/justified/1 --
-sha256:1632969c138a29a7a754c90411475923
+sha256:df661101144d8479e9ea39c98172b544
 {
   "results": [
     {
@@ -93,7 +93,7 @@ sha256:1632969c138a29a7a754c90411475923
   }
 }
 -- testrun/gtk4/go/app.sngl/packed/1 --
-sha256:72290df0d92aca97f88a57f2ee5ac223
+sha256:20917282c4b15b5900d9149e9847ec66
 {
   "results": [
     {
@@ -106,7 +106,7 @@ sha256:72290df0d92aca97f88a57f2ee5ac223
   }
 }
 -- testrun/gtk4/go/app.sngl/weighted/1 --
-sha256:f9c4c35b0d9708901ce1f8187aa42bbc
+sha256:4bcb48ac45b7de8a8222279513193e1f
 {
   "results": [
     {

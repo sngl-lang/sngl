@@ -725,8 +725,12 @@ func IsDateTimeStruct(t *Type) bool { return builtinOf(t) == BuiltinDateTime }
 
 // FuncSig describes a function signature.
 type FuncSig struct {
-	Params         []*Param
-	Return         *Type // nil for void/action
+	Params []*Param
+	Return *Type // nil for void/action
+	// ReturnCAlias is the `#[c.native]` alias the result was written as,
+	// as Param.CAlias is a parameter's: a static callback C calls answers
+	// the C type it spells (sngl:x/c's #[static]).
+	ReturnCAlias   *Alias `json:",omitempty"`
 	TypeParams     []TypeParam
 	RecvTypeParams []TypeParam // receiver-level; consumed (set to nil) after substitution
 	Purity         Purity

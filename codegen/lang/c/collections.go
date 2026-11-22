@@ -50,12 +50,23 @@ func (c *Context) optType(t *ir.Type) string {
 	et := c.typeName(elem)
 	// An option of what C holds by pointer -- a widget, a record, a C
 	// object -- is the pointer, NULL where it holds none.
-	if strings.HasSuffix(et, "*") {
+	if strings.HasSuffix(et, "*") || cHandle(elem) {
 		return et
 	}
 	name := "sngl_opt_" + typeToken(elem)
 	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\tbool ok;\n\t%s value;\n} %s;\n", name, et, name), et)
 	return name
+}
+
+// cHandle reports whether t is a C type its declaration says is a typedef
+// of a pointer (`#[c.native(…, pointer)]`), as GLib's gpointer is: an option
+// of it is the pointer, NULL where it holds none.
+func cHandle(t *ir.Type) bool {
+	if t == nil || t.Kind != ir.TypeStruct {
+		return false
+	}
+	sd, ok := t.Decl.(*ir.StructDef)
+	return ok && sd.Foreign.Path == ir.CPath && sd.Foreign.CPointer
 }
 
 // listOp is the function op of list type t, defined from its body the first
@@ -553,11 +564,13 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 `) + "(" + v + ")"
 	case ir.TypeMap:
 		kc, vc := c.copyValue(t.Elems[0], "m.keys[i]"), c.copyValue(t.Elems[1], "m.vals[i]")
-		return c.mapOp(t, "copy", "M NAME(M m)", `	M out = {sngl_alloc(sizeof(K) * (size_t)(m.len + 1)), sngl_alloc(sizeof(V) * (size_t)(m.len + 1)), m.len, m.len};
+		size, reindex := c.mapKeysSize(t), c.mapReindex(t)
+		return c.mapOp(t, "copy", "M NAME(M m)", `	M out = {sngl_alloc(`+size+`(m.len)), sngl_alloc(sizeof(V) * (size_t)(m.len + 1)), m.len, m.len, NULL};
 	for (int64_t i = 0; i < m.len; i++) {
 		out.keys[i] = `+kc+`;
 		out.vals[i] = `+vc+`;
 	}
+	`+reindex+`(&out);
 	return out;
 `) + "(" + v + ")"
 	case ir.TypeEnum:
@@ -603,12 +616,23 @@ func (c *Context) copyValue(t *ir.Type, v string) string {
 // A map is a struct per key and value type, `sngl_map_<key>__<value>`: its
 // keys and values side by side in the order first set, found by the keys'
 // equality. A loop walks it in that order, where Go's walks it in none.
+//
+// Past eight keys a map finds one through an index (idx): an open-addressed
+// table of positions in keys, probed from the key's hash (hash), which agrees
+// with the keys' equality. It is the tail of the keys' own block, so it is
+// allocated, kept, shared, dropped and given back with the keys, wherever
+// they are; whatever makes a keys block makes its index (mapReindex), and an
+// append in place adds to it. A copy of the struct -- a loop's, a value
+// before lowering copies it -- shares the block, and finds in it what its own
+// length covers: a position past it is another's append, which the probe
+// goes past, as it goes past a position whose key is not the one sought.
+// Where idx is NULL the keys are walked.
 
 // mapType names map[k, v]'s C struct, defined in the file.
 func (c *Context) mapType(t *ir.Type) string {
 	kt, vt := c.typeName(t.Elems[0]), c.typeName(t.Elems[1])
 	name := "sngl_map_" + typeToken(t.Elems[0]) + "__" + typeToken(t.Elems[1])
-	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *keys;\n\t%s *vals;\n\tint64_t len;\n\tint64_t cap;\n} %s;\n", name, kt, vt, name))
+	c.file.define(name, fmt.Sprintf("typedef struct %s {\n\t%s *keys;\n\t%s *vals;\n\tint64_t len;\n\tint64_t cap;\n\tuint32_t *idx;\n} %s;\n", name, kt, vt, name))
 	return name
 }
 
@@ -630,10 +654,230 @@ func (c *Context) mapOp(t *ir.Type, op, sig, body string) string {
 var mapPlaceholder = regexp.MustCompile(`\b(M|K|V|NAME)\b`)
 
 // mapFind is the function finding a key's place in a map of t, -1 where it
-// has none.
+// has none: through its index, or walking its keys where it has none. A
+// slot holds a position plus one, and 0 where it is empty.
 func (c *Context) mapFind(t *ir.Type) string {
+	c.mapIndexRuntime()
 	eq := c.equal(t.Elems[0], "m.keys[i]", "k")
-	return c.mapOp(t, "find", "int64_t NAME(M m, K k)", "\tfor (int64_t i = 0; i < m.len; i++) {\n\t\tif ("+bare(eq)+") {\n\t\t\treturn i;\n\t\t}\n\t}\n\treturn -1;\n")
+	at := c.equal(t.Elems[0], "m.keys[p - 1]", "k")
+	return c.mapOp(t, "find", "int64_t NAME(M m, K k)", `	if (m.idx == NULL) {
+		for (int64_t i = 0; i < m.len; i++) {
+			if (`+bare(eq)+`) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	uint64_t mask = m.idx[-2];
+	for (uint64_t s = `+c.hash(t.Elems[0], "k")+` & mask;; s = (s + 1) & mask) {
+		uint32_t p = m.idx[s];
+		if (p == 0) {
+			return -1;
+		}
+		if ((int64_t)p <= m.len && `+at+`) {
+			return (int64_t)p - 1;
+		}
+	}
+`)
+}
+
+// mapKeysSize is the function answering how many bytes a keys block of a map
+// of t holds for cap keys: the keys, and past eight of them the index's
+// mask, count and slots.
+func (c *Context) mapKeysSize(t *ir.Type) string {
+	c.mapIndexRuntime()
+	return c.mapOp(t, "keys_size", "size_t NAME(int64_t cap)", `	size_t n = sngl_mapidx_slots(cap);
+	return sngl_mapidx_at(sizeof(K), cap) + (n == 0 ? 0 : sizeof(uint32_t) * (2 + n));
+`)
+}
+
+// mapReindex is the function making the index of a map of t whose keys block
+// is new, mapKeysSize(cap) long: every position its length covers, or none
+// where cap is eight or fewer.
+func (c *Context) mapReindex(t *ir.Type) string {
+	put := c.mapIndexPut(t)
+	return c.mapOp(t, "reindex", "void NAME(M *m)", `	size_t n = sngl_mapidx_slots(m->cap);
+	if (n == 0) {
+		m->idx = NULL;
+		return;
+	}
+	uint32_t *h = (uint32_t *)(void *)((char *)m->keys + sngl_mapidx_at(sizeof(K), m->cap));
+	memset(h, 0, sizeof(uint32_t) * (2 + n));
+	h[0] = (uint32_t)(n - 1);
+	m->idx = h + 2;
+	for (int64_t i = 0; i < m->len; i++) {
+		`+put+`(m, i);
+	}
+`)
+}
+
+// mapIndexPut is the function adding position i of a map of t to its index.
+// The index holds at most half its slots, so a probe always ends: one it
+// would fill past that -- only where two copies of a struct appended to one
+// block -- is let go, and the map walks its keys until its keys move.
+func (c *Context) mapIndexPut(t *ir.Type) string {
+	return c.mapOp(t, "index_put", "void NAME(M *m, int64_t i)", `	uint64_t mask = m->idx[-2];
+	if (((uint64_t)m->idx[-1] + 1) * 2 > mask + 1) {
+		m->idx = NULL;
+		return;
+	}
+	m->idx[-1]++;
+	for (uint64_t s = `+c.hash(t.Elems[0], "m->keys[i]")+` & mask;; s = (s + 1) & mask) {
+		if (m->idx[s] == 0) {
+			m->idx[s] = (uint32_t)(i + 1);
+			return;
+		}
+	}
+`)
+}
+
+// mapIndexRuntime defines what every map's index uses: how many slots one
+// of cap keys has, where it starts in the keys block, and the hashes.
+func (c *Context) mapIndexRuntime() {
+	if c.file.helperNames["sngl_mapidx_mix"] {
+		return
+	}
+	c.file.include("stdint.h", true)
+	c.file.include("string.h", true)
+	c.file.helper("sngl_mapidx_mix", `static uint64_t sngl_mapidx_mix(uint64_t h) {
+	h ^= h >> 33;
+	h *= UINT64_C(0xff51afd7ed558ccd);
+	h ^= h >> 33;
+	h *= UINT64_C(0xc4ceb9fe1a85ec53);
+	h ^= h >> 33;
+	return h;
+}
+`)
+	c.file.helper("sngl_mapidx_bytes", `static uint64_t sngl_mapidx_bytes(const void *p, size_t n) {
+	const unsigned char *b = p;
+	uint64_t h = UINT64_C(14695981039346656037);
+	for (size_t i = 0; i < n; i++) {
+		h ^= b[i];
+		h *= UINT64_C(1099511628211);
+	}
+	return sngl_mapidx_mix(h);
+}
+`)
+	// A value C compares with == -- a pointer, a handle -- is its bits,
+	// which fit a word.
+	c.file.helper("sngl_mapidx_word", `static uint64_t sngl_mapidx_word(const void *p, size_t n) {
+	if (n > sizeof(uint64_t)) {
+		return sngl_mapidx_bytes(p, n);
+	}
+	uint64_t x = 0;
+	memcpy(&x, p, n);
+	return sngl_mapidx_mix(x);
+}
+`)
+	c.file.helper("sngl_mapidx_join", `static uint64_t sngl_mapidx_join(uint64_t h, uint64_t x) {
+	return sngl_mapidx_mix(h ^ (x + UINT64_C(0x9e3779b97f4a7c15) + (h << 6) + (h >> 2)));
+}
+`)
+	// Both zeros are one key, as == says; a NaN is equal to nothing, so
+	// any hash serves it.
+	c.file.helper("sngl_mapidx_float", `static uint64_t sngl_mapidx_float(double x) {
+	if (x == 0) {
+		return 0;
+	}
+	return sngl_mapidx_bytes(&x, sizeof x);
+}
+`)
+	c.file.helper("sngl_mapidx_slots", `static size_t sngl_mapidx_slots(int64_t cap) {
+	if (cap <= 8) {
+		return 0;
+	}
+	size_t n = 32;
+	while (n < (size_t)cap * 2) {
+		n *= 2;
+	}
+	return n;
+}
+`)
+	c.file.helper("sngl_mapidx_at", `static size_t sngl_mapidx_at(size_t key, int64_t cap) {
+	return (key * (size_t)(cap + 1) + 7) & ~(size_t)7;
+}
+`)
+}
+
+// hash is the hash of v, an lvalue of type t, as a uint64_t: equal where
+// equal says two values are, read the way it reads them -- a string by its
+// bytes, a struct by its fields, a list by its elements, an option by
+// whether it holds one and what, an enum by its member and payload, a float
+// with its two zeros alike -- and anything C compares with == by its bits.
+func (c *Context) hash(t *ir.Type, v string) string {
+	c.mapIndexRuntime()
+	str := func(s string) string { return "sngl_mapidx_bytes((" + s + ").ptr, (" + s + ").len)" }
+	if textual(t) {
+		return str(v)
+	}
+	if ed := ir.PayloadEnum(t); ed != nil {
+		return c.hashHelper(t, v, func() string {
+			var arms []string
+			for i, m := range ed.Members {
+				if pt := ir.MemberPayload(t, m.Name); pt != nil {
+					arms = append(arms, "\tcase "+fmt.Sprint(i)+":\n\t\treturn sngl_mapidx_join(h, "+c.hash(pt, "a."+Local(m.Name))+");\n")
+				}
+			}
+			return "\tuint64_t h = sngl_mapidx_mix((uint64_t)a.tag);\n\tswitch (a.tag) {\n" + strings.Join(arms, "") + "\t}\n\treturn h;\n"
+		})
+	}
+	switch t.Kind {
+	case ir.TypeString:
+		return str(v)
+	case ir.TypeStruct:
+		if !isProgramStruct(t) || isBox(t) {
+			break
+		}
+		sd := t.Decl.(*ir.StructDef)
+		return c.hashHelper(t, v, func() string {
+			var b strings.Builder
+			b.WriteString("\tuint64_t h = 0;\n")
+			for _, f := range sd.Fields {
+				b.WriteString("\th = sngl_mapidx_join(h, " + c.hash(f.Type, "a."+Local(f.Name)) + ");\n")
+			}
+			b.WriteString("\treturn h;\n")
+			return b.String()
+		})
+	case ir.TypeList:
+		return c.hashHelper(t, v, func() string {
+			return "\tuint64_t h = sngl_mapidx_mix((uint64_t)a.len);\n\tfor (int64_t i = 0; i < a.len; i++) {\n\t\th = sngl_mapidx_join(h, " + c.hash(t.Elems[0], "a.data[i]") + ");\n\t}\n\treturn h;\n"
+		})
+	case ir.TypeOption:
+		if c.ptrOption(t) {
+			break
+		}
+		return c.hashHelper(t, v, func() string {
+			return "\treturn a.ok ? sngl_mapidx_join(1, " + c.hash(t.Elems[0], "a.value") + ") : 0;\n"
+		})
+	case ir.TypeFloat:
+		return "sngl_mapidx_float(" + v + ")"
+	case ir.TypeUnit:
+		if !multiBase(t) {
+			return "sngl_mapidx_float(" + v + ")"
+		}
+	case ir.TypeInt, ir.TypeBool:
+		return "sngl_mapidx_mix((uint64_t)(" + v + "))"
+	case ir.TypeEnum:
+		return "sngl_mapidx_mix((uint64_t)(" + v + "))"
+	}
+	return "sngl_mapidx_word(&(" + v + "), sizeof(" + v + "))"
+}
+
+// hashHelper is a call of the function the file defines to hash a value of
+// t, as eqHelper is equal's: declared ahead, since a recursive type's body
+// reaches it again.
+func (c *Context) hashHelper(t *ir.Type, v string, body func() string) string {
+	name := c.typeName(t)
+	fn := name + "__hash"
+	call := fn + "(" + v + ")"
+	if c.file.helperNames[fn] {
+		return call
+	}
+	sig := "static uint64_t " + fn + "(" + name + " a)"
+	c.file.helper(fn, "")
+	c.file.protos = append(c.file.protos, sig+";")
+	c.file.setHelper(fn, sig+" {\n"+body()+"}\n")
+	return call
 }
 
 // mapSlot is the function answering where a key's value is in a map of t,
@@ -655,13 +899,14 @@ func (c *Context) mapSlotAs(t *ir.Type, op, key string) string {
 			before, after = "\t"+u+"(m);\n", "\tsngl_kept_len(m->keys, m->len);\n\tsngl_kept_len(m->vals, m->len);\n"
 		}
 	}
+	size, reindex, put := c.mapKeysSize(t), c.mapReindex(t), c.mapIndexPut(t)
 	return c.mapOp(t, op, "V *NAME(M *m, K k)", before+`	int64_t i = `+find+`(*m, k);
 	if (i >= 0) {
 		return &m->vals[i];
 	}
 	if (m->len == m->cap) {
 		int64_t cap = m->cap < 4 ? 4 : m->cap * 2;
-		K *keys = `+alloc+`(sizeof(K) * (size_t)cap);
+		K *keys = `+alloc+`(`+size+`(cap));
 		V *vals = `+alloc+`(sizeof(V) * (size_t)cap);
 		if (m->len > 0) {
 			memcpy(keys, m->keys, sizeof(K) * (size_t)m->len);
@@ -670,10 +915,14 @@ func (c *Context) mapSlotAs(t *ir.Type, op, key string) string {
 `+drop+`		m->keys = keys;
 		m->vals = vals;
 		m->cap = cap;
+		`+reindex+`(m);
 	}
 	m->keys[m->len] = `+key+`;
 	memset(&m->vals[m->len], 0, sizeof(V));
 	m->len++;
+	if (m->idx != NULL) {
+		`+put+`(m, m->len - 1);
+	}
 `+after+`	return &m->vals[m->len - 1];
 `)
 }
@@ -697,6 +946,27 @@ func (c *Context) mapIndex(t *ir.Type, m, k string) string {
 	find := c.mapFind(t)
 	at := c.mapOp(t, "at", "V NAME(M m, K k)", "\tint64_t i = "+find+"(m, k);\n\tif (i < 0) {\n\t\tV zero;\n\t\tmemset(&zero, 0, sizeof zero);\n\t\treturn zero;\n\t}\n\treturn m.vals[i];\n")
 	return at + "(" + m + ", " + k + ")"
+}
+
+// mapEntry is where a field of m[k] is read, for operand, m[k] as mapIndex
+// renders it: a pointer to the value, or to V's zero where m holds no k,
+// rather than a copy of the whole value to read one field of.
+func (c *Context) mapEntry(e ir.Expr, operand string) (string, bool) {
+	ix, ok := e.(*ir.Index)
+	if !ok {
+		return "", false
+	}
+	t := ix.Operand.ExprType()
+	if t == nil || t.Kind != ir.TypeMap {
+		return "", false
+	}
+	args, ok := strings.CutPrefix(operand, c.mapType(t)+"_at(")
+	if !ok {
+		return "", false
+	}
+	find := c.mapFind(t)
+	entry := c.mapOp(t, "entry", "const V *NAME(M m, K k)", "\tstatic const V zero;\n\tint64_t i = "+find+"(m, k);\n\treturn i < 0 ? &zero : &m.vals[i];\n")
+	return entry + "(" + args, true
 }
 
 // mapIntrinsic renders a call of one of sngl:builtin's map methods.
@@ -726,6 +996,61 @@ func (c *Context) mapIntrinsic(n *ir.Call, t *ir.Type, m string) string {
 		return name + "(" + m + ")"
 	}
 	return c.fail("the intrinsic %s", n.Func.Intrinsic)
+}
+
+// mapRemove renders a map's `remove`: the entries but the key's, in their
+// order, into arrays of their own. Not moved along in place: a loop over the
+// map walks a copy of its struct, the same arrays, and would skip the entry
+// after the one removed and read the last twice; it walks the arrays it began
+// with instead. A holder's map is its own first (unshare), gives back the key
+// and the value it took out, and the arrays it outgrew, as the turn ends.
+func (c *Context) mapRemove(n *ir.Call) string {
+	recv := n.Args[0].Value
+	if u, ok := recv.(*ir.Unary); ok && u.Op == ast.UnaryAddr {
+		recv = u.Operand
+	}
+	t := recv.ExprType()
+	if t != nil && t.Kind == ir.TypeRef {
+		t = t.Elems[0]
+	}
+	if t == nil || t.Kind != ir.TypeMap {
+		return c.fail("map.remove of a %s", t)
+	}
+	m := c.EvalExpr(recv)
+	suffix, held := c.kept(recv)
+	alloc, before, drop, after := "sngl_alloc", "", "", ""
+	if held {
+		m = irwalk.EvalMutTarget(c, recv)
+		alloc = "sngl_keep_alloc"
+		if u := c.unshare(t); u != "" {
+			before = "\t" + u + "(m);\n"
+		}
+		for _, d := range []string{c.drop(t.Elems[0], "m->keys[i]"), c.drop(t.Elems[1], "m->vals[i]")} {
+			if d != "" {
+				drop += "\t" + d + "\n"
+			}
+		}
+		drop += "\tsngl_drop(m->keys);\n\tsngl_drop(m->vals);\n"
+		after = "\tsngl_kept_len(m->keys, m->len);\n\tsngl_kept_len(m->vals, m->len);\n"
+	}
+	find, size, reindex := c.mapFind(t), c.mapKeysSize(t), c.mapReindex(t)
+	rm := c.mapOp(t, "remove"+suffix, "void NAME(M *m, K k)", `	int64_t i = `+find+`(*m, k);
+	if (i < 0) {
+		return;
+	}
+`+before+`	K *keys = `+alloc+`(`+size+`(m->len));
+	V *vals = `+alloc+`(sizeof(V) * (size_t)m->len);
+	memcpy(keys, m->keys, sizeof(K) * (size_t)i);
+	memcpy(vals, m->vals, sizeof(V) * (size_t)i);
+	memcpy(keys + i, m->keys + i + 1, sizeof(K) * (size_t)(m->len - i - 1));
+	memcpy(vals + i, m->vals + i + 1, sizeof(V) * (size_t)(m->len - i - 1));
+`+drop+`	m->cap = m->len;
+	m->len--;
+	m->keys = keys;
+	m->vals = vals;
+	`+reindex+`(m);
+`+after)
+	return rm + "(&(" + m + "), " + c.EvalExpr(n.Args[1].Value) + ")"
 }
 
 // mapLoop is the head of a loop over a map, its key and value bound in the
@@ -763,6 +1088,9 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		name := t + "_hex"
 		c.file.helper(name, "static sngl_string "+name+"("+t+" c) {\n\treturn sngl_color_hex(c.r, c.g, c.b, c.a);\n}\n")
 		return name + "(" + c.EvalExpr(n.Args[0].Value) + ")", true
+	}
+	if n.Func.Intrinsic == "string.fromCodePoint" && len(n.Args) == 1 {
+		return c.fromCodePoint() + "(" + c.EvalExpr(n.Args[0].Value) + ")", true
 	}
 	fn, ok := runtime[n.Func.Intrinsic]
 	if !ok && n.Func.Intrinsic != "string.split" {
@@ -905,7 +1233,7 @@ func (c *Context) optionIntrinsic(n *ir.Call) (string, bool) {
 // ptrOption reports whether t is an option C holds as the pointer it is
 // (optType).
 func (c *Context) ptrOption(t *ir.Type) bool {
-	return t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && c.isPointer(t.Elems[0])
+	return t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && (c.isPointer(t.Elems[0]) || cHandle(t.Elems[0]))
 }
 
 // keptArg is v, an element pushed into recv, a list of type t, as recv keeps
@@ -915,4 +1243,40 @@ func (c *Context) keptArg(t *ir.Type, recv ir.Expr, v string) string {
 		return c.keep(t.Elems[0], v)
 	}
 	return v
+}
+
+// fromCodePoint is the function of the file answering string.fromCodePoint:
+// the UTF-8 of one code point, and U+FFFD for a number no character is --
+// negative, past U+10FFFF, or a surrogate half.
+func (c *Context) fromCodePoint() string {
+	name := "sngl_from_code_point"
+	c.file.helper(name, `static sngl_string sngl_from_code_point(int64_t c) {
+	if (c < 0 || c > 0x10FFFF || (c >= 0xD800 && c <= 0xDFFF)) {
+		c = 0xFFFD;
+	}
+	char b[4];
+	size_t n;
+	if (c < 0x80) {
+		b[0] = (char)c;
+		n = 1;
+	} else if (c < 0x800) {
+		b[0] = (char)(0xC0 | (c >> 6));
+		b[1] = (char)(0x80 | (c & 0x3F));
+		n = 2;
+	} else if (c < 0x10000) {
+		b[0] = (char)(0xE0 | (c >> 12));
+		b[1] = (char)(0x80 | ((c >> 6) & 0x3F));
+		b[2] = (char)(0x80 | (c & 0x3F));
+		n = 3;
+	} else {
+		b[0] = (char)(0xF0 | (c >> 18));
+		b[1] = (char)(0x80 | ((c >> 12) & 0x3F));
+		b[2] = (char)(0x80 | ((c >> 6) & 0x3F));
+		b[3] = (char)(0x80 | (c & 0x3F));
+		n = 4;
+	}
+	return sngl_string_bytes(b, n);
+}
+`)
+	return name
 }

@@ -1,0 +1,98 @@
+// `m.remove(key)` takes the key's entry out of the map in place, and a key the
+// map does not hold leaves it as it was. It mutates its receiver and returns
+// nothing, as a list's `remove` does. A map is a value: removing from a copy
+// leaves the original whole. A loop over the map may remove the entry it is
+// visiting, and goes on to every other entry once.
+import "sngl:test"
+import ui "sngl:ui"
+
+struct Tally {
+    counts map[string, int] = {}
+}
+
+var shared map[int, string] = {1="one", 2="two", 3="three"}
+
+func forget(k int) {
+    shared.remove(k)
+}
+
+func sortedKeys(m map[string, int]) list[string] {
+    var ks = m.keys()
+    ks.sort()
+    return ks
+}
+
+component main ui.node {
+    var scores map[string, int] = {alice=10, bob=20, carol=30}
+
+    func drop(name string) {
+        scores.remove(name)
+    }
+
+    ui.text(value="{scores.length}")
+}
+
+func testRemoveTakesTheEntryOut(t test.Test, c main) {
+    c.drop("bob")
+    t.assert(c.scores.length == 2)
+    t.assert(c.scores.contains("bob") == false)
+    t.assert(c.scores.get("alice", 0) == 10)
+    t.assert(c.scores.get("carol", 0) == 30)
+}
+
+func testRemovingAnAbsentKeyChangesNothing(t test.Test, c main) {
+    c.drop("dave")
+    t.assert(c.scores.length == 3)
+    c.drop("bob")
+    c.drop("bob")
+    t.assert(c.scores.length == 2)
+}
+
+func testRemoveThenSetAgain(t test.Test) {
+    var m map[string, int] = {a=1}
+    m.remove("a")
+    t.assert(m.length == 0)
+    m["a"] = 2
+    t.assert(m["a"] == 2)
+    t.assert(m.length == 1)
+}
+
+func testRemovingFromACopyLeavesTheOriginal(t test.Test) {
+    var a map[string, int] = {x=1, y=2}
+    var b = a
+    b.remove("x")
+    t.assert(b.length == 1)
+    t.assert(a.length == 2)
+    t.assert(a.contains("x"))
+}
+
+func testRemoveThroughAField(t test.Test) {
+    var tally = Tally{counts={a=1, b=2}}
+    tally.counts.remove("a")
+    t.assert(sortedKeys(tally.counts) == ["b"])
+}
+
+func testRemoveFromAPackageVar(t test.Test) {
+    forget(2)
+    forget(9)
+    t.assert(shared.length == 2)
+    t.assert(shared.contains(2) == false)
+    t.assert(shared[3] == "three")
+}
+
+func testRemoveTheVisitedEntryInALoop(t test.Test) {
+    var m map[string, int] = {a=1, b=2, c=3, d=4, e=5, f=6}
+    var seen = 0
+    for var k, v = m {
+        seen += 1
+        if v % 2 == 0 {
+            m.remove(k)
+        }
+    }
+    t.assert(seen == 6)
+    t.assert(sortedKeys(m) == ["a", "c", "e"])
+}
+
+ui.window(title="t") {
+    main
+}

@@ -1,0 +1,51 @@
+// A C function answering a string it hands over, which the program frees, is
+// marked `#[c.frees]` with the C function freeing it: the call copies the
+// string and frees C's. The mark goes on a `#[c.native]` function answering a
+// string or an option of one, or on a `ref[string]` parameter of one, which C
+// fills; it names a C function. An unmarked `ref[string]` is refused, since
+// nothing says whose the string C stored is.
+import c "sngl:x/c"
+
+c.link(include="calls.h")
+
+#[c.native("good")]
+#[c.frees("g_free")]
+func good(n int) string
+
+#[c.native("maybe")]
+#[c.frees("free")]
+func maybe(n int) option[string]
+
+#[c.native("filled")]
+func filled(#[c.frees("g_free")] out ref[string]) bool
+
+#[c.native("counted")] // ERROR(check) "#[c.frees(\"g_free\")] frees the string counted answers, and it answers int"
+#[c.frees("g_free")]
+func counted() int
+
+#[c.native("into_int")]
+func intoInt(#[c.frees("g_free")] out ref[int]) // ERROR(check) "parameter \"out\" is marked #[c.frees(\"g_free\")], which frees a string C stores through a ref[string], and it is a ref[int]"
+
+#[c.native("by_value")]
+func byValue(#[c.frees("g_free")] s string) // ERROR(check) "parameter \"s\" is marked #[c.frees(\"g_free\")], which frees a string C stores through a ref[string], and it is a string"
+
+#[c.native("unmarked")]
+func unmarked(out ref[string]) // ERROR(check) "parameter \"out\" is a ref[string], and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, a C struct, an option of a C pointer handle, or a string marked #[c.frees]"
+
+#[c.frees("g_free")] // ERROR(check) "#[c.frees] marks a #[c.native] function's string result, and bodied is not a C function"
+func bodied() => "x"
+
+#[c.native("empty")]
+#[c.frees("")] // ERROR(check) "#[c.frees]: the C function freeing the string is required"
+func empty() string
+
+#[c.native("spelled")]
+#[c.frees("g free")] // ERROR(check) "#[c.frees(\"g free\")] names no C function"
+func spelled() string
+
+#[c.native("char *", cast)] // ERROR(check) "#[c.frees] marks a #[c.native] function's string result, and cast is not a C function"
+#[c.frees("g_free")]
+func cast(s string) c.str
+
+#[c.frees("g_free")] // ERROR(check) "#[c.frees] cannot mark a struct"
+struct Handle {}

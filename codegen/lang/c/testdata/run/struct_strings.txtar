@@ -1,0 +1,131 @@
+A C struct's field may be a string, as a `char *` or, written with its
+UTF-16 alias, a wide one, a handle, or an option of a `*` handle, NULL for
+none, as Win32's LVITEMW holds its text and an NMHDR its window. A string
+is valid for the call the struct is handed to, by value or by ref, and is
+not read back: the program's struct keeps what it held, where a handle C
+wrote is read back. One handed by ref through an integer typedef
+(`#[c.type]`) is handed so too.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_win *")]
+struct Win {}
+
+#[c.native("test_win_new")]
+func newWin(code int) Win
+
+#[c.native("test_win.code", field)]
+func code(w Win) int
+
+#[c.native("test_item")]
+struct Item {
+    mask   int
+    text   string
+    wide   c.utf16
+    win    Win
+    parent option[Win]
+    n      int
+}
+
+#[c.native("test_by_value")]
+func byValue(item Item) int
+
+#[c.native("test_by_ref")]
+func byRef(item ref[Item]) int
+
+#[c.native("test_param")]
+struct Param = int
+
+#[c.native("test_send")]
+func send(msg int, #[c.type("test_param")] item ref[Item]) Param
+
+func item(n int) Item {
+    var text = n > 0 ? "abc" : ""
+    return Item{mask=1, text=text, wide="héllo", win=newWin(7), parent=newWin(3), n=n}
+}
+
+func shown(it Item) string {
+    var parent = 0
+    if it.parent != null {
+        parent = code(it.parent)
+    }
+    return "{it.text} {it.wide} {code(it.win)} {parent} {it.n}"
+}
+
+func run(n int) string {
+    var it = item(n)
+    var v = byValue(it)
+    var r = byRef(&it)
+    var it2 = item(n)
+    var s = send(1, &it2)
+    return "{v} {r} {shown(it)} {s} {shown(it2)}"
+}
+-- main.c --
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct test_win {
+	int code;
+} test_win;
+
+static test_win wins[16];
+
+static test_win *test_win_new(int code) {
+	wins[code].code = code;
+	return &wins[code];
+}
+
+typedef struct test_item {
+	int mask;
+	const char *text;
+	unsigned short *wide;
+	test_win *win;
+	test_win *parent;
+	int n;
+} test_item;
+
+static int wlen(const unsigned short *s) {
+	int n = 0;
+	while (s[n]) {
+		n++;
+	}
+	return n;
+}
+
+static int test_by_value(test_item it) {
+	return (int)strlen(it.text) * 1000 + wlen(it.wide) * 100 + it.win->code * 10 + (it.parent ? it.parent->code : 0);
+}
+
+// Reads it, then writes every field: what the program reads back is the
+// handles and the number, not the strings.
+static int test_by_ref(test_item *it) {
+	int r = test_by_value(*it);
+	static unsigned short changed[] = {'x', 0};
+	it->text = "changed";
+	it->wide = changed;
+	it->win = test_win_new(9);
+	it->parent = NULL;
+	it->n = 99;
+	return r;
+}
+
+typedef intptr_t test_param;
+
+static test_param test_send(int msg, test_param l) {
+	return msg == 1 ? test_by_ref((test_item *)l) : 0;
+}
+
+#include "program.c"
+
+int main(void) {
+	sngl_string s = s_run(1);
+	printf("%.*s\n", (int)s.len, s.ptr);
+	return 0;
+}
+-- want --
+3573 3573 abc héllo 9 0 99 3573 abc héllo 9 0 99

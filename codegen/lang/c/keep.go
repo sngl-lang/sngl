@@ -383,16 +383,24 @@ func (c *Context) elemsBody(t *ir.Type, op string) string {
 }
 
 // copyBody is v, a list or a map of t, copied into buffers of its own,
-// kept, each element kept, its length recorded.
+// kept, each element kept, its length recorded; a map's keys with an index
+// of their own (mapReindex).
 func (c *Context) copyBody(t *ir.Type) string {
 	t = listed(t)
 	var b strings.Builder
 	for k, buf := range buffers(t) {
 		et := c.typeName(t.Elems[k])
-		fmt.Fprintf(&b, "\t%s *%s = sngl_keep_alloc(sizeof(%s) * (size_t)(v.len + 1));\n\tif (v.len > 0) {\n\t\tmemcpy(%s, v.%s, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.%s = %s;\n\tsngl_kept_len(%s, v.len);\n", et, buf, et, buf, buf, et, buf, buf, buf)
+		size := fmt.Sprintf("sizeof(%s) * (size_t)(v.len + 1)", et)
+		if t.Kind == ir.TypeMap && buf == "keys" {
+			size = c.mapKeysSize(t) + "(v.len)"
+		}
+		fmt.Fprintf(&b, "\t%s *%s = sngl_keep_alloc(%s);\n\tif (v.len > 0) {\n\t\tmemcpy(%s, v.%s, sizeof(%s) * (size_t)v.len);\n\t}\n\tv.%s = %s;\n\tsngl_kept_len(%s, v.len);\n", et, buf, size, buf, buf, et, buf, buf, buf)
 	}
 	b.WriteString("\tv.cap = v.len;\n")
 	b.WriteString(c.elemsBody(t, "keep"))
+	if t.Kind == ir.TypeMap {
+		b.WriteString("\t" + c.mapReindex(t) + "(&v);\n")
+	}
 	return b.String()
 }
 

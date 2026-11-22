@@ -14,15 +14,15 @@ import (
 var _ codegen.TestLauncher = (*Translator)(nil)
 
 // LaunchTest implements codegen.TestLauncher: the program the build wrote to
-// dir, compiled with the host's compiler beside dir, run with its stdin and
-// stdout the test agent's JSON-RPC.
-func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangTranslator, _ *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
+// dir, compiled with the host's compiler beside dir at the level opts'
+// `optimize` names, run with its stdin and stdout the test agent's JSON-RPC.
+func (t *Translator) LaunchTest(ctx context.Context, dir string, _ codegen.LangTranslator, opts *ir.StructLit) (codegen.RPCChannel, codegen.Cleanup, error) {
 	bin := dir + ".testagent"
 	cc, err := ForTarget(TargetOf(dir), "")
 	if err != nil {
 		return nil, nil, err
 	}
-	if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+	if _, err := cc.BuildDir(dir, bin, "c17", codegen.OptionString(opts, "optimize")); err != nil {
 		return nil, nil, err
 	}
 	cmd := exec.CommandContext(ctx, cc.Exe(bin))

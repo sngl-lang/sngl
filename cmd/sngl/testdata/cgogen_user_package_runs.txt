@@ -2,10 +2,26 @@
 # library package: it writes the Go package wrapping the package's C
 # declarations into cgo/ beside it, in the program's Go module, and marks each
 # declaration with its wrapper, which a //go:generate line keeps in step. A
-# function taking a ref is wrapped copy-in, copy-out. The Go program calls the
-# wrapper, reaching the program's module through its own, which replaces the
-# host module with its root (codegen.WriteGoMod), and compiles none of the
-# package's C, which the wrapper package does.
+# function taking a ref is wrapped copy-in, copy-out, a C struct with fields
+# among what it fills too; the struct is a Go type of the wrapper package's,
+# named so from its first generation, before a mark names it. Each handle the
+# package declares is a type of the wrapper package's too, crossing a wrapped
+# function or not, so a program holding one names no cgo type of its own. Two
+# declarations of one C function keeping a static callback are two wrappers,
+# each keeping its own function, which C calls after both were kept. The Go program calls the wrapper, reaching the program's module through its
+# own, which replaces the host module with its root (codegen.WriteGoMod), and
+# compiles none of the package's C, which the wrapper package does. A string
+# C hands over (#[c.frees]) is freed in the wrapper, through the function its
+# preamble defines, as a member of a C struct is read and called (`field`).
+# A ref to an option of a pointer handle, GLib's GError **, is handed C as a
+# pointer to NULL and read back null or the handle. A static callback C
+# calls with a convention of its own is the static C function of that
+# convention the wrapper package's callbacks define, calling the export.
+# A pointer C takes as an integer typedef (#[c.type]) is cast in C, by a
+# function of the preamble's the wrapper calls, as a number made a pointer
+# by a cast is. A struct holding a string hands C a copy pinned for the
+# call, which is not read back, and a handle read back. A struct holding
+# structs crosses each field by field, in, back and answered.
 
 # The program's module, which requires sngl from this checkout.
 exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
@@ -16,28 +32,218 @@ exists mathx/cgo/wrappers.go
 exists mathx/cgo/split.c
 grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.SplitAdd"\)\]' mathx/mathx.sngl
 grep 'func SplitAdd\(a int, b int, carry int\) SplitAddResult' mathx/cgo/wrappers.go
+grep 'func SplitSwap\(p Pair\) Pair' mathx/cgo/wrappers.go
+grep 'snglFree_split_free' mathx/cgo/wrappers.go
+grep 'func SplitThingTwice\(t Thing, n int\) int' mathx/cgo/wrappers.go
+grep 'func SplitTry\(n int, err \*Thing\) SplitTryResult' mathx/cgo/wrappers.go
+grep '#\[go.native\("example.com/app/mathx/cgo", "cgo.State"\)\]' mathx/mathx.sngl
+grep 'static split_wide SPLIT_CC snglStatic__widen_f_SPLIT_CC\(split_wide a0\)' mathx/cgo/callbacks.go
+grep 'return split_send\(a0, \(split_param\)a1\);' mathx/cgo/wrappers.go
 
-# A second run changes nothing.
+# A second run, reading the marks the first wrote, changes nothing.
 cp mathx/mathx.sngl marked.sngl
+cp mathx/cgo/wrappers.go wrappers.first
 sngl tool cgogen mathx
 cmp mathx/mathx.sngl marked.sngl
+cmp mathx/cgo/wrappers.go wrappers.first
 
 sngl generate --lang go --platform bubbletea -o out app.sngl
 grep 'SplitAdd__result\(cgo\.SplitAdd\(7, 8, carry\)\)' out/model.go
 ! grep 'import "C"' out/model.go
+! grep 'C\.split_state' out/model.go
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +11 tests, 0 failures'
 
 -- mathx/split.h --
 int split_add(int a, int b, int *carry);
+
+typedef struct {
+	int lo, hi;
+} split_pair;
+
+void split_swap(split_pair *p);
+
+typedef struct split_state split_state;
+
+typedef int (*split_fn)(int);
+
+// Keeps f, answering where; split_call calls what is kept there.
+int split_keep(split_fn f);
+int split_call(int at, int x);
+
+// A name for n, which split_free frees; split_fill stores one in *out.
+char *split_name(int n);
+void split_fill(int n, char **out);
+void split_free(void *p);
+
+// What split_free freed, counted.
+int split_freed(void);
+
+// A struct a program reads the members of, and calls one of.
+typedef struct split_thing {
+	int code;
+	int (*twice)(int n);
+} split_thing;
+
+split_thing *split_thing_new(int code);
+
+// Answers 1 for an even n, and for an odd one stores a thing of code n in
+// *err and answers 0; -1 where *err was not NULL on entry.
+int split_try(int n, split_thing **err);
+
+// x86-64's Microsoft convention, which a Linux compiler calls with only
+// where it is written, and what f of it answers for 5000000000.
+#define SPLIT_CC __attribute__((ms_abi))
+typedef long long split_wide;
+typedef split_wide (SPLIT_CC *split_wide_fn)(split_wide);
+split_wide split_widen(split_wide_fn f);
+
+// As Win32's SendMessageW: what l points to is what msg says. split_noted
+// answers a thing of code 11 as such an integer.
+#include <stdint.h>
+typedef intptr_t split_param;
+split_param split_send(int msg, split_param l);
+split_param split_noted(void);
+
+// A struct holding a string and a handle: its name's length times ten
+// plus its thing's code; and, renamed, its n set to that length, its
+// thing one of code n, and its name another, which the program does not
+// read back.
+typedef struct split_named {
+	const char *name;
+	split_thing *thing;
+	int n;
+} split_named;
+int split_named_len(split_named nm);
+void split_rename(split_named *nm);
+
+// A struct holding structs: turned, its pair is swapped, its named
+// renamed and k doubled; split_pairs_of answers a pair of pairs.
+typedef struct split_nest {
+	split_pair pair;
+	split_named named;
+	int k;
+} split_nest;
+void split_nest_turn(split_nest *n);
+typedef struct split_pairs {
+	split_pair a;
+	split_pair b;
+} split_pairs;
+split_pairs split_pairs_of(int n);
 -- mathx/split.c --
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "split.h"
 
 int split_add(int a, int b, int *carry) {
 	int s = a + b;
 	*carry = s / 10;
 	return s % 10;
+}
+
+static split_fn kept[2];
+static int nkept;
+
+int split_keep(split_fn f) {
+	kept[nkept] = f;
+	return nkept++;
+}
+
+int split_call(int at, int x) {
+	return kept[at](x);
+}
+
+static int freed;
+
+char *split_name(int n) {
+	char *s = malloc(8);
+	snprintf(s, 8, "n%d", n);
+	return s;
+}
+
+void split_fill(int n, char **out) {
+	*out = split_name(n);
+}
+
+void split_free(void *p) {
+	freed++;
+	free(p);
+}
+
+int split_freed(void) {
+	return freed;
+}
+
+static int split_twice(int n) {
+	return n * 2;
+}
+
+split_thing *split_thing_new(int code) {
+	static split_thing t;
+	t = (split_thing){code, split_twice};
+	return &t;
+}
+
+int split_try(int n, split_thing **err) {
+	if (*err != NULL) {
+		return -1;
+	}
+	if (n % 2 == 0) {
+		return 1;
+	}
+	*err = split_thing_new(n);
+	return 0;
+}
+
+split_param split_send(int msg, split_param l) {
+	switch (msg) {
+	case 1:
+		return (split_param)strlen((const char *)l);
+	case 2:
+		split_swap((split_pair *)l);
+		return 1;
+	case 3:
+		return ((split_thing *)l)->code;
+	}
+	return 0;
+}
+
+int split_named_len(split_named nm) {
+	return (int)strlen(nm.name) * 10 + nm.thing->code;
+}
+
+void split_rename(split_named *nm) {
+	nm->n = (int)strlen(nm->name);
+	nm->name = "zz";
+	nm->thing = split_thing_new(nm->n);
+}
+
+void split_nest_turn(split_nest *n) {
+	split_swap(&n->pair);
+	split_rename(&n->named);
+	n->k *= 2;
+}
+
+split_pairs split_pairs_of(int n) {
+	split_pairs p = {{n, n + 1}, {n + 2, n + 3}};
+	return p;
+}
+
+split_param split_noted(void) {
+	return (split_param)split_thing_new(11);
+}
+
+split_wide split_widen(split_wide_fn f) {
+	return f(5000000000LL);
+}
+
+void split_swap(split_pair *p) {
+	int lo = p->lo;
+	p->lo = p->hi;
+	p->hi = lo;
 }
 -- mathx/mathx.sngl --
 import c "sngl:x/c"
@@ -46,6 +252,179 @@ c.link(include="split.h", sources=["split.c", "split.h"])
 
 #[c.native("split_add")]
 func splitAdd(a int, b int, carry ref[int]) int
+
+#[c.native("split_pair")]
+struct _Pair {
+    lo int
+    hi int
+}
+
+#[c.native("split_swap")]
+func _swap(p ref[_Pair])
+
+func swapped(lo int, hi int) int {
+    var p = _Pair{lo=lo, hi=hi}
+    _swap(&p)
+    return p.lo * 10 + p.hi
+}
+
+#[c.native("split_keep")]
+func _keepDoubled(#[c.type("split_fn")] #[c.static] f func(x int) int) int
+
+#[c.native("split_keep")]
+func _keepTripled(#[c.type("split_fn")] #[c.static] f func(x int) int) int
+
+#[c.native("split_call")]
+func _call(at int, x int) int
+
+func _doubled(x int) => x * 2
+
+func _tripled(x int) => x * 3
+
+func applied() string {
+    var d = _keepDoubled(_doubled)
+    var t = _keepTripled(_tripled)
+    return "{_call(d, 3)} {_call(t, 3)}"
+}
+
+// A handle no wrapped function crosses.
+#[c.native("split_state *")]
+struct _State {}
+
+func stateless() bool {
+    var s option[_State] = null
+    return s == null
+}
+#[c.native("split_name")]
+#[c.frees("split_free")]
+func _name(n int) string
+
+#[c.native("split_fill")]
+func _fill(n int, #[c.frees("split_free")] out ref[string])
+
+#[c.native("split_freed")]
+func _freed() int
+
+func names() string {
+    var s = ""
+    _fill(4, &s)
+    return "{_name(3)} {s}"
+}
+
+func freed() => _freed()
+
+#[c.native("split_thing *")]
+struct _Thing {}
+
+#[c.native("split_thing_new")]
+func _thingNew(code int) _Thing
+
+#[c.native("split_thing.code", field)]
+func _code(t _Thing) int
+
+#[c.native("split_thing.twice", field)]
+func _twice(t _Thing, n int) int
+
+func members() int {
+    var t = _thingNew(7)
+    return _code(t) * 100 + _twice(t, 21)
+}
+
+#[c.native("split_try")]
+func _try(n int, err ref[option[_Thing]]) int
+
+func tried() string {
+    var err option[_Thing] = null
+    var even = _try(2, &err)
+    var none = err == null
+    var odd = _try(3, &err)
+    var code = 0
+    if err != null {
+        code = _code(err)
+    }
+    var again = _try(4, &err)
+    return "{even} {none} {odd} {code} {again} {err == null}"
+}
+
+#[c.native("split_wide")]
+struct _Wide = int
+
+#[c.native("split_widen")]
+func _widen(#[c.type("split_wide_fn")] #[c.static(convention="SPLIT_CC")] f func(n _Wide) _Wide) _Wide
+
+func _plusOne(n int) => n + 1
+
+func widened() => _widen(_plusOne)
+
+#[c.native("split_param")]
+struct _Param = int
+
+#[c.native("split_send")]
+func _sendText(msg int, #[c.type("split_param")] text string) _Param
+
+#[c.native("split_send")]
+func _sendPair(msg int, #[c.type("split_param")] p ref[_Pair]) _Param
+
+#[c.native("split_send")]
+func _sendThing(msg int, #[c.type("split_param")] t _Thing) _Param
+
+#[c.native("split_noted")]
+func _noted() _Param
+
+#[c.native("split_thing *", cast)]
+func _asThing(p _Param) _Thing
+
+#[c.native("split_named")]
+struct _Named {
+    name  string
+    thing _Thing
+    n     int
+}
+
+#[c.native("split_named_len")]
+func _namedLen(nm _Named) int
+
+#[c.native("split_rename")]
+func _rename(nm ref[_Named])
+
+func named() string {
+    var nm = _Named{name="abcd", thing=_thingNew(3), n=0}
+    var l = _namedLen(nm)
+    _rename(&nm)
+    return "{l} {nm.name} {nm.n} {_code(nm.thing)}"
+}
+
+#[c.native("split_nest")]
+struct _Nest {
+    pair  _Pair
+    named _Named
+    k     int
+}
+
+#[c.native("split_nest_turn")]
+func _turn(n ref[_Nest])
+
+#[c.native("split_pairs")]
+struct _Pairs {
+    a _Pair
+    b _Pair
+}
+
+#[c.native("split_pairs_of")]
+func _pairsOf(n int) _Pairs
+
+func nested() string {
+    var n = _Nest{pair=_Pair{lo=1, hi=2}, named=_Named{name="abc", thing=_thingNew(5), n=0}, k=21}
+    _turn(&n)
+    var p = _pairsOf(6)
+    return "{n.pair.lo}{n.pair.hi} {n.named.name} {n.named.n} {_code(n.named.thing)} {n.k} {p.a.lo}{p.a.hi}{p.b.lo}{p.b.hi}"
+}
+
+func sent() string {
+    var p = _Pair{lo=3, hi=4}
+    var r = _sendPair(2, &p)
+    return "{_sendText(1, "abc")} {r} {p.lo}{p.hi} {_sendThing(3, _thingNew(9))} {_code(_asThing(_noted()))}"
+}
 -- mathx/gen.go --
 package mathx
 
@@ -68,12 +447,94 @@ ui.window(title="t") {
 func testItSplits(t test.Test) {
     t.assert(digits() == "15")
 }
+
+func testItSwaps(t test.Test) {
+    t.assert(m.swapped(1, 2) == 21)
+}
+
+func testItAppliesEach(t test.Test) {
+    t.assert(m.applied() == "6 9")
+}
+
+func testItHoldsNoState(t test.Test) {
+    t.assert(m.stateless())
+}
+
+func testItReadsAndCallsMembers(t test.Test) {
+    t.assert(m.members() == 742)
+}
+
+func testItFillsAnOptionOfAHandle(t test.Test) {
+    t.assert(m.tried() == "1 true 0 3 1 true")
+}
+
+func testItCallsWithAConvention(t test.Test) {
+    t.assert(m.widened() == 5000000001)
+}
+
+func testItSendsPointersAsIntegers(t test.Test) {
+    t.assert(m.sent() == "3 1 43 9 11")
+}
+
+func testItHandsAStructHoldingAString(t test.Test) {
+    t.assert(m.named() == "43 abcd 4 4")
+}
+
+func testItCrossesNestedStructs(t test.Test) {
+    t.assert(m.nested() == "21 abc 3 3 42 6789")
+}
+
+func testItFreesWhatCHandsOver(t test.Test) {
+    t.assert(m.names() == "n3 n4")
+    t.assert(m.freed() == 2)
+}
+
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:e075fa6712331ae5e4d76de2173f52ad
+sha256:f7690c56ac1fc62f908ae8487a35c4e6
 {
   "results": [
     {
+      "Desc": "ItAppliesEach",
+      "Passed": true
+    },
+    {
+      "Desc": "ItCallsWithAConvention",
+      "Passed": true
+    },
+    {
+      "Desc": "ItCrossesNestedStructs",
+      "Passed": true
+    },
+    {
+      "Desc": "ItFillsAnOptionOfAHandle",
+      "Passed": true
+    },
+    {
+      "Desc": "ItFreesWhatCHandsOver",
+      "Passed": true
+    },
+    {
+      "Desc": "ItHandsAStructHoldingAString",
+      "Passed": true
+    },
+    {
+      "Desc": "ItHoldsNoState",
+      "Passed": true
+    },
+    {
+      "Desc": "ItReadsAndCallsMembers",
+      "Passed": true
+    },
+    {
+      "Desc": "ItSendsPointersAsIntegers",
+      "Passed": true
+    },
+    {
       "Desc": "ItSplits",
+      "Passed": true
+    },
+    {
+      "Desc": "ItSwaps",
       "Passed": true
     }
   ]

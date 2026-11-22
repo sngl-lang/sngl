@@ -1625,16 +1625,17 @@ func (f *formatter) writeListExpr(x *ast.ListExpr) {
 		f.newline()
 		f.indent++
 		for i, el := range x.Elements {
-			if i > 0 {
-				f.write(",")
-				f.newline()
+			if i < len(x.ElemLeading) {
+				f.writeLeadingComments(x.ElemLeading[i])
 			}
 			f.writeExpr(el)
-		}
-		if len(x.Elements) > 0 {
 			f.write(",")
+			if i < len(x.ElemTrailing) {
+				f.writeTrailing(x.ElemTrailing[i])
+			}
+			f.newline()
 		}
-		f.newline()
+		f.writeLeadingComments(x.Tail)
 		f.indent--
 		f.write("]")
 	} else {

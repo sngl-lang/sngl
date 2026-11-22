@@ -1,0 +1,161 @@
+# A check box and a radio button are checked by BM_SETCHECK and read back by
+# BM_GETCHECK, and a control disabled is drawn grayed: the program sets each
+# state, the snapshot shows it, and a check box's handler reads what Win32
+# checked it to as the test presses it. The box bound to `on` is unchecked by
+# the program's write alone, and only BM_SETCHECK draws that: `toggled` differs
+# from `untoggled` by nothing else (the one passed `on` keeps its own state).
+# The two are compared exactly, here, since a snapshot's comparison tolerates
+# a check mark's worth of pixels. Each is a Win32 call of
+# sngl:platform/win32's own, through api's declarations, in every way a
+# program calls C: from C, through Go's wrappers, from Go directly, and from
+# C built for 32-bit Windows.
+
+env SNGL_UPDATE_SNAPSHOTS=1
+sngl test --platform=win32 --language=c states.sngl
+stdout 'ok +3 tests, 0 failures'
+exists states.sngl.snapshots/set.png
+exists states.sngl.snapshots/flipped.png
+exists states.sngl.snapshots/untoggled.png
+exists states.sngl.snapshots/toggled.png
+! cmp states.sngl.snapshots/set.png states.sngl.snapshots/flipped.png
+! cmp states.sngl.snapshots/untoggled.png states.sngl.snapshots/toggled.png
+
+env SNGL_UPDATE_SNAPSHOTS=
+sngl test --platform=win32 --language=go states.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct states.sngl
+stdout 'ok +3 tests, 0 failures'
+sngl test --platform=win32 --language=c --opt arch=386 states.sngl
+stdout 'ok +3 tests, 0 failures'
+
+-- states.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var on = true
+    var size = 1
+    var off = true
+    ui.vbox {
+        ui.checkbox #flag(label="flag", checked=on, @change(v) { on = v })
+        ui.checkbox #bound(label="bound", :checked=on)
+        ui.radio #sizes(:value=size, disabled=off) {
+            ui.choice(label="small", value=1)
+            ui.choice(label="large", value=2)
+        }
+        ui.button #flip(text="flip", @click {
+            on = !on
+            size = 3 - size
+            off = !off
+        })
+        ui.button #toggle(text="toggle", @click { on = !on })
+    }
+}
+
+ui.window(title="States") {
+    main()
+}
+
+func testHandlersReadTheState(t test.Test, c main) {
+    c.flag.change(false)
+    t.assert(!c.on)
+    c.flag.change(true)
+    t.assert(c.on)
+    c.sizes.change(2)
+    t.assert(c.size == 2)
+}
+
+func testWritesReachTheBox(t test.Test, c main) {
+    t.snapshot("untoggled")
+    c.toggle.click()
+    t.assert(!c.on)
+    t.assert(c.flag.checked)
+    t.assert(!c.bound.checked)
+    t.snapshot("toggled")
+}
+
+func testDraws(t test.Test, c main) {
+    t.snapshot("set")
+    c.flip.click()
+    t.assert(!c.on)
+    t.assert(c.size == 2)
+    t.snapshot("flipped")
+}
+-- testrun/win32/c/states.sngl/main/1 --
+sha256:ed301a0a3f8e554c2b442074435f6e19
+{
+  "results": [
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    },
+    {
+      "Desc": "WritesReachTheBox",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ],
+  "snapshots": {
+    "flipped.png": "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",
+    "set.png": "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",
+    "toggled.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACQCAIAAADC57NTAAAH8klEQVR4nOybwWvTbhjHkzRuxRXGajIQ2oNrK7qLdqeh3jx4GdPDELx49Y/xIgjiYXjyDxkoOhDSk/ZQ6w71tKYNG6tlk6Y/2ux9myVtfu1WxTWf7wOSfvPOQ/fhed4l71dvtVoKQtOWJi4QmqZ0RVEsy2o0Gq7rCnMgTdMMwygWi8JAaCypHz58WF5ezufzmjake7muW6lUbNuGLdiaiC2t0WiMoqp3W9MKhYJt28I41UJf3oXwEBpIc113FFU7OztPnz7VNC0wJRcWFlp9CQOhoIYjpSjKp0+ftra2nj9/LgyEJpAe+OzV58+fNzc33717t7GxIbwz8uagv2nJmShN/5T0r6RjxahjvX//3nGc/qXy5cuXx48fb29vb25uimVBhUdhS0juvYTRYhTGdxTu7u4+evTo4ODAsqyNjY03b948efJErBlLC0LCYBTGfBT2R+Hr169fvHjx8OHDnz9/vnr1amtrSywYS15/ktfCRvHVacdSVfXt27d37959+fLls2fPxF2Ezinde5qg9bW9vS38gSKeR8iSW6sIh4pV6YZhVCqVQqEwlB7vybthGAFowtd+M+BAWAwJU1utVqlUsm176u8KJU9h5tDMS+W3HsPf+l+QNtYqwAIswAIswAIswAIswAIswAIswAIswAIswAIswAKsGQSL+BfxL+JfxL9mO/71J04r/In/k/jXPxr/kmwNnZIUFVHa/y8h/kX8a1rxr/Enlzx1E3ACp+ADB0rDPwVYgNUDKwxNwBELzyj6p8QqRiGjkFHIKBwxCgELsAALsC4PWIP4l3CCGnpXbom8TZJ/bx52RmmcNcS/Yhr/ijADjv+jvPabxL+If40V/6LiXMS/iH8R/yL+RfyL+BfxL+JfxL+IfxH/Iv5F/Iv4F/Ev4l/Ev4h/Ef8i/kX8i/gX8a9px7+8chynVqs1m82Tk5O5ubl0Op3NZpeWlsR9hCZQ75VOt9stl8v1ej2XyxmGMTc3d3JyYtt2tVo1TfP27duqqor1CI2l3h6rXC632+379+9nMplkMqlpWjKZzGQyDx48+PXrV7lcFosvqt3dXfkvNdulO45j2/a9e/d0Xa/X69+/fz86OkqlUvl83jTNYrH48eNHx3GYiczEiWaiVqvVVlZWPKosyzo8PHRd9/Dw0LKs/f39RCKxsrJSq9XEeoTGkt5sNm/evKkoSrVaFeapfvz4sby8bBhG+JYcZ+vr6+Hr9fX18DLxoygW0r2/ARVFOTo6EuapPGd+fv73798BqgKgeB+lLy/kMulQMSnd+xswmUymUqmDgwPh9yqVSimKcnx8fOXKFeEpE4EiOxYVt9LT6bRt25lMJpfLWZYl/F7lcjlFUWzbTqfTQ/uTvyeF5YcPwuJGmJbNZqvVaqfTMU1zbW1tcXExkUgsLi6ura2ZptnpdPb29rLZrFg/UARSFKUvLS2ZplkqlYrFotmXuKV0Op1SqWSaZuBZg2w/0Wz59/U8eY/vk3fbtm/cuGEYxvz8/PHxsW3be3t7pmneunWLJ+88eZ/0yfsgpcO7Qt4VTvldobjm2AzHZjg2w7GZf/vYDPEv4l/Ev4h/Ef8i/kX8i/gX8S/iX8S/iH8R/yL+RfyL+BfxL+JfxL+IfxH/Iv5F/Gua8a/eS+hv37612+07d+7o+qCByWMzV69eXV1dDRyb4TAWh7EiDmP19lhe/CtMlaIoiUSiWCzW63XHcYRH/Iv414TxL+GcEfEv4l8XjX+N0tD419CjpN6IlIPSf3w04DBJZ36SDuJfoxSOf0lJPvwwBS4kTwFHXhP/mvH4l3CCGhr/8hPjVzQu4fXEv2Y//iWcoMLxr3DXGZOYaOyIf81m/Es4ZxQR/7pI0bpmvnWdiX8lEokAVUPjX7L9RPARvut3aF0z37r+RvyLrfrMb9WjUjpTf1dIf4pPf4oCi2MzHJvh2AzHZv71YzOABViABViABViABViABViABViAFWew9Ha7/fXr12az2e12hYnQOaWq6rVr11ZXV9WdnZ3r16/n83lNo3vRvS7avVzXrVQq+/v7muM4UAVVU6Gqt7XStEKh0Gg0tG63C1VQNRWqJFs9qORnippiARZgARZgAdZlB0vty/v7WXiABVgXA0tV1W5fwgCvifHS+G5Gfjc+8fR40qfH+nA79uW1KMmT18P8fQvUolEDrOFgjeJG+h5qwmYUMgrPNQqpSQuwAAuwAOvygKXz9UR9PaGS+3c272zeJ968+6HxrqXjv8UoPNco/I+dO8pREAbiMB4aL0C4/8m4AmdoNoQwO7G4i7vgS3/ji9biA/ny7xidT4+lx9JjfabHElcn4wpY74GlzlcZhqHWur9U6r9Vay2llGma5nnGFrYuYWv7z/s4jsOyLKZ0TOlcP6VDY0RjRGNEY0RjRGNEY0RjRGNEY0RjRGNEY9SxxogUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBTkI1KQtwYrgAWsb7Bg8QMWwPo7WOYKzRXeNVeYzR8RYPELRI60pz152+G1wOoarEPDR4hl8kq7Z/+Mg2v3d4DVK1hXVeZMYnWeWGtiXfWQUltKad7vat5FV0RXv4kVhr5VNppsfSFreKKkXWnXRVdE18MRth1hLROx0nKTv07mJyrq0fk9WO/Bi3rFE5IOSQLWWbBaevD0K0+a91uad1IQUhBSEFIQUhBSEFIQUpBNCvI1AJE1F+c93LyaAAAAAElFTkSuQmCC",
+    "untoggled.png": "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"
+  }
+}
+-- testrun/win32/c/states.sngl/main/2 --
+sha256:0960e4261edcc3b5e4d4e88261df081e
+{
+  "results": [
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    },
+    {
+      "Desc": "WritesReachTheBox",
+      "Passed": true
+    },
+    {
+      "Desc": "Draws",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/states.sngl/main/1 --
+sha256:dab7a7cecff86587f25ab5fdc4c97235
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    },
+    {
+      "Desc": "WritesReachTheBox",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/states.sngl/main/2 --
+sha256:7b693c86537c99bbdc1ddf5744220aba
+{
+  "results": [
+    {
+      "Desc": "Draws",
+      "Passed": true
+    },
+    {
+      "Desc": "HandlersReadTheState",
+      "Passed": true
+    },
+    {
+      "Desc": "WritesReachTheBox",
+      "Passed": true
+    }
+  ]
+}

@@ -40,10 +40,12 @@ does with it is each target's:
   (`Toplevel.Add`). The specs are written in Go as `Toplevel`'s are
   (`codegen/platform/fyne/image.go`), with `slotBox` naming the box a slot
   inside renders into.
-- gtk4: the runtime's image box and a `GtkPicture` per source (rt's
-  `image.c`), reached through protocol functions. A URL's picture is an
+- gtk4: a box per image and a `GtkPicture` per source, gtk4.sngl's (its
+  "An image, with no struct of its own"), what each says a value C holds on
+  it (`c.held`). A URL's picture is an
   owned derived value of its source (`ui.file`'s and `ui.remote`'s
-  `picture`, the runtime's `SnglPicture`), decoded once per URL and released
+  `picture`, a plain GObject whose holders share one reference and a fetch
+  on its way another), decoded once per URL and released
   when the URL changes or the source unmounts; the source shows it and
   `canvasImage` paints it (`testdata/gtk4_image_pictures.txtar`, and
   `cmd/sngl/testdata/simulate_gtk4_image_pictures.txt` for the leak check).
@@ -51,14 +53,19 @@ does with it is each target's:
   (`imageFailure`), as win32's does. A drawn source is painted through its
   protocol as a canvas is (`design/nodes.md`): its shapes are the handler of
   its `@paint`, which paints a texture of its size, and a write to what they
-  read is its redraw. A URL is fetched by C's libcurl client, which the
+  read is its redraw. What a URL names is read by gtk4.sngl, a file the
+  program carries found through rt's `sngl_carried` (in `sngl_gtk.c`, since
+  the tables are arrays of C structs SNGL cannot walk), and is fetched by
+  C's libcurl client, which the
   platform's link ships for either language (`design/stdlib.md`), rather
   than GIO's `GFile`, whose http is GVfs's, which a test's session bus does
   not run (`image_remote_runs.txt`). A window takes a source appended to it as
-  its icon (`sngl_image_adopt`), from a root component's window too; GTK 4
+  its icon (`_imageAdopt`, which the runtime's box calls reach through
+  `sngl_image_hooks`), from a root component's window too; GTK 4
   sets a window's icon by name only, so the picture is written into a private
   icon-theme directory (`cmd/sngl/testdata/gtk4_test_runs.txt`'s
-  `pictures.sngl`).
+  `pictures.sngl`). `testdata/gtk4_image_runs.txtar` prints what GTK holds of
+  each: a picture's fit and texture, why one failed, the window's icon.
 - bubbletea: a drawing is a canvas; a URL is half-block cells fitted into a
   fixed box (`tui.Picture`), and a fetch arriving sends the program a message
   (`snglimage.OnArrive`).

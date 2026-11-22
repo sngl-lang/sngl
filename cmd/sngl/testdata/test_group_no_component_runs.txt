@@ -176,7 +176,7 @@ sha256:c2d2cdbb22af981c383de6017b42dcd8
   ]
 }
 -- testrun/gtk4/go/built.sngl/_/1 --
-sha256:201952456b5b20ae5f1509f9083eddad
+sha256:3993392929784fffe8232191f224edb4
 {
   "results": [
     {
@@ -186,7 +186,7 @@ sha256:201952456b5b20ae5f1509f9083eddad
   ]
 }
 -- testrun/gtk4/go/focus.sngl/_/1 --
-sha256:201952456b5b20ae5f1509f9083eddad
+sha256:3993392929784fffe8232191f224edb4
 {
   "results": [
     {
@@ -196,7 +196,7 @@ sha256:201952456b5b20ae5f1509f9083eddad
   ]
 }
 -- testrun/gtk4/go/focus.sngl/panel/1 --
-sha256:37a582616a62bbcff3b05140da783185
+sha256:73d6a72986c3b0818a8eb16e75888614
 {
   "results": [
     {

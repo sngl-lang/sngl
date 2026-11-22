@@ -1,5 +1,5 @@
 # ui.tabs drawn as each desktop and terminal target draws tabs, where the three
-# drew sngl:ui's row of buttons: gtk4 a GtkNotebook in a box (rt/tabs.c), fyne
+# drew sngl:ui's row of buttons: gtk4 a GtkNotebook in a box (gtk4.sngl), fyne
 # an AppTabs, bubbletea a lipgloss tab bar over a box the bar opens onto.
 # testdata/tabs_look.txtar is the code.
 #
@@ -251,7 +251,7 @@ sha256:ac32b7ef105d5b964cd308abaf1b666f
   }
 }
 -- testrun/gtk4/c/app.sngl/grows/1 --
-sha256:cf9621f4afec7368ae9bd010f8bb7831
+sha256:25379112d3497476090ab1ec2106df9b
 {
   "results": [
     {
@@ -261,7 +261,7 @@ sha256:cf9621f4afec7368ae9bd010f8bb7831
   ]
 }
 -- testrun/gtk4/c/app.sngl/pills/1 --
-sha256:ee3c0b4d7c7b04432f870b52cd9a1868
+sha256:fcde0918ad670a010818cfe6efc16ba4
 {
   "results": [
     {
@@ -271,7 +271,7 @@ sha256:ee3c0b4d7c7b04432f870b52cd9a1868
   ]
 }
 -- testrun/gtk4/c/app.sngl/strip/1 --
-sha256:4535d6e29a971f8a1349620e92578c1e
+sha256:6b5371bd2e719557be0da2eda5b04919
 {
   "results": [
     {
@@ -285,7 +285,7 @@ sha256:4535d6e29a971f8a1349620e92578c1e
   ]
 }
 -- testrun/gtk4/go/app.sngl/grows/1 --
-sha256:8ba940a5c4cf2d926bccd4c8bae55325
+sha256:478995b4ca67b72e4ee751b4ca492df5
 {
   "results": [
     {
@@ -300,7 +300,7 @@ sha256:8ba940a5c4cf2d926bccd4c8bae55325
   }
 }
 -- testrun/gtk4/go/app.sngl/pills/1 --
-sha256:85b2636326c9eea080f0467a68116bef
+sha256:d64ba12491f28343e760ab3f85cc6363
 {
   "results": [
     {
@@ -313,7 +313,7 @@ sha256:85b2636326c9eea080f0467a68116bef
   }
 }
 -- testrun/gtk4/go/app.sngl/strip/1 --
-sha256:8d6371c0b38f7618a6cca5a4c6f9cf37
+sha256:9823f5c62cfb68009e4ebed4726d835e
 {
   "results": [
     {

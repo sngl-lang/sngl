@@ -31,6 +31,9 @@ var markImpls = map[markKey]markImpl{
 	{"x/c", "context"}:                 markCContext,
 	{"x/c", "type"}:                    markCType,
 	{"x/c", "release"}:                 markCRelease,
+	{"x/c", "static"}:                  markCStatic,
+	{"x/c", "outs"}:                    markCOuts,
+	{"x/c", "frees"}:                   markCFrees,
 	{"macro", "unusable"}:              markUnusable,
 	{"language/kotlin", "native"}:      markKotlinNative,
 	{"language/go", "native"}:          markGoNative,
@@ -45,6 +48,7 @@ var markImpls = map[markKey]markImpl{
 	{"x/gen", "protocol"}:              markGenProtocol,
 	{"x/gen", "connects"}:              markGenConnects,
 	{"x/gen", "fires"}:                 markGenFires,
+	{"x/gen", "entry"}:                 markGenEntry,
 	{"ui/markup/md", "order"}:          markMdOrder,
 	{"json", "identifier"}:             markJSONIdentifier,
 	{"http", "identifier"}:             markHTTPIdentifier,
@@ -309,7 +313,24 @@ func markCNative(m *mark) error {
 		return err
 	}
 	cast := slices.Contains(flags, flagCast)
-	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name}
+	variadic := slices.Contains(flags, flagVariadic)
+	pointer := slices.Contains(flags, flagPointer)
+	field := slices.Contains(flags, flagField)
+	fm := ir.Foreign{Scheme: "c", Path: ir.CPath, Name: name, Variadic: variadic, CPointer: pointer, Field: field}
+	if _, isFunc := m.sym.(*ir.Func); field && !isFunc {
+		return fmt.Errorf("#[c.native(%q)] carries field, which describes a function reading a member of a C struct", name)
+	}
+	for _, other := range []string{flagVariadic, flagCast} {
+		if field && slices.Contains(flags, other) {
+			return fmt.Errorf("#[c.native(%q)] carries field beside %s: a member of a C struct is read, not called as a C function is", name, other)
+		}
+	}
+	if sd, isStruct := m.sym.(*ir.StructDef); pointer && (!isStruct || len(sd.Fields) > 0) {
+		return fmt.Errorf("#[c.native(%q)] carries pointer, which describes a struct declaring no fields whose C type is a typedef of a pointer", name)
+	}
+	if _, isFunc := m.sym.(*ir.Func); variadic && (cast || !isFunc) {
+		return fmt.Errorf("#[c.native(%q)] carries variadic, which describes a C function taking a variable argument list", name)
+	}
 	switch d := m.sym.(type) {
 	case *ir.Func:
 		if cast {
@@ -319,6 +340,12 @@ func markCNative(m *mark) error {
 			if fm.C, err = ir.ParseCType(name); err != nil {
 				return fmt.Errorf("#[c.native(%q, cast)]: %w", name, err)
 			}
+		} else if field {
+			if st, member, ok := strings.Cut(name, "."); !ok || !ir.IsCIdent(st) || !ir.IsCIdent(member) {
+				return fmt.Errorf("#[c.native(%q, field)] names no member: a field is the struct and the member, joined by one dot, as `GError.message`", name)
+			}
+		} else if st, member, ok := strings.Cut(name, "."); ok && ir.IsCIdent(st) && ir.IsCIdent(member) {
+			return fmt.Errorf("#[c.native(%q)] names no C function: a function is its C identifier, and a member of a C struct is #[c.native(%q, field)]", name, name)
 		} else if !ir.IsCIdent(name) {
 			return fmt.Errorf("#[c.native(%q)] names no C function: a function is its C identifier, and a conversion to a C type is #[c.native(%q, cast)]", name, name)
 		}
@@ -331,6 +358,9 @@ func markCNative(m *mark) error {
 		}
 		if fm.C, err = ir.ParseCType(name); err != nil {
 			return fmt.Errorf("#[c.native(%q)]: %w", name, err)
+		}
+		if pointer && fm.C.Ptr > 0 {
+			return fmt.Errorf("#[c.native(%q)] carries pointer, which a C type written with a `*` already is", name)
 		}
 		// One with fields is the program's own struct with a C layout,
 		// which a backend declares as it does any other (Foreign.Marked).
@@ -377,6 +407,18 @@ func markCAlias(a *ir.Alias, name string, cast bool) error {
 // flagCast says a #[c.native] function is a conversion to the C type its name
 // spells, declared as sngl:x/c's NativeFlag.
 const flagCast = "cast"
+
+// flagVariadic says a #[c.native] function takes a variable argument list,
+// of which the declaration lists what one call passes.
+const flagVariadic = "variadic"
+
+// flagPointer says a #[c.native] struct's C type is a typedef of a pointer,
+// whose option is the pointer itself.
+const flagPointer = "pointer"
+
+// flagField says a #[c.native] function reads a member of the C struct its
+// first parameter points to, `Struct.member`.
+const flagField = "field"
 
 // markJSNative implements #[js.native("name")] and #[js.native("name",
 // "module")]: the declaration *is* that JavaScript identifier.
@@ -1146,6 +1188,20 @@ func markGenFires(m *mark) error {
 	}
 	fn.Protocol = ir.ProtocolFire
 	m.c.protocols = append(m.c.protocols, protocolMark{fn: fn, pos: m.attr.Pos, event: event})
+	return nil
+}
+
+// markGenEntry implements #[gen.entry]: a function the generated entry
+// calls, which lower.LibFuncs promotes for the target declaring it.
+func markGenEntry(m *mark) error {
+	fn, ok := m.sym.(*ir.Func)
+	if !ok {
+		return fmt.Errorf("#[gen.entry] cannot mark %s; it marks a function", ast.DeclFormName(m.decl))
+	}
+	if fn.IsMethod() || fn.AST != nil && fn.AST.Body == nil && fn.AST.Block.Pos == (ast.Pos{}) || fn.Foreign.Path != "" || fn.Protocol != ir.ProtocolNone {
+		return fmt.Errorf("#[gen.entry] marks a function with a body, no method, native or protocol operation")
+	}
+	fn.GenEntry = true
 	return nil
 }
 

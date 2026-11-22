@@ -381,7 +381,7 @@ void sngl_keep_int(int_cb f, void *data) { kept = f; kept_data = data; }
 void sngl_fire(void) { if (kept) kept(5, kept_data); }
 
 -- testrun/win32/c/app.sngl/_/1 --
-sha256:ab51f15fc45b8ffed23c75d63b973ec9
+sha256:331dd02c3e6884c4e4911d83af3b4b5f
 {
   "results": [
     {
@@ -391,7 +391,7 @@ sha256:ab51f15fc45b8ffed23c75d63b973ec9
   ]
 }
 -- testrun/win32/c/app.sngl/_/2 --
-sha256:d3dcff4604792809d3e2271ecaef6ce2
+sha256:ef8ad40742c2599762fcf34c78f0af71
 {
   "results": [
     {
@@ -401,7 +401,7 @@ sha256:d3dcff4604792809d3e2271ecaef6ce2
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:e4de824501b89befc01b492c42af3c41
+sha256:48399b8f84a817287ef2f826625a02df
 {
   "results": [
     {
@@ -418,12 +418,12 @@ sha256:e4de824501b89befc01b492c42af3c41
     }
   ],
   "snapshots": {
-    "big.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACSCAIAAACPLxJYAAAE70lEQVR4nOzcvU7rMBiH8TrK1gl1YoeFu+FKO7NxE0y9A8THhNiSo1LiE5w0kGKgTX5/S1XtulQij97XiOYpX15eFiK5UzRPgAUsYAHr6MEq3x4Xy+WyWVlkaY7L5XLfz8n+WcYRjnIYguwj+azf/Gj5zYR9ZaNbV3qZiI/JzuS9+wawpgpW+WG253oPX/72q7vnEbhmi8O7w/v4w/vBAIFvwvCVQy/+2Nj1SlRNlaq/AUuhmnChiqNoH72/ngPegqr5UPVesRK24uk7OUW1F5MN3RE3dDFK3oizSXIWXNdJXtcp/FUILGABC1jAAhawgAUsYAELWMACFrCA1QarfH19vbu7e3p6quu6WRQ5MCGE1Wp1dXUVbm9vz8/PLy4uikL1Ur2+W72qqtpsNvf398Xz8zOqUJWFqu3RqiguLy8fHx+Luq5RhaosVEW2tlDFuWFkHMACFrCABSxgAWvuYIW3DK8AC1ijwVKxVKwfqViLxaKu61iiQgjtf0KEVuJKfOzd4C6dv7lL54TShWzHXPdJ734Va+4Va2zQs6NHxfq8YsVuOBYaHbDdAYGVgqV65a1eWuH/Vli/pZkdEtUrVi8Va6hitf9a7C1On24A1nzB6qUhLnZfTVa6G7RCrfBDKzQyDmABC1jAOiGwQghVVTVTke+mqqqiKIrVarXZbLCFrSxs7W6mODs7Cw8PD27/cvtX/tu/+LH4sfix+LH4sfix+LH4sfix+LH4sfix+LFm7Mdim2GbYZthm2GbYZthm2GbYZthm2GbYZthm2GbYZthm2GbYZthmzkJ24zbttq3bQErJ1iSPaXfxPtvYrCMxX9LxMUoBUk2AAtYQ2D1amR6F5uZVqgVaoVa4ZG0wl4jTTIFFrC+BFYvLolvLZlqhVrhuFbYrV5aoVb4pVbYRmdrM6rrZKW9p3cKLGClYPWS0V1MVrobtEKtcFwrlLFhm2GbYZthm2GbYZthm2GbYZthm2GbYZthm2GbYZthm2GbYZthm2GbYZthm2GbYZthmzl+28zNzU3zXCRbtt9uuL6+bqYiGbJer52xnLGcsZyxTueMBSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawjhis7Xfe1+t1MxXJE+4G7gbuBu4G7gbuBu4G7gbuBu4G7gbuBu6GObsbgAWsXwbrH3tnjBsxCERReeSOFvkE9gF8/9K9fZGhdB9ZBBJhAuyyRSy9/xsC7dMEzew3LFh0LK4G6b7vzrnsh5NFxFq7rmvYQKhJw7Zt0zTN8yyS+bfov66sqrAFWy+xJc65v6i6jkWWZVHVsIFQk8S/IxD+zEhEeF6A5wVefV5ASocYv2vAAizAAizAAizAAizAAizAegpY1W5CtR+B8d3XxKbwEKbvvFtrwwZCTbp+834ch6oyK2RW+MlZIWEKwhSEKQhTEKYgTEGYgjAFYQrCFIQpCFMQpiBMQZiCMAVhCsIUDwhTABZgARZgARZgARZgAdbnwRrC4lt+dGiMYYbIDLFnhjhEmLxBCqQ6kfqJ2N8V8TLG3OsZYAHWm2Blq1cCGcYFjwkx1CRqUmNNKntMYEqqFO0G2g20G2g3/KN2QytYXLC4YLVfsCp3rPM849HvNUJVjdkbVdzMntJuoN3Q1W4oFDOMy/4aAAvBAk+voX8sAAAAAElFTkSuQmCC",
-    "one.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAAB+CAIAAADuqcmhAAAEQklEQVR4nOzcv04jMRCA8dhKtxVKRQ8Nb8OTpqbjJajyBog/VUS3PoXc+va8m5CAQSH7m5GitTEXiXyamRP4m6/X65kQtSN2D8ACFrCAdfJgzd9fZ03TdDuzKs2xaZpd/07195InmPP9EFTP4r1+8q3FT0bc9dE2vcg7xYH+6/Bkf0crnGgrLLKgbRd8w69un9fr9f5vMbwb3j8e3gE0ZYC+ESwphwksYH0PWNt5qFseGqbyyU7lB+ZmeC/YytN3MUX1N4sDw8wHigms+Ebz2bnOZ8FHe64frRnLjHWOM1b3ACxgAQtYwAIWsIAFLGABC1jAmiBY87e3t4eHh5eXl5RStynEJyOEsFgsbm5uwv39/eXl5dXVVYyql+r11erVtu1qtXp8fIyvr6+oQlUVqjYze4zX19fPz88xpYQqVFWhKrO1gSqvpayYwAIWsIAFLGABa+pghffYvwMsYB0NloqlYn1LxZrNZimlXKJCCP1fQoRe5J38OnrAhdWdF1blNoeQbZkbPoyeV7GmXrGODfRs6VGxPq5YuRseC40O2O+AwCrBUr3qVi+t8F8rTO/RrT4TqleuXirWvorV/9/iaHH68ACwpgvWKA15c/jVYmd4QCvUCv9rhbJiAgtYwALWLwIrhNC2bbcU4qvRtm2MMS4Wi9VqhS1sVWFre5ni4uIiPD09uf7l+lf961/8WPxY/Fj8WPxY/Fj8WPxY/Fj8WPxY/Fj8WBP2Y7HNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDN/ArbjGtb/WtbwKoJlqgecz+Jvz+JvWUs/1oib2YpSHEAWMDaB9aoRmZ0s1tphVqhVqgVnkgrHDXSFEtgAesgsEZxKXxrxVIr1AqPa4XD6qUVaoUHtcI+OhubUUrFTv/M6BJYwCrBGiVjuFnsDA9ohVrhca1QHBtsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM2wzbDNsM6dvm7m7u+uehagWm79uuL297ZZCVIjlcmnGMmOZscxYv2fGAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYJwzW5m/el8tltxSiTnA3cDdwN3A3cDdwN3A3cDdwN3A3cDdwN3A3TNndACxg/TBYf9g7g1yHQRiI6s8ZrJwgOQD3X7KHi9h3+EKIVWlC2m6qvpkNNdsnVbIzmAOHNw6tQVpKiYjpw8mSzCylNAoILekv57xt277v0uRvsb+u7O6wBVu32FJEPKOqXUvHcbj7KCC0JPU9AuPnRJJYL8B6gbvrBXR2ifGrBizAAizAAizAAizAAizAAqxvAeuym3DZj8D40W1ic7IIs3fezWwUEFpS++a91uruzAqZFX5yVkiYgjAFYQrCFIQpCFP8dpjifwCeA7M6iNkV/gAAAABJRU5ErkJggg=="
+    "big.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAACMCAIAAAC283GzAAAExklEQVR4nOzcsU7rSBSHcXuULhUKQqJPGjoehSdNTYdET0eVN0A2VIjOXvn6jtfYxgmJWZH17z8S8tiDrwSfzowuOd/i/f09EZk6IV4AC1jAAtavB2vx52uyXC7jneTozXG5XA5+b/Pyo99snN1YjAAxSdov/9F/yPhVY3FgmWkvq6+bBe1SVN9spp1rW+HstsLO6GMUn3xKf81XK8ff4/Du8H7k4R1Vs6LqPwILVXOjqgKrc1pCFapOp+rvGat/Em/faQ5P7TWDadZ0SGp/I8hmAlnqNz2T3/T/8IwFLGABC1jAAhawgAUsYAELWMACFrBmBdbi4+Pj+fn59fW1LMt4U+TIpGm6Wq1ubm7Sh4eH6+vr9Xodguqlep1avYqi2O12Ly8v4e3tDVWomoSq6swewmazyfM8lGWJKlRNQlXDVgVVMzeMCQewgAUsYAELWMCaOVgVWOmfxFl3CixgHQmWiqVi/UjFSpKkLMu6aKVp2v4jRBrTTJuv/af6Cvf0FRr1aEPWXPcvOtfAAtYnsOqitZeP9gK1ql+rgNUF64jspdAZa+5nrBNBUbo6pUvFGqtYzYl+kLnxp8CaOVgVWIPQDD4an9oKbYXDW6FMFWABC1jAOiOw0jQtiiJORU5NURQhhLBarXa7HbawNQlb9WfeLy4u0izLdOno0pm+S4fGiMaIxojGiMaIxojGiMaIxojGiMaIxojGaMYaI1IQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFKQc5GC6N/q928BaxqwZNos/DD+/WF8UcOav0l07vQXAAtYe8BqSxzq647WoTO1FdoKD90Ko6Hob1lql6jBqYqlYu2vWP0Nrr39lWXZmcZVKpaKta9iDVamQdpULBVrrGI1AFXlqCf8GJ8CC1jDYPX56NwZn9oKbYXf3gqNIwYpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpyO+Xgtzf38drkclSfWzm7u4uTkUmyHa7dcZyxnLGcsY6nzMWsIAFLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAFrGrCqjyZvt9s4FZkmWuy12Gux12KvxV6LvRZ7LfZa7LXYa7HXYq/Ffs4t9sAC1o+AVf0/1tPTU57ngxrSEMLl5eXt7W28IXJQ0sfHx6urq/V6HcJA9apdpVmWYQtb32Ir5Hn+FVXV4xA2m02WZfGGyEEJtZU7TgcSQiDrJuv+rqx7uFAlSZL8w94dozAIBGEURrCb1vtfyYvY2gcRzWAw7uIGInzzN0vSPpaZnRfi5HTjBCxgAQtYwAIWsIAFLGAB6ylgXb4mXL5HiHxm2dh8+Vu59eV9GIbtA6WKalGTx3Gcpsmu0K6w5a6Q885557xz3jnvnHfOO+ed885557xz3jnvnHfOO+e9rfMOLGABC1jAAhawgAUsYAHrIWB122HJujeMCAtEC8SbC8Ru5wlSkGqC1Psn9ofa8YqIw2UmUpg+A5TpybdXJkypkuozTxkmU6Gp0FRoKvy7qRBYwPoJWKc91jzPWiutVW1rVee86730XrW9V3/6zclNJlKS1wCByOc1t+BR7wAAAABJRU5ErkJggg==",
+    "one.png": "iVBORw0KGgoAAAANSUhEUgAAAMgAAAB5CAIAAADzrPkZAAAEMElEQVR4nOzcsU7rSBSHcXuULhUKQqJPGjoehSdNTYdET0eVN0A2VIjOXvl6x9fXNgmEiUTk338k5HFMVoJPZ85ecr7F+/t7JpI6IV4AC1jAAtavB2vx52u2XC7jnezow3G5XE5+b/fmR7+zdXZrsQeIJOm/+Un/Q9avWosvlpn+Y+1190C/FLU3u62jcO5H4SBjjOIr/2T8zGdPat4175p3zXuC5h1YwDoNWINuybKSrOb/CsedeP9O1zz1n5lM90y/0+p/ow5sPh1Y7pc9n1+2HkuPdf49VrwAFrCABSxgAQtYwAIWsIAFLGDNEKzFx8fH8/Pz6+trXdfxpsiRyfN8tVrd3NzkDw8P19fX6/U6BNVL9fpp9aqqarfbvby8hLe3N1ShKglVTc8ewmazKcsy1HWNKlQloapjq4Gq21tWwgUsYAELWMACFrBmDlYDVv4ncTfcAgtYR4KlYqlYJ6lYWZbVdd0WrTzP+3+EyGO6bfd1/Kq5wgNzhVa7+pB11+OLwTWwgPUPWG3ROshH/wG1alyrgDUE64gcpFCPNfce64egKF2D0qVi7atYXUc/ydz+V4E1c7AasCahmXxp/9ZR6CicPgolVYAFLGAB64zAyvO8qqq4FflpqqoKIYTVarXb7bCFrSRstZ95v7i4yIuiMKVjSif9lA6NEY0RjRGNEY0RjRGNEY0RjRGNEY0RjRGN0Yw1RqQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQgpCCkIKQg5yIFMb81nt8CVhqwJG0Wfhh/fxif1LDubxKDO+MHgAWsA2D1JQ7t9UDrMNg6Ch2FXz0Ko6Ho/7LUL1GTWxVLxTpcscYHXP/4q+t6sI1PqVgq1qGKNVmZJmlTsVSsfRWrA6gpRyPhx/4tsIA1DdaYj8Gd/VtHoaPw20ehdcQiBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBSEFIQUhBfn9UpD7+/t4LZIszcdm7u7u4lYkQbbbrR5Lj6XH0mOdT48FLGABC1jAAhawgAUsYAELWMACFrCABSxgAQtYwAIWsIAFLGABC1jAAhawgAUsYAELWMBKA1bz0eTtdhu3ImlixN6IvRF7I/ZG7I3YG7E3Ym/E3oi9EXsj9kbs5zxiDyxgnQSs5t+xnp6eyrKc1JCGEC4vL29vb+MNkS8lf3x8vLq6Wq/XIUxUr9ZVWhQFtrD1LbZCWZafUdW8HMJmsymKIt4Q+VJCa+WO24mEEMi6ybq/K+ueLlRZlmX/sXfHJgDDMBBFl9D+K2kRDRFESBWIAklj/KRGuP7V3Qe7XB8uYAELWMACFrCABSxgAQtYq4A1pgljHmHtfbuxefhW7kzeI+J6MObVtJqcmVWlK9QV/tkVct4575x3zjvnnfO+t/N+DAA2qa5rgSIQ5AAAAABJRU5ErkJggg=="
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:807a24f2dadad4159ab504c3b1a9087e
+sha256:e4b05f35e5edfe40b111a81a9a4bc7e8
 {
   "results": [
     {
@@ -441,7 +441,7 @@ sha256:807a24f2dadad4159ab504c3b1a9087e
   ]
 }
 -- testrun/win32/c/async.sngl/main/1 --
-sha256:4afd9f2fba0d48da09e729906ed97842
+sha256:9585b695a58e1a3467d03f3fb0d0ba4a
 {
   "results": [
     {
@@ -451,7 +451,7 @@ sha256:4afd9f2fba0d48da09e729906ed97842
   ]
 }
 -- testrun/win32/c/callback.sngl/_/1 --
-sha256:aadb4ca2bdd844fb556838c2faf6b4c7
+sha256:1cbc4857dd8bf7073fc107cf7b5cec70
 {
   "results": [
     {
@@ -461,7 +461,7 @@ sha256:aadb4ca2bdd844fb556838c2faf6b4c7
   ]
 }
 -- testrun/win32/c/empty.sngl/main/1 --
-sha256:8806c7747d8c2e4d65c6462a79f0e062
+sha256:f1b15a5dd9467a23395eb7287d0488c7
 {
   "results": [
     {
@@ -471,7 +471,7 @@ sha256:8806c7747d8c2e4d65c6462a79f0e062
   ]
 }
 -- testrun/win32/c/rect.sngl/main/1 --
-sha256:d8d19f52b45ec812a585f2730d29272d
+sha256:7d89a04ab3d19652472c359b75bfe726
 {
   "results": [
     {
@@ -481,7 +481,7 @@ sha256:d8d19f52b45ec812a585f2730d29272d
   ]
 }
 -- testrun/win32/c/retained.sngl/_/1 --
-sha256:2f03a712476e4244e69c432b8f935ca2
+sha256:52ebda15a36cbf037e5e9162e0ea689e
 {
   "results": [
     {
@@ -491,7 +491,7 @@ sha256:2f03a712476e4244e69c432b8f935ca2
   ]
 }
 -- testrun/win32/c/store.sngl/_/1 --
-sha256:e7dd90765e39014b72d1be36a383254c
+sha256:f9c273462e13c374152a67fcccad4239
 {
   "results": [
     {
@@ -501,7 +501,7 @@ sha256:e7dd90765e39014b72d1be36a383254c
   ]
 }
 -- testrun/win32/go/app.sngl/_/1 --
-sha256:d7e6e6217aa4424c275053a178de3c35
+sha256:ac637dcb882178711fb72cf6679bffdb
 {
   "results": [
     {
@@ -511,7 +511,7 @@ sha256:d7e6e6217aa4424c275053a178de3c35
   ]
 }
 -- testrun/win32/go/app.sngl/_/2 --
-sha256:eba67ff4714cf99a68da07cd391a7612
+sha256:83393ed993370d04f4f839c6fa3c1dab
 {
   "results": [
     {
@@ -521,7 +521,7 @@ sha256:eba67ff4714cf99a68da07cd391a7612
   ]
 }
 -- testrun/win32/go/app.sngl/_/3 --
-sha256:a12e0a65bbe801ad4942a3202ce56d52
+sha256:e4c893866a540999946b444bb73c1809
 {
   "results": [
     {
@@ -531,7 +531,7 @@ sha256:a12e0a65bbe801ad4942a3202ce56d52
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:32eb1b35aac45ba376a655962f9e05b8
+sha256:86e4c7b00e11585edeb4effa1d1d9457
 {
   "results": [
     {
@@ -549,7 +549,7 @@ sha256:32eb1b35aac45ba376a655962f9e05b8
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:3461f451334c23620b11a3efe53c39dd
+sha256:d9d73b2fdbd6ec62cecfc5b3918a771e
 {
   "results": [
     {
@@ -567,7 +567,7 @@ sha256:3461f451334c23620b11a3efe53c39dd
   ]
 }
 -- testrun/win32/go/app.sngl/main/3 --
-sha256:f4edeb3ee8bfb7d04f237673230c16d7
+sha256:15e0aecfb0346b73045b78e70e9ad3e2
 {
   "results": [
     {
@@ -585,7 +585,7 @@ sha256:f4edeb3ee8bfb7d04f237673230c16d7
   ]
 }
 -- testrun/win32/go/async.sngl/main/1 --
-sha256:16965766cccc00a34b62252d8fcc0dab
+sha256:d040af31035fab688b315b236aaac3ef
 {
   "results": [
     {
@@ -595,7 +595,7 @@ sha256:16965766cccc00a34b62252d8fcc0dab
   ]
 }
 -- testrun/win32/go/empty.sngl/main/1 --
-sha256:4895c63f01935026ab54ff23a16799a1
+sha256:40b163e54c4b5e09cf12db857879ed08
 {
   "results": [
     {
@@ -605,7 +605,7 @@ sha256:4895c63f01935026ab54ff23a16799a1
   ]
 }
 -- testrun/win32/go/rect.sngl/main/1 --
-sha256:40813ffc0dc142c7c6eb4582ce7aa113
+sha256:c253f3a89a5f9fb8c11c45376352e332
 {
   "results": [
     {
@@ -615,7 +615,7 @@ sha256:40813ffc0dc142c7c6eb4582ce7aa113
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/1 --
-sha256:1390fb41e4d5c7976328b64eefa6f77e
+sha256:7ff3caf87ddb7017526c418df797e7de
 {
   "results": [
     {
@@ -625,7 +625,7 @@ sha256:1390fb41e4d5c7976328b64eefa6f77e
   ]
 }
 -- testrun/win32/go/refrun.sngl/shown/2 --
-sha256:06fcce415678d58bd9717073d76c312f
+sha256:9d8c2e224c0f76f9b8afb8b47ab7b25e
 {
   "results": [
     {

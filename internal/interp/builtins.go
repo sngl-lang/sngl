@@ -104,6 +104,9 @@ var intrinsics = map[string]nativeFunc{
 	},
 
 	// --- string ---
+	"string.fromCodePoint": func(args []any) (any, error) {
+		return FromCodePoint(ToInt(args[0])), nil
+	},
 	"string.upper": func(args []any) (any, error) {
 		return strings.ToUpper(fmt.Sprintf("%v", args[0])), nil
 	},
@@ -388,4 +391,14 @@ func colorHex(m *Struct) string {
 		return fmt.Sprintf("#%02x%02x%02x", r, g, b)
 	}
 	return fmt.Sprintf("#%02x%02x%02x%02x", r, g, b, clampByte(a))
+}
+
+// FromCodePoint is string.fromCodePoint: the UTF-8 of the code point c, and
+// U+FFFD for a number no character is -- negative, past U+10FFFF, or a
+// surrogate half, which Go's conversion replaces as well.
+func FromCodePoint(c int) string {
+	if c < 0 || c > utf8.MaxRune {
+		return string(utf8.RuneError)
+	}
+	return string(rune(c))
 }

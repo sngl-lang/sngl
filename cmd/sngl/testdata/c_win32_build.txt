@@ -54,12 +54,12 @@ ui.window(title="count") {
     counter()
 }
 -- testrun/build/win32/c/app.sngl/1 --
-sha256:d4fbdb64aaf34c59ff4a1348f0cd22e5
+sha256:ba5736cf5d3d351b21c7888568e99076
 {
   "stdout": "app.exe"
 }
 -- testrun/build/win32/c/app386.sngl/1 --
-sha256:d4e9312dd9406d1f6e532a9722d4121d
+sha256:bce129aaa3f90c56c7b34505075d2ce7
 {
   "stdout": "app.exe"
 }

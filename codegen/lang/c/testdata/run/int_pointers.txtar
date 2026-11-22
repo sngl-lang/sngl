@@ -1,0 +1,133 @@
+A pointer handed where C takes an integer typedef, as Win32's SendMessageW
+takes a string, a struct or a window in its LPARAM: `#[c.type("T")]` on a
+parameter crossing as a pointer -- a string, its UTF-16 alias, a ref to a C
+struct, a handle or an option of one -- says the C parameter is T, and the
+call casts the pointer to it. A struct by ref is read and written by the
+callee and read back. A cast takes such an integer back to a pointer
+handle, whose member `field` reads, as a WM_NOTIFY's NMHDR is read.
+
+-- app.sngl --
+import c "sngl:x/c"
+
+c.link(include="stdio.h", system=true)
+
+#[c.native("test_param")]
+struct Param = int
+
+#[c.native("test_item")]
+struct Item {
+    n int
+    m int
+}
+
+#[c.native("test_thing *")]
+struct Thing {}
+
+#[c.native("test_thing_new")]
+func newThing(code int) Thing
+
+#[c.native("test_send")]
+func sendText(msg int, w Param, #[c.type("test_param")] text string) Param
+
+#[c.native("test_send")]
+func sendWide(msg int, w Param, #[c.type("test_param")] text c.utf16) Param
+
+#[c.native("test_send")]
+func sendItem(msg int, w Param, #[c.type("test_param")] item ref[Item]) Param
+
+#[c.native("test_send")]
+func sendThing(msg int, w Param, #[c.type("test_param")] thing option[Thing]) Param
+
+#[c.native("test_notified")]
+func notified() Param
+
+#[c.native("test_thing *", cast)]
+func asThing(p Param) Thing
+
+#[c.native("test_thing.code", field)]
+func code(t Thing) int
+
+func texts(n int) string {
+    var s = n > 0 ? "café" : ""
+    return "{sendText(1, 0, s)} {sendWide(2, 0, s)}"
+}
+
+func items() string {
+    var item = Item{n=21, m=0}
+    var r = sendItem(3, 0, &item)
+    return "{r} {item.n} {item.m}"
+}
+
+func things() => "{sendThing(4, 0, newThing(7))} {sendThing(4, 0, null)}"
+
+func notes() => code(asThing(notified()))
+-- main.c --
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef intptr_t test_param;
+
+typedef struct test_item {
+	int n, m;
+} test_item;
+
+typedef struct test_thing {
+	int code;
+} test_thing;
+
+static test_thing *test_thing_new(int code) {
+	static test_thing t;
+	t.code = code;
+	return &t;
+}
+
+// As SendMessageW: what l points to is what msg says.
+static test_param test_send(int msg, test_param w, test_param l) {
+	switch (msg) {
+	case 1:
+		return (test_param)strlen((const char *)l);
+	case 2: {
+		const unsigned short *s = (const unsigned short *)l;
+		test_param n = 0;
+		while (s[n]) {
+			n++;
+		}
+		return n * 10;
+	}
+	case 3: {
+		test_item *item = (test_item *)l;
+		item->m = item->n * 2;
+		item->n = 5;
+		return 1;
+	}
+	case 4:
+		return l ? ((test_thing *)l)->code : -1;
+	}
+	return 0;
+}
+
+// What a WM_NOTIFY hands: a pointer to a header, as an integer.
+static test_param test_notified(void) {
+	static test_thing t = {42};
+	return (test_param)&t;
+}
+
+#include "program.c"
+
+int main(void) {
+	sngl_string s = s_texts(1);
+	printf("%.*s\n", (int)s.len, s.ptr);
+	s = s_items();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	s = s_things();
+	printf("%.*s\n", (int)s.len, s.ptr);
+	printf("%d\n", (int)s_notes());
+	return 0;
+}
+-- want --
+5 40
+1 5 42
+7 -1
+42

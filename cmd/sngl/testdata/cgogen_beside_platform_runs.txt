@@ -1,0 +1,179 @@
+# A program's own package wrapped by `sngl tool cgogen` sits beside the
+# platform's wrapper package: both Go packages are named `cgo`, so the
+# program imports the second under another name, and every reference to it
+# -- a call, a handle's type, a C struct's type -- is written with the name
+# the import has in that file, not with the qualifier its #[go.native] mark
+# spells. gtk4 runs headless; win32 runs under Wine.
+
+exec sh -c 'root="${SNGL_HOST_GO_MOD%/go.mod}"; sed "s|^module .*|module example.com/app|" "$root/go.mod" > go.mod; printf "\nreplace duckfam.us/sngl => %s\n" "$root" >> go.mod; cp "$root/go.sum" go.sum'
+env SNGL_HOST_GO_MOD=$WORK/go.mod
+
+sngl tool cgogen mathx
+exists mathx/cgo/wrappers.go
+
+sngl generate --lang go --platform gtk4 -o out app.sngl
+grep '^\s+cgo2 "example.com/app/mathx/cgo"$' out/main.go
+grep 'cgo2\.PairSum\(' out/main.go
+grep 'held__inst0 +cgo2\.Box$' out/main.go
+! grep 'cgo\.Pair' out/main.go
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt arch=386 app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- mathx/pair.h --
+typedef struct pair_t {
+	int lo;
+	int hi;
+} pair_t;
+
+typedef struct pair_box pair_box;
+
+// A pair of lo and hi, its sum, and a box holding n.
+pair_t pair_make(int lo, int hi);
+int pair_sum(pair_t p);
+pair_box *pair_box_new(int n);
+int pair_box_n(pair_box *b);
+-- mathx/pair.c --
+#include <stdlib.h>
+
+#include "pair.h"
+
+struct pair_box {
+	int n;
+};
+
+pair_t pair_make(int lo, int hi) {
+	pair_t p = {lo, hi};
+	return p;
+}
+
+int pair_sum(pair_t p) {
+	return p.lo + p.hi;
+}
+
+pair_box *pair_box_new(int n) {
+	pair_box *b = malloc(sizeof *b);
+	b->n = n;
+	return b;
+}
+
+int pair_box_n(pair_box *b) {
+	return b->n;
+}
+-- mathx/mathx.sngl --
+import c "sngl:x/c"
+
+c.link(include="pair.h", sources=["pair.c", "pair.h"])
+
+#[c.native("pair_t")]
+struct Pair {
+    lo int
+    hi int
+}
+
+#[c.native("pair_box *")]
+struct Box {}
+
+#[c.native("pair_make")]
+func make(lo int, hi int) Pair
+
+#[c.native("pair_sum")]
+func sum(p Pair) int
+
+#[c.native("pair_box_new")]
+func box(n int) Box
+
+#[c.native("pair_box_n")]
+func boxed(b Box) int
+-- mathx/gen.go --
+package mathx
+
+//go:generate sngl tool cgogen .
+-- app.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+import m "./mathx"
+
+component main ui.node {
+    var held m.Box = m.box(7)
+    var p m.Pair = m.make(3, 4)
+    var said = "{m.sum(p)} {m.boxed(held)}"
+    ui.text(said)
+}
+
+ui.window(title="t") {
+    main()
+}
+
+func testItSums(t test.Test) {
+    var p = m.make(1, 2)
+    t.assert(m.sum(p) == 3)
+}
+
+func testItShows(t test.Test, c main) {
+    t.assert(c.said == "7 7")
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:e09d614efa5d4c786489ab506f750399
+{
+  "results": [
+    {
+      "Desc": "ItSums",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:bee06db1d0517538e7f80ffa2352496f
+{
+  "results": [
+    {
+      "Desc": "ItShows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/1 --
+sha256:c4782d861529941357830dddb512d7b3
+{
+  "results": [
+    {
+      "Desc": "ItSums",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/2 --
+sha256:895e75d3f28085913bc91a1ea1aee62b
+{
+  "results": [
+    {
+      "Desc": "ItSums",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/1 --
+sha256:702a7587f10cc84a2207783bc880a185
+{
+  "results": [
+    {
+      "Desc": "ItShows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/main/2 --
+sha256:979078d0a19ce6cc6d939f42933f87d1
+{
+  "results": [
+    {
+      "Desc": "ItShows",
+      "Passed": true
+    }
+  ]
+}

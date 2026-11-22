@@ -356,6 +356,28 @@ func normalizeExpr(e Expr) {
 	}
 }
 
+// DefaultFolded reports whether f's default is written as a backend spells it,
+// naming no const: the optimizer folds the declarations a build reaches as it
+// copies the library, and a library struct reached only later -- by a
+// protocol function lowering splices in -- holds its default as the check
+// left it, `false` and `null` being builtin consts. A field with no default
+// written has the zero Normalize gives it, which names none.
+func (f *StructField) DefaultFolded() bool {
+	if f == nil || f.Default == nil {
+		return true
+	}
+	folded := true
+	_ = WalkExprs(f.Default, func(e Expr) error {
+		if id, ok := e.(*Ident); ok {
+			if v, isVar := id.Sym.(*Var); isVar && v.IsConst {
+				folded = false
+			}
+		}
+		return nil
+	})
+	return folded
+}
+
 // SameConstant reports whether a and b are one constant written alike: the
 // same literal, both null, the same enum member, or struct literals of one
 // declaration holding such constants field for field. Anything else is not

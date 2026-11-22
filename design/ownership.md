@@ -144,7 +144,7 @@ so of a method that in GTK copies: GTK 4's one transfer-full string,
 `gtk_string_list_take`, is on a model no view renders). GIR has no
 annotation for a borrowed pointer the callee keeps, so `#[retains]` is
 written by hand, and gtk4 has none to write: what it declares --
-`sngl_calendar_select`, the cairo functions in gtk4.sngl, the `gir:` actions
+a calendar's and a drop-down's GTK calls, the cairo functions in gtk4.sngl, the `gir:` actions
 -- takes scalars, cairo's enums, the `cairo_t*` GTK lends a draw callback,
 and strings cairo and GTK copy (`cairo_select_font_face` builds a toy face
 that `strdup`s the family; `cairo_show_text` keeps nothing). The calls that
@@ -452,6 +452,12 @@ every emitter took an empty block for a native with nothing to emit, since an
 empty function the program wrote is inlined away with its calls, and a
 release is called after the inliner ran. `codegen.HasBody` is the test, on
 Go, Kotlin and JavaScript alike (`testdata/owned_release_empty_body.txtar`).
+So is any function written `{}` (`ir.WroteBody`, which asks the declaration,
+since the block cannot tell `{}` from no body): only its calls are inlined,
+and one handed on as a value -- gtk4's `_scrollReported`, a
+`GDestroyNotify` with nothing to let go -- was undefined in Go, and in C
+when a library's, which `LibFuncs` did not promote
+(`testdata/c_static_callback.txtar`, `codegen/lang/c`'s `static` run).
 `c.free` calls cgo's `C.free`, which `<stdlib.h>`
 declares: gtk4's and win32's programs include it, and fyne's and
 bubbletea's (`EmitCHeader`) include it beside the program's links, since every `c.str`
@@ -542,7 +548,8 @@ below). The entry points, and where each calls it:
   holds nothing the activity made.
 
 A loop exits when the last window closes or when the process is asked to
-stop: gtk4's runtime (`sngl_app_run`) and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
+stop: gtk4's application (gtk4.sngl's `_appRun`, through rt's
+`sngl_signal_watch`) and `fynelayout` end it on SIGINT and SIGTERM, as bubbletea's
 ctrl+c does, so a terminal's ctrl+c or i3 restarting a bar tears down rather
 than killing the process mid-loop. fyne's driver quits on both already, but
 registers from a goroutine `Run` starts and missed a signal sent during
@@ -990,6 +997,33 @@ Pokédex's Moves tab, each row a prop holding the names it has looked up,
 copied that map into each of 237 rows for each answer: two minutes of the
 CPU for one page. `codegen/lang/c/testdata/run/shares.txtar` holds each
 write through a shared buffer, and the clear.
+
+**A map past eight keys finds one through an index in its keys' block.**
+The index is an open-addressed table of positions in `keys`, probed from a
+hash that agrees with the keys' equality (`hash` in
+`codegen/lang/c/collections.go`: a string by its bytes, a struct by its
+fields, a float with its two zeros alike, a pointer or a handle by its
+bits), and it is the tail of the keys' own block, so it is allocated in the
+arena or kept, shared, dropped and given back with the keys and nothing
+else changes. Whatever makes a keys block -- a growth, a remove, a copy, a
+keep or an unshare -- makes its index (`mapReindex`), and an append in place
+adds to it; the struct's `idx` points into the block, and a map whose `idx`
+is NULL walks its keys, which a map of eight or fewer does. A copy of the
+struct sharing the block -- a loop's, a value read before a write -- finds
+only what its length covers: a position past it is the writer's append, and
+the probe goes past it as it goes past a position whose key is another's.
+The index holds at most half its slots, and an append that would fill past
+that -- only where two copies of a struct appended to one block -- lets the
+index go rather than probe forever. A map's order is still the order first
+set, and a remove still copies the entries into new arrays. Walking the keys,
+the win32 runtime's per-window record held in a `map[HWND, _Ctl]` made a
+relayout over 900 windows 5.5 ms under Wine where Go's map took 0.27 ms; the
+index takes it to 0.37 ms as the C target compiles (no `-O`), 0.15 ms at
+`-O2`. A field read of an entry (`m[k].f`) reads through a pointer to it
+(`mapEntry`) rather than copying the whole value out. Pinned by
+`codegen/lang/c/testdata/run/map_index.txtar`: many keys, removal and
+re-adding, copies diverging, a loop removing what it walks, each kind of
+key, a holder's map across turns keeping no block more.
 
 **A record gives back its box and what its fields kept as it is
 destroyed.** A component built at run time -- a row a keyed `for` keeps -- is

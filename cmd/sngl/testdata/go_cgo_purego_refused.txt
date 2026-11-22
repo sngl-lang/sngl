@@ -19,6 +19,22 @@ stderr 'div_into takes q: purego hands C no address to fill'
 ! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out callback.sngl
 stderr 'sum takes f: purego''s callbacks are never given back'
 
+# A string C hands over to free: purego copies it and keeps no pointer.
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out frees.sngl
+stderr 'strdup hands over a string free frees \(#\[c.frees\]\): purego copies a string C answers'
+
+# A member of a C struct: purego finds a function by its name alone.
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out field.sngl
+stderr 'thing.year is a member of a C struct \(field\): purego opens a C function by its name'
+
+# A pointer C takes as an integer typedef (#[c.type]): purego would hand
+# it as a number, keeping nothing it points to; and a number made a
+# pointer, which only C makes.
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out intptr.sngl
+stderr 'send takes text as the integer param \(#\[c.type\]\): purego casts no pointer to an integer'
+! sngl generate --platform=bubbletea --lang=go --opt cgo=purego -o out intcast.sngl
+stderr 'asThing makes a thing \* of a number, which purego cannot'
+
 -- window.sngl --
 import ui "sngl:ui"
 
@@ -66,4 +82,71 @@ func sum(n int, f func(int) int, #[c.context] data c.pointer) int
 
 ui.window(title="t") {
     ui.text("{sum(3, func(i int) => i * 2)}")
+}
+-- frees.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="string.h", system=true, library="c")
+
+#[c.native("strdup")]
+#[c.frees("free")]
+func dup(s string) string
+
+ui.window(title="t") {
+    ui.text("{dup("x")}")
+}
+-- field.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="thing.h", system=true, library="thing")
+
+#[c.native("thing *")]
+struct Thing {}
+
+#[c.native("thing_new")]
+func newThing() Thing
+
+#[c.native("thing.year", field)]
+func year(t Thing) int
+
+ui.window(title="t") {
+    ui.text("{year(newThing())}")
+}
+-- intptr.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="thing.h", system=true, library="thing")
+
+#[c.native("send")]
+func send(#[c.type("param")] text string) int
+
+ui.window(title="t") {
+    ui.text("{send("x")}")
+}
+-- intcast.sngl --
+import c "sngl:x/c"
+import ui "sngl:ui"
+
+c.link(include="thing.h", system=true, library="thing")
+
+#[c.native("param")]
+struct Param = int
+
+#[c.native("thing *")]
+struct Thing {}
+
+#[c.native("noted")]
+func noted() Param
+
+#[c.native("thing *", cast)]
+func asThing(p Param) Thing
+
+#[c.native("thing_year")]
+func year(t Thing) int
+
+ui.window(title="t") {
+    ui.text("{year(asThing(noted()))}")
 }

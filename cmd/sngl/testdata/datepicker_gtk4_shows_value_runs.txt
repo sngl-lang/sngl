@@ -1,7 +1,7 @@
 # gtk4's calendar shows the date `:value` is bound to, and follows it.
 #
 # The override selects the bound date on the calendar from an effect keyed on
-# it, through the runtime's sngl_calendar_select (gtk_calendar_select_day, which
+# it, through the platform's selectDay (gtk_calendar_select_day, which
 # every GTK 4 has; 4.20 deprecates it for a setter the older ones lack).
 # Before, the calendar only reported the day a user picked and never showed the
 # program's, so a picker bound to a date opened on today. The snapshots are
@@ -35,7 +35,7 @@ func testShowsBoundDate(t Test, c main) {
 }
 
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:cb9c84eec7d7083f681e7c2f163cabda
+sha256:1f9c285ee191259f2465fc990e4390e7
 {
   "results": [
     {

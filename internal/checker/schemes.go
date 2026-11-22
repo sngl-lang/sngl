@@ -567,18 +567,54 @@ func (c *checker) reportUnlinkedCNativeCalls() {
 	})
 }
 
+// checkCDeclarations judges pkg's C declarations once every mark has run:
+// casts, callbacks and C structs. A program's are judged after its check and
+// a library's as it loads.
+func (c *checker) checkCDeclarations(pkg *ir.Package) {
+	c.checkCCasts(pkg)
+	c.checkCFields(pkg)
+	c.checkCCallbacks(pkg)
+	c.checkCStructs(pkg)
+}
+
 // checkCCasts refuses a `#[c.native(…, cast)]` function whose return type is
 // not the C type its name spells: the conversion is written to that type, so
 // a declaration naming another would hand C a value of the wrong one. Read
 // once every mark has run, since the return type's own mark may run after the
 // cast's.
-func (c *checker) checkCCasts() {
-	for _, fn := range c.pkg.Funcs {
+func (c *checker) checkCCasts(pkg *ir.Package) {
+	for _, fn := range pkg.Funcs {
 		if !fn.IsCCast() || fn.AST == nil {
+			continue
+		}
+		// A node is what the platform holds as its handle, which a cast to
+		// one makes: gtk4's `_asBack` makes a GtkWidget a Back.
+		if fn.Return != nil && fn.Return.Kind == ir.TypeComponent {
 			continue
 		}
 		if got := ir.CTypeOf(fn.Return); !got.Equal(fn.Foreign.C) {
 			c.error(fn.AST.Pos, "#[c.native(%q, cast)] converts to %s, so %s returns a #[c.native(%q)] struct, not %s", fn.Foreign.Name, fn.Foreign.C, fn.Name, fn.Foreign.C.String(), fn.Return)
+		}
+	}
+}
+
+// checkCFields judges each `#[c.native("Struct.member", field)]` function:
+// its first parameter is the handle the member is read through, a
+// #[c.native] struct whose C type is a pointer to Struct.
+func (c *checker) checkCFields(pkg *ir.Package) {
+	for _, fn := range pkg.Funcs {
+		if !fn.Foreign.Field || fn.Foreign.Path != ir.CPath || fn.AST == nil {
+			continue
+		}
+		if len(fn.Params) == 0 {
+			c.error(fn.AST.Pos, "#[c.native(%q, field)] reads a member of the struct its first parameter points to, and %s takes none", fn.Foreign.Name, fn.Name)
+			continue
+		}
+		st, _, _ := strings.Cut(fn.Foreign.Name, ".")
+		// A pointer to a const one reads as well: a member is only read.
+		want := &ir.CType{Name: st, Ptr: 1}
+		if t := fn.Params[0].Type; ir.CStructOf(t) != nil || ir.CTypeOf(t) == nil || ir.CTypeOf(t).Name != st || ir.CTypeOf(t).Ptr != 1 {
+			c.error(fn.AST.Pos, "#[c.native(%q, field)] reads a member of a %s, so its first parameter is a #[c.native(%q)] handle, not %s", fn.Foreign.Name, st, want.String(), t)
 		}
 	}
 }
@@ -589,8 +625,8 @@ func (c *checker) checkCCasts() {
 // which the translator fills with what finds the closure: the function marks
 // that parameter, takes one callback for it, and the callback's every
 // parameter and result is a value C has a type for.
-func (c *checker) checkCCallbacks() {
-	for _, fn := range c.pkg.Funcs {
+func (c *checker) checkCCallbacks(pkg *ir.Package) {
+	for _, fn := range pkg.Funcs {
 		if fn.AST == nil {
 			continue
 		}
@@ -601,12 +637,17 @@ func (c *checker) checkCCallbacks() {
 			}
 			return fn.AST.Pos
 		}
-		var callbacks, contexts, releases, helds []int
+		var callbacks, contexts, releases, helds, statics []int
 		for i, p := range fn.Params {
 			if p.CAlias.IsCHeld() {
 				helds = append(helds, i)
 			}
+			if p.COuts && !p.CStatic {
+				c.error(pos(i), "callback %q is marked #[c.outs], which a callback C calls with no context has: mark it #[c.static] as well", p.Name)
+			}
 			switch {
+			case p.CStatic:
+				statics = append(statics, i)
 			case p.CContext:
 				contexts = append(contexts, i)
 			case p.CRelease:
@@ -615,6 +656,7 @@ func (c *checker) checkCCallbacks() {
 				callbacks = append(callbacks, i)
 			}
 		}
+		c.checkCFrees(fn, pos)
 		if fn.Foreign.Path != ir.CPath || fn.IsCCast() {
 			for _, i := range contexts {
 				c.error(pos(i), "#[c.context] marks what a #[c.native] function hands its callback, and %s is not a C function", fn.Name)
@@ -622,7 +664,16 @@ func (c *checker) checkCCallbacks() {
 			for _, i := range releases {
 				c.error(pos(i), "#[c.release] marks what a #[c.native] function calls to release its callback, and %s is not a C function", fn.Name)
 			}
+			for _, i := range statics {
+				c.error(pos(i), "#[c.static] marks a callback a #[c.native] function takes, and %s is not a C function", fn.Name)
+			}
 			continue
+		}
+		for _, i := range statics {
+			p := fn.Params[i]
+			if why := cStaticRefusal(p); why != "" {
+				c.error(pos(i), "callback %q %s", p.Name, why)
+			}
 		}
 		c.checkCHeld(fn, pos, helds, releases, callbacks)
 		for _, i := range releases {
@@ -651,13 +702,16 @@ func (c *checker) checkCCallbacks() {
 			}
 		}
 		for i, p := range fn.Params {
+			if p.CFuncType != nil && !cTypeNames(p) {
+				c.error(pos(i), "parameter %q is a %s, and #[c.type(%q)] names the C type of a callback, a release, a held value or a function pointer handed NULL (an option[c.pointer]), or the integer typedef a string, a ref to a C struct or a handle is cast to", p.Name, p.Type, p.CFuncType.String())
+			}
 			// NULL is a pointer's: an option crosses as one where its alias
 			// is a string, and a number or bool has none to be.
 			if p.Type != nil && p.Type.Kind == ir.TypeOption && p.CAlias != nil && !p.CAlias.IsCHeld() && p.CAlias.Type != nil && p.CAlias.Type.Kind != ir.TypeString {
 				c.error(pos(i), "parameter %q is an option of %s, and C has no NULL %s: an option crosses to C as a pointer, a string's", p.Name, p.CAlias.Name, p.CAlias.Name)
 			}
-			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) {
-				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, or a C struct", p.Name, p.Type)
+			if p.Type != nil && p.Type.Kind == ir.TypeRef && !cFieldValue(p.Type.Elems[0], p.CAlias) && !ir.IsCPointerOption(p.Type.Elems[0]) && p.CFrees == "" {
+				c.error(pos(i), "parameter %q is a %s, and a ref a C function fills is to an int, float or bool, a #[c.native] alias of one, a C struct, an option of a C pointer handle, or a string marked #[c.frees]", p.Name, p.Type)
 			}
 		}
 		for _, i := range contexts {
@@ -683,6 +737,61 @@ func (c *checker) checkCCallbacks() {
 			if j := i - skip; j >= 0 && j < len(fn.AST.Params.Params) {
 				c.checkCallbackAliases(p.Name, fn.AST.Params.Params[j].Type, pos(i))
 			}
+		}
+	}
+}
+
+// cTypeNames reports whether p is a parameter sngl:x/c's #[type] says the C
+// type of: a callback's, a release's or a held value's; a generic pointer's
+// (`void *`, or a typedef flagged `pointer`), the function-pointer typedef
+// a caller hands NULL for; or the integer typedef a pointer is cast to
+// (ir.Param.CIntPointer).
+func cTypeNames(p *ir.Param) bool {
+	if p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() || p.CIntPointer() || p.Type == nil || p.Type.Kind == ir.TypeFunc {
+		return true
+	}
+	t := p.Type
+	if t.Kind == ir.TypeOption && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	ct := ir.CTypeOf(t)
+	if ct == nil || ir.CStructOf(t) != nil {
+		return false
+	}
+	sd, _ := t.Decl.(*ir.StructDef)
+	return ct.IsVoidPointer() || sd != nil && sd.Foreign.CPointer
+}
+
+// checkCFrees judges sngl:x/c's #[frees] on fn: it marks a C function
+// answering a string or an option of one, and a ref[string] parameter of
+// one, which C fills.
+func (c *checker) checkCFrees(fn *ir.Func, pos func(int) ast.Pos) {
+	native := fn.Foreign.Path == ir.CPath && !fn.IsCCast()
+	if fn.CFrees != "" {
+		r := fn.Return
+		if r != nil && r.Kind == ir.TypeOption && len(r.Elems) == 1 {
+			r = r.Elems[0]
+		}
+		switch {
+		case !native:
+			c.error(fn.AST.Pos, "#[c.frees] marks a #[c.native] function's string result, and %s is not a C function", fn.Name)
+		case r == nil || r.Kind != ir.TypeString:
+			answers := "nothing"
+			if fn.Return != nil && fn.Return.Kind != ir.TypeVoid {
+				answers = fn.Return.String()
+			}
+			c.error(fn.AST.Pos, "#[c.frees(%q)] frees the string %s answers, and it answers %s", fn.CFrees, fn.Name, answers)
+		}
+	}
+	for i, p := range fn.Params {
+		if p.CFrees == "" {
+			continue
+		}
+		switch {
+		case !native:
+			c.error(pos(i), "#[c.frees] marks a #[c.native] function's ref[string] parameter, and %s is not a C function", fn.Name)
+		case p.Type == nil || p.Type.Kind != ir.TypeRef || p.Type.Elems[0].Kind != ir.TypeString:
+			c.error(pos(i), "parameter %q is marked #[c.frees(%q)], which frees a string C stores through a ref[string], and it is a %s", p.Name, p.CFrees, p.Type)
 		}
 	}
 }
@@ -749,6 +858,80 @@ func (c *checker) checkCallbackAliases(name string, te ast.TypeExpr, at ast.Pos)
 	check(ft.Return)
 }
 
+// cStaticRefusal says what in p, a callback C calls with no context
+// (sngl:x/c's #[static]), cannot cross, or "". It takes what any callback
+// does and a string, which is copied as C calls; marked #[c.outs] it
+// answers a struct of scalars, each written through a pointer C hands it.
+func cStaticRefusal(p *ir.Param) string {
+	sig := p.Type.Sig
+	if sig.Color == ir.ColorAsync {
+		return "is async, and C waits for its callback to return"
+	}
+	for _, sp := range sig.Params {
+		if !cCallbackValue(sp.Type) && sp.Type.Kind != ir.TypeString {
+			return fmt.Sprintf("takes a %s: a static callback crosses an int, float, bool, string or #[c.native] handle", sp.Type)
+		}
+	}
+	r := sig.Return
+	if p.COuts {
+		sd, _ := r.Decl.(*ir.StructDef)
+		if r.Kind != ir.TypeStruct || sd == nil || len(sd.Fields) == 0 || ir.CTypeOf(r) != nil {
+			return fmt.Sprintf("is marked #[c.outs] and answers %s: what C reads through the pointers it hands the callback is a struct of the program's, a field for each", typeOrNothing(r))
+		}
+		for _, f := range sd.Fields {
+			switch f.Type.Kind {
+			case ir.TypeInt, ir.TypeFloat, ir.TypeBool:
+			default:
+				return fmt.Sprintf("is marked #[c.outs] and answers a %s whose field %q is a %s: C reads an int, float or bool through a pointer", r, f.Name, f.Type)
+			}
+		}
+		return ""
+	}
+	if r != nil && r.Kind != ir.TypeVoid && !cCallbackValue(r) {
+		return fmt.Sprintf("answers a %s: a static callback answers an int, float, bool or #[c.native] handle, or through pointers where it is marked #[c.outs]", r)
+	}
+	return ""
+}
+
+func typeOrNothing(t *ir.Type) string {
+	if t == nil || t.Kind == ir.TypeVoid {
+		return "nothing"
+	}
+	return "a " + t.String()
+}
+
+// checkCStaticArgs refuses an argument for a `#[c.static]` callback that is
+// not a function of a package by name: C calls it with nothing to find a
+// closure by, so a lambda's captures and a method's receiver have nowhere to
+// come from.
+func (c *checker) checkCStaticArgs() {
+	_ = ir.Walk(c.pkg, func(n ir.Node) error {
+		call, ok := n.(*ir.Call)
+		if !ok || call.AST == nil || call.Func == nil {
+			return nil
+		}
+		for _, p := range call.Func.Params {
+			if !p.CStatic {
+				continue
+			}
+			arg := call.ArgFor(p.Name)
+			if arg == nil {
+				continue
+			}
+			if StaticCallee(arg) == nil {
+				c.error(call.AST.Pos, "callback %q of C function %q is called with no context, so its argument names a function of a package: a lambda or a method has nothing to find what it captured by", p.Name, call.Func.Foreign.Name)
+			}
+		}
+		return nil
+	})
+}
+
+// StaticCallee is the function e names where e is one a `#[c.static]`
+// callback may be handed: a package's function, no method and no lambda.
+func StaticCallee(e ir.Expr) *ir.Func {
+	return ir.StaticCallee(e)
+}
+
 // cCallbackRefusal says what in sig no C callback can carry, or "".
 func cCallbackRefusal(sig *ir.FuncSig) string {
 	if sig.Color == ir.ColorAsync {
@@ -796,8 +979,8 @@ func cFieldValue(t *ir.Type, alias *ir.Alias) bool {
 // checkCStructs refuses a C struct's field (ir.StructDef.IsCStruct) holding
 // what is not a C scalar or a C struct: a string, a list or a pointer would
 // cross as memory one side owns, which a platform's C runtime handles.
-func (c *checker) checkCStructs() {
-	for _, sd := range c.pkg.Structs {
+func (c *checker) checkCStructs(pkg *ir.Package) {
+	for _, sd := range pkg.Structs {
 		if !sd.IsCStruct() || sd.AST == nil {
 			continue
 		}
@@ -811,9 +994,60 @@ func (c *checker) checkCStructs() {
 			}
 		}
 		for _, f := range sd.Fields {
-			if !cFieldValue(f.Type, f.CAlias) {
-				c.error(pos[f.Name], "field %q of %s, the C struct %s, is a %s: a C struct's field is an int, float or bool, a #[c.native] alias of one, or a C struct", f.Name, sd.Name, sd.Foreign.C, f.Type)
+			if !cFieldValue(f.Type, f.CAlias) && !cPointerField(f) {
+				c.error(pos[f.Name], "field %q of %s, the C struct %s, is a %s: a C struct's field is an int, float or bool, a #[c.native] alias of one, a C struct, a string, a handle or an option of a `*` handle", f.Name, sd.Name, sd.Foreign.C, f.Type)
 			}
 		}
 	}
+	// A string a struct C answers holds is not read back, and a struct C
+	// answers has no value of the program's to keep the string of.
+	for _, fn := range pkg.Funcs {
+		if fn.Foreign.Path != ir.CPath || fn.IsCCast() || fn.AST == nil {
+			continue
+		}
+		if f := cStringField(fn.Return); f != "" {
+			at := fn.AST.Pos
+			if nt, ok := fn.AST.ReturnType.(*ast.NamedType); ok {
+				at = nt.Pos
+			}
+			c.error(at, "C function %q answers a %s, whose field %q is a string, which is not read back from C: answer a handle, or fill a ref to the struct the program holds", fn.Foreign.Name, fn.Return, f)
+		}
+	}
+}
+
+// cPointerField reports whether f, a C struct's field, is one crossing as a
+// pointer valid for the call the struct is handed to: a string, as a `char
+// *` or its UTF-16 alias's, which C reads and the program does not read
+// back; a handle; or an option of a handle written with a `*`, NULL for
+// none. A callback, which C would call after the call, is none.
+func cPointerField(f *ir.StructField) bool {
+	t := f.Type
+	if t == nil {
+		return false
+	}
+	if t.Kind == ir.TypeString {
+		return f.CAlias == nil || f.CAlias.C != nil && f.CAlias.C.IsUTF16Pointer()
+	}
+	if ir.IsCPointerOption(t) {
+		return true
+	}
+	return t.Kind == ir.TypeStruct && ir.CTypeOf(t) != nil && ir.CStructOf(t) == nil
+}
+
+// cStringField is the first field of t, a C struct, or of a C struct it
+// holds, that is a string, or "".
+func cStringField(t *ir.Type) string {
+	sd := ir.CStructOf(t)
+	if sd == nil {
+		return ""
+	}
+	for _, f := range sd.Fields {
+		if f.Type != nil && f.Type.Kind == ir.TypeString {
+			return f.Name
+		}
+		if n := cStringField(f.Type); n != "" {
+			return f.Name + "." + n
+		}
+	}
+	return ""
 }

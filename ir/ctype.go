@@ -151,6 +151,26 @@ func IsCIdent(s string) bool {
 	return true
 }
 
+// CIdentToken is s, free C text such as a calling convention
+// (`__attribute__((stdcall))`), as a part of a C identifier: each run of
+// what an identifier cannot hold is one `_`, and none leads or trails.
+func CIdentToken(s string) string {
+	var b strings.Builder
+	sep := false
+	for _, r := range s {
+		if r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' {
+			if sep && b.Len() > 0 {
+				b.WriteByte('_')
+			}
+			sep = false
+			b.WriteRune(r)
+			continue
+		}
+		sep = true
+	}
+	return b.String()
+}
+
 // String is t as C writes it: `const char *`, `cairo_t *`, `int`.
 func (t *CType) String() string {
 	if t == nil {
@@ -205,6 +225,23 @@ func CTypeOf(t *Type) *CType {
 		return sd.Foreign.C
 	}
 	return nil
+}
+
+// IsCPointerOption reports whether t is an option of a C handle whose C type
+// is a pointer -- written with a `*`, or a typedef its declaration says is
+// one (`#[c.native(…, pointer)]`) -- which crosses to C as that pointer,
+// NULL for none.
+func IsCPointerOption(t *Type) bool {
+	if t == nil || t.Kind != TypeOption || len(t.Elems) != 1 {
+		return false
+	}
+	elem := t.Elems[0]
+	ct := CTypeOf(elem)
+	if ct == nil || CStructOf(elem) != nil {
+		return false
+	}
+	sd, _ := elem.Decl.(*StructDef)
+	return ct.Ptr > 0 || sd.Foreign.CPointer
 }
 
 // CPath is the Foreign.Path every `#[c.native]` declaration carries.
@@ -325,4 +362,183 @@ func NewCAliasConvert(a *Alias, operand Expr) *CConvert {
 		kind = CConvertUTF16
 	}
 	return &CConvert{Kind: kind, To: a.C, Operand: operand, Type: a.Type, Alias: a}
+}
+
+// StaticCallee is the function e names where e is what a callback C calls
+// with no context (sngl:x/c's #[static]) may be handed: a package's
+// function by name, no method and no lambda. A conversion a pass wrapped the
+// argument in is looked through.
+func StaticCallee(e Expr) *Func {
+	if cv, ok := e.(*CConvert); ok {
+		e = cv.Operand
+	}
+	id, ok := e.(*Ident)
+	if !ok {
+		return nil
+	}
+	fn, ok := id.Sym.(*Func)
+	if !ok || fn.IsMethod() || fn.Foreign.Path != "" {
+		return nil
+	}
+	return fn
+}
+
+// CStatic is a function C is handed for a callback it calls with no context:
+// the package's function, and the parameter taking it, which says how it
+// crosses.
+type CStatic struct {
+	Callee *Func
+	Param  *Param
+}
+
+// CalledCStatics is each function pkg hands a C function as a callback it
+// calls with no context (sngl:x/c's #[static]), once, in the order the calls
+// are met: what a translator writes a function of its own for. A call of a
+// function skip answers for is passed over: one a Go wrapper package makes,
+// which exports the callback itself.
+func CalledCStatics(pkg *Package, skip func(*Func) bool) []CStatic {
+	var out []CStatic
+	_ = Walk(pkg, func(n Node) error {
+		c, ok := n.(*Call)
+		if !ok || c.Func == nil || c.Func.Foreign.Path != CPath || skip != nil && skip(c.Func) {
+			return nil
+		}
+		off := len(c.Args) - len(c.Func.Params)
+		if off < 0 {
+			return nil
+		}
+		for i, p := range c.Func.Params {
+			if !p.CStatic {
+				continue
+			}
+			callee := StaticCallee(c.Args[off+i].Value)
+			// One handed with a convention is another function C calls.
+			if callee != nil && !slices.ContainsFunc(out, func(s CStatic) bool { return s.Callee == callee && s.Param.CConvention == p.CConvention }) {
+				out = append(out, CStatic{Callee: callee, Param: p})
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// CalledCShimmed is each C function pkg calls, once, in the order the calls
+// are met, that a language unable to call it as C does calls through a C
+// function of the declaration's one shape: one taking a variable argument
+// list (`#[c.native(…, variadic)]`), a member of a C struct read or called
+// (`#[c.native(…, field)]`), and one handing over a string the call frees
+// (`#[c.frees]`), whose freeing function takes a pointer of a type only C
+// converts to.
+func CalledCShimmed(pkg *Package) []*Func {
+	var out []*Func
+	_ = Walk(pkg, func(n Node) error {
+		if c, ok := n.(*Call); ok && c.Func != nil && c.Func.Foreign.Path == CPath && c.Func.CShimmed() && !slices.Contains(out, c.Func) {
+			out = append(out, c.Func)
+		}
+		// A cast is a conversion once lowered, and one making a pointer of a
+		// number is C's to make.
+		if c, ok := n.(*CConvert); ok && c.Via != nil && c.Via.CCastFromInt() && !slices.Contains(out, c.Via) {
+			out = append(out, c.Via)
+		}
+		return nil
+	})
+	return out
+}
+
+// CCallExpr is the C expression a call of fn, a C function, is with args
+// rendered: its name called with them, or for a
+// `#[c.native("Struct.member", field)]` function the member read through
+// the first argument, or, handed more, the function pointer it holds
+// called with the rest.
+func CCallExpr(fn *Func, args []string) string {
+	if !fn.Foreign.Field || len(args) == 0 {
+		return fn.Foreign.Name + "(" + strings.Join(args, ", ") + ")"
+	}
+	_, member, _ := strings.Cut(fn.Foreign.Name, ".")
+	read := "(" + args[0] + ")->" + member
+	if len(args) == 1 {
+		return read
+	}
+	return read + "(" + strings.Join(args[1:], ", ") + ")"
+}
+
+// CShimmed reports whether fn, a C function, is one CalledCShimmed collects.
+func (fn *Func) CShimmed() bool {
+	return fn.Foreign.Variadic || fn.Foreign.Field || len(fn.CFreed()) > 0 || fn.CIntPointers() || fn.CCastFromInt()
+}
+
+// CIntPointer reports whether p crosses as a pointer C takes as the integer
+// typedef its #[c.type] names, as Win32's SendMessageW takes a string, a
+// struct or a window in its LPARAM: the call casts the pointer to it. It is
+// a string (its UTF-16 alias among them) or an option of one, a ref to a C
+// struct, or a handle -- an option of one whose C type is written with a
+// `*`. A generic pointer, `void *` or a typedef flagged `pointer`, is the
+// function-pointer typedef a caller hands NULL for, as a callback, a
+// release and a held value are their own.
+func (p *Param) CIntPointer() bool {
+	if p.CFuncType == nil || p.CompilerPassed() || p.CStatic || p.CAlias.IsCHeld() || p.Type == nil {
+		return false
+	}
+	t := p.Type
+	switch t.Kind {
+	case TypeString:
+		return true
+	case TypeRef:
+		return len(t.Elems) == 1 && CStructOf(t.Elems[0]) != nil
+	case TypeOption:
+		if len(t.Elems) != 1 {
+			return false
+		}
+		if t.Elems[0].Kind == TypeString {
+			return true
+		}
+		ct := CTypeOf(t.Elems[0])
+		return ct != nil && ct.Ptr > 0 && !ct.IsVoidPointer() && CStructOf(t.Elems[0]) == nil
+	}
+	ct := CTypeOf(t)
+	if ct == nil || CStructOf(t) != nil || ct.IsVoidPointer() {
+		return false
+	}
+	sd, _ := t.Decl.(*StructDef)
+	return sd == nil || !sd.Foreign.CPointer
+}
+
+// CIntPointers reports whether fn takes a parameter CIntPointer.
+func (fn *Func) CIntPointers() bool {
+	return slices.ContainsFunc(fn.Params, (*Param).CIntPointer)
+}
+
+// CCastFromInt reports whether fn is a `#[c.native(…, cast)]` making a
+// pointer of a number, as a WM_NOTIFY's LPARAM is made the NMHDR it
+// points to: C casts the number to the pointer through the integer type
+// its parameter's alias names.
+func (fn *Func) CCastFromInt() bool {
+	if !fn.IsCCast() || fn.Foreign.C == nil || fn.Foreign.C.Ptr == 0 || len(fn.Params) != 1 || fn.Params[0].Type == nil {
+		return false
+	}
+	return fn.Params[0].Type.Kind == TypeInt
+}
+
+// CIntOf is the integer type a cast making a pointer of a number
+// (CCastFromInt) casts it through: its parameter's alias, or C's intptr_t.
+func (fn *Func) CIntOf() string {
+	if a := fn.Params[0].CAlias; a != nil && a.C != nil {
+		return a.C.String()
+	}
+	return "intptr_t"
+}
+
+// CFreed is each C function freeing a string fn, a C function, hands over
+// (`#[c.frees]`), its result's first, once each.
+func (fn *Func) CFreed() []string {
+	var out []string
+	if fn.CFrees != "" {
+		out = append(out, fn.CFrees)
+	}
+	for _, p := range fn.Params {
+		if p.CFrees != "" && !slices.Contains(out, p.CFrees) {
+			out = append(out, p.CFrees)
+		}
+	}
+	return out
 }

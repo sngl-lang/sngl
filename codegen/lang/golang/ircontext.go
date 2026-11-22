@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/codegen"
@@ -116,6 +117,7 @@ type importSet struct {
 	paths   map[string]bool // path → blank?
 	order   []string
 	aliases map[string]string // path → forced alias (overrides goAliasFor)
+	named   map[string]string // path → the name references to it are written with (Qualified)
 }
 
 func newImportSet() *importSet {
@@ -195,6 +197,61 @@ func (gc *GoIRContext) AliasFor(path string) string {
 	}
 	gc.imports.aliases[path] = alias
 	return alias
+}
+
+// Qualified is name, a reference a `#[go.native]` mark spells with the
+// qualifier of the Go package at path (`cgo.SnglWin32Append`,
+// `*snglcanvas.Context`), written with the name that package's import has in
+// the file gc writes, which it registers. Two packages of one name -- the
+// platform's wrapper package and a program's own (`sngl tool cgogen`), both
+// `cgo` -- cannot both be imported under it: the first keeps it, the next is
+// `cgo2`, and every reference to it says so. A name with no qualifier is the
+// file's own.
+func (gc *GoIRContext) Qualified(path, name string) string {
+	gc.RequireImport(path)
+	at := strings.IndexFunc(name, func(r rune) bool { return r == '_' || unicode.IsLetter(r) })
+	if path == "" || path == "C" || gc.imports == nil || at < 0 {
+		return name
+	}
+	prefix, rest := name[:at], name[at:]
+	dot := strings.IndexByte(rest, '.')
+	if dot <= 0 {
+		return name
+	}
+	return prefix + gc.importName(path, rest[:dot]) + rest[dot:]
+}
+
+// importName is the name path's import has in the file gc writes, which a
+// reference first asked it as q: an alias forced on it, the name an earlier
+// reference had, or q, made unique among the names other imports have. Only
+// a name other than q is forced, so an import no other one collides with is
+// written as it was.
+func (gc *GoIRContext) importName(path, q string) string {
+	if a := gc.imports.aliases[path]; a != "" {
+		return a
+	}
+	if n := gc.imports.named[path]; n != "" {
+		return n
+	}
+	taken := map[string]bool{}
+	for _, a := range gc.imports.aliases {
+		taken[a] = true
+	}
+	for _, n := range gc.imports.named {
+		taken[n] = true
+	}
+	n := q
+	for i := 2; taken[n]; i++ {
+		n = fmt.Sprintf("%s%d", q, i)
+	}
+	if gc.imports.named == nil {
+		gc.imports.named = map[string]string{}
+	}
+	gc.imports.named[path] = n
+	if n != q {
+		gc.imports.aliases[path] = n
+	}
+	return n
 }
 
 // ForcedAlias returns the explicit alias registered for path via
@@ -555,6 +612,11 @@ func (gc *GoIRContext) ToggleText(_ *ir.Toggle, target string) string {
 	return target + " = !" + target
 }
 func (gc *GoIRContext) CallStmtLines(n *ir.CallStmt) []string {
+	// A placed program's test, and a helper it hands its Test, call the
+	// agent's test.
+	if gc.placedTests && n.Call != nil && ir.IsTestMethodCall(n.Call) {
+		return lowerTestStmt(n, gc)
+	}
 	if lines, ok := gc.selectLines(n); ok {
 		return lines
 	}
@@ -1239,15 +1301,39 @@ func (gc *GoIRContext) nativeCall(n *ir.Call) (string, bool) {
 	}
 	// A cast lower.CMarshal never saw: a library body a pass promoted after
 	// it ran, which is the library's own and not rewritten -- c.free's.
-	if n.Func.IsCCast() && len(n.Args) == 1 {
+	// One a wrapper makes -- a number made a pointer -- is called as any
+	// wrapper is.
+	if n.Func.IsCCast() && len(n.Args) == 1 && f.Path == ir.CPath {
 		return gc.CConvert(ir.NewCConvert(n.Func, n.Args[0].Value)), true
 	}
 	args := gc.evalCallArgs(n.Args)
 	if f.Path == ir.CPath {
 		return gc.CCall(n, args), true
 	}
+	// A wrapper's `#[c.outs]` callback answers the wrapper package's record,
+	// field for field the program's, which a function converting it adapts.
+	if off := len(args) - len(n.Func.Params); n.Func.Foreign.Path == ir.CPath && off >= 0 {
+		for i, p := range n.Func.Params {
+			if !p.CStatic || !p.COuts || p.Type == nil || p.Type.Sig == nil {
+				continue
+			}
+			var params, names []string
+			for k, sp := range p.Type.Sig.Params {
+				a := fmt.Sprintf("a%d", k)
+				params = append(params, a+" "+gc.goType(sp.Type))
+				names = append(names, a)
+			}
+			outs := WrapperOutsName(gc.Qualified(f.Path, f.Name), p)
+			args[off+i] = "func(" + strings.Join(params, ", ") + ") " + outs + " { return " + outs + "(" + args[off+i] + "(" + strings.Join(names, ", ") + ")) }"
+		}
+	}
+	// A method is written on its receiver, never with its qualifier.
 	name := f.Name
-	gc.RequireImport(f.Path)
+	if n.Func.NativeMethod {
+		gc.RequireImport(f.Path)
+	} else {
+		name = gc.Qualified(f.Path, f.Name)
+	}
 	// Context-taking native call: inject the context expression as the first
 	// argument. When the importer flagged HasContextArg, supply
 	// gc.Ctx.ContextVar (e.g. "r.Context()"), defaulting to
@@ -2215,15 +2301,27 @@ func IRTypeToGo(t *ir.Type) string { return typeToGo(t, site{}) }
 
 // site is where a type is spelled: a file in the Go package own, which names
 // its own types unqualified -- a wrapper package (sngl tool cgogen) naming the
-// C struct it declares -- of a build calling C as calls says.
+// C struct it declares -- of a build calling C as calls says. qualify, where
+// the file has one, writes a type a `#[go.native]` mark names with the name
+// its package's import has there (GoIRContext.Qualified); without one, the
+// mark's qualifier is written as it is.
 type site struct {
-	own   string
-	calls ir.CCalls
+	own     string
+	calls   ir.CCalls
+	qualify func(path, name string) string
 }
 
 // site is where gc's file spells a type.
 func (gc *GoIRContext) site() site {
-	return site{own: gc.Wrapping, calls: gc.calls()}
+	return site{own: gc.Wrapping, calls: gc.calls(), qualify: gc.Qualified}
+}
+
+// named is name, a Go type of the package at path, as at writes it.
+func (at site) named(path, name string) string {
+	if at.qualify == nil {
+		return name
+	}
+	return at.qualify(path, name)
 }
 
 // calls is how gc's build calls C (ir.Package.CCalls).
@@ -2238,6 +2336,10 @@ func (gc *GoIRContext) calls() ir.CCalls {
 func typeToGo(t *ir.Type, at site) string {
 	if t == nil {
 		return "any"
+	}
+	// A test's Test, which a helper it is handed to takes, is the agent's.
+	if ir.IsTestType(t) {
+		return "*testagent.T"
 	}
 	switch t.Kind {
 	case ir.TypeAny:
@@ -2309,7 +2411,13 @@ func typeToGo(t *ir.Type, at site) string {
 				if g.Path == at.own {
 					return g.Name[strings.LastIndexByte(g.Name, '.')+1:]
 				}
-				return g.Name
+				return at.named(g.Path, g.Name)
+			}
+			// A C struct with fields is, in the wrapper package, the type
+			// it declares, which its first generation spells before any
+			// mark names it.
+			if at.own != "" && sd.Foreign.Path == ir.CPath && sd.IsCStruct() {
+				return WrapperTypeName(sd.Name)
 			}
 			// A C struct with fields is the program's own, declared below
 			// and converted at the call (CInterop). One C holds opaquely is
@@ -2323,7 +2431,7 @@ func typeToGo(t *ir.Type, at site) string {
 			// A mark names a type this file also declares, so using the mark's
 			// name here would leave two names for one type and no import.
 			if sd.Foreign.Name != "" && !sd.Foreign.Marked {
-				return sd.Foreign.Name
+				return at.named(sd.Foreign.Path, sd.Foreign.Name)
 			}
 			if name := ExportName(sd.Name); name != "" {
 				// A box is a reference, and Go's struct a value.
@@ -2761,10 +2869,7 @@ func (gc *GoIRContext) hostValueIdent(n *ir.Ident) (string, bool) {
 	if !ok || !ir.IsHostValue(v) {
 		return "", false
 	}
-	if v.Foreign.Path != "" {
-		gc.RequireImport(v.Foreign.Path)
-	}
-	return v.Foreign.Name, true
+	return gc.Qualified(v.Foreign.Path, v.Foreign.Name), true
 }
 
 func loopReadNames(n *ir.For) map[string]bool {

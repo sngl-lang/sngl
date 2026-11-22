@@ -468,6 +468,12 @@ struct literal by the expected type at its position. The key type `K` must be
 *comparable*: primitives, enums, units, and named structs are comparable;
 lists, maps, and functions are not.
 
+An entry is set by assigning to it, `m[k] = v`, and taken out by
+`m.remove(k)`; removing a key the map does not hold leaves it unchanged. Like
+a list's `push` and `remove`, `remove` writes its receiver in place and
+returns nothing, so it is a statement, called on a variable or a field of
+one. A map's entries come in no defined order, before a removal or after it.
+
 ### Function types
 
 A function type is written `func(P1, P2, …) R`, where each `Pi` is a parameter
@@ -718,6 +724,10 @@ permitted conversions among primitives are:
 rejected where x's type declares no format. Other conversions whose operand is
 a struct, component, function, list, option, or `null` are rejected, and so
 are `int` and `float` of a multi-base unit (see [Unit types](#unit-types)).
+An alias of a primitive converts as the primitive does, named bare or through
+its package (`api.UINT(n)`). A struct is no conversion's type: it is built by
+a literal, and a `#[c.native]` handle, which has no fields, by a cast function
+(`#[c.native("T", cast)]`) or by the C function answering one.
 
 ### Narrowing an option
 
@@ -745,12 +755,39 @@ The forms that narrow are:
 - `a && b` — a null test in `a` narrows `b` and everything the whole condition
   guards. `a || b` is the same fact negated: a `== null` test in `a` narrows
   `b`.
+- `if x == null { … }` whose block always leaves — its last statement is a
+  `return`, `break` or `continue`, or an `if` or `match` each of whose
+  branches ends so — narrows `x` for the rest of the enclosing block, which
+  only the test failing reaches. So does `if x != null { … } else { … }`
+  whose else always leaves.
+- `for x != null { … }` — the body, from its start to the statement of it
+  that assigns `x`. The head is tested again before each turn, so a body
+  ends by assigning the next value to test:
+
+```sngl
+struct Node {
+    next option[Node] = null
+}
+
+func length(start option[Node]) int {
+    var count = 0
+    var n = start
+    for n != null {
+        count += 1
+        n = n.next // n is a Node up to here
+    }
+    return count
+}
+```
 
 Every other form leaves the value an `option[T]`, so reading it as a `T` is
 the ordinary type error rather than a silent wrong type.
 
 A narrowing does not survive anything that could make the value absent again.
-Within the branch, assigning to the tested path or to a prefix of it, taking
+Within the branch -- the rest of the block after a branch that leaves, and in
+a loop's body the statements before the one assigning the tested path, which
+is a statement of the body itself rather than of a block nested in it --
+assigning to the tested path or to a prefix of it, taking
 its address, calling a method that mutates it, or — when the path is rooted at
 package or component state a callee could reach — calling anything that
 mutates state, is an error naming the write. A branch that narrows nothing
@@ -1855,6 +1892,11 @@ holds and in no defined order, so two renders of one map may lay it out
 differently. Walk the map in a function or a handler and render the list that
 comes back.
 
+A loop over a map may remove entries from the map it walks. The entry being
+visited, or one already visited, may be removed, and the loop goes on to reach
+every entry still in the map when its turn comes, once; whether it reaches
+an entry the body removed before its turn came is not specified.
+
 A head expression may not begin with `{`: that brace is the body's. A map or
 anonymous-struct literal in the head of a `for` — or of an `if` — is written
 parenthesized.
@@ -2566,8 +2608,8 @@ four lifetimes that holds it:
 **A write into a collection moves the value in.** `push` and `insert` hand the
 list what they are given, and it is released with the list. An assignment to
 an element of a list, to a map entry or to a field releases what stood there
-once the new value is in place; `remove` releases what it took out, and
-`clear` what the list held. A value stored in two places -- pushed from a var,
+once the new value is in place; a list's or a map's `remove` releases what
+it took out, and `clear` what the list held. A value stored in two places -- pushed from a var,
 or assigned to an element from another -- is released by each, as a var
 assigned another var's value is, unless the type names a retain.
 

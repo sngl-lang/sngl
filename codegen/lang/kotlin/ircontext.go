@@ -624,7 +624,27 @@ func (kc *KtIRContext) CallStmtLines(n *ir.CallStmt) []string {
 	if line := kc.fieldListMutation(n.Call); line != "" {
 		return []string{line}
 	}
+	if line := kc.mapRemove(n.Call); line != "" {
+		return []string{line}
+	}
 	return []string{kc.EvalExpr(n.Call)}
+}
+
+// mapRemove is a map's `remove`, or "" for any other call. A map is a
+// read-only `Map` on Kotlin, so the removal rebuilds it and reassigns the
+// holder, as an entry write does (AssignText) -- up the path where the map is
+// a data class's field. A loop over the map walks the one it began with.
+func (kc *KtIRContext) mapRemove(call *ir.Call) string {
+	if call == nil || call.Func == nil || call.Func.Intrinsic != "map.remove" || len(call.Args) != 2 {
+		return ""
+	}
+	m := call.Args[0].Value
+	recv := irwalk.EvalMutTarget(kc, m)
+	value := recv + " - (" + kc.EvalExpr(call.Args[1].Value) + ")"
+	if sel, ok := m.(*ir.Select); ok && kc.isListFieldPath(sel) {
+		return kc.rebuildStructPath(sel, value)
+	}
+	return recv + " = " + value
 }
 
 // raiseFailure turns a bubbling `fails` native's exception into a SnglRaise, so

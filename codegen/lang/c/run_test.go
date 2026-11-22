@@ -187,9 +187,20 @@ func translate(t *testing.T, src []byte) []byte {
 		if len(fn.TypeParams) > 0 {
 			continue
 		}
+		// Nor need a C function be kept, which C defines: called with a
+		// zero string, its constant would be a package temp the program
+		// declares and this file does not.
+		if fn.Foreign.Name != "" {
+			continue
+		}
+		// Nor has a `ref` a zero: a C function taking one is reached
+		// through the function calling it.
 		args := make([]ir.CallArg, len(fn.Params))
 		for i, p := range fn.Params {
 			args[i] = ir.CallArg{Value: ir.ZeroExpr(p.Type)}
+		}
+		if slices.ContainsFunc(args, func(a ir.CallArg) bool { return a.Value == nil }) {
+			continue
 		}
 		keep.Block = append(keep.Block, &ir.CallStmt{Call: &ir.Call{Func: fn, Type: fn.Return, Args: args}})
 	}
@@ -215,8 +226,9 @@ func translate(t *testing.T, src []byte) []byte {
 	for _, sd := range pkg.Structs {
 		fe.Struct(sd)
 	}
+	// A C function is C's to define, as a build leaves it (program.go).
 	for _, fn := range pkg.Funcs {
-		if !fn.IsTest {
+		if !fn.IsTest && fn.Foreign.Name == "" {
 			fe.Func(fn)
 		}
 	}

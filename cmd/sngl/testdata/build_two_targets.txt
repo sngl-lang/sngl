@@ -28,7 +28,7 @@ sha256:d98a75df1e0bffdccddebd7318d1694c
   "stdout": "app-bubbletea"
 }
 -- testrun/build/gtk4/go/app.sngl/1 --
-sha256:0103c38b6adddb9a9957c69043b6ff22
+sha256:24e5aad17be067ccc4e5cfba254415cf
 {
   "stdout": "app-gtk4"
 }

@@ -1,0 +1,1742 @@
+import ui "sngl:ui"
+import c "sngl:x/c"
+import api "sngl:platform/win32/api"
+import markup "sngl:ui/markup"
+import go "sngl:language/go"
+
+// --- The record ---
+
+// What the platform keeps beside each window the runtime makes, by its
+// handle (`_ctls`): its kind, the runtime's `enum sngl_kind`; its children
+// in order, since `GetWindow(GW_CHILD)`'s order is z-order; what its look
+// asks of a layout, in SNGL px, a 96th of an inch, scaled to its `dpi` where
+// a layout reads them; what its last layout found; and what the window
+// procedures read (procs.sngl). The handlers the program connected are
+// beside it (`_on`), and what the runtime measures and draws a window by --
+// its font, a flow's words, a picture's bitmap -- is the runtime's own
+// record beside this one (sngl_win32.c's `ctl`).
+struct _Ctl {
+    kind       int = 0
+    // A box's axis, a divider's, and a toplevel's, which is down.
+    vertical   bool = false
+    flex       float = 0.0
+    gap        int = 0
+    padTop     int = 0
+    padRight   int = 0
+    padBottom  int = 0
+    padLeft    int = 0
+    // Its least width, and the size its style gives it, or 0; and how a
+    // line box places its children across it (`_aStretch` and on).
+    minW       int = 0
+    exactW     int = 0
+    exactH     int = 0
+    align      int = 0
+    // The DPI of the toplevel it is in, which its refresh sets.
+    dpi        int = 96
+    // Set while a toplevel's layout is posted and not yet run.
+    laying     bool = false
+    // A box's mode, its columns as a grid, and the height a flow wrapped
+    // to at the width it was last laid out at, which it measures as next.
+    mode       int = 0
+    columns    int = 0
+    flowH      int = 0
+    // A box drawn with an etched edge inside its bounds; the box a
+    // component's several top nodes are held in.
+    framed     bool = false
+    contents   bool = false
+    // Hidden by its visible prop and by its style's display, either of
+    // which takes it out of its box's layout.
+    offProp    bool = false
+    offLook    bool = false
+    // A tabs' page shown.
+    selected   int = 0
+    // A scroll's axes, where it is along each, and whether its end was
+    // reported and has not been left since; how far it can move along each
+    // axis and its room inside, as its last layout found them; and the
+    // wheel's turn not yet a whole line.
+    scrollV    bool = false
+    scrollH    bool = false
+    posX       int = 0
+    posY       int = 0
+    atEnd      bool = false
+    maxX       int = 0
+    maxY       int = 0
+    pageX      int = 0
+    pageY      int = 0
+    wheel      int = 0
+    // What it last measured, while `measured`: until something changes
+    // it, which calls `_relayout`.
+    sizeW      int = 0
+    sizeH      int = 0
+    measured   bool = false
+    // Where its box's layout last put it, in its box, and the room it last
+    // laid out what it holds in.
+    placedL    int = 0
+    placedT    int = 0
+    placedR    int = 0
+    placedB    int = 0
+    laidW      int = 0
+    laidH      int = 0
+    kids       list[api.HWND] = []
+    // The lines a multi-line edit is measured to show.
+    rows       int = 0
+    // What `_setText` last set, once it has.
+    text       string = ""
+    texted     bool = false
+    // A menu entry's command, its state, and the menu bar a toplevel shows
+    // its entries in.
+    id         int = 0
+    disabled   bool = false
+    checked    bool = false
+    menu       option[_Menu] = null
+    // Its colors, 0xRRGGBB or -1, and its background's brush; what a link
+    // or a span leads to; what a box's children show as the pointer rests
+    // on them, once one is set.
+    color      int = -1
+    background int = -1
+    brush      option[_Brush] = null
+    href       string = ""
+    tip        string = ""
+    tipped     bool = false
+    // A table's row selected, the column a header click last asked for,
+    // and whether a row can be selected and a column sorted by; an image's
+    // fit, `ui.ObjectFit`'s order.
+    row        int = -1
+    sortCol    int = 0
+    selectable bool = false
+    sortable   bool = false
+    fit        int = 0
+    // A modal's window, which shows what it holds while it is open, over
+    // the window it is in, and closes where it is closable; and in that
+    // window, the modal it is.
+    dialog     option[_Found] = null
+    modalOf    option[_Found] = null
+    open       bool = false
+    closable   bool = false
+}
+
+// Every window's record, by its handle. Its initializer hands the runtime
+// the functions it reaches the records through, as the program starts.
+var _ctls map[api.HWND, _Ctl] = _hooked()
+
+// The runtime's `enum sngl_kind`.
+const _kTop = 0
+
+const _kBox = 1
+
+const _kText = 2
+
+const _kButton = 3
+
+const _kEdit = 4
+
+const _kCheck = 5
+
+const _kSpacer = 6
+
+const _kProgress = 7
+
+const _kArea = 8
+
+const _kSelect = 9
+
+const _kDivider = 10
+
+const _kLink = 11
+
+const _kRadio = 12
+
+const _kTabs = 13
+
+const _kScroll = 14
+
+const _kModal = 15
+
+const _kEntry = 16
+
+const _kImage = 20
+
+const _kPicture = 21
+
+const _kCanvas = 22
+
+const _kFlow = 23
+
+const _kSpan = 24
+
+// Where a line box places a child across it, as CSS's align-items.
+const _aStretch = 0
+
+const _aCenter = 2
+
+const _aEnd = 3
+
+// How a box lays its children out: BoxMode's order.
+const _mGrid = 1
+
+const _mFlow = 2
+
+const _mStack = 3
+
+const _mEqual = 4
+
+// The runtime's messages: a toplevel's layout, asked for by each change in
+// it and run once; a scroll's end arriving, reported once its layout is
+// done.
+const _wmLayout = 32769
+
+const _wmReached = 32771
+
+func _hooked() map[api.HWND, _Ctl] {
+    _procs(_boxProc, _controlProc, _kidCount, _kidAt)
+    return {}
+}
+
+// A window the runtime made: its record, down where it is a toplevel or a
+// scroll, and taking no room where it is a modal or a menu entry. Each
+// function making one makes its record as it returns.
+func _made(w api.HWND, kind int) {
+    _ctls[w] = _Ctl{kind=kind, dpi=_dpiOf(w), vertical=kind == _kTop || kind == _kScroll, offProp=kind == _kModal || kind == _kEntry}
+}
+
+// A window gone, as it is destroyed: its handlers and its brush let go, a
+// menu entry's command free to be handed out again, a toplevel's menu bar
+// destroyed, and a modal's window with it.
+func _forget(w api.HWND) {
+    _on.remove(w)
+    if !_ctls.contains(w) {
+        return
+    }
+    var k = _ctls[w]
+    _ctls.remove(w)
+    if k.kind == _kEntry && k.id >= _entryFirst {
+        _entryIds.remove(k.id)
+    }
+    var m = k.menu
+    if m != null {
+        _setMenu(w, null)
+        _destroyMenu(m)
+    }
+    var b = k.brush
+    if b != null {
+        _dropBrush(b)
+    }
+    var dialog = k.dialog
+    if dialog != null {
+        var d = _found(dialog)
+        var owner = _getWindow(d, 4)
+        if k.open && owner != null {
+            api.EnableWindow(_found(owner), true)
+        }
+        api.DestroyWindow(d)
+    }
+}
+
+func _kidCount(w api.HWND) int {
+    return _ctls.contains(w) ? _ctls[w].kids.length() : 0
+}
+
+func _kidAt(w api.HWND, at int) api.HWND {
+    return _ctls[w].kids[at]
+}
+
+// --- Win32, as the layout calls it ---
+
+// A window Win32 may answer none of, NULL for none, as `_Found` is.
+#[c.native("GetParent")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ParentOf")]
+func _parentOf(w api.HWND) option[_Found]
+
+#[c.native("HWND", cast)]
+func _asFound(w api.HWND) _Found
+
+#[c.native("SetParent")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetParent")]
+func _setParent(child api.HWND, parent api.HWND) option[_Found]
+
+#[c.native("SetWindowPos")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetWindowPos")]
+func _setWindowPos(w api.HWND, after option[_Found], x int, y int, cx int, cy int, flags api.UINT) api.WINBOOL
+
+// A batch of window moves, which one call of Win32 makes.
+#[c.native("HDWP", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Hdwp")]
+struct _Hdwp {}
+
+#[c.native("BeginDeferWindowPos")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.BeginDeferWindowPos")]
+func _beginDefer(n int) option[_Hdwp]
+
+#[c.native("DeferWindowPos")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DeferWindowPos")]
+func _defer(d _Hdwp, w api.HWND, after option[_Found], x int, y int, cx int, cy int, flags api.UINT) option[_Hdwp]
+
+#[c.native("EndDeferWindowPos")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.EndDeferWindowPos")]
+func _endDefer(d _Hdwp) api.WINBOOL
+
+// What a scroll bar holds, as SetScrollInfo and GetScrollInfo take it:
+// `cbSize` is 28, the struct's size.
+#[c.native("SCROLLINFO")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ScrollInfo")]
+struct _ScrollInfo {
+    cbSize    api.UINT
+    fMask     api.UINT
+    nMin      int
+    nMax      int
+    nPage     api.UINT
+    nPos      int
+    nTrackPos int
+}
+
+#[c.native("SetScrollInfo")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetScrollInfo")]
+func _setScrollInfo(w api.HWND, bar int, si ref[_ScrollInfo], redraw bool) int
+
+#[c.native("GetScrollInfo")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetScrollInfo")]
+func _getScrollInfo(w api.HWND, bar int, si ref[_ScrollInfo]) api.WINBOOL
+
+#[c.native("SetScrollPos")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetScrollPos")]
+func _setScrollPos(w api.HWND, bar int, pos int, redraw bool) int
+
+// A message whose LPARAM is a RECT the control reads and writes:
+// TCM_ADJUSTRECT.
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendRect")]
+func _sendRect(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] r ref[api.RECT]) api.LRESULT
+
+// What the runtime measures and draws a window by, which the record does
+// not hold (sngl_win32.h).
+#[c.native("sngl_win32_natural")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Natural")]
+func _natural(w api.HWND, out ref[api.SIZE])
+
+// w's text as its font draws it, a line of its font, and a check box's box
+// at dpi.
+#[c.native("sngl_win32_text_size")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32TextSize")]
+func _textExtent(w api.HWND, out ref[api.SIZE])
+
+func _textSize(w api.HWND) _Size {
+    var s = api.SIZE{cx=0, cy=0}
+    _textExtent(w, &s)
+    return _Size{cx=int(s.cx), cy=int(s.cy)}
+}
+
+#[c.native("sngl_win32_line_height")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32LineHeight")]
+func _lineHeight(w api.HWND) int
+
+#[c.native("sngl_win32_check_width")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32CheckWidth")]
+func _checkWidth(dpi int) int
+
+// A message whose LPARAM is a SIZE the control fills: DTM_GETIDEALSIZE.
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendSize")]
+func _sendSize(to api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] s ref[api.SIZE]) api.LRESULT
+
+#[c.native("sngl_win32_picture_size")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32PictureSize")]
+func _pictureSize(w api.HWND, out ref[api.SIZE]) int
+
+#[c.native("sngl_win32_flow_height")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32FlowHeight")]
+func _flowHeight(w api.HWND, width int) int
+
+#[c.native("sngl_win32_refont")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Refont")]
+func _refont(w api.HWND, dpi int)
+
+#[c.native("sngl_win32_dpi_of")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DpiOf")]
+func _dpiOf(w api.HWND) int
+
+#[c.native("sngl_win32_resize_client")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ResizeClient")]
+func _resizeClient(top api.HWND, w int, h int)
+
+#[c.native("sngl_win32_nothing")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Nothing")]
+func _nothing() api.HWND
+
+#[c.native("sngl_win32_show_attached")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ShowAttached")]
+func _showAttached(top api.HWND, node api.HWND)
+
+#[c.native("sngl_win32_show")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Show")]
+func _showWindow(w api.HWND, on bool) int
+
+#[c.native("sngl_win32_divider_style")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32DividerStyle")]
+func _dividerStyle(w api.HWND, vertical bool)
+
+#[c.native("sngl_win32_scroll_style")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32ScrollStyle")]
+func _scrollStyle(w api.HWND, vertical bool, horizontal bool)
+
+// A tabs' size whose largest page is cx by cy: that, and the strip of tabs
+// over it, as wide as its tabs.
+func _tabsSize(w api.HWND, k _Ctl, cx int, cy int) _Size {
+    var r = api.RECT{left=0, top=0, right=cx, bottom=cy}
+    _sendRect(w, 4904, 1, &r)
+    var s = _Size{cx=r.right - r.left, cy=r.bottom - r.top}
+    var n = int(api.SendMessage(w, 4868, 0, 0))
+    if n > 0 {
+        var last = api.RECT{left=0, top=0, right=0, bottom=0}
+        var got = _sendRect(w, 4874, n - 1, &last)
+        if got != 0 && last.right + _px(4, k.dpi) > s.cx {
+            s.cx = last.right + _px(4, k.dpi)
+        }
+    }
+    return s
+}
+
+// A table's size: every column, and every row under its header.
+func _tableSize(w api.HWND, k _Ctl) _Size {
+    var header = _windowOf(api.SendMessage(w, 4127, 0, 0))
+    var cols = int(api.SendMessage(header, 4608, 0, 0))
+    var cx = 0
+    var i = 0
+    for i < cols {
+        cx += int(api.SendMessage(w, 4125, i, 0))
+        i += 1
+    }
+    var hr = api.RECT{left=0, top=0, right=0, bottom=0}
+    if cols > 0 {
+        _sendRect(header, 4615, 0, &hr)
+    }
+    var head = hr.bottom - hr.top > 0 ? hr.bottom - hr.top : _lineHeight(w) + _px(8, k.dpi)
+    var rows = int(api.SendMessage(w, 4100, 0, 0))
+    var row = _lineHeight(w) + _px(4, k.dpi)
+    if rows > 0 {
+        var ir = api.RECT{left=0, top=0, right=0, bottom=0}
+        var got = _sendRect(w, 4110, 0, &ir)
+        if got != 0 && ir.bottom > ir.top {
+            row = ir.bottom - ir.top
+        }
+    }
+    cx += 2 * api.GetSystemMetrics(45) + api.GetSystemMetrics(api.SM_CXVSCROLL)
+    return _Size{cx=cx, cy=head + rows * row + 2 * api.GetSystemMetrics(46) + _px(2, k.dpi)}
+}
+
+// What a tab is titled by, as TCM_INSERTITEMW takes it.
+#[c.native("TCITEMW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.TabItem")]
+struct _TabItem {
+    mask    api.UINT
+    pszText c.utf16
+}
+
+#[c.native("SendMessageW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SendTabItem")]
+func _sendTabItem(tabs api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] item ref[_TabItem]) api.LRESULT
+
+// What a scroll holds moved by dx, dy, and what it uncovers painted.
+#[c.native("HRGN", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Region")]
+struct _Region {}
+
+#[c.native("ScrollWindowEx")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.ScrollWindowEx")]
+func _scrollWindow(w api.HWND, dx int, dy int, scroll option[_ConstRect], clip option[_ConstRect], update option[_Region], updated option[_RectPtr], flags api.UINT) int
+
+// --- Layout ---
+
+// A size in device pixels.
+struct _Size {
+    cx int
+    cy int
+}
+
+// Where a layout puts a child, in its box's client area.
+struct _Rect {
+    l int
+    t int
+    r int
+    b int
+}
+
+// A child a box lays out, the size it measures and how much it grows by.
+struct _Kid {
+    w    api.HWND
+    cx   int
+    cy   int
+    flex float
+}
+
+// `n` SNGL px at `dpi`, rounded as Win32's MulDiv rounds.
+func _px(n int, dpi int) int {
+    if n >= 0 {
+        return (n * dpi + 48) / 96
+    }
+    return 0 - ((0 - n) * dpi + 48) / 96
+}
+
+// Whether a box lays w out: a node hidden takes no room.
+func _laid(w api.HWND) bool {
+    return _ctls.contains(w) && !_ctls[w].offProp && !_ctls[w].offLook
+}
+
+// The room a framed box's edge takes inside each of its sides.
+func _edge(k _Ctl) int {
+    return k.framed ? _px(2, k.dpi) : 0
+}
+
+// How much w grows by: its look's, or for a component's contents the most
+// any child grows by, as CSS's display: contents makes them the items of
+// the box holding it.
+func _flexOf(w api.HWND) float {
+    var k = _ctls[w]
+    if !k.contents {
+        return k.flex
+    }
+    var most = 0.0
+    for var child = k.kids {
+        if _laid(child) {
+            var f = _flexOf(child)
+            most = f > most ? f : most
+        }
+    }
+    return most
+}
+
+// The children of k a box lays out, each measured.
+func _laidKids(k _Ctl) list[_Kid] {
+    var out list[_Kid] = []
+    for var child = k.kids {
+        if _laid(child) {
+            var s = _measure(child)
+            out.push(_Kid{w=child, cx=s.cx, cy=s.cy, flex=_flexOf(child)})
+        }
+    }
+    return out
+}
+
+func _columnsOf(k _Ctl) int {
+    return k.columns > 0 ? k.columns : 1
+}
+
+// What a box's or a toplevel's children need as its mode lays them out:
+// end to end, in a grid's rows, wrapped, one over another, or each the room
+// of the largest.
+func _boxMeasure(k _Ctl) _Size {
+    var gap = _px(k.gap, k.dpi)
+    var ks = _laidKids(k)
+    var n = ks.length()
+    var mostX = 0
+    var mostY = 0
+    for var it = ks {
+        mostX = it.cx > mostX ? it.cx : mostX
+        mostY = it.cy > mostY ? it.cy : mostY
+    }
+    var sx = 0
+    var sy = 0
+    if k.mode == _mGrid {
+        var cols = _columnsOf(k)
+        var rows = (n + cols - 1) / cols
+        sx = cols * mostX + (cols - 1) * gap
+        var r = 0
+        for r < rows {
+            var h = 0
+            var i = r * cols
+            for i < n && i < (r + 1) * cols {
+                h = ks[i].cy > h ? ks[i].cy : h
+                i += 1
+            }
+            sy += h + (r > 0 ? gap : 0)
+            r += 1
+        }
+    } else if k.mode == _mStack {
+        sx = mostX
+        sy = mostY
+    } else if k.mode == _mFlow {
+        sx = mostX
+        sy = k.flowH > mostY ? k.flowH : mostY
+    } else if k.mode == _mEqual {
+        if k.vertical {
+            sx = mostX
+            sy = n * mostY + (n > 0 ? (n - 1) * gap : 0)
+        } else {
+            sx = n * mostX + (n > 0 ? (n - 1) * gap : 0)
+            sy = mostY
+        }
+    } else {
+        for var i, it = ks {
+            if k.vertical {
+                sy += it.cy + (i > 0 ? gap : 0)
+            } else {
+                sx += it.cx + (i > 0 ? gap : 0)
+            }
+        }
+        if k.vertical {
+            sx = mostX
+        } else {
+            sy = mostY
+        }
+    }
+    // As wide as its widest child, which it wraps the rest around at
+    // the width it is given, and as tall as that last wrapped.
+    var e = _edge(k)
+    return _Size{cx=sx + 2 * e, cy=sy + 2 * e}
+}
+
+// A node's natural size in device pixels, which it keeps until something
+// changes it: what it holds or shows, its padding added, raised to its
+// least width, and the size its style gives it in place of its own.
+func _measure(w api.HWND) _Size {
+    if !_ctls.contains(w) {
+        return _Size{cx=0, cy=0}
+    }
+    var k = _ctls[w]
+    if k.measured {
+        return _Size{cx=k.sizeW, cy=k.sizeH}
+    }
+    var s = _Size{cx=0, cy=0}
+    if k.kind == _kTop || k.kind == _kBox {
+        s = _boxMeasure(k)
+    } else if k.kind == _kDivider {
+        if k.vertical {
+            s.cx = 2
+        } else {
+            s.cy = 2
+        }
+    } else if k.kind == _kTabs {
+        var mostX = 0
+        var mostY = 0
+        for var page = k.kids {
+            var p = _measure(page)
+            mostX = p.cx > mostX ? p.cx : mostX
+            mostY = p.cy > mostY ? p.cy : mostY
+        }
+        s = _tabsSize(w, k, mostX, mostY)
+    } else if k.kind == _kScroll {
+        s = _boxMeasure(k)
+        var most = _px(200, k.dpi)
+        if k.scrollV {
+            var cap = k.exactH > 0 ? 0 : most
+            s.cy = s.cy < cap ? s.cy : cap
+            s.cx += api.GetSystemMetrics(api.SM_CXVSCROLL)
+        }
+        if k.scrollH {
+            var cap = k.minW > 0 || k.exactW > 0 ? 0 : most
+            s.cx = s.cx < cap ? s.cx : cap
+            s.cy += api.GetSystemMetrics(api.SM_CYHSCROLL)
+        }
+    } else if k.kind == _kImage {
+        for var child = k.kids {
+            var p = api.SIZE{cx=0, cy=0}
+            if _pictureSize(child, &p) != 0 {
+                s = _Size{cx=_px(int(p.cx), k.dpi), cy=_px(int(p.cy), k.dpi)}
+            }
+        }
+    } else if k.kind == _kFlow {
+        var n = api.SIZE{cx=0, cy=0}
+        _natural(w, &n)
+        s = _Size{cx=int(n.cx), cy=k.flowH > 0 ? k.flowH : int(n.cy)}
+    } else if k.kind == _kText || k.kind == _kLink {
+        s = _textSize(w)
+    } else if k.kind == _kButton {
+        s = _textSize(w)
+        s.cx += _px(20, k.dpi)
+        s.cy += _px(10, k.dpi)
+        if s.cx < _px(75, k.dpi) {
+            s.cx = _px(75, k.dpi)
+        }
+    } else if k.kind == _kCheck || k.kind == _kRadio {
+        s = _textSize(w)
+        s.cx += _checkWidth(k.dpi) + _px(8, k.dpi)
+        s.cy += _px(4, k.dpi)
+    } else if k.kind == _kEdit {
+        s = _textSize(w)
+        s.cx = _px(150, k.dpi)
+        s.cy += _px(8, k.dpi)
+    } else if k.kind == _kArea {
+        s.cx = _px(200, k.dpi)
+        s.cy = _lineHeight(w) * (k.rows > 0 ? k.rows : 3) + _px(8, k.dpi)
+    } else if k.kind == _kDate {
+        var ideal = api.SIZE{cx=0, cy=0}
+        if _sendSize(w, 4111, 0, &ideal) != 0 && int(ideal.cx) > 0 {
+            s = _Size{cx=int(ideal.cx), cy=int(ideal.cy)}
+        } else {
+            s = _textSize(w)
+            s.cx = _px(130, k.dpi)
+        }
+        if s.cy < _lineHeight(w) + _px(8, k.dpi) {
+            s.cy = _lineHeight(w) + _px(8, k.dpi)
+        }
+    } else if k.kind == _kTable {
+        s = _tableSize(w, k)
+    } else if k.kind != _kSpan && k.kind != _kPicture && k.kind != _kModal && k.kind != _kEntry && k.kind != _kSpacer {
+        var n = api.SIZE{cx=0, cy=0}
+        _natural(w, &n)
+        s = _Size{cx=int(n.cx), cy=int(n.cy)}
+    }
+    // An etched line, two pixels across.
+    // Its largest page, and the strip of tabs over it.
+    // What it holds across the axes it does not scroll along, and along
+    // one it does, its least size where its style gives one and
+    // otherwise no more than a few lines of it.
+    // Its picture's size, a pixel a SNGL px, or nothing while it has
+    // none.
+    // As tall as its words wrap to at the width it was last laid out
+    // at.
+    s.cx += _px(k.padRight + k.padLeft, k.dpi)
+    s.cy += _px(k.padTop + k.padBottom, k.dpi)
+    if s.cx < _px(k.minW, k.dpi) {
+        s.cx = _px(k.minW, k.dpi)
+    }
+    if k.exactW > 0 {
+        s.cx = _px(k.exactW, k.dpi)
+    }
+    if k.exactH > 0 {
+        s.cy = _px(k.exactH, k.dpi)
+    }
+    if _ctls.contains(w) {
+        _ctls[w].sizeW = s.cx
+        _ctls[w].sizeH = s.cy
+        _ctls[w].measured = true
+    }
+    return s
+}
+
+// A line's children along it: each its own size, the spare room shared by
+// flex, and the whole of the box across it.
+func _line(k _Ctl, ks list[_Kid], x0 int, y0 int, iw int, ih int, gap int) list[_Rect] {
+    var n = ks.length()
+    var avail = (k.vertical ? ih : iw) - gap * (n - 1)
+    var size list[int] = []
+    var total = 0
+    var flex = 0.0
+    for var it = ks {
+        var along = k.vertical ? it.cy : it.cx
+        size.push(along)
+        total += along
+        flex += it.flex
+    }
+    var spare = avail - total
+    if k.mode == _mEqual {
+        // Every child the same share, what rounding left the last's.
+        for var i, it = ks {
+            size[i] = avail / n
+        }
+        size[n - 1] += avail - avail / n * n
+    } else if spare > 0 && flex > 0.0 {
+        var given = 0
+        var last = -1
+        for var i, it = ks {
+            if it.flex > 0.0 {
+                var more = int(float(spare) * (it.flex / flex))
+                size[i] += more
+                given += more
+                last = i
+            }
+        }
+        size[last] += spare - given
+    }
+    // What rounding left goes to the last to flex.
+    var pos = k.vertical ? y0 : x0
+    var room = k.vertical ? iw : ih
+    var at list[_Rect] = []
+    for var i, it = ks {
+        // Across the line, the whole box, unless the box aligns its
+        // children or the child's style sizes it that way, as CSS
+        // stretches only a child with no size of its own.
+        var sized = k.vertical ? _ctls[it.w].exactW > 0 : _ctls[it.w].exactH > 0
+        var across = room
+        var off = 0
+        if k.align != _aStretch || sized {
+            var want = k.vertical ? it.cx : it.cy
+            across = want < room ? want : room
+            off = k.align == _aCenter ? (room - across) / 2 : (k.align == _aEnd ? room - across : 0)
+        }
+        var x = k.vertical ? x0 + off : pos
+        var y = k.vertical ? pos : y0 + off
+        at.push(_Rect{l=x, t=y, r=x + (k.vertical ? across : size[i]), b=y + (k.vertical ? size[i] : across)})
+        pos += size[i] + gap
+    }
+    return at
+}
+
+// A grid's children, `columns` to a row, in columns of equal width sharing
+// the grid's, each row as tall as its tallest.
+func _grid(k _Ctl, ks list[_Kid], x0 int, y0 int, iw int, gap int) list[_Rect] {
+    var cols = _columnsOf(k)
+    var cw = (iw - gap * (cols - 1)) / cols
+    var y = y0
+    var n = ks.length()
+    var at list[_Rect] = []
+    var r = 0
+    for r * cols < n {
+        var h = 0
+        var i = r * cols
+        for i < n && i < (r + 1) * cols {
+            h = ks[i].cy > h ? ks[i].cy : h
+            i += 1
+        }
+        i = r * cols
+        for i < n && i < (r + 1) * cols {
+            var x = x0 + (i - r * cols) * (cw + gap)
+            at.push(_Rect{l=x, t=y, r=x + cw, b=y + h})
+            i += 1
+        }
+        y += h + gap
+        r += 1
+    }
+    return at
+}
+
+// Where a flow puts its children, and how tall that is.
+struct _Flowed {
+    at list[_Rect]
+    h  int
+}
+
+// A flow's children along a row each its own size, another started where
+// the next would not fit.
+func _flow(ks list[_Kid], x0 int, y0 int, iw int, gap int) _Flowed {
+    var x = x0
+    var y = y0
+    var h = 0
+    var at list[_Rect] = []
+    for var it = ks {
+        if x > x0 && x + it.cx > x0 + iw {
+            x = x0
+            y += h + gap
+            h = 0
+        }
+        at.push(_Rect{l=x, t=y, r=x + it.cx, b=y + it.cy})
+        x += it.cx + gap
+        h = it.cy > h ? it.cy : h
+    }
+    return _Flowed{at=at, h=ks.length() > 0 ? y + h - y0 : 0}
+}
+
+// Reports a scroll's end coming within half a page of showing, once each
+// time it arrives there.
+func _reach(box api.HWND) {
+    var k = _ctls[box]
+    var ending = k.scrollV ? k.posY >= k.maxY - k.pageY / 2 : k.posX >= k.maxX - k.pageX / 2
+    if ending && !k.atEnd {
+        _ctls[box].atEnd = true
+        api.PostMessage(box, _wmReached, 0, 0)
+    } else if !ending {
+        _ctls[box].atEnd = false
+    }
+}
+
+// A tabs' page selected shown in the room under its strip, and the rest
+// hidden.
+func _layOutTabs(tabs api.HWND, w int, h int) {
+    var k = _ctls[tabs]
+    var r = api.RECT{left=0, top=0, right=w, bottom=h}
+    _sendRect(tabs, 4904, 0, &r)
+    for var i, page = k.kids {
+        if i == k.selected {
+            _setWindowPos(page, null, r.left, r.top, r.right - r.left, r.bottom - r.top, api.SWP_NOACTIVATE + api.SWP_SHOWWINDOW)
+            _place(page, r.right - r.left, r.bottom - r.top)
+        } else {
+            api.ShowWindow(page, api.SW_HIDE)
+        }
+    }
+    _invalidate(tabs)
+}
+
+// A box's or a toplevel's children laid out in its w by h client area, as
+// its mode does, and each box among them its own. Every move is one batch,
+// and a window is moved only where it is to go elsewhere: a move to where
+// it is is still a trip to Wine's server, and a layout moves every node of
+// the window. It paints again only where something in it moved or it
+// changed size, since what changes otherwise repaints itself.
+func _layOut(box api.HWND, width int, height int) {
+    if !_ctls.contains(box) {
+        return
+    }
+    var k = _ctls[box]
+    var w = width
+    var h = height
+    var moved = w != k.laidW || h != k.laidH
+    _ctls[box].laidW = w
+    _ctls[box].laidH = h
+    if k.kids.length() == 0 {
+        if moved {
+            _invalidate(box)
+        }
+        return
+    }
+    var gap = _px(k.gap, k.dpi)
+    var e = _edge(k)
+    var padTop = _px(k.padTop, k.dpi) + e
+    var padRight = _px(k.padRight, k.dpi) + e
+    var padBottom = _px(k.padBottom, k.dpi) + e
+    var padLeft = _px(k.padLeft, k.dpi) + e
+    if k.kind == _kScroll {
+        // The bars always shown, so the room inside is the same whatever
+        // it holds.
+        w -= k.scrollV ? api.GetSystemMetrics(api.SM_CXVSCROLL) : 0
+        h -= k.scrollH ? api.GetSystemMetrics(api.SM_CYHSCROLL) : 0
+    }
+    var x0 = padLeft
+    var y0 = padTop
+    var iw = w - padRight - padLeft
+    var ih = h - padTop - padBottom
+    if k.kind == _kScroll {
+        // As large as what it holds along each axis it scrolls, and moved
+        // by how far it has; its bars set by it.
+        var content = _boxMeasure(k)
+        var pw = iw
+        var ph = ih
+        if k.scrollH && content.cx > iw {
+            iw = content.cx
+        }
+        if k.scrollV && content.cy > ih {
+            ih = content.cy
+        }
+        var maxX = iw - pw > 0 ? iw - pw : 0
+        var maxY = ih - ph > 0 ? ih - ph : 0
+        var posX = k.posX > maxX ? maxX : (k.posX < 0 ? 0 : k.posX)
+        var posY = k.posY > maxY ? maxY : (k.posY < 0 ? 0 : k.posY)
+        var si = _ScrollInfo{cbSize=28, fMask=31, nMin=0, nMax=0, nPage=0, nPos=0, nTrackPos=0}
+        if k.scrollV {
+            si.nMax = ih + (h - ph) - 1
+            si.nPage = h
+            si.nPos = posY
+            _setScrollInfo(box, 1, &si, true)
+        }
+        if k.scrollH {
+            si.nMax = iw + (w - pw) - 1
+            si.nPage = w
+            si.nPos = posX
+            _setScrollInfo(box, 0, &si, true)
+        }
+        x0 -= posX
+        y0 -= posY
+        _ctls[box].posX = posX
+        _ctls[box].posY = posY
+        _ctls[box].maxX = maxX
+        _ctls[box].maxY = maxY
+        _ctls[box].pageX = pw
+        _ctls[box].pageY = ph
+        _reach(box)
+    }
+    var ks = _laidKids(k)
+    var n = ks.length()
+    var at list[_Rect] = []
+    if n > 0 {
+        if k.mode == _mGrid {
+            at = _grid(k, ks, x0, y0, iw, gap)
+        } else if k.mode == _mFlow {
+            var f = _flow(ks, x0, y0, iw, gap)
+            at = f.at
+            if f.h != _ctls[box].flowH {
+                _ctls[box].flowH = f.h
+                _relayout(box)
+            }
+        } else if k.mode == _mStack {
+            for var it = ks {
+                at.push(_Rect{l=x0, t=y0, r=x0 + iw, b=y0 + ih})
+            }
+        } else {
+            at = _line(k, ks, x0, y0, iw, ih, gap)
+        }
+        // It wraps to another height: what holds it measures it
+        // again.
+    }
+    var batch = _beginDefer(n > 0 ? n : 1)
+    for var i, it = ks {
+        var r = at[i]
+        var ch = r.b - r.t
+        var kc = _ctls[it.w]
+        if kc.kind == _kSelect {
+            // A drop-down's height is its list's too, dropped.
+            ch += _px(200, kc.dpi)
+        }
+        var to = _Rect{l=r.l, t=r.t, r=r.r, b=r.t + ch}
+        var held = batch
+        if held != null && (kc.placedL != to.l || kc.placedT != to.t || kc.placedR != to.r || kc.placedB != to.b) {
+            _ctls[it.w].placedL = to.l
+            _ctls[it.w].placedT = to.t
+            _ctls[it.w].placedR = to.r
+            _ctls[it.w].placedB = to.b
+            moved = true
+            batch = _defer(held, it.w, null, r.l, r.t, r.r - r.l, ch, api.SWP_NOZORDER + api.SWP_NOACTIVATE)
+        }
+    }
+    var done = batch
+    if done != null {
+        _endDefer(done)
+    }
+    if k.mode == _mStack {
+        // The last layer on top, drawn over the rest.
+        var i = n - 1
+        for i >= 0 {
+            if i == n - 1 {
+                _setWindowPos(ks[i].w, null, 0, 0, 0, 0, api.SWP_NOMOVE + api.SWP_NOSIZE + api.SWP_NOACTIVATE)
+            } else {
+                _setWindowPos(ks[i].w, _asFound(ks[i + 1].w), 0, 0, 0, 0, api.SWP_NOMOVE + api.SWP_NOSIZE + api.SWP_NOACTIVATE)
+            }
+            i -= 1
+        }
+    }
+    for var i, it = ks {
+        _place(it.w, at[i].r - at[i].l, at[i].b - at[i].t)
+    }
+    if moved {
+        _invalidate(box)
+    }
+}
+
+// What w holds laid out in its cw by ch bounds, where it holds any: a box
+// or a scroll by `_layOut`, tabs by showing its page selected, a flow by
+// wrapping its words, and an image by sizing its picture to fill it.
+func _place(w api.HWND, cw int, ch int) {
+    if !_ctls.contains(w) {
+        return
+    }
+    var k = _ctls[w]
+    if k.kind == _kBox || k.kind == _kScroll {
+        _layOut(w, cw, ch)
+    } else if k.kind == _kTabs {
+        _layOutTabs(w, cw, ch)
+    } else if k.kind == _kFlow {
+        var fh = _flowHeight(w, cw - _px(k.padRight + k.padLeft, k.dpi))
+        if fh != k.flowH {
+            _ctls[w].flowH = fh
+            _relayout(w)
+        }
+        _invalidate(w)
+    } else if k.kind == _kImage {
+        for var child = k.kids {
+            if _ctls.contains(child) {
+                var kc = _ctls[child]
+                if kc.placedL != 0 || kc.placedT != 0 || kc.placedR != cw || kc.placedB != ch {
+                    _ctls[child].placedL = 0
+                    _ctls[child].placedT = 0
+                    _ctls[child].placedR = cw
+                    _ctls[child].placedB = ch
+                    _setWindowPos(child, null, 0, 0, cw, ch, api.SWP_NOZORDER + api.SWP_NOACTIVATE)
+                    _invalidateRect(child, null, false)
+                }
+            }
+        }
+    }
+    // Its words wrap at its width, and what holds it is laid out
+    // again where they wrap to another height.
+    // Its picture fills it, and paints itself fitted.
+}
+
+// What w holds laid out in the bounds it has.
+func _layOutNow(w api.HWND) {
+    var r = api.RECT{left=0, top=0, right=0, bottom=0}
+    api.GetWindowRect(w, &r)
+    _place(w, r.right - r.left, r.bottom - r.top)
+}
+
+func _layOutTop(top api.HWND) {
+    var r = api.RECT{left=0, top=0, right=0, bottom=0}
+    api.GetClientRect(top, &r)
+    _layOut(top, r.right - r.left, r.bottom - r.top)
+}
+
+// w and what is under it given the fonts for dpi, the DPI of the toplevel
+// they are in: what a control made, parked at the system's, takes as it is
+// put in one, and all of them as the toplevel moves to a monitor of
+// another.
+func _refresh(w api.HWND, dpi int) {
+    if !_ctls.contains(w) {
+        return
+    }
+    var k = _ctls[w]
+    if k.dpi != dpi {
+        _ctls[w].dpi = dpi
+        _ctls[w].measured = false
+        _refont(w, dpi)
+    }
+    for var child = k.kids {
+        _refresh(child, dpi)
+    }
+}
+
+// A toplevel sized to hold what it holds, as a GTK window grows to its
+// content: grown, and never shrunk, since a window the user sized keeps
+// that size.
+func _fit(top api.HWND) {
+    var s = _measure(top)
+    var r = api.RECT{left=0, top=0, right=0, bottom=0}
+    api.GetClientRect(top, &r)
+    var w = int(r.right - r.left)
+    var h = int(r.bottom - r.top)
+    if s.cx <= w && s.cy <= h {
+        return
+    }
+    _resizeClient(top, s.cx > w ? s.cx : w, s.cy > h ? s.cy : h)
+}
+
+// Asks for the layout of the toplevel w is in, once whatever is changing it
+// has; a node not yet under one waits for its append. What changed
+// measures again, and so does everything holding it; the rest keeps what it
+// measured, since a layout asks each box for its children's sizes once for
+// itself and again for each box above it, and measuring text is a call into
+// GDI.
+func _relayout(w api.HWND) {
+    var p = w
+    var going = true
+    for going {
+        if !_ctls.contains(p) {
+            going = false
+        } else {
+            _ctls[p].measured = false
+            if _ctls[p].kind == _kTop {
+                going = false
+            } else {
+                var up = _parentOf(p)
+                if up != null {
+                    p = _found(up)
+                } else {
+                    going = false
+                }
+            }
+        }
+    }
+    var top = _ancestor(w, 2)
+    if !_ctls.contains(top) || _ctls[top].kind != _kTop || _ctls[top].laying {
+        return
+    }
+    _ctls[top].laying = true
+    api.PostMessage(top, _wmLayout, 0, 0)
+}
+
+// A toplevel's layout, as the message `_relayout` posts arrives: its fonts
+// for its DPI, its size grown to what it holds, and what it holds laid out.
+func _layoutMessage(top api.HWND) {
+    if !_ctls.contains(top) {
+        return
+    }
+    _ctls[top].laying = false
+    _refresh(top, _dpiOf(top))
+    _fit(top)
+    _layOutTop(top)
+}
+
+// --- Scrolls and tabs ---
+
+// A scroll moved along `bar` (SB_HORZ 0, SB_VERT 1) as the bar's `request`
+// asks. What it holds is moved, not laid out again: nothing in it changed
+// size, and laying out every card of a long grid on each line the wheel
+// turns was a fifth of a second a line under Wine.
+func _scrolled(w api.HWND, bar int, request int) {
+    if !_ctls.contains(w) {
+        return
+    }
+    var k = _ctls[w]
+    var si = _ScrollInfo{cbSize=28, fMask=23, nMin=0, nMax=0, nPage=0, nPos=0, nTrackPos=0}
+    _getScrollInfo(w, bar, &si)
+    var pos = si.nPos
+    var line = _px(20, k.dpi)
+    if request == 0 {
+        pos -= line
+    } else if request == 1 {
+        pos += line
+    } else if request == 2 {
+        pos -= int(si.nPage)
+    } else if request == 3 {
+        pos += int(si.nPage)
+    } else if request == 4 || request == 5 {
+        pos = si.nTrackPos
+    } else if request == 6 {
+        pos = 0
+    } else if request == 7 {
+        pos = si.nMax
+    } else {
+        return
+    }
+    var most = bar == 1 ? k.maxY : k.maxX
+    pos = pos > most ? most : (pos < 0 ? 0 : pos)
+    var was = bar == 1 ? k.posY : k.posX
+    if pos == was {
+        return
+    }
+    var by = was - pos
+    if bar == 1 {
+        _ctls[w].posY = pos
+    } else {
+        _ctls[w].posX = pos
+    }
+    _setScrollPos(w, bar, pos, true)
+    var dx = bar == 0 ? by : 0
+    var dy = bar == 1 ? by : 0
+    for var child = k.kids {
+        if _ctls.contains(child) {
+            _ctls[child].placedL += dx
+            _ctls[child].placedR += dx
+            _ctls[child].placedT += dy
+            _ctls[child].placedB += dy
+        }
+    }
+    _scrollWindow(w, dx, dy, null, null, null, null, api.SW_SCROLLCHILDREN + api.SW_INVALIDATE + api.SW_ERASE)
+    _reach(w)
+}
+
+// The wheel turned over a scroll by `delta`: what a precision touchpad
+// sends a notch in pieces is added up until it makes a line.
+func _wheeled(w api.HWND, delta int) {
+    if !_ctls.contains(w) {
+        return
+    }
+    var turned = _ctls[w].wheel + delta
+    var lines = turned / 120
+    _ctls[w].wheel = turned - lines * 120
+    var bar = _ctls[w].scrollV ? 1 : 0
+    var i = 0
+    var count = lines < 0 ? 0 - lines : lines
+    for i < count {
+        _scrolled(w, bar, lines < 0 ? 1 : 0)
+        i += 1
+    }
+}
+
+// A tabs given a tab for each page it holds, titled with the page's text,
+// and the one it shows selected.
+func _tabsSync(tabs api.HWND) {
+    if !_ctls.contains(tabs) {
+        return
+    }
+    var k = _ctls[tabs]
+    api.SendMessage(tabs, 4873, 0, 0)
+    for var i, page = k.kids {
+        var item = _TabItem{mask=1, pszText=_ctls.contains(page) ? _ctls[page].text : ""}
+        _sendTabItem(tabs, 4926, i, &item)
+    }
+    api.SendMessage(tabs, 4876, k.selected, 0)
+    _relayout(tabs)
+}
+
+// The user's choice of a tab: its page is shown and reports it, or, where
+// the page is disabled, the tab selected before is again.
+func _tabChosen(tabs api.HWND) {
+    if !_ctls.contains(tabs) {
+        return
+    }
+    var k = _ctls[tabs]
+    var at = int(api.SendMessage(tabs, 4875, 0, 0))
+    if at < 0 || at >= k.kids.length() || api.IsWindowEnabled(k.kids[at]) == 0 {
+        api.SendMessage(tabs, 4876, k.selected, 0)
+        return
+    }
+    _ctls[tabs].selected = at
+    _layOutNow(tabs)
+    _clicked(k.kids[at])
+}
+
+// --- The tree ---
+
+// Whether w is a menu entry or holds one.
+func _holdsEntries(w api.HWND) bool {
+    if !_ctls.contains(w) {
+        return false
+    }
+    var k = _ctls[w]
+    if k.kind == _kEntry {
+        return true
+    }
+    for var child = k.kids {
+        if _holdsEntries(child) {
+            return true
+        }
+    }
+    return false
+}
+
+func _adopt(parent api.HWND, child api.HWND, at int) {
+    if !_ctls.contains(parent) {
+        return
+    }
+    _setParent(child, parent)
+    if _ctls.contains(child) {
+        _ctls[child].placedL = 0
+        _ctls[child].placedT = 0
+        _ctls[child].placedR = 0
+        _ctls[child].placedB = 0
+    }
+    _ctls[parent].kids.insert(at, child)
+    if _ctls[parent].kind == _kTabs {
+        _tabsSync(parent)
+    }
+    _tipChild(parent, child, true)
+    if _holdsEntries(child) {
+        _menuSync(parent)
+    }
+    _relayout(parent)
+}
+
+// child made the last of parent's children, or put before `before`, one of
+// them; either lays the window they are in out again. What is put in a
+// modal goes in its dialog.
+func _appendTo(parent api.HWND, child api.HWND) {
+    var host = _host(parent)
+    if _ctls.contains(host) {
+        _adopt(host, child, _ctls[host].kids.length())
+    }
+}
+
+func _insertTo(parent api.HWND, child api.HWND, before api.HWND) {
+    var host = _host(parent)
+    if _ctls.contains(host) {
+        var at = _ctls[host].kids.indexOf(before)
+        _adopt(host, child, at < 0 ? _ctls[host].kids.length() : at)
+    }
+}
+
+// child, one of parent's children, taken out and destroyed.
+func _removeFrom(parent api.HWND, child api.HWND) {
+    var host = _host(parent)
+    var had = _ctls.contains(host)
+    if had {
+        var at = _ctls[host].kids.indexOf(child)
+        if at >= 0 {
+            _ctls[host].kids.remove(at)
+        }
+        _tipChild(host, child, false)
+    }
+    var entries = _holdsEntries(child)
+    api.DestroyWindow(child)
+    if entries {
+        _menuSync(host)
+    }
+    if had && _ctls[host].kind == _kTabs {
+        var n = _ctls[host].kids.length()
+        if _ctls[host].selected >= n {
+            _ctls[host].selected = n > 0 ? n - 1 : 0
+        }
+        _tabsSync(host)
+    }
+    if had {
+        _relayout(host)
+    }
+}
+
+// A render slot's anchor is a spacer kept hidden among a box's or a
+// window's children, where it takes no room: its entries go before it, so
+// a slot emptied and filled again comes back where it was written. The
+// last one stands while its container holds it; a container of any other
+// kind -- tabs, whose every child is a page -- keeps none.
+func _slotAnchor(parent api.HWND, anchor api.HWND) api.HWND {
+    var host = _host(parent)
+    if !_ctls.contains(host) || (_ctls[host].kind != _kBox && _ctls[host].kind != _kTop) {
+        return _nothing()
+    }
+    if _ctls[host].kids.indexOf(anchor) >= 0 {
+        return anchor
+    }
+    var w = _handle(_rtSpacer())
+    if _ctls.contains(w) {
+        _ctls[w].offProp = true
+        api.ShowWindow(w, api.SW_HIDE)
+    }
+    _adopt(host, w, _ctls[host].kids.length())
+    return w
+}
+
+// A node the program attaches bare -- a test's component, a package body
+// with no window -- is shown in a window of its own, sized to what it
+// holds as a GTK window is to its content.
+func _attachNode(node api.HWND) {
+    if !_ctls.contains(node) {
+        return
+    }
+    var top = node
+    if _ctls[node].kind != _kTop {
+        top = _windowHandle(_rtToplevel())
+        _appendTo(top, node)
+    }
+    var s = _measure(top)
+    _resizeClient(top, s.cx < 200 ? 200 : s.cx, s.cy < 100 ? 100 : s.cy)
+    _showAttached(top, node)
+    _layOutTop(top)
+}
+
+// --- Setters ---
+
+// What a node's style asks of a layout, and of its painting, which the
+// runtime keeps; then it is laid out again.
+func _look(n ui.node, look Look) {
+    var w = _handle(n)
+    if !_ctls.contains(w) {
+        return
+    }
+    _ctls[w].flex = look.flex
+    _ctls[w].gap = look.gap
+    _ctls[w].padTop = look.padTop
+    _ctls[w].padRight = look.padRight
+    _ctls[w].padBottom = look.padBottom
+    _ctls[w].padLeft = look.padLeft
+    _ctls[w].minW = look.minWidth
+    _ctls[w].exactW = look.width
+    _ctls[w].exactH = look.height
+    _ctls[w].align = look.align
+    if _ctls[w].offLook != (look.hidden != 0) {
+        _ctls[w].offLook = look.hidden != 0
+        _show(w)
+    }
+    _paintLook(n, look)
+    _relayout(w)
+}
+
+// Shows or hides w as neither its prop nor its look hides it, and lays out
+// what it is in again, where it takes room or none.
+func _show(w api.HWND) {
+    var k = _ctls[w]
+    if _showWindow(w, !k.offProp && !k.offLook) != 0 {
+        var parent = _parentOf(w)
+        if parent != null {
+            _relayout(_found(parent))
+        }
+    }
+}
+
+// A node hidden takes no room in its box until it is shown again.
+func _rtSetShown(n ui.node, shown bool) {
+    var w = _handle(n)
+    if _ctls.contains(w) {
+        _ctls[w].offProp = !shown
+        _show(w)
+    }
+}
+
+// Whether a node is shown, by its prop and its look.
+func _isShown(w api.HWND) bool {
+    return _laid(w)
+}
+
+// A box's axis, or a divider's, which draws its line down or across.
+func _setVertical(w api.HWND, vertical bool) {
+    if _ctls.contains(w) && _ctls[w].vertical != vertical {
+        _ctls[w].vertical = vertical
+        if _ctls[w].kind == _kDivider {
+            _dividerStyle(w, vertical)
+        }
+        _relayout(w)
+    }
+}
+
+func _setMode(w api.HWND, mode int) {
+    if _ctls.contains(w) && _ctls[w].mode != mode {
+        _ctls[w].mode = mode
+        _ctls[w].flowH = 0
+        _relayout(w)
+    }
+}
+
+func _setColumns(w api.HWND, columns int) {
+    if _ctls.contains(w) && _ctls[w].columns != columns {
+        _ctls[w].columns = columns
+        _relayout(w)
+    }
+}
+
+func _setFramed(w api.HWND, framed bool) {
+    if _ctls.contains(w) && _ctls[w].framed != framed {
+        _ctls[w].framed = framed
+        _invalidate(w)
+        _relayout(w)
+    }
+}
+
+// The page a tabs shows.
+func _setSelected(w api.HWND, selected int) {
+    if _ctls.contains(w) && _ctls[w].selected != selected {
+        _ctls[w].selected = selected
+        api.SendMessage(w, 4876, selected, 0)
+        _relayout(w)
+    }
+}
+
+// The axes a scroll moves along: what it holds is laid down its axis, or
+// across where it scrolls only that way.
+func _setScroll(w api.HWND, vertical bool, horizontal bool) {
+    if !_ctls.contains(w) {
+        return
+    }
+    _ctls[w].scrollV = vertical
+    _ctls[w].scrollH = horizontal
+    _scrollStyle(w, vertical, horizontal)
+    _ctls[w].vertical = !(horizontal && !vertical)
+    _relayout(w)
+}
+
+// The first node of `kind` under w, w itself included.
+func _findKind(w api.HWND, kind int) option[_Found] {
+    if !_ctls.contains(w) {
+        return null
+    }
+    var k = _ctls[w]
+    if k.kind == kind {
+        return _asFound(w)
+    }
+    for var child = k.kids {
+        var found = _findKind(child, kind)
+        if found != null {
+            return found
+        }
+    }
+    return null
+}
+
+// --- Text and menus ---
+
+// A window's text -- a toplevel's title, a control's caption -- and its
+// layout again. A render sets every prop it writes, changed or not, and a
+// text set is measured again with everything holding it: a page of cards
+// each set its name again as any one name arrived, so one set to what it
+// shows already is not set again. A modal's is its dialog's title, a menu
+// entry's its item's label, and a tab page's its tab's title.
+func _setText(w api.HWND, text string) {
+    var has = _ctls.contains(w)
+    if has && _ctls[w].texted && _ctls[w].text == text {
+        return
+    }
+    if has {
+        _ctls[w].text = text
+        _ctls[w].texted = true
+        if _ctls[w].kind == _kModal {
+            api.SetWindowText(_dialogOf(w), text)
+            return
+        }
+    }
+    api.SetWindowText(w, text)
+    if has && _ctls[w].kind == _kEntry {
+        _menuSync(w)
+        return
+    }
+    var parent = api.GetParent(w)
+    if _ctls.contains(parent) && _ctls[parent].kind == _kTabs {
+        _tabsSync(parent)
+    }
+    _relayout(w)
+}
+
+// A menu entry's command id is what WM_COMMAND carries in 16 bits: those in
+// use are kept, so an id handed out again once they wrap is free.
+const _entryFirst = 1000
+
+var _entryIds map[int, bool] = {}
+
+var _nextEntry = 1000
+
+func _entryId() int {
+    var n = 0
+    for n < 65536 - _entryFirst {
+        var id = _nextEntry
+        _nextEntry = _nextEntry == 65535 ? _entryFirst : _nextEntry + 1
+        if !_entryIds.contains(id) {
+            _entryIds[id] = true
+            return id
+        }
+        n += 1
+    }
+    return 0
+}
+
+// A menu, or a toplevel's menu bar, which Win32 may answer none of.
+#[c.native("HMENU", pointer)]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.Menu")]
+struct _Menu {}
+
+#[c.native("CreateMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.CreateMenu")]
+func _createMenu() option[_Menu]
+
+#[c.native("CreatePopupMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.CreatePopupMenu")]
+func _createPopupMenu() option[_Menu]
+
+#[c.native("AppendMenuW")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.AppendMenuW")]
+func _appendMenu(m _Menu, flags api.UINT, id _UintPtr, label c.utf16) api.WINBOOL
+
+// AppendMenuW with a submenu, whose handle it takes as its id.
+#[c.native("sngl_win32_append_popup")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32AppendPopup")]
+func _appendPopup(m _Menu, flags api.UINT, sub _Menu, label c.utf16)
+
+#[c.native("GetMenuItemCount")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetMenuItemCount")]
+func _menuItemCount(m _Menu) int
+
+#[c.native("SetMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SetMenu")]
+func _setMenu(w api.HWND, m option[_Menu]) api.WINBOOL
+
+#[c.native("DrawMenuBar")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DrawMenuBar")]
+func _drawMenuBar(w api.HWND) api.WINBOOL
+
+#[c.native("DestroyMenu")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.DestroyMenu")]
+func _destroyMenu(m _Menu) api.WINBOOL
+
+#[c.native("GetMenuState")]
+#[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.GetMenuState")]
+func _menuState(m _Menu, id api.UINT, flags api.UINT) api.UINT
+
+// How an entry's state shows in a menu: MF_GRAYED, MF_CHECKED.
+func _entryFlags(k _Ctl) int {
+    return (k.disabled ? 1 : 0) + (k.checked ? 8 : 0)
+}
+
+// An item for each entry w holds put in m, or that a toplevel's walk finds:
+// a submenu where it holds entries itself, and otherwise its command. A
+// menu bar's entries are found wherever the window holds them,
+// ui.menubar's included.
+func _fillMenu(m _Menu, w api.HWND, top bool) {
+    if !_ctls.contains(w) {
+        return
+    }
+    for var child = _ctls[w].kids {
+        if _ctls.contains(child) {
+            if _ctls[child].kind == _kEntry {
+                _addEntry(m, child)
+            } else if top {
+                _fillMenu(m, child, true)
+            }
+        }
+    }
+}
+
+func _addEntry(m _Menu, e api.HWND) {
+    var k = _ctls[e]
+    var subs = 0
+    for var child = k.kids {
+        if _ctls.contains(child) && _ctls[child].kind == _kEntry {
+            subs += 1
+        }
+    }
+    if subs > 0 {
+        var sub = _createPopupMenu()
+        if sub != null {
+            _fillMenu(sub, e, false)
+            _appendPopup(m, 16 + _entryFlags(k), sub, k.text)
+        }
+    } else {
+        _appendMenu(m, _entryFlags(k), k.id, k.text)
+    }
+}
+
+// The toplevel w is in given a menu bar of every entry it holds, or none
+// where it holds none.
+func _menuSync(w api.HWND) {
+    var top = _ancestor(w, 2)
+    if !_ctls.contains(top) || _ctls[top].kind != _kTop {
+        return
+    }
+    var made = _createMenu()
+    var bar option[_Menu] = null
+    if made != null {
+        _fillMenu(made, top, true)
+        if _menuItemCount(made) > 0 {
+            bar = made
+        } else {
+            _destroyMenu(made)
+        }
+    }
+    var old = _ctls[top].menu
+    _ctls[top].menu = bar
+    if bar != null || old != null {
+        _setMenu(top, bar)
+        _drawMenuBar(top)
+    }
+    if old != null {
+        _destroyMenu(old)
+    }
+}
+
+// The entry under w whose command is id.
+func _findEntry(w api.HWND, id int) option[_Found] {
+    if !_ctls.contains(w) {
+        return null
+    }
+    var k = _ctls[w]
+    if k.kind == _kEntry && k.id == id {
+        return _asFound(w)
+    }
+    for var child = k.kids {
+        var found = _findEntry(child, id)
+        if found != null {
+            return found
+        }
+    }
+    return null
+}
+
+// A menu's command in toplevel `top`, its entry's id: the entry's click.
+func _menuCommand(top api.HWND, id int) {
+    var e = _findEntry(top, id)
+    if e != null {
+        _clicked(_found(e))
+    }
+}
+
+// The entry under w labeled `label`.
+func _entryLabeled(w api.HWND, label string) option[_Found] {
+    if !_ctls.contains(w) {
+        return null
+    }
+    var k = _ctls[w]
+    if k.kind == _kEntry && k.text == label {
+        return _asFound(w)
+    }
+    for var child = k.kids {
+        var found = _entryLabeled(child, label)
+        if found != null {
+            return found
+        }
+    }
+    return null
+}
+
+// The entry labeled `label` in the menu bar of the window w is in chosen as
+// the user chooses it: through the menu, where a grayed item, or one not
+// in it, is none.
+func _chooseMenu(w api.HWND, label string) bool {
+    var top = _ancestor(w, 2)
+    var e = _entryLabeled(top, label)
+    if !_ctls.contains(top) || e == null {
+        return false
+    }
+    var bar = _ctls[top].menu
+    if bar == null {
+        return false
+    }
+    var id = _ctls[_found(e)].id
+    if int(_menuState(bar, id, 0)) % 2 != 0 {
+        return false
+    }
+    api.SendMessage(top, api.WM_COMMAND, id, 0)
+    return true
+}
+
+func _menuItems(w api.HWND) int {
+    var top = _ancestor(w, 2)
+    if !_ctls.contains(top) {
+        return 0
+    }
+    var bar = _ctls[top].menu
+    return bar != null ? _menuItemCount(bar) : 0
+}
+
+func _setEntryDisabled(w api.HWND, disabled bool) {
+    if _ctls.contains(w) && _ctls[w].disabled != disabled {
+        _ctls[w].disabled = disabled
+        _menuSync(w)
+    }
+}
+
+func _setEntryChecked(w api.HWND, checked bool) {
+    if _ctls.contains(w) && _ctls[w].checked != checked {
+        _ctls[w].checked = checked
+        _menuSync(w)
+    }
+}

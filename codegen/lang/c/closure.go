@@ -394,8 +394,5 @@ func (c *Context) cCallback(sig *ir.FuncSig, value string, valueType *ir.Type) (
 // behind it -- a handler lowering attached where the program wrote none --
 // which no file declares.
 func Bodiless(fn *ir.Func) bool {
-	if len(fn.Block) > 0 || fn.Foreign.Path != "" || fn.Intrinsic != "" {
-		return false
-	}
-	return fn.AST == nil || fn.AST.Body == nil && !fn.AST.Block.IsDefined()
+	return len(fn.Block) == 0 && fn.Foreign.Path == "" && fn.Intrinsic == "" && !ir.WroteBody(fn)
 }

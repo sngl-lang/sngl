@@ -3,6 +3,7 @@ package optimize
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 
 	"duckfam.us/sngl/ast"
@@ -250,6 +251,7 @@ func foldExpr(e ir.Expr, ctx *evalCtx) ir.Expr {
 				x.Fields[i].Value = foldExpr(x.Fields[i].Value, ctx)
 			}
 		}
+		x.Fields = append(x.Fields, unfoldedDefaults(x, ctx)...)
 	case *ir.Spread:
 		x.Operand = foldExpr(x.Operand, ctx)
 	case *ir.MapLitIR:
@@ -914,4 +916,28 @@ func identityMap(call *ir.Call) ir.Expr {
 		return nil
 	}
 	return list
+}
+
+// unfoldedDefaults is each field x leaves out whose declaration's default is
+// unfolded (ir.StructField.DefaultFolded), written out folded, since a
+// backend spells a field left out from the declaration: gtk4's
+// `_TabPageState{}`, built by a protocol function lowering splices in after
+// the build copied the library, left out a field defaulting to `false`, the
+// builtin const, which C spelled as the identifier `false_`. A literal the
+// fold evaluates whole keeps such a field for the same reason (HoldsOmitted).
+func unfoldedDefaults(x *ir.StructLit, ctx *evalCtx) []ir.FieldInit {
+	if x.Def == nil || x.Def.Foreign.Name != "" && !x.Def.Foreign.Marked {
+		return nil
+	}
+	if slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Spread }) {
+		return nil
+	}
+	var out []ir.FieldInit
+	for _, d := range x.Def.Fields {
+		if d.DefaultFolded() || slices.ContainsFunc(x.Fields, func(f ir.FieldInit) bool { return f.Name == d.Name }) {
+			continue
+		}
+		out = append(out, ir.FieldInit{Name: d.Name, Value: foldExpr(ir.CloneExprSharingDecls(d.Default), ctx)})
+	}
+	return out
 }

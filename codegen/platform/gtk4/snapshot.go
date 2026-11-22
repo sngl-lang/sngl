@@ -26,7 +26,7 @@ var _ codegen.Snapshotter = (*Generator)(nil)
 
 // Snapshot implements codegen.Snapshotter: the program built for it, whose
 // entry builds the program and draws its first window at width by height
-// into a file (sngl_gtk_capture_file), built and run in the display this
+// into a file (the platform's _captureFile), built and run in the display this
 // process has, and the pixels it wrote encoded as a PNG.
 func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width, height int) ([]byte, error) {
 	if ok, reason := g.ProbeTest(); !ok {
@@ -55,7 +55,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", platformName, err)
 		}
-		if out, err := cc.BuildDir(dir, exe, "c17"); err != nil {
+		if out, err := cc.BuildDir(dir, exe, "c17", ""); err != nil {
 			return nil, fmt.Errorf("%s: %w\n%s", platformName, err, out)
 		}
 		exe = cc.Exe(exe)
@@ -73,7 +73,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	return encodeSnapshot(raw)
 }
 
-// encodeSnapshot is the PNG of what sngl_gtk_capture_file wrote: its width
+// encodeSnapshot is the PNG of what _captureFile wrote: its width
 // and height, four bytes each, little-endian, then its pixels, four bytes
 // each, red, green, blue and alpha, row by row from the top.
 func encodeSnapshot(raw []byte) ([]byte, error) {

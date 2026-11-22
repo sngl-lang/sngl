@@ -1,0 +1,517 @@
+# C interop under Wine, on 64- and 32-bit Windows, in C and in Go, the
+# program calling its own declarations as a Go program calling the wrappers
+# does and as one calling C directly does.
+#
+# A callback Win32 calls is CALLBACK, which is __stdcall on 32-bit x86:
+# #[c.static(convention="CALLBACK")] writes it into the function C is
+# handed, which C takes at the typedef #[c.type] names with no cast (a
+# __stdcall mismatch is an incompatible pointer to MinGW's i686 compiler),
+# and Go hands C a static C function of that convention calling its export.
+# A timer's procedure ticks once through SetTimer and the fixture's message
+# loop, and a window procedure, handed to RegisterClassW by the fixture's C,
+# answers a message SendMessageW sends, its WPARAM, LPARAM and LRESULT
+# crossing as those types.
+#
+# A pointer in a message's LPARAM: #[c.type("LPARAM")] on a string, its
+# UTF-16 alias, a ref to a C struct or a handle says C takes it as that
+# integer, and the call casts it, in C (Go through a C function taking the
+# pointer, so cgo keeps what it points to). WM_SETTEXT sets a window's text
+# both ways and WM_GETTEXTLENGTH counts it; the fixture's own window
+# procedure reads and writes a RECT handed by ref and answers whether an
+# LPARAM is a window; and a WM_NOTIFY's LPARAM is cast back to the NMHDR it
+# points to, whose members `field` reads.
+#
+# A C struct's field may be a string or a handle: an LVITEMW whose text is
+# a c.utf16, handed by ref through LVM_INSERTITEMW's LPARAM, inserts a row
+# into a real list view, whose text the fixture's C reads back. The string
+# is valid for the call, and not read back into the program's struct.
+
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +7 tests, 0 failures'
+sngl test --platform=win32 --language=c --opt arch=386 app.sngl
+stdout 'ok +7 tests, 0 failures'
+sngl test --platform=win32 --language=go app.sngl
+stdout 'ok +7 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt arch=386 app.sngl
+stdout 'ok +7 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct app.sngl
+stdout 'ok +7 tests, 0 failures'
+sngl test --platform=win32 --language=go --opt cgo=direct --opt arch=386 app.sngl
+stdout 'ok +7 tests, 0 failures'
+
+-- app.sngl --
+import api "sngl:platform/win32/api"
+import c "sngl:x/c"
+import test "sngl:test"
+import ui "sngl:ui"
+
+c.link(include="interop.h", sources=["interop.c", "interop.h"])
+
+#[c.native("UINT_PTR")]
+struct UINT_PTR = int
+
+#[c.native("SetTimer")]
+func _setTimer(h api.HWND, id UINT_PTR, ms api.UINT, #[c.type("TIMERPROC")] #[c.static(convention="CALLBACK")] tick func(h api.HWND, msg api.UINT, id UINT_PTR, time api.DWORD)) UINT_PTR
+
+#[c.native("KillTimer")]
+func _killTimer(h api.HWND, id UINT_PTR) api.WINBOOL
+
+#[c.native("DefWindowProcW")]
+func _defProc(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT
+
+#[c.native("interop_window")]
+func _window(#[c.type("WNDPROC")] #[c.static(convention="CALLBACK")] proc func(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT) api.HWND
+
+#[c.native("interop_pump")]
+func _pump(h api.HWND, ms int) int
+
+#[c.native("interop_stop")]
+func _stop()
+
+#[c.native("SendMessageW")]
+func _sendWide(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] text c.utf16) api.LRESULT
+
+#[c.native("SendMessageA")]
+func _sendAnsi(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] text string) api.LRESULT
+
+#[c.native("SendMessageW")]
+func _sendRect(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] r ref[api.RECT]) api.LRESULT
+
+#[c.native("SendMessageW")]
+func _sendWindow(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] other api.HWND) api.LRESULT
+
+#[c.native("interop_c_window")]
+func _cWindow() api.HWND
+
+#[c.native("interop_notify")]
+func _notify(to api.HWND, code int)
+
+#[c.native("NMHDR *")]
+struct _Nmhdr {}
+
+#[c.native("NMHDR *", cast)]
+func _header(l api.LPARAM) _Nmhdr
+
+#[c.native("NMHDR.code", field)]
+func _code(h _Nmhdr) api.UINT
+
+#[c.native("NMHDR.idFrom", field)]
+func _from(h _Nmhdr) UINT_PTR
+
+#[c.native("LVITEMW")]
+struct _LvItem {
+    mask      api.UINT
+    iItem     int
+    iSubItem  int
+    state     api.UINT
+    stateMask api.UINT
+    pszText   c.utf16
+}
+
+#[c.native("SendMessageW")]
+func _sendItem(h api.HWND, msg api.UINT, w api.WPARAM, #[c.type("LPARAM")] item ref[_LvItem]) api.LRESULT
+
+#[c.native("interop_list")]
+func _list() api.HWND
+
+#[c.native("interop_item_text")]
+func _itemText(list api.HWND, i int) string
+
+var noted = 0
+var notedFrom = 0
+
+var ticks = 0
+var tickedId = 0
+
+func _tick(h api.HWND, msg api.UINT, id UINT_PTR, time api.DWORD) {
+    ticks += 1
+    tickedId = id
+    _killTimer(h, id)
+    _stop()
+}
+
+func _proc(h api.HWND, msg api.UINT, w api.WPARAM, l api.LPARAM) api.LRESULT {
+    if msg == 1031 {
+        return w * 2 + l
+    }
+    if msg == 78 {
+        var hdr = _header(l)
+        noted = _code(hdr)
+        notedFrom = _from(hdr)
+        return 0
+    }
+    return _defProc(h, msg, w, l)
+}
+
+ui.window(title="interop") {
+    ui.text("interop")
+}
+
+func testATimerTicks(t test.Test) {
+    var h = _window(_proc)
+    _setTimer(h, 7, 10, _tick)
+    t.assert(_pump(h, 5000) == 1)
+    t.assert(ticks == 1)
+    t.assert(tickedId == 7)
+}
+
+func testAWindowProcedureAnswers(t test.Test) {
+    var h = _window(_proc)
+    t.assert(api.SendMessage(h, 1031, 20, 2) == 42)
+}
+
+func testAStringIsAnLparam(t test.Test) {
+    var h = _window(_proc)
+    _sendWide(h, 12, 0, "héllo")
+    t.assert(api.SendMessage(h, 14, 0, 0) == 5)
+    _sendAnsi(h, 12, 0, "abc")
+    t.assert(api.SendMessage(h, 14, 0, 0) == 3)
+}
+
+func testAStructIsReadAndWrittenThroughAnLparam(t test.Test) {
+    var h = _cWindow()
+    var r = api.RECT{left=4, top=5, right=0, bottom=0}
+    var got = _sendRect(h, 1032, 0, &r)
+    t.assert(got == 9)
+    t.assert(r.right == 8)
+    t.assert(r.bottom == 6)
+}
+
+func testAWindowIsAnLparam(t test.Test) {
+    var h = _cWindow()
+    t.assert(_sendWindow(h, 1034, 0, _window(_proc)) == 1)
+}
+
+func testANotifyIsReadThroughItsLparam(t test.Test) {
+    var h = _window(_proc)
+    _notify(h, 1234)
+    t.assert(noted == 1234)
+    t.assert(notedFrom == 5)
+}
+
+func testAnItemsTextCrossesInItsStruct(t test.Test) {
+    var list = _list()
+    var item = _LvItem{mask=1, iItem=0, iSubItem=0, state=0, stateMask=0, pszText="café 世"}
+    t.assert(_sendItem(list, 4173, 0, &item) == 0)
+    item.pszText = "second"
+    item.iItem = 1
+    t.assert(_sendItem(list, 4173, 0, &item) == 1)
+    t.assert(item.pszText == "second")
+    t.assert(_itemText(list, 0) == "café 世")
+    t.assert(_itemText(list, 1) == "second")
+}
+-- interop.h --
+#include <windows.h>
+#include <commctrl.h>
+
+// A message-only window of a class whose procedure is proc.
+HWND interop_window(WNDPROC proc);
+
+// Runs h's messages until interop_stop is called, answering 1, or ms pass,
+// answering 0.
+int interop_pump(HWND h, int ms);
+void interop_stop(void);
+
+// A message-only window whose procedure is the fixture's own: 1032 reads
+// the RECT its LPARAM points to and writes it, and 1034 answers whether its
+// LPARAM is a window.
+HWND interop_c_window(void);
+
+// Sends to a WM_NOTIFY from window 5 carrying code.
+void interop_notify(HWND to, int code);
+
+// A list view of one column in a window never shown, and the text of its
+// row i as UTF-8, in a buffer of its own.
+HWND interop_list(void);
+const char *interop_item_text(HWND list, int i);
+-- interop.c --
+#include "interop.h"
+
+static int stopped;
+
+HWND interop_window(WNDPROC proc) {
+	static int n;
+	wchar_t name[32];
+	wsprintfW(name, L"interop%d", n++);
+	WNDCLASSW wc = {0};
+	wc.lpfnWndProc = proc;
+	wc.hInstance = GetModuleHandleW(NULL);
+	wc.lpszClassName = name;
+	if (!RegisterClassW(&wc)) {
+		return NULL;
+	}
+	return CreateWindowExW(0, name, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, wc.hInstance, NULL);
+}
+
+int interop_pump(HWND h, int ms) {
+	DWORD start = GetTickCount();
+	stopped = 0;
+	while (!stopped && GetTickCount() - start < (DWORD)ms) {
+		MSG m;
+		if (PeekMessageW(&m, h, 0, 0, PM_REMOVE)) {
+			DispatchMessageW(&m);
+		} else {
+			Sleep(1);
+		}
+	}
+	return stopped;
+}
+
+void interop_stop(void) {
+	stopped = 1;
+}
+
+static LRESULT CALLBACK c_proc(HWND h, UINT msg, WPARAM w, LPARAM l) {
+	switch (msg) {
+	case 1032: {
+		RECT *r = (RECT *)l;
+		r->right = r->left * 2;
+		r->bottom = r->top + 1;
+		return r->left + r->top;
+	}
+	case 1034:
+		return IsWindow((HWND)l) ? 1 : 0;
+	}
+	return DefWindowProcW(h, msg, w, l);
+}
+
+HWND interop_c_window(void) {
+	return interop_window(c_proc);
+}
+
+void interop_notify(HWND to, int code) {
+	NMHDR nm = {0};
+	nm.hwndFrom = to;
+	nm.idFrom = 5;
+	nm.code = (UINT)code;
+	SendMessageW(to, WM_NOTIFY, 5, (LPARAM)&nm);
+}
+
+HWND interop_list(void) {
+	INITCOMMONCONTROLSEX icc = {sizeof icc, ICC_LISTVIEW_CLASSES};
+	InitCommonControlsEx(&icc);
+	HWND top = CreateWindowExW(0, L"STATIC", L"", WS_POPUP, 0, 0, 200, 200, NULL, NULL, GetModuleHandleW(NULL), NULL);
+	HWND list = CreateWindowExW(0, WC_LISTVIEWW, L"", WS_CHILD | LVS_REPORT, 0, 0, 200, 200, top, NULL, GetModuleHandleW(NULL), NULL);
+	LVCOLUMNW col = {0};
+	col.mask = LVCF_WIDTH;
+	col.cx = 100;
+	SendMessageW(list, LVM_INSERTCOLUMNW, 0, (LPARAM)&col);
+	return list;
+}
+
+const char *interop_item_text(HWND list, int i) {
+	static char out[64];
+	wchar_t text[32] = {0};
+	LVITEMW item = {0};
+	item.iSubItem = 0;
+	item.pszText = text;
+	item.cchTextMax = 32;
+	SendMessageW(list, LVM_GETITEMTEXTW, (WPARAM)i, (LPARAM)&item);
+	WideCharToMultiByte(CP_UTF8, 0, text, -1, out, sizeof out, NULL, NULL);
+	return out;
+}
+
+-- testrun/win32/c/app.sngl/_/1 --
+sha256:8928e38634f1f249ac896323135629b2
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/_/2 --
+sha256:a16542ac5009cdd2f56aa4f2874e687b
+{
+  "results": [
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/1 --
+sha256:0239ffc76bfc74acf23f55d5c3df3397
+{
+  "results": [
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/2 --
+sha256:b99dc801c0d7058e6a4c28988ae33602
+{
+  "results": [
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/3 --
+sha256:688ed4002eb04890b15dccbb971b5c00
+{
+  "results": [
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/app.sngl/_/4 --
+sha256:5cd5908f5fdabe646b4384365bd4eb02
+{
+  "results": [
+    {
+      "Desc": "ANotifyIsReadThroughItsLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStringIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AStructIsReadAndWrittenThroughAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "ATimerTicks",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowIsAnLparam",
+      "Passed": true
+    },
+    {
+      "Desc": "AWindowProcedureAnswers",
+      "Passed": true
+    },
+    {
+      "Desc": "AnItemsTextCrossesInItsStruct",
+      "Passed": true
+    }
+  ]
+}

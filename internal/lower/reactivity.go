@@ -726,6 +726,19 @@ func (st *reactivityState) collectFromStmt(s ir.Stmt) {
 	case *ir.If:
 		st.collectFromIf(n)
 		if n.LoweredSlotID == "" {
+			// An arm the build folds away is never rendered, so a prop of a
+			// node in it has no node to write: an override's `if direction ==
+			// ui.Orientation.horizontal`, spliced with the default, wrote gtk4's
+			// unbuilt horizontal box on every write of `disabled`, and GTK
+			// reported a NULL widget (cmd/sngl/testdata/c_gtk4_radio_disabled_runs.txt).
+			if taken, known := foldedBool(n.Cond); known {
+				if taken {
+					st.collectFromStmts(n.Body)
+				} else {
+					st.collectFromStmts(n.Else)
+				}
+				break
+			}
 			st.collectFromStmts(n.Body)
 			st.collectFromStmts(n.Else)
 		} else {

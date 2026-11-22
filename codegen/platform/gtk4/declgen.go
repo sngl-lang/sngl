@@ -26,7 +26,7 @@ const widgetHeader = "import marks \"sngl:internal/marks\"\nimport macro \"sngl:
 // bundled GIR, made, filled and written through the C functions GTK names,
 // under header, the generated file's first lines. The platform declares the
 // Look every widget takes and the `_setLook` that gives it one, and a box's
-// child is appended by the runtime's sngl_box_append, which aligns it.
+// child is appended by gtk4.sngl's boxAppend, which aligns it.
 func WidgetSource(header string) ([]byte, error) {
 	reg, err := gir.Minimal()
 	if err != nil {
@@ -96,7 +96,7 @@ func widgetDecls(reg *gir.TypeRegistry, platform string) string {
 	var b strings.Builder
 	declared := map[string]bool{}
 	casts := map[string]string{}
-	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}}
+	children := childOps{natives: map[string]bool{}, ptrs: map[string]bool{}, classPtrs: map[string]bool{}, platform: platform}
 	for _, name := range names {
 		info := reg.Classes[name]
 		if declared[info.CType] {
@@ -294,31 +294,60 @@ func typedNull(p gir.ConstructorParam) string {
 	return base
 }
 
-// connectPlaced declares how a handler is connected: through the runtime's
-// trampolines, which hand the handler only its context whatever GLib hands
-// them, so every handler crosses as one callback shape.
+// connectPlaced declares how a handler is connected: g_signal_connect_data
+// handed a callback taking what GLib hands a handler before its context --
+// the instance, and a notification's GParamSpec -- which it drops, so every
+// event's handler is a func(). Its types are its own, since a gir: package
+// declaring the same widgets has none of gtk4.sngl's.
 const connectPlaced = `
-#[c.native("sngl_signal_connect")]
-func _rtSignalConnect(
-    w ui.node,
-    signal string,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+#[c.native("gpointer", pointer)]
+struct _SignalPointer {}
 
-#[c.native("sngl_notify_connect")]
-func _rtNotifyConnect(
-    w ui.node,
+#[c.native("gpointer", cast)]
+func _signalPointer(p c.pointer) _SignalPointer
+
+#[c.native("gulong")]
+struct _SignalHandler = int
+
+#[c.native("GConnectFlags")]
+struct _SignalFlags = int
+
+#[c.native("g_signal_connect_data")]
+func _signalConnectData(
+    instance _SignalPointer,
     signal string,
-    #[c.type("SnglFn")] fn func(),
-    #[c.context] ctx c.pointer,
-    #[c.type("GDestroyNotify")] #[c.release] rel c.pointer,
-)
+    #[c.type("GCallback")] fn func(self _SignalPointer),
+    #[c.context] ctx _SignalPointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags _SignalFlags,
+) _SignalHandler
+
+#[c.native("g_signal_connect_data")]
+func _notifyConnectData(
+    instance _SignalPointer,
+    signal string,
+    #[c.type("GCallback")] fn func(self _SignalPointer, spec _SignalPointer),
+    #[c.context] ctx _SignalPointer,
+    #[c.type("GClosureNotify")] #[c.release] rel c.pointer,
+    flags _SignalFlags,
+) _SignalHandler
+
+func _rtSignalConnect(w ui.node, signal string, fn func()) {
+    _signalConnectData(_signalPointer(_widget(w)), signal, func(self _SignalPointer) { fn() }, _SignalFlags(0))
+}
+
+func _rtNotifyConnect(w ui.node, signal string, fn func()) {
+    _notifyConnectData(_signalPointer(_widget(w)), signal, func(self _SignalPointer, spec _SignalPointer) { fn() }, _SignalFlags(0))
+}
 
 // Emits w's signal as GTK would, which a test fires an event with.
-#[c.native("sngl_signal_emit")]
-func _rtSignalEmit(w ui.node, signal string)
+func _rtSignalEmit(w ui.node, signal string) {
+    _signalEmitByName(_as_GtkWidget(_widget(w)), signal)
+}
+
+// g_signal_emit_by_name with no argument beyond the signal's name.
+#[c.native("g_signal_emit_by_name", variadic)]
+func _signalEmitByName(w _p_GtkWidget, signal string)
 
 // Connects handler to w's signal, as the connect protocol does. A property
 // notification is its event's own protocol.
@@ -388,6 +417,9 @@ func writeCreate(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo,
 type childOps struct {
 	natives map[string]bool
 	ptrs    map[string]bool
+	// platform qualifies what gtk4.sngl declares: "" in its own package,
+	// "gtk4." in the gir: scheme's.
+	platform string
 	// classPtrs is each class a `_ptr_` cast is declared for.
 	classPtrs map[string]bool
 }
@@ -417,20 +449,17 @@ func (o *childOps) classPtr(b *strings.Builder, cType string) {
 }
 
 func (o *childOps) op(b *strings.Builder, info *gir.ClassInfo, op string, call gir.ChildAdder) {
-	// A box's alignItems is the runtime's to apply as a child arrives, so a
-	// box takes one through it: GTK's own call left it unaligned.
+	// A box's alignItems is the platform's to apply as a child arrives, so a
+	// box takes one through gtk4.sngl's boxAppend: GTK's own call left it
+	// unaligned.
 	if call.Func == "gtk_box_append" {
-		o.ptrs["GtkWidget"] = true
-		o.classPtr(b, info.CType)
-		o.native(b, "_sngl_box_append", fmt.Sprintf("\n#[c.native(\"sngl_box_append\")]\nfunc _sngl_box_append(parent %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget")))
-		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    _sngl_box_append(%s(_ptr_%s(parent)), %s(_widget(child)))\n}\n",
-			op, op, info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"))
+		fmt.Fprintf(b, "\n#[gen.protocol(%s)]\nfunc _%s_%s(parent %s, child ui.node) {\n    %sboxAppend(parent, child)\n}\n",
+			op, op, info.CType, info.CType, o.platform)
 		// A child a render slot renders goes before the slot's anchor, which
-		// the runtime puts in place as it puts any child of a box.
+		// the platform puts in place as it puts any child of a box.
 		if op == "append" {
-			o.native(b, "_sngl_box_insert_before", fmt.Sprintf("\n#[c.native(\"sngl_box_insert_before\")]\nfunc _sngl_box_insert_before(parent %s, anchor %s, child %s)\n", ptrType("GtkWidget"), ptrType("GtkWidget"), ptrType("GtkWidget")))
-			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    _sngl_box_insert_before(%s(_ptr_%s(parent)), %s(_widget(before)), %s(_widget(child)))\n}\n",
-				info.CType, info.CType, ptrFunc("GtkWidget"), info.CType, ptrFunc("GtkWidget"), ptrFunc("GtkWidget"))
+			fmt.Fprintf(b, "\n#[gen.protocol(insertBefore)]\nfunc _insert_%s(parent %s, child ui.node, before ui.node) {\n    %sboxInsertBefore(parent, child, before)\n}\n",
+				info.CType, info.CType, o.platform)
 		}
 		return
 	}
@@ -468,12 +497,11 @@ type setProp struct {
 // writeSets declares, for each prop of info a value can be written to, the
 // #[gen.protocol(set)] function lowering splices wherever the program writes
 // it: GIR's setter, its receiver cast to the class or interface that declares
-// it, and where GTK ships none, the preamble's sngl_set_prop_* by the
-// property's name; either set by name is converted by GObject to the type the
-// property's GParamSpec declares. A string handed to a C setter is converted
-// by CMarshal and freed by ReleaseTemps; an enumeration's member is written as
-// its name, which a match turns into the member's value and which folds where
-// it is spliced.
+// it, and where GTK ships none, g_object_set by the property's name, handed
+// the value as the C type GObject reads for the property's. A string handed
+// to a C setter is converted by CMarshal and freed by ReleaseTemps; an
+// enumeration's member is written as its name, which a match turns into the
+// member's value and which folds where it is spliced.
 func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, props []setProp, casts map[string]string) {
 	for _, sp := range props {
 		p, n := sp.prop, sp.name
@@ -485,7 +513,7 @@ func (o *childOps) writeSets(b *strings.Builder, reg *gir.TypeRegistry, info *gi
 		if p.Setter != "" {
 			call = o.cSet(b, reg, info, p, n, casts)
 		} else {
-			call = o.propSet(b, reg, info, p, n, kind)
+			call = o.propSet(b, reg, info, p, n, kind, casts)
 		}
 		fmt.Fprintf(b, "\n#[gen.protocol(set)]\nfunc _set_%s_%s(self %s, %s %s) {\n    %s\n}\n", info.CType, n, info.CType, n, propTypeName(p), call)
 	}
@@ -548,21 +576,55 @@ func (o *childOps) cSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.Cla
 	return fmt.Sprintf("%s(%s(_ptr_%s(self)), %s)", native, ptrFunc(recv), info.CType, value)
 }
 
-// propSet is the call of the preamble helper that sets p by its name,
-// for a property GTK ships no setter for.
-func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, p gir.Prop, n string, kind propValueKind) string {
-	fn := gObjectSetFn[kind]
-	typ, value := map[propValueKind]string{propString: "string", propBool: "int", propInt: "int", propFloat: "float", propEnum: "int"}[kind], n
-	switch kind {
-	case propBool:
-		value = n + " ? 1 : 0"
-	case propEnum:
-		value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return strconv.Itoa(v) })
+// propSet is the call of g_object_set that sets p by its name, for a
+// property GTK ships no setter for: one declaration of the variadic
+// function for each C type a value is handed as, which is the one GObject
+// reads off its arguments for the property's type (propSetShape).
+func (o *childOps) propSet(b *strings.Builder, reg *gir.TypeRegistry, info *gir.ClassInfo, p gir.Prop, n string, kind propValueKind, casts map[string]string) string {
+	typ, value, native := "string", n, "_g_object_set_string"
+	if shape := propSetShape(p, kind); shape != "" {
+		from := "int"
+		if kind == propFloat {
+			from = "float"
+		}
+		casts[shape] = from
+		typ, native = castType(shape), "_g_object_set_"+shape
+		switch kind {
+		case propBool:
+			value = fmt.Sprintf("%s(%s ? 1 : 0)", castFunc(shape), n)
+		case propEnum:
+			value = enumMatch(reg.Enums[p.GIRType], n, func(v int) string { return fmt.Sprintf("%s(%d)", castFunc(shape), v) })
+		default:
+			value = fmt.Sprintf("%s(%s)", castFunc(shape), n)
+		}
 	}
 	o.classPtr(b, info.CType)
-	native := "_" + fn
-	o.native(b, native, fmt.Sprintf("\n#[c.native(%q)]\nfunc %s(w c.pointer, name string, v %s)\n", fn, native, typ))
-	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s)", native, info.CType, p.Name, value)
+	o.native(b, native, fmt.Sprintf("\n#[c.native(\"g_object_set\", variadic)]\nfunc %s(w c.pointer, name string, v %s, end option[c.pointer])\n", native, typ))
+	return fmt.Sprintf("%s(_ptr_%s(self), %q, %s, null)", native, info.CType, p.Name, value)
+}
+
+// propSetShape is the C type g_object_set reads a value of p's off its
+// arguments as -- a GValue of the property's type collects a gboolean as
+// itself, an enum and a gint as an int, and a gfloat as the double C promotes
+// it to -- or "" for a string.
+func propSetShape(p gir.Prop, kind propValueKind) string {
+	switch kind {
+	case propString:
+		return ""
+	case propBool:
+		return "gboolean"
+	case propEnum:
+		return "gint"
+	case propFloat:
+		return "gdouble"
+	}
+	switch p.GIRType {
+	case "gint64", "guint64", "gsize":
+		return p.GIRType
+	case "guint", "guint32":
+		return "guint"
+	}
+	return "gint"
 }
 
 // enumMatch is a match of n, a member's name, to the member's value as

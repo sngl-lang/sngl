@@ -34,8 +34,25 @@ var passReleaseTemps = pass{
 		}
 		st.local = false
 		st.packageVars()
-		if st.promote {
-			return lowerLibFuncs(pkg, feats, opts)
+		// What this run of LibFuncs promotes arrived after CMarshal and this
+		// pass ran, so each is marshaled and its temps released here: a
+		// promoted body calling C with a string handed C the SNGL string.
+		for st.promote {
+			st.promote = false
+			n := len(pkg.Funcs)
+			if err := lowerLibFuncs(pkg, feats, opts); err != nil {
+				return err
+			}
+			fresh := pkg.Funcs[n:]
+			if err := marshalFuncs(fresh, feats.language); err != nil {
+				return err
+			}
+			outside := runReach(pkg)
+			for _, fn := range fresh {
+				st.local = outside[&fn.Block]
+				st.block(&fn.Block)
+			}
+			st.local = false
 		}
 		return nil
 	},
@@ -60,15 +77,17 @@ func ReleaseTemps(pkg *ir.Package) error {
 	return nil
 }
 
-// runReach is each block the platform node's `@run` handler reaches: its
-// body, each function it calls, and theirs, with the lambdas in each. What
-// the handler does after `run` returns is after the application has torn
-// down, so a constant there is no application-lifetime value, which the
-// teardown would have released before it is read; it is made and released
+// runReach is each block the platform node's `@run` handler, or a target's
+// #[gen.entry] function, reaches: its body, each function it calls, and
+// theirs, with the lambdas in each. What the handler does after `run`
+// returns is after the application has torn down, and an entry runs before
+// the program's state is set -- gtk4's `_main` makes the application its
+// build runs in -- so a constant there is no application-lifetime value,
+// which sngl_init makes and the teardown releases; it is made and released
 // where it is used, as any other temp is.
 func runReach(pkg *ir.Package) map[*[]ir.Stmt]bool {
 	out := map[*[]ir.Stmt]bool{}
-	if pkg == nil || pkg.Run == nil {
+	if pkg == nil {
 		return out
 	}
 	seen := map[*ir.Func]bool{}
@@ -92,6 +111,9 @@ func runReach(pkg *ir.Package) map[*[]ir.Stmt]bool {
 		})
 	}
 	visit(pkg.Run)
+	for _, fn := range pkg.Entries {
+		visit(fn)
+	}
 	return out
 }
 
@@ -229,6 +251,9 @@ type releaseTemps struct {
 	// released is each bound argument already given a release, since a
 	// lambda's body is reached again as part of the block it is written in.
 	released map[*ir.Var]bool
+	// front is how many declarations of application-lifetime values lead the
+	// package's vars (declareAt).
+	front int
 	// promote says a library release was called after LibFuncs ran.
 	promote bool
 	// local says the block being rewritten may run after the application
@@ -551,13 +576,37 @@ func (st *releaseTemps) application(e ir.Expr) ir.Expr {
 	if !ok || v == nil {
 		v = &ir.Var{Name: "__rel" + strconv.Itoa(st.counter), Type: typ, Init: e, Synthesized: true}
 		st.counter++
-		st.pkg.Vars = append(st.pkg.Vars, v)
+		at := st.declareAt(e)
+		st.pkg.Vars = slices.Insert(st.pkg.Vars, at, v)
+		if at <= st.front {
+			st.front++
+		}
 		if ok {
 			st.app[key] = v
 		}
 		st.teardown().Block = append(st.teardown().Block, st.releaseCall(st.pkg.ReleaseFor(typ), identOf(v)))
 	}
 	return identOf(v)
+}
+
+// declareAt is where among the package's vars the declaration made of e
+// goes: after the last var e reads, a const, or else ahead of every var the
+// program declared, after those declared so before it. A var's initializer
+// may call a function handing C the constant, which a declaration made after
+// it would hand C before it was made.
+func (st *releaseTemps) declareAt(e ir.Expr) int {
+	at := st.front
+	_ = ir.WalkExprs(e, func(x ir.Expr) error {
+		if id, ok := x.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok {
+				if i := slices.Index(st.pkg.Vars, v); i >= at {
+					at = i + 1
+				}
+			}
+		}
+		return nil
+	})
+	return at
 }
 
 // applicationKey is exprKey with a struct literal, which CSE's key leaves out

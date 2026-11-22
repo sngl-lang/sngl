@@ -22,7 +22,7 @@ func init() {
 		if err != nil {
 			return nil, err
 		}
-		if _, err := cc.BuildDir(str(0), str(1), std); err != nil {
+		if _, err := cc.BuildDir(str(0), str(1), std, str(4)); err != nil {
 			return nil, err
 		}
 		return cc.Exe(str(1)), nil

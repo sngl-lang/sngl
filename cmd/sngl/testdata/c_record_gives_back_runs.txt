@@ -8,7 +8,7 @@
 # allocates, so the program is C's alone.
 #
 # A row rendering a slot of its own also lets go of the anchor gtk4 keeps
-# for it (#[gen.protocol(anchor)]): its teardown asks sngl_slot_anchor with no
+# for it (#[gen.protocol(anchor)]): its teardown asks gtk4.sngl's _slotAnchor with no
 # box, which gives back the reference the var held. Each row a rebuilt list
 # destroyed kept its hidden label alive. anchor.sngl counts the labels GTK
 # has not finalized, through a gtk_label_new of count.c's that the runtime's
@@ -232,7 +232,7 @@ ui.window(title="t") {
     rows
 }
 -- testrun/gtk4/c/anchor.sngl/rows/1 --
-sha256:f12e7368f89b54fb3610899d8347fa9a
+sha256:18417987419934c3a74e3d85e329d5f8
 {
   "results": [
     {
@@ -242,7 +242,7 @@ sha256:f12e7368f89b54fb3610899d8347fa9a
   ]
 }
 -- testrun/gtk4/c/app.sngl/rows/1 --
-sha256:3470c76f874b816af52b3fac3e28fa7d
+sha256:1a72eea8c6cc49cb95ea24f5a9ab6956
 {
   "results": [
     {
@@ -252,7 +252,7 @@ sha256:3470c76f874b816af52b3fac3e28fa7d
   ]
 }
 -- testrun/gtk4/c/closure.sngl/rows/1 --
-sha256:0c1d5ca92dfbac8def98e66bde801242
+sha256:881b9ba7071cae0aa5cd2414df350cd7
 {
   "results": [
     {
@@ -266,7 +266,7 @@ sha256:0c1d5ca92dfbac8def98e66bde801242
   ]
 }
 -- testrun/win32/c/app.sngl/rows/1 --
-sha256:7a9b6e6f66d523cdcdea8e2e96d36025
+sha256:9c620cd2d97d999a5a7c65e1301493d6
 {
   "results": [
     {
@@ -276,7 +276,7 @@ sha256:7a9b6e6f66d523cdcdea8e2e96d36025
   ]
 }
 -- testrun/win32/c/closure.sngl/rows/1 --
-sha256:7dd98759f345589cbdbc667a32eaac5f
+sha256:f9c544ded8b866c1f8ed14a661f78a49
 {
   "results": [
     {

@@ -101,23 +101,10 @@ func RunCommand(t Target, kind ir.BuiltinKind, args ...any) error {
 	if c == nil {
 		return fmt.Errorf("neither platform %q nor language %q says how to %s what it generates", t.Platform, t.Lang, what)
 	}
-	env, err := interp.BuildEnv(c.pkg, "", nil)
+	env, err := c.bind(t)
 	if err != nil {
 		return err
 	}
-	for _, p := range c.node.Props {
-		var v any
-		if e, ok := codegen.OptionField(t.Options, p.Name); ok {
-			v, err = env.Eval(e)
-		} else if p.Default != nil {
-			v, err = env.Eval(p.Default)
-		}
-		if err != nil {
-			return fmt.Errorf("%s option %s: %w", c.node.DisplayName(), p.Name, err)
-		}
-		env.Set(p.Sym, v)
-	}
-	env.SetBuildHost(&commandHost{opts: t.Options})
 	fn := c.handler.Func
 	if len(args) > len(fn.Params) {
 		args = args[:len(fn.Params)]
@@ -133,15 +120,87 @@ func RunCommand(t Target, kind ir.BuiltinKind, args ...any) error {
 	return nil
 }
 
+// bind is an interpreter for c's node with each of its props bound to the
+// option t sets, or else to its default -- which may ask gen.release(), so the
+// build host answers before the first is read.
+func (c *command) bind(t Target) (*interp.Env, error) {
+	env, err := interp.BuildEnv(c.pkg, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	env.SetBuildHost(&commandHost{opts: t.Options, release: t.Release})
+	for _, p := range c.node.Props {
+		var v any
+		if e, ok := codegen.OptionField(t.Options, p.Name); ok {
+			v, err = env.Eval(e)
+		} else if p.Default != nil {
+			v, err = env.Eval(p.Default)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%s option %s: %w", c.node.DisplayName(), p.Name, err)
+		}
+		env.Set(p.Sym, v)
+	}
+	return env, nil
+}
+
+// ResolveOptions is t's options with each scalar or enum option t's language
+// node declares and t leaves unset bound to its default, as this build reads
+// it: what a test launcher, which compiles outside the node's own command, is
+// handed. A list or a slot is no build option a launcher reads, and is left
+// out. An option set as text -- `sngl test --opt`, which no output block
+// types -- is read against the type the node declares for it, so an enum's
+// member is refused here, before a record could answer for the launch, as
+// `sngl build` refuses it (applyCLIOpts).
+func ResolveOptions(t Target) (*ir.StructLit, error) {
+	out := cloneStructLit(t.Options)
+	lang, err := targetNode("language/"+t.Lang, ir.BuiltinFamilyLanguage)
+	if err != nil || lang.node == nil {
+		return out, err
+	}
+	for _, p := range lang.node.Props {
+		v, set := codegen.OptionField(out, p.Name)
+		_, isText := v.(*ir.Literal)
+		if !set || !isText || p.Type == nil || p.Type.Kind != ir.TypeEnum {
+			continue
+		}
+		member, err := enumOption(p.Name, codegen.OptionString(out, p.Name), p.Type)
+		if err != nil {
+			return nil, err
+		}
+		codegen.SetOptionField(out, p.Name, member)
+	}
+	t.Options = out
+	env, err := lang.bind(t)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range lang.node.Props {
+		if _, set := codegen.OptionField(out, p.Name); set || p.Default == nil {
+			continue
+		}
+		v, _ := env.Value(p.Sym)
+		switch v.(type) {
+		case string, bool, int, int64, float64:
+			codegen.SetOptionField(out, p.Name, v)
+		}
+	}
+	return out, nil
+}
+
 // commandHost answers the build-only calls a command handler makes: gen.shell,
-// and whatever a target registered with codegen.RegisterCommand.
+// gen.release, and whatever a target registered with codegen.RegisterCommand.
 type commandHost struct {
-	opts *ir.StructLit
+	opts    *ir.StructLit
+	release bool
 }
 
 func (h *commandHost) Call(id string, _ *ir.Func, _ *ir.Call, args []any) (any, error) {
-	if id == "gen.shell" {
+	switch id {
+	case "gen.shell":
 		return shell(args)
+	case "gen.release":
+		return h.release, nil
 	}
 	if fn := codegen.LookupCommand(id); fn != nil {
 		return fn(h.opts, args)

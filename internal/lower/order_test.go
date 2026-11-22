@@ -72,6 +72,7 @@ var alwaysOn = []string{
 	"BuiltinMethods",
 	// A C call's argument crosses the one way C takes it, on every target.
 	"CMarshal",
+	"CRefCalls",
 	"CSE",
 	// Every emitted function takes every parameter it declares.
 	"CallDefaults",
@@ -277,6 +278,7 @@ var soleGate = map[string][]string{
 	"OptionMatch": nil,
 
 	"StringBuilders": {"StringBuilders"},
+	"EntryWrites":    {"EntryWrites"},
 	"UnreadLocals":   {"UnreadLocals"},
 	// Read inside passNoInlineComponents, where a test's trigger that
 	// reaches no override is refused or kept.

@@ -248,6 +248,17 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	for _, t := range storedStructTypes(pkg) {
 		want(t)
 	}
+	// A C function answering a held value is read back as the struct it
+	// held, which a Go program asserts by name, though the value is only
+	// compared with null: gtk4's `_imageSourceOf(child) == null`, inlined
+	// into the box's append, left `h.(_ImageSourceState)` in a program
+	// with no image and nothing else naming it.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if c, ok := n.(*ir.Call); ok && c.Func != nil && c.Func.ReturnCAlias.IsCHeld() && !namesBuiltinStruct(c.Func.Return) {
+			want(c.Func.Return)
+		}
+		return nil
+	})
 	for _, ed := range pkg.Enums {
 		if ed != nil && ed.Foreign.Name == "" {
 			wantPayloads(ed)

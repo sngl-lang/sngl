@@ -88,7 +88,7 @@ func buildProgram(dir, name string, lang codegen.LangTranslator) (string, error)
 	if err != nil {
 		return "", err
 	}
-	if _, err := cc.BuildDir(dir, bin, "c17"); err != nil {
+	if _, err := cc.BuildDir(dir, bin, "c17", ""); err != nil {
 		return "", err
 	}
 	return cc.Exe(bin), nil

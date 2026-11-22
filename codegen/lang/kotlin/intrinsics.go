@@ -61,6 +61,11 @@ func init() {
 	reg("string.length", func(a []string) string { return a[0] + ".length" })
 	reg("string.indexOf", func(a []string) string { return a[0] + ".indexOf(" + a[1] + ")" })
 	reg("string.substring", func(a []string) string { return a[0] + ".substring(" + a[1] + ", " + a[2] + ")" })
+	// Character.toChars throws past U+10FFFF and answers a lone surrogate
+	// half as it is: both are U+FFFD.
+	reg("string.fromCodePoint", func(a []string) string {
+		return "run { val __cp = " + a[0] + "; if (__cp >= 0 && __cp <= 0x10FFFF && (__cp < 0xD800 || __cp > 0xDFFF)) String(Character.toChars(__cp)) else \"\\uFFFD\" }"
+	})
 	reg("string.upper", func(a []string) string { return a[0] + ".uppercase()" })
 	reg("string.lower", func(a []string) string { return a[0] + ".lowercase()" })
 	reg("string.trim", func(a []string) string { return a[0] + ".trim()" })
@@ -156,10 +161,15 @@ func init() {
 	reg("list.filter", func(a []string) string { return a[0] + ".filter(" + a[1] + ")" })
 	reg("list.map", func(a []string) string { return a[0] + ".map(" + a[1] + ")" })
 	reg("map.length", func(a []string) string { return a[0] + ".size" })
-	reg("map.keys", func(a []string) string { return a[0] + ".keys.toList()" })
-	reg("map.values", func(a []string) string { return a[0] + ".values.toList()" })
+	// A new list, which a SNGL list local is free to push to or sort: mutable,
+	// as a list literal a local holds is (LocalVarText).
+	reg("map.keys", func(a []string) string { return a[0] + ".keys.toMutableList()" })
+	reg("map.values", func(a []string) string { return a[0] + ".values.toMutableList()" })
 	reg("map.contains", func(a []string) string { return a[0] + ".containsKey(" + a[1] + ")" })
 	reg("map.get", func(a []string) string { return a[0] + ".getOrDefault(" + a[1] + ", " + a[2] + ")" })
+	// A statement, which KtIRContext.mapRemove writes with the holder's path;
+	// this is the spelling where the receiver is a plain var.
+	reg("map.remove", func(a []string) string { return a[0] + " = " + a[0] + " - (" + a[1] + ")" })
 
 	// --- numeric ---
 	regVariadicMinMax("int.min", "min")

@@ -1,16 +1,38 @@
 // A C struct's fields, and what a C function's `ref` fills, are values C has
-// a type for that hold no memory either side owns: a scalar, a typedef's alias
-// of one, or a C struct. A C struct crosses by value, so a callback, which
+// a type for: a scalar, a typedef's alias of one, or a C struct; a C
+// struct's field may also be a string, its UTF-16 alias, a handle or an
+// option of a `*` handle, each valid for the call the struct is handed to.
+// A string C answers in a struct is not read back, so no C function answers
+// a struct holding one. A C struct crosses by value, so a callback, which
 // hands C's values over as they are, takes none.
 import c "sngl:x/c"
 
 c.link(include="calls.h")
 
+#[c.native("WINDOW *")]
+struct Window {}
+
 #[c.native("NAMED")]
 struct Named {
-    name string // ERROR(check) "field \"name\" of Named, the C struct NAMED, is a string"
-    n    int
+    name   string
+    wide   c.utf16
+    window Window
+    parent option[Window]
+    n      int
 }
+
+#[c.native("LISTED")]
+struct Listed {
+    names list[string]   // ERROR(check) "field \"names\" of Listed, the C struct LISTED, is a list[string]: a C struct's field is an int, float or bool, a #[c.native] alias of one, a C struct, a string, a handle or an option of a `*` handle"
+    maybe option[string] // ERROR(check) "field \"maybe\" of Listed, the C struct LISTED, is a option[string]"
+    run   func()         // ERROR(check) "field \"run\" of Listed, the C struct LISTED, is a func()"
+}
+
+#[c.native("send_named")]
+func sendNamed(n Named, r ref[Named])
+
+#[c.native("make_named")]
+func makeNamed() Named // ERROR(check) "C function \"make_named\" answers a Named, whose field \"name\" is a string, which is not read back from C"
 
 #[c.native("POINT")]
 struct Point {
@@ -23,6 +45,9 @@ func fillName(s ref[string]) // ERROR(check) "parameter \"s\" is a ref[string], 
 
 #[c.native("fill_point")]
 func fillPoint(p ref[Point])
+
+#[c.native("fill_maybe_point")]
+func fillMaybePoint(p ref[option[Point]]) // ERROR(check) "parameter \"p\" is a ref[option[Point]], and a ref a C function fills is to"
 
 #[c.native("each_point")]
 func eachPoint(f func(p Point), #[c.context] data c.pointer) // ERROR(check) "callback \"f\" takes a Point"

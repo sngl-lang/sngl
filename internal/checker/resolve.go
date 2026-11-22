@@ -366,17 +366,23 @@ func (c *checker) resolveQualifiedType(t *ast.NamedType) *ir.Type {
 func (c *checker) resolveFuncType(t *ast.FuncType) *ir.Type {
 	params := make([]*ir.Param, len(t.Params))
 	for i, p := range t.Params {
-		params[i] = &ir.Param{Name: p.Name, Type: c.resolveTypeRequired(p.Type, ast.Pos{}, "function-type parameter")}
+		typ := c.resolveTypeRequired(p.Type, ast.Pos{}, "function-type parameter")
+		// A static callback's C function takes each as the alias spells
+		// it, which the type alone no longer says.
+		params[i] = &ir.Param{Name: p.Name, Type: typ, CAlias: c.cAliasOf(p.Type, typ)}
 	}
 	var ret *ir.Type
+	var retAlias *ir.Alias
 	if t.Return != nil {
 		ret = c.resolveType(t.Return)
+		retAlias = c.cAliasOf(t.Return, ret)
 	}
 	return &ir.Type{
 		Kind: ir.TypeFunc,
 		Sig: &ir.FuncSig{
-			Params: params,
-			Return: ret,
+			Params:       params,
+			Return:       ret,
+			ReturnCAlias: retAlias,
 		},
 	}
 }
@@ -613,8 +619,19 @@ func (c *checker) buildEnumDef(e *ast.EnumDef) *ir.EnumDef {
 	for i, m := range astMembers {
 		var val ir.Expr
 		if m.Value != nil {
-			// Placeholder; actual value checked later when scope is ready.
+			// The host value a member records: a literal is that literal,
+			// which a target reads (sngl:language/c's Optimization names its
+			// flags so); anything else is a placeholder, since the scope it
+			// would resolve in is not ready.
 			val = &ir.Literal{Type: TypInvalid}
+			if t := literalConstType(m.Value); t != nil {
+				lit := m.Value.(*ast.LiteralExpr)
+				v := lit.Raw
+				if s, ok := lit.StringValue(); ok {
+					v = s
+				}
+				val = &ir.Literal{Type: t, Value: v}
+			}
 		}
 		members[i] = &ir.EnumMember{
 			Name:  m.Name,

@@ -11,8 +11,10 @@ import (
 
 // A copy is written out from the value's type (ir/valuecopy.go). Kotlin
 // shares a list, a map and a data class, so a list is copied into a new
-// mutable list, a map into a new mutable map and a struct with the data
-// class's copy(), as deep as the type holds one. A struct that can hold
+// mutable list, a map into a new read-only map -- every write of a map
+// rebuilds it and reassigns the holder (KtIRContext.AssignText), which a
+// `MutableMap` local cannot take -- and a struct with the data class's
+// copy(), as deep as the type holds one. A struct that can hold
 // itself is a local function calling itself.
 func init() {
 	codegen.RegisterIntrinsic(langKt, ir.ValueCopyIntrinsic, func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
@@ -63,10 +65,10 @@ func (c *ktCopier) copy(t *ir.Type, v string) string {
 		return operand(v) + ".map { " + x + " -> " + c.copy(e, x) + " }.toMutableList()"
 	case ir.TypeMap:
 		if len(t.Elems) < 2 || !ir.HoldsValue(t.Elems[1]) {
-			return operand(v) + ".toMutableMap()"
+			return operand(v) + ".toMap()"
 		}
 		x := c.fresh("_e")
-		return operand(v) + ".mapValues { " + x + " -> " + c.copy(t.Elems[1], x+".value") + " }.toMutableMap()"
+		return operand(v) + ".mapValues { " + x + " -> " + c.copy(t.Elems[1], x+".value") + " }"
 	case ir.TypeOption, ir.TypeReadonly:
 		x := c.fresh("_o")
 		return operand(v) + "?.let { " + x + " -> " + c.copy(t.Elems[0], x) + " }"

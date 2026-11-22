@@ -20,7 +20,7 @@ stdout 'PASS'
 
 # The same for a box holding a toggle, whose children were once appended with
 # GTK's own call, which left a box's alignItems unread, so a centered box drew
-# as a plain one. Every child goes through the runtime's sngl_box_append now.
+# as a plain one. Every child goes through gtk4.sngl's boxAppend now.
 sngl test --platform=gtk4 cgo.sngl
 stdout 'PASS'
 ! stdout 'FAIL'
@@ -119,7 +119,7 @@ ui.window {
     centered
 }
 -- testrun/gtk4/go/app.sngl/centered/1 --
-sha256:9694bccbd4168e142f7ad17d652c0ede
+sha256:b76189b6006cbbaac4b26e183775c089
 {
   "results": [
     {
@@ -132,7 +132,7 @@ sha256:9694bccbd4168e142f7ad17d652c0ede
   }
 }
 -- testrun/gtk4/go/app.sngl/long/1 --
-sha256:41d82bfd08f141324ab3b521f422bd5c
+sha256:3015b417711c25e5f3885fb5322e0f81
 {
   "results": [
     {
@@ -145,7 +145,7 @@ sha256:41d82bfd08f141324ab3b521f422bd5c
   }
 }
 -- testrun/gtk4/go/app.sngl/stretched/1 --
-sha256:cbe4cb83f32bc676d626fb079a5acad4
+sha256:80ddb5f0f103576122afb776b3a7deda
 {
   "results": [
     {
@@ -158,7 +158,7 @@ sha256:cbe4cb83f32bc676d626fb079a5acad4
   }
 }
 -- testrun/gtk4/go/app.sngl/textCentered/1 --
-sha256:7aecd37c9958c79c78026a09eb632993
+sha256:d190793e89b15552f1b8e5dabb41db3e
 {
   "results": [
     {
@@ -171,7 +171,7 @@ sha256:7aecd37c9958c79c78026a09eb632993
   }
 }
 -- testrun/gtk4/go/app.sngl/wrapped/1 --
-sha256:8115f6fb9188b32d7a581b7548aee4bc
+sha256:b558dc96ced55885117533de844c74ca
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:8115f6fb9188b32d7a581b7548aee4bc
   }
 }
 -- testrun/gtk4/go/cgo.sngl/centered/1 --
-sha256:c3357be0ad5eddcfa5e6c1185eb467d5
+sha256:a9f9ce9b867ee0c3058022e4a7ff3602
 {
   "results": [
     {
@@ -197,7 +197,7 @@ sha256:c3357be0ad5eddcfa5e6c1185eb467d5
   }
 }
 -- testrun/gtk4/go/cgo.sngl/plain/1 --
-sha256:b157a43f08282f9aa0a894d856f4dece
+sha256:3815159a38e1b60462fa0360abbddefb
 {
   "results": [
     {

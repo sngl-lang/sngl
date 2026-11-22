@@ -26,7 +26,7 @@ var passLibFuncs = pass{
 	apply:   lowerLibFuncs,
 }
 
-func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
+func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -52,7 +52,7 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
 	// widget's action (`bar.pulse()`), since no component declaration is
 	// written for one.
 	wanted := func(fn *ir.Func) bool {
-		return fn != nil && !have[fn] && len(fn.Block) > 0 &&
+		return fn != nil && !have[fn] && (len(fn.Block) > 0 || ir.WroteBody(fn)) &&
 			(!fn.IsMethod() || libStructMethod(fn) || intrinsicMethod(fn)) && fn.Intrinsic == "" && fn.Foreign.Name == "" &&
 			fn.PkgPath() != ""
 	}
@@ -62,6 +62,22 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
 	// promoted and reached the backend undeclared.
 	var roots []any
 	push := func(v any) { roots = append(roots, v) }
+	// A body arriving here was not optimized ahead of lowering, as the
+	// program's were, and gets the builtin methods the program's had
+	// inlined then -- before its walk, which promotes the helpers they call.
+	bm := newBuiltinMethods(pkg)
+	bm.frozen = true
+	var lowerErr error
+	prepare := func(root any) {
+		made, err := bm.lowerPromoted(root)
+		if err != nil && lowerErr == nil {
+			lowerErr = err
+		}
+		for _, fn := range made {
+			have[fn] = true
+			push(fn.Block)
+		}
+	}
 	// A placed node's protocol functions are spliced by passPlacement, after
 	// this pass, and a helper one calls is promoted here; one no splice
 	// calls is shaken once the build has lowered. A copy is walked, since
@@ -70,19 +86,60 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, _ Options) error {
 	// package with no features, and write no SNGL helper.
 	if feats.Placement {
 		for _, fn := range placedProtocols(pkg) {
-			push(ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func.Block)
+			block := ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func.Block
+			prepare(block)
+			push(block)
 		}
 	}
 	var added []*ir.Func
-	foreign := importedVars(pkg)
+	// What the target's generated entry calls (sngl:x/gen's #[entry]) no
+	// SNGL code names: each is promoted as a root of its own, whichever
+	// entry the build writes -- an application's, an `@run` handler's, a
+	// test agent's or a snapshot's -- since each calls its own of them.
+	if opts.Platform != "" {
+		for _, tp := range ir.TargetPackages(pkg) {
+			if tp.Path != "platform/"+opts.Platform && tp.Path != "sngl:platform/"+opts.Platform {
+				continue
+			}
+			for _, fn := range tp.Funcs {
+				if !fn.GenEntry || len(fn.Block) == 0 {
+					continue
+				}
+				key := libFuncKey(fn)
+				c := promoted[key]
+				if c == nil {
+					c = fn
+					if fn.Frozen {
+						c = thaw(fn)
+					}
+					have[fn], have[c] = true, true
+					promoted[key] = c
+					added = append(added, c)
+					prepare(c)
+					push(c.Block)
+				}
+				if !slices.Contains(pkg.Entries, c) {
+					pkg.Entries = append(pkg.Entries, c)
+				}
+			}
+		}
+	}
+	// A var an earlier run promoted is the program's now: ReleaseTemps runs
+	// this pass again, which declared a library's var a second time in C.
 	for {
 		push(pkg)
-		promoteFuncs(&roots, push, wanted, have, promoted, &added)
+		promoteFuncs(&roots, push, prepare, wanted, have, promoted, &added)
 		pkg.Funcs = append(pkg.Funcs, added...)
 		added = nil
-		if !promoteVars(pkg, foreign) {
+		if !promoteVars(pkg) {
 			break
 		}
+	}
+	if lowerErr != nil {
+		return lowerErr
+	}
+	if len(bm.instances) > 0 {
+		bm.packTypes()
 	}
 	inlineLibConsts(pkg)
 	// The structs those helpers' signatures name are promoted by the shake
@@ -125,6 +182,21 @@ func placedProtocols(pkg *ir.Package) []*ir.Func {
 		return nil
 	}
 	_ = ir.Walk(pkg, visit)
+	// The platform's contents protocol, and the container it makes, which
+	// placement splices for an instance holding several nodes, though no
+	// node of the program's names either.
+	for _, tp := range ir.TargetPackages(pkg) {
+		for _, c := range tp.Components {
+			if c.Protocol == nil || c.Protocol.Contents == nil {
+				continue
+			}
+			note(c)
+			if r := c.Protocol.Contents.Return; r != nil {
+				box, _ := r.Decl.(*ir.Component)
+				note(box)
+			}
+		}
+	}
 	for len(bodies) > 0 {
 		c := bodies[0]
 		bodies = bodies[1:]
@@ -137,14 +209,8 @@ func placedProtocols(pkg *ir.Package) []*ir.Func {
 		}
 	}
 	for _, c := range comps {
-		p := c.Protocol
-		for _, fn := range []*ir.Func{p.Create, p.Append, p.Remove, p.InsertBefore, p.Contents, p.Anchor, p.Redraw} {
+		for _, fn := range c.Protocol.Funcs() {
 			add(fn)
-		}
-		for _, m := range []map[string]*ir.Func{p.Set, p.On, p.Fire} {
-			for _, k := range slices.Sorted(maps.Keys(m)) {
-				add(m[k])
-			}
 		}
 	}
 	return fns
@@ -207,7 +273,7 @@ func intrinsicMethod(fn *ir.Func) bool {
 	return ok && comp.Intrinsic != ""
 }
 
-func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, promoted map[string]*ir.Func, added *[]*ir.Func) {
+func promoteFuncs(roots *[]any, push, prepare func(any), wanted func(*ir.Func) bool, have map[*ir.Func]bool, promoted map[string]*ir.Func, added *[]*ir.Func) {
 	for len(*roots) > 0 {
 		root := (*roots)[0]
 		*roots = (*roots)[1:]
@@ -220,6 +286,15 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 				fn = x.Func
 			case *ir.Ident:
 				fn, _ = x.Sym.(*ir.Func)
+			}
+			// A call of a library function promoted already names the
+			// promoted copy: a thawed copy's call of itself, which names
+			// the frozen original the walk has seen, too.
+			if fn != nil && fn.PkgPath() != "" {
+				if c := promoted[libFuncKey(fn)]; c != nil && c != fn {
+					repoint(e, c)
+					return nil
+				}
 			}
 			if !wanted(fn) {
 				return nil
@@ -242,6 +317,7 @@ func promoteFuncs(roots *[]any, push func(any), wanted func(*ir.Func) bool, have
 			}
 			promoted[key] = fn
 			*added = append(*added, fn)
+			prepare(fn)
 			// A promoted helper may call a second one.
 			push(fn.Block)
 			return nil
@@ -333,33 +409,8 @@ func inlineLibConsts(pkg *ir.Package) {
 	rewrite(pkg)
 }
 
-// importedVars is every var an imported SNGL package declares, directly or
-// through its own imports. A const is not one: inlineLibConsts answers those
-// with their value.
-func importedVars(pkg *ir.Package) map[*ir.Var]bool {
-	out := map[*ir.Var]bool{}
-	seen := map[*ir.Package]bool{pkg: true}
-	var visit func(p *ir.Package)
-	visit = func(p *ir.Package) {
-		for _, imp := range p.Imports {
-			if imp == nil || imp.Pkg == nil || seen[imp.Pkg] {
-				continue
-			}
-			seen[imp.Pkg] = true
-			for _, v := range imp.Pkg.Vars {
-				if !v.IsConst {
-					out[v] = true
-				}
-			}
-			visit(imp.Pkg)
-		}
-	}
-	visit(pkg)
-	return out
-}
-
-// promoteVars adds to pkg.Vars each imported var this build's bodies read or
-// write, and reports whether it added one.
+// promoteVars adds to pkg.Vars each var another package declares that this
+// build's bodies read or write, and reports whether it added one.
 //
 // The funcs another package declares are promoted above, and a func reading
 // its own package's state took that state with it nowhere: `calls += 1` in a
@@ -367,32 +418,80 @@ func importedVars(pkg *ir.Package) map[*ir.Var]bool {
 // target, a ReferenceError on html, and the text reading it drawn empty. A
 // read through the package's alias, `doc.calls`, becomes the bare name the
 // declaration now has here.
-func promoteVars(pkg *ir.Package, foreign map[*ir.Var]bool) bool {
-	if len(foreign) == 0 {
-		return false
+//
+// A var is another package's by the package it names as its own: one the
+// program imports, or a target's, whose overrides and protocol functions
+// keep state the program imports none of. As a promoted function stands for
+// every declaration of its name (repointPromoted), so does a promoted var:
+// a body thawed from the frozen library names the library's declaration,
+// where the program's copy names the build's, and one ReleaseTemps' second
+// run of LibFuncs meets is promoted already. Each names the one declaration
+// here, a copy of the frozen one where the build made none, since the passes
+// after this one rename and fold what the program declares.
+func promoteVars(pkg *ir.Package) bool {
+	decl := map[string]*ir.Var{}
+	for _, v := range pkg.Vars {
+		if packageVarOf(v, pkg) {
+			decl[libVarKey(v)] = v
+		}
 	}
-	var added []*ir.Var
-	taken := map[*ir.Var]bool{}
-	take := func(v *ir.Var) {
-		if foreign[v] {
-			delete(foreign, v)
-			added = append(added, v)
-			taken[v] = true
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && packageVarOf(v, pkg) {
+				k := libVarKey(v)
+				if d := decl[k]; d == nil || d.Frozen && !v.Frozen && !slices.Contains(pkg.Vars, d) {
+					decl[k] = v
+				}
+			}
+		}
+		return nil
+	})
+	for k, v := range decl {
+		if v.Frozen {
+			decl[k] = thawVar(v)
 		}
 	}
 	_ = ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		// A read through the package's alias, `doc.calls`, is of the
-		// declaration this package now holds, named bare.
-		if e, ok := n.(*ir.Ident); ok {
-			if v, ok := e.Sym.(*ir.Var); ok {
-				take(v)
-				if taken[v] {
-					e.Qualifier = nil
-				}
+		if id, ok := n.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && packageVarOf(v, pkg) {
+				id.Sym = decl[libVarKey(v)]
+				id.Qualifier = nil
 			}
 		}
 		return n, nil
 	})
-	pkg.Vars = append(pkg.Vars, added...)
-	return len(added) > 0
+	added := false
+	for _, k := range slices.Sorted(maps.Keys(decl)) {
+		if v := decl[k]; !slices.Contains(pkg.Vars, v) {
+			pkg.Vars = append(pkg.Vars, v)
+			added = true
+		}
+	}
+	return added
+}
+
+// libVarKey names a package var whatever copy of its package declares it.
+func libVarKey(v *ir.Var) string {
+	return v.PkgPath() + "\x00" + v.Name
+}
+
+// thawVar is a copy of the frozen v the build may write, its initializer
+// copied with it.
+func thawVar(v *ir.Var) *ir.Var {
+	c := *v
+	c.Frozen = false
+	c.Init = ir.CloneExprSharingDecls(v.Init)
+	return &c
+}
+
+// packageVarOf reports whether v is a var another package than pkg declares
+// at its top: one its list names, or a build's copy of one, which the
+// package's list names by the same name. A var lowering made of an
+// instance's names the package of the component it came from, and is in no
+// package's list.
+func packageVarOf(v *ir.Var, pkg *ir.Package) bool {
+	if v.IsConst || v.Pkg == nil || v.Pkg == pkg {
+		return false
+	}
+	return slices.ContainsFunc(v.Pkg.Vars, func(o *ir.Var) bool { return o == v || o.Name == v.Name })
 }

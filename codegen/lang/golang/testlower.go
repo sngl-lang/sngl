@@ -291,7 +291,16 @@ func lowerTestSnapshot(c *ir.Call, gc *GoIRContext) (string, bool) {
 		return "", false
 	}
 	nameExpr := gc.EvalExpr(c.Args[1].Value)
-	return fmt.Sprintf("t.Snapshot(%s)", nameExpr), true
+	return fmt.Sprintf("%s.Snapshot(%s)", testRecv(c, gc), nameExpr), true
+}
+
+// testRecv is the test a call of sngl:test's is made through: a test body's
+// own `t`, or the parameter a helper it hands its Test to holds it in.
+func testRecv(c *ir.Call, gc *GoIRContext) string {
+	if gc.placedTests {
+		return gc.EvalExpr(c.Args[0].Value)
+	}
+	return "t"
 }
 
 // lowerTestWait renders `t.wait(predicate, ms)`: the predicate asked until it
@@ -333,7 +342,7 @@ func lowerTestAssert(call *ir.CallStmt, gc *GoIRContext) (string, bool) {
 		return "", false
 	}
 	exprGo := gc.EvalExpr(c.Args[1].Value)
-	return fmt.Sprintf("if !(%s) { t.%s(\"%s failed: %%s\", %q) }", exprGo, method, name, exprGo), true
+	return fmt.Sprintf("if !(%s) { %s.%s(\"%s failed: %%s\", %q) }", exprGo, testRecv(c, gc), method, name, exprGo), true
 }
 
 // testInstanceVar names the component a test drives. Deliberately not a name

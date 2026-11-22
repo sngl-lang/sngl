@@ -22,6 +22,7 @@ import gen "sngl:x/gen"
     implicitRecv,
     structSpread,
     viewStatements,
+    entryWrites,
     genericFuncs,
     genericComponents,
     matches,

@@ -28,16 +28,6 @@ func adderReceiver(adder gir.ChildAdder, cType string) string {
 	return cType
 }
 
-// gObjectSetFn is the runtime's set of a property by its name, for each kind
-// of value, which a property GTK ships no setter for is written through.
-var gObjectSetFn = map[propValueKind]string{
-	propString: "sngl_set_prop_string",
-	propBool:   "sngl_set_prop_bool",
-	propInt:    "sngl_set_prop_int",
-	propFloat:  "sngl_set_prop_double",
-	propEnum:   "sngl_set_prop_int",
-}
-
 // gtkSetterEntry is the C setter for one prop on one widget class. RecvType
 // is set where the setter takes an interface (GtkEditable) or an ancestor
 // rather than the class.

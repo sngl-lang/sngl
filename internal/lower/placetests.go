@@ -2,6 +2,7 @@ package lower
 
 import (
 	"slices"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -378,7 +379,10 @@ func (p *placement) holdRead(pkg *ir.Package, fn *ir.Func, comp string) {
 		return block, reset
 	}
 	for _, f := range append(append([]*ir.Func(nil), pkg.Funcs...), closureFuncs(pkg)...) {
-		if f.IsTest {
+		// A library's function makes no node of the program's: a local of
+		// win32's named as a test's node (`var b = _rtBoxWindow()`) was held
+		// as that node, and the test's `c.b` read the box.
+		if f.IsTest || strings.HasPrefix(f.PkgPath(), "sngl:") {
 			continue
 		}
 		var self *ir.Param
