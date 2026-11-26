@@ -1,0 +1,413 @@
+# The package a sql: import writes, run against SQLite on every target that
+# queries one: the interpreter, each Go platform, and android under
+# Robolectric through the platform's own SQLiteDatabase.
+
+sngl test --platform=none app.sngl
+stdout '8 tests, 0 failures'
+! stderr .
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '8 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '8 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '8 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '8 tests, 0 failures'
+
+# A target that writes no statement skips the tests, naming why.
+sngl test --platform=html app.sngl
+stdout 'the program queries a database, which html/none cannot yet'
+
+-- app.sngl --
+// Every kind of query, a value of every column type written and read back, a
+// failure classified, a trigger the schema's statements kept whole, and the
+// component over a read. Each test opens a database of its own.
+
+import async "sngl:async"
+import books "sql:./db/queries.sql"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func add(title string, pages option[int64] = null) int64 {
+    match var id = books.addBookCall(title=title, pages=pages, rating=4.5, lent=false, added=null, due=null) {
+        ok { return id }
+        failed { return -1 }
+    }
+}
+
+func testRoundTrip(t test.Test) {
+    t.setContext(books.source, ":memory:roundTrip")
+    t.assert(books.create().ok == 4)
+    match var id = books.addBookCall(title="Earthsea", pages=264, rating=4.5, lent=true, added="2024-03-01T10:30:00Z", due="2024-04-01") {
+        ok { t.assert(id == 1) }
+        failed { t.assert(id.message == "") }
+    }
+    match var b = books.getBookCall(id=1) {
+        ok {
+            t.assert(b.id == 1)
+            t.assert(b.title == "Earthsea")
+            t.assert(b.pages == 264)
+            t.assert(b.rating == 4.5)
+            t.assert(b.lent)
+            t.assert(b.added != null && "{b.added}" == "2024-03-01T10:30:00Z")
+            t.assert(b.due != null && "{b.due}" == "2024-04-01")
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testNulls(t test.Test) {
+    t.setContext(books.source, ":memory:nulls")
+    t.assert(books.create().ok == 4)
+    var id = add("Tehanu")
+    match var b = books.getBookCall(id=id) {
+        ok {
+            t.assert(b.pages == null)
+            t.assert(b.added == null)
+            t.assert(b.due == null)
+            t.assert(!b.lent)
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testMissing(t test.Test) {
+    t.setContext(books.source, ":memory:missing")
+    t.assert(books.create().ok == 4)
+    match var b = books.getBookCall(id=99) {
+        ok { t.assert(false) }
+        failed {
+            t.assert(b.kind == async.FailureKind.request)
+            t.assert(b.code == "02000")
+        }
+    }
+}
+
+func testMany(t test.Test) {
+    t.setContext(books.source, ":memory:many")
+    t.assert(books.create().ok == 4)
+    add("The Farthest Shore")
+    add("A Wizard of Earthsea")
+    add("Tales")
+    match var found = books.findBooksCall(pattern="%Earth%") {
+        ok {
+            t.assert(found.length() == 1)
+            t.assert(found[0].title == "A Wizard of Earthsea")
+        }
+        failed { t.assert(found.message == "") }
+    }
+    match var n = books.countBooksCall() {
+        ok { t.assert(n == 3) }
+        failed { t.assert(n.message == "") }
+    }
+    match var titles = books.titlesCall() {
+        ok { t.assert(titles == ["A Wizard of Earthsea", "Tales", "The Farthest Shore"]) }
+        failed { t.assert(titles.message == "") }
+    }
+}
+
+func testExec(t test.Test) {
+    t.setContext(books.source, ":memory:exec")
+    t.assert(books.create().ok == 4)
+    var id = add("Tehanu", 252)
+    match var n = books.lendBookCall(lent=true, id=id) {
+        ok { t.assert(n == 1) }
+        failed { t.assert(n.message == "") }
+    }
+    match var n = books.lendBookCall(lent=true, id=99) {
+        ok { t.assert(n == 0) }
+        failed { t.assert(n.message == "") }
+    }
+    match var done = books.removeBookCall(id=id) {
+        ok { t.assert(done.rows == 1) }
+        failed { t.assert(done.message == "") }
+    }
+    match var b = books.getBookCall(id=id) {
+        ok { t.assert(false) }
+        failed { t.assert(b.code == "02000") }
+    }
+}
+
+func testConstraint(t test.Test) {
+    t.setContext(books.source, ":memory:constraint")
+    t.assert(books.create().ok == 4)
+    add("Tehanu")
+    match var id = books.addBookCall(title="Tehanu", pages=null, rating=0.0, lent=false, added=null, due=null) {
+        ok { t.assert(false) }
+        failed {
+            t.assert(id.kind == async.FailureKind.request)
+            t.assert(id.code == "SQLITE_CONSTRAINT")
+        }
+    }
+}
+
+// The trigger's body holds statements of its own: the schema is split by
+// SQLite's own parser, not at each semicolon.
+func testTrigger(t test.Test) {
+    t.setContext(books.source, ":memory:trigger")
+    t.assert(books.create().ok == 4)
+    var id = add("Tehanu")
+    match var what = books.loggedCall(book=id) {
+        ok { t.assert(what == ["added"]) }
+        failed { t.assert(what.message == "") }
+    }
+}
+
+component shelf ui.node {
+    var pattern = "%Wizard%"
+    var found option[list[books.FindBooksRow]] = null
+    var ready = false
+    books.source(":memory:shelf") {
+        if ready {
+            books.findBooks(pattern=pattern, :value=found)
+        }
+    }
+    ui.text #title(value=found != null && found.length() > 0 ? found[0].title : "-")
+    ui.button #fill(text="Fill", @click {
+        books.source(":memory:shelf") {
+            books.create()
+            books.addBookCall(title="A Wizard of Earthsea", pages=null, rating=0.0, lent=false, added=null, due=null)
+            books.addBookCall(title="Tehanu", pages=null, rating=0.0, lent=false, added=null, due=null)
+        }
+        ready = true
+    })
+    ui.button #next(text="Next", @click { pattern = "%Teh%" })
+}
+
+func testComponent(t test.Test, c shelf) {
+    c.fill.click()
+    t.wait(func() => c.title.value == "A Wizard of Earthsea", 5000)
+    c.next.click()
+    t.wait(func() => c.title.value == "Tehanu", 5000)
+}
+
+ui.window {
+    shelf
+}
+-- db/schema.sql --
+CREATE TABLE books (
+  id     INTEGER PRIMARY KEY,
+  title  TEXT NOT NULL UNIQUE,
+  pages  INTEGER,
+  rating REAL NOT NULL DEFAULT 0,
+  lent   BOOLEAN NOT NULL DEFAULT 0,
+  added  DATETIME,
+  due    DATE
+);
+
+CREATE TABLE log (
+  book INTEGER NOT NULL,
+  what TEXT NOT NULL
+);
+
+CREATE TRIGGER books_logged AFTER INSERT ON books BEGIN
+  INSERT INTO log (book, what) VALUES (new.id, 'added');
+END;
+
+CREATE INDEX log_book ON log (book);
+-- db/queries.sql --
+-- sngl:schema schema.sql
+
+-- name: AddBook :execlastid
+INSERT INTO books (title, pages, rating, lent, added, due) VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: GetBook :one
+SELECT * FROM books WHERE id = ?;
+
+-- name: FindBooks :many
+SELECT id, title FROM books WHERE title LIKE sqlc.arg(pattern) ORDER BY id;
+
+-- name: CountBooks :one
+SELECT count(*) FROM books;
+
+-- name: Titles :many
+SELECT title FROM books ORDER BY title;
+
+-- name: LendBook :execrows
+UPDATE books SET lent = ? WHERE id = ?;
+
+-- name: RemoveBook :execresult
+DELETE FROM books WHERE id = ?;
+
+-- name: Logged :many
+SELECT what FROM log WHERE book = ?;
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:cf3b06a40f1ed2c195fe6db5821d332a
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Trigger",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/shelf/1 --
+sha256:784218e30d5484b519df2eb20aab7e84
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:fe6617128d4d5bded0c7073d8b66f6fa
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Trigger",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shelf/1 --
+sha256:26c2a70c14192b6f7c0fd6d3c13a6eea
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:497c33ff29ebf2c18dfefa7eedd88736
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Trigger",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:1d3f098a143867420a58a3041529f5c5
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:dcddd35d005049ef89c7d6c61373be39
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    },
+    {
+      "Desc": "Trigger",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:9a90ec47861160ef79c5a9009a121972
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}

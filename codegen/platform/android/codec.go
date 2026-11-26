@@ -22,6 +22,11 @@ var codecKt string
 //go:embed grpc.kt
 var grpcKt string
 
+// sqlKt is SnglSql's source, the SQLite behind sngl:sql.
+//
+//go:embed sql.kt
+var sqlKt string
+
 func emitCodecFile(req *codegen.Request, sink codegen.Sink, mainScreen, pkg string) error {
 	if !kotlin.UsesCodec(req.Pkg) {
 		return nil
@@ -30,6 +35,12 @@ func emitCodecFile(req *codegen.Request, sink codegen.Sink, mainScreen, pkg stri
 	src := strings.Replace(codecKt, "package PACKAGE", "package "+pkg, 1)
 	if err := writeAndroidFile(sink, path.Join(dir, "SnglCodec.kt"), []byte(src)); err != nil {
 		return err
+	}
+	if kotlin.UsesSQL(req.Pkg) {
+		src := strings.Replace(sqlKt, "package PACKAGE", "package "+pkg, 1)
+		if err := writeAndroidFile(sink, path.Join(dir, "SnglSql.kt"), []byte(src)); err != nil {
+			return err
+		}
 	}
 	if !kotlin.UsesGRPC(req.Pkg) {
 		return nil

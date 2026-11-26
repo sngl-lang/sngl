@@ -129,6 +129,8 @@ The tiers, and the split between them is the whole point of the system:
   as JSON. Neither knows the other; see **HTTP and JSON** below.
 - **`lib/grpc/` → `sngl:grpc`** — a unary call of a gRPC service, and the
   marks saying which protobuf message a struct is. See **gRPC** below.
+- **`lib/sql/` → `sngl:sql`** — a statement run against a database while the
+  program runs, its arguments and its rows as JSON. See **SQL** below.
 - **`lib/settings/` → `sngl:settings`** — values an app keeps from one run to the next: `kept`, which binds a var to a stored value, `load` and `save`, and the `store` context saying where. See **Settings** below.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
@@ -780,6 +782,53 @@ before its generator runs (`build.refuseGRPC`,
 panicked on an intrinsic it has nothing to write for. Not yet: metadata,
 deadlines, credentials beyond `https://`, a test answer in the network's place
 as `http.answer` is.
+
+## SQL
+
+**A statement is untyped at the runtime and typed by the codec.**
+`sql.query(engine, source, text, args, columns, kinds)` and `sql.exec` are
+`#[intrinsic(…, async)]`, their arguments a JSON array and a query's rows a
+JSON array of objects keyed by `columns`, which `json.decode` reads as the
+program's own struct. So each language's runtime is one call holding no type
+of the program's -- `pkg/go/snglsql` for Go and the interpreter,
+`codegen/platform/android/sql.kt` (`SnglSql`) for Kotlin -- and a row is
+checked by the codec every target already holds rather than by a reader per
+struct, as gRPC's are. `kinds` is the one thing a row's JSON cannot say: a
+`bool` SQLite or MySQL stores as a number, and a `datetime` or `date` SQLite
+stores as text in whatever form wrote it, each normalized to what the codec
+reads.
+
+**The engine is a literal at the call, and picks the driver.** Go names the
+engine's own package, `snglsqlite.Engine`, rather than importing it blank:
+the driver registers itself there, so a program querying SQLite links no
+PostgreSQL driver, and a blank import lost its blankness where a test's
+imports are gathered (`testdata/sql_go.txtar`). The interpreter links all
+three (`internal/interp/sql_drivers.go`, not on js). SQLite is
+`modernc.org/sqlite`, PostgreSQL pgx and MySQL go-sql-driver; a SQLite pool
+holds one connection, since each of several would open its own `:memory:`.
+Android reaches SQLite alone, through the platform's `SQLiteDatabase`, and
+`build.Refuse` refuses another engine there. `rawQuery` binds strings only,
+so a query's arguments are bound by type in a `CursorFactory`, which is
+handed the `SQLiteQuery` before it runs; an `exec` reads `changes()` and
+`last_insert_rowid()` in the statement's own transaction, which holds one
+connection. A lifetime ended before or while a statement runs answers
+`cancelled`; the statement itself runs to its end, since `SnglCodec` keeps a
+lifetime's aborts to itself.
+
+**A source is opened once and kept.** `:memory:` and any name after it,
+`:memory:books`, is a database of its own per name on every target, which is
+what lets each test hold one; a relative path on android is under the app's
+database directory once `MainActivity` hands `SnglSql` its context.
+
+**A failure's kind is SNGL's**, as gRPC's is: the runtime hands back the
+database's code -- the SQLSTATE where it has one, SQLite's primary result
+code name (`SQLITE_CONSTRAINT`) where it does not, Android's exception class
+read as that name -- and `sql.classify` turns it into the kind
+(`testdata/sql_classify.sngl`). `02000`, SQL's own "no data", is what a `:one`
+query that found nothing answers. Go and Kotlin run a statement; any other
+language is refused before its generator runs, a statement in an imported
+package's function included (`reachedCalls`), and a test run skips the file
+naming why (`build.Refused`, `cmd/sngl/testdata/error_sql_target.txt`).
 
 ## Settings
 

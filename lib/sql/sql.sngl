@@ -1,0 +1,97 @@
+import async "sngl:async"
+import marks "sngl:internal/marks"
+
+// The database a query is written for, as sqlc names it.
+enum Engine { sqlite, postgresql, mysql }
+
+// What a statement that answers no rows did.
+struct Executed {
+    // How many rows it changed.
+    rows   int64
+    // The id the database gave the last row it inserted, where it gives one:
+    // SQLite's rowid and MySQL's AUTO_INCREMENT. PostgreSQL gives none, and a
+    // statement there reads it with `RETURNING`.
+    lastId int64
+}
+
+// Runs text, a statement answering rows, against the database engine opens
+// at source, and answers the rows as a JSON array of objects, each value
+// under the name `columns` gives its place. args is a JSON array of the
+// statement's arguments in order, each a number, a string, a bool or null.
+//
+// kinds says, beside each column, what a value stored as something else is
+// read as, since a database without the type stores it another way: `bool`
+// a number as `true` or `false`, `datetime` and `date` text or a time as RFC
+// 3339. Anything else, and a column past its end, is read as it came.
+//
+// A failure the database reports is `server`, its code the database's own --
+// the SQLSTATE where the database has one, SQLite's result code name where it
+// does not -- for `classify` to read; one that never reached it is
+// `transport`, and `cancelled` where `life` ended first.
+//
+// source is what the engine's driver opens: a file path for SQLite, or
+// `:memory:` -- and any name after it, `:memory:books`, a database of its own
+// per name -- for one held while the program runs; a connection URL for
+// PostgreSQL; a DSN for MySQL. A source is opened on its first statement and
+// kept for the program's life.
+#[marks.intrinsic("sql.query", async)]
+func query(
+    engine  Engine,
+    source  string,
+    text    string,
+    args    string = "[]",
+    columns list[string] = [],
+    kinds   list[string] = [],
+    life    async.Lifetime = async.forever,
+) async.Result[string]
+
+// Runs text, a statement answering no rows, as `query` runs one, and answers
+// what it did.
+#[marks.intrinsic("sql.exec", async)]
+func exec(
+    engine Engine,
+    source string,
+    text   string,
+    args   string = "[]",
+    life   async.Lifetime = async.forever,
+) async.Result[Executed]
+
+// The failure a query's code says, by what a program should do next: a
+// constraint or a value the database refused is `request`, since sending it
+// again fails alike; a conflict, a deadlock or a busy database `server`, since
+// a retry may pass; a connection refused or lost `transport`; a login or a
+// privilege refused `auth`; and a query cancelled `cancelled`. `02000` is
+// SQL's own "no data", which a query answering one row answers where it
+// found none, and is `request`. A failure with no code is handed back as it
+// came. Written here rather than answered by each host, so every target
+// classifies alike.
+const func classify(f async.Failure) async.Failure {
+    var c = f.code
+    if c == "" {
+        return f
+    }
+    var kind = async.FailureKind.server
+    if c.startsWith("SQLITE_") {
+        if c.startsWith("SQLITE_CONSTRAINT") || c.startsWith("SQLITE_MISMATCH") || c.startsWith("SQLITE_RANGE") || c.startsWith("SQLITE_TOOBIG") || c.startsWith("SQLITE_ERROR") || c.startsWith("SQLITE_READONLY") {
+            kind = async.FailureKind.request
+        } else if c.startsWith("SQLITE_AUTH") || c.startsWith("SQLITE_PERM") {
+            kind = async.FailureKind.auth
+        } else if c.startsWith("SQLITE_CANTOPEN") || c.startsWith("SQLITE_NOTADB") {
+            kind = async.FailureKind.transport
+        } else if c.startsWith("SQLITE_INTERRUPT") {
+            kind = async.FailureKind.cancelled
+        }
+    } else if c.length() == 5 {
+        var class = c.substring(0, 2)
+        if class == "08" {
+            kind = async.FailureKind.transport
+        } else if class == "28" || class == "42" && c == "42501" {
+            kind = async.FailureKind.auth
+        } else if c == "57014" {
+            kind = async.FailureKind.cancelled
+        } else if class == "02" || class == "21" || class == "22" || class == "23" || class == "42" || class == "44" {
+            kind = async.FailureKind.request
+        }
+    }
+    return {kind=kind, message=f.message, code=c}
+}

@@ -53,9 +53,9 @@ func exampleArchive(fsys fs.FS) (source string, ok bool, err error) {
 			continue
 		}
 		// The go: scheme needs a Go toolchain, which the browser has none of,
-		// and openapi: reads its document through the project's import root,
-		// which an archive is not.
-		if bytes.Contains(files[n], []byte(`"go:`)) || bytes.Contains(files[n], []byte(`"openapi:`)) {
+		// and openapi: and sql: read their files through the project's import
+		// root, which an archive is not.
+		if bytes.Contains(files[n], []byte(`"go:`)) || bytes.Contains(files[n], []byte(`"openapi:`)) || bytes.Contains(files[n], []byte(`"sql:`)) {
 			return "", false, nil
 		}
 		if path.Dir(n) != "." || n == "doc.sngl" || strings.HasSuffix(n, "_test.sngl") {

@@ -1,0 +1,55 @@
+import books "sql:./db/queries.sql"
+import test "sngl:test"
+
+// Each test opens a database of its own, held while it runs, and creates the
+// schema in it as the window does.
+
+// The books whose title or author holds search, or none where the query
+// failed.
+func shelved(search string) list[books.Book] {
+    match var r = books.shelfCall(search=search) {
+        ok { return r }
+        failed { return [] }
+    }
+}
+
+func testAddsToTheTop(t test.Test, c shelf) {
+    t.setContext(books.source, ":memory:adds")
+    t.assert(books.create().ok == 2)
+    c.titleBox.input("A Wizard of Earthsea")
+    c.authorBox.input("Ursula K. Le Guin")
+    c.add.click()
+    t.wait(func() => c.count.value == "1 to read, 1 shown", 5000)
+    t.assert(c.titleBox.value == "")
+    t.assert(shelved("").length() == 1)
+}
+
+func testSearchNarrows(t test.Test, c shelf) {
+    t.setContext(books.source, ":memory:search")
+    t.assert(books.create().ok == 2)
+    books.addBookCall(title="Tehanu", author="Le Guin", added="2024-01-01T00:00:00Z")
+    books.addBookCall(title="Kindred", author="Octavia E. Butler", added="2024-01-02T00:00:00Z")
+    c.titleBox.input("Dune")
+    c.add.click()
+    t.wait(func() => c.count.value == "3 to read, 3 shown", 5000)
+    c.searchBox.input("butler")
+    t.wait(func() => c.count.value == "3 to read, 1 shown", 5000)
+}
+
+func testReadAndRemove(t test.Test) {
+    t.setContext(books.source, ":memory:read")
+    t.assert(books.create().ok == 2)
+    var id = books.addBookCall(title="Tehanu", author="", added="2024-01-01T00:00:00Z").ok.or(0)
+    t.assert(books.setReadCall(read=true, id=id).ok == 1)
+    t.assert(books.unreadCall().ok == 0)
+    t.assert(shelved("")[0].read)
+    t.assert(books.removeBookCall(id=id).ok == 1)
+    t.assert(shelved("").length() == 0)
+}
+
+// Creating the schema a second time finds each statement already done.
+func testCreatesTwice(t test.Test) {
+    t.setContext(books.source, ":memory:twice")
+    t.assert(books.create().ok == 2)
+    t.assert(books.create().ok == 2)
+}

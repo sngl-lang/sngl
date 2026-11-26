@@ -337,6 +337,14 @@ func runOnPlatform(ctx context.Context, plat codegen.PlatformGenerator, runner c
 				})
 				continue
 			}
+			if refused, ok := errors.AsType[*build.Refused](err); ok {
+				allResults = append(allResults, &codegen.TestResult{
+					Component:  filepath.Base(filename),
+					Skipped:    true,
+					SkipReason: refused.Reason,
+				})
+				continue
+			}
 			fmt.Fprintf(os.Stderr, "%s: %s\n", filename, err)
 			totalFail++
 			continue

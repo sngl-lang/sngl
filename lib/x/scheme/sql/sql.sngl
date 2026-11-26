@@ -1,0 +1,141 @@
+import gen "sngl:x/gen"
+import marks "sngl:internal/marks"
+
+// `sql:` imports a file of sqlc queries as a package of what they answer and
+// a function per query:
+//
+//     import db "sql:./db/queries.sql"
+//
+// The file says where its schema is in a comment of its own, and the schema
+// says which engine it is written for, so query files sharing one say it
+// once:
+//
+//     -- sngl:schema schema.sql        (queries.sql)
+//     -- sngl:engine postgresql        (schema.sql)
+//
+// `sngl:schema` names a `.sql` file, a directory of them or a pattern,
+// relative to the query file, and may be said more than once. `sngl:engine`
+// is `sqlite`, `postgresql` or `mysql`, SQLite where no schema file says
+// it, and every schema file saying it says the same; a query file saying it
+// overrides its schema's.
+//
+// A sqlc configuration is read too, `sql:./db/sqlc.yaml`: sqlc's own,
+// version 2, declaring one package, its engine, its schema and its queries.
+// Its `gen` and `codegen` sections are sqlc's languages' and are not read.
+//
+// Every path is the project's own file, relative to the import root, and
+// every file one names is read through the project: one outside it is
+// refused. sqlc analyses the queries against the schema, with no database,
+// as `sqlc generate` would; what it refuses is the import's error, at the
+// file and line.
+//
+//   - **A struct per table**, named for it in the singular, `authors` →
+//     `Author`, a field per column; a column that may be null is an option.
+//     A query answering every column of one table, `SELECT *`, answers its
+//     struct, any other a struct of its own, `ListAuthorsRow`, and one
+//     answering one column that column's value.
+//   - **An enum per enum** the schema creates.
+//   - **A function per query**, named for it with `Call` after it,
+//     `getAuthorCall(id, life)`, its parameters the query's, answering
+//     `async.Result` of what it says it answers: `:one` the row, or a
+//     `request` failure coded `02000` where there is none; `:many` a list;
+//     `:execrows` how many rows changed; `:execlastid` the id inserted; `:exec`
+//     and `:execresult` an `sql.Executed`. A failure the database reports is
+//     classified by `sql.classify`.
+//   - **A component per `:one` or `:many` query**, named for the bare query,
+//     over `async.query` keyed by its parameters: asked when it mounts and
+//     whenever a parameter changes.
+//   - **`source`**, a context naming the database, **`schema`**, the
+//     schema's statements, and **`create`**, which runs them.
+//
+// A column's type is the one its width holds on every target: an `integer`
+// on PostgreSQL an `int`, a `bigint` an `int64`, and SQLite's `INTEGER` an
+// `int64`; a `date` or a `timestamp` a `time.date` or a `time.datetime`; a
+// `numeric`, a `uuid`, `json` and the rest a string. A query reaching a type
+// with none -- an array, a `sqlc.slice` -- and a `:copyfrom` or `:batch`
+// query are left out, and the import says so in a warning; so is a name it
+// changed.
+gen.scheme(name="sql", @generate(out, importPath) {
+    if outside(importPath) {
+        error.raise("sql:" + importPath + " is outside the project: the queries are read from the project's own files", "import")
+        return
+    }
+    var parts = importPath.split("/")
+    var name = parts[parts.length() - 1]
+    var dir = parts.slice(0, parts.length() - 1).format("/")
+    var text = read(importPath)
+    var config = name.endsWith(".sql") ? configFor(text, name, importPath) : text
+    var files map[string, string] = {}
+    for var p = inputs(config, dir) {
+        if outside(p) {
+            error.raise("sql:" + importPath + " reads " + p + ", which is outside the project", "import")
+            return
+        }
+        var glob = p.contains("*") || p.contains("?") || p.contains("[")
+        if p.endsWith(".sql") && !glob {
+            files[p] = read(p)
+            continue
+        }
+        var under = p
+        var pattern = "*.sql"
+        if glob {
+            var segs = p.split("/")
+            pattern = segs[segs.length() - 1]
+            under = segs.slice(0, segs.length() - 1).format("/")
+        }
+        for var f = gen.files(under == "" ? "." : under, pattern) {
+            if f.endsWith(".sql") {
+                var at = under == "" || under == "." ? f : under + "/" + f
+                files[at] = read(at)
+            }
+        }
+    }
+    var pkg = generate(files, text, name, importPath)
+    for var n = pkg.notes {
+        out.note(n)
+    }
+    out.file(pkg.file).add(pkg.source)
+})
+
+const func outside(p string) bool {
+    return p.startsWith("/") || p == ".." || p.startsWith("../") || p.contains("/../")
+}
+
+// Lines joined once: adding each to a string copies it every time.
+func read(p string) string {
+    var lines list[string] = []
+    for var line = gen.lines(p) {
+        lines.push(line)
+    }
+    return lines.format("\n")
+}
+
+// What an import resolves to.
+struct Package {
+    // The file to write: named for the configuration's directory.
+    file   string
+    // Its source.
+    source string
+    // What the import says: what was left out, and why, and what was renamed.
+    notes  list[string]
+}
+
+// The sqlc configuration the query file queries, named name and imported as
+// from, stands for: its own queries over the schema its `sngl:schema`
+// directives name. Asked for the files it reads; its engine is decided once
+// they are, by `generate`.
+#[marks.intrinsic("sql.configFor", build)]
+func configFor(queries string, name string, from string) string
+
+// The files the configuration config, which is in dir, reads, each where the
+// import root holds it.
+#[marks.intrinsic("sql.inputs", build)]
+func inputs(config string, dir string) list[string]
+
+// The package for the configuration config, named name and beside from --
+// or for the query file config, where name ends `.sql` -- over files, each
+// `.sql` file it reads by its place under the import root, imported as
+// from. Answered by Go, which runs sqlc's analysis and
+// writes the source.
+#[marks.intrinsic("sql.generate", build)]
+func generate(files map[string, string], config string, name string, from string) Package
