@@ -19,7 +19,7 @@ func init() {
 	codegen.RegisterIntrinsic(langKt, "http.pathEscape", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.escape(" + tr(args[0]) + ")", nil
 	})
-	// A lifetime is the number SnglCodec holds it by.
+	// A lifetime and a queue are the numbers SnglCodec holds them by.
 	codegen.RegisterIntrinsic(langKt, "async.begin", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.begin()", nil
 	})
@@ -28,6 +28,15 @@ func init() {
 	})
 	codegen.RegisterIntrinsic(langKt, "async.ended", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.ended(" + tr(args[0]) + ")", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.queueOpen", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.queueOpen()", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.queueSend", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.queueSend(" + tr(args[0]) + ", " + tr(args[1]) + ")", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.queueClose", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.queueClose(" + tr(args[0]) + ")", nil
 	})
 }
 

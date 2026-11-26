@@ -1313,7 +1313,10 @@ is called. One declared `ref[T]` is the caller's cell, so a write to it is a
 write to the value the method was called on: `func Money.add(m ref[Money], cents int)` is called as `m.add(5)`, which hands it `m` as `&m` would, and
 as `Money.add(&m, 5)`. So it is called on a place, as `&` takes one: not on a
 `const` or a call's result, where the write would land nowhere. A method with no such parameter is static, called on
-the type, `Money.zero()`, and its body has no `this`. A `func` written inside a `struct` or
+the type, `Money.zero()`, and its body has no `this`. On a generic type it
+may be called on the type at its arguments, `Box[int].empty()`, which bind
+the type's parameters where no argument would; `Box.empty()` binds them from
+the type the call is expected to be. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
 by bare name. A `func` written in a component body is a method of the
 component.

@@ -5,8 +5,8 @@ import (
 	"duckfam.us/sngl/pkg/go/snglasync"
 )
 
-// runLifetimeIntrinsic answers sngl:async's lifetime ids, which snglasync
-// holds; handled is false for any other id.
+// runLifetimeIntrinsic answers sngl:async's lifetime and queue ids, which
+// snglasync holds; handled is false for any other id.
 func runLifetimeIntrinsic(fn *ir.Func, args []any) (any, bool, error) {
 	if fn == nil {
 		return nil, false, nil
@@ -26,13 +26,24 @@ func runLifetimeIntrinsic(fn *ir.Func, args []any) (any, bool, error) {
 		return nil, true, nil
 	case "async.ended":
 		return snglasync.Ended(id()), true, nil
+	case "async.queueOpen":
+		return snglasync.OpenQueue(), true, nil
+	case "async.queueSend":
+		n, _ := args[0].(int)
+		if !snglasync.Send(n, args[1]) {
+			return nil, true, snglasync.ErrClosed
+		}
+		return nil, true, nil
+	case "async.queueClose":
+		snglasync.CloseQueue(id())
+		return nil, true, nil
 	}
 	return nil, false, nil
 }
 
-// lifetimeID is the number a Lifetime value holds, 0 -- forever -- for
-// anything else.
-func lifetimeID(v any) int {
+// heldID is the number a Lifetime or a queue holds, 0 -- forever, or a queue
+// closed and empty -- for anything else.
+func heldID(v any) int {
 	s, ok := v.(*Struct)
 	if !ok {
 		return 0

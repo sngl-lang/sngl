@@ -1,5 +1,6 @@
 # Go and Kotlin write a gRPC call: a target in another language refuses the
-# program before its generator has nothing to write for the call.
+# program before its generator has nothing to write for the call, and one
+# making the async.queue only a gRPC call reads.
 
 ! sngl generate --platform=html -o out app.sngl
 stderr 'the program calls a gRPC service, which html/none cannot yet: only the Go targets and android can'
@@ -11,6 +12,12 @@ sngl generate --platform=bubbletea -o out app.sngl
 
 sngl generate --platform=android -o out app.sngl
 exists out/SnglGrpc.kt out/SnglProto.kt
+
+! sngl generate --platform=html -o out2 queue.sngl
+stderr 'the program makes an async.queue, which html/none cannot yet: only the Go targets and android can'
+
+! sngl generate --platform=gtk4 --lang=c -o out2 queue.sngl
+stderr 'makes an async.queue, which gtk4/c cannot yet'
 
 -- app.sngl --
 import async "sngl:async"
@@ -36,6 +43,23 @@ component main ui.node {
         }
     })
     ui.text(value="{n}")
+}
+
+ui.window {
+    main
+}
+-- queue.sngl --
+import async "sngl:async"
+import ui "sngl:ui"
+
+component main ui.node {
+    var sent = 0
+    ui.button(text="Send", @click {
+        var q async.queue[int] = async.queue.new()
+        q.send(1)
+        sent += 1
+    })
+    ui.text(value="{sent}")
 }
 
 ui.window {

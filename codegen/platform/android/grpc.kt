@@ -1,6 +1,7 @@
 package PACKAGE
 
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -11,12 +12,13 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody
+import okio.BufferedSink
 
-// SnglGrpc is the transport behind sngl:grpc's call: one unary call's bytes
-// framed as gRPC and carried over OkHttp's HTTP/2. The messages are written
-// and read by SnglProto, from the program's own classes, so nothing here
-// knows a message.
+// SnglGrpc is the transport behind sngl:grpc's call and stream: a call's
+// bytes framed as gRPC and carried over OkHttp's HTTP/2. The messages are
+// written and read by SnglProto, from the program's own classes, so nothing
+// here knows a message.
 object SnglGrpc {
     class Answer(val body: ByteArray, val code: Int, val message: String)
 
@@ -28,23 +30,27 @@ object SnglGrpc {
     private val plain by lazy { OkHttpClient.Builder().protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE)).build() }
     private val tls by lazy { OkHttpClient.Builder().protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1)).build() }
 
-    private fun request(server: String, method: String, requests: List<ByteArray>): Request {
+    // The request messages are written as they come, while the responses
+    // are read: OkHttp hands a duplex body its sink and leaves it open.
+    private class Pumped : RequestBody() {
+        val sink = CompletableDeferred<BufferedSink>()
+
+        override fun contentType() = grpc
+
+        override fun isDuplex() = true
+
+        override fun writeTo(sink: BufferedSink) {
+            this.sink.complete(sink)
+        }
+    }
+
+    private fun request(server: String, method: String, body: RequestBody): Request {
         val secure = server.startsWith("https://")
         val host = server.removePrefix("https://").removePrefix("http://").trimEnd('/')
-        val framed = java.io.ByteArrayOutputStream()
-        for (r in requests) {
-            val n = r.size
-            framed.write(0)
-            framed.write(n ushr 24)
-            framed.write(n ushr 16)
-            framed.write(n ushr 8)
-            framed.write(n)
-            framed.write(r)
-        }
         return Request.Builder()
             .url((if (secure) "https://" else "http://") + host + method)
             .header("te", "trailers")
-            .post(framed.toByteArray().toRequestBody(grpc))
+            .post(body)
             .build()
     }
 
@@ -62,7 +68,8 @@ object SnglGrpc {
     suspend fun call(server: String, method: String, request: ByteArray, life: Int): Answer {
         var got: ByteArray? = null
         var n = 0
-        val a = stream(server, method, listOf(request), life) {
+        var sent = false
+        val a = exchange(server, method, { if (sent) null else request.also { sent = true } }, life) {
             got = it
             n++
             true
@@ -72,13 +79,18 @@ object SnglGrpc {
         return Answer(got!!, 0, "")
     }
 
-    // stream sends each of requests and hands each response message to each,
-    // where the caller runs, as it arrives: until the server ends the call,
-    // each answers false (code -1), or life ends.
-    suspend fun stream(server: String, method: String, requests: List<ByteArray>, life: Int, each: suspend (ByteArray) -> Boolean): Answer {
+    // stream sends each item of sngl:async's queue as write writes it, as it
+    // is sent, and hands each response message to each, where the caller
+    // runs, as it arrives: until the server ends the call, each answers
+    // false (code -1), or life ends. Closing the queue ends the requests.
+    suspend fun stream(server: String, method: String, queue: Int, write: (Any?) -> ByteArray, life: Int, each: suspend (ByteArray) -> Boolean): Answer =
+        exchange(server, method, { SnglCodec.queueReceive(queue)?.let(write) }, life, each)
+
+    private suspend fun exchange(server: String, method: String, next: suspend () -> ByteArray?, life: Int, each: suspend (ByteArray) -> Boolean): Answer {
         if (SnglCodec.ended(life)) return Answer(none, 1, "cancelled")
         if (server.isEmpty()) return Answer(none, 14, "no server: provide the service's address")
-        val call = client(server).newCall(request(server, method, requests))
+        val body = Pumped()
+        val call = client(server).newCall(request(server, method, body))
         val messages = Channel<ByteArray>(16)
         return coroutineScope {
             // SnglCodec keeps its lifetimes' aborts to itself, so the call
@@ -86,6 +98,18 @@ object SnglGrpc {
             val watch = if (life == 0) null else launch {
                 while (!SnglCodec.ended(life)) delay(20)
                 call.cancel()
+            }
+            val pump = launch(Dispatchers.IO) {
+                val sink = body.sink.await()
+                try {
+                    while (true) {
+                        val m = next() ?: break
+                        sink.writeByte(0).writeInt(m.size).write(m).flush()
+                    }
+                    sink.close()
+                } catch (e: IOException) {
+                    // The call ended, and the reader answers how.
+                }
             }
             val reader = async(Dispatchers.IO) {
                 try {
@@ -115,7 +139,7 @@ object SnglGrpc {
                 if (stopped != null) break
             }
             watch?.cancel()
-            if (stopped != null) {
+            val answer = if (stopped != null) {
                 call.cancel()
                 messages.cancel()
                 reader.cancel()
@@ -123,6 +147,8 @@ object SnglGrpc {
             } else {
                 reader.await()
             }
+            pump.cancel()
+            answer
         }
     }
 

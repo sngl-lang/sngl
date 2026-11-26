@@ -116,9 +116,9 @@ func (gc *GoIRContext) grpcCall(n *ir.Call) (string, bool) {
 	return b.String(), true
 }
 
-// grpcStream renders a call of grpc.stream: each request written, and each
-// response read and handed to each before the next is read, as the
-// async.Result of how many came.
+// grpcStream renders a call of grpc.stream: each request written as its
+// queue is sent it, and each response read and handed to each before the next
+// is read, as the async.Result of how many came.
 func (gc *GoIRContext) grpcStream(n *ir.Call, req, resp *ir.Type, ctx string, arg func(string) string) string {
 	str := ir.TypString
 	reqName := protoFuncName(ir.PlanCodec(req, ir.CodecProto).Root)
@@ -127,10 +127,10 @@ func (gc *GoIRContext) grpcStream(n *ir.Call, req, resp *ir.Type, ctx string, ar
 	var b strings.Builder
 	fmt.Fprintf(&b, "func() %s { ", typeToGo(n.Type, gc.site()))
 	fmt.Fprintf(&b, "__snglE := %s; ", arg("each"))
-	b.WriteString("var __snglQ [][]byte; ")
-	fmt.Fprintf(&b, "for _, __snglR := range %s { __snglQ = append(__snglQ, snglPbWrite%s(nil, __snglR)) }; ", arg("requests"), reqName)
 	b.WriteString("__snglN, __snglP := 0, \"\"; ")
-	fmt.Fprintf(&b, "__snglC, __snglM := snglgrpc.Stream(%s, %s, %s, __snglQ, func(__snglB []byte) bool { ", ctx, arg("server"), arg("method"))
+	queue := gc.EvalExpr(&ir.Select{Operand: n.ArgFor("requests"), Field: "_id", Type: ir.TypInt})
+	write := fmt.Sprintf("func(__snglR any) []byte { return snglPbWrite%s(nil, __snglR.(%s)) }", reqName, typeToGo(req, gc.site()))
+	fmt.Fprintf(&b, "__snglC, __snglM := snglgrpc.Stream(%s, %s, %s, %s, %s, func(__snglB []byte) bool { ", ctx, arg("server"), arg("method"), queue, write)
 	fmt.Fprintf(&b, "__snglV, __snglX := snglPbRead%s(__snglB, \"$\"); if __snglX != \"\" { __snglP = __snglX; return false }; __snglN++; __snglE(__snglV); return true }); ", respName)
 	fmt.Fprintf(&b, "if __snglP != \"\" { return %s }; ", gc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__snglP", str))))
 	fmt.Fprintf(&b, "if __snglC != 0 { return %s }; ", gc.EvalExpr(failed))

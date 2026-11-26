@@ -1265,6 +1265,36 @@ func (f *Func) OnComponent() bool {
 // or a built-in such as list, called on a value it is handed first.
 func (f *Func) OnType() bool { return f.IsMethod() && !f.OnComponent() }
 
+// IsStatic reports whether f is a method of a declared type that is called on
+// the type rather than a value, `Money.zero()`: it has no receiver, and its
+// first parameter, if any, is not the type, nor a copy of the generic one it
+// was declared on.
+func (f *Func) IsStatic() bool {
+	recv := f.RecvDecl()
+	if !f.OnType() || recv == nil || f.RecvParam != nil || f.Lowered.HostReceiver != "" {
+		return false
+	}
+	if len(f.Params) == 0 {
+		return true
+	}
+	p := f.Params[0]
+	if p.Receiver || p.Type == nil {
+		return false
+	}
+	t := p.Type
+	if t.Kind == TypeRef && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	if t.Decl == nil {
+		return true
+	}
+	if t.Decl == recv {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return !ok || sd.InstanceOf == nil || Symbol(sd.InstanceOf) != recv
+}
+
 // receiverName names a receiver type by its declaration, or by its kind for a
 // built-in constructor whose declaration was not to hand.
 func receiverName(t *Type) string {

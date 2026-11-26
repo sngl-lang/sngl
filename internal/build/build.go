@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"duckfam.us/sngl/codegen"
@@ -421,17 +422,24 @@ func dropTests(pkg *ir.Package) {
 	pkg.Funcs = slices.DeleteFunc(pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest })
 }
 
-// refuseGRPC refuses a program calling a gRPC service on a language that
-// writes no gRPC call yet, which would otherwise reach the generator with
-// nothing to emit for it.
+// refuseGRPC refuses a program calling a gRPC service, or making the
+// async.queue only a gRPC call reads, on a language that writes neither yet,
+// which would otherwise reach the generator with nothing to emit for it.
 func refuseGRPC(pkg *ir.Package, target Target) error {
 	if codegen.LangImplements(target.Lang, ir.GRPCCallIntrinsic) {
 		return nil
 	}
 	var err error
 	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && err == nil && ir.IsGRPC(c.Func) {
+		c, ok := e.(*ir.Call)
+		if !ok || err != nil || c.Func == nil {
+			return nil
+		}
+		switch {
+		case ir.IsGRPC(c.Func):
 			err = fmt.Errorf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
+		case strings.HasPrefix(c.Func.Intrinsic, "async.queue"):
+			err = fmt.Errorf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
 		}
 		return nil
 	})

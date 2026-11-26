@@ -1684,15 +1684,14 @@ func composedCallees(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
 // reference at it. MainScreen holds that state as remembered locals, and the
 // test build as members of its state class, so the method is declared in
 // whichever holds it and called as the page's other functions are, where an
-// extension is declared at top level.
+// extension is declared at top level. A static method is one too, whatever
+// it reads: it has no value to extend, and as an extension it was called on
+// its first argument, `n.zero()` for `Money.zero(n)`.
 func pageTypeMethods(ctx *codegen.CodegenCtx, cfg Config) {
-	if cfg.GoLib {
-		return
-	}
 	moved := map[*ir.Func]*ir.Func{}
 	reaching := codegen.PackageStateFuncs(ctx.Pkg)
 	for i, fn := range ctx.Pkg.Funcs {
-		if !fn.OnType() || !reaching[fn] {
+		if !fn.IsStatic() && (cfg.GoLib || !fn.OnType() || !reaching[fn]) {
 			continue
 		}
 		page := *fn

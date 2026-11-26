@@ -23,14 +23,15 @@ func IsCodecCall(c *ir.Call) bool {
 	return false
 }
 
-// IsLifetimeCall reports whether c calls one of sngl:async's lifetime ids,
-// which each language answers from the runtime its codec calls use.
+// IsLifetimeCall reports whether c calls one of sngl:async's lifetime or
+// queue ids, which each language answers from the runtime its codec calls
+// use.
 func IsLifetimeCall(c *ir.Call) bool {
 	if c == nil || c.Func == nil {
 		return false
 	}
 	switch c.Func.Intrinsic {
-	case "async.begin", "async.end", "async.ended":
+	case "async.begin", "async.end", "async.ended", "async.queueOpen", "async.queueSend", "async.queueClose":
 		return true
 	}
 	return false

@@ -100,8 +100,9 @@ func (kc *KtIRContext) grpcCall(n *ir.Call) (string, bool) {
 	if n.Func.Intrinsic == ir.GRPCStreamIntrinsic {
 		undecoded := kc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__p!!", str)))
 		got := kc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__n", ir.TypInt)))
-		return fmt.Sprintf("run { val __e = %s; var __n = 0; var __p: String? = null; val __g = SnglGrpc.stream(%s, %s, (%s).map { __r -> SnglProto.write { SnglProto.write%s(it, __r) } }, %s) { __b -> val __d = SnglProto.decode { SnglProto.read%s(SnglPbReader(__b), \"$\") }; if (__d.error != null) { __p = __d.error; false } else { __n++; __e(__d.value!!); true } }; if (__p != null) %s else if (__g.code != 0) %s else %s }",
-			arg("each"), arg("server"), arg("method"), arg("requests"), protoName(reqNode), life, protoName(respNode), undecoded, failed, got), true
+		queue := kc.EvalExpr(&ir.Select{Operand: n.ArgFor("requests"), Field: "_id", Type: ir.TypInt})
+		return fmt.Sprintf("run { val __e = %s; var __n = 0; var __p: String? = null; val __g = SnglGrpc.stream(%s, %s, %s, { __r -> SnglProto.write { SnglProto.write%s(it, __r as %s) } }, %s) { __b -> val __d = SnglProto.decode { SnglProto.read%s(SnglPbReader(__b), \"$\") }; if (__d.error != null) { __p = __d.error; false } else { __n++; __e(__d.value!!); true } }; if (__p != null) %s else if (__g.code != 0) %s else %s }",
+			arg("each"), arg("server"), arg("method"), queue, protoName(reqNode), IRTypeToKt(req), life, protoName(respNode), undecoded, failed, got), true
 	}
 	undecoded := kc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__d.error", str)))
 	got := kc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__d.value!!", resp)))

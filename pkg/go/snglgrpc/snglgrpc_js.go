@@ -11,7 +11,7 @@ func Invoke(ctx context.Context, server, method string, request []byte) ([]byte,
 	return nil, 14, "a gRPC call cannot be made from a browser"
 }
 
-func Stream(ctx context.Context, server, method string, requests [][]byte, each func([]byte) bool) (int, string) {
+func Stream(ctx context.Context, server, method string, queue int, write func(any) []byte, each func([]byte) bool) (int, string) {
 	return 14, "a gRPC call cannot be made from a browser"
 }
 

@@ -1,0 +1,13 @@
+// The arguments a generic type is written with bind its static method's
+// parameters, so an argument is checked against them rather than inferring
+// them anew.
+
+struct box[T any] {
+    items list[T] = []
+}
+
+func box[T].of(first T) => box[T]{items=[first]}
+
+func wrong() {
+    var b = box[string].of(1) // ERROR(check) "cannot pass int as string"
+}

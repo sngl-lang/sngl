@@ -45,7 +45,7 @@ func (env *Env) evalGRPCCall(call *ir.Call) (any, bool, error) {
 		return env.grpcStream(rt, server, method, arg("requests"), arg("each"), arg("life"), req, resp)
 	}
 	body := protoAppendMessage(nil, arg("request"), ir.PlanCodec(env.boundType(req), ir.CodecProto).Root)
-	got, code, msg := snglgrpc.Invoke(snglasync.Context(lifetimeID(arg("life"))), server, method, body)
+	got, code, msg := snglgrpc.Invoke(snglasync.Context(heldID(arg("life"))), server, method, body)
 	if code != 0 {
 		return resultFailed(rt, "server", msg, strconv.Itoa(code)), true, nil
 	}
@@ -56,8 +56,9 @@ func (env *Env) evalGRPCCall(call *ir.Call) (any, bool, error) {
 	return EnumValue{Type: rt, Member: "ok", Payload: v}, true, nil
 }
 
-// grpcStream answers grpc.stream: each response read back and handed to each
-// before the next is read.
+// grpcStream answers grpc.stream: each request written as its queue is sent
+// it, and each response read back and handed to each before the next is
+// read.
 func (env *Env) grpcStream(rt *ir.Type, server, method string, requests, each, life any, req, resp *ir.Type) (any, bool, error) {
 	fn, ok := each.(*LambdaValue)
 	if !ok {
@@ -65,15 +66,11 @@ func (env *Env) grpcStream(rt *ir.Type, server, method string, requests, each, l
 	}
 	reqPlan := ir.PlanCodec(env.boundType(req), ir.CodecProto).Root
 	respPlan := ir.PlanCodec(env.boundType(resp), ir.CodecProto).Root
-	xs, _ := requests.([]any)
-	bodies := make([][]byte, len(xs))
-	for i, x := range xs {
-		bodies[i] = protoAppendMessage(nil, x, reqPlan)
-	}
+	write := func(x any) []byte { return protoAppendMessage(nil, x, reqPlan) }
 	n := 0
 	var problem string
 	var failed error
-	code, msg := snglgrpc.Stream(snglasync.Context(lifetimeID(life)), server, method, bodies, func(m []byte) bool {
+	code, msg := snglgrpc.Stream(snglasync.Context(heldID(life)), server, method, heldID(requests), write, func(m []byte) bool {
 		v, p := protoReadMessage(m, respPlan, "$")
 		if p != "" {
 			problem = p

@@ -6,8 +6,8 @@ import "fmt"
 // protobuf, and a response read back as one.
 const GRPCCallIntrinsic = "grpc.call"
 
-// GRPCStreamIntrinsic is sngl:grpc's stream: a list of request messages, and
-// each response handed to a function as it comes.
+// GRPCStreamIntrinsic is sngl:grpc's stream: request messages sent through
+// an async.queue, and each response handed to a function as it comes.
 const GRPCStreamIntrinsic = "grpc.stream"
 
 // IsGRPC reports whether f is one of sngl:grpc's calls.
@@ -66,9 +66,7 @@ func ProtoCall(c *Call) (req, resp *Type, ok bool) {
 	}
 	if c.Func.Intrinsic == GRPCStreamIntrinsic {
 		if a := c.ArgFor("requests"); a != nil {
-			if t := codecUnwrap(a.ExprType()); t != nil && t.Kind == TypeList {
-				req = t.Elems[0]
-			}
+			req = queueItem(codecUnwrap(a.ExprType()))
 		}
 		if a := c.ArgFor("each"); a != nil {
 			if t := codecUnwrap(a.ExprType()); t != nil && t.Kind == TypeFunc && t.Sig != nil && len(t.Sig.Params) == 1 {
@@ -81,6 +79,21 @@ func ProtoCall(c *Call) (req, resp *Type, ok bool) {
 		req = a.ExprType()
 	}
 	return req, MemberPayload(c.Type, "ok"), true
+}
+
+// queueItem is T of t, an async.queue[T]: an argument of the generic struct
+// before a target copies it per instantiation, and the copy's after.
+func queueItem(t *Type) *Type {
+	if t == nil || t.Kind != TypeStruct {
+		return nil
+	}
+	if len(t.Elems) == 1 {
+		return t.Elems[0]
+	}
+	if sd, ok := t.Decl.(*StructDef); ok && len(sd.InstanceArgs) == 1 {
+		return sd.InstanceArgs[0]
+	}
+	return nil
 }
 
 // protoKindOf is the kind a field of type t is written as, given the kind its

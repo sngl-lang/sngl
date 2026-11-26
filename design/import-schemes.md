@@ -160,20 +160,28 @@ is a struct like any other. A map keyed by anything but a string and an
 aliasing enum value are left out, with a note; a method whose request holds
 a list or a map has no component, since a query's key is compared.
 
-**A streaming method is a function over `grpc.stream`**, which sends a list
-of requests and hands each response to `each` as it comes, answering how
-many came. `each` runs where code after a wait would -- the caller's
-goroutine in Go, the caller's coroutine in Kotlin, which a reader on the IO
-dispatcher feeds through a channel -- so a write to state from it is any
-handler's. A list of requests rather than a handle to send on is what a
-call that waits can take: every request is written before the first
-response is read, which a method answering each message as it comes still
-serves, and ending the lifetime from `each` ends the call. Client streaming
-is the same intrinsic answering one message, checked in SNGL, and a unary
-call is snglgrpc's `Stream` with one request each way. A streaming method
-has no component: a query answers one value per key. The runs cover each
-kind, a failure after messages, and a lifetime ended from `each` against a
-stream that never ends.
+**A streaming method is a function over `grpc.stream`**, which sends each
+request an `async.queue` is sent and hands each response to `each` as it
+comes, answering how many came. A list could not be it: a call waits, so a
+list is whole before the first response, and a method answering each message
+is then never sent the next one its last answer asked for. The queue is a
+number the runtime holds, as a lifetime is (`snglasync`, SnglCodec), so a
+copy kept in a var and sent to from `each` or any handler is the one the call
+reads; a pump reads it into the request body while the responses are read --
+an `io.Pipe` under x/net's HTTP/2 in Go and the interpreter, a duplex OkHttp
+body on android -- and closing it ends the requests. `each` runs where code
+after a wait would -- the caller's goroutine in Go, the caller's coroutine in
+Kotlin, which a reader on the IO dispatcher feeds through a channel -- so a
+write to state from it is any handler's, and ending the lifetime from it ends
+the call. Server streaming passes `async.queue.from([request])`, client
+streaming is the same intrinsic answering one message, checked in SNGL, and a
+unary call is snglgrpc's `Stream` with one request each way. A queue is only
+read by a gRPC call, so a language that writes none refuses one too
+(`refuseGRPC`). A streaming method has no component: a query answers one
+value per key. The runs cover each kind, a failure after messages, a
+lifetime ended from `each` against a stream that never ends, a request sent
+only once the answer to the last has come, and a queue never closed whose
+lifetime ends the call.
 
 The runs are `cmd/sngl/testdata/grpc_runs.txt`, against the script
 harness's server (`internal/testgrpc`, at `127.0.0.1:47820`), which reads

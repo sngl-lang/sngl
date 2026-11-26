@@ -22,5 +22,6 @@
 // own generation.
 //
 // A call waits, as any async function does; `stream` calls a streaming
-// method, handing each response to a function as it comes. Metadata,
-// deadlines and credentials are not set yet.
+// method, sending each request an `async.queue` is sent and handing each
+// response to a function as it comes, so a response may ask for the next
+// request. Metadata, deadlines and credentials are not set yet.

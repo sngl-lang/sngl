@@ -143,6 +143,13 @@ func serveOn(l net.Listener) error {
 		if m == nil {
 			return status.Errorf(codes.Unimplemented, "no method %s", name)
 		}
+		send := func(resp proto.Message) error {
+			out, err := proto.Marshal(resp)
+			if err != nil {
+				return err
+			}
+			return stream.SendMsg(out)
+		}
 		var reqs []*dynamicpb.Message
 		for {
 			var in []byte
@@ -155,19 +162,24 @@ func serveOn(l net.Listener) error {
 			if err := proto.Unmarshal(in, req); err != nil {
 				return status.Errorf(codes.InvalidArgument, "request: %v", err)
 			}
+			// Echo answers each request as it comes, so a client that
+			// sends the next only once it has the last is answered.
+			if m.Name() == "Echo" {
+				if err := send(bookOf(m, idOf(req), fmt.Sprintf("echo %d", idOf(req)))); err != nil {
+					return err
+				}
+				continue
+			}
 			reqs = append(reqs, req)
+		}
+		if m.Name() == "Echo" {
+			return nil
 		}
 		if !m.IsStreamingClient() && len(reqs) != 1 {
 			return status.Errorf(codes.InvalidArgument, "%d requests to a unary method", len(reqs))
 		}
 		if m.IsStreamingServer() {
-			return streamOut(stream.Context(), m, reqs, func(resp proto.Message) error {
-				out, err := proto.Marshal(resp)
-				if err != nil {
-					return err
-				}
-				return stream.SendMsg(out)
-			})
+			return streamOut(stream.Context(), m, reqs, send)
 		}
 		resp, err := answer(m, reqs)
 		if err != nil {
@@ -258,31 +270,22 @@ func answer(m protoreflect.MethodDescriptor, reqs []*dynamicpb.Message) (proto.M
 	return nil, status.Errorf(codes.Unimplemented, "no method %s", m.Name())
 }
 
-// streamOut sends what a streaming method of m answers reqs:
-//
-//	Watch  books 1 to id, then OK; for id 404 book 1 and then NOT_FOUND; for
-//	       id 0 a book every 20ms until the call is cancelled
-//	Echo   a book per request, of its id, titled "echo <id>"
+// streamOut sends what Watch answers reqs: books 1 to id, then OK; for id
+// 404 book 1 and then NOT_FOUND; for id 0 a book every 20ms until the call is
+// cancelled.
 func streamOut(ctx context.Context, m protoreflect.MethodDescriptor, reqs []*dynamicpb.Message, send func(proto.Message) error) error {
-	book := func(id int64, title string) proto.Message {
-		b := dynamicpb.NewMessage(m.Output())
-		b.Set(b.Descriptor().Fields().ByName("id"), protoreflect.ValueOfInt64(id))
-		b.Set(b.Descriptor().Fields().ByName("title"), protoreflect.ValueOfString(title))
-		return b
-	}
-	idOf := func(r *dynamicpb.Message) int64 { return r.Get(r.Descriptor().Fields().ByName("id")).Int() }
 	switch m.Name() {
 	case "Watch":
 		id := idOf(reqs[0])
 		switch id {
 		case 404:
-			if err := send(book(1, "Book 1")); err != nil {
+			if err := send(bookOf(m, 1, "Book 1")); err != nil {
 				return err
 			}
 			return status.Error(codes.NotFound, "the shelf is gone")
 		case 0:
 			for i := int64(1); ; i++ {
-				if err := send(book(i, fmt.Sprintf("Book %d", i))); err != nil {
+				if err := send(bookOf(m, i, fmt.Sprintf("Book %d", i))); err != nil {
 					return err
 				}
 				select {
@@ -293,14 +296,7 @@ func streamOut(ctx context.Context, m protoreflect.MethodDescriptor, reqs []*dyn
 			}
 		}
 		for i := int64(1); i <= id; i++ {
-			if err := send(book(i, fmt.Sprintf("Book %d", i))); err != nil {
-				return err
-			}
-		}
-		return nil
-	case "Echo":
-		for _, r := range reqs {
-			if err := send(book(idOf(r), fmt.Sprintf("echo %d", idOf(r)))); err != nil {
+			if err := send(bookOf(m, i, fmt.Sprintf("Book %d", i))); err != nil {
 				return err
 			}
 		}
@@ -308,6 +304,15 @@ func streamOut(ctx context.Context, m protoreflect.MethodDescriptor, reqs []*dyn
 	}
 	return status.Errorf(codes.Unimplemented, "no method %s", m.Name())
 }
+
+func bookOf(m protoreflect.MethodDescriptor, id int64, title string) proto.Message {
+	b := dynamicpb.NewMessage(m.Output())
+	b.Set(b.Descriptor().Fields().ByName("id"), protoreflect.ValueOfInt64(id))
+	b.Set(b.Descriptor().Fields().ByName("title"), protoreflect.ValueOfString(title))
+	return b
+}
+
+func idOf(r *dynamicpb.Message) int64 { return r.Get(r.Descriptor().Fields().ByName("id")).Int() }
 
 type rawCodec struct{}
 

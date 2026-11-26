@@ -62,7 +62,7 @@ func TestEdges(t *testing.T) {
 		"#[grpc.value(1)]\n    happy\n",
 		"#[grpc.value(2)]\n    mood2x\n",
 		"func findCall(request Outer",
-		"func chatCall(requests list[Server2], each func(Server2), life async.Lifetime = async.forever) async.Result[int] {",
+		"func chatCall(requests async.queue[Server2], each func(Server2), life async.Lifetime = async.forever) async.Result[int] {",
 		"mood  Mood = Mood.unspecified",
 		"#[grpc.field(2)]\n    id    int64 = 0",
 		"#[grpc.field(3, fixed64)]\n    isbn  uint64 = 0",

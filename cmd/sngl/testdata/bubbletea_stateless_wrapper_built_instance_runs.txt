@@ -77,7 +77,7 @@ func testAskedAgainWhenShownAgain(t test.Test, c lengths) {
     t.assert(c.a == 5)
 }
 -- testrun/android/kotlin/app.sngl/lengths/1 --
-sha256:56f2c2fd59b443e8c41ece4adfa6c328
+sha256:a541731514ed2bfde1ee700942e51aab
 {
   "results": [
     {

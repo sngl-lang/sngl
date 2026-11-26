@@ -11,7 +11,6 @@
 package snglgrpc
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/binary"
@@ -25,6 +24,8 @@ import (
 	"sync"
 
 	"golang.org/x/net/http2"
+
+	"duckfam.us/sngl/pkg/go/snglasync"
 )
 
 // Invoke makes one unary call of method at server with the request message's
@@ -36,7 +37,15 @@ import (
 // called over TLS against the system's roots.
 func Invoke(ctx context.Context, server, method string, request []byte) (response []byte, code int, message string) {
 	n := 0
-	code, message = Stream(ctx, server, method, [][]byte{request}, func(m []byte) bool {
+	sent := false
+	next := func(context.Context) ([]byte, bool) {
+		if sent {
+			return nil, false
+		}
+		sent = true
+		return request, true
+	}
+	code, message = stream(ctx, server, method, next, func(m []byte) bool {
 		response = m
 		n++
 		return true
@@ -47,11 +56,24 @@ func Invoke(ctx context.Context, server, method string, request []byte) (respons
 	return response, code, message
 }
 
-// Stream makes a call of method sending each of requests, in order, and hands
-// each response message to each as it arrives, until the server ends the
-// call, each answers false, or ctx ends. code and message are as Invoke's;
-// each answering false ends the call with code -1.
-func Stream(ctx context.Context, server, method string, requests [][]byte, each func([]byte) bool) (code int, message string) {
+// Stream makes a call of method sending each item of sngl:async's queue as
+// write writes it, as it is sent, and hands each response message to each as
+// it arrives, until the server ends the call, each answers false, or ctx
+// ends. Closing the queue ends the requests, and the call goes on to its
+// last response. code and message are as Invoke's; each answering false
+// ends the call with code -1.
+func Stream(ctx context.Context, server, method string, queue int, write func(any) []byte, each func([]byte) bool) (code int, message string) {
+	next := func(ctx context.Context) ([]byte, bool) {
+		v, ok := snglasync.Receive(ctx, queue)
+		if !ok {
+			return nil, false
+		}
+		return write(v), true
+	}
+	return stream(ctx, server, method, next, each)
+}
+
+func stream(ctx context.Context, server, method string, next func(context.Context) ([]byte, bool), each func([]byte) bool) (code int, message string) {
 	if ctx.Err() != nil {
 		return ended(ctx)
 	}
@@ -60,12 +82,6 @@ func Stream(ctx context.Context, server, method string, requests [][]byte, each 
 	}
 	secure := strings.HasPrefix(server, "https://")
 	host := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(server, "https://"), "http://"), "/")
-	var framed []byte
-	for _, r := range requests {
-		framed = append(framed, 0, 0, 0, 0, 0)
-		binary.BigEndian.PutUint32(framed[len(framed)-4:], uint32(len(r)))
-		framed = append(framed, r...)
-	}
 	scheme := "http://"
 	if secure {
 		scheme = "https://"
@@ -73,7 +89,25 @@ func Stream(ctx context.Context, server, method string, requests [][]byte, each 
 	// A call each stops ends its stream, whatever ctx's lifetime.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, scheme+host+method, bytes.NewReader(framed))
+	body, pump := io.Pipe()
+	// The transport stops reading a body once the call ends, and a write
+	// waiting on it then fails rather than holding the pump.
+	defer body.Close()
+	go func() {
+		for {
+			m, ok := next(ctx)
+			if !ok {
+				pump.CloseWithError(ctx.Err())
+				return
+			}
+			framed := make([]byte, 5, 5+len(m))
+			binary.BigEndian.PutUint32(framed[1:], uint32(len(m)))
+			if _, err := pump.Write(append(framed, m...)); err != nil {
+				return
+			}
+		}
+	}()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, scheme+host+method, body)
 	if err != nil {
 		return internal, err.Error()
 	}

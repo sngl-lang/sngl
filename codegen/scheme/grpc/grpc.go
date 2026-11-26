@@ -550,13 +550,13 @@ func (w *writer) services() {
 		w.comment(m)
 		switch {
 		case m.IsStreamingClient() && m.IsStreamingServer():
-			w.line("func %s(requests list[%s], each func(%s), life async.Lifetime = async.forever) async.Result[int] {", md.fn, req, resp)
+			w.line("func %s(requests async.queue[%s], each func(%s), life async.Lifetime = async.forever) async.Result[int] {", md.fn, req, resp)
 			w.streamCall(req, resp, path, "requests", "each")
 		case m.IsStreamingServer():
 			w.line("func %s(request %s, each func(%s), life async.Lifetime = async.forever) async.Result[int] {", md.fn, req, resp)
-			w.streamCall(req, resp, path, "[request]", "each")
+			w.streamCall(req, resp, path, "async.queue.from([request])", "each")
 		case m.IsStreamingClient():
-			w.line("func %s(requests list[%s], life async.Lifetime = async.forever) async.Result[%s] {", md.fn, req, resp)
+			w.line("func %s(requests async.queue[%s], life async.Lifetime = async.forever) async.Result[%s] {", md.fn, req, resp)
 			w.line("var got list[%s] = []", resp)
 			w.line("match var r = grpc.stream[%s, %s](server=server, method=%s, requests=requests, each=func(m %s) { got.push(m) }, descriptor=descriptor, life=life) {", req, resp, path, resp)
 			w.line("failed { return {failed=grpc.classify(r)} }")

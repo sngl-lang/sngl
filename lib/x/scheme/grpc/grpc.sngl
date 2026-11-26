@@ -28,7 +28,8 @@ import marks "sngl:internal/marks"
 //     the message, or the failure its status says (`grpc.classify`). A
 //     method streaming its responses takes `each`, handed every message as
 //     it comes, and answers how many came, `watchCall(request, each, life)`;
-//     one streaming its requests takes a list of them, `requests`, and both
+//     one streaming its requests takes an `async.queue` of them,
+//     `requests`, sent while the call runs and closed to end them, and both
 //     at once takes both (`grpc.stream`).
 //   - **A component per unary method marked `idempotency_level =
 //     NO_SIDE_EFFECTS`**,

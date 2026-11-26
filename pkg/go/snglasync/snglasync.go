@@ -1,5 +1,5 @@
-// Package snglasync is the runtime behind sngl:async's Lifetime for a program
-// compiled to Go, and for the interpreter.
+// Package snglasync is the runtime behind sngl:async's Lifetime and queue for a
+// program compiled to Go, and for the interpreter.
 //
 // A lifetime is a number. 0 is `forever`, which never ends; Begin hands out
 // the others in order and holds each until End, so one no longer held, and

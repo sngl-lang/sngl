@@ -3,20 +3,20 @@
 # with protobuf's own runtime.
 
 sngl test --platform=none app.sngl
-stdout '10 tests, 0 failures'
+stdout '11 tests, 0 failures'
 ! stderr .
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '10 tests, 0 failures'
+stdout '11 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '10 tests, 0 failures'
+stdout '11 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '10 tests, 0 failures'
+stdout '11 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '10 tests, 0 failures'
+stdout '11 tests, 0 failures'
 
 
 -- app.sngl --
@@ -182,7 +182,7 @@ func testWatchEnded(t test.Test) {
 
 func testCollect(t test.Test) {
     t.setContext(library.server, local)
-    match var b = library.collectCall([{id=1}, {id=2}, {id=4}]) {
+    match var b = library.collectCall(async.queue[library.GetBookRequest].from([{id=1}, {id=2}, {id=4}])) {
         ok {
             t.assert(b.id == 7)
             t.assert(b.title == "3 books")
@@ -191,14 +191,44 @@ func testCollect(t test.Test) {
     }
 }
 
+// Each request is sent once the answer to the last has come, so the call
+// ends only if requests and responses travel at once.
 func testEcho(t test.Test) {
     t.setContext(library.server, local)
     var titles list[string] = []
-    match var r = library.echoCall([{id=5}, {id=6}], func(b library.Book) { titles.push(b.title) }) {
-        ok { t.assert(r == 2) }
+    var out = async.queue[library.GetBookRequest].new()
+    out.send({id=5})
+    var each = func(b library.Book) {
+        titles.push(b.title)
+        if b.id < 8 {
+            out.send({id=b.id + 1})
+        } else {
+            out.close()
+        }
+    }
+    match var r = library.echoCall(out, each) {
+        ok { t.assert(r == 4) }
         failed { t.assert(r.message == "") }
     }
-    t.assert(titles == ["echo 5", "echo 6"])
+    t.assert(titles == ["echo 5", "echo 6", "echo 7", "echo 8"])
+}
+
+// A queue never closed holds its call open until the call's lifetime ends.
+func testEchoEnded(t test.Test) {
+    t.setContext(library.server, local)
+    var life = async.begin()
+    var out = async.queue[library.GetBookRequest].new()
+    out.send({id=1})
+    var seen = 0
+    var each = func(b library.Book) {
+        seen += 1
+        life.end()
+    }
+    match var r = library.echoCall(out, each, life=life) {
+        ok { t.assert(r < 0) }
+        failed { t.assert(r.kind == async.FailureKind.cancelled) }
+    }
+    t.assert(seen == 1)
 }
 
 component shelf ui.node {
@@ -299,7 +329,7 @@ service Library {
   rpc Echo(stream GetBookRequest) returns (stream Book);
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:cc541d5e5555b05cf5bccde769e6df22
+sha256:0c3df4745e1d6d13ceb9910f8e43011f
 {
   "results": [
     {
@@ -312,6 +342,10 @@ sha256:cc541d5e5555b05cf5bccde769e6df22
     },
     {
       "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
       "Passed": true
     },
     {
@@ -341,7 +375,7 @@ sha256:cc541d5e5555b05cf5bccde769e6df22
   ]
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:55bb886ad3ea9643c97566617213c2a4
+sha256:34ac3e6ec47ee865a1dea797579a5a60
 {
   "results": [
     {
@@ -351,7 +385,7 @@ sha256:55bb886ad3ea9643c97566617213c2a4
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:82716f3f27298136352d8a0a91b61925
+sha256:8ac3ae7b5057ee3aff70a63f8ff1bb16
 {
   "results": [
     {
@@ -364,6 +398,10 @@ sha256:82716f3f27298136352d8a0a91b61925
     },
     {
       "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
       "Passed": true
     },
     {
@@ -393,7 +431,7 @@ sha256:82716f3f27298136352d8a0a91b61925
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shelf/1 --
-sha256:c0d17fac219e623f38093dba2703df89
+sha256:775cce9adafbfd19fb228ac2ae604230
 {
   "results": [
     {
@@ -403,7 +441,7 @@ sha256:c0d17fac219e623f38093dba2703df89
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:0ea3150cbf3c74fe39442a03a20d654b
+sha256:a2b686da2e4b961d2cb61b9b2b934063
 {
   "results": [
     {
@@ -416,6 +454,10 @@ sha256:0ea3150cbf3c74fe39442a03a20d654b
     },
     {
       "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
       "Passed": true
     },
     {
@@ -445,7 +487,7 @@ sha256:0ea3150cbf3c74fe39442a03a20d654b
   ]
 }
 -- testrun/fyne/go/app.sngl/shelf/1 --
-sha256:758c699da8630e8ede76ce4bef9fdd62
+sha256:abe97ca2607c028dc21f13a3567f5c0a
 {
   "results": [
     {
@@ -455,7 +497,7 @@ sha256:758c699da8630e8ede76ce4bef9fdd62
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:07e07f04dc3470b9307bb9d0257b23a2
+sha256:4a3013cebf0dd91b47f4bd382195f4e1
 {
   "results": [
     {
@@ -468,6 +510,10 @@ sha256:07e07f04dc3470b9307bb9d0257b23a2
     },
     {
       "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
       "Passed": true
     },
     {
@@ -497,7 +543,7 @@ sha256:07e07f04dc3470b9307bb9d0257b23a2
   ]
 }
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:ecec177a0c94e1d4dedada82fbc61b13
+sha256:477e60654de193e5bb28d7a08196d7b9
 {
   "results": [
     {
