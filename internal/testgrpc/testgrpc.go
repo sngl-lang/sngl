@@ -7,7 +7,9 @@ package testgrpc
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"time"
 
 	"github.com/bufbuild/protocompile"
 	"google.golang.org/grpc"
@@ -82,6 +84,12 @@ service Library {
   }
   // Answers the book it was handed, its id 99 and its title marked added.
   rpc AddBook(AddBookRequest) returns (Book);
+  // Answers books 1 to id, one at a time.
+  rpc Watch(GetBookRequest) returns (stream Book);
+  // Answers one book: its id the sum of the ids sent, its title how many.
+  rpc Collect(stream GetBookRequest) returns (Book);
+  // Answers a book per request, of its id.
+  rpc Echo(stream GetBookRequest) returns (stream Book);
 }
 `
 
@@ -135,15 +143,33 @@ func serveOn(l net.Listener) error {
 		if m == nil {
 			return status.Errorf(codes.Unimplemented, "no method %s", name)
 		}
-		var in []byte
-		if err := stream.RecvMsg(&in); err != nil {
-			return err
+		var reqs []*dynamicpb.Message
+		for {
+			var in []byte
+			if err := stream.RecvMsg(&in); err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+			req := dynamicpb.NewMessage(m.Input())
+			if err := proto.Unmarshal(in, req); err != nil {
+				return status.Errorf(codes.InvalidArgument, "request: %v", err)
+			}
+			reqs = append(reqs, req)
 		}
-		req := dynamicpb.NewMessage(m.Input())
-		if err := proto.Unmarshal(in, req); err != nil {
-			return status.Errorf(codes.InvalidArgument, "request: %v", err)
+		if !m.IsStreamingClient() && len(reqs) != 1 {
+			return status.Errorf(codes.InvalidArgument, "%d requests to a unary method", len(reqs))
 		}
-		resp, err := answer(m, req)
+		if m.IsStreamingServer() {
+			return streamOut(stream.Context(), m, reqs, func(resp proto.Message) error {
+				out, err := proto.Marshal(resp)
+				if err != nil {
+					return err
+				}
+				return stream.SendMsg(out)
+			})
+		}
+		resp, err := answer(m, reqs)
 		if err != nil {
 			return err
 		}
@@ -163,10 +189,20 @@ func serveOn(l net.Listener) error {
 //	          shelf "", any other a book of that id with every field set,
 //	          its isbn past 32 bits for id 64 alone
 //	AddBook   the book handed, its id 99 and "added: " before its title
-func answer(m protoreflect.MethodDescriptor, req *dynamicpb.Message) (proto.Message, error) {
+//	Collect   a book whose id is the sum of the ids sent, titled "n books"
+func answer(m protoreflect.MethodDescriptor, reqs []*dynamicpb.Message) (proto.Message, error) {
 	book := dynamicpb.NewMessage(m.Output())
 	fields := book.Descriptor().Fields()
+	req := reqs[0]
 	switch m.Name() {
+	case "Collect":
+		var sum int64
+		for _, r := range reqs {
+			sum += r.Get(r.Descriptor().Fields().ByName("id")).Int()
+		}
+		book.Set(fields.ByName("id"), protoreflect.ValueOfInt64(sum))
+		book.Set(fields.ByName("title"), protoreflect.ValueOfString(fmt.Sprintf("%d books", len(reqs))))
+		return book, nil
 	case "GetBook":
 		id := req.Get(req.Descriptor().Fields().ByName("id")).Int()
 		switch id {
@@ -220,6 +256,57 @@ func answer(m protoreflect.MethodDescriptor, req *dynamicpb.Message) (proto.Mess
 		return book, nil
 	}
 	return nil, status.Errorf(codes.Unimplemented, "no method %s", m.Name())
+}
+
+// streamOut sends what a streaming method of m answers reqs:
+//
+//	Watch  books 1 to id, then OK; for id 404 book 1 and then NOT_FOUND; for
+//	       id 0 a book every 20ms until the call is cancelled
+//	Echo   a book per request, of its id, titled "echo <id>"
+func streamOut(ctx context.Context, m protoreflect.MethodDescriptor, reqs []*dynamicpb.Message, send func(proto.Message) error) error {
+	book := func(id int64, title string) proto.Message {
+		b := dynamicpb.NewMessage(m.Output())
+		b.Set(b.Descriptor().Fields().ByName("id"), protoreflect.ValueOfInt64(id))
+		b.Set(b.Descriptor().Fields().ByName("title"), protoreflect.ValueOfString(title))
+		return b
+	}
+	idOf := func(r *dynamicpb.Message) int64 { return r.Get(r.Descriptor().Fields().ByName("id")).Int() }
+	switch m.Name() {
+	case "Watch":
+		id := idOf(reqs[0])
+		switch id {
+		case 404:
+			if err := send(book(1, "Book 1")); err != nil {
+				return err
+			}
+			return status.Error(codes.NotFound, "the shelf is gone")
+		case 0:
+			for i := int64(1); ; i++ {
+				if err := send(book(i, fmt.Sprintf("Book %d", i))); err != nil {
+					return err
+				}
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(20 * time.Millisecond):
+				}
+			}
+		}
+		for i := int64(1); i <= id; i++ {
+			if err := send(book(i, fmt.Sprintf("Book %d", i))); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "Echo":
+		for _, r := range reqs {
+			if err := send(book(idOf(r), fmt.Sprintf("echo %d", idOf(r)))); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return status.Errorf(codes.Unimplemented, "no method %s", m.Name())
 }
 
 type rawCodec struct{}

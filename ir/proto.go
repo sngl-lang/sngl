@@ -6,6 +6,15 @@ import "fmt"
 // protobuf, and a response read back as one.
 const GRPCCallIntrinsic = "grpc.call"
 
+// GRPCStreamIntrinsic is sngl:grpc's stream: a list of request messages, and
+// each response handed to a function as it comes.
+const GRPCStreamIntrinsic = "grpc.stream"
+
+// IsGRPC reports whether f is one of sngl:grpc's calls.
+func IsGRPC(f *Func) bool {
+	return f != nil && (f.Intrinsic == GRPCCallIntrinsic || f.Intrinsic == GRPCStreamIntrinsic)
+}
+
 // ProtoKind is how a protobuf field is written on the wire, as `.proto`
 // spells its type: `int32`, `sint64`, `string`, `enum`, `message`.
 type ProtoKind string
@@ -49,10 +58,24 @@ func (m *EnumMember) ProtoNumber(i int) int {
 	return i
 }
 
-// ProtoCall reports the request and response types of a call of grpc.call.
+// ProtoCall reports the request and response types of a call of grpc.call
+// or grpc.stream.
 func ProtoCall(c *Call) (req, resp *Type, ok bool) {
-	if c == nil || c.Func == nil || c.Func.Intrinsic != GRPCCallIntrinsic || PayloadEnum(c.Type) == nil {
+	if c == nil || !IsGRPC(c.Func) || PayloadEnum(c.Type) == nil {
 		return nil, nil, false
+	}
+	if c.Func.Intrinsic == GRPCStreamIntrinsic {
+		if a := c.ArgFor("requests"); a != nil {
+			if t := codecUnwrap(a.ExprType()); t != nil && t.Kind == TypeList {
+				req = t.Elems[0]
+			}
+		}
+		if a := c.ArgFor("each"); a != nil {
+			if t := codecUnwrap(a.ExprType()); t != nil && t.Kind == TypeFunc && t.Sig != nil && len(t.Sig.Params) == 1 {
+				resp = t.Sig.Params[0].Type
+			}
+		}
+		return req, resp, true
 	}
 	if a := c.ArgFor("request"); a != nil {
 		req = a.ExprType()
@@ -270,7 +293,7 @@ func CodecUses(c *Call) []CodecUse {
 		var uses []CodecUse
 		for _, t := range []*Type{req, resp} {
 			if t != nil {
-				uses = append(uses, CodecUse{Type: t, Format: CodecProto, Intrinsic: GRPCCallIntrinsic})
+				uses = append(uses, CodecUse{Type: t, Format: CodecProto, Intrinsic: c.Func.Intrinsic})
 			}
 		}
 		return uses

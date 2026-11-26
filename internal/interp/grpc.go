@@ -41,6 +41,9 @@ func (env *Env) evalGRPCCall(call *ir.Call) (any, bool, error) {
 	rt := env.boundType(call.Type)
 	server, _ := arg("server").(string)
 	method, _ := arg("method").(string)
+	if call.Func.Intrinsic == ir.GRPCStreamIntrinsic {
+		return env.grpcStream(rt, server, method, arg("requests"), arg("each"), arg("life"), req, resp)
+	}
 	body := protoAppendMessage(nil, arg("request"), ir.PlanCodec(env.boundType(req), ir.CodecProto).Root)
 	got, code, msg := snglgrpc.Invoke(snglasync.Context(lifetimeID(arg("life"))), server, method, body)
 	if code != 0 {
@@ -51,6 +54,47 @@ func (env *Env) evalGRPCCall(call *ir.Call) (any, bool, error) {
 		return resultFailed(rt, "decode", problem, ""), true, nil
 	}
 	return EnumValue{Type: rt, Member: "ok", Payload: v}, true, nil
+}
+
+// grpcStream answers grpc.stream: each response read back and handed to each
+// before the next is read.
+func (env *Env) grpcStream(rt *ir.Type, server, method string, requests, each, life any, req, resp *ir.Type) (any, bool, error) {
+	fn, ok := each.(*LambdaValue)
+	if !ok {
+		return nil, true, fmt.Errorf("grpc.stream: each is a %T, not a function", each)
+	}
+	reqPlan := ir.PlanCodec(env.boundType(req), ir.CodecProto).Root
+	respPlan := ir.PlanCodec(env.boundType(resp), ir.CodecProto).Root
+	xs, _ := requests.([]any)
+	bodies := make([][]byte, len(xs))
+	for i, x := range xs {
+		bodies[i] = protoAppendMessage(nil, x, reqPlan)
+	}
+	n := 0
+	var problem string
+	var failed error
+	code, msg := snglgrpc.Stream(snglasync.Context(lifetimeID(life)), server, method, bodies, func(m []byte) bool {
+		v, p := protoReadMessage(m, respPlan, "$")
+		if p != "" {
+			problem = p
+			return false
+		}
+		n++
+		if _, err := fn.Call([]any{v}); err != nil {
+			failed = err
+			return false
+		}
+		return true
+	})
+	switch {
+	case failed != nil:
+		return nil, true, failed
+	case problem != "":
+		return resultFailed(rt, "decode", problem, ""), true, nil
+	case code != 0:
+		return resultFailed(rt, "server", msg, strconv.Itoa(code)), true, nil
+	}
+	return EnumValue{Type: rt, Member: "ok", Payload: n}, true, nil
 }
 
 // protoAppendMessage appends the fields of s, a struct of c, to b. A field

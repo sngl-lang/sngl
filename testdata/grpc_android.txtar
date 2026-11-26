@@ -637,9 +637,11 @@ package test.sngl.app
 
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -661,51 +663,100 @@ object SnglGrpc {
     private val plain by lazy { OkHttpClient.Builder().protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE)).build() }
     private val tls by lazy { OkHttpClient.Builder().protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1)).build() }
 
-    suspend fun call(server: String, method: String, request: ByteArray, life: Int): Answer {
-        if (SnglCodec.ended(life)) return Answer(none, 1, "cancelled")
-        if (server.isEmpty()) return Answer(none, 14, "no server: provide the service's address")
+    private fun request(server: String, method: String, requests: List<ByteArray>): Request {
         val secure = server.startsWith("https://")
         val host = server.removePrefix("https://").removePrefix("http://").trimEnd('/')
-        val framed = ByteArray(5 + request.size)
-        val n = request.size
-        framed[1] = (n ushr 24).toByte()
-        framed[2] = (n ushr 16).toByte()
-        framed[3] = (n ushr 8).toByte()
-        framed[4] = n.toByte()
-        request.copyInto(framed, 5)
-        val req = Request.Builder()
+        val framed = java.io.ByteArrayOutputStream()
+        for (r in requests) {
+            val n = r.size
+            framed.write(0)
+            framed.write(n ushr 24)
+            framed.write(n ushr 16)
+            framed.write(n ushr 8)
+            framed.write(n)
+            framed.write(r)
+        }
+        return Request.Builder()
             .url((if (secure) "https://" else "http://") + host + method)
             .header("te", "trailers")
-            .post(framed.toRequestBody(grpc))
+            .post(framed.toByteArray().toRequestBody(grpc))
             .build()
-        return withContext(Dispatchers.IO) {
-            val call = (if (secure) tls else plain).newCall(req)
+    }
+
+    private fun client(server: String) = if (server.startsWith("https://")) tls else plain
+
+    // A call that fails before answering carries its status in the headers,
+    // with no trailers after them.
+    private fun status(resp: okhttp3.Response): Answer {
+        val status = resp.header("grpc-status") ?: resp.trailers()["grpc-status"]
+        val message = resp.header("grpc-message") ?: resp.trailers()["grpc-message"] ?: ""
+        val code = status?.toIntOrNull() ?: return Answer(none, 13, "the response has no grpc-status")
+        return Answer(none, code, if (code != 0) unescape(message) else "")
+    }
+
+    suspend fun call(server: String, method: String, request: ByteArray, life: Int): Answer {
+        var got: ByteArray? = null
+        var n = 0
+        val a = stream(server, method, listOf(request), life) {
+            got = it
+            n++
+            true
+        }
+        if (a.code != 0) return a
+        if (n != 1) return Answer(none, 13, "a unary call answered $n messages")
+        return Answer(got!!, 0, "")
+    }
+
+    // stream sends each of requests and hands each response message to each,
+    // where the caller runs, as it arrives: until the server ends the call,
+    // each answers false (code -1), or life ends.
+    suspend fun stream(server: String, method: String, requests: List<ByteArray>, life: Int, each: suspend (ByteArray) -> Boolean): Answer {
+        if (SnglCodec.ended(life)) return Answer(none, 1, "cancelled")
+        if (server.isEmpty()) return Answer(none, 14, "no server: provide the service's address")
+        val call = client(server).newCall(request(server, method, requests))
+        val messages = Channel<ByteArray>(16)
+        return coroutineScope {
             // SnglCodec keeps its lifetimes' aborts to itself, so the call
             // watches for its lifetime's end.
             val watch = if (life == 0) null else launch {
                 while (!SnglCodec.ended(life)) delay(20)
                 call.cancel()
             }
-            try {
-                call.execute().use { resp ->
-                    if (resp.code != 200) return@withContext Answer(none, fromHttp(resp.code), "HTTP ${resp.code}")
-                    val body = resp.body?.bytes() ?: none
-                    // A call that fails before answering carries its status
-                    // in the headers, with no trailers after them.
-                    val status = resp.header("grpc-status") ?: resp.trailers()["grpc-status"]
-                    val message = resp.header("grpc-message") ?: resp.trailers()["grpc-message"] ?: ""
-                    val code = status?.toIntOrNull() ?: return@withContext Answer(none, 13, "the response has no grpc-status")
-                    if (code != 0) return@withContext Answer(none, code, unescape(message))
-                    if (body.size < 5 || body[0].toInt() != 0) return@withContext Answer(none, 13, "a response message the client cannot read")
-                    val len = ((body[1].toInt() and 0xff) shl 24) or ((body[2].toInt() and 0xff) shl 16) or
-                        ((body[3].toInt() and 0xff) shl 8) or (body[4].toInt() and 0xff)
-                    if (len < 0 || 5 + len > body.size) return@withContext Answer(none, 13, "a response message cut short")
-                    Answer(body.copyOfRange(5, 5 + len), 0, "")
+            val reader = async(Dispatchers.IO) {
+                try {
+                    call.execute().use { resp ->
+                        if (resp.code != 200) return@async Answer(none, fromHttp(resp.code), "HTTP ${resp.code}")
+                        val src = resp.body!!.source()
+                        while (!src.exhausted()) {
+                            val flag = src.readByte()
+                            val len = src.readInt()
+                            if (flag.toInt() != 0 || len < 0) return@async Answer(none, 13, "a response message the client cannot read")
+                            messages.send(src.readByteArray(len.toLong()))
+                        }
+                        status(resp)
+                    }
+                } catch (e: java.io.EOFException) {
+                    Answer(none, 13, "a response message cut short")
+                } catch (e: IOException) {
+                    if (SnglCodec.ended(life)) Answer(none, 1, "cancelled") else Answer(none, 14, e.toString())
+                } finally {
+                    messages.close()
                 }
-            } catch (e: IOException) {
-                if (SnglCodec.ended(life)) Answer(none, 1, "cancelled") else Answer(none, 14, e.toString())
-            } finally {
-                watch?.cancel()
+            }
+            var stopped: Answer? = null
+            for (m in messages) {
+                if (!each(m)) stopped = Answer(none, -1, "")
+                else if (SnglCodec.ended(life)) stopped = Answer(none, 1, "cancelled")
+                if (stopped != null) break
+            }
+            watch?.cancel()
+            if (stopped != null) {
+                call.cancel()
+                messages.cancel()
+                reader.cancel()
+                stopped
+            } else {
+                reader.await()
             }
         }
     }
@@ -1033,4 +1084,4 @@ object SnglProto {
     }
 }
 -- run/kotlin/android --
-pass sha256:90ef8ca97c24eca2adce1c6542226e98
+pass sha256:38c71d8c8467e94be1d3ae24a1898a98

@@ -430,7 +430,7 @@ func refuseGRPC(pkg *ir.Package, target Target) error {
 	}
 	var err error
 	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
-		if c, ok := e.(*ir.Call); ok && err == nil && c.Func != nil && c.Func.Intrinsic == ir.GRPCCallIntrinsic {
+		if c, ok := e.(*ir.Call); ok && err == nil && ir.IsGRPC(c.Func) {
 			err = fmt.Errorf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
 		}
 		return nil

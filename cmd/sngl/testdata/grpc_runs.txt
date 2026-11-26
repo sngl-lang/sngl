@@ -3,25 +3,26 @@
 # with protobuf's own runtime.
 
 sngl test --platform=none app.sngl
-stdout '6 tests, 0 failures'
-stderr 'import "grpc:./library.proto": library.v1.Library.Watch is left out: a streaming method is not called yet'
+stdout '10 tests, 0 failures'
+! stderr .
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout '6 tests, 0 failures'
+stdout '10 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout '6 tests, 0 failures'
+stdout '10 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout '6 tests, 0 failures'
+stdout '10 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout '6 tests, 0 failures'
+stdout '10 tests, 0 failures'
 
 
 -- app.sngl --
 // Every kind of field read back from the server, every kind sent and echoed,
-// a status classified, and the component over a read-only method.
+// a status classified, each kind of stream, and the component over a
+// read-only method.
 
 import async "sngl:async"
 import library "grpc:./library.proto"
@@ -140,6 +141,66 @@ func testStatus(t test.Test) {
     }
 }
 
+func testWatch(t test.Test) {
+    t.setContext(library.server, local)
+    var titles list[string] = []
+    match var r = library.watchCall({id=3}, func(b library.Book) { titles.push(b.title) }) {
+        ok { t.assert(r == 3) }
+        failed { t.assert(r.message == "") }
+    }
+    t.assert(titles == ["Book 1", "Book 2", "Book 3"])
+    // The messages before a failure are handed on, then the failure answered.
+    var seen = 0
+    match var r = library.watchCall({id=404}, func(b library.Book) { seen += 1 }) {
+        ok { t.assert(r < 0) }
+        failed {
+            t.assert(r.code == "NOT_FOUND")
+            t.assert(r.message == "the shelf is gone")
+        }
+    }
+    t.assert(seen == 1)
+}
+
+// A stream that never ends is ended by its lifetime, here from the function
+// handed each message.
+func testWatchEnded(t test.Test) {
+    t.setContext(library.server, local)
+    var life = async.begin()
+    var seen = 0
+    var each = func(b library.Book) {
+        seen += 1
+        if seen == 3 {
+            life.end()
+        }
+    }
+    match var r = library.watchCall({id=0}, each, life=life) {
+        ok { t.assert(r < 0) }
+        failed { t.assert(r.kind == async.FailureKind.cancelled) }
+    }
+    t.assert(seen == 3)
+}
+
+func testCollect(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.collectCall([{id=1}, {id=2}, {id=4}]) {
+        ok {
+            t.assert(b.id == 7)
+            t.assert(b.title == "3 books")
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testEcho(t test.Test) {
+    t.setContext(library.server, local)
+    var titles list[string] = []
+    match var r = library.echoCall([{id=5}, {id=6}], func(b library.Book) { titles.push(b.title) }) {
+        ok { t.assert(r == 2) }
+        failed { t.assert(r.message == "") }
+    }
+    t.assert(titles == ["echo 5", "echo 6"])
+}
+
 component shelf ui.node {
     var id int64 = 3
     var found option[library.Book] = null
@@ -148,6 +209,17 @@ component shelf ui.node {
     }
     ui.text #title(value=found != null ? found.title : "-")
     ui.button #next(text="Next", @click { id += 1 })
+    var latest = "-"
+    var count = 0
+    ui.text #streamed(value="{latest} of {count}")
+    ui.button #watch(text="Watch", @click {
+        library.server(local) {
+            match var r = library.watchCall({id=4}, func(b library.Book) { latest = b.title }) {
+                ok { count = r }
+                failed { latest = r.message }
+            }
+        }
+    })
 }
 
 func testComponent(t test.Test, c shelf) {
@@ -155,6 +227,9 @@ func testComponent(t test.Test, c shelf) {
     c.next.click()
     t.wait(func() => c.title.value == "Book 4", 5000)
     t.assert(c.title.value == "Book 4")
+    // A message streamed into state shows as it comes.
+    c.watch.click()
+    t.wait(func() => c.streamed.value == "Book 4 of 4", 5000)
 }
 
 ui.window {
@@ -214,16 +289,29 @@ service Library {
   rpc GetBook(GetBookRequest) returns (Book) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc Watch(GetBookRequest) returns (stream Book);
   // Answers the book it was handed, its id 99 and its title marked added.
   rpc AddBook(AddBookRequest) returns (Book);
+  // Answers books 1 to id, one at a time.
+  rpc Watch(GetBookRequest) returns (stream Book);
+  // Answers one book: its id the sum of the ids sent, its title how many.
+  rpc Collect(stream GetBookRequest) returns (Book);
+  // Answers a book per request, of its id.
+  rpc Echo(stream GetBookRequest) returns (stream Book);
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:23317fb3d96a9cd40e9e77c18d95f931
+sha256:cc541d5e5555b05cf5bccde769e6df22
 {
   "results": [
     {
       "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
       "Passed": true
     },
     {
@@ -232,6 +320,14 @@ sha256:23317fb3d96a9cd40e9e77c18d95f931
     },
     {
       "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
       "Passed": true
     },
     {
@@ -245,7 +341,7 @@ sha256:23317fb3d96a9cd40e9e77c18d95f931
   ]
 }
 -- testrun/android/kotlin/app.sngl/shelf/1 --
-sha256:85f5b827587afb3b6dc5a76a818ccfeb
+sha256:55bb886ad3ea9643c97566617213c2a4
 {
   "results": [
     {
@@ -255,11 +351,19 @@ sha256:85f5b827587afb3b6dc5a76a818ccfeb
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:c125c1ab19a5bb708b808ff68acaccc7
+sha256:82716f3f27298136352d8a0a91b61925
 {
   "results": [
     {
       "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
       "Passed": true
     },
     {
@@ -268,6 +372,14 @@ sha256:c125c1ab19a5bb708b808ff68acaccc7
     },
     {
       "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
       "Passed": true
     },
     {
@@ -281,7 +393,7 @@ sha256:c125c1ab19a5bb708b808ff68acaccc7
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shelf/1 --
-sha256:517ea3f0b52a888b6629929bffb88e13
+sha256:c0d17fac219e623f38093dba2703df89
 {
   "results": [
     {
@@ -291,11 +403,19 @@ sha256:517ea3f0b52a888b6629929bffb88e13
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:8aba2c8c7289c9ece020a5e3de168dbe
+sha256:0ea3150cbf3c74fe39442a03a20d654b
 {
   "results": [
     {
       "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
       "Passed": true
     },
     {
@@ -304,6 +424,14 @@ sha256:8aba2c8c7289c9ece020a5e3de168dbe
     },
     {
       "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
       "Passed": true
     },
     {
@@ -317,7 +445,7 @@ sha256:8aba2c8c7289c9ece020a5e3de168dbe
   ]
 }
 -- testrun/fyne/go/app.sngl/shelf/1 --
-sha256:59eedb7a75fe743fd567f95ea8b86492
+sha256:758c699da8630e8ede76ce4bef9fdd62
 {
   "results": [
     {
@@ -327,11 +455,19 @@ sha256:59eedb7a75fe743fd567f95ea8b86492
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:e9b13366aa83348b05aedd8940333ba0
+sha256:07e07f04dc3470b9307bb9d0257b23a2
 {
   "results": [
     {
       "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
       "Passed": true
     },
     {
@@ -340,6 +476,14 @@ sha256:e9b13366aa83348b05aedd8940333ba0
     },
     {
       "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
       "Passed": true
     },
     {
@@ -353,7 +497,7 @@ sha256:e9b13366aa83348b05aedd8940333ba0
   ]
 }
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:344a3978a32bd35e05c9cf0351b2f7f7
+sha256:ecec177a0c94e1d4dedada82fbc61b13
 {
   "results": [
     {

@@ -777,9 +777,9 @@ the code, and `grpc.classify` turns it into the name and the kind, so every
 target classifies alike. Go and Kotlin call; any other language is refused
 before its generator runs (`build.refuseGRPC`,
 `cmd/sngl/testdata/error_grpc_target.txt`), where the generator would have
-panicked on an intrinsic it has nothing to write for. Not yet: streaming,
-metadata, deadlines, credentials beyond `https://`, a test answer in the
-network's place as `http.answer` is.
+panicked on an intrinsic it has nothing to write for. Not yet: metadata,
+deadlines, credentials beyond `https://`, a request sent while responses
+arrive, a test answer in the network's place as `http.answer` is.
 
 ## Settings
 

@@ -62,6 +62,7 @@ func TestEdges(t *testing.T) {
 		"#[grpc.value(1)]\n    happy\n",
 		"#[grpc.value(2)]\n    mood2x\n",
 		"func findCall(request Outer",
+		"func chatCall(requests list[Server2], each func(Server2), life async.Lifetime = async.forever) async.Result[int] {",
 		"mood  Mood = Mood.unspecified",
 		"#[grpc.field(2)]\n    id    int64 = 0",
 		"#[grpc.field(3, fixed64)]\n    isbn  uint64 = 0",
@@ -72,7 +73,7 @@ func TestEdges(t *testing.T) {
 			t.Errorf("source has no %q:\n%s", want, p.Source)
 		}
 	}
-	for _, deny := range []string{"byId", "glad", "component find", "chatCall"} {
+	for _, deny := range []string{"byId", "glad", "component find", "component chat"} {
 		if strings.Contains(p.Source, deny) {
 			t.Errorf("source has %q, which the import leaves out:\n%s", deny, p.Source)
 		}
@@ -84,7 +85,6 @@ func TestEdges(t *testing.T) {
 		"edge.v1.MOOD_GLAD is left out: it aliases MOOD_HAPPY",
 		"edge.v1.Server is declared as Server2: Server is taken or reserved",
 		"edge.v1.Edge.Find has no component: its request holds list, a list or a map, and a query's key is compared",
-		"edge.v1.Edge.Chat is left out: a streaming method is not called yet",
 	} {
 		if !slices.Contains(p.Notes, note) {
 			t.Errorf("no note %q in %q", note, p.Notes)

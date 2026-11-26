@@ -40,7 +40,7 @@ func IsLifetimeCall(c *ir.Call) bool {
 // as IR, or nil for a call handed none: a language reads it with its own
 // spelling of the struct's `_id`.
 func LifetimeID(c *ir.Call) ir.Expr {
-	if c == nil || c.Func == nil || (c.Func.Intrinsic != ir.HTTPSendIntrinsic && c.Func.Intrinsic != ir.HTTPGetIntrinsic && c.Func.Intrinsic != ir.GRPCCallIntrinsic) {
+	if c == nil || c.Func == nil || (c.Func.Intrinsic != ir.HTTPSendIntrinsic && c.Func.Intrinsic != ir.HTTPGetIntrinsic && !ir.IsGRPC(c.Func)) {
 		return nil
 	}
 	life := c.ArgFor("life")

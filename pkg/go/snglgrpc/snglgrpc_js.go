@@ -11,4 +11,8 @@ func Invoke(ctx context.Context, server, method string, request []byte) ([]byte,
 	return nil, 14, "a gRPC call cannot be made from a browser"
 }
 
+func Stream(ctx context.Context, server, method string, requests [][]byte, each func([]byte) bool) (int, string) {
+	return 14, "a gRPC call cannot be made from a browser"
+}
+
 func SetDialer(func(ctx context.Context, addr string) (net.Conn, error)) {}

@@ -517,8 +517,8 @@ func (w *writer) enum(e protoreflect.EnumDescriptor) {
 	w.line("}")
 }
 
-// services writes a function per unary method, and a component over it for
-// one the file says has no side effects.
+// services writes a function per method, and a component over a unary one
+// the file says has no side effects.
 func (w *writer) services() {
 	type method struct {
 		m         protoreflect.MethodDescriptor
@@ -529,14 +529,10 @@ func (w *writer) services() {
 		s := w.file.Services().Get(i)
 		for j := range s.Methods().Len() {
 			m := s.Methods().Get(j)
-			if m.IsStreamingClient() || m.IsStreamingServer() {
-				w.note("%s is left out: a streaming method is not called yet", m.FullName())
-				continue
-			}
 			base := camel(string(m.Name()))
 			base = strings.ToLower(base[:1]) + base[1:]
 			md := method{m: m, fn: w.claim(base+"Call", func(to string) { w.note("%s is declared as %s: the name is taken", m.FullName(), to) })}
-			if readOnly(m) {
+			if readOnly(m) && !m.IsStreamingClient() && !m.IsStreamingServer() {
 				if why := keyProblem(m.Input(), map[protoreflect.FullName]bool{}); why != "" {
 					w.note("%s has no component: its request %s, and a query's key is compared", m.FullName(), why)
 				} else {
@@ -549,14 +545,37 @@ func (w *writer) services() {
 	for _, md := range methods {
 		m := md.m
 		req, resp := w.types[m.Input().FullName()], w.types[m.Output().FullName()]
+		path := quote("/" + string(m.Parent().FullName()) + "/" + string(m.Name()))
 		w.line("")
 		w.comment(m)
-		w.line("func %s(request %s, life async.Lifetime = async.forever) async.Result[%s] {", md.fn, req, resp)
-		w.line("match var r = grpc.call[%s, %s](server=server, method=%s, request=request, descriptor=descriptor, life=life) {", req, resp, quote("/"+string(m.Parent().FullName())+"/"+string(m.Name())))
-		w.line("failed { return {failed=grpc.classify(r)} }")
-		w.line("ok { return {ok=r} }")
-		w.line("}")
-		w.line("}")
+		switch {
+		case m.IsStreamingClient() && m.IsStreamingServer():
+			w.line("func %s(requests list[%s], each func(%s), life async.Lifetime = async.forever) async.Result[int] {", md.fn, req, resp)
+			w.streamCall(req, resp, path, "requests", "each")
+		case m.IsStreamingServer():
+			w.line("func %s(request %s, each func(%s), life async.Lifetime = async.forever) async.Result[int] {", md.fn, req, resp)
+			w.streamCall(req, resp, path, "[request]", "each")
+		case m.IsStreamingClient():
+			w.line("func %s(requests list[%s], life async.Lifetime = async.forever) async.Result[%s] {", md.fn, req, resp)
+			w.line("var got list[%s] = []", resp)
+			w.line("match var r = grpc.stream[%s, %s](server=server, method=%s, requests=requests, each=func(m %s) { got.push(m) }, descriptor=descriptor, life=life) {", req, resp, path, resp)
+			w.line("failed { return {failed=grpc.classify(r)} }")
+			w.line("ok {")
+			w.line("if got.length() != 1 {")
+			w.line(`return {failed=async.Failure{kind=async.FailureKind.server, message="a call answered {got.length()} messages, where the method answers one", code="INTERNAL"}}`)
+			w.line("}")
+			w.line("return {ok=got[0]}")
+			w.line("}")
+			w.line("}")
+			w.line("}")
+		default:
+			w.line("func %s(request %s, life async.Lifetime = async.forever) async.Result[%s] {", md.fn, req, resp)
+			w.line("match var r = grpc.call[%s, %s](server=server, method=%s, request=request, descriptor=descriptor, life=life) {", req, resp, path)
+			w.line("failed { return {failed=grpc.classify(r)} }")
+			w.line("ok { return {ok=r} }")
+			w.line("}")
+			w.line("}")
+		}
 	}
 	for _, md := range methods {
 		if md.adapt == "" {
@@ -589,6 +608,16 @@ func (w *writer) services() {
 		w.line(")")
 		w.line("}")
 	}
+}
+
+// streamCall writes the body of a function over grpc.stream, answering how
+// many messages came.
+func (w *writer) streamCall(req, resp, path, requests, each string) {
+	w.line("match var r = grpc.stream[%s, %s](server=server, method=%s, requests=%s, each=%s, descriptor=descriptor, life=life) {", req, resp, path, requests, each)
+	w.line("failed { return {failed=grpc.classify(r)} }")
+	w.line("ok { return {ok=r} }")
+	w.line("}")
+	w.line("}")
 }
 
 // readOnly reports whether the file says m has no side effects: the one

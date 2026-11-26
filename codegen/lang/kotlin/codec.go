@@ -37,7 +37,7 @@ func init() {
 func UsesCodec(pkg *ir.Package) bool {
 	found := false
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && (c.Func.Intrinsic == "http.pathEscape" || c.Func.Intrinsic == ir.GRPCCallIntrinsic)) {
+		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape" || ir.IsGRPC(c.Func)) {
 			found = true
 		}
 		return nil

@@ -55,6 +55,26 @@ func call[Req anyStruct, Resp anyStruct](
     life       async.Lifetime = async.forever,
 ) async.Result[Resp]
 
+// Calls a streaming method of a gRPC service at server, as `call` calls a
+// unary one: sends each of requests, in order, and hands each response message
+// to each as it comes, then answers how many came, or the failure the call
+// ended in. each runs where the code after a wait would, one message at a
+// time; ending life from it ends the call, `cancelled`.
+//
+// A method streaming only its responses is sent one request; one streaming
+// its requests answers one message. Every request is written before the
+// first response is read, so a method that answers each message as it comes
+// is called with all of them at once.
+#[marks.intrinsic("grpc.stream", async)]
+func stream[Req anyStruct, Resp anyStruct](
+    server     string,
+    method     string,
+    requests   list[Req],
+    each       func(Resp),
+    descriptor string = "",
+    life       async.Lifetime = async.forever,
+) async.Result[int]
+
 // The gRPC status names, by number: `codes[5]` is `NOT_FOUND`.
 const codes = [
     "OK",

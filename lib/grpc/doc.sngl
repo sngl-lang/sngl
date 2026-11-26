@@ -21,5 +21,6 @@
 // types, with no message object between -- or hands `descriptor` to protoc's
 // own generation.
 //
-// A call waits, as any async function does. Only unary methods are called;
-// streaming is not yet, nor metadata, deadlines or credentials.
+// A call waits, as any async function does; `stream` calls a streaming
+// method, handing each response to a function as it comes. Metadata,
+// deadlines and credentials are not set yet.

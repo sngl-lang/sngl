@@ -20,7 +20,7 @@ const (
 )
 
 func init() {
-	codegen.DeclareLangImplements(langGo, ir.GRPCCallIntrinsic)
+	codegen.DeclareLangImplements(langGo, ir.GRPCCallIntrinsic, ir.GRPCStreamIntrinsic)
 }
 
 // protoMessages are the messages and enums the package's grpc.call calls
@@ -99,6 +99,9 @@ func (gc *GoIRContext) grpcCall(n *ir.Call) (string, bool) {
 		gc.RequireImport("context")
 	}
 	gc.RequireImport("strconv")
+	if n.Func.Intrinsic == ir.GRPCStreamIntrinsic {
+		return gc.grpcStream(n, req, resp, ctx, arg), true
+	}
 	str := ir.TypString
 	reqNode := ir.PlanCodec(req, ir.CodecProto).Root
 	respNode := ir.PlanCodec(resp, ir.CodecProto).Root
@@ -111,6 +114,28 @@ func (gc *GoIRContext) grpcCall(n *ir.Call) (string, bool) {
 	fmt.Fprintf(&b, "if __snglP != \"\" { return %s }; ", gc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__snglP", str))))
 	fmt.Fprintf(&b, "return %s }()", gc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__snglV", resp))))
 	return b.String(), true
+}
+
+// grpcStream renders a call of grpc.stream: each request written, and each
+// response read and handed to each before the next is read, as the
+// async.Result of how many came.
+func (gc *GoIRContext) grpcStream(n *ir.Call, req, resp *ir.Type, ctx string, arg func(string) string) string {
+	str := ir.TypString
+	reqName := protoFuncName(ir.PlanCodec(req, ir.CodecProto).Root)
+	respName := protoFuncName(ir.PlanCodec(resp, ir.CodecProto).Root)
+	failed := codegen.ResultFailedCode(n.Type, "server", codegen.HostValue("__snglM", str), codegen.HostValue("strconv.Itoa(__snglC)", str))
+	var b strings.Builder
+	fmt.Fprintf(&b, "func() %s { ", typeToGo(n.Type, gc.site()))
+	fmt.Fprintf(&b, "__snglE := %s; ", arg("each"))
+	b.WriteString("var __snglQ [][]byte; ")
+	fmt.Fprintf(&b, "for _, __snglR := range %s { __snglQ = append(__snglQ, snglPbWrite%s(nil, __snglR)) }; ", arg("requests"), reqName)
+	b.WriteString("__snglN, __snglP := 0, \"\"; ")
+	fmt.Fprintf(&b, "__snglC, __snglM := snglgrpc.Stream(%s, %s, %s, __snglQ, func(__snglB []byte) bool { ", ctx, arg("server"), arg("method"))
+	fmt.Fprintf(&b, "__snglV, __snglX := snglPbRead%s(__snglB, \"$\"); if __snglX != \"\" { __snglP = __snglX; return false }; __snglN++; __snglE(__snglV); return true }); ", respName)
+	fmt.Fprintf(&b, "if __snglP != \"\" { return %s }; ", gc.EvalExpr(codegen.ResultFailed(n.Type, "decode", codegen.HostValue("__snglP", str))))
+	fmt.Fprintf(&b, "if __snglC != 0 { return %s }; ", gc.EvalExpr(failed))
+	fmt.Fprintf(&b, "return %s }()", gc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__snglN", ir.TypInt))))
+	return b.String()
 }
 
 // emit writes each recorded message's writer, reader and zero, and each

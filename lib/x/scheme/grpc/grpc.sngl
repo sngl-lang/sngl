@@ -23,17 +23,22 @@ import marks "sngl:internal/marks"
 //   - **An enum per enum**, each member numbered with `#[grpc.value]` and
 //     named with the enum's own prefix taken off: `BOOK_KIND_HARD_COVER` is
 //     `hardCover`.
-//   - **A function per unary method**, named for it with `Call` after it,
+//   - **A function per method**, named for it with `Call` after it,
 //     `getBookCall(request, life)`, answering `async.Result` of the response:
-//     the message, or the failure its status says (`grpc.classify`).
-//   - **A component per method marked `idempotency_level = NO_SIDE_EFFECTS`**,
+//     the message, or the failure its status says (`grpc.classify`). A
+//     method streaming its responses takes `each`, handed every message as
+//     it comes, and answers how many came, `watchCall(request, each, life)`;
+//     one streaming its requests takes a list of them, `requests`, and both
+//     at once takes both (`grpc.stream`).
+//   - **A component per unary method marked `idempotency_level =
+//     NO_SIDE_EFFECTS`**,
 //     named for the bare method, over `async.query` keyed by the request: the
 //     one way a descriptor tells a read from a write.
 //   - **`server`**, a context the program provides, and **`descriptor`**, the
 //     file's descriptor set.
 //
-// A streaming method, a map keyed by anything but a string and a group are
-// left out, and the import says so in a warning; so is a name it changed.
+// A map keyed by anything but a string and a group are left out, and the
+// import says so in a warning; so is a name it changed.
 gen.scheme(name="grpc", @generate(out, importPath) {
     if outside(importPath) {
         error.raise("grpc:" + importPath + " is outside the project: the file is read from the project's own files", "import")

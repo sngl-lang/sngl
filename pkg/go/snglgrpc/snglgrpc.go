@@ -35,24 +35,47 @@ import (
 // server is `host:port`, called in plaintext, or `https://host[:port]`,
 // called over TLS against the system's roots.
 func Invoke(ctx context.Context, server, method string, request []byte) (response []byte, code int, message string) {
+	n := 0
+	code, message = Stream(ctx, server, method, [][]byte{request}, func(m []byte) bool {
+		response = m
+		n++
+		return true
+	})
+	if code == 0 && n != 1 {
+		return nil, internal, "a unary call answered " + strconv.Itoa(n) + " messages"
+	}
+	return response, code, message
+}
+
+// Stream makes a call of method sending each of requests, in order, and hands
+// each response message to each as it arrives, until the server ends the
+// call, each answers false, or ctx ends. code and message are as Invoke's;
+// each answering false ends the call with code -1.
+func Stream(ctx context.Context, server, method string, requests [][]byte, each func([]byte) bool) (code int, message string) {
 	if ctx.Err() != nil {
 		return ended(ctx)
 	}
 	if server == "" {
-		return nil, unavailable, "no server: provide the service's address"
+		return unavailable, "no server: provide the service's address"
 	}
 	secure := strings.HasPrefix(server, "https://")
 	host := strings.TrimSuffix(strings.TrimPrefix(strings.TrimPrefix(server, "https://"), "http://"), "/")
-	framed := make([]byte, 5+len(request))
-	binary.BigEndian.PutUint32(framed[1:], uint32(len(request)))
-	copy(framed[5:], request)
+	var framed []byte
+	for _, r := range requests {
+		framed = append(framed, 0, 0, 0, 0, 0)
+		binary.BigEndian.PutUint32(framed[len(framed)-4:], uint32(len(r)))
+		framed = append(framed, r...)
+	}
 	scheme := "http://"
 	if secure {
 		scheme = "https://"
 	}
+	// A call each stops ends its stream, whatever ctx's lifetime.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, scheme+host+method, bytes.NewReader(framed))
 	if err != nil {
-		return nil, internal, err.Error()
+		return internal, err.Error()
 	}
 	req.Header.Set("content-type", "application/grpc")
 	req.Header.Set("te", "trailers")
@@ -61,18 +84,42 @@ func Invoke(ctx context.Context, server, method string, request []byte) (respons
 		if ctx.Err() != nil {
 			return ended(ctx)
 		}
-		return nil, unavailable, err.Error()
+		return unavailable, err.Error()
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fromHTTP(resp.StatusCode), "HTTP " + strconv.Itoa(resp.StatusCode)
+		return fromHTTP(resp.StatusCode), "HTTP " + strconv.Itoa(resp.StatusCode)
 	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	var head [5]byte
+	for {
+		if _, err := io.ReadFull(resp.Body, head[:]); err != nil {
+			if err == io.EOF {
+				break
+			}
+			if ctx.Err() != nil {
+				return ended(ctx)
+			}
+			if err == io.ErrUnexpectedEOF {
+				return internal, "a response message cut short"
+			}
+			return unavailable, err.Error()
+		}
+		if head[0] != 0 {
+			return internal, "a response message the client cannot read"
+		}
+		m := make([]byte, binary.BigEndian.Uint32(head[1:]))
+		if _, err := io.ReadFull(resp.Body, m); err != nil {
+			if ctx.Err() != nil {
+				return ended(ctx)
+			}
+			return internal, "a response message cut short"
+		}
+		if !each(m) {
+			return -1, ""
+		}
 		if ctx.Err() != nil {
 			return ended(ctx)
 		}
-		return nil, unavailable, err.Error()
 	}
 	// A call that fails before answering carries its status in the headers,
 	// with no trailers after them.
@@ -82,23 +129,16 @@ func Invoke(ctx context.Context, server, method string, request []byte) (respons
 	}
 	code, err = strconv.Atoi(status)
 	if err != nil {
-		return nil, internal, "the response has no grpc-status"
+		return internal, "the response has no grpc-status"
 	}
 	if code != 0 {
 		// grpc-message is percent-encoded UTF-8, where `+` is itself.
 		if s, err := url.PathUnescape(text); err == nil {
 			text = s
 		}
-		return nil, code, text
+		return code, text
 	}
-	if len(body) < 5 || body[0] != 0 {
-		return nil, internal, "a response message the client cannot read"
-	}
-	n := binary.BigEndian.Uint32(body[1:5])
-	if uint64(n) > uint64(len(body)-5) {
-		return nil, internal, "a response message cut short"
-	}
-	return body[5 : 5+n], 0, ""
+	return 0, ""
 }
 
 const (
@@ -108,11 +148,11 @@ const (
 	unavailable = 14
 )
 
-func ended(ctx context.Context) ([]byte, int, string) {
+func ended(ctx context.Context) (int, string) {
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return nil, deadline, "deadline exceeded"
+		return deadline, "deadline exceeded"
 	}
-	return nil, cancelled, "cancelled"
+	return cancelled, "cancelled"
 }
 
 // fromHTTP is gRPC's mapping of an HTTP status that is not one of its own
