@@ -450,6 +450,10 @@ func IsComputed(f *ir.Func) bool {
 	if f.Purity == ir.PurityMutates {
 		return false
 	}
+	// One that waits is a call: no target reads a value that suspends.
+	if f.IsAsync {
+		return false
+	}
 	n := len(f.Params)
 	if f.IsMethod() {
 		// A receiver-bearing func is a component computed only when it
