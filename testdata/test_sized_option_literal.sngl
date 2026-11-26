@@ -1,0 +1,29 @@
+// A number literal takes the sized type it is written where one is wanted,
+// an option of one included: passed, assigned, returned and compared, as it
+// is to the sized type itself.
+
+import test "sngl:test"
+
+func pages(n option[int64] = null) option[int64] {
+    return n
+}
+
+func half() option[float32] {
+    return 0.5
+}
+
+func testPassed(t test.Test) {
+    t.assert(pages(264) == 264)
+    t.assert(pages() == null)
+}
+
+func testAssigned(t test.Test) {
+    var p option[uint8] = 250
+    t.assert(p == 250)
+    p = null
+    t.assert(p != 250)
+}
+
+func testReturned(t test.Test) {
+    t.assert(half() == 0.5)
+}
