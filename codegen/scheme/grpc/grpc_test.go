@@ -48,7 +48,7 @@ service Edge {
 `
 
 func TestEdges(t *testing.T) {
-	p, err := Generate(edges, "edge.proto")
+	p, err := Generate(map[string]string{"edge.proto": edges}, "edge.proto", "edge.proto")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,12 +94,30 @@ func TestEdges(t *testing.T) {
 
 func TestRefused(t *testing.T) {
 	for _, c := range []struct{ src, want string }{
-		{"syntax = \"proto3\";\nimport \"other.proto\";\n", "only protobuf's own are"},
+		{"syntax = \"proto3\";\nimport \"other.proto\";\n", "other.proto"},
 		{"syntax = \"proto3\";\nmessage {\n", "edge.proto:2:9"},
 	} {
-		_, err := Generate(c.src, "edge.proto")
+		_, err := Generate(map[string]string{"edge.proto": c.src}, "edge.proto", "edge.proto")
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("Generate(%q) = %v, want an error containing %q", c.src, err, c.want)
 		}
+	}
+}
+
+func TestImports(t *testing.T) {
+	src := "syntax = \"proto3\";\nimport \"google/protobuf/timestamp.proto\";\nimport public \"shelf/v1/shelf.proto\";\nimport \"book.proto\";\n"
+	if got, want := Imports(src, "a.proto"), []string{"shelf/v1/shelf.proto", "book.proto"}; !slices.Equal(got, want) {
+		t.Errorf("Imports = %q, want %q", got, want)
+	}
+	files := map[string]string{
+		"a.proto":    "syntax = \"proto3\";\npackage a;\nimport \"book.proto\";\nservice S { rpc Get(book.Book) returns (book.Book); }\n",
+		"book.proto": "syntax = \"proto3\";\npackage book;\nmessage Book { string title = 1; }\nmessage Unreached { string x = 1; }\n",
+	}
+	p, err := Generate(files, "a.proto", "./a.proto")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(p.Source, "struct Book {") || strings.Contains(p.Source, "Unreached") {
+		t.Errorf("want Book, reached from another file, and not Unreached:\n%s", p.Source)
 	}
 }

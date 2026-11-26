@@ -1,14 +1,20 @@
 # A .proto is one of the project's own files, read through the project: a
-# path outside it is refused before anything is read. A file importing one
-# of the project's others is refused, since only the file named is read; a
-# file protobuf ships is not one of those.
+# path outside it is refused before anything is read, and so is an import of
+# one. An import is read from the named file's directory, or else from the
+# import root, as `protoc -I <dir> -I .` would; one found in neither is
+# refused naming both. A file protobuf ships is its own.
 env SNGL_GENCACHE=off
 
 ! sngl check proj/up.sngl
 stderr 'import "grpc:../outside/secret.proto": scheme "grpc": grpc:../outside/secret.proto is outside the project'
 
 ! sngl check proj/imports.sngl
-stderr 'import "grpc:./imports.proto": .*only protobuf''s own are'
+stderr 'import "grpc:./imports.proto": .*imports.proto imports other.proto, and there is no ./other.proto or other.proto'
+
+! sngl check proj/escape.sngl
+stderr 'import "grpc:./escape.proto": .*escape.proto imports ../outside/secret.proto, which is outside the project'
+
+sngl check proj/split.sngl
 
 ! sngl check proj/broken.sngl
 stderr 'import "grpc:./broken.proto": .*broken.proto:2:9'
@@ -26,6 +32,42 @@ const x = 1
 -- proj/imports.proto --
 syntax = "proto3";
 import "other.proto";
+-- proj/escape.sngl --
+import api "grpc:./escape.proto"
+
+const x = 1
+-- proj/escape.proto --
+syntax = "proto3";
+import "../outside/secret.proto";
+-- proj/split.sngl --
+import api "grpc:./protos/library.proto"
+
+// Shelf is beside library.proto, and Loan under the import root, each in a
+// package of its own; both are reached, so both are written.
+const x = api.Book{shelf=api.Shelf{name="A"}, loan=api.Loan{to="Ada"}}
+-- proj/protos/library.proto --
+syntax = "proto3";
+package library.v1;
+import "shelf.proto";
+import "loans/loan.proto";
+message Book {
+  shelf.v1.Shelf shelf = 1;
+  loans.v1.Loan loan = 2;
+}
+-- proj/protos/shelf.proto --
+syntax = "proto3";
+package shelf.v1;
+import "loans/loan.proto";
+message Shelf {
+  string name = 1;
+  repeated loans.v1.Loan out = 2;
+}
+-- proj/loans/loan.proto --
+syntax = "proto3";
+package loans.v1;
+message Loan {
+  string to = 1;
+}
 -- proj/broken.sngl --
 import api "grpc:./broken.proto"
 

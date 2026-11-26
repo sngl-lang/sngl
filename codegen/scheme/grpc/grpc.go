@@ -8,12 +8,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"path"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/bufbuild/protocompile"
+	protoast "github.com/bufbuild/protocompile/ast"
+	protoparser "github.com/bufbuild/protocompile/parser"
 	"github.com/bufbuild/protocompile/reporter"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
@@ -36,15 +37,14 @@ var reserved = []string{"server", "descriptor"}
 // reservedProps are the names an adapter's own props take.
 var reservedProps = []string{"request", "value", "pending", "failure", "load", "fail", "refresh", "query"}
 
-// Generate compiles text, the `.proto` file named from, and writes its
-// package. An import of any file but one protobuf ships is refused: only the
-// file named is read.
-func Generate(text, from string) (*Package, error) {
-	name := path.Base(from)
+// Generate compiles files, the `.proto` files read by the name an import
+// statement gives each, and writes the package of the one named name, read
+// from the import path from.
+func Generate(files map[string]string, name, from string) (*Package, error) {
 	var errs []string
 	c := protocompile.Compiler{
 		Resolver: protocompile.WithStandardImports(&protocompile.SourceResolver{
-			Accessor: protocompile.SourceAccessorFromMap(map[string]string{name: text}),
+			Accessor: protocompile.SourceAccessorFromMap(files),
 		}),
 		SourceInfoMode: protocompile.SourceInfoStandard,
 		Reporter: reporter.NewReporter(func(err reporter.ErrorWithPos) error {
@@ -52,19 +52,38 @@ func Generate(text, from string) (*Package, error) {
 			return nil
 		}, nil),
 	}
-	files, err := c.Compile(context.Background(), name)
+	compiled, err := c.Compile(context.Background(), name)
 	if len(errs) > 0 {
 		return nil, errors.New(strings.Join(errs, "\n"))
 	}
 	if err != nil {
-		return nil, fmt.Errorf("grpc:%s: %w (an import of a file of the project's own is not read yet: only protobuf's own are)", from, err)
+		return nil, fmt.Errorf("grpc:%s: %w", from, err)
 	}
-	w := newWriter(files[0], from)
+	w := newWriter(compiled[0], from)
 	src, err := w.write()
 	if err != nil {
 		return nil, err
 	}
 	return &Package{Source: src, Notes: w.notes}, nil
+}
+
+// Imports are the files text imports that the handler reads: every one but
+// those protobuf ships. A file that does not parse imports nothing, and
+// Generate says why.
+func Imports(text, name string) []string {
+	f, err := protoparser.Parse(name, strings.NewReader(text), reporter.NewHandler(nil))
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, d := range f.Decls {
+		if imp, ok := d.(*protoast.ImportNode); ok {
+			if p := imp.Name.AsString(); !strings.HasPrefix(p, "google/protobuf/") {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
 }
 
 type writer struct {

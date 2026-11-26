@@ -10,18 +10,33 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// The grpc: scheme's handler (lib/x/scheme/grpc) hands the file it read to
-// this, which answers the package it resolves to.
+// The grpc: scheme's handler (lib/x/scheme/grpc) reads the files and hands
+// them to these, which read nothing but their arguments -- the handler's
+// reads are recorded -- so they record nothing.
 func init() {
+	buildhost.RegisterIntrinsic("grpc.imports", importsIntrinsic)
 	buildhost.RegisterIntrinsic("grpc.generate", generateIntrinsic)
 }
 
-// generateIntrinsic answers grpc.generate(text, from). It reads nothing but
-// its arguments -- the handler read the file, which recorded it -- so it
-// records nothing.
-func generateIntrinsic(_ *buildhost.Recorder, call *ir.Call, args []any) (any, error) {
+func importsIntrinsic(_ *buildhost.Recorder, _ *ir.Call, args []any) (any, error) {
 	text, _ := args[0].(string)
-	from, _ := args[1].(string)
+	name, _ := args[1].(string)
+	out := []any{}
+	for _, p := range Imports(text, name) {
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// generateIntrinsic answers grpc.generate(files, name, from).
+func generateIntrinsic(_ *buildhost.Recorder, call *ir.Call, args []any) (any, error) {
+	read, _ := args[0].(map[string]any)
+	name, _ := args[1].(string)
+	from, _ := args[2].(string)
+	files := map[string]string{}
+	for k, v := range read {
+		files[k], _ = v.(string)
+	}
 	if call == nil || call.Func == nil || call.Func.Return == nil {
 		return nil, errors.New("grpc.generate: no declared return type")
 	}
@@ -29,7 +44,7 @@ func generateIntrinsic(_ *buildhost.Recorder, call *ir.Call, args []any) (any, e
 	if def == nil {
 		return nil, errors.New("grpc.generate: the declared return type is no struct")
 	}
-	p, err := Generate(text, from)
+	p, err := Generate(files, name, from)
 	if err != nil {
 		return nil, err
 	}

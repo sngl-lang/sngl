@@ -140,9 +140,13 @@ which is why it, and not a naming convention, decides the component. The
 path is read through the project as `openapi:`'s is.
 
 **Go compiles the file and writes the package** (`codegen/scheme/grpc`),
-with protocompile, so no build needs protoc. Only the file named is read,
-and the files protobuf ships: an import of another of the project's is an
-error at the import until the handler reads it too. A message nested in
+with protocompile, so no build needs protoc. The handler reads the files:
+the one named, and each it imports (`grpc.imports`), from the named file's
+directory or else the import root, as `protoc -I <dir> -I .` would, so every
+read is the handler's and recorded, and Go is handed them by the name each
+import gives. A message from another file is written where one of the named
+file's reaches it, as a well-known type is; the services are the named
+file's alone. A message nested in
 another is named after both, a field is its `json_name`, an enum member its
 value's name with the enum's prefix off, and each carries the mark saying
 what it is on the wire (`#[grpc.message]`, `#[grpc.field(number, kind)]`,

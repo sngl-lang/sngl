@@ -7,9 +7,10 @@ import marks "sngl:internal/marks"
 //     import library "grpc:./library.proto"
 //
 // The path is the project's own file, relative to the import root, read
-// through the project: one outside it is refused. Only that file is read, and
-// the files protobuf ships (`google/protobuf/timestamp.proto`); an import of
-// another of the project's is not yet.
+// through the project: one outside it is refused. A file it imports is read
+// the way `protoc -I <its directory> -I .` would: from the named file's
+// directory, or else from the import root. The files protobuf ships
+// (`google/protobuf/timestamp.proto`) are its own.
 //
 //   - **A struct per message** reached, marked `#[grpc.message]`, each field
 //     `#[grpc.field]` with its number: an integer is an `int` and a
@@ -34,21 +35,62 @@ import marks "sngl:internal/marks"
 // A streaming method, a map keyed by anything but a string and a group are
 // left out, and the import says so in a warning; so is a name it changed.
 gen.scheme(name="grpc", @generate(out, importPath) {
-    if importPath.startsWith("/") || importPath == ".." || importPath.startsWith("../") || importPath.contains("/../") {
+    if outside(importPath) {
         error.raise("grpc:" + importPath + " is outside the project: the file is read from the project's own files", "import")
         return
     }
-    // Lines joined once: adding each to a string copies it every time.
-    var lines list[string] = []
-    for var line = gen.lines(importPath) {
-        lines.push(line)
+    var parts = importPath.split("/")
+    var name = parts[parts.length() - 1]
+    var dir = parts.slice(0, parts.length() - 1).format("/")
+    // Each file by the name its importer gives it, and where it is read.
+    var at map[string, string] = {}
+    at[name] = importPath
+    var files map[string, string] = {}
+    var todo = [name]
+    for todo.length() > 0 {
+        var next = todo[todo.length() - 1]
+        todo.remove(todo.length() - 1)
+        var text = read(at.get(next, next))
+        files[next] = text
+        for var i = imports(text, next) {
+            if at.contains(i) {
+                continue
+            }
+            if outside(i) {
+                error.raise(next + " imports " + i + ", which is outside the project", "import")
+                return
+            }
+            if dir != "" && gen.exists(dir + "/" + i) {
+                at[i] = dir + "/" + i
+            } else if gen.exists(i) {
+                at[i] = i
+            } else {
+                var tried = dir == "" ? i : dir + "/" + i + " or " + i
+                error.raise(next + " imports " + i + ", and there is no " + tried, "import")
+                return
+            }
+            todo.push(i)
+        }
     }
-    var pkg = generate(lines.format("\n"), importPath)
+    var pkg = generate(files, name, importPath)
     for var n = pkg.notes {
         out.note(n)
     }
     out.file(pkg.file).add(pkg.source)
 })
+
+const func outside(p string) bool {
+    return p.startsWith("/") || p == ".." || p.startsWith("../") || p.contains("/../")
+}
+
+// Lines joined once: adding each to a string copies it every time.
+func read(p string) string {
+    var lines list[string] = []
+    for var line = gen.lines(p) {
+        lines.push(line)
+    }
+    return lines.format("\n")
+}
 
 // What an import resolves to.
 struct Package {
@@ -60,8 +102,12 @@ struct Package {
     notes  list[string]
 }
 
-// The package for a `.proto` file's text, read from the file named from.
-// Answered by Go, which compiles the file with protocompile and writes the
-// source.
+// The files text, the file name, imports, but for protobuf's own.
+#[marks.intrinsic("grpc.imports", build)]
+func imports(text string, name string) list[string]
+
+// The package for the file name among files, each keyed by the name an
+// import gives it, imported as from. Answered by Go, which compiles the
+// files with protocompile and writes the source.
 #[marks.intrinsic("grpc.generate", build)]
-func generate(text string, from string) Package
+func generate(files map[string, string], name string, from string) Package
