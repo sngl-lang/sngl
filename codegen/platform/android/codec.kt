@@ -19,6 +19,7 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -357,6 +358,34 @@ class SnglCodec<T>(val kind: Int) {
         }
 
         fun ended(id: Int): Boolean = id != 0 && !lives.containsKey(id)
+
+        // sngl:async's queues, by number, as lifetimes are: each is held until
+        // its reader reads it closed and empty, and a number not held is one
+        // that is.
+        private val queues = java.util.concurrent.ConcurrentHashMap<Int, Channel<Any?>>()
+        private val nextQueue = java.util.concurrent.atomic.AtomicInteger()
+
+        fun queueOpen(): Int {
+            val id = nextQueue.incrementAndGet()
+            queues[id] = Channel(Channel.UNLIMITED)
+            return id
+        }
+
+        fun queueSend(id: Int, item: Any?) {
+            val q = queues[id]
+            if (q == null || q.trySend(item).isClosed) throw IllegalStateException("send to a closed queue")
+        }
+
+        fun queueClose(id: Int) {
+            queues[id]?.close()
+        }
+
+        suspend fun queueReceive(id: Int): Any? {
+            val q = queues[id] ?: return null
+            val r = q.receiveCatching()
+            if (r.isClosed) queues.remove(id)
+            return r.getOrNull()
+        }
 
         private fun cancelled(): Response = Response(0, emptyMap(), "", true, false, "cancelled", true)
 

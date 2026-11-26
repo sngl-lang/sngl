@@ -82,7 +82,7 @@ ui.window {
     branch()
 }
 -- testrun/android/kotlin/app.sngl/branch/1 --
-sha256:2b9b30563036538f3592c9ddb24c460e
+sha256:d1e4dc2b558e47cbe4c2b7a1bc477d4a
 {
   "results": [
     {
@@ -92,7 +92,7 @@ sha256:2b9b30563036538f3592c9ddb24c460e
   ]
 }
 -- testrun/android/kotlin/app.sngl/panel/1 --
-sha256:114a3fdedb9a4cea777a876b9ed28fd2
+sha256:5a27ccb2358fee2ddc43d20a9ea6b766
 {
   "results": [
     {

@@ -255,7 +255,7 @@ func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (strin
 		if themed == "" {
 			themed = color + ".Unspecified"
 		}
-		parts = append(parts, fmt.Sprintf("color = (%s).let { if (it.a == 0) %s else %s(it.r, it.g, it.b, it.a) }", cc.kc.EvalExpr(pal), themed, color))
+		parts = append(parts, fmt.Sprintf("color = (%s).let { if (it.a == 0.toUByte()) %s else %s(%s) }", cc.kc.EvalExpr(pal), themed, color, channelsInt))
 	}
 	own := decoration{}
 	sl, _ := codegen.NodeProp(n, "spanStyle").(*ir.StructLit)

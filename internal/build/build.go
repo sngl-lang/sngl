@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"duckfam.us/sngl/codegen"
@@ -259,6 +260,10 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		return nil, nil, fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", o.Name, target.Platform, target.Lang, plat.SupportedLangs())
 	}
 
+	if err := refuseGRPC(pkg, target); err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
+	}
+
 	projectFS := o.ProjectFS
 	if projectFS == nil {
 		projectFS = ProjectFS(filepath.Dir(o.Name))
@@ -415,4 +420,28 @@ func rendersItself(comp *ir.Component) bool {
 // emitted beside the program.
 func dropTests(pkg *ir.Package) {
 	pkg.Funcs = slices.DeleteFunc(pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest })
+}
+
+// refuseGRPC refuses a program calling a gRPC service, or making the
+// async.queue only a gRPC call reads, on a language that writes neither yet,
+// which would otherwise reach the generator with nothing to emit for it.
+func refuseGRPC(pkg *ir.Package, target Target) error {
+	if codegen.LangImplements(target.Lang, ir.GRPCCallIntrinsic) {
+		return nil
+	}
+	var err error
+	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
+		c, ok := e.(*ir.Call)
+		if !ok || err != nil || c.Func == nil {
+			return nil
+		}
+		switch {
+		case ir.IsGRPC(c.Func):
+			err = fmt.Errorf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
+		case strings.HasPrefix(c.Func.Intrinsic, "async.queue"):
+			err = fmt.Errorf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
+		}
+		return nil
+	})
+	return err
 }

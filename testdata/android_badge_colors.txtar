@@ -111,13 +111,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -258,7 +258,7 @@ fun MainScreen() {
                 __activity?.finish()
             }
         }
-        Badge(modifier = flexed(styleModifier(Style(color = Color(r = 255, g = 255, b = 255), background = Color(r = 122, g = 199, b = 76)), false), null, snglFlexShare).safeDrawingPadding(), containerColor = androidx.compose.ui.graphics.Color(red = 122, green = 199, blue = 76, alpha = 255), contentColor = androidx.compose.ui.graphics.Color(red = 255, green = 255, blue = 255, alpha = 255)) {
+        Badge(modifier = flexed(styleModifier(Style(color = Color(r = 255.toUByte(), g = 255.toUByte(), b = 255.toUByte()), background = Color(r = 122.toUByte(), g = 199.toUByte(), b = 76.toUByte())), false), null, snglFlexShare).safeDrawingPadding(), containerColor = androidx.compose.ui.graphics.Color(red = 122, green = 199, blue = 76, alpha = 255), contentColor = androidx.compose.ui.graphics.Color(red = 255, green = 255, blue = 255, alpha = 255)) {
             Text(text = "Grass", modifier = Modifier)
         }
     }
@@ -343,4 +343,4 @@ val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- run/kotlin/android --
-pass sha256:4b69550b098bfa6c38342502852fbea0
+pass sha256:ff44bc96fab37b7f56cfc3177fd9fee4

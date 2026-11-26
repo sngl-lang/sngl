@@ -1,0 +1,554 @@
+# The package a grpc: import writes, run against the gRPC server the script
+# harness runs at 127.0.0.1:47820 (internal/testgrpc), which reads and writes
+# with protobuf's own runtime.
+
+sngl test --platform=none app.sngl
+stdout '11 tests, 0 failures'
+! stderr .
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '11 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '11 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '11 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '11 tests, 0 failures'
+
+
+-- app.sngl --
+// Every kind of field read back from the server, every kind sent and echoed,
+// a status classified, each kind of stream, and the component over a
+// read-only method.
+
+import async "sngl:async"
+import library "grpc:./library.proto"
+import test "sngl:test"
+import ui "sngl:ui"
+
+const local = "127.0.0.1:47820"
+
+func testGet(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.getBookCall({id=7}) {
+        ok {
+            t.assert(b.id == 7)
+            t.assert(b.title == "Book 7")
+            t.assert(b.tags == ["old", "rare"])
+            t.assert(b.kind == library.BookKind.paperback)
+            t.assert(b.pages == 320)
+            t.assert(b.added != null && b.added.seconds == 1700000000 && b.added.nanos == 5)
+            t.assert(b.scores.length() == 1 && b.scores["plot"] == 4.5)
+            t.assert(b.cover == "aGk=")
+            t.assert(b.ranks == [-1, 2])
+            t.assert(b.rating == 0.5)
+            t.assert(b.isbn == 978)
+            t.assert(b.lent)
+            t.assert(b.place == library.BookPlace{loan=library.Loan{to="Ada", due=5}})
+        }
+        failed { t.assert(b.message == "") }
+    }
+    // A oneof set to a member holding its zero is still that member.
+    match var b = library.getBookCall({id=2}) {
+        ok { t.assert(b.place.shelf == "") }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+// A 64-bit field is an int64, which every target holds whole: Kotlin's int
+// is 32 bits.
+func testWide(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.getBookCall({id=64}) {
+        ok { t.assert(b.isbn == 9780000000002) }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testAdd(t test.Test) {
+    t.setContext(library.server, local)
+    var sent = library.Book{
+        id=1,
+        title="Dune",
+        tags=["sf"],
+        kind=library.BookKind.hardCover,
+        pages=412,
+        added=library.Timestamp{seconds=-5, nanos=1},
+        scores={"plot"=5.0, "pace"=-1.25},
+        cover="aGk=",
+        ranks=[-3, 0, 70000],
+        rating=-2.5,
+        isbn=42,
+        lent=true,
+        place={bin=0},
+    }
+    match var b = library.addBookCall({book=sent}) {
+        ok {
+            t.assert(b.id == 99)
+            t.assert(b.title == "added: Dune")
+            t.assert(b.tags == sent.tags)
+            t.assert(b.kind == sent.kind)
+            t.assert(b.pages == 412)
+            t.assert(b.added != null && b.added.seconds == -5 && b.added.nanos == 1)
+            t.assert(b.scores.length() == 2 && b.scores["plot"] == 5.0 && b.scores["pace"] == -1.25)
+            t.assert(b.cover == sent.cover)
+            t.assert(b.ranks == sent.ranks)
+            t.assert(b.rating == sent.rating)
+            t.assert(b.isbn == 42)
+            t.assert(b.lent)
+            t.assert(b.place == sent.place)
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testZeros(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.addBookCall({book=library.Book{}}) {
+        ok {
+            t.assert(b.title == "added: ")
+            t.assert(b.pages == null)
+            t.assert(b.added == null)
+            t.assert(b.kind == library.BookKind.unspecified)
+            t.assert(b.tags.length() == 0)
+            t.assert(b.place == library.BookPlace.none)
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testStatus(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.getBookCall({id=404}) {
+        ok { t.assert(b.title == "") }
+        failed {
+            t.assert(b.kind == async.FailureKind.request)
+            t.assert(b.code == "NOT_FOUND")
+            t.assert(b.message == "no book 404")
+        }
+    }
+    match var b = library.getBookCall({id=16}) {
+        ok { t.assert(b.title == "") }
+        failed { t.assert(b.kind == async.FailureKind.auth) }
+    }
+    t.setContext(library.server, "")
+    match var b = library.getBookCall({id=1}) {
+        ok { t.assert(b.title == "") }
+        failed { t.assert(b.code == "UNAVAILABLE") }
+    }
+}
+
+func testWatch(t test.Test) {
+    t.setContext(library.server, local)
+    var titles list[string] = []
+    match var r = library.watchCall({id=3}, func(b library.Book) { titles.push(b.title) }) {
+        ok { t.assert(r == 3) }
+        failed { t.assert(r.message == "") }
+    }
+    t.assert(titles == ["Book 1", "Book 2", "Book 3"])
+    // The messages before a failure are handed on, then the failure answered.
+    var seen = 0
+    match var r = library.watchCall({id=404}, func(b library.Book) { seen += 1 }) {
+        ok { t.assert(r < 0) }
+        failed {
+            t.assert(r.code == "NOT_FOUND")
+            t.assert(r.message == "the shelf is gone")
+        }
+    }
+    t.assert(seen == 1)
+}
+
+// A stream that never ends is ended by its lifetime, here from the function
+// handed each message.
+func testWatchEnded(t test.Test) {
+    t.setContext(library.server, local)
+    var life = async.begin()
+    var seen = 0
+    var each = func(b library.Book) {
+        seen += 1
+        if seen == 3 {
+            life.end()
+        }
+    }
+    match var r = library.watchCall({id=0}, each, life=life) {
+        ok { t.assert(r < 0) }
+        failed { t.assert(r.kind == async.FailureKind.cancelled) }
+    }
+    t.assert(seen == 3)
+}
+
+func testCollect(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.collectCall(async.queue[library.GetBookRequest].from([{id=1}, {id=2}, {id=4}])) {
+        ok {
+            t.assert(b.id == 7)
+            t.assert(b.title == "3 books")
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+// Each request is sent once the answer to the last has come, so the call
+// ends only if requests and responses travel at once.
+func testEcho(t test.Test) {
+    t.setContext(library.server, local)
+    var titles list[string] = []
+    var out = async.queue[library.GetBookRequest].new()
+    out.send({id=5})
+    var each = func(b library.Book) {
+        titles.push(b.title)
+        if b.id < 8 {
+            out.send({id=b.id + 1})
+        } else {
+            out.close()
+        }
+    }
+    match var r = library.echoCall(out, each) {
+        ok { t.assert(r == 4) }
+        failed { t.assert(r.message == "") }
+    }
+    t.assert(titles == ["echo 5", "echo 6", "echo 7", "echo 8"])
+}
+
+// A queue never closed holds its call open until the call's lifetime ends.
+func testEchoEnded(t test.Test) {
+    t.setContext(library.server, local)
+    var life = async.begin()
+    var out = async.queue[library.GetBookRequest].new()
+    out.send({id=1})
+    var seen = 0
+    var each = func(b library.Book) {
+        seen += 1
+        life.end()
+    }
+    match var r = library.echoCall(out, each, life=life) {
+        ok { t.assert(r < 0) }
+        failed { t.assert(r.kind == async.FailureKind.cancelled) }
+    }
+    t.assert(seen == 1)
+}
+
+component shelf ui.node {
+    var id int64 = 3
+    var found option[library.Book] = null
+    library.server(local) {
+        library.getBook(request={id=id}, :value=found)
+    }
+    ui.text #title(value=found != null ? found.title : "-")
+    ui.button #next(text="Next", @click { id += 1 })
+    var latest = "-"
+    var count = 0
+    ui.text #streamed(value="{latest} of {count}")
+    ui.button #watch(text="Watch", @click {
+        library.server(local) {
+            match var r = library.watchCall({id=4}, func(b library.Book) { latest = b.title }) {
+                ok { count = r }
+                failed { latest = r.message }
+            }
+        }
+    })
+}
+
+func testComponent(t test.Test, c shelf) {
+    t.wait(func() => c.title.value == "Book 3", 5000)
+    c.next.click()
+    t.wait(func() => c.title.value == "Book 4", 5000)
+    t.assert(c.title.value == "Book 4")
+    // A message streamed into state shows as it comes.
+    c.watch.click()
+    t.wait(func() => c.streamed.value == "Book 4 of 4", 5000)
+}
+
+ui.window {
+    shelf
+}
+-- library.proto --
+syntax = "proto3";
+
+package library.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// A book on a shelf.
+message Book {
+  // The book's id.
+  int64 id = 1;
+  string title = 2;
+  repeated string tags = 3;
+  BookKind kind = 4;
+  optional int32 pages = 5;
+  google.protobuf.Timestamp added = 6;
+  map<string, double> scores = 7;
+  bytes cover = 8;
+  repeated sint32 ranks = 9;
+  float rating = 10;
+  fixed64 isbn = 11;
+  bool lent = 12;
+  // Where the book is.
+  oneof place {
+    string shelf = 13;
+    Loan loan = 14;
+    int32 bin = 15;
+  }
+}
+
+message Loan {
+  string to = 1;
+  int64 due = 2;
+}
+
+enum BookKind {
+  BOOK_KIND_UNSPECIFIED = 0;
+  BOOK_KIND_HARD_COVER = 1;
+  BOOK_KIND_PAPERBACK = 2;
+}
+
+message GetBookRequest {
+  int64 id = 1;
+}
+
+message AddBookRequest {
+  Book book = 1;
+}
+
+service Library {
+  // Answers one book.
+  rpc GetBook(GetBookRequest) returns (Book) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  // Answers the book it was handed, its id 99 and its title marked added.
+  rpc AddBook(AddBookRequest) returns (Book);
+  // Answers books 1 to id, one at a time.
+  rpc Watch(GetBookRequest) returns (stream Book);
+  // Answers one book: its id the sum of the ids sent, its title how many.
+  rpc Collect(stream GetBookRequest) returns (Book);
+  // Answers a book per request, of its id.
+  rpc Echo(stream GetBookRequest) returns (stream Book);
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:0c3df4745e1d6d13ceb9910f8e43011f
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/shelf/1 --
+sha256:34ac3e6ec47ee865a1dea797579a5a60
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:8ac3ae7b5057ee3aff70a63f8ff1bb16
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shelf/1 --
+sha256:775cce9adafbfd19fb228ac2ae604230
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:a2b686da2e4b961d2cb61b9b2b934063
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:abe97ca2607c028dc21f13a3567f5c0a
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:4a3013cebf0dd91b47f4bd382195f4e1
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Collect",
+      "Passed": true
+    },
+    {
+      "Desc": "Echo",
+      "Passed": true
+    },
+    {
+      "Desc": "EchoEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Watch",
+      "Passed": true
+    },
+    {
+      "Desc": "WatchEnded",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:477e60654de193e5bb28d7a08196d7b9
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}

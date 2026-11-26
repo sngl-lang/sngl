@@ -1,0 +1,266 @@
+# testdata's sized-number fixtures, on the targets whose arithmetic is not
+# Go's: JavaScript holds an int as a double and Kotlin widens Byte and Short
+# arithmetic to Int, so each narrows a result back to its width -- a compound
+# assignment as well as a binary expression.
+
+mkdir compound conversions float basics wraparound uint
+cp $SNGL_ROOT/testdata/test_sized_compound_assign.sngl compound
+cp $SNGL_ROOT/testdata/test_sized_conversions.sngl conversions
+cp $SNGL_ROOT/testdata/test_sized_float.sngl float
+cp $SNGL_ROOT/testdata/test_sized_int_basics.sngl basics
+cp $SNGL_ROOT/testdata/test_sized_int_wraparound.sngl wraparound
+cp $SNGL_ROOT/testdata/test_sized_uint.sngl uint
+
+sngl test --platform=html ./...
+stdout '^ok +22 tests, 0 failures$'
+
+sngl test --platform=android --language=kotlin ./...
+stdout '^ok +22 tests, 0 failures$'
+-- testrun/android/kotlin/test_sized_compound_assign.sngl/compound/1 --
+sha256:561c430898661853862e6c6da7e4a909
+{
+  "results": [
+    {
+      "Desc": "Int8CompoundAdd",
+      "Passed": true
+    },
+    {
+      "Desc": "Int8CompoundMul",
+      "Passed": true
+    },
+    {
+      "Desc": "Uint32CompoundAdd",
+      "Passed": true
+    },
+    {
+      "Desc": "Uint8CompoundSub",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/test_sized_conversions.sngl/conv/1 --
+sha256:6f73f462ccd877c02ccb25a3c4952898
+{
+  "results": [
+    {
+      "Desc": "DefaultToSized",
+      "Passed": true
+    },
+    {
+      "Desc": "IntFloatBridge",
+      "Passed": true
+    },
+    {
+      "Desc": "Narrow",
+      "Passed": true
+    },
+    {
+      "Desc": "SignednessChange",
+      "Passed": true
+    },
+    {
+      "Desc": "Widen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/test_sized_float.sngl/floats/1 --
+sha256:ce2b01d4f313351fb62f60fd1e4ec5d0
+{
+  "results": [
+    {
+      "Desc": "Float32Rounding",
+      "Passed": true
+    },
+    {
+      "Desc": "Float64IsDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "FloatConstFold",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/test_sized_int_basics.sngl/sizedints/1 --
+sha256:e69b81d10fbd9add9c4cf970cffdda36
+{
+  "results": [
+    {
+      "Desc": "SameWidthArithmetic",
+      "Passed": true
+    },
+    {
+      "Desc": "WidthsHoldValues",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/test_sized_int_wraparound.sngl/wrap/1 --
+sha256:31b6d9304428276ebfc6993873a98d77
+{
+  "results": [
+    {
+      "Desc": "Int16Wrap",
+      "Passed": true
+    },
+    {
+      "Desc": "Int32Wrap",
+      "Passed": true
+    },
+    {
+      "Desc": "Int8Wrap",
+      "Passed": true
+    },
+    {
+      "Desc": "NegationWraps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/test_sized_uint.sngl/uints/1 --
+sha256:0b5a2927fad2c7cd45024006391e16a5
+{
+  "results": [
+    {
+      "Desc": "Uint64TopRange",
+      "Passed": true
+    },
+    {
+      "Desc": "UnsignedHoldValues",
+      "Passed": true
+    },
+    {
+      "Desc": "UnsignedSubtractWrap",
+      "Passed": true
+    },
+    {
+      "Desc": "UnsignedWrap",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_compound_assign.sngl/compound/1 --
+sha256:fee73039246a8630899c4315a07debf4
+{
+  "results": [
+    {
+      "Desc": "Int8CompoundAdd",
+      "Passed": true
+    },
+    {
+      "Desc": "Int8CompoundMul",
+      "Passed": true
+    },
+    {
+      "Desc": "Uint32CompoundAdd",
+      "Passed": true
+    },
+    {
+      "Desc": "Uint8CompoundSub",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_conversions.sngl/conv/1 --
+sha256:bd5c1e7647eeec0f499e3d86a107fe57
+{
+  "results": [
+    {
+      "Desc": "DefaultToSized",
+      "Passed": true
+    },
+    {
+      "Desc": "IntFloatBridge",
+      "Passed": true
+    },
+    {
+      "Desc": "Narrow",
+      "Passed": true
+    },
+    {
+      "Desc": "SignednessChange",
+      "Passed": true
+    },
+    {
+      "Desc": "Widen",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_float.sngl/floats/1 --
+sha256:01a49c59a5ba2e7f81c12059400ac76b
+{
+  "results": [
+    {
+      "Desc": "Float32Rounding",
+      "Passed": true
+    },
+    {
+      "Desc": "Float64IsDefault",
+      "Passed": true
+    },
+    {
+      "Desc": "FloatConstFold",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_int_basics.sngl/sizedints/1 --
+sha256:a21b2d1fbeb9fb92658332565a438e7b
+{
+  "results": [
+    {
+      "Desc": "SameWidthArithmetic",
+      "Passed": true
+    },
+    {
+      "Desc": "WidthsHoldValues",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_int_wraparound.sngl/wrap/1 --
+sha256:39dcba55ccc2775b1220ac176620efaa
+{
+  "results": [
+    {
+      "Desc": "Int16Wrap",
+      "Passed": true
+    },
+    {
+      "Desc": "Int32Wrap",
+      "Passed": true
+    },
+    {
+      "Desc": "Int8Wrap",
+      "Passed": true
+    },
+    {
+      "Desc": "NegationWraps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_uint.sngl/uints/1 --
+sha256:a13e2bd276b7e273c505d3aa62b6d71c
+{
+  "results": [
+    {
+      "Desc": "Uint64TopRange",
+      "Passed": true
+    },
+    {
+      "Desc": "UnsignedHoldValues",
+      "Passed": true
+    },
+    {
+      "Desc": "UnsignedSubtractWrap",
+      "Passed": true
+    },
+    {
+      "Desc": "UnsignedWrap",
+      "Passed": true
+    }
+  ]
+}

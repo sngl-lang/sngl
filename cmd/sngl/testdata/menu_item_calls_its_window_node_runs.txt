@@ -83,7 +83,7 @@ func testAMenuReachesItsNode(t test.Test, c shell) {
     t.assert(c.app.main.menu[0].children[0].checked)
 }
 -- testrun/android/kotlin/app.sngl/shell/1 --
-sha256:3dbef21e983e25da76cf7f63e4b2c7d1
+sha256:e791cf5c37e9dce737ec5b576ca02c9a
 {
   "results": [
     {

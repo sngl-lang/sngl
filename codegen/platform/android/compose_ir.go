@@ -476,7 +476,7 @@ func userTestTag(n *ir.NodeInst) string {
 
 // composeColorExpr converts an evaluated SNGL color value to a Compose Color
 // expression. SNGL `color` values lower to a `Color(r=.., g=.., b=.., a=..)`
-// struct (0..255 ints); hex string literals ("#rrggbb") are also accepted.
+// struct (UByte channels); hex string literals ("#rrggbb") are also accepted.
 // Compose's ComposeColor has an Int (0..255) constructor:
 // ComposeColor(red, green, blue, alpha). Anything else is assumed to be a
 // runtime Color-struct expression and is built from its r/g/b/a fields.
@@ -492,7 +492,7 @@ func composeColorExpr(kc *kotlin.KtIRContext, val string) string {
 			if len(kv) != 2 {
 				continue
 			}
-			fields[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+			fields[strings.TrimSpace(kv[0])] = channelInt(strings.TrimSpace(kv[1]))
 		}
 		return fmt.Sprintf("%s(red = %s, green = %s, blue = %s, alpha = %s)",
 			color, fields["r"], fields["g"], fields["b"], fields["a"])
@@ -506,7 +506,17 @@ func composeColorExpr(kc *kotlin.KtIRContext, val string) string {
 	// iteration of whatever loop the widget sits in -- `bgOf(entry.tone())`
 	// in the calculator's keypad -- and no compiler can undo that, because
 	// nothing here promises the call is pure. `let` binds it instead.
-	return fmt.Sprintf("(%s).let { %s(it.r, it.g, it.b, it.a) }", val, color)
+	return fmt.Sprintf("(%s).let { %s(%s) }", val, color, channelsInt)
+}
+
+const channelsInt = "it.r.toInt(), it.g.toInt(), it.b.toInt(), it.a.toInt()"
+
+// channelInt is a Color literal's UByte channel as the Int Compose takes.
+func channelInt(v string) string {
+	if n, ok := strings.CutSuffix(v, ".toUByte()"); ok && n != "" && strings.Trim(n, "0123456789") == "" {
+		return n
+	}
+	return "(" + v + ").toInt()"
 }
 
 // parseHexColorLiteral parses a Kotlin string literal holding a hex color

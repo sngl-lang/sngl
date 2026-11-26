@@ -1674,6 +1674,17 @@ func (c *checker) inferMethodCall(sel *ast.SelectExpr, call *ast.CallExpr) ir.Ex
 	if ns, ident := c.namespaceOperand(sel.Operand); ns != nil {
 		return c.inferQualifiedCall(sel, call, ns, ident)
 	}
+	// A generic type written with its arguments, `queue[int].new()`, names
+	// the type at them: the method is static, and its receiver's
+	// parameters are bound by the brackets rather than inferred.
+	if ix, ok := sel.Operand.(*ast.IndexExpr); ok {
+		if sym := c.staticReceiverSym(ix.Operand); isTypeSym(sym) {
+			if te, ok := ast.TypeFromExpr(ix); ok {
+				t := c.resolveType(te)
+				return c.inferMethodCallOn(sel, call, &ir.Ident{Name: sym.SymName(), Sym: sym, Type: t}, true)
+			}
+		}
+	}
 	// Determine if operand is a type name (static call) vs a value (instance call).
 	isStatic := isTypeSym(c.staticReceiverSym(sel.Operand))
 	return c.inferMethodCallOn(sel, call, c.checkExpr(sel.Operand), isStatic)
@@ -1763,6 +1774,22 @@ func (c *checker) inferMethodCallOn(sel *ast.SelectExpr, call *ast.CallExpr, rec
 		// receiver's type params are inferable from the arguments like any
 		// other. Handing them to the same inference is what makes
 		// `Box.same(b)` mean what `b.same()` means.
+		if isStatic && len(sig.RecvTypeParams) > 0 && len(receiver.Elems) == len(sig.RecvTypeParams) {
+			bindings := make(map[string]*ir.Type, len(sig.RecvTypeParams))
+			for i, tp := range sig.RecvTypeParams {
+				bindings[tp.Name] = receiver.Elems[i]
+			}
+			c.checkNarrowedReceiver(call, fn, sig.RecvTypeParams, bindings)
+			substituted := sig.Substitute(bindings)
+			sig = &ir.FuncSig{
+				Params:     substituted.Params,
+				Return:     substituted.Return,
+				TypeParams: substituted.TypeParams,
+				Purity:     substituted.Purity,
+				Color:      substituted.Color,
+				PolyParam:  substituted.PolyParam,
+			}
+		}
 		if isStatic && len(sig.RecvTypeParams) > 0 {
 			merged := *sig
 			merged.TypeParams = append(append([]ir.TypeParam(nil), sig.RecvTypeParams...), sig.TypeParams...)

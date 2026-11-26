@@ -95,6 +95,22 @@ const (
 	AssignMod                 // %=
 )
 
+// Binary is the operator a compound assignment applies; AssignSet has none
+// and answers BinAdd.
+func (op AssignOp) Binary() BinaryOp {
+	switch op {
+	case AssignSub:
+		return BinSub
+	case AssignMul:
+		return BinMul
+	case AssignDiv:
+		return BinDiv
+	case AssignMod:
+		return BinMod
+	}
+	return BinAdd
+}
+
 // --- Type expressions ---
 
 // NamedType is a type reference: int, pkg.Type, list[int].

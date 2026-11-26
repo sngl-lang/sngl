@@ -1,0 +1,23 @@
+// A generic type's static method is called on the type at its arguments
+// where nothing else says them: `box[int].new()` needs no var typed for it,
+// and the arguments bind the method's parameters as a value's type would.
+
+import test "sngl:test"
+
+struct box[T any] {
+    items list[T] = []
+}
+
+func box[T].new() => box[T]{}
+
+func box[T].of(first T) => box[T]{items=[first]}
+
+func box[T].count(b box[T]) => b.items.length()
+
+func testBracketed(t test.Test) {
+    var b = box[string].new()
+    b.items.push("a")
+    t.assert(b.count() == 1)
+    var c = box[float].of(2)
+    t.assert(c.items[0] == 2.0)
+}

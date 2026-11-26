@@ -219,15 +219,15 @@ func init() {
 	}
 
 	// --- color ---
-	// The generated Color is a data class of Int channels; let keeps the
-	// operand from being evaluated three times.
+	// let keeps the operand from being evaluated three times, and
+	// String.format takes no UByte.
 	// The operand is the Color data class the android platform declares, not
 	// a String — IRTypeToKt maps a color struct to String for an *annotation*
 	// while values emit as Color(r=…, g=…, b=…, a=…), which is a discrepancy
 	// of its own and the reason this looked like a String.
 	reg("color.hex", func(a []string) string {
-		return a[0] + `.let { if (it.a == 255) String.format("#%02x%02x%02x", it.r, it.g, it.b) ` +
-			`else String.format("#%02x%02x%02x%02x", it.r, it.g, it.b, it.a) }`
+		return a[0] + `.let { if (it.a == 255.toUByte()) String.format("#%02x%02x%02x", it.r.toInt(), it.g.toInt(), it.b.toInt()) ` +
+			`else String.format("#%02x%02x%02x%02x", it.r.toInt(), it.g.toInt(), it.b.toInt(), it.a.toInt()) }`
 	})
 
 	// --- Alert and File ---

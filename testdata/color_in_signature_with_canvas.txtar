@@ -6,15 +6,14 @@ dedupes what it declares against the program's structs.
 
 That dedupe matched the *source* spelling, `color`, against the emitted name,
 `Color`, so it never fired: `MainScreen.kt` came out with two `data class
-Color` -- the first from the SNGL declaration, whose uint8 channels are UByte,
-the second the Int-channelled one every value and every Compose constructor
-uses. Kotlin reports the redeclaration and then an argument mismatch per
-channel per call, which is what a canvas full of colors makes of it.
+Color` -- the first from the SNGL declaration, the second kotlin.ColorDecl.
+Kotlin reports the redeclaration and then an error per channel per call,
+which is what a canvas full of colors makes of it.
 
 The type annotation was the other half: IRTypeToKt answered `String` for a
 color, so `bgOf`'s return type disagreed with the `Color(...)` it returns.
 
-deny out/kotlin/android/MainScreen.kt `var r: UByte` -- a channel is Int, as it is in snglcolor, so the stdlib helpers and Compose's own constructor reach it without a per-channel conversion
+deny out/kotlin/android/MainScreen.kt `var r: Int` -- a channel is the UByte its uint8 field is, so the stdlib's arithmetic on one wraps
 deny out/kotlin/android/MainScreen.kt `: String = Color` -- a color-typed signature says Color
 
 -- sig.sngl --
@@ -82,18 +81,18 @@ data class Measurement(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 data class Style(
-    var fill: Color = Color(a = 0),
-    var stroke: Color = Color(a = 0),
+    var fill: Color = Color(a = 0u),
+    var stroke: Color = Color(a = 0u),
     var strokeWidth: Double = 1.0,
     var lineCap: String = "butt",
     var lineJoin: String = "miter",
@@ -159,7 +158,7 @@ fun MainScreen() {
         }
         Column {
             Canvas(modifier = Modifier.size(100.dp, 100.dp)) {
-                if ((bgOf(lit).a > 0)) {
+                if ((bgOf(lit).a > 0.toUByte())) {
                     drawRect(color = composeOf(bgOf(lit)), topLeft = Offset(0.0.toFloat(), 0.0.toFloat()), size = Size(50.0.toFloat(), 50.0.toFloat()))
                 }
             }
@@ -174,9 +173,9 @@ fun MainScreen() {
 
 fun bgOf(on: Boolean): Color {
     if (on) {
-    	return Color(r = 45, g = 255, b = 170)
+    	return Color(r = 45.toUByte(), g = 255.toUByte(), b = 170.toUByte())
     }
-    return Color(r = 24, g = 60, b = 52)
+    return Color(r = 24.toUByte(), g = 60.toUByte(), b = 52.toUByte())
 }
 
 fun composeOf(c: Color): androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(red = c.r.toInt(), green = c.g.toInt(), blue = c.b.toInt(), alpha = c.a.toInt())
@@ -330,4 +329,4 @@ fun SnglRemoteImage(url: String) {
     Image(bitmap = shown, contentDescription = null, modifier = Modifier)
 }
 -- run/kotlin/android --
-pass sha256:e7a2515a5b6ec7c21ea28e0dc8eeea63
+pass sha256:90672b40c47cdd8bf559250de5bc072a

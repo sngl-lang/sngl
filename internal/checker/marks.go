@@ -301,6 +301,14 @@ func (a markArgs) String(name string) string {
 	return ""
 }
 
+// Int is the value of an integer-typed parameter.
+func (a markArgs) Int(name string) int64 {
+	if i := a.index(name); i >= 0 {
+		return a.vals[i].num
+	}
+	return 0
+}
+
 // Ident is the enum member an enum-typed parameter was given.
 func (a markArgs) Ident(name string) string {
 	if i := a.index(name); i >= 0 {

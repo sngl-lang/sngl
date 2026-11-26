@@ -1,0 +1,133 @@
+// What sngl:grpc's call refuses, at the call reaching a message it cannot
+// write, and its marks written where they name nothing.
+
+import async "sngl:async"
+import grpc "sngl:grpc"
+
+#[grpc.message("t.Ok")]
+struct Ok {
+    #[grpc.field(1)]
+    id int
+}
+
+struct Unnumbered {
+    id int
+}
+
+struct Twice {
+    #[grpc.field(1)]
+    a int
+    #[grpc.field(1)]
+    b int
+}
+
+struct Misfit {
+    #[grpc.field(1, sint32)]
+    name string
+}
+
+struct Nested {
+    #[grpc.field(1)]
+    deep list[list[int]]
+}
+
+struct Keyed {
+    #[grpc.field(1)]
+    m map[int, string]
+}
+
+enum FirstCarries {
+    #[grpc.field(2)]
+    some int
+    none
+}
+
+struct Leads {
+    #[grpc.field(1)]
+    id    int
+    place FirstCarries
+}
+
+enum Place {
+    none
+    #[grpc.field(1)]
+    shelf string
+    bin   int
+}
+
+struct Unnumbered2 {
+    place Place
+}
+
+enum Clash {
+    none
+    #[grpc.field(1)]
+    shelf string
+}
+
+struct Clashes {
+    #[grpc.field(1)]
+    id    int
+    place Clash
+}
+
+struct NumberedOneof {
+    #[grpc.field(3)]
+    place Clash
+}
+
+struct Optional {
+    #[grpc.field(1)]
+    place option[Clash]
+}
+
+#[grpc.field(1)] // ERROR(check) "#[grpc.field] cannot mark a struct; only a struct field or a oneof's member has a protobuf number"
+struct Wrong {
+    #[grpc.field(19500)] // ERROR(check) "#[grpc.field(19500)]: a field number is from 1 to 536870911, outside 19000-19999"
+    x int
+}
+
+enum Shelf {
+    #[grpc.message("t.Shelf")] // ERROR(check) "#[grpc.message] cannot mark an enum member; only a struct is a message"
+    top
+}
+
+func unnumbered() async.Result[Unnumbered] {
+    return grpc.call[Ok, Unnumbered](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field id of Unnumbered, which no #[grpc.field] numbers"
+}
+
+func twice() async.Result[Ok] {
+    return grpc.call[Twice, Ok](server="", method="/t.S/M", request={a=1, b=2}) // ERROR(check) "grpc.call cannot send or read Twice, whose fields a and b are both numbered 1"
+}
+
+func misfit() async.Result[Misfit] {
+    return grpc.call[Ok, Misfit](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field name of Misfit: a string, which is not written as sint32"
+}
+
+func nested() async.Result[Nested] {
+    return grpc.call[Ok, Nested](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field deep of Nested: list[list[int]], which protobuf has no field for"
+}
+
+func keyed() async.Result[Keyed] {
+    return grpc.call[Ok, Keyed](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field m of Keyed: map[int, string], whose keys are not strings"
+}
+
+func leads() async.Result[Leads] {
+    return grpc.call[Ok, Leads](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field place of Leads: FirstCarries, a oneof whose first member some carries a payload: the first is the oneof set to none, and carries nothing"
+}
+
+func unnumberedMember() async.Result[Unnumbered2] {
+    return grpc.call[Ok, Unnumbered2](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field place of Unnumbered2: member bin of Place, which no #[grpc.field] numbers"
+}
+
+func clashes() async.Result[Clashes] {
+    return grpc.call[Ok, Clashes](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field place of Clashes: id and member shelf of Clash, both numbered 1"
+}
+
+func numberedOneof() async.Result[NumberedOneof] {
+    return grpc.call[Ok, NumberedOneof](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field place of NumberedOneof, a oneof, which #[grpc.field] numbers: its members carry the numbers"
+}
+
+func optional() async.Result[Optional] {
+    return grpc.call[Ok, Optional](server="", method="/t.S/M", request={id=1}) // ERROR(check) "grpc.call cannot send or read field place of Optional: Clash, an enum whose members carry payloads, which is a oneof only as a message's own field"
+}

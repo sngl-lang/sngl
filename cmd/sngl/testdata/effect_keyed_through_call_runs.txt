@@ -105,7 +105,7 @@ func testAWriteOutsideAsksTheQueryAgain(t test.Test, c app) {
     t.assert(asked.format(",") == "0,0,0,1,1,1")
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:dce87a7db0a3e80b09c2d4c8c58e97f4
+sha256:13eb3b03139e5a8d91f0675c15ef7143
 {
   "results": [
     {

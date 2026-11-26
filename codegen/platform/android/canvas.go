@@ -239,8 +239,8 @@ func canvasKotlinDecls(kc *kotlin.KtIRContext, declared map[string]struct{}) str
 	var b strings.Builder
 	if _, ok := declared["Style"]; !ok {
 		b.WriteString("data class Style(\n")
-		b.WriteString("    var fill: Color = Color(a = 0),\n")
-		b.WriteString("    var stroke: Color = Color(a = 0),\n")
+		b.WriteString("    var fill: Color = Color(a = 0u),\n")
+		b.WriteString("    var stroke: Color = Color(a = 0u),\n")
 		b.WriteString("    var strokeWidth: Double = 1.0,\n")
 		b.WriteString("    var lineCap: String = \"butt\",\n")
 		b.WriteString("    var lineJoin: String = \"miter\",\n")

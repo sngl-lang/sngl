@@ -1265,6 +1265,36 @@ func (f *Func) OnComponent() bool {
 // or a built-in such as list, called on a value it is handed first.
 func (f *Func) OnType() bool { return f.IsMethod() && !f.OnComponent() }
 
+// IsStatic reports whether f is a method of a declared type that is called on
+// the type rather than a value, `Money.zero()`: it has no receiver, and its
+// first parameter, if any, is not the type, nor a copy of the generic one it
+// was declared on.
+func (f *Func) IsStatic() bool {
+	recv := f.RecvDecl()
+	if !f.OnType() || recv == nil || f.RecvParam != nil || f.Lowered.HostReceiver != "" {
+		return false
+	}
+	if len(f.Params) == 0 {
+		return true
+	}
+	p := f.Params[0]
+	if p.Receiver || p.Type == nil {
+		return false
+	}
+	t := p.Type
+	if t.Kind == TypeRef && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	if t.Decl == nil {
+		return true
+	}
+	if t.Decl == recv {
+		return false
+	}
+	sd, ok := t.Decl.(*StructDef)
+	return !ok || sd.InstanceOf == nil || Symbol(sd.InstanceOf) != recv
+}
+
 // receiverName names a receiver type by its declaration, or by its kind for a
 // built-in constructor whose declaration was not to hand.
 func receiverName(t *Type) string {
@@ -1934,6 +1964,9 @@ type StructDef struct {
 	// rather than declaring the same instantiation twice.
 	InstanceOf   *StructDef `json:"-"`
 	InstanceArgs []*Type    `json:"-"`
+	// Proto is the protobuf message the struct is, as `#[grpc.message]`
+	// names it: `library.v1.Book`.
+	Proto string `json:",omitempty"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }
@@ -1973,6 +2006,9 @@ type StructField struct {
 	// its SNGL name in the IR and on every host.
 	JSON string `json:",omitempty"`
 	HTTP string `json:",omitempty"`
+	// Proto is the field's protobuf number and kind, as `#[grpc.field]`
+	// gives them; a zero Number is a field the mark never numbered.
+	Proto ProtoField `json:",omitzero"`
 	// CAlias is the `#[c.native]` alias the field's type was written as, which
 	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
 	// rule, for the same reason.
@@ -2016,6 +2052,12 @@ type EnumMember struct {
 	// JSON is the member's name on the wire, as `#[json.identifier]` gives
 	// it; empty is the member's own name.
 	JSON string `json:",omitempty"`
+	// Proto is the member's protobuf number, as `#[grpc.value]` gives it;
+	// nil is its place among the members.
+	Proto *int `json:",omitempty"`
+	// Oneof is what `#[grpc.field]` says of a member of a payload enum a
+	// message holds as a oneof: the field its payload is written as.
+	Oneof ProtoField `json:",omitzero"`
 }
 
 // UnitDef is a resolved unit type declaration with conversion table.

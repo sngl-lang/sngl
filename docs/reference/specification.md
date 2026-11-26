@@ -422,15 +422,17 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                                                                                                                        |
-|----------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `bool`   | `true` or `false`.                                                                                                                                 |
-| `int`    | Signed integer of the target's own width: 64 bits on Go, Kotlin and C, a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
-| `float`  | 64-bit IEEE-754 floating point.                                                                                                                    |
-| `string` | Immutable UTF-8 text.                                                                                                                              |
+| Type     | Description                                                                                                                                                          |
+|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bool`   | `true` or `false`.                                                                                                                                                   |
+| `int`    | Signed integer of the target's own width: 64 bits on Go and C, 32 on Kotlin (its `Int`), a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                                                                                                                                      |
+| `string` | Immutable UTF-8 text.                                                                                                                                                |
 
 A value whose width is part of what it means takes a sized numeric instead,
-`int64` or `uint8` and the rest, which every target holds at its width.
+`int64` or `uint8` and the rest, which every target holds at its width: a
+count past 2^31 -- an id, a timestamp in milliseconds -- is an `int64`,
+which Kotlin holds as a `Long`.
 
 `any`, `anyStruct`, `anyFields`, `fieldsOf`, `methodsOf` and `ordered` are predeclared
 beside them and are no type a value may have: they are the constraints a type
@@ -1311,7 +1313,10 @@ is called. One declared `ref[T]` is the caller's cell, so a write to it is a
 write to the value the method was called on: `func Money.add(m ref[Money], cents int)` is called as `m.add(5)`, which hands it `m` as `&m` would, and
 as `Money.add(&m, 5)`. So it is called on a place, as `&` takes one: not on a
 `const` or a call's result, where the write would land nowhere. A method with no such parameter is static, called on
-the type, `Money.zero()`, and its body has no `this`. A `func` written inside a `struct` or
+the type, `Money.zero()`, and its body has no `this`. On a generic type it
+may be called on the type at its arguments, `Box[int].empty()`, which bind
+the type's parameters where no argument would; `Box.empty()` binds them from
+the type the call is expected to be. A `func` written inside a `struct` or
 `enum` body is a method of that type, and its body reads the receiver's fields
 by bare name. A `func` written in a component body is a method of the
 component.

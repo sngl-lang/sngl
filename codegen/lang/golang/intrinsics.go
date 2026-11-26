@@ -60,10 +60,13 @@ func init() {
 	regImp("string.split", []string{"strings"}, func(a []string) string { return "strings.Split(" + a[0] + ", " + a[1] + ")" })
 
 	// --- sngl:async ---
-	// A lifetime is the number pkg/go/snglasync holds it by.
+	// A lifetime and a queue are the numbers pkg/go/snglasync holds them by.
 	regImp("async.begin", []string{asyncRuntime}, func(a []string) string { return "snglasync.Begin()" })
 	regImp("async.end", []string{asyncRuntime}, func(a []string) string { return "snglasync.End(" + a[0] + ")" })
 	regImp("async.ended", []string{asyncRuntime}, func(a []string) string { return "snglasync.Ended(" + a[0] + ")" })
+	regImp("async.queueOpen", []string{asyncRuntime}, func(a []string) string { return "snglasync.OpenQueue()" })
+	regImp("async.queueSend", []string{asyncRuntime}, func(a []string) string { return "snglasync.MustSend(" + a[0] + ", " + a[1] + ")" })
+	regImp("async.queueClose", []string{asyncRuntime}, func(a []string) string { return "snglasync.CloseQueue(" + a[0] + ")" })
 
 	// --- sngl:time ---
 	// datetime is time.Time here and duration is time.Duration, so the host

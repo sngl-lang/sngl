@@ -133,15 +133,21 @@ func inlineCall(call *ir.Call, ctx *evalCtx) ir.Expr {
 	result = substituteParams(result, subs)
 	// A method on a generic builtin is written at its receiver's T, which
 	// the call bound: a lambda in `xs.format()` takes the int it is handed.
+	// A static one has no receiver, and the T its call was checked at is in
+	// what it answers: `queue.new()` assigned to a queue[Ask] spliced a
+	// queue[T].
 	recvParam := f.RecvParam
 	if recvParam == nil && len(f.Params) > 0 && f.Params[0].Receiver {
 		recvParam = f.Params[0]
 	}
-	if recvParam != nil && len(f.RecvTypeParams) > 0 {
+	if len(f.RecvTypeParams) > 0 {
 		b := map[string]*ir.Type{}
-		if recv := subs[recvParam]; recv != nil {
-			ir.BindTypeParams(recvParam.Type, recv.ExprType(), b)
+		if recvParam != nil {
+			if recv := subs[recvParam]; recv != nil {
+				ir.BindTypeParams(recvParam.Type, recv.ExprType(), b)
+			}
 		}
+		ir.BindTypeParams(f.Return, call.Type, b)
 		if len(b) > 0 {
 			result = ir.InstantiateExpr(result, b)
 		}

@@ -19,7 +19,7 @@ func init() {
 	codegen.RegisterIntrinsic(langKt, "http.pathEscape", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.escape(" + tr(args[0]) + ")", nil
 	})
-	// A lifetime is the number SnglCodec holds it by.
+	// A lifetime and a queue are the numbers SnglCodec holds them by.
 	codegen.RegisterIntrinsic(langKt, "async.begin", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.begin()", nil
 	})
@@ -29,14 +29,24 @@ func init() {
 	codegen.RegisterIntrinsic(langKt, "async.ended", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
 		return "SnglCodec.ended(" + tr(args[0]) + ")", nil
 	})
+	codegen.RegisterIntrinsic(langKt, "async.queueOpen", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.queueOpen()", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.queueSend", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.queueSend(" + tr(args[0]) + ", " + tr(args[1]) + ")", nil
+	})
+	codegen.RegisterIntrinsic(langKt, "async.queueClose", func(args []ir.Expr, tr func(ir.Expr) string) (string, []string) {
+		return "SnglCodec.queueClose(" + tr(args[0]) + ")", nil
+	})
 }
 
 // UsesCodec reports whether pkg calls a codec intrinsic anywhere, tests
-// included, pathEscape or a lifetime id: what makes android write SnglCodec.
+// included, pathEscape, a lifetime id or a gRPC method: what makes android
+// write SnglCodec.
 func UsesCodec(pkg *ir.Package) bool {
 	found := false
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape") {
+		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape" || ir.IsGRPC(c.Func)) {
 			found = true
 		}
 		return nil

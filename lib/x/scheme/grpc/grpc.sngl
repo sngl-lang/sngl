@@ -1,0 +1,119 @@
+import gen "sngl:x/gen"
+import marks "sngl:internal/marks"
+
+// `grpc:` imports a `.proto` file as a package of the messages it declares
+// and the methods its services offer:
+//
+//     import library "grpc:./library.proto"
+//
+// The path is the project's own file, relative to the import root, read
+// through the project: one outside it is refused. A file it imports is read
+// the way `protoc -I <its directory> -I .` would: from the named file's
+// directory, or else from the import root. The files protobuf ships
+// (`google/protobuf/timestamp.proto`) are its own.
+//
+//   - **A struct per message** reached, marked `#[grpc.message]`, each field
+//     `#[grpc.field]` with its number: an integer is an `int` and a
+//     `float`/`double` a `float`, the mark naming the kind the wire writes; a
+//     `bytes` field is a string of its base64. A field with presence -- a
+//     message, `optional`, a oneof's member -- is an option, a repeated one a
+//     list, and a map keyed by string a map. Every field has proto3's zero as
+//     its default, so a literal names only what it sets. A message nested in
+//     another is named after both, `Book.Shelf` → `BookShelf`.
+//   - **An enum per enum**, each member numbered with `#[grpc.value]` and
+//     named with the enum's own prefix taken off: `BOOK_KIND_HARD_COVER` is
+//     `hardCover`.
+//   - **A function per method**, named for it with `Call` after it,
+//     `getBookCall(request, life)`, answering `async.Result` of the response:
+//     the message, or the failure its status says (`grpc.classify`). A
+//     method streaming its responses takes `each`, handed every message as
+//     it comes, and answers how many came, `watchCall(request, each, life)`;
+//     one streaming its requests takes an `async.queue` of them,
+//     `requests`, sent while the call runs and closed to end them, and both
+//     at once takes both (`grpc.stream`).
+//   - **A component per unary method marked `idempotency_level =
+//     NO_SIDE_EFFECTS`**,
+//     named for the bare method, over `async.query` keyed by the request: the
+//     one way a descriptor tells a read from a write.
+//   - **`server`**, a context the program provides, and **`descriptor`**, the
+//     file's descriptor set.
+//
+// A map keyed by anything but a string and a group are left out, and the
+// import says so in a warning; so is a name it changed.
+gen.scheme(name="grpc", @generate(out, importPath) {
+    if outside(importPath) {
+        error.raise("grpc:" + importPath + " is outside the project: the file is read from the project's own files", "import")
+        return
+    }
+    var parts = importPath.split("/")
+    var name = parts[parts.length() - 1]
+    var dir = parts.slice(0, parts.length() - 1).format("/")
+    // Each file by the name its importer gives it, and where it is read.
+    var at map[string, string] = {}
+    at[name] = importPath
+    var files map[string, string] = {}
+    var todo = [name]
+    for todo.length() > 0 {
+        var next = todo[todo.length() - 1]
+        todo.remove(todo.length() - 1)
+        var text = read(at.get(next, next))
+        files[next] = text
+        for var i = imports(text, next) {
+            if at.contains(i) {
+                continue
+            }
+            if outside(i) {
+                error.raise(next + " imports " + i + ", which is outside the project", "import")
+                return
+            }
+            if dir != "" && gen.exists(dir + "/" + i) {
+                at[i] = dir + "/" + i
+            } else if gen.exists(i) {
+                at[i] = i
+            } else {
+                var tried = dir == "" ? i : dir + "/" + i + " or " + i
+                error.raise(next + " imports " + i + ", and there is no " + tried, "import")
+                return
+            }
+            todo.push(i)
+        }
+    }
+    var pkg = generate(files, name, importPath)
+    for var n = pkg.notes {
+        out.note(n)
+    }
+    out.file(pkg.file).add(pkg.source)
+})
+
+const func outside(p string) bool {
+    return p.startsWith("/") || p == ".." || p.startsWith("../") || p.contains("/../")
+}
+
+// Lines joined once: adding each to a string copies it every time.
+func read(p string) string {
+    var lines list[string] = []
+    for var line = gen.lines(p) {
+        lines.push(line)
+    }
+    return lines.format("\n")
+}
+
+// What an import resolves to.
+struct Package {
+    // The file to write: the `.proto`'s own name, as a .sngl file.
+    file   string
+    // Its source.
+    source string
+    // What the import says: what was left out, and why, and what was renamed.
+    notes  list[string]
+}
+
+// The files text, the file name, imports, but for protobuf's own.
+#[marks.intrinsic("grpc.imports", build)]
+func imports(text string, name string) list[string]
+
+// The package for the file name among files, each keyed by the name an
+// import gives it, imported as from. Answered by Go, which compiles the
+// files with protocompile and writes the source.
+#[marks.intrinsic("grpc.generate", build)]
+func generate(files map[string, string], name string, from string) Package

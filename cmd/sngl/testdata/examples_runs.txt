@@ -38,7 +38,7 @@ sngl test --platform=android --language=kotlin ./examples/...
 stdout '^ok +90 tests, 0 failures$'
 ! stdout SKIP
 -- testrun/android/kotlin/app.sngl/Calculator/1 --
-sha256:5cd7c61b9088d3d07a192ec6e17cb514
+sha256:51f208756caf1d8b10544da3cf3d0547
 {
   "results": [
     {
@@ -56,7 +56,7 @@ sha256:5cd7c61b9088d3d07a192ec6e17cb514
   ]
 }
 -- testrun/android/kotlin/app.sngl/Tour/1 --
-sha256:be069187825dd02525907fe9971a6e6b
+sha256:f1016e1b7d02a7316cccad4869083c4a
 {
   "results": [
     {
@@ -70,7 +70,7 @@ sha256:be069187825dd02525907fe9971a6e6b
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:c1f1e760e87315751c39de7ea0a33086
+sha256:ecfb2569458c27d41b7c42ab75316746
 {
   "results": [
     {
@@ -164,7 +164,7 @@ sha256:c1f1e760e87315751c39de7ea0a33086
   ]
 }
 -- testrun/android/kotlin/app.sngl/_/2 --
-sha256:55401245a7887579f69a9dfe514dec7d
+sha256:19daf7c44ac54f4e4d51bb9aab6e3f6b
 {
   "results": [
     {
@@ -174,7 +174,7 @@ sha256:55401245a7887579f69a9dfe514dec7d
   ]
 }
 -- testrun/android/kotlin/app.sngl/back/1 --
-sha256:ef380df069b9e2a602d169ee0a50785f
+sha256:b9d6af0a7faeb5d8c131922c8ab3a30f
 {
   "results": [
     {
@@ -184,7 +184,7 @@ sha256:ef380df069b9e2a602d169ee0a50785f
   ]
 }
 -- testrun/android/kotlin/app.sngl/chains/1 --
-sha256:3af07db44bb49a596e97459c9e429b0d
+sha256:3c28e659979479cf33e41424830396b7
 {
   "results": [
     {
@@ -194,7 +194,7 @@ sha256:3af07db44bb49a596e97459c9e429b0d
   ]
 }
 -- testrun/android/kotlin/app.sngl/detailPage/1 --
-sha256:7717ffb96c64e46ec5225fa23b398a9e
+sha256:a96f14427d7f628ef8b7d83c59b7523f
 {
   "results": [
     {
@@ -348,7 +348,7 @@ sha256:7717ffb96c64e46ec5225fa23b398a9e
   ]
 }
 -- testrun/android/kotlin/app.sngl/dexes/1 --
-sha256:b99ad754ef12ad84d3b7b57154587bed
+sha256:eed26b10f29ec46eadc9a15e92d1618b
 {
   "results": [
     {
@@ -358,7 +358,7 @@ sha256:b99ad754ef12ad84d3b7b57154587bed
   ]
 }
 -- testrun/android/kotlin/app.sngl/home/1 --
-sha256:47ac3ab2af97b6f1a93b21834a8787d2
+sha256:3f6b9aa9f3bf1176d569ef308d16d1a2
 {
   "results": [
     {
@@ -400,7 +400,7 @@ sha256:47ac3ab2af97b6f1a93b21834a8787d2
   ]
 }
 -- testrun/android/kotlin/app.sngl/mons/1 --
-sha256:844963288aa0bdf22914ee6cd7cef8bf
+sha256:0b196287150ac41f746740e4941948d7
 {
   "results": [
     {
@@ -410,7 +410,7 @@ sha256:844963288aa0bdf22914ee6cd7cef8bf
   ]
 }
 -- testrun/android/kotlin/app.sngl/named/1 --
-sha256:340fe62778b5d6e453f1c3ee0c5a1a1f
+sha256:5880e21ee20cd9e4b008b7cd28272d97
 {
   "results": [
     {
@@ -420,7 +420,7 @@ sha256:340fe62778b5d6e453f1c3ee0c5a1a1f
   ]
 }
 -- testrun/android/kotlin/app.sngl/roam/1 --
-sha256:a2b7dcbc82a1b241f7bb80acf5bc5df5
+sha256:de27f51ed793b11186453970dc393892
 {
   "results": [
     {
@@ -430,7 +430,7 @@ sha256:a2b7dcbc82a1b241f7bb80acf5bc5df5
   ]
 }
 -- testrun/android/kotlin/app.sngl/shapes/1 --
-sha256:801026a133c061f5c91320403a3d5c9d
+sha256:4b3ed6a400e721ae23063b3d4614fab4
 {
   "results": [
     {
@@ -440,7 +440,7 @@ sha256:801026a133c061f5c91320403a3d5c9d
   ]
 }
 -- testrun/android/kotlin/app.sngl/shell/1 --
-sha256:52575da36995fc15ae1a5e4a005e9736
+sha256:30fa88e5c8909970d61589d3eca39caa
 {
   "results": [
     {
@@ -462,7 +462,7 @@ sha256:52575da36995fc15ae1a5e4a005e9736
   ]
 }
 -- testrun/android/kotlin/app.sngl/spark/1 --
-sha256:c438eb48b201b6ab73b1113b705f6733
+sha256:edb0bafbd4ff8d3a55d9363097435920
 {
   "results": [
     {
@@ -472,7 +472,7 @@ sha256:c438eb48b201b6ab73b1113b705f6733
   ]
 }
 -- testrun/android/kotlin/app.sngl/species/1 --
-sha256:ae0c201dd00d2e1fd6a2854944cca6b5
+sha256:5e5f99986c2a1707964d7e79ade2d923
 {
   "results": [
     {
@@ -482,7 +482,7 @@ sha256:ae0c201dd00d2e1fd6a2854944cca6b5
   ]
 }
 -- testrun/android/kotlin/app.sngl/spray/1 --
-sha256:9c2bc93476a537304298b5183b3f99a1
+sha256:b6b7c474641890d14cb7c83675161c19
 {
   "results": [
     {
@@ -492,7 +492,7 @@ sha256:9c2bc93476a537304298b5183b3f99a1
   ]
 }
 -- testrun/android/kotlin/app.sngl/trip/1 --
-sha256:6aa0866da079bc38d49096d685c06a3f
+sha256:aa683e5d730f737279ee17017a8a02e3
 {
   "results": [
     {
@@ -502,7 +502,7 @@ sha256:6aa0866da079bc38d49096d685c06a3f
   ]
 }
 -- testrun/android/kotlin/app.sngl/walk/1 --
-sha256:53469ce55dfd958a3bf7db8ee1a46cf8
+sha256:9a6d857502b00d7efd860d3fd74ea17e
 {
   "results": [
     {

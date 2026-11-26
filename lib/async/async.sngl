@@ -67,3 +67,55 @@ func _end(id int)
 
 #[marks.intrinsic("async.ended", readonly)]
 func _ended(id int) bool
+
+// Items one request reads as they are sent: a gRPC call's request messages,
+// sent while its responses arrive. `queue[T].new()` makes an empty one and
+// `queue[T].from(items)` one already holding items and closed; copies share it, as a lifetime's do, so
+// one kept in a var and sent to from a handler is the one the call reads:
+//
+//	var out = async.queue[Ask].new()
+//	out.send({id=1})
+//	var r = chat(out, func(a Answer) {
+//	    if a.more { out.send({id=a.id + 1}) } else { out.close() }
+//	})
+//
+// A request reads until the queue is closed, so one never closed keeps it
+// waiting until its server or its lifetime ends it. Sending to a closed queue
+// is a fault. Each item goes to one reader: a queue is handed to one request.
+struct queue[T any] {
+    _id int = 0
+}
+
+// A new queue, empty and open.
+func queue[T].new() => queue[T]{_id=_open()}
+
+// A queue holding items, in order, and closed.
+func queue[T].from(items list[T]) queue[T] {
+    var q = queue[T].new()
+    for var item = items {
+        q.send(item)
+    }
+    q.close()
+    return q
+}
+
+// Adds item to the end of the queue.
+func queue[T].send(q queue[T], item T) {
+    _send(q._id, item)
+}
+
+// Says the queue holds no more than it has been sent: its reader ends once it
+// has read them.
+func queue[T].close(q queue[T]) {
+    _close(q._id)
+}
+
+// The runtime holds a queue by a number, as it does a lifetime.
+#[marks.intrinsic("async.queueOpen", mutates)]
+func _open() int
+
+#[marks.intrinsic("async.queueSend", mutates)]
+func _send[T any](id int, item T)
+
+#[marks.intrinsic("async.queueClose", mutates)]
+func _close(id int)

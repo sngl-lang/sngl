@@ -1,0 +1,3 @@
+// Package grpc serves the `grpc:` import scheme: the library's own plugin,
+// which a program reaches by importing `grpc:…` and never by importing this
+// package. See the scheme's declaration for what an import resolves to.

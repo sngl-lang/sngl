@@ -53,6 +53,9 @@ type Config struct {
 	// Nav is set when the program renders a sngl:ui/nav stack, which is a
 	// NavHost and wants navigation-compose and kotlinx.serialization.
 	Nav bool
+	// GRPC is set when the program calls a gRPC method, which SnglGrpc
+	// carries over OkHttp.
+	GRPC bool
 	// accent is Color as the program wrote it, before withDefaults fills in
 	// the launcher's default: the theme's primary where it is set, and the
 	// device's own colors where it is not.
@@ -627,10 +630,8 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	body.WriteString(kotlin.EmitUnitDataClasses(info.Units))
 
 	// Data classes. The built-in `color` is skipped: it is carried as
-	// kotlin.ColorDecl below, whose channels are Int rather than the UByte
-	// its uint8 fields would give -- which is what the stdlib helpers pass and
-	// what Compose's own channel constructor takes. Emitting the declaration
-	// too left two `data class Color` in one file.
+	// kotlin.ColorDecl below, which prints as SNGL's color does. Emitting the
+	// declaration too left two `data class Color` in one file.
 	declaredStructs := map[string]struct{}{}
 	for _, sd := range info.Structs {
 		if sd.Builtin == ir.BuiltinColor {
@@ -1683,15 +1684,14 @@ func composedCallees(ctx *codegen.CodegenCtx) map[*ir.Func]bool {
 // reference at it. MainScreen holds that state as remembered locals, and the
 // test build as members of its state class, so the method is declared in
 // whichever holds it and called as the page's other functions are, where an
-// extension is declared at top level.
+// extension is declared at top level. A static method is one too, whatever
+// it reads: it has no value to extend, and as an extension it was called on
+// its first argument, `n.zero()` for `Money.zero(n)`.
 func pageTypeMethods(ctx *codegen.CodegenCtx, cfg Config) {
-	if cfg.GoLib {
-		return
-	}
 	moved := map[*ir.Func]*ir.Func{}
 	reaching := codegen.PackageStateFuncs(ctx.Pkg)
 	for i, fn := range ctx.Pkg.Funcs {
-		if !fn.OnType() || !reaching[fn] {
+		if !fn.IsStatic() && (cfg.GoLib || !fn.OnType() || !reaching[fn]) {
 			continue
 		}
 		page := *fn

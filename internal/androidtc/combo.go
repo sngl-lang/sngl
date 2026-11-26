@@ -33,6 +33,7 @@ type Combo struct {
 	ActivityCompose string // androidx.activity:activity-compose version
 	Navigation      string // androidx.navigation:navigation-compose version
 	Serialization   string // org.jetbrains.kotlinx:kotlinx-serialization-json version
+	OkHttp          string // com.squareup.okhttp3:okhttp version, for a program calling gRPC
 
 	// JDKMin/JDKMax bound the JDK major version this combo's Gradle can launch
 	// on and compile against. The lower bound is the compile target; the upper
@@ -60,6 +61,7 @@ var combos = []Combo{
 		ActivityCompose: "1.9.3",
 		Navigation:      "2.8.9",
 		Serialization:   "1.7.3",
+		OkHttp:          "4.12.0",
 		JDKMin:          17,
 		JDKMax:          23,
 	},
@@ -83,6 +85,7 @@ var combos = []Combo{
 		ActivityCompose: "1.10.1",
 		Navigation:      "2.8.9",
 		Serialization:   "1.7.3",
+		OkHttp:          "4.12.0",
 		JDKMin:          17,
 		JDKMax:          25,
 	},

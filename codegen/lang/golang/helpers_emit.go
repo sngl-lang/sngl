@@ -60,6 +60,9 @@ type HelperSet struct {
 	// order first seen. One helper each rather than one shared: a unit's bases
 	// are per declaration, so the terms have to be written out.
 	UnitStrings []*ir.UnitDef
+	// Proto are the messages and enums a grpc.call reaches, each written as
+	// code of its own (proto.go).
+	Proto protoMessages
 }
 
 // needUnitString records that ud is rendered as a string somewhere, ignoring
@@ -168,6 +171,8 @@ func helpersNeeded(pkg *ir.Package) HelperSet {
 				h.NeedSome = true
 			}
 			h.needUnitString(UnitStringConversion(n))
+		case *ir.Call:
+			recordProtoHelpers(&h, n)
 		case *ir.Binary:
 			if _, _, ok := OptionCompare(n); ok {
 				h.NeedOptEq = true
@@ -224,6 +229,9 @@ func (h HelperSet) Imports() []string {
 	}
 	if h.NeedParseInt || h.NeedParseFloat {
 		imps = append(imps, "strconv")
+	}
+	if len(h.Proto.nodes) > 0 {
+		imps = append(imps, protowire, grpcRuntime, "strconv")
 	}
 	if len(h.UnitStrings) > 0 {
 		imps = append(imps, "fmt")
@@ -435,6 +443,7 @@ func (h HelperSet) Emit() string {
 `)
 	}
 	b.WriteString(h.EmitUnitStringFuncs())
+	b.WriteString(h.Proto.emit())
 	return b.String()
 }
 

@@ -103,7 +103,7 @@ ui.window {
     many()
 }
 -- testrun/android/kotlin/app.sngl/many/1 --
-sha256:83ccf40c8d2849e4f5b7116a31fc18d0
+sha256:e8a29e01ea1ebeadcdc5da3f54011dde
 {
   "results": [
     {
@@ -113,7 +113,7 @@ sha256:83ccf40c8d2849e4f5b7116a31fc18d0
   ]
 }
 -- testrun/android/kotlin/app.sngl/one/1 --
-sha256:7d44f29e327a720ea4e3a5bdbd93831b
+sha256:4f5c4d843d0abf9f79d9ae18ab30b288
 {
   "results": [
     {

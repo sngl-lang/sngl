@@ -99,12 +99,12 @@ func (env *Env) evalCodecCall(call *ir.Call) (any, bool, error) {
 	if hook := arg("hook"); hook != nil {
 		// A request handed a lifetime already ended answers `cancelled`,
 		// whatever answers in the network's place.
-		if snglasync.Ended(lifetimeID(arg("life"))) {
+		if snglasync.Ended(heldID(arg("life"))) {
 			return resultFailed(call.Type, "cancelled", "cancelled", ""), true, nil
 		}
 		return env.answerRequest(call, hook, method, url, arg("headers"), arg("body"))
 	}
-	resp, fail := snglhttp.Send(snglasync.Context(lifetimeID(arg("life"))), method, url, headers, body)
+	resp, fail := snglhttp.Send(snglasync.Context(heldID(arg("life"))), method, url, headers, body)
 	if fail != nil {
 		kind := "transport"
 		switch {

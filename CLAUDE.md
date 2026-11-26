@@ -40,10 +40,10 @@ spec instead.
 - `design/markup.md` — `sngl:ui/markup`, the `md:` scheme, `md.document`
 - `design/images.md` — `ui.imageSource` and each target's answer
 - `design/plugins.md` — plugin principles and known gaps
-- `design/import-schemes.md` — plugin schemes, `c:` and `openapi:`
+- `design/import-schemes.md` — plugin schemes, `c:`, `openapi:` and `grpc:`
 - `design/navigation.md` — `sngl:ui/nav` on each target
 - `design/win32.md` — win32gen and its metadata pin, the Go wrappers (`sngl tool cgogen`), the win32 runtime's layout
-- `design/types.md` — anonymous and generic structs, constraint functions and aliases, monomorphization, units and their display, member lookup
+- `design/types.md` — anonymous and generic structs, constraint functions and aliases, monomorphization, units and their display, member lookup, sized numerics on each target
 - `design/testing.md` — fixture directives, goldens and `deny`, recorded runs, the two harnesses, test lowering and test reach
 - `design/performance.md` — profiling, the store (`internal/gencache`), what costs
 - `design/trust.md` — grants, `--allow-eval`, fetch gating, the LSP

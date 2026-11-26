@@ -155,13 +155,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -569,4 +569,4 @@ fun SnglScroll(
     Column(scrolled.onSizeChanged { extent = if (sideways) it.width else it.height }.snglFlexible(false), content = content)
 }
 -- run/kotlin/android --
-pass sha256:2b1cd405722acf231202d669f0a33a72
+pass sha256:4ee7e56dc00ad563db4c0face4bfa5f0

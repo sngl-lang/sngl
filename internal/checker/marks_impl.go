@@ -52,6 +52,9 @@ var markImpls = map[markKey]markImpl{
 	{"ui/markup/md", "order"}:          markMdOrder,
 	{"json", "identifier"}:             markJSONIdentifier,
 	{"http", "identifier"}:             markHTTPIdentifier,
+	{"grpc", "message"}:                markGRPCMessage,
+	{"grpc", "field"}:                  markGRPCField,
+	{"grpc", "value"}:                  markGRPCValue,
 	{"platform/android", "permission"}: markAndroidPermission,
 }
 
@@ -118,6 +121,61 @@ func markHTTPIdentifier(m *mark) error {
 		return fmt.Errorf("#[http.identifier(%q)] marks %d fields at once; one key cannot name several fields", name, n)
 	}
 	d.HTTP = name
+	return nil
+}
+
+// markGRPCMessage implements #[grpc.message("pkg.Name")]: the protobuf
+// message a struct is.
+func markGRPCMessage(m *mark) error {
+	name := m.args.String("name")
+	if name == "" {
+		return fmt.Errorf("#[grpc.message] requires a non-empty name")
+	}
+	d, ok := m.sym.(*ir.StructDef)
+	if !ok {
+		return fmt.Errorf("#[grpc.message] cannot mark %s; only a struct is a message", ast.DeclFormName(m.decl))
+	}
+	d.Proto = name
+	return nil
+}
+
+// markGRPCField implements #[grpc.field(number, kind)]: a struct field's
+// protobuf number, and its kind where its type says less than the wire does.
+// Whether the kind fits the type is the call's to say (ir.CodecProblem),
+// since a generic struct's field has no type yet.
+func markGRPCField(m *mark) error {
+	var into *ir.ProtoField
+	switch d := m.sym.(type) {
+	case *ir.StructField:
+		if n := markedNames(m.decl); n > 1 {
+			return fmt.Errorf("#[grpc.field] marks %d fields at once; one number cannot name several fields", n)
+		}
+		into = &d.Proto
+	case *ir.EnumMember:
+		into = &d.Oneof
+	default:
+		return fmt.Errorf("#[grpc.field] cannot mark %s; only a struct field or a oneof's member has a protobuf number", ast.DeclFormName(m.decl))
+	}
+	n := m.args.Int("number")
+	if n < 1 || n > 536870911 || n >= 19000 && n <= 19999 {
+		return fmt.Errorf("#[grpc.field(%d)]: a field number is from 1 to 536870911, outside 19000-19999", n)
+	}
+	into.Number = int(n)
+	if k := m.args.Ident("kind"); k != "" && k != "inferred" {
+		into.Kind = ir.ProtoKind(k)
+	}
+	return nil
+}
+
+// markGRPCValue implements #[grpc.value(number)]: an enum member's protobuf
+// number.
+func markGRPCValue(m *mark) error {
+	d, ok := m.sym.(*ir.EnumMember)
+	if !ok {
+		return fmt.Errorf("#[grpc.value] cannot mark %s; only an enum member has a protobuf number", ast.DeclFormName(m.decl))
+	}
+	n := int(m.args.Int("number"))
+	d.Proto = &n
 	return nil
 }
 

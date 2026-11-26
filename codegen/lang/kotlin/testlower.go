@@ -531,12 +531,13 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		if n.Op == ast.BinEq || n.Op == ast.BinNeq {
 			left, right = comparableList(n.Left, left), comparableList(n.Right, right)
 		}
-		return "(" + left + " " + n.Op.String() + " " + right + ")"
+		left, right = literalAs(n.Left, n.Right, left), literalAs(n.Right, n.Left, right)
+		return arith(n, "("+left+" "+n.Op.String()+" "+right+")")
 	case *ir.Unary:
 		if n.Op == ast.UnaryNot {
 			return "!" + lowerTestExpr(n.Operand, surf, compRecvs)
 		}
-		return "-" + lowerTestExpr(n.Operand, surf, compRecvs)
+		return narrowed(n.ExprType(), "-"+lowerTestExpr(n.Operand, surf, compRecvs))
 	case *ir.Literal:
 		if ir.StringReprStruct(n.Type) {
 			return Quote(n.Value)
@@ -546,13 +547,8 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 			return Quote(n.Value)
 		case ir.TypeNull:
 			return "null"
-		case ir.TypeFloat:
-			// Kotlin types an unsuffixed whole number as Int, so a float
-			// whose raw form lost its fraction compares and assigns against
-			// Double as a type error rather than a widening.
-			if !strings.Contains(n.Value, ".") {
-				return n.Value + ".0"
-			}
+		case ir.TypeInt, ir.TypeFloat:
+			return ktLiteral(n)
 		}
 		return n.Value
 	case *ir.Ident:

@@ -1,0 +1,27 @@
+// Calling a gRPC service while the program runs, and the marks that say which
+// protobuf message each struct is.
+//
+//	#[grpc.message("library.v1.Book")]
+//	struct Book {
+//	    #[grpc.field(1)] id int
+//	    #[grpc.field(2)] title string
+//	}
+//
+//	match var r = grpc.call[GetBookRequest, Book](server="localhost:50051", method="/library.v1.Library/GetBook", request={id=7}) {
+//	    ok { … r.title … }
+//	    failed { … grpc.classify(r).kind … }
+//	}
+//
+// A program rarely writes either: `import api "grpc:./library.proto"` writes
+// the structs, the enums and a function per method.
+//
+// **The marks are the schema.** A field's number and kind, a member's number
+// and a struct's message name land on the IR (`ir.CodecProto`), so each
+// language writes the bytes itself from the plan -- straight into its own
+// types, with no message object between -- or hands `descriptor` to protoc's
+// own generation.
+//
+// A call waits, as any async function does; `stream` calls a streaming
+// method, sending each request an `async.queue` is sent and handing each
+// response to a function as it comes, so a response may ask for the next
+// request. Metadata, deadlines and credentials are not set yet.

@@ -9,6 +9,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.4
 	fyne.io/fyne/v2 v2.7.4
 	github.com/alecthomas/chroma/v2 v2.27.0
+	github.com/bufbuild/protocompile v0.14.1
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/cellbuf v0.0.15
 	github.com/davecgh/go-spew v1.1.1
@@ -27,9 +28,11 @@ require (
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	golang.org/x/image v0.38.0
 	golang.org/x/mod v0.41.0
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.60.0
 	golang.org/x/text v0.42.0
 	golang.org/x/tools v0.51.0
+	google.golang.org/grpc v1.85.0
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/scanner v1.4.0
 	nhooyr.io/websocket v1.8.17
@@ -53,7 +56,7 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bwplotka/mdox v0.9.0 // indirect
-	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/glamour v0.3.0 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260205113103-524a6607adb8 // indirect
@@ -88,7 +91,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gohugoio/hugo v0.74.3 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
-	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hack-pad/go-indexeddb v0.3.2 // indirect
@@ -146,7 +149,7 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
-	google.golang.org/protobuf v1.26.0-rc.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261123191846-1e707ab9fbc2 // indirect
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/egg v1.2.3 // indirect

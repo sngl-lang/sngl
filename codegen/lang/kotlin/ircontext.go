@@ -256,7 +256,58 @@ func (kc *KtIRContext) Binary(n *ir.Binary, left, right string) string {
 	if n.Op == ast.BinEq || n.Op == ast.BinNeq {
 		left, right = comparableList(n.Left, left), comparableList(n.Right, right)
 	}
-	return "(" + left + " " + n.Op.String() + " " + right + ")"
+	left, right = literalAs(n.Left, n.Right, left), literalAs(n.Right, n.Left, right)
+	return arith(n, "("+left+" "+n.Op.String()+" "+right+")")
+}
+
+// narrowInt is a width Kotlin's arithmetic widens: Byte + Byte is an Int and
+// UByte + UByte a UInt, so a result is converted back, which is also where it
+// wraps as it does on every other target.
+func narrowInt(t *ir.Type) bool {
+	return t != nil && t.Kind == ir.TypeInt && (t.Bits == 8 || t.Bits == 16)
+}
+
+func narrowed(t *ir.Type, expr string) string {
+	if !narrowInt(t) {
+		return expr
+	}
+	return "(" + expr + ")." + ktIntConvMethod(t)
+}
+
+func arith(n *ir.Binary, expr string) string {
+	if n.Op > ast.BinMod {
+		return expr
+	}
+	return narrowed(n.ExprType(), expr)
+}
+
+// compound is lhs op= rhs as the value it assigns.
+func compound(t *ir.Type, lhs string, op ast.AssignOp, rhs string) string {
+	return narrowed(t, lhs+" "+strings.TrimSuffix(op.String(), "=")+" "+rhs)
+}
+
+// literalAs is an integer literal operand spelled as the other operand's
+// integer type: Kotlin compares and adds no Long with an Int, and a literal
+// beside an int64 is checked as an int.
+func literalAs(lit, other ir.Expr, rendered string) string {
+	l, ok := lit.(*ir.Literal)
+	if !ok || l.Type == nil || l.Type.Kind != ir.TypeInt {
+		return rendered
+	}
+	t := other.ExprType()
+	for t != nil && (t.Kind == ir.TypeOption || t.Kind == ir.TypeReadonly) && len(t.Elems) == 1 {
+		t = t.Elems[0]
+	}
+	if t == nil || t.Kind != ir.TypeInt || ktIntType(t) == ktIntType(l.Type) {
+		return rendered
+	}
+	switch ktIntType(t) {
+	case "Long", "ULong", "UInt", "Byte", "UByte", "Short", "UShort":
+		cp := *l
+		cp.Type = t
+		return ktLiteral(&cp)
+	}
+	return rendered
 }
 
 // comparableList reads a list operand of == as a plain List: a list var is a
@@ -280,7 +331,7 @@ func (kc *KtIRContext) Unary(n *ir.Unary, operand string) string {
 	if n.Op == ast.UnaryNot {
 		return "!" + operand
 	}
-	return "-" + operand
+	return narrowed(n.ExprType(), "-"+operand)
 }
 func (kc *KtIRContext) Ternary(_ *ir.Ternary, cond, then_, else_ string) string {
 	return "(if (" + cond + ") " + then_ + " else " + else_ + ")"
@@ -400,8 +451,7 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 		recv := irwalk.EvalMutTarget(kc, idx.Operand)
 		key := kc.EvalExpr(idx.Idx)
 		if n.Op != ast.AssignSet {
-			op := strings.TrimSuffix(n.Op.String(), "=")
-			value = "(" + recv + "[" + key + "] ?: " + ktMapValZero(idx.Operand.ExprType()) + ") " + op + " " + value
+			value = compound(n.Target.ExprType(), "("+recv+"["+key+"] ?: "+ktMapValZero(idx.Operand.ExprType())+")", n.Op, value)
 		}
 		// A map in a field of a struct held by state is rebuilt and copied
 		// back up the path, as a field write is below: assigned in place,
@@ -424,7 +474,7 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 	// state, as the map write above does.
 	if sel, ok := n.Target.(*ir.Select); ok && kc.isStateStructField(sel) {
 		if n.Op != ast.AssignSet {
-			value = target + " " + strings.TrimSuffix(n.Op.String(), "=") + " (" + value + ")"
+			value = compound(n.Target.ExprType(), target, n.Op, "("+value+")")
 		}
 		return kc.rebuildStructPath(sel, value)
 	}
@@ -433,8 +483,15 @@ func (kc *KtIRContext) AssignText(n *ir.Assign, target, value string) string {
 	if idx, ok := n.Target.(*ir.Index); ok && !isMapExpr(idx.Operand) {
 		if sel, ok := idx.Operand.(*ir.Select); ok && kc.isListFieldPath(sel) {
 			key := kc.WithLocal("it").EvalExpr(idx.Idx)
+			if n.Op != ast.AssignSet && narrowInt(n.Target.ExprType()) {
+				value = compound(n.Target.ExprType(), "it["+key+"]", n.Op, value)
+				return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { it["+key+"] = "+value+" }")
+			}
 			return kc.rebuildStructPath(sel, irwalk.EvalMutTarget(kc, sel)+".toMutableList().also { it["+key+"] "+n.Op.String()+" "+value+" }")
 		}
+	}
+	if n.Op != ast.AssignSet && narrowInt(n.Target.ExprType()) {
+		return target + " = " + compound(n.Target.ExprType(), target, n.Op, value)
 	}
 	return target + " " + n.Op.String() + " " + value
 }
@@ -942,6 +999,27 @@ func ktLiteral(n *ir.Literal) string {
 	case ir.TypeString:
 		return Quote(n.Value)
 	case ir.TypeInt:
+		// An Int literal is no unsigned value: Kotlin converts none implicitly.
+		// Nor is it a Long: a literal is an Int wherever its type is
+		// inferred, as `mutableStateOf(3)` infers a holder's.
+		if n.Type.Bits == 64 && !n.Type.Unsigned {
+			return n.Value + "L"
+		}
+		if narrowInt(n.Type) {
+			v := n.Value
+			if strings.HasPrefix(v, "-") {
+				v = "(" + v + ")"
+			}
+			return v + "." + ktIntConvMethod(n.Type)
+		}
+		if n.Type.Unsigned && !strings.HasPrefix(n.Value, "-") {
+			switch n.Type.Bits {
+			case 64:
+				return n.Value + "uL"
+			case 32:
+				return n.Value + "u"
+			}
+		}
 		return n.Value
 	case ir.TypeFloat:
 		s := n.Value
@@ -1110,6 +1188,9 @@ func ktMethodTail(name string) string {
 func (kc *KtIRContext) evalCall(n *ir.Call) string {
 	// A codec call reads the type it reads or writes, which is the call's.
 	if out, ok := kc.codecCall(n); ok {
+		return out
+	}
+	if out, ok := kc.grpcCall(n); ok {
 		return out
 	}
 	// Intrinsic dispatch by ID — never by method name. Backends register only
@@ -1581,6 +1662,12 @@ func ktZeroFor(t *ir.Type) string {
 	}
 	switch t.Kind {
 	case ir.TypeInt:
+		if narrowInt(t) {
+			return "0." + ktIntConvMethod(t)
+		}
+		if t.Unsigned {
+			return "0u"
+		}
 		return "0"
 	case ir.TypeFloat:
 		return "0.0"
@@ -2189,22 +2276,21 @@ const FloatStringDecl = `fun ` + FloatStringFn + `(v: Double): String =
 
 // colorKtType names the Kotlin class SNGL's `color` is carried as, and
 // ColorDecl is its declaration -- the counterpart of Go's
-// pkg/go/snglcolor.Color. Channels are Int, not the UByte the SNGL
-// declaration's uint8 would give, so that the stdlib helpers (color.rgb,
-// color.lighten, ...) and Compose's own Int channel constructor both reach it
-// without a conversion per channel.
+// pkg/go/snglcolor.Color. Its channels are the UByte its uint8 fields are,
+// so the stdlib's arithmetic on them wraps as everywhere else; what hands one
+// to Compose converts it to the Int Compose takes.
 const colorKtType = "Color"
 
 // toString mirrors snglcolor.Color.String: a color is its complete value, so
 // a translucent one keeps its alpha rather than printing as an opaque one.
 const ColorDecl = `data class ` + colorKtType + `(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 `
 

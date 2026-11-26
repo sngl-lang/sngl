@@ -149,13 +149,13 @@ data class __anon_id_elem_c6a818(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -524,4 +524,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:9a87c93c7d6e02647020e61be8fb26ac
+pass sha256:d848ec689e5104bb2ce17aafa036c868

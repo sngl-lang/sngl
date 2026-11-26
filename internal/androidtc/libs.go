@@ -28,5 +28,15 @@ func (c Combo) LibraryRoots() (roots []string, bom string) {
 	}, "androidx.compose:compose-bom:" + c.ComposeBOM
 }
 
+// GRPCLibs are what a program calling gRPC adds to Libs: OkHttp's closure,
+// less what Libs already has.
+func (c Combo) GRPCLibs() []Lib { return comboGRPCLibs[c.Name] }
+
+// GRPCRoots are the libraries the Gradle scaffold adds for a program calling
+// gRPC.
+func (c Combo) GRPCRoots() []string {
+	return []string{"com.squareup.okhttp3:okhttp:" + c.OkHttp}
+}
+
 // Combos is every combo, for the generator.
 func Combos() []Combo { return append([]Combo(nil), combos...) }

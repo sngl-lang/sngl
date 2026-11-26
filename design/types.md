@@ -156,6 +156,22 @@ and the checker marks it `Param.Ambient` where it desugars the method, since
 the desugared parameter is otherwise the one a declaration writes
 (`testdata/ref_params.sngl`).
 
+**A static method on a generic type is bound by its brackets or by what it
+answers** where no argument says its T. `async.queue[Ask].new()` is a call
+on the type at its arguments: `inferMethodCall` resolves a bracketed type
+name as the type rather than indexing it, and the static call binds the
+receiver's parameters from it before inferring the rest
+(`testdata/static_method_type_args.sngl`,
+`error_static_method_type_args.sngl`). `var q async.queue[Ask] = async.queue.new()` binds them from the expected type. The
+inliner bound a generic method's parameters from its receiver alone and
+spliced `new`'s body as a `queue[T]` literal, which Go then declared a
+`queue__Ask` var holding; it binds `Func.Return` against the call's type too
+(`testdata/generic_static_method_from_package.txtar`). Kotlin has no value
+to extend for one, so android declares each static method a plain function
+named after its type, `money_zero(n)`, where an extension was called on its
+first argument (`ir.Func.IsStatic`, `pageTypeMethods`,
+`testdata/static_method_codegen.txtar`).
+
 **A receiver's list may narrow a parameter its declaration leaves `any`**
 (`func list[T ordered].sort()`). The parser keeps the constraint on
 `FuncDef.RecvTypeParams`; `inheritReceiverConstraints` skips a parameter with
@@ -243,3 +259,20 @@ defines (`codegen/lang/c/units.go`). Its text is the sum the interpreter
 prints (`unitValue.String`): each base it holds a magnitude in, joined by
 `ir.UnitTermSep`, or its zero in the first base, each term written by the
 runtime's `sngl_unit_term` as `ir.FormatUnitTerm` writes one.
+
+## Sized numerics on each target
+
+**A sized integer holds its width on every target, the interpreter's answer
+included.** Go and C have the types. JavaScript holds an int as a double and
+narrows each result (`jsWrapArith`: a shift pair, `>>> 0`, or
+`BigInt.asIntN` for 64 bits). Kotlin has the types but widens `Byte` and
+`Short` arithmetic to `Int` and `UByte` and `UShort` to `UInt`, and has no
+literal for them: a literal is `250.toUByte()`, and each `+ - * / %` and
+negation of an 8- or 16-bit operand is converted back (`narrowed` in
+`codegen/lang/kotlin/ircontext.go`). Unconverted, a state var of one was a
+`mutableStateOf(250)` -- an `Int` that never wrapped -- and a struct field's
+`UByte = 0` did not compile. A compound assignment is the binary expression
+it stands for on both (`AssignOp.Binary`): JavaScript's bare `x += 100` left
+an `int8` at 200. `cmd/sngl/testdata/sized_numbers_runs.txt` runs the
+`testdata/test_sized_*.sngl` fixtures on html and android, the two targets
+whose numbers are not Go's.

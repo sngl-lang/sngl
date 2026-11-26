@@ -52,20 +52,30 @@ package androidtc
 
 var comboLibs = map[string][]Lib{
 `)
+	var grpc bytes.Buffer
+	grpc.WriteString("\nvar comboGRPCLibs = map[string][]Lib{\n")
 	for _, c := range androidtc.Combos() {
-		libs, err := resolve(c)
+		roots, bom := c.LibraryRoots()
+		libs, err := resolve(roots, bom)
 		if err != nil {
 			log.Fatalf("combo %s: %v", c.Name, err)
 		}
-		fmt.Fprintf(&buf, "\t%q: {\n", c.Name)
-		for _, l := range libs {
-			fmt.Fprintf(&buf, "\t\t{Group: %q, Module: %q, Version: %q, File: %q, URL: %q, SHA256: %q},\n",
-				l.Group, l.Module, l.Version, l.File, l.URL, l.SHA256)
-		}
-		buf.WriteString("\t},\n")
+		writeLibs(&buf, c.Name, libs)
 		log.Printf("%s: %d libraries", c.Name, len(libs))
+		all, err := resolve(append(roots, c.GRPCRoots()...), bom)
+		if err != nil {
+			log.Fatalf("combo %s with gRPC: %v", c.Name, err)
+		}
+		extra, err := added(libs, all)
+		if err != nil {
+			log.Fatalf("combo %s with gRPC: %v", c.Name, err)
+		}
+		writeLibs(&grpc, c.Name, extra)
+		log.Printf("%s: %d libraries for gRPC", c.Name, len(extra))
 	}
 	buf.WriteString("}\n")
+	grpc.WriteString("}\n")
+	buf.Write(grpc.Bytes())
 	src, err := format.Source(buf.Bytes())
 	if err != nil {
 		log.Fatal(err)
@@ -74,6 +84,36 @@ var comboLibs = map[string][]Lib{
 	if err := os.WriteFile(out, src, 0o644); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func writeLibs(buf *bytes.Buffer, name string, libs []androidtc.Lib) {
+	fmt.Fprintf(buf, "\t%q: {\n", name)
+	for _, l := range libs {
+		fmt.Fprintf(buf, "\t\t{Group: %q, Module: %q, Version: %q, File: %q, URL: %q, SHA256: %q},\n",
+			l.Group, l.Module, l.Version, l.File, l.URL, l.SHA256)
+	}
+	buf.WriteString("\t},\n")
+}
+
+// added is what all has beyond base. A library both have at different
+// versions is an error: the extra set is added to base as it is, so it may
+// not move a version base pins.
+func added(base, all []androidtc.Lib) ([]androidtc.Lib, error) {
+	have := map[coord]string{}
+	for _, l := range base {
+		have[coord{l.Group, l.Module}] = l.Version
+	}
+	var out []androidtc.Lib
+	for _, l := range all {
+		v, ok := have[coord{l.Group, l.Module}]
+		switch {
+		case !ok:
+			out = append(out, l)
+		case v != l.Version:
+			return nil, fmt.Errorf("%s:%s is %s alone and %s with gRPC's libraries", l.Group, l.Module, v, l.Version)
+		}
+	}
+	return out, nil
 }
 
 // coord is a module without its version.
@@ -102,8 +142,7 @@ type req struct {
 	version string
 }
 
-func resolve(c androidtc.Combo) ([]androidtc.Lib, error) {
-	roots, bom := c.LibraryRoots()
+func resolve(roots []string, bom string) ([]androidtc.Lib, error) {
 	bomVersions := map[coord]string{}
 	if bom != "" {
 		g, m, v := split3(bom)

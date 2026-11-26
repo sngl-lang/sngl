@@ -127,3 +127,64 @@ The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
 harness's server on all six targets; the refusals
 `cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
 and the store `openapi_store.txt`.
+
+## The `grpc:` scheme
+
+**`import library "grpc:./library.proto"` writes a package from a `.proto`
+file** (`lib/x/scheme/grpc`): a struct per message reached, an enum per
+enum, a `…Call` function per unary method answering `async.Result`, a
+component over `async.query` per method marked `idempotency_level = NO_SIDE_EFFECTS`, `server`, a context the program provides, and
+`descriptor`, the file's `FileDescriptorSet` as base64. The idempotency
+option is the one thing a descriptor says that tells a read from a write,
+which is why it, and not a naming convention, decides the component. The
+path is read through the project as `openapi:`'s is.
+
+**Go compiles the file and writes the package** (`codegen/scheme/grpc`),
+with protocompile, so no build needs protoc. The handler reads the files:
+the one named, and each it imports (`grpc.imports`), from the named file's
+directory or else the import root, as `protoc -I <dir> -I .` would, so every
+read is the handler's and recorded, and Go is handed them by the name each
+import gives. A message from another file is written where one of the named
+file's reaches it, as a well-known type is; the services are the named
+file's alone. A message nested in
+another is named after both, a field is its `json_name`, an enum member its
+value's name with the enum's prefix off, and each carries the mark saying
+what it is on the wire (`#[grpc.message]`, `#[grpc.field(number, kind)]`,
+`#[grpc.value]`). A field with presence is an option, a oneof a payload
+enum named after its message and itself, its first member `none` the oneof
+unset and a member per field carrying it, numbered by `#[grpc.field]` on
+the member; a struct field holding one is the oneof and takes no number of
+its own. A oneof as an option per member would let a program build a
+message setting two, which the wire has no form for. A field takes the SNGL type its wire width holds on every target: a signed 32-bit one an `int`, which is 32 bits on Kotlin, a `uint32` field a `uint32`, and a 64-bit one an `int64` or a `uint64`, with `#[grpc.field]`'s kind where the encoding is not the type's own (`sint32`, `fixed64`). Every field has proto3's zero as its default, and a well-known type
+is a struct like any other. A map keyed by anything but a string and an
+aliasing enum value are left out, with a note; a method whose request holds
+a list or a map has no component, since a query's key is compared.
+
+**A streaming method is a function over `grpc.stream`**, which sends each
+request an `async.queue` is sent and hands each response to `each` as it
+comes, answering how many came. A list could not be it: a call waits, so a
+list is whole before the first response, and a method answering each message
+is then never sent the next one its last answer asked for. The queue is a
+number the runtime holds, as a lifetime is (`snglasync`, SnglCodec), so a
+copy kept in a var and sent to from `each` or any handler is the one the call
+reads; a pump reads it into the request body while the responses are read --
+an `io.Pipe` under x/net's HTTP/2 in Go and the interpreter, a duplex OkHttp
+body on android -- and closing it ends the requests. `each` runs where code
+after a wait would -- the caller's goroutine in Go, the caller's coroutine in
+Kotlin, which a reader on the IO dispatcher feeds through a channel -- so a
+write to state from it is any handler's, and ending the lifetime from it ends
+the call. Server streaming passes `async.queue.from([request])`, client
+streaming is the same intrinsic answering one message, checked in SNGL, and a
+unary call is snglgrpc's `Stream` with one request each way. A queue is only
+read by a gRPC call, so a language that writes none refuses one too
+(`refuseGRPC`). A streaming method has no component: a query answers one
+value per key. The runs cover each kind, a failure after messages, a
+lifetime ended from `each` against a stream that never ends, a request sent
+only once the answer to the last has come, and a queue never closed whose
+lifetime ends the call.
+
+The runs are `cmd/sngl/testdata/grpc_runs.txt`, against the script
+harness's server (`internal/testgrpc`, at `127.0.0.1:47820`), which reads
+and writes with protobuf's own runtime so each encoding is checked against
+the reference rather than against itself; the refusals
+`error_grpc_import.txt`, and the edges `codegen/scheme/grpc/grpc_test.go`.
