@@ -779,7 +779,7 @@ func postgresType(name string, w *writer) (string, string, string) {
 	case "bool", "boolean":
 		return "bool", "", ""
 	case "text", "varchar", "character varying", "char", "character", "bpchar", "citext", "name", "uuid",
-		"inet", "cidr", "macaddr", "macaddr8", "json", "jsonb", "xml", "numeric", "decimal", "money",
+		"inet", "cidr", "macaddr", "macaddr8", "json", "jsonb", "xml",
 		"time", "timetz", "time without time zone", "time with time zone", "interval", "ltree", "tsvector":
 		return "string", "", ""
 	case "bytea":
@@ -790,10 +790,19 @@ func postgresType(name string, w *writer) (string, string, string) {
 	case "timestamp", "timestamptz", "timestamp without time zone", "timestamp with time zone":
 		w.time = true
 		return "time.datetime", "datetime", ""
+	case "numeric", "decimal", "money":
+		return "", "", exactDecimal(name, "::text", "::float8")
 	case "void":
 		return "", "", "has no value"
 	}
 	return "", "", "is of type " + name + ", which sngl:sql has no type for"
+}
+
+// exactDecimal says why an exact decimal is left out: SNGL has no number to
+// hold every digit of one, and a float or a string would each change what
+// the column means without the program saying so. The query can say it.
+func exactDecimal(name, text, float string) string {
+	return "is a " + name + ", which SNGL has no exact number for yet: cast it in the query, `" + text + "` or, where rounding is fine, `" + float + "`"
 }
 
 func mysqlType(name string, c *analyze.Column, w *writer) (string, string, string) {
@@ -811,8 +820,9 @@ func mysqlType(name string, c *analyze.Column, w *writer) (string, string, strin
 		return "int64", "", ""
 	case "float", "double", "double precision", "real":
 		return "float", "", ""
-	case "decimal", "dec", "numeric", "fixed",
-		"char", "varchar", "tinytext", "text", "mediumtext", "longtext", "json", "enum", "set", "time",
+	case "decimal", "dec", "numeric", "fixed":
+		return "", "", exactDecimal(name, "CAST(… AS CHAR)", "CAST(… AS DOUBLE)")
+	case "char", "varchar", "var_string", "string", "tinytext", "text", "mediumtext", "longtext", "json", "enum", "set", "time",
 		"binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
 		return "string", "", ""
 	case "date":

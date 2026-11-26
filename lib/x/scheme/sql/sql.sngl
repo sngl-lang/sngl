@@ -55,10 +55,11 @@ import marks "sngl:internal/marks"
 // A column's type is the one its width holds on every target: an `integer`
 // on PostgreSQL an `int`, a `bigint` an `int64`, and SQLite's `INTEGER` an
 // `int64`; a `date` or a `timestamp` a `time.date` or a `time.datetime`; a
-// `numeric`, a `uuid`, `json` and the rest a string. A query reaching a type
-// with none -- an array, a `sqlc.slice` -- and a `:copyfrom` or `:batch`
-// query are left out, and the import says so in a warning; so is a name it
-// changed.
+// `uuid`, `json` and the rest a string. A query reaching a type with none --
+// an exact `numeric` or `decimal`, an array, a `sqlc.slice` -- and a
+// `:copyfrom` or `:batch` query are left out, and the import says so in a
+// warning; so is a name it changed. A decimal is read through a cast the
+// query writes, `price::text` or, where rounding is fine, `price::float8`.
 gen.scheme(name="sql", @generate(out, importPath) {
     if outside(importPath) {
         error.raise("sql:" + importPath + " is outside the project: the queries are read from the project's own files", "import")

@@ -28,7 +28,7 @@ component main ui.node {
     var n int64 = 0
     ui.button(text="Count", @click {
         match var c = db.countCall() {
-            ok { n = c }
+            ok { n = c.or(0) }
             failed { n = -1 }
         }
     })
@@ -46,7 +46,7 @@ component main ui.node {
     var n int64 = 0
     ui.button(text="Count", @click {
         match var c = db.countCall() {
-            ok { n = c }
+            ok { n = c.or(0) }
             failed { n = -1 }
         }
     })

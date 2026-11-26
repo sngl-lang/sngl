@@ -47,7 +47,10 @@ END;
 $$ LANGUAGE plpgsql;
 `, `
 -- name: GetPerson :one
-SELECT id, age, height, mood, born, seen, balance, func FROM people WHERE id = $1;
+SELECT id, age, height, mood, born, seen, balance::text AS balance, func FROM people WHERE id = $1;
+
+-- name: Balances :many
+SELECT balance FROM people;
 
 -- name: Tags :many
 SELECT tags FROM people;
@@ -66,6 +69,10 @@ INSERT INTO people (age, mood, seen, balance, tags) VALUES ($1, $2, $3, $4, $5);
 		"func getPersonCall(id int64, life async.Lifetime = async.forever) async.Result[option[GetPersonRow]]",
 		`kinds=["", "", "", "", "date", "datetime", "", ""]`,
 	)
+	note := "query Balances is left out: its column balance is a numeric, which SNGL has no exact number for yet: cast it in the query, `::text` or, where rounding is fine, `::float8`"
+	if !slices.Contains(p.Notes, note) {
+		t.Errorf("missing note %q in %q", note, p.Notes)
+	}
 }
 
 func TestPostgresNotes(t *testing.T) {
@@ -140,6 +147,9 @@ INSERT INTO books (pages, lent) VALUES (?, ?);
 
 -- name: Lend :execrows
 UPDATE books SET lent = 1 WHERE id = ?;
+
+-- name: Label :one
+SELECT CAST(id AS CHAR) AS label FROM books WHERE id = ?;
 `)
 	contains(t, p.Source,
 		"struct Book {\n    id    int64\n    pages int\n    lent  bool\n    added option[time.datetime]\n}",
@@ -147,6 +157,7 @@ UPDATE books SET lent = 1 WHERE id = ?;
 		"ok { return {ok=r.lastId} }",
 		"func lendCall(id int64, life async.Lifetime = async.forever) async.Result[int64]",
 		"ok { return {ok=r.rows} }",
+		"struct LabelRow {\n    label string\n}",
 	)
 }
 

@@ -246,9 +246,13 @@ and any other `<Query>Row`. A column that may be null is an option. A type
 takes the SQL type's width on every target: PostgreSQL's `integer` an `int`,
 `bigint` an `int64`, SQLite's `INTEGER` an `int64` since SQLite's are, a
 `date` or `timestamp` a `time.date` or `time.datetime`, MySQL's
-`tinyint(1)` a `bool`, and `numeric`, `uuid`, `json` and the rest a string.
-An array, a `sqlc.slice`, a type with none and a `:copyfrom` or `:batch…`
-query leave the query out, with a note. A read decodes its rows through the
+`tinyint(1)` a `bool`, and `uuid`, `json` and the rest a string. An exact
+`numeric` or `decimal` has no SNGL number to hold every digit, and a float or a
+string would each change what the column means unsaid, so it is left out with
+a note naming the cast the query can write instead (`exactDecimal`); SQLite's
+`NUMERIC` is a float, since SQLite stores one as a real. An array, a
+`sqlc.slice`, a type with none and a `:copyfrom` or `:batch…` query leave the
+query out, with a note. A read decodes its rows through the
 package's two generic helpers, `_rows` and `_one`, copied per row type
 where a target writes no type parameter. A `:one` answers an option of its
 row, null where there is none, as no row is an answer rather than a failure.

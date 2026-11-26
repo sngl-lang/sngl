@@ -146,7 +146,12 @@ func count() int {
 func first() int64 {
     // Every column of one table, so the table's own struct.
     match var t = db.firstCall() {
-        ok { return t.id }
+        ok {
+            if t == null {
+                return 0
+            }
+            return t.id
+        }
         failed { return 0 }
     }
 }

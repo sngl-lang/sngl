@@ -21,7 +21,8 @@ sngl test --platform=gtk4 --language=go app.sngl
 stdout '6 tests, 0 failures'
 
 -- app.sngl --
-// Every MySQL type the import reads written and read back, a failure
+// Every MySQL type the import reads written and read back, a decimal read
+// through the cast its note asks for, a failure
 // classified by its SQLSTATE, and the id AUTO_INCREMENT gave.
 
 import async "sngl:async"
@@ -32,7 +33,7 @@ import ui "sngl:ui"
 const server = "root@tcp(127.0.0.1:47831)/"
 
 func add(title string, shelf books.BooksShelf = books.BooksShelf.fiction) int64 {
-    match var id = books.addBookCall(title=title, pages=null, price="0", rating=0.0, lent=false, shelf=shelf, added=null, due=null) {
+    match var id = books.addBookCall(title=title, pages=null, rating=0.0, lent=false, shelf=shelf, added=null, due=null) {
         ok { return id }
         failed { return -1 }
     }
@@ -41,7 +42,7 @@ func add(title string, shelf books.BooksShelf = books.BooksShelf.fiction) int64 
 func testRoundTrip(t test.Test) {
     t.setContext(books.source, server + "roundtrip")
     t.assert(books.create().ok == 1)
-    match var id = books.addBookCall(title="Earthsea", pages=264, price="12.50", rating=4.5, lent=true, shelf=books.BooksShelf.nonFiction, added="2024-03-01T10:30:00Z", due="2024-04-01") {
+    match var id = books.addBookCall(title="Earthsea", pages=264, rating=4.5, lent=true, shelf=books.BooksShelf.nonFiction, added="2024-03-01T10:30:00Z", due="2024-04-01") {
         ok { t.assert(id == 1) }
         failed { t.assert(id.message == "") }
     }
@@ -52,7 +53,7 @@ func testRoundTrip(t test.Test) {
             } else {
                 t.assert(b.title == "Earthsea")
                 t.assert(b.pages == 264)
-                t.assert(b.price == "12.50")
+                t.assert(b.price == "0.00")
                 t.assert(b.rating == 4.5)
                 t.assert(b.lent)
                 t.assert(b.shelf == books.BooksShelf.nonFiction)
@@ -132,7 +133,7 @@ func testConstraint(t test.Test) {
     t.setContext(books.source, server + "constraint")
     t.assert(books.create().ok == 1)
     add("Tehanu")
-    match var id = books.addBookCall(title="Tehanu", pages=null, price="0", rating=0.0, lent=false, shelf=books.BooksShelf.fiction, added=null, due=null) {
+    match var id = books.addBookCall(title="Tehanu", pages=null, rating=0.0, lent=false, shelf=books.BooksShelf.fiction, added=null, due=null) {
         ok { t.assert(false) }
         failed {
             t.assert(id.kind == async.FailureKind.request)
@@ -162,11 +163,12 @@ CREATE TABLE books (
 -- sngl:schema schema.sql
 
 -- name: AddBook :execlastid
-INSERT INTO books (title, pages, price, rating, lent, shelf, added, due)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO books (title, pages, rating, lent, shelf, added, due)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetBook :one
-SELECT * FROM books WHERE id = ?;
+SELECT id, title, pages, CAST(price AS CHAR) AS price, rating, lent, shelf, added, due
+FROM books WHERE id = ?;
 
 -- name: OnShelf :many
 SELECT id, title FROM books WHERE shelf = ? ORDER BY id;
@@ -180,7 +182,7 @@ UPDATE books SET lent = ? WHERE id = ?;
 -- name: RemoveBook :exec
 DELETE FROM books WHERE id = ?;
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:8d8d3ac683f1a824d3935f3d44645545
+sha256:7f3595a41dfe78ab5d3f88fa0f8fd5d7
 {
   "results": [
     {
@@ -210,7 +212,7 @@ sha256:8d8d3ac683f1a824d3935f3d44645545
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:278cad82c12ede1086c3269dd940e4f8
+sha256:ab1d3ddd41c66621d8ea8dd347dbac8e
 {
   "results": [
     {
@@ -240,7 +242,7 @@ sha256:278cad82c12ede1086c3269dd940e4f8
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:d680af25aaf21ea5070882b703600d69
+sha256:03d5c42348f155ddb0bcab4cb03d1a3d
 {
   "results": [
     {

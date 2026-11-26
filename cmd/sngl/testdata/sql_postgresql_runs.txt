@@ -21,7 +21,8 @@ sngl test --platform=gtk4 --language=go app.sngl
 stdout '6 tests, 0 failures'
 
 -- app.sngl --
-// Every PostgreSQL type the import reads written and read back, a failure
+// Every PostgreSQL type the import reads written and read back, a numeric
+// read through the cast its note asks for, a failure
 // classified by its SQLSTATE, and RETURNING read as a query's one value.
 
 import async "sngl:async"
@@ -32,7 +33,7 @@ import ui "sngl:ui"
 const server = "postgres://sngl@127.0.0.1:47830/"
 
 func add(title string, shelf books.Shelf = books.Shelf.fiction) int64 {
-    match var id = books.addBookCall(title=title, pages=null, price="0", rating=0.0, lent=false, shelf=shelf, added=null, due=null) {
+    match var id = books.addBookCall(title=title, pages=null, rating=0.0, lent=false, shelf=shelf, added=null, due=null) {
         ok { return id.or(-1) }
         failed { return -1 }
     }
@@ -41,7 +42,7 @@ func add(title string, shelf books.Shelf = books.Shelf.fiction) int64 {
 func testRoundTrip(t test.Test) {
     t.setContext(books.source, server + "roundtrip?sslmode=disable")
     t.assert(books.create().ok == 2)
-    match var id = books.addBookCall(title="Earthsea", pages=264, price="12.50", rating=4.5, lent=true, shelf=books.Shelf.nonFiction, added="2024-03-01T10:30:00Z", due="2024-04-01") {
+    match var id = books.addBookCall(title="Earthsea", pages=264, rating=4.5, lent=true, shelf=books.Shelf.nonFiction, added="2024-03-01T10:30:00Z", due="2024-04-01") {
         ok { t.assert(id == 1) }
         failed { t.assert(id.message == "") }
     }
@@ -52,7 +53,7 @@ func testRoundTrip(t test.Test) {
             } else {
                 t.assert(b.title == "Earthsea")
                 t.assert(b.pages == 264)
-                t.assert(b.price == "12.50")
+                t.assert(b.price == "0.00")
                 t.assert(b.rating == 4.5)
                 t.assert(b.lent)
                 t.assert(b.shelf == books.Shelf.nonFiction)
@@ -132,7 +133,7 @@ func testConstraint(t test.Test) {
     t.setContext(books.source, server + "constraint?sslmode=disable")
     t.assert(books.create().ok == 2)
     add("Tehanu")
-    match var id = books.addBookCall(title="Tehanu", pages=null, price="0", rating=0.0, lent=false, shelf=books.Shelf.fiction, added=null, due=null) {
+    match var id = books.addBookCall(title="Tehanu", pages=null, rating=0.0, lent=false, shelf=books.Shelf.fiction, added=null, due=null) {
         ok { t.assert(false) }
         failed {
             t.assert(id.kind == async.FailureKind.request)
@@ -164,12 +165,13 @@ CREATE TABLE books (
 -- sngl:schema schema.sql
 
 -- name: AddBook :one
-INSERT INTO books (title, pages, price, rating, lent, shelf, added, due)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO books (title, pages, rating, lent, shelf, added, due)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id;
 
 -- name: GetBook :one
-SELECT * FROM books WHERE id = $1;
+SELECT id, title, pages, price::text AS price, rating, lent, shelf, added, due
+FROM books WHERE id = $1;
 
 -- name: OnShelf :many
 SELECT id, title FROM books WHERE shelf = $1 ORDER BY id;
@@ -183,7 +185,7 @@ UPDATE books SET lent = $1 WHERE id = $2;
 -- name: RemoveBook :exec
 DELETE FROM books WHERE id = $1;
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:12278b03935bf4b9c70b8d839508c9e8
+sha256:ef2e914ac7cb8b68301840e0e9e3d268
 {
   "results": [
     {
@@ -213,7 +215,7 @@ sha256:12278b03935bf4b9c70b8d839508c9e8
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:75746762213e67d80d4c7c31146194f0
+sha256:2d43b1bc86ee61272934f49721406412
 {
   "results": [
     {
@@ -243,7 +245,7 @@ sha256:75746762213e67d80d4c7c31146194f0
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:69c07ca2c8825e4b3f26a4357f995e84
+sha256:d80be1cd32494613c0bc3671da4cbb29
 {
   "results": [
     {

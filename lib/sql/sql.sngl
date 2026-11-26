@@ -41,9 +41,9 @@ struct Executed {
 // kept for the program's life.
 #[marks.intrinsic("sql.query", async)]
 func query(
-    engine  Engine,
-    source  string,
-    text    string,
+    engine   Engine,
+    source   string,
+    text     string,
     args     string = "[]",
     argKinds list[string] = [],
     columns  list[string] = [],
