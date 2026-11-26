@@ -4479,3 +4479,6 @@ func staticCopy(els, id, key string) string {
 type PatternPageError struct{ msg string }
 
 func (e *PatternPageError) Error() string { return e.msg }
+
+// DeclinedBy makes a pattern page an ir.Declined.
+func (*PatternPageError) DeclinedBy() string { return "html" }

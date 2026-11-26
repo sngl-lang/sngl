@@ -599,7 +599,7 @@ func (st *inlineCompState) refuseCanvasInCycles() error {
 			continue
 		}
 		if n := firstCanvas(c.Stmts); n != nil {
-			return fmt.Errorf("%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
+			return ir.Decline("", "%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
 		}
 	}
 	var err error
@@ -611,7 +611,7 @@ func (st *inlineCompState) refuseCanvasInCycles() error {
 			}
 			for _, s := range ir.SuppliedContent(n) {
 				if at := firstCanvas(s.Body); at != nil {
-					err = fmt.Errorf("%s: a canvas handed to the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it outside %q", nodePos(at), n.Component.Name, n.Component.Name)
+					err = ir.Decline("", "%s: a canvas handed to the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it outside %q", nodePos(at), n.Component.Name, n.Component.Name)
 					return ir.SkipAll
 				}
 			}
@@ -668,7 +668,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			continue
 		}
 		if v := usedVar(c); v != nil {
-			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
+			return ir.Decline("", "%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
 		}
 		// A component that is not spliced renders as a function of the Model,
 		// whose methods are the Model's and cannot read the props the render
@@ -678,7 +678,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			if fn.AST != nil {
 				pos = fn.AST.Pos.String()
 			}
-			return fmt.Errorf("%s: the recursive component %q declares %q, which reads its props; this target makes a component's functions the program's own by splicing it where it is written, and a recursion is never spliced -- pass what %q reads as its arguments, or compute it where %q is rendered", pos, c.Name, fn.Name, fn.Name, c.Name)
+			return ir.Decline("", "%s: the recursive component %q declares %q, which reads its props; this target makes a component's functions the program's own by splicing it where it is written, and a recursion is never spliced -- pass what %q reads as its arguments, or compute it where %q is rendered", pos, c.Name, fn.Name, fn.Name, c.Name)
 		}
 		var found, lifetime *ir.NodeInst
 		_ = ir.WalkStmts(c.Stmts, func(s ir.Stmt) error {
@@ -703,7 +703,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			if c.AST != nil && pos.File != c.AST.Pos.File {
 				pos = c.AST.Pos
 			}
-			return fmt.Errorf("%s: the recursive component %q places a timer or effect in its own body; this target keeps a lifetime's handle only by splicing it where it is written, and a recursion is never spliced -- place it in what renders %q", pos, c.Name, c.Name)
+			return ir.Decline("", "%s: the recursive component %q places a timer or effect in its own body; this target keeps a lifetime's handle only by splicing it where it is written, and a recursion is never spliced -- place it in what renders %q", pos, c.Name, c.Name)
 		}
 		if found != nil {
 			return fmt.Errorf("%s: %q has state of its own and is written in the recursive component %q; this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", nodePos(found), found.Component.Name, c.Name, c.Name)

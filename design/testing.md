@@ -691,6 +691,62 @@ annotation infers its type from its body on demand, as a program's does
 declarations bound again for every body in their scope -- reports once, the
 other read resolving quietly (`resolveTypeQuietly`, `declareBodyDecls`).
 
+**A program that checked clean either builds to code its language accepts, or
+a target declines it with an `ir.Declined`.** Nothing else from codegen is a
+legitimate answer: any other error is a compiler fault, and so is a panic. A
+target may decline what it cannot express -- a component it has no
+implementation for (`ir.UnimplementedComponent`), a second window
+(`codegen.OneWindowError`), a closure it has nowhere to run, a `go:` function
+called from C -- and declines with `ir.Decline` where no more particular type
+says why. A lowering pass that refuses without a target in hand declines with
+an empty target, and `lower.Lower` names the build's. A refusal written as
+`fmt.Errorf` is a bug the fuzzer reports, which is the point of drawing the line
+in a type rather than in a message.
+
+`FuzzPipeline` (`fuzz_pipeline_test.go`) holds every build to that. Its input
+is a txtar archive, so a seed carries a `go:` module or an OpenAPI document
+beside its SNGL, and a target byte: 0 is the archive's own `output` blocks,
+anything else one supported language/platform pair (`pipelineTargets`, in a
+stable order so a corpus entry means the same build next run). Each input runs
+as far as it goes, and coverage of each later stage is what the fuzzer keeps an
+input for:
+
+1. parse, then check with no target -- a failure is the input's, a skip;
+2. not a program, an invalid `output` block, no target: a skip;
+3. check for the chosen target -- what its library rejects is that target
+   declining, at check time, a skip;
+4. `build.Emit` under a nil `trust.Policy`, so a fuzzed program runs, reads and
+   fetches nothing -- `ir.Declined` and `trust.Refusal` are skips, anything else
+   fails;
+5. the generated files, boilerplate included, through the checks that run in
+   process.
+
+**The in-process checks are the ones that keep a run in milliseconds.** Go is
+type-checked a package at a time (`checkGoFiles`, `fuzz_gocheck_test.go`): a
+package the output holds is checked from its source, one from this module or a
+dependency from the export data `go list -export` builds once per process, and
+anything else -- a project's own `go:` module, a cgo package the host cannot
+build -- is an empty stand-in whose selectors pass. Build constraints are
+evaluated for the target's OS, windows for win32. JavaScript is parsed by
+esbuild. Because the type checker is linked into the fuzz binary, its own
+coverage counts: an input that makes a generator emit Go `go/types` has not
+seen is kept, which is what pushes the corpus toward varied Go. C and Kotlin
+have no in-process check yet; the host toolchains, and running a program's
+tests against the interpreter's answer, belong to an offline replay of the
+corpus, never to the fuzz loop.
+
+**The seeds are every fixture and every golden**: a fixture as its one file,
+a golden with `out/`, `run/`, `testrun/` and `written/` taken out. Each is added
+on its own targets and on one rotating other target, which reaches every
+generator without multiplying the corpus by all of them. The seed run is gated
+behind `SNGL_FUZZ_SEEDS=1` (and runs under `-fuzz`) until it is clean; after
+that it belongs in the ordinary suite.
+
+```bash
+SNGL_FUZZ_SEEDS=1 go test -run FuzzPipeline .   # the seeds, once
+go test -run '^$' -fuzz FuzzPipeline .          # fuzz
+```
+
 When adding a fixture or directive, confirm it *fails* when the behavior is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 
 Two ways that check passes for the wrong reason. `go test ./internal/checker/`

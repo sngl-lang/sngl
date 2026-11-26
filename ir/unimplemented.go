@@ -65,3 +65,6 @@ func UnimplementedNode(comp *Component, src ast.Stmt, tag, platform string) *Uni
 	}
 	return e
 }
+
+// DeclinedBy makes an unimplemented component a Declined.
+func (e *UnimplementedComponent) DeclinedBy() string { return e.Platform }

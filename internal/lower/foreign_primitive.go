@@ -1,7 +1,6 @@
 package lower
 
 import (
-	"fmt"
 	"strings"
 
 	"duckfam.us/sngl/ir"
@@ -43,7 +42,7 @@ var passForeignPrimitive = pass{
 				// A host's own widget is the same case from the other side:
 				// only the platform built on that host can call it.
 				if opts.RendersNative == nil || !opts.RendersNative(f.Scheme) {
-					bad = fmt.Errorf("component %q is %s's %s (#[%s.native]) and this build targets %s, which renders no %s widget",
+					bad = ir.Decline(opts.Platform, "component %q is %s's %s (#[%s.native]) and this build targets %s, which renders no %s widget",
 						n.Component.Name, f.Scheme, f.Name, f.Scheme, opts.Platform, f.Scheme)
 				}
 				return nil
@@ -55,7 +54,7 @@ var passForeignPrimitive = pass{
 			if opts.ClaimsIntrinsic != nil && opts.ClaimsIntrinsic(n.Component.Intrinsic) {
 				return nil
 			}
-			bad = fmt.Errorf("component %q is %s's platform primitive (#[intrinsic(%q)]) and this build targets %s, which declares no implementation of it",
+			bad = ir.Decline(opts.Platform, "component %q is %s's platform primitive (#[intrinsic(%q)]) and this build targets %s, which declares no implementation of it",
 				n.Component.Name, ns, n.Component.Intrinsic, opts.Platform)
 			return nil
 		})

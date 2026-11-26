@@ -20,13 +20,13 @@ func (c *compilation) emitGo(req *codegen.Request, sink codegen.Sink) error {
 	// overrides the same combination panicked in the Go backend on an
 	// untranslated canvas intrinsic, so this is a loud failure staying loud.
 	if name := firstCanvasName(ctx.Canvases); name != "" {
-		return fmt.Errorf("android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", name)
+		return ir.Decline("android", "android draws a canvas through Compose, which is Kotlin: build this program with --lang kotlin, or remove the canvas (%s)", name)
 	}
 	// The same reasoning for sngl:ui/nav: a stack is a Compose NavHost, and
 	// under `--lang go` the funcs a `go` may be written in are emitted into
 	// golib, where there is no NavController to call.
 	if nav, _ := collectAndroidNav(ctx); nav != nil && len(nav.stacks) > 0 {
-		return fmt.Errorf("%s: android renders sngl:ui/nav through a Compose NavHost, which is Kotlin: build this program with --lang kotlin", nodeAt(nav.stacks[0].node))
+		return ir.Decline("android", "%s: android renders sngl:ui/nav through a Compose NavHost, which is Kotlin: build this program with --lang kotlin", nodeAt(nav.stacks[0].node))
 	}
 	src, err := compileIR(ctx, cfg)
 	if err != nil {

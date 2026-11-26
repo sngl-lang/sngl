@@ -75,6 +75,15 @@ func (c *Context) fail(format string, args ...any) string {
 	return "/* unsupported */ 0"
 }
 
+// decline is fail for what C cannot express by design rather than what this
+// generator gets wrong: a host value or function another language owns.
+func (c *Context) decline(format string, args ...any) string {
+	if c.file.err == nil {
+		c.file.err = ir.Decline("c", "c: "+format, args...)
+	}
+	return "/* unsupported */ 0"
+}
+
 // TypeName is t as C declares a value of it.
 func (c *Context) TypeName(t *ir.Type) string { return c.typeName(t) }
 
@@ -275,7 +284,7 @@ func (c *Context) Ident(n *ir.Ident) string {
 		// the build put none of it -- the handler of a boundary inlined
 		// away, reached from a lambda lifted before it was.
 		if ir.IsHostValue(sym) {
-			return c.fail("%s, which is %s's", n.Name, sym.Foreign.Path)
+			return c.decline("%s, which is %s's", n.Name, sym.Foreign.Path)
 		}
 		if c.State != nil && !c.isLocalVar(sym) {
 			return c.fail("reading %s, which no scope of the program holds here", n.Name)
@@ -734,7 +743,7 @@ func (c *Context) Call(n *ir.Call) string {
 		return out
 	}
 	if n.Func.Foreign.Path != "" {
-		return c.fail("calling %s, which is %s's", n.Func.Name, n.Func.Foreign.Path)
+		return c.decline("calling %s, which is %s's", n.Func.Name, n.Func.Foreign.Path)
 	}
 	if n.Receiver != nil {
 		return c.fail("calling %s on a component", n.Func.Name)

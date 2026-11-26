@@ -72,6 +72,9 @@ paragraph here per change: this file is loaded into every session.
 - **Write the qualified form of an import** (`ui.text`, `#[marks.builtin]`);
   dot imports are legal but the repository does not use them.
 - **A nil `*trust.Policy` refuses everything.**
+- **A build of a program that checked clean succeeds or fails with an
+  `ir.Declined`** (`ir.Decline` where no more particular type fits); any
+  other error from codegen is a compiler fault, and `FuzzPipeline` reports it.
 - **A platform translates a `ui.Style` in SNGL**, in its own package, and
   lists each field it cannot express, with a reason, in its `unstyled` const;
   no generator reads a Style field in Go.

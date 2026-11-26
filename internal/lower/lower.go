@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -394,6 +395,11 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 			continue
 		}
 		if err := p.apply(pkg, feats, opts); err != nil {
+			// A refusal written where the pass had no target in hand names
+			// the build's.
+			if d, ok := errors.AsType[*ir.TargetDeclined](err); ok && d.Target == "" {
+				d.Target = opts.Platform
+			}
 			return fmt.Errorf("lower: pass %s: %w", p.name, err)
 		}
 		if opts.StopAfter != "" && p.name == opts.StopAfter {

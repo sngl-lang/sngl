@@ -96,7 +96,7 @@ func refuseAsyncOffload(pkg *ir.Package, opts Options, st *offloadState) error {
 			if !st.stmtWaits(s) {
 				continue
 			}
-			return fmt.Errorf("%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", waitingCallPos(s), platformOrThis(opts.Platform))
+			return ir.Decline(opts.Platform, "%s: this call blocks and %s has no way to run anything back on the thread it draws on, so there is nowhere for the answer to land -- the call would freeze the interface", waitingCallPos(s), platformOrThis(opts.Platform))
 		}
 	}
 	return nil
