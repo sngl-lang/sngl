@@ -681,13 +681,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -829,16 +829,16 @@ fun MainScreen() {
             }
         }
         Row(modifier = Modifier.snglFlexible(true).safeDrawingPadding()) {
-            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204.toUByte(), g = 204.toUByte(), b = 204.toUByte()), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
-            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204.toUByte(), g = 204.toUByte(), b = 204.toUByte()), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Removable", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
                 Button(onClick = {}, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "×", modifier = Modifier)
                 }
             }
-            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204.toUByte(), g = 204.toUByte(), b = 204.toUByte()), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Success", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
         }
@@ -1060,6 +1060,6 @@ pass sha256:8b9c527b28452e02188ad9583b3b31fd
 -- run/go/fyne --
 pass sha256:65844b4224af48ec0944fdc19f3b272a
 -- run/kotlin/android --
-pass sha256:38d6972da46282f452b147407942164b
+pass sha256:1f392c18b1b6259bb3aa5c279460dc2a
 -- run/none/html --
 pass sha256:38bc2bfbddb530dca4834e5a10b1b126

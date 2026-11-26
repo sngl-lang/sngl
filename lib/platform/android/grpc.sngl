@@ -1,0 +1,13 @@
+import async "sngl:async"
+import marks "sngl:internal/marks"
+
+// A gRPC call reaches the network, as a request does (http.sngl).
+#[permission("android.permission.INTERNET")]
+#[marks.intrinsic("grpc.call", async)]
+func grpcCall[Req anyStruct, Resp anyStruct](
+    server     string,
+    method     string,
+    request    Req,
+    descriptor string = "",
+    life       async.Lifetime = async.forever,
+) async.Result[Resp]

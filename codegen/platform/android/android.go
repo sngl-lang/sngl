@@ -126,6 +126,7 @@ func (c *compilation) BuildRenderModel(req *codegen.Request, analysis *codegen.C
 	if nav, _ := collectAndroidNav(c.ctx); nav != nil && len(nav.stacks) > 0 {
 		c.cfg.Nav = true
 	}
+	c.cfg.GRPC = c.lang == "kotlin" && kotlin.UsesGRPC(req.Pkg)
 	var stmts []ir.Stmt
 	if main := c.ctx.RootDecl(); main != nil {
 		stmts = main.Stmts

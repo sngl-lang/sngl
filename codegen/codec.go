@@ -40,7 +40,7 @@ func IsLifetimeCall(c *ir.Call) bool {
 // as IR, or nil for a call handed none: a language reads it with its own
 // spelling of the struct's `_id`.
 func LifetimeID(c *ir.Call) ir.Expr {
-	if c == nil || c.Func == nil || (c.Func.Intrinsic != ir.HTTPSendIntrinsic && c.Func.Intrinsic != ir.HTTPGetIntrinsic) {
+	if c == nil || c.Func == nil || (c.Func.Intrinsic != ir.HTTPSendIntrinsic && c.Func.Intrinsic != ir.HTTPGetIntrinsic && c.Func.Intrinsic != ir.GRPCCallIntrinsic) {
 		return nil
 	}
 	life := c.ArgFor("life")
@@ -75,6 +75,18 @@ func ResultFailed(t *ir.Type, kind string, message ir.Expr) ir.Expr {
 		}
 	}
 	return &ir.StructLit{Type: t, Fields: []ir.FieldInit{{Name: "failed", Value: f}}}
+}
+
+// ResultFailedCode is ResultFailed with the Failure's code.
+func ResultFailedCode(t *ir.Type, kind string, message, code ir.Expr) ir.Expr {
+	r := ResultFailed(t, kind, message).(*ir.StructLit)
+	f := r.Fields[0].Value.(*ir.StructLit)
+	for i := range f.Fields {
+		if f.Fields[i].Name == "code" {
+			f.Fields[i].Value = code
+		}
+	}
+	return r
 }
 
 // StructOf is a literal of struct type t setting each field from vals, in the

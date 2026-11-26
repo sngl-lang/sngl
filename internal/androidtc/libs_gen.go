@@ -132,3 +132,14 @@ var comboLibs = map[string][]Lib{
 		{Group: "org.jspecify", Module: "jspecify", Version: "1.0.0", File: "jspecify-1.0.0.jar", URL: "https://repo1.maven.org/maven2/org/jspecify/jspecify/1.0.0/jspecify-1.0.0.jar", SHA256: "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab"},
 	},
 }
+
+var comboGRPCLibs = map[string][]Lib{
+	"stable": {
+		{Group: "com.squareup.okhttp3", Module: "okhttp", Version: "4.12.0", File: "okhttp-4.12.0.jar", URL: "https://repo1.maven.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar", SHA256: "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0"},
+		{Group: "com.squareup.okio", Module: "okio-jvm", Version: "3.6.0", File: "okio-jvm-3.6.0.jar", URL: "https://repo1.maven.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar", SHA256: "67543f0736fc422ae927ed0e504b98bc5e269fda0d3500579337cb713da28412"},
+	},
+	"next": {
+		{Group: "com.squareup.okhttp3", Module: "okhttp", Version: "4.12.0", File: "okhttp-4.12.0.jar", URL: "https://repo1.maven.org/maven2/com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar", SHA256: "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0"},
+		{Group: "com.squareup.okio", Module: "okio-jvm", Version: "3.6.0", File: "okio-jvm-3.6.0.jar", URL: "https://repo1.maven.org/maven2/com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar", SHA256: "67543f0736fc422ae927ed0e504b98bc5e269fda0d3500579337cb713da28412"},
+	},
+}

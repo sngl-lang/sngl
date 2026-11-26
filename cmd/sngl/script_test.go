@@ -52,7 +52,9 @@ func TestScript(t *testing.T) {
 	// `exec cp`. Its binary links most of the module already, so the rest is
 	// recorded whole.
 	testinputs.Packages(t, root, "./...")
-	testinputs.Tree(t, "example")
+	testinputs.Tree(t, "example", "testdata/test_sized_compound_assign.sngl", "testdata/test_sized_conversions.sngl",
+		"testdata/test_sized_float.sngl", "testdata/test_sized_int_basics.sngl", "testdata/test_sized_int_wraparound.sngl",
+		"testdata/test_sized_uint.sngl")
 	conds := scripttest.DefaultConds()
 	// `gtk4` is true when the gtk4 development libraries are installed, so a
 	// program can be compiled against them.

@@ -1,0 +1,43 @@
+# Go and Kotlin write a gRPC call: a target in another language refuses the
+# program before its generator has nothing to write for the call.
+
+! sngl generate --platform=html -o out app.sngl
+stderr 'the program calls a gRPC service, which html/none cannot yet: only the Go targets and android can'
+
+! sngl generate --platform=gtk4 --lang=c -o out app.sngl
+stderr 'which gtk4/c cannot yet'
+
+sngl generate --platform=bubbletea -o out app.sngl
+
+sngl generate --platform=android -o out app.sngl
+exists out/SnglGrpc.kt out/SnglProto.kt
+
+-- app.sngl --
+import async "sngl:async"
+import grpc "sngl:grpc"
+import ui "sngl:ui"
+
+#[grpc.message("t.Ping")]
+struct Ping {
+    #[grpc.field(1)]
+    n int = 0
+}
+
+func ping() async.Result[Ping] {
+    return grpc.call[Ping, Ping](server="localhost:50051", method="/t.T/Ping", request={n=1})
+}
+
+component main ui.node {
+    var n = 0
+    ui.button(text="Ping", @click {
+        match var p = ping() {
+            ok { n = p.n }
+            failed { n = -1 }
+        }
+    })
+    ui.text(value="{n}")
+}
+
+ui.window {
+    main
+}

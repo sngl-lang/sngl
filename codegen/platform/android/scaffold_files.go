@@ -317,6 +317,10 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:%s")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:%s")`, d.Navigation, d.Serialization)
 	}
+	if d.HasGRPC {
+		fmt.Fprintf(w, `
+    implementation("com.squareup.okhttp3:okhttp:%s")`, d.OkHttp)
+	}
 	io.WriteString(w, `
     debugImplementation("androidx.compose.ui:ui-tooling")`)
 	if d.HasGoLib {

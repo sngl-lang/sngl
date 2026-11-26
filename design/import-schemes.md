@@ -127,3 +127,38 @@ The runs are `cmd/sngl/testdata/openapi_runs.txt`, against the script
 harness's server on all six targets; the refusals
 `cmd/sngl/testdata/error_openapi_*.txt`, the renames `openapi_renamed.txt`
 and the store `openapi_store.txt`.
+
+## The `grpc:` scheme
+
+**`import library "grpc:./library.proto"` writes a package from a `.proto`
+file** (`lib/x/scheme/grpc`): a struct per message reached, an enum per
+enum, a `…Call` function per unary method answering `async.Result`, a
+component over `async.query` per method marked `idempotency_level = NO_SIDE_EFFECTS`, `server`, a context the program provides, and
+`descriptor`, the file's `FileDescriptorSet` as base64. The idempotency
+option is the one thing a descriptor says that tells a read from a write,
+which is why it, and not a naming convention, decides the component. The
+path is read through the project as `openapi:`'s is.
+
+**Go compiles the file and writes the package** (`codegen/scheme/grpc`),
+with protocompile, so no build needs protoc. Only the file named is read,
+and the files protobuf ships: an import of another of the project's is an
+error at the import until the handler reads it too. A message nested in
+another is named after both, a field is its `json_name`, an enum member its
+value's name with the enum's prefix off, and each carries the mark saying
+what it is on the wire (`#[grpc.message]`, `#[grpc.field(number, kind)]`,
+`#[grpc.value]`). A field with presence is an option, a oneof a payload
+enum named after its message and itself, its first member `none` the oneof
+unset and a member per field carrying it, numbered by `#[grpc.field]` on
+the member; a struct field holding one is the oneof and takes no number of
+its own. A oneof as an option per member would let a program build a
+message setting two, which the wire has no form for. A field takes the SNGL type its wire width holds on every target: a signed 32-bit one an `int`, which is 32 bits on Kotlin, a `uint32` field a `uint32`, and a 64-bit one an `int64` or a `uint64`, with `#[grpc.field]`'s kind where the encoding is not the type's own (`sint32`, `fixed64`). Every field has proto3's zero as its default, and a well-known type
+is a struct like any other. A streaming method, a map keyed by anything but
+a string and an aliasing enum value are left out, with a note; a method
+whose request holds a list or a map has no component, since a query's key
+is compared.
+
+The runs are `cmd/sngl/testdata/grpc_runs.txt`, against the script
+harness's server (`internal/testgrpc`, at `127.0.0.1:47820`), which reads
+and writes with protobuf's own runtime so each encoding is checked against
+the reference rather than against itself; the refusals
+`error_grpc_import.txt`, and the edges `codegen/scheme/grpc/grpc_test.go`.

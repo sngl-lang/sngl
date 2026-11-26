@@ -3349,13 +3349,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -3715,4 +3715,4 @@ pass sha256:1fc8f09790df4a5ed182c98a2b5ef940
 -- run/go/gtk4 --
 pass sha256:1c1e4802f014972500a1b8839e3a8d4f
 -- run/kotlin/android --
-pass sha256:2e860b8aa4472d62e6cace849a289da7
+pass sha256:1e2fb62743661cb5e5437c14be87da3b

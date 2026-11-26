@@ -19,15 +19,12 @@ func (c *checker) checkCodecCall(x *ast.CallExpr, out ir.Expr) {
 	if !ok {
 		return
 	}
-	t, format, ok := ir.CodecCall(call)
-	if !ok || t == nil {
-		return
+	for _, u := range ir.CodecUses(call) {
+		if problem := ir.CodecProblemOpen(u.Type, u.Format); problem != "" {
+			c.reportCodec(x.Pos, "%s %s", codecVerb(u.Intrinsic, u.Format), problem)
+			return
+		}
 	}
-	problem := ir.CodecProblemOpen(t, format)
-	if problem == "" {
-		return
-	}
-	c.reportCodec(x.Pos, "%s %s", codecVerb(call.Func.Intrinsic, format), problem)
 }
 
 func codecVerb(intrinsic string, format ir.CodecFormat) string {
@@ -36,6 +33,8 @@ func codecVerb(intrinsic string, format ir.CodecFormat) string {
 		return "json.decode cannot read"
 	case format == ir.CodecQuery:
 		return intrinsic + " cannot send a query of"
+	case format == ir.CodecProto:
+		return "grpc.call cannot send or read"
 	}
 	return "json.encode cannot write"
 }

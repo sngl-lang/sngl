@@ -166,13 +166,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -330,7 +330,7 @@ fun MainScreen() {
             SnglImage(modifier = Modifier, onLoad = {}, onError = {}) {
                 SnglRemoteImage(url = "/logo.png")
             }
-            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204, g = 204, b = 204), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = modifierOf(Style(paddingX = Measurement(px = 12.0), paddingY = Measurement(px = 4.0), gap = Measurement(px = 4.0), alignItems = SnglAlignment.CENTER, borderRadius = Measurement(px = 16.0), borderColor = Color(r = 204.toUByte(), g = 204.toUByte(), b = 204.toUByte()), borderWidth = Measurement(px = 1.0), opacity = 1.0), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }).snglFlexible(true), horizontalArrangement = rowSpacing(SnglJustification.UNSET, Dp(4.0f)), verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "Tag", modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
             }
             Column(modifier = flexed(styleModifier(Style(padding = Measurement(px = 9.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() })) {
@@ -339,7 +339,7 @@ fun MainScreen() {
                 }
             }
             Text(text = "", modifier = Modifier)
-            Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+            Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204.toUByte(), g = 204.toUByte(), b = 204.toUByte()), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
         }
     }
 }
@@ -671,4 +671,4 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/kotlin/android --
-pass sha256:c73cd41c141d691509e702ac44679df8
+pass sha256:1ad44331ead33455d144e0cba802a233

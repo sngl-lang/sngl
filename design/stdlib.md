@@ -127,6 +127,8 @@ The tiers, and the split between them is the whole point of the system:
 - **`lib/http/` → `sngl:http`** and **`lib/json/` → `sngl:json`** — a
   request while the program runs, and a declared type read from and written
   as JSON. Neither knows the other; see **HTTP and JSON** below.
+- **`lib/grpc/` → `sngl:grpc`** — a unary call of a gRPC service, and the
+  marks saying which protobuf message a struct is. See **gRPC** below.
 - **`lib/settings/` → `sngl:settings`** — values an app keeps from one run to the next: `kept`, which binds a var to a stored value, `load` and `save`, and the `store` context saying where. See **Settings** below.
 - **`lib/dialog/` → `sngl:dialog`** — `Alert` and `File`: host-native modal surfaces. Not components — a component is placed in a tree and rendered, whereas `Alert.confirm` hands control to the host and returns what the user chose.
 - **`lib/test/` → `sngl:test`** — `Test`, the receiver a test function's first parameter carries.
@@ -715,6 +717,69 @@ first run made through `EnumDef.InstanceOf`. And a generic call's arguments
 are inferred from what they state rather than under the call's own expected
 type, an argument whose parameter names no type parameter binding nothing
 (`testdata/generic_call_argument_unexpected.sngl`).
+
+## gRPC
+
+**The marks are the schema, and each language writes the bytes.**
+`#[grpc.message]`, `#[grpc.field(number, kind)]` and `#[grpc.value]` land on
+`ir.StructDef.Proto`, `ir.StructField.Proto` and `ir.EnumMember.Proto`, and
+`ir.PlanCodec(t, ir.CodecProto)` is the plan a backend renders: each field's
+number and resolved kind (`ir.ProtoKind`, a list's its element's), each
+struct's message name. A payload enum a message holds is a oneof, a
+`CodecOneof` node whose fields are its members, each carrying one numbered
+by `#[grpc.field]` on the member (`ir.EnumMember.Oneof`); its first member
+carries nothing and is the oneof unset, and a member set is written even
+holding its zero. `grpc.call[Req, Resp]` reads two types, which
+`ir.CodecUses` names for the checker and the generic reach, and
+`ir.CodecProblem` refuses a field no mark numbers, a number twice, a kind
+the type cannot be written as, a list of lists and a map keyed by anything
+but a string (`testdata/error_grpc.sngl`). A backend wanting protoc's own
+generation instead has `descriptor`, a constant at every call the importer
+writes.
+
+**Go writes code, not a descriptor** (`codegen/lang/golang/proto.go`): a
+writer, a reader and a zero per message a call reaches, and a number and
+member lookup per enum, each field a protowire call over the program's own
+Go struct, emitted once as helpers (`HelperSet.Proto`) -- so a call costs
+what protoc-gen-go's would, with no message object between and no
+reflection (`testdata/grpc_go.txtar`). `pkg/go/snglgrpc` carries the bytes,
+framed as gRPC over x/net's HTTP/2, one connection per server: grpc-go links
+x/net/trace, whose html/template's reflective method call kept every
+exported method in the CLI (`cmd/sngl/reflectmethod_test.go`); the interpreter walks the same plan over its own values
+(`internal/interp/grpc.go`). proto3 is followed where it decides: a scalar
+holding its zero is not written, a repeated scalar is written packed and
+read either way, a map is written in key order, a field with no record reads
+as its zero, and an enum number the type does not name is a `decode`
+failure.
+
+**Kotlin writes code too** (`codegen/lang/kotlin/proto.go`): `SnglProto`,
+a writer and a reader per message over the program's own data classes and
+a number and member lookup per enum, beside `SnglGrpc`
+(`codegen/platform/android/grpc.kt`), the wire writer and reader and the
+transport. The transport is OkHttp's HTTP/2 -- prior knowledge for
+`host:port`, ALPN for `https://` -- framing the call itself, the status
+read from the trailers or, for a call refused before answering, the
+headers. grpc-java was the alternative, and brings protobuf-java and Guava
+to carry bytes the program already writes; OkHttp and okio are two jars,
+added only to a program that calls gRPC, in the Gradle scaffold
+(`scaffoldData.HasGRPC`) and in the gradle-free build's closure
+(`androidtc.Combo.GRPCLibs`, which `resolvelibs` resolves as what OkHttp
+adds to the combo's own and refuses to let it move a version the combo
+pins). A Kotlin integer narrower than the wire's -- an `int` is Kotlin's
+32-bit `Int` -- is range-checked, and a value past it is a `decode`
+failure, as sngl:json's is, never a different number; the import gives a
+64-bit field an `int64` or a `uint64`, a `Long` or a `ULong` there, so it
+reads whole. `testdata/grpc_android.txtar` builds the APK and
+`cmd/sngl/testdata/grpc_runs.txt` runs the calls under Robolectric.
+
+**A failure's kind is SNGL's**: the runtime hands back the status number as
+the code, and `grpc.classify` turns it into the name and the kind, so every
+target classifies alike. Go and Kotlin call; any other language is refused
+before its generator runs (`build.refuseGRPC`,
+`cmd/sngl/testdata/error_grpc_target.txt`), where the generator would have
+panicked on an intrinsic it has nothing to write for. Not yet: streaming,
+metadata, deadlines, credentials beyond `https://`, a test answer in the
+network's place as `http.answer` is.
 
 ## Settings
 

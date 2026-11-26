@@ -422,15 +422,17 @@ user-defined types.
 
 ### Predeclared types
 
-| Type     | Description                                                                                                                                        |
-|----------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `bool`   | `true` or `false`.                                                                                                                                 |
-| `int`    | Signed integer of the target's own width: 64 bits on Go, Kotlin and C, a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
-| `float`  | 64-bit IEEE-754 floating point.                                                                                                                    |
-| `string` | Immutable UTF-8 text.                                                                                                                              |
+| Type     | Description                                                                                                                                                          |
+|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `bool`   | `true` or `false`.                                                                                                                                                   |
+| `int`    | Signed integer of the target's own width: 64 bits on Go and C, 32 on Kotlin (its `Int`), a number on JavaScript, exact within ±2^53. Division truncates toward zero. |
+| `float`  | 64-bit IEEE-754 floating point.                                                                                                                                      |
+| `string` | Immutable UTF-8 text.                                                                                                                                                |
 
 A value whose width is part of what it means takes a sized numeric instead,
-`int64` or `uint8` and the rest, which every target holds at its width.
+`int64` or `uint8` and the rest, which every target holds at its width: a
+count past 2^31 -- an id, a timestamp in milliseconds -- is an `int64`,
+which Kotlin holds as a `Long`.
 
 `any`, `anyStruct`, `anyFields`, `fieldsOf`, `methodsOf` and `ordered` are predeclared
 beside them and are no type a value may have: they are the constraints a type

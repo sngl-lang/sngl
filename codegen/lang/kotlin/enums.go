@@ -43,17 +43,47 @@ func variantName(member string) string { return exportName(member) }
 func PayloadEnumDecl(ed *ir.EnumDef) string {
 	var b strings.Builder
 	name := EnumName(ed)
-	fmt.Fprintf(&b, "sealed class %s {\n", name)
+	variants := map[string]bool{}
 	for _, m := range ed.Members {
+		variants[variantName(m.Name)] = true
+	}
+	payloads := make([]string, len(ed.Members))
+	for i, m := range ed.Members {
+		if m.Payload == nil {
+			continue
+		}
+		payloads[i] = IRTypeToKt(m.Payload)
+		// Inside the sealed class a variant's name is the variant, so a
+		// payload naming a type the same, `loan Loan`, would hold itself.
+		if namesAny(payloads[i], variants) {
+			alias := name + "__" + variantName(m.Name)
+			fmt.Fprintf(&b, "typealias %s = %s\n\n", alias, payloads[i])
+			payloads[i] = alias
+		}
+	}
+	fmt.Fprintf(&b, "sealed class %s {\n", name)
+	for i, m := range ed.Members {
 		v := variantName(m.Name)
 		if m.Payload == nil {
 			fmt.Fprintf(&b, "    data object %s : %s() { override fun toString(): String = %q }\n", v, name, m.Name)
 			continue
 		}
-		fmt.Fprintf(&b, "    data class %s(val value: %s) : %s()\n", v, IRTypeToKt(m.Payload), name)
+		fmt.Fprintf(&b, "    data class %s(val value: %s) : %s()\n", v, payloads[i], name)
 	}
 	b.WriteString("}\n")
 	return b.String()
+}
+
+// namesAny reports whether the Kotlin type kt names any of names.
+func namesAny(kt string, names map[string]bool) bool {
+	for _, w := range strings.FieldsFunc(kt, func(r rune) bool {
+		return !(r == '_' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z')
+	}) {
+		if names[w] {
+			return true
+		}
+	}
+	return false
 }
 
 // enumLitKt is the value a literal or a member Ident of a payload enum builds.

@@ -63,13 +63,18 @@ func toolchainCacheDir() string {
 }
 
 // resolveToolchain locates all required tools for combo c, first checking
-// ANDROID_HOME and PATH, then falling back to the sngl toolchain cache.
-func resolveToolchain(c androidtc.Combo) (*toolchain, error) {
+// ANDROID_HOME and PATH, then falling back to the sngl toolchain cache. grpc
+// adds the libraries SnglGrpc is built on.
+func resolveToolchain(c androidtc.Combo, grpc bool) (*toolchain, error) {
+	libs := c.Libs()
+	if grpc {
+		libs = append(slices.Clone(libs), c.GRPCLibs()...)
+	}
 	tc := &toolchain{
 		CacheDir:     toolchainCacheDir(),
 		cKotlin:      c.Kotlin,
 		cName:        c.Name,
-		cLibs:        c.Libs(),
+		cLibs:        libs,
 		cBuildTools:  c.BuildTools,
 		cR8:          c.R8,
 		cPlatformAPI: strconv.Itoa(c.CompileSdk),

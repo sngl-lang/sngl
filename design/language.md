@@ -710,7 +710,9 @@ per payload member, compared with `==`; a selector is an inline function
 returning the payload's address. **JavaScript** `{tag, value}`, the tag the
 member's name, compared by an expression written out from the type
 (`jsEqualExpr`). **Kotlin** a sealed class of a `data class` per payload
-member holding `value` and a `data object` per atom, a `mutableStateOf` and a
+member holding `value` and a `data object` per atom, a payload naming a
+type the member's own name shadows inside the class (`loan Loan`) held
+through a `typealias` (`testdata/grpc_android.txtar`), a `mutableStateOf` and a
 local of one given the sealed type. **C** a struct of `int64_t tag` and a
 field per payload member, as Go's, compared and copied by tag through
 functions the file defines (`codegen/lang/c/enums.go`). **The interpreter**

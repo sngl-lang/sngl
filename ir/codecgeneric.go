@@ -45,8 +45,8 @@ func (r *CodecReach) GenericCodecs(decl any) []CodecUse {
 	_ = Walk(decl, func(n Node) error {
 		callee, b := GenericCallee(n)
 		if call, ok := n.(*Call); ok {
-			if t, format, ok := CodecCall(call); ok && t != nil {
-				add(CodecUse{Type: t, Format: format, Intrinsic: call.Func.Intrinsic})
+			for _, u := range CodecUses(call) {
+				add(u)
 			}
 		}
 		if callee == nil || callee == decl {

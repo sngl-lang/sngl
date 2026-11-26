@@ -1934,6 +1934,9 @@ type StructDef struct {
 	// rather than declaring the same instantiation twice.
 	InstanceOf   *StructDef `json:"-"`
 	InstanceArgs []*Type    `json:"-"`
+	// Proto is the protobuf message the struct is, as `#[grpc.message]`
+	// names it: `library.v1.Book`.
+	Proto string `json:",omitempty"`
 }
 
 func (s *StructDef) SymName() string { return s.Name }
@@ -1973,6 +1976,9 @@ type StructField struct {
 	// its SNGL name in the IR and on every host.
 	JSON string `json:",omitempty"`
 	HTTP string `json:",omitempty"`
+	// Proto is the field's protobuf number and kind, as `#[grpc.field]`
+	// gives them; a zero Number is a field the mark never numbered.
+	Proto ProtoField `json:",omitzero"`
 	// CAlias is the `#[c.native]` alias the field's type was written as, which
 	// a C struct's field (StructDef.IsCStruct) crosses as: Param.CAlias's
 	// rule, for the same reason.
@@ -2016,6 +2022,12 @@ type EnumMember struct {
 	// JSON is the member's name on the wire, as `#[json.identifier]` gives
 	// it; empty is the member's own name.
 	JSON string `json:",omitempty"`
+	// Proto is the member's protobuf number, as `#[grpc.value]` gives it;
+	// nil is its place among the members.
+	Proto *int `json:",omitempty"`
+	// Oneof is what `#[grpc.field]` says of a member of a payload enum a
+	// message holds as a oneof: the field its payload is written as.
+	Oneof ProtoField `json:",omitzero"`
 }
 
 // UnitDef is a resolved unit type declaration with conversion table.

@@ -156,13 +156,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -722,4 +722,4 @@ import androidx.compose.ui.focus.focusProperties
 // lambda with a receiver, which SNGL has no way to write.
 fun Modifier.snglUnfocusable(): Modifier = focusProperties { canFocus = false }
 -- run/kotlin/android --
-pass sha256:ccb3456491756e82b7137f95773faf50
+pass sha256:966f84fb55e0e068287efd73d7d8f473

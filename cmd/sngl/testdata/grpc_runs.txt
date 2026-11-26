@@ -1,0 +1,364 @@
+# The package a grpc: import writes, run against the gRPC server the script
+# harness runs at 127.0.0.1:47820 (internal/testgrpc), which reads and writes
+# with protobuf's own runtime.
+
+sngl test --platform=none app.sngl
+stdout '6 tests, 0 failures'
+stderr 'import "grpc:./library.proto": library.v1.Library.Watch is left out: a streaming method is not called yet'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout '6 tests, 0 failures'
+
+
+-- app.sngl --
+// Every kind of field read back from the server, every kind sent and echoed,
+// a status classified, and the component over a read-only method.
+
+import async "sngl:async"
+import library "grpc:./library.proto"
+import test "sngl:test"
+import ui "sngl:ui"
+
+const local = "127.0.0.1:47820"
+
+func testGet(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.getBookCall({id=7}) {
+        ok {
+            t.assert(b.id == 7)
+            t.assert(b.title == "Book 7")
+            t.assert(b.tags == ["old", "rare"])
+            t.assert(b.kind == library.BookKind.paperback)
+            t.assert(b.pages == 320)
+            t.assert(b.added != null && b.added.seconds == 1700000000 && b.added.nanos == 5)
+            t.assert(b.scores.length() == 1 && b.scores["plot"] == 4.5)
+            t.assert(b.cover == "aGk=")
+            t.assert(b.ranks == [-1, 2])
+            t.assert(b.rating == 0.5)
+            t.assert(b.isbn == 978)
+            t.assert(b.lent)
+            t.assert(b.place == library.BookPlace{loan=library.Loan{to="Ada", due=5}})
+        }
+        failed { t.assert(b.message == "") }
+    }
+    // A oneof set to a member holding its zero is still that member.
+    match var b = library.getBookCall({id=2}) {
+        ok { t.assert(b.place.shelf == "") }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+// A 64-bit field is an int64, which every target holds whole: Kotlin's int
+// is 32 bits.
+func testWide(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.getBookCall({id=64}) {
+        ok { t.assert(b.isbn == 9780000000002) }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testAdd(t test.Test) {
+    t.setContext(library.server, local)
+    var sent = library.Book{
+        id=1,
+        title="Dune",
+        tags=["sf"],
+        kind=library.BookKind.hardCover,
+        pages=412,
+        added=library.Timestamp{seconds=-5, nanos=1},
+        scores={"plot"=5.0, "pace"=-1.25},
+        cover="aGk=",
+        ranks=[-3, 0, 70000],
+        rating=-2.5,
+        isbn=42,
+        lent=true,
+        place={bin=0},
+    }
+    match var b = library.addBookCall({book=sent}) {
+        ok {
+            t.assert(b.id == 99)
+            t.assert(b.title == "added: Dune")
+            t.assert(b.tags == sent.tags)
+            t.assert(b.kind == sent.kind)
+            t.assert(b.pages == 412)
+            t.assert(b.added != null && b.added.seconds == -5 && b.added.nanos == 1)
+            t.assert(b.scores.length() == 2 && b.scores["plot"] == 5.0 && b.scores["pace"] == -1.25)
+            t.assert(b.cover == sent.cover)
+            t.assert(b.ranks == sent.ranks)
+            t.assert(b.rating == sent.rating)
+            t.assert(b.isbn == 42)
+            t.assert(b.lent)
+            t.assert(b.place == sent.place)
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testZeros(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.addBookCall({book=library.Book{}}) {
+        ok {
+            t.assert(b.title == "added: ")
+            t.assert(b.pages == null)
+            t.assert(b.added == null)
+            t.assert(b.kind == library.BookKind.unspecified)
+            t.assert(b.tags.length() == 0)
+            t.assert(b.place == library.BookPlace.none)
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testStatus(t test.Test) {
+    t.setContext(library.server, local)
+    match var b = library.getBookCall({id=404}) {
+        ok { t.assert(b.title == "") }
+        failed {
+            t.assert(b.kind == async.FailureKind.request)
+            t.assert(b.code == "NOT_FOUND")
+            t.assert(b.message == "no book 404")
+        }
+    }
+    match var b = library.getBookCall({id=16}) {
+        ok { t.assert(b.title == "") }
+        failed { t.assert(b.kind == async.FailureKind.auth) }
+    }
+    t.setContext(library.server, "")
+    match var b = library.getBookCall({id=1}) {
+        ok { t.assert(b.title == "") }
+        failed { t.assert(b.code == "UNAVAILABLE") }
+    }
+}
+
+component shelf ui.node {
+    var id int64 = 3
+    var found option[library.Book] = null
+    library.server(local) {
+        library.getBook(request={id=id}, :value=found)
+    }
+    ui.text #title(value=found != null ? found.title : "-")
+    ui.button #next(text="Next", @click { id += 1 })
+}
+
+func testComponent(t test.Test, c shelf) {
+    t.wait(func() => c.title.value == "Book 3", 5000)
+    c.next.click()
+    t.wait(func() => c.title.value == "Book 4", 5000)
+    t.assert(c.title.value == "Book 4")
+}
+
+ui.window {
+    shelf
+}
+-- library.proto --
+syntax = "proto3";
+
+package library.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// A book on a shelf.
+message Book {
+  // The book's id.
+  int64 id = 1;
+  string title = 2;
+  repeated string tags = 3;
+  BookKind kind = 4;
+  optional int32 pages = 5;
+  google.protobuf.Timestamp added = 6;
+  map<string, double> scores = 7;
+  bytes cover = 8;
+  repeated sint32 ranks = 9;
+  float rating = 10;
+  fixed64 isbn = 11;
+  bool lent = 12;
+  // Where the book is.
+  oneof place {
+    string shelf = 13;
+    Loan loan = 14;
+    int32 bin = 15;
+  }
+}
+
+message Loan {
+  string to = 1;
+  int64 due = 2;
+}
+
+enum BookKind {
+  BOOK_KIND_UNSPECIFIED = 0;
+  BOOK_KIND_HARD_COVER = 1;
+  BOOK_KIND_PAPERBACK = 2;
+}
+
+message GetBookRequest {
+  int64 id = 1;
+}
+
+message AddBookRequest {
+  Book book = 1;
+}
+
+service Library {
+  // Answers one book.
+  rpc GetBook(GetBookRequest) returns (Book) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc Watch(GetBookRequest) returns (stream Book);
+  // Answers the book it was handed, its id 99 and its title marked added.
+  rpc AddBook(AddBookRequest) returns (Book);
+}
+-- testrun/android/kotlin/app.sngl/_/1 --
+sha256:23317fb3d96a9cd40e9e77c18d95f931
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/shelf/1 --
+sha256:85f5b827587afb3b6dc5a76a818ccfeb
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:c125c1ab19a5bb708b808ff68acaccc7
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/shelf/1 --
+sha256:517ea3f0b52a888b6629929bffb88e13
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:8aba2c8c7289c9ece020a5e3de168dbe
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/shelf/1 --
+sha256:59eedb7a75fe743fd567f95ea8b86492
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:e9b13366aa83348b05aedd8940333ba0
+{
+  "results": [
+    {
+      "Desc": "Add",
+      "Passed": true
+    },
+    {
+      "Desc": "Get",
+      "Passed": true
+    },
+    {
+      "Desc": "Status",
+      "Passed": true
+    },
+    {
+      "Desc": "Wide",
+      "Passed": true
+    },
+    {
+      "Desc": "Zeros",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/shelf/1 --
+sha256:344a3978a32bd35e05c9cf0351b2f7f7
+{
+  "results": [
+    {
+      "Desc": "Component",
+      "Passed": true
+    }
+  ]
+}

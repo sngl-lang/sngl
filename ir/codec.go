@@ -29,6 +29,9 @@ const (
 	CodecJSON CodecFormat = iota
 	// CodecQuery is a URL's query: the struct sngl:http's send and get take.
 	CodecQuery
+	// CodecProto is protobuf's wire format: the messages sngl:grpc's call
+	// sends and reads back.
+	CodecProto
 )
 
 // CodecCall reports the type a call to a codec intrinsic reads or writes, and
@@ -111,6 +114,9 @@ const (
 	// member's wire name.
 	CodecEnum
 	CodecStruct
+	// CodecOneof is a payload enum a message holds as a protobuf oneof: its
+	// Fields are the enum's members, one carrying nothing has no number.
+	CodecOneof
 )
 
 // Codec is one node of a CodecPlan: a type and how it is written.
@@ -127,6 +133,8 @@ type Codec struct {
 	Members []*EnumMember
 	// ID is a struct's or an enum's index in CodecPlan.Named.
 	ID int
+	// Message is a struct's protobuf message name, in a CodecProto plan.
+	Message string
 }
 
 // CodecField is one field of a struct node.
@@ -136,6 +144,10 @@ type CodecField struct {
 	// Wire is the name it is written under.
 	Wire  string
 	Codec *Codec
+	// Number and Proto are the field's protobuf number and kind, in a
+	// CodecProto plan; a list's kind is its element's, a map's its value's.
+	Number int
+	Proto  ProtoKind
 }
 
 // CodecPlan is everything a backend renders for one codec call: the root,
@@ -182,6 +194,17 @@ func (p *CodecPlan) node(t *Type, format CodecFormat, seen map[string]*Codec) *C
 		n := &Codec{Kind: CodecEnum, Type: t, Members: ed.Members, ID: len(p.Named)}
 		seen[key] = n
 		p.Named = append(p.Named, n)
+		if format == CodecProto && ed.Carries() {
+			n.Kind = CodecOneof
+			for _, m := range ed.Members {
+				cf := CodecField{Name: m.Name, Wire: m.Name}
+				if pt := MemberPayload(t, m.Name); pt != nil {
+					cf.Codec = p.node(pt, format, seen)
+					cf.Number, cf.Proto = m.Oneof.Number, protoKindOf(pt, m.Oneof.Kind)
+				}
+				n.Fields = append(n.Fields, cf)
+			}
+		}
 		return n
 	case TypeStruct:
 		switch {
@@ -195,11 +218,19 @@ func (p *CodecPlan) node(t *Type, format CodecFormat, seen map[string]*Codec) *C
 			return n
 		}
 		n := &Codec{Kind: CodecStruct, Type: t, ID: len(p.Named)}
+		if format == CodecProto {
+			n.Message = protoMessage(t)
+		}
 		seen[key] = n
 		p.Named = append(p.Named, n)
 		fields, _ := FieldsOf(t)
 		for _, f := range fields {
-			n.Fields = append(n.Fields, CodecField{Name: f.Name, Wire: wireName(t, f, format), Codec: p.node(f.Type, format, seen)})
+			cf := CodecField{Name: f.Name, Wire: wireName(t, f, format), Codec: p.node(f.Type, format, seen)}
+			if format == CodecProto {
+				pf := protoField(t, f)
+				cf.Number, cf.Proto = pf.Number, protoKindOf(f.Type, pf.Kind)
+			}
+			n.Fields = append(n.Fields, cf)
 		}
 		return n
 	}
@@ -242,8 +273,11 @@ func CodecProblemOpen(t *Type, format CodecFormat) string {
 }
 
 func codecProblem(t *Type, format CodecFormat, open bool) string {
-	if format == CodecQuery {
+	switch format {
+	case CodecQuery:
 		return queryProblem(t, open)
+	case CodecProto:
+		return protoProblem(t, map[string]bool{}, open)
 	}
 	return jsonProblem(t, map[string]bool{}, open)
 }

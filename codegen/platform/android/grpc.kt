@@ -1,0 +1,275 @@
+package PACKAGE
+
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
+// SnglGrpc is the transport behind sngl:grpc's call: one unary call's bytes
+// framed as gRPC and carried over OkHttp's HTTP/2. The messages are written
+// and read by SnglProto, from the program's own classes, so nothing here
+// knows a message.
+object SnglGrpc {
+    class Answer(val body: ByteArray, val code: Int, val message: String)
+
+    private val none = ByteArray(0)
+    private val grpc = "application/grpc".toMediaType()
+
+    // A server written `host:port` is called in plaintext, which HTTP/2
+    // speaks only to a client that assumes it.
+    private val plain by lazy { OkHttpClient.Builder().protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE)).build() }
+    private val tls by lazy { OkHttpClient.Builder().protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1)).build() }
+
+    suspend fun call(server: String, method: String, request: ByteArray, life: Int): Answer {
+        if (SnglCodec.ended(life)) return Answer(none, 1, "cancelled")
+        if (server.isEmpty()) return Answer(none, 14, "no server: provide the service's address")
+        val secure = server.startsWith("https://")
+        val host = server.removePrefix("https://").removePrefix("http://").trimEnd('/')
+        val framed = ByteArray(5 + request.size)
+        val n = request.size
+        framed[1] = (n ushr 24).toByte()
+        framed[2] = (n ushr 16).toByte()
+        framed[3] = (n ushr 8).toByte()
+        framed[4] = n.toByte()
+        request.copyInto(framed, 5)
+        val req = Request.Builder()
+            .url((if (secure) "https://" else "http://") + host + method)
+            .header("te", "trailers")
+            .post(framed.toRequestBody(grpc))
+            .build()
+        return withContext(Dispatchers.IO) {
+            val call = (if (secure) tls else plain).newCall(req)
+            // SnglCodec keeps its lifetimes' aborts to itself, so the call
+            // watches for its lifetime's end.
+            val watch = if (life == 0) null else launch {
+                while (!SnglCodec.ended(life)) delay(20)
+                call.cancel()
+            }
+            try {
+                call.execute().use { resp ->
+                    if (resp.code != 200) return@withContext Answer(none, fromHttp(resp.code), "HTTP ${resp.code}")
+                    val body = resp.body?.bytes() ?: none
+                    // A call that fails before answering carries its status
+                    // in the headers, with no trailers after them.
+                    val status = resp.header("grpc-status") ?: resp.trailers()["grpc-status"]
+                    val message = resp.header("grpc-message") ?: resp.trailers()["grpc-message"] ?: ""
+                    val code = status?.toIntOrNull() ?: return@withContext Answer(none, 13, "the response has no grpc-status")
+                    if (code != 0) return@withContext Answer(none, code, unescape(message))
+                    if (body.size < 5 || body[0].toInt() != 0) return@withContext Answer(none, 13, "a response message the client cannot read")
+                    val len = ((body[1].toInt() and 0xff) shl 24) or ((body[2].toInt() and 0xff) shl 16) or
+                        ((body[3].toInt() and 0xff) shl 8) or (body[4].toInt() and 0xff)
+                    if (len < 0 || 5 + len > body.size) return@withContext Answer(none, 13, "a response message cut short")
+                    Answer(body.copyOfRange(5, 5 + len), 0, "")
+                }
+            } catch (e: IOException) {
+                if (SnglCodec.ended(life)) Answer(none, 1, "cancelled") else Answer(none, 14, e.toString())
+            } finally {
+                watch?.cancel()
+            }
+        }
+    }
+
+    // gRPC's mapping of an HTTP status that is not one of its own answers.
+    private fun fromHttp(status: Int): Int = when (status) {
+        400 -> 13
+        401 -> 16
+        403 -> 7
+        404 -> 12
+        429, 502, 503, 504 -> 14
+        else -> 2
+    }
+
+    // grpc-message is percent-encoded UTF-8, where `+` is itself.
+    private fun unescape(s: String): String {
+        if (!s.contains('%')) return s
+        val out = java.io.ByteArrayOutputStream()
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            if (c == '%' && i + 2 < s.length) {
+                val b = s.substring(i + 1, i + 3).toIntOrNull(16)
+                if (b != null) {
+                    out.write(b)
+                    i += 3
+                    continue
+                }
+            }
+            out.write(c.toString().toByteArray(Charsets.UTF_8))
+            i++
+        }
+        return out.toString("UTF-8")
+    }
+}
+
+class SnglPbFail(message: String) : Exception(message)
+
+class SnglPbDecoded<T>(val value: T?, val error: String?)
+
+// SnglPbWriter is a message's bytes as protobuf's wire format writes them.
+class SnglPbWriter {
+    private var buf = ByteArray(64)
+    private var size = 0
+
+    fun bytes(): ByteArray = buf.copyOf(size)
+
+    private fun room(n: Int) {
+        if (size + n > buf.size) buf = buf.copyOf(maxOf(buf.size * 2, size + n))
+    }
+
+    fun tag(num: Int, type: Int) = varint((num.toLong() shl 3) or type.toLong())
+
+    fun varint(v: Long) {
+        var x = v
+        room(10)
+        while (x and 0x7fL.inv() != 0L) {
+            buf[size++] = ((x and 0x7f) or 0x80).toByte()
+            x = x ushr 7
+        }
+        buf[size++] = x.toByte()
+    }
+
+    fun zigzag32(v: Int) = varint(((v shl 1) xor (v shr 31)).toLong() and 0xffffffffL)
+
+    fun zigzag64(v: Long) = varint((v shl 1) xor (v shr 63))
+
+    fun fixed32(v: Int) {
+        room(4)
+        for (i in 0 until 4) buf[size++] = (v ushr (8 * i)).toByte()
+    }
+
+    fun fixed64(v: Long) {
+        room(8)
+        for (i in 0 until 8) buf[size++] = (v ushr (8 * i)).toByte()
+    }
+
+    fun raw(b: ByteArray) {
+        varint(b.size.toLong())
+        room(b.size)
+        b.copyInto(buf, size)
+        size += b.size
+    }
+
+    fun string(s: String) = raw(s.toByteArray(Charsets.UTF_8))
+
+    fun base64(s: String) = raw(android.util.Base64.decode(s, android.util.Base64.DEFAULT))
+
+    // A length-delimited record of what write writes: a message, a packed
+    // field, a map's entry.
+    inline fun sub(write: (SnglPbWriter) -> Unit) {
+        val w = SnglPbWriter()
+        write(w)
+        raw(w.bytes())
+    }
+}
+
+// SnglPbReader reads the records of a message, b from start to end. A
+// record that is not protobuf, or not of the wire type its field is, fails
+// naming where.
+class SnglPbReader(private val b: ByteArray, private var pos: Int = 0, private val end: Int = b.size) {
+    companion object {
+        fun narrow(x: Long, lo: Long, hi: Long, path: String): Long {
+            if (x < lo || x > hi) throw SnglPbFail("$path: $x is out of range")
+            return x
+        }
+    }
+
+    fun more(): Boolean = pos < end
+
+    fun varint(): Long {
+        var x = 0L
+        var shift = 0
+        while (shift < 64) {
+            if (pos >= end) throw SnglPbFail("not protobuf")
+            val c = b[pos++].toInt()
+            x = x or ((c and 0x7f).toLong() shl shift)
+            if (c and 0x80 == 0) return x
+            shift += 7
+        }
+        throw SnglPbFail("not protobuf")
+    }
+
+    fun tag(path: String): Long = try {
+        varint()
+    } catch (e: SnglPbFail) {
+        throw SnglPbFail("$path: not protobuf")
+    }
+
+    // want checks the record tag reads is of wire type type, as kind is
+    // written.
+    fun want(tag: Long, type: Int, path: String, kind: String) {
+        if ((tag and 7L).toInt() != type) throw SnglPbFail("$path: want $kind")
+    }
+
+    fun fixed32(): Int {
+        if (end - pos < 4) throw SnglPbFail("not protobuf")
+        var x = 0
+        for (i in 0 until 4) x = x or ((b[pos++].toInt() and 0xff) shl (8 * i))
+        return x
+    }
+
+    fun fixed64(): Long {
+        if (end - pos < 8) throw SnglPbFail("not protobuf")
+        var x = 0L
+        for (i in 0 until 8) x = x or ((b[pos++].toLong() and 0xff) shl (8 * i))
+        return x
+    }
+
+    fun zigzag32(): Int {
+        val x = varint().toInt()
+        return (x ushr 1) xor -(x and 1)
+    }
+
+    fun zigzag64(): Long {
+        val x = varint()
+        return (x ushr 1) xor -(x and 1)
+    }
+
+    private fun length(): Int {
+        val n = varint()
+        if (n < 0 || n > end - pos) throw SnglPbFail("not protobuf")
+        return n.toInt()
+    }
+
+    fun bytes(): ByteArray {
+        val n = length()
+        val out = b.copyOfRange(pos, pos + n)
+        pos += n
+        return out
+    }
+
+    fun string(): String {
+        val n = length()
+        val out = String(b, pos, n, Charsets.UTF_8)
+        pos += n
+        return out
+    }
+
+    fun base64(): String = android.util.Base64.encodeToString(bytes(), android.util.Base64.NO_WRAP)
+
+    fun sub(): SnglPbReader {
+        val n = length()
+        val r = SnglPbReader(b, pos, pos + n)
+        pos += n
+        return r
+    }
+
+    fun skip(tag: Long, path: String) {
+        try {
+            when ((tag and 7L).toInt()) {
+                0 -> varint()
+                1 -> fixed64()
+                2 -> pos += length()
+                5 -> fixed32()
+                else -> throw SnglPbFail("not protobuf")
+            }
+        } catch (e: SnglPbFail) {
+            throw SnglPbFail("$path: not protobuf")
+        }
+    }
+}

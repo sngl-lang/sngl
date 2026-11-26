@@ -5802,13 +5802,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun DrawScope.snglDrawText(content: String, x: Float, y: Float, c: ComposeColor, size: Float, family: String) {
@@ -6002,7 +6002,7 @@ fun MainScreen() {
                 }
             }
             if ((failed__inst0 || !hasPhoto__inst0)) {
-                Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204, g = 204, b = 204), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
+                Text(text = "JD", modifier = modifierOf(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), alignItems = SnglAlignment.CENTER, justifyContent = SnglJustification.CENTER, textAlign = SnglTextAlign.CENTER, background = Color(r = 204.toUByte(), g = 204.toUByte(), b = 204.toUByte()), borderRadius = Measurement(px = 20.0), display = SnglDisplay.INLINEFLEX), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Center)))
             } else {
                 SnglImage(modifier = flexed(styleModifier(Style(width = Measurement(px = 40.0), height = Measurement(px = 40.0), borderRadius = Measurement(px = 20.0)), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), onLoad = {}, onError = { _ ->
                     failed__inst0 = true
@@ -6724,6 +6724,6 @@ pass sha256:c0ce8b5d6eeb32a74db74f654b9fecbb
 -- run/go/gtk4 --
 pass sha256:0c6dc953dd49500a4f3701b0902387c4
 -- run/kotlin/android --
-pass sha256:9164c4affdd04c825ec35937d1b533d2
+pass sha256:9dfc859457c9148ad7a1df5ac80e0830
 -- run/none/html --
 pass sha256:18f288defad192beea52e410e05fa7f5

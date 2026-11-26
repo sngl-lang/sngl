@@ -3452,18 +3452,18 @@ data class Measurement(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 data class Style(
-    var fill: Color = Color(a = 0),
-    var stroke: Color = Color(a = 0),
+    var fill: Color = Color(a = 0u),
+    var stroke: Color = Color(a = 0u),
     var strokeWidth: Double = 1.0,
     var lineCap: String = "butt",
     var lineJoin: String = "miter",
@@ -3896,6 +3896,6 @@ pass sha256:13d872111dd4d25a69dc9ad2fb3c1cab
 -- run/go/gtk4 --
 pass sha256:fa31c7eb7c745b7f4255b78a8b723730
 -- run/kotlin/android --
-pass sha256:04d632dbcc994e072d51b40c89ed3e52
+pass sha256:1e02e647ececece50af6a719464aafe2
 -- run/none/html --
 pass sha256:c6f134c1e0ffc09c4a133536800792fa

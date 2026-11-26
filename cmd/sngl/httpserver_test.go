@@ -4,6 +4,7 @@ import (
 	"sync"
 	"testing"
 
+	"duckfam.us/sngl/internal/testgrpc"
 	"duckfam.us/sngl/internal/testhttp"
 )
 
@@ -24,6 +25,13 @@ func startTestHTTP(t *testing.T, root string) {
 		}
 		if err := start(root); err != nil {
 			t.Logf("test HTTP server not started: %v", err)
+		}
+		startGRPC := testgrpc.Start
+		if *updateTestRuns || *verifyTestRuns {
+			startGRPC = testgrpc.StartAt
+		}
+		if err := startGRPC(); err != nil {
+			t.Logf("test gRPC server not started: %v", err)
 		}
 	})
 }

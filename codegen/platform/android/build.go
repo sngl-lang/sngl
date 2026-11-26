@@ -43,7 +43,7 @@ func (g *Generator) Build(dir string, opts *ir.StructLit) (string, error) {
 		return filepath.Join(dir, "app", "build", "outputs", "apk", "debug", "app-debug.apk"), nil
 	}
 
-	tc, err := resolveToolchain(combo)
+	tc, err := resolveToolchain(combo, fileExists(filepath.Join(dir, "SnglGrpc.kt")))
 	if err != nil {
 		return "", fmt.Errorf("resolving toolchain: %w", err)
 	}

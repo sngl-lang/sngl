@@ -207,11 +207,35 @@ func (jc *JsIRContext) AssignText(n *ir.Assign, target, value string) string {
 		// A compound write reads the entry, applies the operator, and sets it
 		// back. The read needs a default, which for a map SNGL types as the
 		// value type's zero.
-		op := strings.TrimSuffix(n.Op.String(), "=")
-		cur := recv + ".get(" + key + ")"
-		return recv + ".set(" + key + ", " + cur + " " + op + " " + value + ")"
+		return recv + ".set(" + key + ", " + jc.compound(n, recv+".get("+key+")", value) + ")"
+	}
+	if n.Op != ast.AssignSet && narrowsCompound(n) {
+		return target + " = " + jc.compound(n, target, value)
 	}
 	return target + " " + n.Op.String() + " " + value
+}
+
+// narrowsCompound reports whether JavaScript's own `op=` would leave n's
+// target outside its type: a sized number's width, an int's truncation.
+func narrowsCompound(n *ir.Assign) bool {
+	t := n.Target.ExprType()
+	switch {
+	case t == nil:
+		return false
+	case t.Kind == ir.TypeInt:
+		return t.Bits != 0 || n.Op == ast.AssignDiv
+	case t.Kind == ir.TypeFloat:
+		return t.Bits == 32
+	}
+	return false
+}
+
+// compound is the value `cur op= value` assigns, as the binary expression it
+// stands for, so an integer target wraps and divides as its type does: a bare
+// `x += 100` left an int8 at 200.
+func (jc *JsIRContext) compound(n *ir.Assign, cur, value string) string {
+	bin := &ir.Binary{Type: n.Target.ExprType(), Op: n.Op.Binary(), Left: n.Target, Right: n.Value}
+	return jc.Binary(bin, cur, value)
 }
 
 // isMapExpr reports whether e is typed as a map.

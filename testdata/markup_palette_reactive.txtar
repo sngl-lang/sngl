@@ -3759,27 +3759,27 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
 
 data class Palette(
-    var plain: Color = Color(a = 0),
-    var keyword: Color = Color(a = 0),
-    var type: Color = Color(a = 0),
-    var function: Color = Color(a = 0),
-    var variable: Color = Color(a = 0),
-    var constant: Color = Color(a = 0),
-    var string: Color = Color(a = 0),
-    var number: Color = Color(a = 0),
-    var comment: Color = Color(a = 0),
-    var operator: Color = Color(a = 0),
-    var punctuation: Color = Color(a = 0)
+    var plain: Color = Color(a = 0.toUByte()),
+    var keyword: Color = Color(a = 0.toUByte()),
+    var type: Color = Color(a = 0.toUByte()),
+    var function: Color = Color(a = 0.toUByte()),
+    var variable: Color = Color(a = 0.toUByte()),
+    var constant: Color = Color(a = 0.toUByte()),
+    var string: Color = Color(a = 0.toUByte()),
+    var number: Color = Color(a = 0.toUByte()),
+    var comment: Color = Color(a = 0.toUByte()),
+    var operator: Color = Color(a = 0.toUByte()),
+    var punctuation: Color = Color(a = 0.toUByte())
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -3807,7 +3807,7 @@ enum class SnglToken(private val sngl: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
-    var pal by remember { mutableStateOf(Palette(keyword = Color(r = 207, g = 34, b = 46), type = Color(r = 149, g = 56), function = Color(r = 130, g = 80, b = 223), constant = Color(r = 5, g = 80, b = 174), string = Color(r = 10, g = 48, b = 105), number = Color(r = 5, g = 80, b = 174), comment = Color(r = 110, g = 119, b = 129))) }
+    var pal by remember { mutableStateOf(Palette(keyword = Color(r = 207.toUByte(), g = 34.toUByte(), b = 46.toUByte()), type = Color(r = 149.toUByte(), g = 56.toUByte()), function = Color(r = 130.toUByte(), g = 80.toUByte(), b = 223.toUByte()), constant = Color(r = 5.toUByte(), g = 80.toUByte(), b = 174.toUByte()), string = Color(r = 10.toUByte(), g = 48.toUByte(), b = 105.toUByte()), number = Color(r = 5.toUByte(), g = 80.toUByte(), b = 174.toUByte()), comment = Color(r = 110.toUByte(), g = 119.toUByte(), b = 129.toUByte()))) }
     var visible__inst0 by remember { mutableStateOf(true) }
 
     if (visible__inst0) {
@@ -3820,13 +3820,13 @@ fun MainScreen() {
         }
         Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
             Button(onClick = {
-                pal = Palette(keyword = Color(r = 255, g = 123, b = 114), type = Color(r = 255, g = 166, b = 87), function = Color(r = 210, g = 168, b = 255), constant = Color(r = 121, g = 192, b = 255), string = Color(r = 165, g = 214, b = 255), number = Color(r = 121, g = 192, b = 255), comment = Color(r = 139, g = 148, b = 158))
+                pal = Palette(keyword = Color(r = 255.toUByte(), g = 123.toUByte(), b = 114.toUByte()), type = Color(r = 255.toUByte(), g = 166.toUByte(), b = 87.toUByte()), function = Color(r = 210.toUByte(), g = 168.toUByte(), b = 255.toUByte()), constant = Color(r = 121.toUByte(), g = 192.toUByte(), b = 255.toUByte()), string = Color(r = 165.toUByte(), g = 214.toUByte(), b = 255.toUByte()), number = Color(r = 121.toUByte(), g = 192.toUByte(), b = 255.toUByte()), comment = Color(r = 139.toUByte(), g = 148.toUByte(), b = 158.toUByte()))
             }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                 Text(text = "theme", modifier = Modifier)
             }
             Text(text = buildAnnotatedString {
                 withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-                    withStyle(SpanStyle(color = (tokenColor(pal, SnglToken.KEYWORD)).let { if (it.a == 0) MaterialTheme.colorScheme.primary else ComposeColor(it.r, it.g, it.b, it.a) })) {
+                    withStyle(SpanStyle(color = (tokenColor(pal, SnglToken.KEYWORD)).let { if (it.a == 0.toUByte()) MaterialTheme.colorScheme.primary else ComposeColor(it.r.toInt(), it.g.toInt(), it.b.toInt(), it.a.toInt()) })) {
                         append("func")
                     }
                 }
@@ -4095,6 +4095,6 @@ pass sha256:45339472bcd74c9827716ff5d97aa1fd
 -- run/go/gtk4 --
 pass sha256:1d1a3bf01eeb2c5acf30fa70f5736c11
 -- run/kotlin/android --
-pass sha256:b8a6033a9f972b83a292eb94f94cb726
+pass sha256:50c82289ebd562fd932970cfecfeef75
 -- run/none/html --
 pass sha256:a34cc8f717e060caff845fac1690b3ea

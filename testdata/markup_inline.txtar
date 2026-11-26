@@ -4093,13 +4093,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -4273,7 +4273,7 @@ fun MainScreen() {
                         append("main")
                     }
                 }
-            }, modifier = modifierOf(Style(padding = Measurement(px = 12.0), background = Color(r = 245, g = 245, b = 245), borderRadius = Measurement(px = 4.0)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
+            }, modifier = modifierOf(Style(padding = Measurement(px = 12.0), background = Color(r = 245.toUByte(), g = 245.toUByte(), b = 245.toUByte()), borderRadius = Measurement(px = 4.0)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle.Default))
             Text(text = buildAnnotatedString {
                 withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
                     withStyle(SpanStyle(textDecoration = TextDecoration.combine(listOf(TextDecoration.Underline, TextDecoration.LineThrough)))) {
@@ -4298,7 +4298,7 @@ fun MainScreen() {
             }, modifier = flexed(styleModifier(Style(paddingLeft = Measurement(px = 12.0), fontStyle = SnglFontStyle.ITALIC, borderLeft = "3px solid #CCCCCC"), true), null, { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = TextUnit.Unspecified, fontWeight = null, fontStyle = FontStyle.Italic, fontFamily = null, textAlign = TextAlign.Unspecified)))
             Text(text = buildAnnotatedString {
                 append("a caption")
-            }, modifier = modifierOf(Style(color = Color(r = 102, g = 102, b = 102), fontSize = Measurement(px = 13.0)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color(red = 102, green = 102, blue = 102, alpha = 255), fontSize = TextUnit(13.0f, TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
+            }, modifier = modifierOf(Style(color = Color(r = 102.toUByte(), g = 102.toUByte(), b = 102.toUByte()), fontSize = Measurement(px = 13.0)), { w: Float -> Modifier.weight(w).fillMaxWidth().snglFlexed() }), style = LocalTextStyle.current.merge(TextStyle(color = androidx.compose.ui.graphics.Color(red = 102, green = 102, blue = 102, alpha = 255), fontSize = TextUnit(13.0f, TextUnitType.Sp), fontWeight = null, fontStyle = null, fontFamily = null, textAlign = TextAlign.Unspecified)))
         }
     }
 }
@@ -4535,6 +4535,6 @@ pass sha256:cc3c72a059cec9a9c59e17b5ab0c2d65
 -- run/go/html --
 pass sha256:53ed55b98b2e38eca4b42793a849bc0a
 -- run/kotlin/android --
-pass sha256:8d9d780fb63a2bc121e6cb48b9e3b770
+pass sha256:c9767d7487fd36f35990e8fea1f5c6a5
 -- run/none/html --
 pass sha256:c60dd4a9391c715c6e137b1beeac8e94

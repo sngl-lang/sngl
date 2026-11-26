@@ -132,13 +132,13 @@ data class Style(
 )
 
 data class Color(
-    var r: Int = 0,
-    var g: Int = 0,
-    var b: Int = 0,
-    var a: Int = 255
+    var r: UByte = 0u,
+    var g: UByte = 0u,
+    var b: UByte = 0u,
+    var a: UByte = 255u
 ) {
     override fun toString(): String =
-        if (a < 255) "rgba($r,$g,$b,${a / 255.0})" else String.format("#%02x%02x%02x", r, g, b)
+        if (a < 255u) "rgba($r,$g,$b,${a.toInt() / 255.0})" else String.format("#%02x%02x%02x", r.toInt(), g.toInt(), b.toInt())
 }
 
 fun _snglFloatStr(v: Double): String =
@@ -266,7 +266,7 @@ enum class SnglListStyle(private val sngl: String) {
     override fun toString(): String = sngl
 }
 
-val typeColors: Map<String, Color> = mapOf("grass" to Color(r = 122, g = 199, b = 76), "fire" to Color(r = 238, g = 129, b = 48))
+val typeColors: Map<String, Color> = mapOf("grass" to Color(r = 122.toUByte(), g = 199.toUByte(), b = 76.toUByte()), "fire" to Color(r = 238.toUByte(), g = 129.toUByte(), b = 48.toUByte()))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,7 +289,7 @@ fun MainScreen() {
                 }, modifier = Modifier.safeDrawingPadding(), colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
                     Text(text = "Fire", modifier = Modifier)
                 }
-                Badge(modifier = flexed((if ((Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144))) == Style())) Modifier else styleModifier(Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144))), false)), null, snglFlexShare).safeDrawingPadding(), containerColor = androidx.compose.ui.graphics.Color(red = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).r.toInt(), green = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).g.toInt(), blue = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).b.toInt(), alpha = typeColors.getOrDefault(kind__inst0, Color(r = 104, g = 160, b = 144)).a.toInt()), contentColor = androidx.compose.ui.graphics.Color(red = typeInk(kind__inst0).r.toInt(), green = typeInk(kind__inst0).g.toInt(), blue = typeInk(kind__inst0).b.toInt(), alpha = typeInk(kind__inst0).a.toInt())) {
+                Badge(modifier = flexed((if ((Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104.toUByte(), g = 160.toUByte(), b = 144.toUByte()))) == Style())) Modifier else styleModifier(Style(color = typeInk(kind__inst0), background = typeColors.getOrDefault(kind__inst0, Color(r = 104.toUByte(), g = 160.toUByte(), b = 144.toUByte()))), false)), null, snglFlexShare).safeDrawingPadding(), containerColor = androidx.compose.ui.graphics.Color(red = typeColors.getOrDefault(kind__inst0, Color(r = 104.toUByte(), g = 160.toUByte(), b = 144.toUByte())).r.toInt(), green = typeColors.getOrDefault(kind__inst0, Color(r = 104.toUByte(), g = 160.toUByte(), b = 144.toUByte())).g.toInt(), blue = typeColors.getOrDefault(kind__inst0, Color(r = 104.toUByte(), g = 160.toUByte(), b = 144.toUByte())).b.toInt(), alpha = typeColors.getOrDefault(kind__inst0, Color(r = 104.toUByte(), g = 160.toUByte(), b = 144.toUByte())).a.toInt()), contentColor = androidx.compose.ui.graphics.Color(red = typeInk(kind__inst0).r.toInt(), green = typeInk(kind__inst0).g.toInt(), blue = typeInk(kind__inst0).b.toInt(), alpha = typeInk(kind__inst0).a.toInt())) {
                     Text(text = kind__inst0, modifier = Modifier)
                 }
             }
@@ -299,9 +299,9 @@ fun MainScreen() {
 
 fun typeInk(kind: String): Color {
     if ((kind == "electric")) {
-    	return Color(r = 34, g = 34, b = 34)
+    	return Color(r = 34.toUByte(), g = 34.toUByte(), b = 34.toUByte())
     }
-    return Color(r = 255, g = 255, b = 255)
+    return Color(r = 255.toUByte(), g = 255.toUByte(), b = 255.toUByte())
 }
 
 fun flexed(m: androidx.compose.ui.Modifier, flex: Double?, share: (Float) -> androidx.compose.ui.Modifier): androidx.compose.ui.Modifier = (if (((flex == null) || (flex!! <= 0.0))) m else m.then(share(flex!!.toFloat())))
@@ -383,4 +383,4 @@ val snglFlexShare: (Float) -> Modifier = { w ->
     Modifier.composed { LocalFlexShare.current?.invoke(w) ?: Modifier.fillMaxSize() }
 }
 -- run/kotlin/android --
-pass sha256:050e2b255908e2ecce821aeda92233dc
+pass sha256:c3534c5abb37d3edc5b73af17592769b

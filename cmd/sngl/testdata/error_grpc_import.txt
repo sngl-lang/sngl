@@ -1,0 +1,47 @@
+# A .proto is one of the project's own files, read through the project: a
+# path outside it is refused before anything is read. A file importing one
+# of the project's others is refused, since only the file named is read; a
+# file protobuf ships is not one of those.
+env SNGL_GENCACHE=off
+
+! sngl check proj/up.sngl
+stderr 'import "grpc:../outside/secret.proto": scheme "grpc": grpc:../outside/secret.proto is outside the project'
+
+! sngl check proj/imports.sngl
+stderr 'import "grpc:./imports.proto": .*only protobuf''s own are'
+
+! sngl check proj/broken.sngl
+stderr 'import "grpc:./broken.proto": .*broken.proto:2:9'
+
+sngl check proj/wkt.sngl
+
+-- proj/up.sngl --
+import api "grpc:../outside/secret.proto"
+
+const x = 1
+-- proj/imports.sngl --
+import api "grpc:./imports.proto"
+
+const x = 1
+-- proj/imports.proto --
+syntax = "proto3";
+import "other.proto";
+-- proj/broken.sngl --
+import api "grpc:./broken.proto"
+
+const x = 1
+-- proj/broken.proto --
+syntax = "proto3";
+message {
+-- proj/wkt.sngl --
+import api "grpc:./wkt.proto"
+
+const x = api.Stamp{}
+-- proj/wkt.proto --
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+message Stamp {
+  google.protobuf.Timestamp at = 1;
+}
+-- outside/secret.proto --
+syntax = "proto3";

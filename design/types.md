@@ -243,3 +243,20 @@ defines (`codegen/lang/c/units.go`). Its text is the sum the interpreter
 prints (`unitValue.String`): each base it holds a magnitude in, joined by
 `ir.UnitTermSep`, or its zero in the first base, each term written by the
 runtime's `sngl_unit_term` as `ir.FormatUnitTerm` writes one.
+
+## Sized numerics on each target
+
+**A sized integer holds its width on every target, the interpreter's answer
+included.** Go and C have the types. JavaScript holds an int as a double and
+narrows each result (`jsWrapArith`: a shift pair, `>>> 0`, or
+`BigInt.asIntN` for 64 bits). Kotlin has the types but widens `Byte` and
+`Short` arithmetic to `Int` and `UByte` and `UShort` to `UInt`, and has no
+literal for them: a literal is `250.toUByte()`, and each `+ - * / %` and
+negation of an 8- or 16-bit operand is converted back (`narrowed` in
+`codegen/lang/kotlin/ircontext.go`). Unconverted, a state var of one was a
+`mutableStateOf(250)` -- an `Int` that never wrapped -- and a struct field's
+`UByte = 0` did not compile. A compound assignment is the binary expression
+it stands for on both (`AssignOp.Binary`): JavaScript's bare `x += 100` left
+an `int8` at 200. `cmd/sngl/testdata/sized_numbers_runs.txt` runs the
+`testdata/test_sized_*.sngl` fixtures on html and android, the two targets
+whose numbers are not Go's.

@@ -60,7 +60,10 @@ type scaffoldData struct {
 	ActivityCompose string
 	// HasNav adds what a sngl:ui/nav stack is built on: navigation-compose,
 	// and the serialization plugin its typed routes are written with.
-	HasNav        bool
+	HasNav bool
+	// HasGRPC adds OkHttp, which SnglGrpc carries a call over.
+	HasGRPC       bool
+	OkHttp        string
 	Navigation    string
 	Serialization string
 	CompileSdk    int
@@ -94,6 +97,8 @@ func newScaffoldData(cfg Config) scaffoldData {
 		ComposeBOM:      combo.ComposeBOM,
 		ActivityCompose: combo.ActivityCompose,
 		HasNav:          cfg.Nav,
+		HasGRPC:         cfg.GRPC,
+		OkHttp:          combo.OkHttp,
 		Navigation:      combo.Navigation,
 		Serialization:   combo.Serialization,
 		CompileSdk:      combo.CompileSdk,

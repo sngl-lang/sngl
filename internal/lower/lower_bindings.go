@@ -363,27 +363,10 @@ func computeAssignNewVal(target ir.Expr, op ast.AssignOp, value ir.Expr, typ *ir
 		return value
 	}
 	return &ir.Binary{
-		Op:    assignOpToBinOp(op),
+		Op:    op.Binary(),
 		Left:  target,
 		Right: value,
 		Type:  typ,
-	}
-}
-
-func assignOpToBinOp(op ast.AssignOp) ast.BinaryOp {
-	switch op {
-	case ast.AssignAdd:
-		return ast.BinAdd
-	case ast.AssignSub:
-		return ast.BinSub
-	case ast.AssignMul:
-		return ast.BinMul
-	case ast.AssignDiv:
-		return ast.BinDiv
-	case ast.AssignMod:
-		return ast.BinMod
-	default:
-		return ast.BinAdd
 	}
 }
 

@@ -83,7 +83,7 @@ func testGrid(t test.Test, c main) {
     t.snapshot("two")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:7bc6e16df0f4e858550fa1dc04531f62
+sha256:a4370a0f6fecf1680ea41c79e8865bb3
 {
   "results": [
     {
