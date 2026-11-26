@@ -1285,18 +1285,25 @@ beside it spells; a trigger html writes on the page reads it from outside, and
 finds it by `data-sngl-id` as the invokers do
 (`cmd/sngl/testdata/html_element_handle_runs.txt`).
 
-**So a handle's remaining use is reading**, and a *prop* read does not compile
-on the Go mutation platforms: `GoIRContext.Select` ends at
+**So a handle's remaining use is reading**, and a *prop* read is answered at
+build time on every target (`propHolds`, `internal/lower/node_prop_reads.go`).
+A one-way prop holds what its call site gave it, since nothing else writes it;
+a two-way prop bound to a var holds the var; only a two-way prop left unbound
+is the node's own, the instance's cell. Left to the target, a read did not
+compile on the Go mutation platforms: `GoIRContext.Select` ends at
 `operand + "." + ExportName(field)`, inventing a Go field by title-casing the
-SNGL prop, so `box.value` is `m.box.Value` against a `widget.Entry` that spells
-it `Text` — and against a gtk4 handle that is an `unsafe.Pointer` with no
-fields at all. On html it reaches the emitter and renders an empty element
-nothing fills. The one read that does work is a `#[c.native]` method's receiver,
-above. Closing the rest needs a language↔platform read hook that does not
-exist, and on gtk4 a getter is a call (`gtk_editable_get_text`) whose name GIR
-would have to supply per property, not a field. Until then a read is answered
-at build time wherever the tree says the node is gone — see
-`#[gen.renders(identity)]` under `sngl:x/gen`.
+SNGL prop, so `box.value` was `m.box.Value` against a `widget.Entry` that
+spells it `Text` -- and against a gtk4 handle that is a `cgo.Widget` with no
+fields at all -- while bubbletea named a field its Model never declared and
+html read a handle the inliner had spliced away inside a component
+(`cmd/sngl/testdata/node_prop_read_runs.txt`). A read a test makes through an
+instance, `c.out.value` given `"{bar.text}"`, rebases the node's own handle
+to the element ref `c.bar`, which the next round answers in turn. What no
+target answers is a read of anything else -- measured or platform state --
+which needs a language-to-platform read hook that does not exist; on gtk4 a
+getter is a call (`gtk_editable_get_text`) whose name GIR would have to supply
+per property. The one such read that works is a `#[c.native]` method's
+receiver, above.
 
 **Two nodes may share an id, but a handle that is *read* may not be rendered
 twice.** The two halves are asked differently and deliberately so.

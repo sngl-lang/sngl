@@ -70,7 +70,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 			contextProps(c)
 		}
 	}
-	if err := uniqueNodeIDs(pkg); err != nil {
+	if err := uniqueNodeIDs(pkg, opts.foldedHandleReads); err != nil {
 		return err
 	}
 	var spliced []splice
@@ -192,7 +192,7 @@ func dropNestedMethods(pkg *ir.Package, keep map[*ir.Component]bool) {
 // Renaming here rather than while splicing, because "is this id ambiguous" is a
 // question about the finished owner and not about any one instance: the splice
 // that introduces a duplicate cannot tell it is doing so.
-func uniqueNodeIDs(pkg *ir.Package) error {
+func uniqueNodeIDs(pkg *ir.Package, folded map[*ir.Var][]*ir.Ident) error {
 	if pkg == nil {
 		return nil
 	}
@@ -246,7 +246,11 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 				return nil
 			}
 			if first, ok := rendered[n.Handle]; ok {
-				if r := reads[n.Handle]; len(r) > 0 && dup == nil {
+				// passNodePropReads answered some reads with the prop's
+				// expression before the splice, which leaves no ident to
+				// find. They were reads all the same, and the rule is the
+				// spec's, not the emitter's.
+				if r := append(reads[n.Handle], folded[n.Handle]...); len(r) > 0 && dup == nil {
 					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.WrittenName(), nodePos(first))
 				}
 				return nil

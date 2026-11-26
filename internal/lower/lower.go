@@ -266,6 +266,12 @@ type Options struct {
 	// test's prop read with, for passHoistState to say where the var lives.
 	// Set by Lower.
 	blockReads blockReads
+
+	// foldedHandleReads is each read through a `#id` that passNodePropReads
+	// answered with the prop's expression, for uniqueNodeIDs to count as
+	// reads: a handle that is read may not be rendered twice, however the
+	// read was answered. Set by Lower.
+	foldedHandleReads map[*ir.Var][]*ir.Ident
 }
 
 // renamer numbers renamed declarations per name: `hits__inst0` and
@@ -316,6 +322,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	opts.splices = &[]splice{}
 	opts.triggers = map[*ir.Call]ir.Call{}
 	opts.blockReads = blockReads{}
+	opts.foldedHandleReads = map[*ir.Var][]*ir.Ident{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {
