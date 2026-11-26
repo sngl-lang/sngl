@@ -1,0 +1,18 @@
+# A match on a call through an import that did not resolve reports the
+# import, and nothing of the match: its arms' names are the members of a type
+# the call never had. Checked as a directory, the arm's "undefined: failed"
+# was reported ahead of the import, which a package reports last.
+
+! sngl check app
+stderr 'import "nope:./lib": unknown import scheme "nope"'
+! stderr 'undefined'
+
+-- app/app.sngl --
+import lib "nope:./lib"
+
+func use() int {
+    match var x = lib.f() {
+        failed { return 1 }
+        ok { return 2 }
+    }
+}

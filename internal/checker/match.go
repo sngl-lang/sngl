@@ -239,6 +239,11 @@ func (c *checker) checkMatchPattern(m *ast.Match, p ast.Expr, subject ir.Expr, r
 		return cond
 	}
 	subjType := exprType(subject)
+	// A subject already reported -- a call through an import that did not
+	// resolve -- has no members, so an arm's bare name is no undefined one.
+	if _, bare := p.(*ast.IdentExpr); bare && subjType != nil && subjType.Kind == ir.TypeInvalid {
+		return nil
+	}
 	want := optionElem(subjType)
 	if e := comparedEnum(subjType); e != nil {
 		want = e
