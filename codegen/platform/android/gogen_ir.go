@@ -113,18 +113,19 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	gc.FreeFuncScope = true
 
 	allFuncs := ctx.AllFuncs()
+	golib := goLib(allFuncs)
 
 	// Pass 1: dry-run all function bodies through gc to collect imports.
 	// RequireImport is idempotent, so re-running in pass 2 is harmless.
 	var discard strings.Builder
 	for _, fn := range allFuncs {
-		if !inGoLib(fn) {
+		if !golib[fn] {
 			continue
 		}
 		emitGoLibIRFunc(&discard, fn, gc)
 	}
 	var consts strings.Builder
-	for _, c := range goLibConsts(ctx.Pkg, allFuncs) {
+	for _, c := range goLibConsts(ctx.Pkg, allFuncs, golib) {
 		fmt.Fprintf(&consts, "\nvar %s %s = %s\n", c.Name, golang.IRTypeToGo(c.Type), golang.LowerVarInit(c, gc))
 	}
 
@@ -147,7 +148,7 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 	// constant before it arrives. The Kotlin side renders them from Compose
 	// state.
 	for _, fn := range allFuncs {
-		if !inGoLib(fn) {
+		if !golib[fn] {
 			continue
 		}
 		emitGoLibIRFunc(&b, fn, gc)
@@ -159,10 +160,10 @@ func emitGoLibIR(ctx *codegen.CodegenCtx) []byte {
 // goLibConsts are the package consts a go-lib func reads. Only those: the
 // module declares no types, so a const of a struct type nothing here reads
 // would name one it lacks.
-func goLibConsts(pkg *ir.Package, funcs []*ir.Func) []*ir.Var {
+func goLibConsts(pkg *ir.Package, funcs []*ir.Func, golib map[*ir.Func]bool) []*ir.Var {
 	read := map[*ir.Var]bool{}
 	for _, fn := range funcs {
-		if !inGoLib(fn) {
+		if !golib[fn] {
 			continue
 		}
 		_ = ir.Walk(fn, func(n ir.Node) error {
@@ -216,7 +217,98 @@ func composeSide(fn *ir.Func) bool {
 	return fn.PkgPath() == "sngl:platform/android"
 }
 
-// inGoLib reports whether fn is emitted into the gomobile module.
-func inGoLib(fn *ir.Func) bool {
-	return !fn.IsTest && !fn.IsMethod() && !codegen.IsComputed(fn) && fn.Return != nil && !composeSide(fn)
+// goLib is the funcs emitted into the gomobile module: free functions of the
+// program's own that return a value. The module declares no types and holds no
+// state, and gomobile binds only a basic signature, so a func is one only when
+// its signature is basic, nothing in its body has a type the module would have
+// to declare, it reads no var but a const, it raises nothing -- a Go panic
+// through gomobile ends the process, where Kotlin's own throw reaches the
+// boundary -- and every func it calls is one too.
+// The Kotlin side emits every other func itself, which is why both sides ask
+// this one set.
+func goLib(funcs []*ir.Func) map[*ir.Func]bool {
+	in := map[*ir.Func]bool{}
+	for _, fn := range funcs {
+		if goLibCandidate(fn) {
+			in[fn] = true
+		}
+	}
+	// Narrowed to a fixpoint: a func calling one that left is out too.
+	for changed := true; changed; {
+		changed = false
+		for fn := range in {
+			if !goLibBody(fn, in) {
+				delete(in, fn)
+				changed = true
+			}
+		}
+	}
+	return in
+}
+
+func goLibCandidate(fn *ir.Func) bool {
+	if fn.IsTest || fn.IsMethod() || codegen.IsComputed(fn) || fn.Return == nil || composeSide(fn) || !codegen.HasBody(fn) || fn.CanError {
+		return false
+	}
+	if !goMobileBasic(fn.Return) {
+		return false
+	}
+	for _, p := range fn.Params {
+		if !goMobileBasic(p.Type) {
+			return false
+		}
+	}
+	return true
+}
+
+// goMobileBasic is a type gomobile binds across to Kotlin.
+func goMobileBasic(t *ir.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ir.TypeBool, ir.TypeInt, ir.TypeFloat, ir.TypeString:
+		return true
+	}
+	return false
+}
+
+// declaresType is whether t, or a type inside it, is one the module would
+// have to declare.
+func declaresType(t *ir.Type) bool {
+	return t != nil && t.Any(func(t *ir.Type) bool {
+		switch t.Kind {
+		case ir.TypeStruct, ir.TypeEnum, ir.TypeUnit, ir.TypeComponent, ir.TypeInstance, ir.TypeNative, ir.TypeAny, ir.TypeTypeParam:
+			return true
+		}
+		return t.Decl != nil
+	})
+}
+
+func goLibBody(fn *ir.Func, in map[*ir.Func]bool) bool {
+	ok := true
+	_ = ir.Walk(fn, func(n ir.Node) error {
+		switch n := n.(type) {
+		case *ir.LocalVar:
+			if declaresType(n.Type) {
+				ok = false
+			}
+		case *ir.Ident:
+			if v, isVar := n.Sym.(*ir.Var); isVar && !v.IsConst {
+				ok = false
+			}
+		case *ir.Call:
+			if callee := n.Func; callee != nil && callee != fn && callee.Pkg == fn.Pkg && callee.Foreign.Name == "" && codegen.HasBody(callee) && !in[callee] {
+				ok = false
+			}
+		}
+		if e, isExpr := n.(ir.Expr); isExpr && declaresType(e.ExprType()) {
+			ok = false
+		}
+		if !ok {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return ok
 }

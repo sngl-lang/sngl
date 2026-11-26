@@ -1053,7 +1053,18 @@ func (gc *GoIRContext) evalIdent(n *ir.Ident) string {
 	case codegen.NameLocal:
 		return gc.Ctx.RenamedName(name)
 	case codegen.NameComputed:
-		return gc.recvFor(sym) + "." + name + "()"
+		// A function with no parameters is a computed to resolve, and read
+		// as one it is called. Named as a value -- `run(syncHello)`, typed
+		// a func -- it is the function, as NameFunc spells one. Either way a
+		// func the build emits free has no receiver.
+		ref := gc.recvFor(sym) + "." + name
+		if gc.FreeFuncScope || gc.Ctx != nil && gc.Ctx.FreeFuncs[name] != "" {
+			ref = gc.FreeFuncName(name)
+		}
+		if t := n.ExprType(); t != nil && t.Kind == ir.TypeFunc {
+			return ref
+		}
+		return ref + "()"
 	case codegen.NameStateVar:
 		return gc.recvFor(sym) + "." + gc.StateFieldName(name)
 	case codegen.NameConst:

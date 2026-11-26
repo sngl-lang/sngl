@@ -34,7 +34,7 @@ func WriteProgram(fe *FileEmitter, pkg *ir.Package) error {
 	write = func(fn *ir.Func) {
 		// A helper a test hands its Test is written with the tests
 		// (WriteTests), whose calls of it are the agent's.
-		if written[fn] || fn.IsTest || ir.TakesTest(fn) || Bodiless(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
+		if written[fn] || fn.IsTest || ir.TakesTest(fn) || Bodiless(fn) || fn.Foreign.Name != "" && !fn.Foreign.Marked || fn.Intrinsic != "" {
 			return
 		}
 		written[fn] = true

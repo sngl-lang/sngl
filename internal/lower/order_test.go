@@ -318,6 +318,10 @@ var soleGate = map[string][]string{
 	// async flags to decide which half of the build to name in its refusal,
 	// so neither turns a pass on.
 	"AsyncSpawn": nil,
+
+	// Nor this: passCMarshal runs for every target and reads it to choose
+	// between converting a C call's arguments and declining the program.
+	"CCalls": nil,
 }
 
 func gatedPasses(c Features) []string {

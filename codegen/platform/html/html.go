@@ -1471,6 +1471,9 @@ func (g *htmlGen) generate() (string, error) {
 				mods = append(mods, m)
 			}
 			sort.Strings(mods)
+			if err := declineGoModules(g.pkg, mods); err != nil {
+				return "", err
+			}
 			for _, m := range mods {
 				fmt.Fprintf(&preludeBuf, "import * as %s from %q;\n", codegen.NativeAlias(m), m)
 			}
@@ -4482,3 +4485,54 @@ func (e *PatternPageError) Error() string { return e.msg }
 
 // DeclinedBy makes a pattern page an ir.Declined.
 func (*PatternPageError) DeclinedBy() string { return "html" }
+
+// declineGoModules declines a page whose script names a Go package: a
+// `#[go.native]` declaration read or called where the page runs it, which is
+// JavaScript whatever the language -- `syscall.SIGTERM` came out an import of
+// a module named "syscall" that nothing serves. A go: import is not this:
+// html bridges it to wasm.
+func declineGoModules(pkg *ir.Package, mods []string) error {
+	if pkg == nil {
+		return nil
+	}
+	goPkg := map[string]bool{}
+	note := func(f ir.Foreign) {
+		if f.Scheme == "go" && !f.Marked && f.Path != "" && f.In("js") == nil {
+			goPkg[f.Path] = true
+		}
+	}
+	// What the program names, rather than what it declares: a host value
+	// and a native struct are off the lists a backend emits from by now.
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Func != nil {
+				note(x.Func.Foreign)
+			}
+		case *ir.Ident:
+			switch d := x.Sym.(type) {
+			case *ir.Var:
+				note(d.Foreign)
+			case *ir.Func:
+				note(d.Foreign)
+			}
+		}
+		if e, ok := n.(ir.Expr); ok {
+			if t := e.ExprType(); t != nil {
+				t.Any(func(t *ir.Type) bool {
+					if sd, ok := t.Decl.(*ir.StructDef); ok {
+						note(sd.Foreign)
+					}
+					return false
+				})
+			}
+		}
+		return nil
+	})
+	for _, m := range mods {
+		if goPkg[m] {
+			return ir.Decline("html", "the page's script names %s, a Go package, and the page runs JavaScript", m)
+		}
+	}
+	return nil
+}

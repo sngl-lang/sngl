@@ -699,9 +699,21 @@ implementation for (`ir.UnimplementedComponent`), a second window
 (`codegen.OneWindowError`), a closure it has nowhere to run, a `go:` function
 called from C -- and declines with `ir.Decline` where no more particular type
 says why. A lowering pass that refuses without a target in hand declines with
-an empty target, and `lower.Lower` names the build's. A refusal written as
-`fmt.Errorf` is a bug the fuzzer reports, which is the point of drawing the line
-in a type rather than in a message.
+an empty target, and `lower.Lower` (or `optimize.Optimize`) names the
+build's. A refusal written as `fmt.Errorf` is a bug the fuzzer reports, which is
+the point of drawing the line in a type rather than in a message.
+
+**What a target cannot call or name, it declines where the program asks.**
+A call of a `#[c.native]` function on a build whose handlers reach no C --
+`cCalls`, a grant Go and C hold and html and android withdraw -- is declined
+by passCMarshal. A `go:` or `js:` function a build cannot call at run time,
+called or handed on as a value once folding is done, by the optimizer
+(`declineUnrunnableNative`); html runs JavaScript handlers whatever the
+language and bridges `go:` to wasm. A function or a component of another
+platform's package -- `gtk4.quit()` or `html.div` on win32 -- by
+passForeignPrimitive, as it does another platform's primitive. Each of these
+was code the target's own compiler refused: `fetchHello` emitted bare into Go,
+a C conversion handed to the Kotlin translator, which panicked.
 
 `FuzzPipeline` (`fuzz_pipeline_test.go`) holds every build to that. Its input
 is a txtar archive, so a seed carries a `go:` module or an OpenAPI document
@@ -738,14 +750,28 @@ corpus, never to the fuzz loop.
 **The seeds are every fixture and every golden**: a fixture as its one file,
 a golden with `out/`, `run/`, `testrun/` and `written/` taken out. Each is added
 on its own targets and on one rotating other target, which reaches every
-generator without multiplying the corpus by all of them. The seed run is gated
-behind `SNGL_FUZZ_SEEDS=1` (and runs under `-fuzz`) until it is clean; after
-that it belongs in the ordinary suite.
+generator without multiplying the corpus by all of them. The seed run is part
+of the ordinary suite. A seed's rotating target moves when a fixture is added,
+so a bug the seeds found is pinned by a golden or a script of its own, not by
+the seed. `SNGL_FUZZ_SEEDS` is a regexp the seeds' file names are held to, for
+rerunning the ones a fix is about.
 
 ```bash
-SNGL_FUZZ_SEEDS=1 go test -run FuzzPipeline .   # the seeds, once
-go test -run '^$' -fuzz FuzzPipeline .          # fuzz
+SNGL_FUZZ_SEEDS=radio go test -run FuzzPipeline .   # the seeds whose name matches
+go test -run '^$' -fuzz FuzzPipeline .              # fuzz
 ```
+
+**An external definition the build trusts is a check the fuzzer cannot make
+yet.** The Go check's stand-ins -- `import "C"` under `FakeImportC`, a project's
+`go:` module, a cgo package the host cannot build -- let any selector on them
+through, and the library's own bindings (`#[c.native]`, `go:` imports,
+`#[c.type]`) claim symbols the compiler can only believe. Both are to be
+checked against the real thing: a project `go:` module type-checked from the
+archive's source, a stand-in for anything the build could have resolved
+failing the run, the `C.` names a package uses checked against the headers its
+`c.link` names (parsed in process by `modernc.org/cc/v4`), and every library
+binding held once to its symbol by a conformance test in the ordinary suite,
+so a program's check can rely on it.
 
 When adding a fixture or directive, confirm it *fails* when the behavior is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 

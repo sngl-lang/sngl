@@ -48,7 +48,16 @@ var passForeignPrimitive = pass{
 				return nil
 			}
 			ns, _, ok := strings.Cut(n.Component.Intrinsic, ":")
-			if !ok || ns == opts.Platform {
+			if !ok {
+				// A component of another platform's package that is no
+				// primitive -- html's wildcard `element`, `html.div` -- is
+				// that platform's all the same.
+				if plat := platformPackage(n.Component.PkgPath()); plat != "" && plat != opts.Platform {
+					bad = ir.UnimplementedNode(n.Component, n.AST, n.Component.Name, opts.Platform)
+				}
+				return nil
+			}
+			if ns == opts.Platform {
 				return nil
 			}
 			if opts.ClaimsIntrinsic != nil && opts.ClaimsIntrinsic(n.Component.Intrinsic) {
@@ -58,6 +67,46 @@ var passForeignPrimitive = pass{
 				n.Component.Name, ns, n.Component.Intrinsic, opts.Platform)
 			return nil
 		})
-		return bad
+		if bad != nil {
+			return bad
+		}
+		return declineForeignPlatformCalls(pkg, opts)
 	},
+}
+
+// declineForeignPlatformCalls declines a call of a function another platform's
+// package declares -- `gtk4.quit()`, `gtk4.pressKey(w, …)` in a bubbletea
+// build. The same case as a primitive from the side of its functions: what
+// they do is what that platform's runtime does, and their bodies hand its
+// widgets to its C.
+func declineForeignPlatformCalls(pkg *ir.Package, opts Options) error {
+	var bad error
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		c, ok := n.(*ir.Call)
+		if !ok || c.Func == nil {
+			return nil
+		}
+		plat := platformPackage(c.Func.PkgPath())
+		if plat == "" || plat == opts.Platform {
+			return nil
+		}
+		at := ""
+		if c.AST != nil && c.AST.Pos.IsValid() {
+			at = c.AST.Pos.String() + ": "
+		}
+		bad = ir.Decline(opts.Platform, "%s%s is declared by sngl:platform/%s, and this build targets %s", at, c.Func.Name, plat, opts.Platform)
+		return ir.SkipAll
+	})
+	return bad
+}
+
+// platformPackage is the platform a package of sngl:platform/ belongs to --
+// "win32" for sngl:platform/win32/api -- and "" for any other package.
+func platformPackage(path string) string {
+	rest, ok := strings.CutPrefix(path, "sngl:platform/")
+	if !ok {
+		return ""
+	}
+	plat, _, _ := strings.Cut(rest, "/")
+	return plat
 }

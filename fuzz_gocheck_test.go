@@ -78,6 +78,7 @@ func checkGoFiles(files map[string][]byte, goos string) error {
 	}
 	slices.SortFunc(keys, func(a, b pkgKey) int { return strings.Compare(a.dir+a.name, b.dir+b.name) })
 	for _, k := range keys {
+		imp.cgo = importsC(pkgs[k])
 		conf := imp.config(&errs)
 		_, _ = conf.Check(k.name, fset, pkgs[k], nil)
 	}
@@ -129,6 +130,21 @@ type goImporter struct {
 	// fake names the stand-ins, by the name a file refers to them by.
 	fake map[string]bool
 	errs *[]string
+	// cgo is whether the package being checked imports "C", which FakeImportC
+	// answers with a type that is invalid everywhere it flows: an error about
+	// an invalid type there is the stand-in's, not the program's.
+	cgo bool
+}
+
+func importsC(files []*ast.File) bool {
+	for _, f := range files {
+		for _, s := range f.Imports {
+			if s.Path.Value == `"C"` {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (g *goImporter) config(errs *[]string) types.Config {
@@ -138,7 +154,7 @@ func (g *goImporter) config(errs *[]string) types.Config {
 		FakeImportC: true,
 		Error: func(err error) {
 			msg := err.Error()
-			if g.standIn(msg) {
+			if g.standIn(msg) || g.cgo && strings.Contains(msg, "invalid type") {
 				return
 			}
 			*errs = append(*errs, msg)

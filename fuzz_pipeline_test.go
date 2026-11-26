@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -34,14 +35,20 @@ import (
 // compile target: 0 is the archive's own output blocks, anything else one
 // supported language/platform pair.
 func FuzzPipeline(f *testing.F) {
-	if os.Getenv("SNGL_FUZZ_SEEDS") == "" && !fuzzing() {
-		f.Skip("the seed corpus does not yet compile clean on every target; set SNGL_FUZZ_SEEDS=1 to run it")
-	}
 	// The Go check reads export data `go list -export` builds from the
 	// runtimes generated code imports.
 	testinputs.Packages(f, ".", "./pkg/go/...", "./lib/...")
 	targets := pipelineTargets()
+	// SNGL_FUZZ_SEEDS is a regexp the seeds' file names are held to, for
+	// rerunning the ones a fix is about.
+	only := regexp.MustCompile("")
+	if v := os.Getenv("SNGL_FUZZ_SEEDS"); v != "" {
+		only = regexp.MustCompile(v)
+	}
 	for i, s := range pipelineSeeds(f) {
+		if !only.MatchString(s.name) {
+			continue
+		}
 		f.Add(s.archive, uint8(0))
 		// Every seed on one other target too, rotating, so the seed run
 		// reaches each generator without multiplying the corpus by all of
@@ -74,14 +81,6 @@ func FuzzPipeline(f *testing.F) {
 					lang, plat, name, err, archive, name, data)
 			}
 		}
-	})
-}
-
-// fuzzing reports whether the test binary was run with -fuzz, which is when
-// the seed corpus runs whatever SNGL_FUZZ_SEEDS says.
-func fuzzing() bool {
-	return slices.ContainsFunc(os.Args, func(a string) bool {
-		return strings.HasPrefix(a, "-test.fuzz=") || a == "-test.fuzz"
 	})
 }
 

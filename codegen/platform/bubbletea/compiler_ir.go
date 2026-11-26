@@ -1005,19 +1005,10 @@ func emitIRFunc(b *strings.Builder, fn *ir.Func, gc *golang.GoIRContext) {
 
 func emitIRGettersSetters(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx, gc *golang.GoIRContext) {
 	for _, bind := range info.binds {
-		// Consts are read-only and would collide field-vs-method when
-		// the source name is already exported (e.g. APP_NAME field +
-		// APP_NAME getter). Tests reach them via direct field access.
-		if bind.isConst {
+		getter, ok := bind.accessor()
+		if !ok {
 			continue
 		}
-		if bind.synthesized {
-			// Pass-generated state (e.g. NoContext hidden ctx Var) has
-			// no public surface. Tests don't touch it; the Model body
-			// reads/writes directly via m.<name>.
-			continue
-		}
-		getter := golang.ExportName(bind.name)
 		// Getter
 		fmt.Fprintf(b, "func (m Model) %s() %s {\n", getter, bind.goType)
 		fmt.Fprintf(b, "\treturn m.%s\n", bind.name)
@@ -1095,10 +1086,10 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 	// Set messages — consts have no setter, skip them. Synthesized
 	// (pass-generated) vars have no public surface either.
 	for _, bind := range info.binds {
-		if bind.isConst || bind.synthesized {
+		getter, ok := bind.accessor()
+		if !ok {
 			continue
 		}
-		getter := golang.ExportName(bind.name)
 		fmt.Fprintf(b, "\tcase set%sMsg:\n", getter)
 		fmt.Fprintf(b, "\t\tm = m.Set%s(msg.value)\n", getter)
 	}
@@ -2164,4 +2155,18 @@ func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysi
 		}
 	}
 	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+}
+
+// accessor is the name of bind's getter, and its setter, Msg and Cmd after it;
+// ok=false where it has none. A const is read-only, and pass-generated state
+// (a NoContext hidden ctx var) has no public surface: the Model reads and
+// writes both as m.<name>, and so does a test. So does it a var whose name has
+// no lower-case letter to raise -- `_heard`, `Total` -- which would be its own
+// getter's name, and a method may not share its field's.
+func (bind irBind) accessor() (string, bool) {
+	getter := golang.ExportName(bind.name)
+	if bind.isConst || bind.synthesized || getter == bind.name {
+		return "", false
+	}
+	return getter, true
 }

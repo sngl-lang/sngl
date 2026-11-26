@@ -22,7 +22,12 @@ import (
 // document, with the loop variables around it bound -- what a `for` over the
 // pages of a site hands `md.document`. The target refuses what its fold could
 // not answer (codegen.RefuseUnfoldedBuildCalls).
-func refuseBuildOnlyCalls(pkg *ir.Package, foldsViews bool) error {
+//
+// A call in a view a target does not fold is the target declining the
+// program, where it is the program's arguments that no build knows: a static
+// site answers `md.document(source=d.body)` in a `for` over a const list per
+// page, and a target running the loop has no build-time value to hand it.
+func refuseBuildOnlyCalls(pkg *ir.Package, target Target, foldsViews bool) error {
 	memo := map[*ir.Func]bool{}
 	skip := map[*ir.Call]bool{}
 	for _, o := range ir.Owners(pkg) {
@@ -57,7 +62,11 @@ func refuseBuildOnlyCalls(pkg *ir.Package, foldsViews bool) error {
 	if found == nil {
 		return nil
 	}
-	return codegen.BuildOnlyDiagnostic(found, sites[found], memo)
+	d := codegen.BuildOnlyDiagnostic(found, sites[found], memo)
+	if sites[found] != nil {
+		return &ir.TargetDeclined{Target: target.Platform, Msg: d.Error() + "; " + describe(target) + " makes a view's calls as the program runs, where a static site makes them per document"}
+	}
+	return d
 }
 
 // refuseStateIntoBuildCalls reports, where the program wrote it, an argument

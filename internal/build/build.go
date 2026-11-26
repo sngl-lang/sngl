@@ -191,7 +191,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 		}); err != nil {
 			return Result{}, fmt.Errorf("%s: %w", o.Dir, err)
 		}
-		if err := refuseBuildOnlyCalls(tpkg, false); err != nil {
+		if err := refuseBuildOnlyCalls(tpkg, target, false); err != nil {
 			return Result{}, err
 		}
 		return Result{Target: target, Pkg: tpkg, Files: emitted, Warnings: optCfg.Warnings}, nil
@@ -216,7 +216,7 @@ func emitTarget(pkg *ir.Package, target Target, evalCache *optimize.EvalCache, o
 	if err := optimize.Optimize(tpkg, optCfg); err != nil {
 		return Result{}, inDir(o.Dir, err)
 	}
-	if err := refuseBuildOnlyCalls(tpkg, codegen.PlatformRendersViewStatically(target.Platform, target.Lang)); err != nil {
+	if err := refuseBuildOnlyCalls(tpkg, target, codegen.PlatformRendersViewStatically(target.Platform, target.Lang)); err != nil {
 		return Result{}, err
 	}
 	lower.SnapshotOffloadedReads(tpkg)

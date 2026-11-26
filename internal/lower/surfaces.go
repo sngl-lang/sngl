@@ -1,8 +1,6 @@
 package lower
 
 import (
-	"fmt"
-
 	"duckfam.us/sngl/ir"
 )
 
@@ -119,7 +117,7 @@ func findSurfaces(pkg *ir.Package, opts Options) (*surfaceSet, error) {
 		walk(root.Stmts, true)
 	}
 	if set != nil && set.doc == nil {
-		return nil, fmt.Errorf("%s: this target writes its document from the first %s that no `if` over state and no `for` can take away, and every one here is under one", ir.NodePos(first), first.Name)
+		return nil, ir.Decline("", "%s: this target writes its document from the first %s that no `if` over state and no `for` can take away, and every one here is under one", ir.NodePos(first), first.Name)
 	}
 	return set, nil
 }

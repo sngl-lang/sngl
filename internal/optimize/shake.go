@@ -1,7 +1,6 @@
 package optimize
 
 import (
-	"fmt"
 	"log/slog"
 	"path"
 	"slices"
@@ -295,7 +294,9 @@ func promoteForeignStructs(pkg *ir.Package) error {
 			}
 		}
 		if other, clash := byName[sd.Name]; clash {
-			return fmt.Errorf("%s declares struct %q and so does %s, which this build has to declare; "+
+			// Declined rather than a fault: the program is valid, and a
+			// target whose package declares the name cannot hold both.
+			return ir.Decline("", "%s declares struct %q and so does %s, which this build has to declare; "+
 				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
 				pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()))
 		}

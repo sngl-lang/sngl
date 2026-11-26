@@ -1454,8 +1454,8 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	if inner := wrappedNode(n); inner != nil && inner.Handle != nil && inner.Handle != n.Wraps {
 		symRenames[inner.Handle] = n.Wraps
 	}
-	// A handle the body declares and calls a method through, and nothing
-	// outside it reads, is the copy's own, as its state is: the checker
+	// A handle the body declares and reads or calls a method through, and
+	// nothing outside it reads, is the copy's own, as its state is: the checker
 	// declares one per body, so every copy shared it, and a method of the
 	// copy's calling through it -- an openapi adapter's `refresh` calling its
 	// query's -- could not say which copy's node it meant. A node
@@ -1463,12 +1463,12 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	// wrapper's Wraps. One a component outside reads stays shared, since the
 	// reads of it are not in this splice, and so does one only a test
 	// reaches, which the test's reach is pointed through as it was.
-	called := handlesCalledIn(comp)
+	called, read := handlesCalledIn(comp), handlesReadInside(comp)
 	for _, h := range ownNodeHandles(comp) {
 		if _, ok := symRenames[h]; ok {
 			continue
 		}
-		if called[h] && !st.readAbroad[h] {
+		if (called[h] || read[h]) && !st.readAbroad[h] {
 			clone := *h
 			symRenames[h] = &clone
 		}
@@ -1837,6 +1837,38 @@ func handlesCalledIn(comp *ir.Component) map[*ir.Var]bool {
 		if call, ok := n.(*ir.Call); ok && call.Func != nil {
 			if h, _ := handleReceiver(call); h != nil {
 				out[h] = true
+			}
+		}
+		return nil
+	})
+	return out
+}
+
+// handlesReadInside is every handle a library component's body or methods
+// read, other than a node at the top of its body: win32's radio asks
+// `isPicked(button)` of the button its own click came from, and with every
+// copy sharing the handle, two radios in one program could not say which.
+//
+// A library's own, because nothing outside its body names one: a program's
+// handle is reached by a test through the props that read it -- pokedex's
+// `c.app.pokedex.title` folds to `pages.current.title` -- and a copy would cut
+// that read loose from the node. A top node is left out for the same reason:
+// the splice carries the call site's `#id` onto it (AttachNodeIDFrom).
+func handlesReadInside(comp *ir.Component) map[*ir.Var]bool {
+	if comp.PkgPath() == "" {
+		return nil
+	}
+	top := map[*ir.Var]bool{}
+	for _, s := range comp.Stmts {
+		if n, ok := s.(*ir.NodeInst); ok && n.Handle != nil {
+			top[n.Handle] = true
+		}
+	}
+	out := map[*ir.Var]bool{}
+	_ = ir.WalkExprs(comp, func(e ir.Expr) error {
+		if id, ok := e.(*ir.Ident); ok {
+			if v, ok := id.Sym.(*ir.Var); ok && v.NodeHandle && !top[v] {
+				out[v] = true
 			}
 		}
 		return nil

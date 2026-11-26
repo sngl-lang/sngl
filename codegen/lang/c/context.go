@@ -742,7 +742,7 @@ func (c *Context) Call(n *ir.Call) string {
 	if out, ok := c.merge(n, args); ok {
 		return out
 	}
-	if n.Func.Foreign.Path != "" {
+	if n.Func.Foreign.Path != "" && !n.Func.Foreign.Marked {
 		return c.decline("calling %s, which is %s's", n.Func.Name, n.Func.Foreign.Path)
 	}
 	if n.Receiver != nil {
@@ -1479,7 +1479,7 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 	}
 	if held := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CAlias.IsCHeld() }); held >= 0 && rel >= 0 && off >= 0 {
 		if fn.Params[rel].CFuncType == nil {
-			return c.fail("calling %s, whose release names no C type (#[c.type])", fn.Foreign.Name)
+			return c.decline("calling %s, whose release names no C type (#[c.type])", fn.Foreign.Name)
 		}
 		args = slices.Clone(args)
 		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(fn.Params[held].Type))

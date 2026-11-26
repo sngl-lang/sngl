@@ -105,6 +105,13 @@ type Features struct {
 	// the platform's, because starting work is a property of the host language
 	// and getting back to the drawing thread is a property of the surface.
 	AsyncSpawn bool
+	// CCalls says the build's handlers reach C: Go's through cgo, C's
+	// directly (codegen.CInterop). A grant on the language's axis that a
+	// platform writing its handlers in another language -- html's JavaScript,
+	// android's Kotlin -- withdraws. Withheld, passCMarshal declines a program
+	// that calls a C function rather than leaving a conversion to C for a
+	// translator that has no way to write one.
+	CCalls bool
 	// Effects says the platform brackets an `effect`'s lifetime itself and
 	// wants the node left standing. A framework whose own model already
 	// brackets a lifetime keyed on a value -- Compose's DisposableEffect is one
@@ -286,6 +293,7 @@ func NoLowering() Features {
 		EntryWrites:       true,
 		UnreadLocals:      true,
 		ValueTriggers:     true,
+		CCalls:            true,
 	}
 }
 
@@ -337,6 +345,7 @@ func (f Features) String() string {
 		{"InlineSlots", f.InlineSlots},
 		{"AsyncPost", f.AsyncPost},
 		{"AsyncSpawn", f.AsyncSpawn},
+		{"CCalls", f.CCalls},
 		{"Effects", f.Effects},
 		{"Navigation", f.Navigation},
 		{"GenericFuncs", f.GenericFuncs},
