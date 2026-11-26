@@ -972,8 +972,8 @@ fun MainScreen() {
                     var __old7 = e__inst0.f
                     e__inst0 = e__inst0.copy(f = __new6)
                     close(__old7)
-                    var __new8 = File(fd = n__inst0)
-                    var __old9 = current__inst0
+                    var __new8: File? = File(fd = n__inst0)
+                    var __old9: File? = current__inst0
                     current__inst0 = __new8
                     __release_option_file(__old9)
                 }, modifier = Modifier, colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Unspecified, contentColor = androidx.compose.ui.graphics.Color.Unspecified), shape = CircleShape) {
@@ -1337,6 +1337,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:3e3b1b5b0a6631f99cfdb405cd356152
 -- run/kotlin/android --
-pass sha256:4686ace18002b32e93746dd1d1e007e1
+pass sha256:97dd3f7f2a4732537f28ba38335fa258
 -- run/none/html --
 pass sha256:a5688afa8b9534b4a5b7544eac98af10

@@ -2913,7 +2913,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             }
         }
         DisposableEffect(Unit) {
-            var got = state.load__string("language", state.__ctx_store)
+            var got: String? = state.load__string("language", state.__ctx_store)
             state.held__inst0__inst0 = (if ((got != null)) got else "English")
             state.language = state.held__inst0__inst0
             state.__effect6_dirty = true
@@ -2922,7 +2922,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             }
         }
         DisposableEffect(Unit) {
-            var got = state.load__int("count", state.__ctx_store)
+            var got: Int? = state.load__int("count", state.__ctx_store)
             state.held__inst1__inst0 = (if ((got != null)) got else 1)
             state.count = state.held__inst1__inst0
             state.__effect8_dirty = true
@@ -3011,7 +3011,7 @@ fun Prefs(__ctx_store: Store = Store(), __on_language: String?, __on_count: Int?
     }
 
     DisposableEffect(Unit) {
-        var got = state.load__string("language", __ctx_store)
+        var got: String? = state.load__string("language", __ctx_store)
         held__inst0 = (if ((got != null)) got else "English")
         state.language = held__inst0
         state.__effect6_dirty = true
@@ -3020,7 +3020,7 @@ fun Prefs(__ctx_store: Store = Store(), __on_language: String?, __on_count: Int?
         }
     }
     DisposableEffect(Unit) {
-        var got = state.load__int("count", __ctx_store)
+        var got: Int? = state.load__int("count", __ctx_store)
         held__inst1 = (if ((got != null)) got else 1)
         state.count = held__inst1
         state.__effect8_dirty = true
@@ -4098,6 +4098,6 @@ pass sha256:28fa15432e4ff45e4c7be2165f35d421
 -- run/go/gtk4 --
 pass sha256:742b90aa0febf183ce8d4d68d24812ce
 -- run/kotlin/android --
-pass sha256:ad92500190c41cdee192a4d943bac325
+pass sha256:1f3499e5a2ff2e392af5ef98fffa77eb
 -- run/none/html --
 pass sha256:001136c7223c91e42d334a391da5b1db

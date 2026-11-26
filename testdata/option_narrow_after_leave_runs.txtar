@@ -4437,7 +4437,7 @@ fun after(i: Int, count: Int): Int? {
 
 fun names(start: Int?, xs: List<String>): String {
     var out = ""
-    var n = start
+    var n: Int? = start
     while ((n != null)) {
     	out = (out + xs[n!!])
     	n = after(n!!, xs.size)
@@ -4562,6 +4562,6 @@ pass sha256:96e94b64604438de6341d909cb06da38
 -- run/go/bubbletea --
 pass sha256:8a724d3ec5f373c3599f3cef94ce8a35
 -- run/kotlin/android --
-pass sha256:8421a2d2628096bd954b28d8a08b75c7
+pass sha256:81aed4b3a230e9341c1311de24d6677d
 -- run/none/html --
 pass sha256:9be749af620bfbca7d06713bd301e993
