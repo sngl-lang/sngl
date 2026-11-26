@@ -34,6 +34,9 @@ type Driver struct {
 	// Source is what the driver opens for a source, where that differs from
 	// the source itself.
 	Source func(source string) string
+	// Arg is an argument as the driver takes it, given what its argKinds
+	// entry says it stands for; nil hands each over as JSON decoded it.
+	Arg func(v any, kind string) any
 }
 
 var (
@@ -94,7 +97,7 @@ func failure(ctx context.Context, d Driver, err error) *Failure {
 	return f
 }
 
-func decodeArgs(args string) ([]any, error) {
+func decodeArgs(d Driver, args string, kinds []string) ([]any, error) {
 	if strings.TrimSpace(args) == "" {
 		return nil, nil
 	}
@@ -116,6 +119,9 @@ func decodeArgs(args string) ([]any, error) {
 			b, _ := json.Marshal(v)
 			raw[i] = string(b)
 		}
+		if d.Arg != nil && i < len(kinds) && kinds[i] != "" {
+			raw[i] = d.Arg(raw[i], kinds[i])
+		}
 	}
 	return raw, nil
 }
@@ -123,7 +129,7 @@ func decodeArgs(args string) ([]any, error) {
 // Query runs text in ctx against the database engine opens at source and
 // answers its rows as a JSON array of objects, each value under its place's
 // name in columns, read as its place's kind says.
-func Query(ctx context.Context, engine, source, text, args string, columns, kinds []string) (string, *Failure) {
+func Query(ctx context.Context, engine, source, text, args string, argKinds, columns, kinds []string) (string, *Failure) {
 	if ctx.Err() != nil {
 		return "", &Failure{Cancelled: true, Message: "cancelled"}
 	}
@@ -131,7 +137,7 @@ func Query(ctx context.Context, engine, source, text, args string, columns, kind
 	if f != nil {
 		return "", f
 	}
-	values, err := decodeArgs(args)
+	values, err := decodeArgs(d, args, argKinds)
 	if err != nil {
 		return "", &Failure{Message: err.Error()}
 	}
@@ -189,7 +195,7 @@ func Query(ctx context.Context, engine, source, text, args string, columns, kind
 
 // Exec runs text in ctx as Query does, and answers how many rows it changed
 // and the id of the last it inserted, where the driver gives one.
-func Exec(ctx context.Context, engine, source, text, args string) (int64, int64, *Failure) {
+func Exec(ctx context.Context, engine, source, text, args string, argKinds []string) (int64, int64, *Failure) {
 	if ctx.Err() != nil {
 		return 0, 0, &Failure{Cancelled: true, Message: "cancelled"}
 	}
@@ -197,7 +203,7 @@ func Exec(ctx context.Context, engine, source, text, args string) (int64, int64,
 	if f != nil {
 		return 0, 0, f
 	}
-	values, err := decodeArgs(args)
+	values, err := decodeArgs(d, args, argKinds)
 	if err != nil {
 		return 0, 0, &Failure{Message: err.Error()}
 	}

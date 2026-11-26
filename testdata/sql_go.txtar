@@ -29,7 +29,7 @@ component main ui.node {
     })
     ui.button(text="Count", @click {
         match var n = books.countCall() {
-            ok { count = n }
+            ok { count = n.or(0) }
             failed { count = -1 }
         }
     })
@@ -67,6 +67,7 @@ import (
 	"duckfam.us/sngl/pkg/go/snglasync"
 	"duckfam.us/sngl/pkg/go/snglcolor"
 	"duckfam.us/sngl/pkg/go/sngljson"
+	"duckfam.us/sngl/pkg/go/snglopt"
 	"duckfam.us/sngl/pkg/go/snglsql"
 	"duckfam.us/sngl/pkg/go/snglsql/sqlite"
 	"duckfam.us/sngl/pkg/go/tui"
@@ -112,9 +113,15 @@ type Result__int64 struct {
 	Failed Failure
 }
 
-type Result__CountRow struct {
+type Result__option_int64 struct {
 	tag    int
-	Ok     CountRow
+	Ok     *int64
+	Failed Failure
+}
+
+type Result__option_CountRow struct {
+	tag    int
+	Ok     *CountRow
 	Failed Failure
 }
 
@@ -289,7 +296,7 @@ func (m *Model) SetTerminalSize(w, h int) {
 
 func AddCall(title string, pages *int64, life Lifetime) Result__int64 {
 	__match1 := func() Result__Executed {
-		__snglN, __snglL, __snglF := snglsql.Exec(snglasync.Context(life._id), snglsqlite.Engine, ":memory:", "\nINSERT INTO books (title, pages) VALUES (?, ?)", (((("[" + sngljson.Encode[string](title, &sngljson.Codec{Kind: sngljson.String})) + ",") + sngljson.Encode[*int64](pages, &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}})) + "]"))
+		__snglN, __snglL, __snglF := snglsql.Exec(snglasync.Context(life._id), snglsqlite.Engine, ":memory:", "\nINSERT INTO books (title, pages) VALUES (?, ?)", (((("[" + sngljson.Encode[string](title, &sngljson.Codec{Kind: sngljson.String})) + ",") + sngljson.Encode[*int64](pages, &sngljson.Codec{Kind: sngljson.Option, Elem: &sngljson.Codec{Kind: sngljson.Int}})) + "]"), nil)
 		if __snglF != nil {
 			if __snglF.Cancelled {
 				return Result__Executed{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
@@ -312,9 +319,9 @@ func AddCall(title string, pages *int64, life Lifetime) Result__int64 {
 	return Result__int64{tag: 0, Ok: 0}
 }
 
-func CountCall(life Lifetime) Result__int64 {
+func CountCall(life Lifetime) Result__option_int64 {
 	__match2 := _one__CountRow(_rows__CountRow(func() Result__string {
-		__snglR, __snglF := snglsql.Query(snglasync.Context(life._id), snglsqlite.Engine, ":memory:", "SELECT count(*) FROM books", "[]", []string{"count"}, nil)
+		__snglR, __snglF := snglsql.Query(snglasync.Context(life._id), snglsqlite.Engine, ":memory:", "SELECT count(*) FROM books", "[]", nil, []string{"count"}, nil)
 		if __snglF != nil {
 			if __snglF.Cancelled {
 				return Result__string{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
@@ -329,26 +336,30 @@ func CountCall(life Lifetime) Result__int64 {
 	switch {
 	case (__match2.tag == 1):
 		r := __match2.Failed
-		return Result__int64{tag: 1, Failed: r}
+		return Result__option_int64{tag: 1, Failed: r}
 	default:
 		r := __match2.Ok
-		return Result__int64{tag: 0, Ok: r.Count}
+		if r == nil {
+			return Result__option_int64{tag: 0, Ok: nil}
+		}
+		return Result__option_int64{tag: 0, Ok: snglSome((*(r)).Count)}
 	}
-	return Result__int64{tag: 0, Ok: 0}
+	return Result__option_int64{tag: 0, Ok: nil}
 }
 
-func _one__CountRow(rows Result__list_CountRow) Result__CountRow {
+func _one__CountRow(rows Result__list_CountRow) Result__option_CountRow {
 	switch {
 	case (rows.tag == 1):
 		got := rows.Failed
-		return Result__CountRow{tag: 1, Failed: got}
+		return Result__option_CountRow{tag: 1, Failed: got}
 	default:
 		got := rows.Ok
 		if len(got) == 0 {
-			return Result__CountRow{tag: 1, Failed: Failure{Kind: "request", Message: "no rows", Code: "02000"}}
+			return Result__option_CountRow{tag: 0, Ok: nil}
 		}
-		return Result__CountRow{tag: 0, Ok: got[0]}
+		return Result__option_CountRow{tag: 0, Ok: snglSome(got[0])}
 	}
+	return Result__option_CountRow{tag: 0, Ok: nil}
 }
 
 func _rows__CountRow(r Result__string) Result__list_CountRow {
@@ -397,7 +408,7 @@ func _rows__FindRow(r Result__string) Result__list_FindRow {
 
 func FindCall(pattern string, life Lifetime) Result__list_FindRow {
 	return _rows__FindRow(func() Result__string {
-		__snglR, __snglF := snglsql.Query(snglasync.Context(life._id), snglsqlite.Engine, ":memory:", "SELECT id, title FROM books WHERE title LIKE ?1", (("[" + sngljson.Encode[string](pattern, &sngljson.Codec{Kind: sngljson.String})) + "]"), []string{"id", "title"}, nil)
+		__snglR, __snglF := snglsql.Query(snglasync.Context(life._id), snglsqlite.Engine, ":memory:", "SELECT id, title FROM books WHERE title LIKE ?1", (("[" + sngljson.Encode[string](pattern, &sngljson.Codec{Kind: sngljson.String})) + "]"), nil, []string{"id", "title"}, nil)
 		if __snglF != nil {
 			if __snglF.Cancelled {
 				return Result__string{tag: 1, Failed: Failure{Kind: "cancelled", Message: __snglF.Message}}
@@ -1103,8 +1114,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						_ = m
 						switch {
 						case (__match1.tag == 0):
-							var n int64 = __match1.Ok
-							m.count__inst0 = n
+							n := __match1.Ok
+							m.count__inst0 = snglopt.Or(n, 0)
 						default:
 							m.count__inst0 = -1
 						}
@@ -1209,4 +1220,4 @@ func (m Model) snapshotRef() *Model {
 	return &s
 }
 -- run/go/bubbletea --
-pass sha256:f3f632fa12dbf662b80689a3d1f727d0
+pass sha256:e53d2da6a369f1c3b0ed5ac4de9fcc07

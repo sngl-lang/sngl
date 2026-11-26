@@ -28,7 +28,7 @@ component main ui.node {
     })
     ui.button(text="Count", @click {
         match var n = books.countCall() {
-            ok { count = n }
+            ok { count = n.or(0) }
             failed { count = -1 }
         }
     })
@@ -142,9 +142,14 @@ sealed class SnglResult__int64 {
     data class Failed(val value: Failure) : SnglResult__int64()
 }
 
-sealed class SnglResult__CountRow {
-    data class Ok(val value: CountRow) : SnglResult__CountRow()
-    data class Failed(val value: Failure) : SnglResult__CountRow()
+sealed class SnglResult__option_int64 {
+    data class Ok(val value: Long?) : SnglResult__option_int64()
+    data class Failed(val value: Failure) : SnglResult__option_int64()
+}
+
+sealed class SnglResult__option_CountRow {
+    data class Ok(val value: CountRow?) : SnglResult__option_CountRow()
+    data class Failed(val value: Failure) : SnglResult__option_CountRow()
 }
 
 sealed class SnglResult__list_CountRow {
@@ -243,11 +248,11 @@ fun MainScreen() {
             }
             Button(onClick = {
                 SnglCodec.start {
-                	var __match1: SnglResult__int64 = countCall(Lifetime())
+                	var __match1: SnglResult__option_int64 = countCall(Lifetime())
                 	when {
-                		(__match1 is SnglResult__int64.Ok) -> {
-                			var n = (__match1 as SnglResult__int64.Ok).value
-                			count__inst0 = n
+                		(__match1 is SnglResult__option_int64.Ok) -> {
+                			var n: Long? = (__match1 as SnglResult__option_int64.Ok).value
+                			count__inst0 = (n ?: 0L)
                 		}
                 		else -> {
                 			count__inst0 = -1L
@@ -277,35 +282,39 @@ suspend fun addCall(title: String, pages: Long?, life: Lifetime): SnglResult__in
     return SnglResult__int64.Ok(0L)
 }
 
-suspend fun countCall(life: Lifetime): SnglResult__int64 {
-    var __match2: SnglResult__CountRow = _one__CountRow(_rows__CountRow(run { val __s = SnglSql.query("sqlite", ":memory:", "SELECT count(*) FROM books", "[]", listOf("count"), emptyList(), life._id); if (__s.failed) (if (__s.cancelled) SnglResult__string.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __s.message)) else if (__s.code.isNotEmpty()) SnglResult__string.Failed(Failure(kind = SnglFailureKind.SERVER, message = __s.message, code = __s.code)) else SnglResult__string.Failed(Failure(message = __s.message))) else SnglResult__string.Ok(__s.rows) }))
+suspend fun countCall(life: Lifetime): SnglResult__option_int64 {
+    var __match2: SnglResult__option_CountRow = _one__CountRow(_rows__CountRow(run { val __s = SnglSql.query("sqlite", ":memory:", "SELECT count(*) FROM books", "[]", listOf("count"), emptyList(), life._id); if (__s.failed) (if (__s.cancelled) SnglResult__string.Failed(Failure(kind = SnglFailureKind.CANCELLED, message = __s.message)) else if (__s.code.isNotEmpty()) SnglResult__string.Failed(Failure(kind = SnglFailureKind.SERVER, message = __s.message, code = __s.code)) else SnglResult__string.Failed(Failure(message = __s.message))) else SnglResult__string.Ok(__s.rows) }))
     when {
-    	(__match2 is SnglResult__CountRow.Failed) -> {
-    		var r = (__match2 as SnglResult__CountRow.Failed).value
-    		return SnglResult__int64.Failed(r.copy())
+    	(__match2 is SnglResult__option_CountRow.Failed) -> {
+    		var r = (__match2 as SnglResult__option_CountRow.Failed).value
+    		return SnglResult__option_int64.Failed(r.copy())
     	}
     	else -> {
-    		var r = (__match2 as SnglResult__CountRow.Ok).value
-    		return SnglResult__int64.Ok(r.count)
+    		var r: CountRow? = (__match2 as SnglResult__option_CountRow.Ok).value
+    		if ((r == null)) {
+    			return SnglResult__option_int64.Ok(null)
+    		}
+    		return SnglResult__option_int64.Ok(r!!.count)
     	}
     }
-    return SnglResult__int64.Ok(0L)
+    return SnglResult__option_int64.Ok(null)
 }
 
-fun _one__CountRow(rows: SnglResult__list_CountRow): SnglResult__CountRow {
+fun _one__CountRow(rows: SnglResult__list_CountRow): SnglResult__option_CountRow {
     when {
     	(rows is SnglResult__list_CountRow.Failed) -> {
     		var got = (rows as SnglResult__list_CountRow.Failed).value
-    		return SnglResult__CountRow.Failed(got.copy())
+    		return SnglResult__option_CountRow.Failed(got.copy())
     	}
     	else -> {
     		var got = (rows as SnglResult__list_CountRow.Ok).value
     		if ((got.size == 0)) {
-    			return SnglResult__CountRow.Failed(Failure(kind = SnglFailureKind.REQUEST, message = "no rows", code = "02000"))
+    			return SnglResult__option_CountRow.Ok(null)
     		}
-    		return SnglResult__CountRow.Ok(got[0])
+    		return SnglResult__option_CountRow.Ok(got[0])
     	}
     }
+    return SnglResult__option_CountRow.Ok(null)
 }
 
 fun _rows__CountRow(r: SnglResult__string): SnglResult__list_CountRow {
@@ -1042,4 +1051,4 @@ object SnglSql {
     }
 }
 -- run/kotlin/android --
-pass sha256:dda95946647659ca321532dda33d849c
+pass sha256:e1c93abcf5341df2d13296b404cddfbc

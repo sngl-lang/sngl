@@ -62,12 +62,12 @@ func (gc *GoIRContext) sqlCall(n *ir.Call) (string, bool) {
 	fmt.Fprintf(&b, "func() %s { %s", typeToGo(n.Type, gc.site()), keep.String())
 	src, text, args := arg("source", `""`), arg("text", `""`), arg("args", `"[]"`)
 	if n.Func.Intrinsic == ir.SQLQueryIntrinsic {
-		fmt.Fprintf(&b, "__snglR, __snglF := snglsql.Query(%s, %s, %s, %s, %s, %s, %s); ", ctx, eng, src, text, args, arg("columns", "nil"), arg("kinds", "nil"))
+		fmt.Fprintf(&b, "__snglR, __snglF := snglsql.Query(%s, %s, %s, %s, %s, %s, %s, %s); ", ctx, eng, src, text, args, arg("argKinds", "nil"), arg("columns", "nil"), arg("kinds", "nil"))
 		b.WriteString(failed)
 		fmt.Fprintf(&b, "return %s }()", gc.EvalExpr(codegen.ResultOK(n.Type, codegen.HostValue("__snglR", str))))
 		return b.String(), true
 	}
-	fmt.Fprintf(&b, "__snglN, __snglL, __snglF := snglsql.Exec(%s, %s, %s, %s, %s); ", ctx, eng, src, text, args)
+	fmt.Fprintf(&b, "__snglN, __snglL, __snglF := snglsql.Exec(%s, %s, %s, %s, %s, %s); ", ctx, eng, src, text, args, arg("argKinds", "nil"))
 	b.WriteString(failed)
 	done := codegen.StructOf(ir.MemberPayload(n.Type, "ok"), map[string]ir.Expr{
 		"rows":   codegen.HostValue("__snglN", ir.TypInt64),

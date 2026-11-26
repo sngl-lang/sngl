@@ -43,13 +43,13 @@ func (env *Env) evalSQLCall(call *ir.Call) (any, bool, error) {
 	ctx := snglasync.Context(heldID(arg("life")))
 	engine := str("engine")
 	if call.Func.Intrinsic == ir.SQLQueryIntrinsic {
-		rows, f := snglsql.Query(ctx, engine, str("source"), str("text"), str("args"), strs("columns"), strs("kinds"))
+		rows, f := snglsql.Query(ctx, engine, str("source"), str("text"), str("args"), strs("argKinds"), strs("columns"), strs("kinds"))
 		if f != nil {
 			return sqlFailed(rt, f), true, nil
 		}
 		return EnumValue{Type: rt, Member: "ok", Payload: rows}, true, nil
 	}
-	n, last, f := snglsql.Exec(ctx, engine, str("source"), str("text"), str("args"))
+	n, last, f := snglsql.Exec(ctx, engine, str("source"), str("text"), str("args"), strs("argKinds"))
 	if f != nil {
 		return sqlFailed(rt, f), true, nil
 	}

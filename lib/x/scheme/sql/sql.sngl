@@ -37,14 +37,18 @@ import marks "sngl:internal/marks"
 //   - **An enum per enum** the schema creates.
 //   - **A function per query**, named for it with `Call` after it,
 //     `getAuthorCall(id, life)`, its parameters the query's, answering
-//     `async.Result` of what it says it answers: `:one` the row, or a
-//     `request` failure coded `02000` where there is none; `:many` a list;
+//     `async.Result` of what it says it answers: `:one` an option of the
+//     row, null where there is none; `:many` a list;
 //     `:execrows` how many rows changed; `:execlastid` the id inserted; `:exec`
 //     and `:execresult` an `sql.Executed`. A failure the database reports is
 //     classified by `sql.classify`.
-//   - **A component per `:one` or `:many` query**, named for the bare query,
-//     over `async.query` keyed by its parameters: asked when it mounts and
-//     whenever a parameter changes.
+//   - **A component per query that reads** -- a `:one` or `:many` that is a
+//     SELECT, not an INSERT … RETURNING -- named for the bare query, over
+//     `async.query` keyed by its parameters: asked when it mounts and
+//     whenever a parameter changes. A `:one`'s value is the row's option
+//     itself, null until an answer and where the answer was no row, which
+//     `pending` tells apart. A query whose parameter is a date or a time
+//     has none, since a key is compared and each target holds its own.
 //   - **`source`**, a context naming the database, **`schema`**, the
 //     schema's statements, and **`create`**, which runs them.
 //

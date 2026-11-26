@@ -253,13 +253,13 @@ func (w *writer) write() (string, error) {
 	w.line("}")
 	w.line("}")
 	w.line("")
-	w.line("// The first of rows, or SQL's own no data where there is none.")
-	w.line("func _one[T any](rows async.Result[list[T]]) async.Result[T] {")
+	w.line("// The first of rows, or null where there is none.")
+	w.line("func _one[T any](rows async.Result[list[T]]) async.Result[option[T]] {")
 	w.line("match var got = rows {")
 	w.line("failed { return {failed=got} }")
 	w.line("ok {")
 	w.line("if got.length() == 0 {")
-	w.line(`return {failed=sql.classify({kind=async.FailureKind.request, message="no rows", code="02000"})}`)
+	w.line("return {ok=null}")
 	w.line("}")
 	w.line("return {ok=got[0]}")
 	w.line("}")
@@ -476,9 +476,18 @@ func (w *writer) query(q *analyze.Query) *query {
 	} else {
 		out.row = w.claim(capital(base)+"Row", func(to string) { w.note("query %s's row is %s: the name is taken", q.GetName(), to) })
 	}
+	if !onlyReads(q.GetText()) {
+		return out
+	}
 	for _, p := range out.params {
 		if slices.Contains(reservedProps, p.name) {
 			w.note("query %s has no component: its parameter %s is named as a component's own prop", q.GetName(), p.name)
+			return out
+		}
+		// A query's key is compared on every target, and each holds its own
+		// date and time.
+		if strings.Contains(p.typ, "time.date") || strings.Contains(p.typ, "time.time") {
+			w.note("query %s has no component: its parameter %s is a %s, and a query's key is compared", q.GetName(), p.name, p.typ)
 			return out
 		}
 	}
@@ -548,7 +557,7 @@ func (w *writer) result(q *query) string {
 	}
 	switch q.q.GetCmd() {
 	case ":one":
-		return elem
+		return "option[" + elem + "]"
 	case ":many":
 		return "list[" + elem + "]"
 	case ":execrows", ":execlastid":
@@ -577,6 +586,15 @@ func (w *writer) function(q *query) {
 	w.line("// %s", strings.Join(strings.Fields(q.q.GetText()), " "))
 	w.line("func %s(%s) async.Result[%s] {", q.fn, w.signature(q), w.result(q))
 	call := fmt.Sprintf("engine=%s, source=source, text=%s, args=%s", w.engine(), quote(q.q.GetText()), w.args(q))
+	var argKinds []string
+	anyArgKind := false
+	for _, p := range q.params {
+		argKinds = append(argKinds, quote(p.kind))
+		anyArgKind = anyArgKind || p.kind != ""
+	}
+	if anyArgKind {
+		call += ", argKinds=[" + strings.Join(argKinds, ", ") + "]"
+	}
 	switch q.q.GetCmd() {
 	case ":one", ":many":
 		var names, kinds []string
@@ -597,7 +615,12 @@ func (w *writer) function(q *query) {
 		case q.q.GetCmd() == ":one":
 			w.line("match var r = _one(%s) {", rows)
 			w.line("failed { return {failed=r} }")
-			w.line("ok { return {ok=r.%s} }", q.scalar)
+			w.line("ok {")
+			w.line("if r == null {")
+			w.line("return {ok=null}")
+			w.line("}")
+			w.line("return {ok=r.%s}", q.scalar)
+			w.line("}")
 			w.line("}")
 		case q.scalar == "":
 			w.line("return %s", rows)
@@ -640,13 +663,21 @@ func (w *writer) adapter(q *query) {
 		head += ", asked again whenever " + strings.Join(names, " or ") + " changes"
 	}
 	result := w.result(q)
+	// A `:one` answers an option, and its component holds that option as its
+	// value rather than an option of one: null until an answer, and null
+	// where the answer was no row, which `pending` tells apart.
+	one := q.q.GetCmd() == ":one"
+	value := "option[" + result + "]"
+	if one {
+		value = result
+	}
 	w.line("")
 	w.line("%s.", head)
 	w.line("component %s[F any](", q.adapt)
 	for _, p := range q.params {
 		w.line("%s %s,", p.name, p.typ)
 	}
-	w.line(":value option[%s] = null,", result)
+	w.line(":value %s = null,", value)
 	w.line(":pending bool = false,")
 	w.line(":failure option[async.Failure] = null,")
 	w.line("@load(value %s),", result)
@@ -675,10 +706,19 @@ func (w *writer) adapter(q *query) {
 		w.line("on={%s},", strings.Join(on, ", "))
 		w.line("fetch=func(k struct { %s }, life async.Lifetime) => %s(%s, life=life),", strings.Join(fields, "; "), q.fn, strings.Join(passed, ", "))
 	}
-	w.line(":value=value,")
+	if !one {
+		w.line(":value=value,")
+	}
 	w.line(":pending=pending,")
 	w.line(":failure=failure,")
-	w.line("@load { load() },")
+	if one {
+		w.line("@load(got) {")
+		w.line("value = got")
+		w.line("load(got)")
+		w.line("},")
+	} else {
+		w.line("@load { load() },")
+	}
 	w.line("@fail { fail() },")
 	w.line(")")
 	w.line("}")
@@ -884,3 +924,29 @@ func capital(s string) string {
 }
 
 func quote(s string) string { return `"` + ast.EscapeString(s, ast.StyleDouble) + `"` }
+
+// onlyReads reports whether a statement only reads, which a component may ask
+// again whenever its parameters change: a `:one` is as often an INSERT …
+// RETURNING, which must run once, when it is called.
+func onlyReads(text string) bool {
+	words := strings.FieldsFunc(strings.ToUpper(skipComments(text)), func(r rune) bool {
+		return !unicode.IsLetter(r) && r != '_'
+	})
+	if len(words) == 0 {
+		return false
+	}
+	switch words[0] {
+	case "SELECT", "VALUES", "TABLE", "SHOW", "EXPLAIN":
+		return true
+	case "WITH":
+		// A data-modifying CTE writes whatever its last statement does.
+		for _, w := range words {
+			switch w {
+			case "INSERT", "UPDATE", "DELETE", "MERGE":
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}

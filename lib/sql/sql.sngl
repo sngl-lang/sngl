@@ -19,6 +19,11 @@ struct Executed {
 // under the name `columns` gives its place. args is a JSON array of the
 // statement's arguments in order, each a number, a string, a bool or null.
 //
+// argKinds says, beside each argument, what its JSON stands for where the
+// engine wants it as something else: `datetime` and `date` RFC 3339 text
+// that MySQL reads as a time. Anything else, and an argument past its end, is
+// handed over as it came.
+//
 // kinds says, beside each column, what a value stored as something else is
 // read as, since a database without the type stores it another way: `bool`
 // a number as `true` or `false`, `datetime` and `date` text or a time as RFC
@@ -39,31 +44,32 @@ func query(
     engine  Engine,
     source  string,
     text    string,
-    args    string = "[]",
-    columns list[string] = [],
-    kinds   list[string] = [],
-    life    async.Lifetime = async.forever,
+    args     string = "[]",
+    argKinds list[string] = [],
+    columns  list[string] = [],
+    kinds    list[string] = [],
+    life     async.Lifetime = async.forever,
 ) async.Result[string]
 
 // Runs text, a statement answering no rows, as `query` runs one, and answers
 // what it did.
 #[marks.intrinsic("sql.exec", async)]
 func exec(
-    engine Engine,
-    source string,
-    text   string,
-    args   string = "[]",
-    life   async.Lifetime = async.forever,
+    engine   Engine,
+    source   string,
+    text     string,
+    args     string = "[]",
+    argKinds list[string] = [],
+    life     async.Lifetime = async.forever,
 ) async.Result[Executed]
 
 // The failure a query's code says, by what a program should do next: a
 // constraint or a value the database refused is `request`, since sending it
 // again fails alike; a conflict, a deadlock or a busy database `server`, since
 // a retry may pass; a connection refused or lost `transport`; a login or a
-// privilege refused `auth`; and a query cancelled `cancelled`. `02000` is
-// SQL's own "no data", which a query answering one row answers where it
-// found none, and is `request`. A failure with no code is handed back as it
-// came. Written here rather than answered by each host, so every target
+// privilege refused `auth`; and a query cancelled `cancelled`. `02000`,
+// SQL's own "no data", is `request`. A failure with no code is handed back
+// as it came. Written here rather than answered by each host, so every target
 // classifies alike.
 const func classify(f async.Failure) async.Failure {
     var c = f.code

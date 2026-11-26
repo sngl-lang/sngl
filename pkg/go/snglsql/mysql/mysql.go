@@ -14,7 +14,7 @@ import (
 const Engine = "mysql"
 
 func init() {
-	snglsql.Register(Engine, snglsql.Driver{Name: "mysql", Code: code})
+	snglsql.Register(Engine, snglsql.Driver{Name: "mysql", Code: code, Arg: arg})
 }
 
 func code(err error) string {
@@ -23,4 +23,17 @@ func code(err error) string {
 		return string(e.SQLState[:])
 	}
 	return ""
+}
+
+// arg is a time as MySQL takes one: it refuses RFC 3339's T and offset in a
+// DATETIME, so the driver writes it, in UTC.
+func arg(v any, kind string) any {
+	s, ok := v.(string)
+	if !ok || kind != "datetime" {
+		return v
+	}
+	if t, ok := snglsql.ParseTime(s); ok {
+		return t
+	}
+	return v
 }

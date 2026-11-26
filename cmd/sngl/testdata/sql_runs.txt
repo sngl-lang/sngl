@@ -24,7 +24,7 @@ stdout 'the program queries a database, which html/none cannot yet'
 
 -- app.sngl --
 // Every kind of query, a value of every column type written and read back, a
-// failure classified, a trigger the schema's statements kept whole, and the
+// row not found answered as null, a failure classified, a trigger the schema's statements kept whole, and the
 // component over a read. Each test opens a database of its own.
 
 import async "sngl:async"
@@ -48,13 +48,17 @@ func testRoundTrip(t test.Test) {
     }
     match var b = books.getBookCall(id=1) {
         ok {
-            t.assert(b.id == 1)
-            t.assert(b.title == "Earthsea")
-            t.assert(b.pages == 264)
-            t.assert(b.rating == 4.5)
-            t.assert(b.lent)
-            t.assert(b.added != null && "{b.added}" == "2024-03-01T10:30:00Z")
-            t.assert(b.due != null && "{b.due}" == "2024-04-01")
+            if b == null {
+                t.assert(false)
+            } else {
+                t.assert(b.id == 1)
+                t.assert(b.title == "Earthsea")
+                t.assert(b.pages == 264)
+                t.assert(b.rating == 4.5)
+                t.assert(b.lent)
+                t.assert(b.added != null && "{b.added}" == "2024-03-01T10:30:00Z")
+                t.assert(b.due != null && "{b.due}" == "2024-04-01")
+            }
         }
         failed { t.assert(b.message == "") }
     }
@@ -66,10 +70,14 @@ func testNulls(t test.Test) {
     var id = add("Tehanu")
     match var b = books.getBookCall(id=id) {
         ok {
-            t.assert(b.pages == null)
-            t.assert(b.added == null)
-            t.assert(b.due == null)
-            t.assert(!b.lent)
+            if b == null {
+                t.assert(false)
+            } else {
+                t.assert(b.pages == null)
+                t.assert(b.added == null)
+                t.assert(b.due == null)
+                t.assert(!b.lent)
+            }
         }
         failed { t.assert(b.message == "") }
     }
@@ -79,11 +87,8 @@ func testMissing(t test.Test) {
     t.setContext(books.source, ":memory:missing")
     t.assert(books.create().ok == 4)
     match var b = books.getBookCall(id=99) {
-        ok { t.assert(false) }
-        failed {
-            t.assert(b.kind == async.FailureKind.request)
-            t.assert(b.code == "02000")
-        }
+        ok { t.assert(b == null) }
+        failed { t.assert(b.message == "") }
     }
 }
 
@@ -127,8 +132,8 @@ func testExec(t test.Test) {
         failed { t.assert(done.message == "") }
     }
     match var b = books.getBookCall(id=id) {
-        ok { t.assert(false) }
-        failed { t.assert(b.code == "02000") }
+        ok { t.assert(b == null) }
+        failed { t.assert(b.message == "") }
     }
 }
 
@@ -236,7 +241,7 @@ DELETE FROM books WHERE id = ?;
 -- name: Logged :many
 SELECT what FROM log WHERE book = ?;
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:cf3b06a40f1ed2c195fe6db5821d332a
+sha256:1ba2b1c38ab287685a21ac254669f846
 {
   "results": [
     {
@@ -280,7 +285,7 @@ sha256:784218e30d5484b519df2eb20aab7e84
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:fe6617128d4d5bded0c7073d8b66f6fa
+sha256:333ad16e1ecd0c03e858b0a3c3053cf4
 {
   "results": [
     {
@@ -314,7 +319,7 @@ sha256:fe6617128d4d5bded0c7073d8b66f6fa
   ]
 }
 -- testrun/bubbletea/go/app.sngl/shelf/1 --
-sha256:26c2a70c14192b6f7c0fd6d3c13a6eea
+sha256:ae5cedd0d722c730a3567c66510c9b7f
 {
   "results": [
     {
@@ -324,7 +329,7 @@ sha256:26c2a70c14192b6f7c0fd6d3c13a6eea
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:497c33ff29ebf2c18dfefa7eedd88736
+sha256:c1719cc84844e9313bd267b911218318
 {
   "results": [
     {
@@ -358,7 +363,7 @@ sha256:497c33ff29ebf2c18dfefa7eedd88736
   ]
 }
 -- testrun/fyne/go/app.sngl/shelf/1 --
-sha256:1d3f098a143867420a58a3041529f5c5
+sha256:4d95193608ef454f94bf7ae0552a4a08
 {
   "results": [
     {
@@ -368,7 +373,7 @@ sha256:1d3f098a143867420a58a3041529f5c5
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:dcddd35d005049ef89c7d6c61373be39
+sha256:cdf6d7d6d624bbd16c98b970d6a72d4d
 {
   "results": [
     {
@@ -402,7 +407,7 @@ sha256:dcddd35d005049ef89c7d6c61373be39
   ]
 }
 -- testrun/gtk4/go/app.sngl/shelf/1 --
-sha256:9a90ec47861160ef79c5a9009a121972
+sha256:effd1f2a2c36a155ac7587b185d1a300
 {
   "results": [
     {

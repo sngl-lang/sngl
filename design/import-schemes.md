@@ -250,7 +250,18 @@ takes the SQL type's width on every target: PostgreSQL's `integer` an `int`,
 An array, a `sqlc.slice`, a type with none and a `:copyfrom` or `:batch…`
 query leave the query out, with a note. A read decodes its rows through the
 package's two generic helpers, `_rows` and `_one`, copied per row type
-where a target writes no type parameter.
+where a target writes no type parameter. A `:one` answers an option of its
+row, null where there is none, as no row is an answer rather than a failure.
+
+**A component is a read's alone.** sqlc's `:one` says how many rows come
+back, not whether the statement writes, and an INSERT … RETURNING is one:
+mounted, its component would insert, and again on every change of key. So a
+statement gets one only where its first word reads (`onlyReads`: SELECT,
+VALUES, or a WITH holding no write), and only where every parameter can key
+a query: a date or a time is held by each target its own way, so compares
+alike on none (`ir.RebuildIncomparable`). A `:one`'s component holds the
+row's option as its value, not an option of one -- Kotlin has no `T??` --
+writing it from `@load`.
 
 **`schema` is split by SNGL, not by sqlc's parser**, which leaves out a
 statement it does not model -- SQLite's trigger and index -- that the
@@ -259,7 +270,12 @@ comment, PostgreSQL's dollar quoting and a `BEGIN … END` or `CASE … END`
 block (`split.go`); a transaction's `BEGIN` opens none.
 
 The runs are `cmd/sngl/testdata/sql_runs.txt`, against SQLite on the
-interpreter, the three Go platforms and android; the refusals
+interpreter, the three Go platforms and android, and `sql_postgresql_runs.txt`
+and `sql_mysql_runs.txt` against the servers the script harness starts
+(`internal/testsql`, the `sqlserver` command) on the interpreter and the Go
+platforms. Those start from the binaries on PATH, so a host without them --
+CI -- replays the Go runs from their records and skips the interpreter's,
+guarded by `[postgresql]` and `[mysql]`. The refusals
 `error_sql_import.txt` and `error_sql_target.txt`; the edges -- each
 engine's types, the notes, the split, the directives --
 `codegen/scheme/sql/sql_test.go`;

@@ -1,0 +1,274 @@
+# The package a sql: import writes for PostgreSQL, run against the harness's
+# server (internal/testsql) on the interpreter and each Go platform; android
+# reaches SQLite alone. Each test opens a database of its own, which
+# `sqlserver` empties before every target's run. A launch answered from its
+# record reaches no server, so CI, which has none, replays those alone.
+
+[postgresql] sqlserver postgresql roundtrip nulls missing many exec constraint
+[postgresql] sngl test --platform=none app.sngl
+[postgresql] stdout '6 tests, 0 failures'
+
+[postgresql] sqlserver postgresql roundtrip nulls missing many exec constraint
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+[postgresql] sqlserver postgresql roundtrip nulls missing many exec constraint
+sngl test --platform=fyne --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+[postgresql] sqlserver postgresql roundtrip nulls missing many exec constraint
+sngl test --platform=gtk4 --language=go app.sngl
+stdout '6 tests, 0 failures'
+
+-- app.sngl --
+// Every PostgreSQL type the import reads written and read back, a failure
+// classified by its SQLSTATE, and RETURNING read as a query's one value.
+
+import async "sngl:async"
+import books "sql:./db/queries.sql"
+import test "sngl:test"
+import ui "sngl:ui"
+
+const server = "postgres://sngl@127.0.0.1:47830/"
+
+func add(title string, shelf books.Shelf = books.Shelf.fiction) int64 {
+    match var id = books.addBookCall(title=title, pages=null, price="0", rating=0.0, lent=false, shelf=shelf, added=null, due=null) {
+        ok { return id.or(-1) }
+        failed { return -1 }
+    }
+}
+
+func testRoundTrip(t test.Test) {
+    t.setContext(books.source, server + "roundtrip?sslmode=disable")
+    t.assert(books.create().ok == 2)
+    match var id = books.addBookCall(title="Earthsea", pages=264, price="12.50", rating=4.5, lent=true, shelf=books.Shelf.nonFiction, added="2024-03-01T10:30:00Z", due="2024-04-01") {
+        ok { t.assert(id == 1) }
+        failed { t.assert(id.message == "") }
+    }
+    match var b = books.getBookCall(id=1) {
+        ok {
+            if b == null {
+                t.assert(false)
+            } else {
+                t.assert(b.title == "Earthsea")
+                t.assert(b.pages == 264)
+                t.assert(b.price == "12.50")
+                t.assert(b.rating == 4.5)
+                t.assert(b.lent)
+                t.assert(b.shelf == books.Shelf.nonFiction)
+                t.assert(b.added != null && "{b.added}" == "2024-03-01T10:30:00Z")
+                t.assert(b.due != null && "{b.due}" == "2024-04-01")
+            }
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testNulls(t test.Test) {
+    t.setContext(books.source, server + "nulls?sslmode=disable")
+    t.assert(books.create().ok == 2)
+    var id = add("Tehanu")
+    match var b = books.getBookCall(id=id) {
+        ok {
+            if b == null {
+                t.assert(false)
+            } else {
+                t.assert(b.pages == null)
+                t.assert(b.added == null)
+                t.assert(b.due == null)
+                t.assert(!b.lent)
+            }
+        }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testMissing(t test.Test) {
+    t.setContext(books.source, server + "missing?sslmode=disable")
+    t.assert(books.create().ok == 2)
+    match var b = books.getBookCall(id=99) {
+        ok { t.assert(b == null) }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+func testMany(t test.Test) {
+    t.setContext(books.source, server + "many?sslmode=disable")
+    t.assert(books.create().ok == 2)
+    add("The Farthest Shore")
+    add("A Wizard of Earthsea", books.Shelf.poetry)
+    add("Tales", books.Shelf.poetry)
+    match var found = books.onShelfCall(shelf=books.Shelf.poetry) {
+        ok {
+            t.assert(found.length() == 2)
+            t.assert(found[0].title == "A Wizard of Earthsea")
+        }
+        failed { t.assert(found.message == "") }
+    }
+    match var n = books.countBooksCall() {
+        ok { t.assert(n == 3) }
+        failed { t.assert(n.message == "") }
+    }
+}
+
+func testExec(t test.Test) {
+    t.setContext(books.source, server + "exec?sslmode=disable")
+    t.assert(books.create().ok == 2)
+    var id = add("Tehanu")
+    t.assert(books.lendBookCall(lent=true, id=id).ok == 1)
+    t.assert(books.lendBookCall(lent=true, id=99).ok == 0)
+    match var done = books.removeBookCall(id=id) {
+        ok { t.assert(done.rows == 1) }
+        failed { t.assert(done.message == "") }
+    }
+    match var b = books.getBookCall(id=id) {
+        ok { t.assert(b == null) }
+        failed { t.assert(b.message == "") }
+    }
+}
+
+// A unique violation is SQLSTATE 23505, which a retry fails alike.
+func testConstraint(t test.Test) {
+    t.setContext(books.source, server + "constraint?sslmode=disable")
+    t.assert(books.create().ok == 2)
+    add("Tehanu")
+    match var id = books.addBookCall(title="Tehanu", pages=null, price="0", rating=0.0, lent=false, shelf=books.Shelf.fiction, added=null, due=null) {
+        ok { t.assert(false) }
+        failed {
+            t.assert(id.kind == async.FailureKind.request)
+            t.assert(id.code == "23505")
+        }
+    }
+}
+
+ui.window {
+    ui.text(value="books")
+}
+-- db/schema.sql --
+-- sngl:engine postgresql
+
+CREATE TYPE shelf AS ENUM ('fiction', 'non-fiction', 'poetry');
+
+CREATE TABLE books (
+  id     bigserial PRIMARY KEY,
+  title  text NOT NULL UNIQUE,
+  pages  integer,
+  price  numeric(8, 2) NOT NULL DEFAULT 0,
+  rating double precision NOT NULL DEFAULT 0,
+  lent   boolean NOT NULL DEFAULT false,
+  shelf  shelf NOT NULL DEFAULT 'fiction',
+  added  timestamptz,
+  due    date
+);
+-- db/queries.sql --
+-- sngl:schema schema.sql
+
+-- name: AddBook :one
+INSERT INTO books (title, pages, price, rating, lent, shelf, added, due)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id;
+
+-- name: GetBook :one
+SELECT * FROM books WHERE id = $1;
+
+-- name: OnShelf :many
+SELECT id, title FROM books WHERE shelf = $1 ORDER BY id;
+
+-- name: CountBooks :one
+SELECT count(*) FROM books;
+
+-- name: LendBook :execrows
+UPDATE books SET lent = $1 WHERE id = $2;
+
+-- name: RemoveBook :exec
+DELETE FROM books WHERE id = $1;
+-- testrun/bubbletea/go/app.sngl/_/1 --
+sha256:12278b03935bf4b9c70b8d839508c9e8
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/_/1 --
+sha256:75746762213e67d80d4c7c31146194f0
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/_/1 --
+sha256:69c07ca2c8825e4b3f26a4357f995e84
+{
+  "results": [
+    {
+      "Desc": "Constraint",
+      "Passed": true
+    },
+    {
+      "Desc": "Exec",
+      "Passed": true
+    },
+    {
+      "Desc": "Many",
+      "Passed": true
+    },
+    {
+      "Desc": "Missing",
+      "Passed": true
+    },
+    {
+      "Desc": "Nulls",
+      "Passed": true
+    },
+    {
+      "Desc": "RoundTrip",
+      "Passed": true
+    }
+  ]
+}

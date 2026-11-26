@@ -796,7 +796,10 @@ checked by the codec every target already holds rather than by a reader per
 struct, as gRPC's are. `kinds` is the one thing a row's JSON cannot say: a
 `bool` SQLite or MySQL stores as a number, and a `datetime` or `date` SQLite
 stores as text in whatever form wrote it, each normalized to what the codec
-reads.
+reads. `argKinds` says the same of the arguments, for an engine wanting one
+as something other than its JSON: MySQL refuses RFC 3339's `T` and offset in
+a `DATETIME`, so its driver hands a `datetime` over as a time
+(`snglsql.Driver.Arg`).
 
 **The engine is a literal at the call, and picks the driver.** Go names the
 engine's own package, `snglsqlite.Engine`, rather than importing it blank:
@@ -824,8 +827,7 @@ database directory once `MainActivity` hands `SnglSql` its context.
 database's code -- the SQLSTATE where it has one, SQLite's primary result
 code name (`SQLITE_CONSTRAINT`) where it does not, Android's exception class
 read as that name -- and `sql.classify` turns it into the kind
-(`testdata/sql_classify.sngl`). `02000`, SQL's own "no data", is what a `:one`
-query that found nothing answers. Go and Kotlin run a statement; any other
+(`testdata/sql_classify.sngl`). Go and Kotlin run a statement; any other
 language is refused before its generator runs, a statement in an imported
 package's function included (`reachedCalls`), and a test run skips the file
 naming why (`build.Refused`, `cmd/sngl/testdata/error_sql_target.txt`).

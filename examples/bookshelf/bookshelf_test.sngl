@@ -41,10 +41,18 @@ func testReadAndRemove(t test.Test) {
     t.assert(books.create().ok == 2)
     var id = books.addBookCall(title="Tehanu", author="", added="2024-01-01T00:00:00Z").ok.or(0)
     t.assert(books.setReadCall(read=true, id=id).ok == 1)
-    t.assert(books.unreadCall().ok == 0)
+    t.assert(unread() == 0)
     t.assert(shelved("")[0].read)
     t.assert(books.removeBookCall(id=id).ok == 1)
     t.assert(shelved("").length() == 0)
+}
+
+// How many books are unread, or -1 where the count failed.
+func unread() int64 {
+    match var n = books.unreadCall() {
+        ok { return n.or(-1) }
+        failed { return -1 }
+    }
 }
 
 // Creating the schema a second time finds each statement already done.

@@ -63,7 +63,7 @@ INSERT INTO people (age, mood, seen, balance, tags) VALUES ($1, $2, $3, $4, $5);
 		"context #source(\"\")",
 		"enum Mood {\n    happy\n    #[json.identifier(\"not-sure\")]\n    notSure\n    sad\n}",
 		"struct GetPersonRow {\n    id      int64\n    age     int\n    height  option[float]\n    mood    Mood\n    born    option[time.date]\n    seen    time.datetime\n    balance string\n    func_   option[string]\n}",
-		"func getPersonCall(id int64, life async.Lifetime = async.forever) async.Result[GetPersonRow]",
+		"func getPersonCall(id int64, life async.Lifetime = async.forever) async.Result[option[GetPersonRow]]",
 		`kinds=["", "", "", "", "date", "datetime", "", ""]`,
 	)
 }
@@ -117,8 +117,8 @@ SELECT id, lent FROM books WHERE lent;
 		`"CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT NOT NULL, lent BOOLEAN NOT NULL)",`,
 		`"CREATE TRIGGER t AFTER INSERT ON books BEGIN\n  UPDATE books SET title = CASE WHEN title = '' THEN 'untitled;' ELSE title END WHERE id = new.id;\nEND",`,
 		`"CREATE INDEX books_title ON books (title)",`,
-		"func countBooksCall(life async.Lifetime = async.forever) async.Result[int64]",
-		"ok { return {ok=r.count} }",
+		"func countBooksCall(life async.Lifetime = async.forever) async.Result[option[int64]]",
+		"return {ok=r.count}",
 		`kinds=["", "bool"]`,
 	)
 	if strings.Contains(p.Source, "DROP TABLE") {
@@ -225,5 +225,41 @@ func TestSchemaEngine(t *testing.T) {
 	}
 	if got, err := schemaEngine(map[string]string{"q.sql": "", "s.sql": "CREATE TABLE a (id int);"}, "q.sql"); err != nil || got != "sqlite" {
 		t.Errorf("schemaEngine = %q, %v", got, err)
+	}
+}
+
+func TestComponents(t *testing.T) {
+	p := generate(t, "postgresql", "CREATE TABLE a (id bigserial PRIMARY KEY, at timestamptz NOT NULL, name text NOT NULL);", `
+-- name: Add :one
+INSERT INTO a (at, name) VALUES ($1, $2) RETURNING id;
+
+-- name: Named :many
+SELECT id FROM a WHERE name = $1;
+
+-- name: Since :many
+SELECT id FROM a WHERE at > $1;
+
+-- name: Recent :many
+WITH r AS (SELECT id FROM a ORDER BY at DESC LIMIT 5) SELECT id FROM r;
+`)
+	contains(t, p.Source, "component named[F any](", "component recent[F any](", "func addCall(", "func sinceCall(")
+	for _, absent := range []string{"component add[", "component since["} {
+		if strings.Contains(p.Source, absent) {
+			t.Errorf("%s written:\n%s", absent, p.Source)
+		}
+	}
+	if !slices.Contains(p.Notes, "query Since has no component: its parameter at is a time.datetime, and a query's key is compared") {
+		t.Errorf("notes = %q", p.Notes)
+	}
+	for text, want := range map[string]bool{
+		"SELECT 1":                              true,
+		"-- c\nselect 1":                        true,
+		"INSERT INTO a VALUES (1) RETURNING id": false,
+		"UPDATE a SET b = 1 RETURNING id":       false,
+		"WITH d AS (DELETE FROM a RETURNING id) SELECT id FROM d": false,
+	} {
+		if got := onlyReads(text); got != want {
+			t.Errorf("onlyReads(%q) = %v", text, got)
+		}
 	}
 }
