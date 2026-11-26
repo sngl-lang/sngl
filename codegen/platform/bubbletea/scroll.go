@@ -178,10 +178,8 @@ func emitScrollReach(b *strings.Builder, info *irAnalysis, gc goEvaluator) {
 			continue
 		}
 		fmt.Fprintf(b, "\t\tif m.%s.Due(%q) {\n", scrollsField, strconv.Itoa(si.idx))
-		for _, stmt := range si.reach.Func.Block {
-			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(b, "\t\t\t%s\n", line)
-			}
+		for _, line := range handlerLines(gc, si.reach.Func.Block) {
+			fmt.Fprintf(b, "\t\t\t%s\n", line)
 		}
 		b.WriteString("\t\t}\n")
 	}
