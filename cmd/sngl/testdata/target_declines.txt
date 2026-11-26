@@ -20,11 +20,23 @@ stderr 'gonative.sngl:10:\d+: getpid is go''s, and a "none" build cannot call it
 ! sngl generate --lang=go --platform=html --out=bad gohost.sngl
 stderr 'the page''s script names syscall, a Go package, and the page runs JavaScript'
 
+# A go: import is not that: html.frontend compiles it to wasm and the page
+# reaches it through the extern bridge, so no module import names it.
+sngl generate --lang=go --platform=html --out=wasm wasm.sngl
+stdout 'wasm/assets/wasm_exec\..*\.js'
+grep '__sngl_externs' wasm/server.go
+! grep 'from "example.com/declines/api"' wasm/server.go
+
 # A C function, on a build whose handlers write no call to C.
 ! sngl generate --lang=kotlin --platform=android --out=bad c.sngl
 stderr 'c.sngl:11:\d+: say is the C function say, and kotlin on android writes no call to C'
 ! sngl generate --lang=js --platform=html --out=bad c.sngl
 stderr 'writes no call to C'
+
+# Go holds cCalls: the same call is cgo, not a decline. The run-time check
+# above leaves C to this capability rather than calling it another language.
+sngl generate --lang=go --platform=bubbletea --out=cgo c.sngl
+grep 'import "C"' cgo/model.go
 
 # Another platform's package: a function, and a component.
 ! sngl generate --lang=go --platform=bubbletea --out=bad gtk.sngl
@@ -110,6 +122,24 @@ var shown = false
 
 ui.window {
     ui.button(text="{shown}", @click { shown = getwd })
+}
+-- go.mod --
+module example.com/declines
+
+go 1.23
+-- api/api.go --
+package api
+
+func Double(n int) int { return n * 2 }
+-- wasm.sngl --
+import ui "sngl:ui"
+import "sngl:platform/html"
+import "go:example.com/declines/api"
+
+var n = 1
+
+ui.window {
+    ui.button(text="{n}", @click { n = html.frontend(api.Double(n)) })
 }
 -- c.sngl --
 import ui "sngl:ui"
