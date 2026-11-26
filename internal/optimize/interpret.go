@@ -94,6 +94,11 @@ func irFromValue(val any, typ *ir.Type) ir.Expr {
 		fields := make([]ir.FieldInit, 0, len(v.Fields))
 		for _, f := range v.Fields {
 			ft := structFieldType(sd, f.Name)
+			// A payload enum's literal names its member, whose type is the
+			// member's payload: no struct declares it as a field.
+			if ir.PayloadEnum(t) != nil {
+				ft = ir.MemberPayload(t, f.Name)
+			}
 			for _, d := range declared {
 				if d.Name == f.Name {
 					ft = d.Type
