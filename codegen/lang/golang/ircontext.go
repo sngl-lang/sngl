@@ -1897,6 +1897,14 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 		}
 		return "snglSome(" + gc.EvalExpr(n.Operand) + ")"
 	}
+	// An option put into an option of itself is a wrap too, which
+	// ir.IsOptionWrap leaves out since every other target holds one option
+	// as both: Go's is a pointer to the pointer, and a conversion of *T to
+	// **T does not compile. An async.query over an option[T] answer holds
+	// its value so.
+	if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeOption && n.Type != nil && n.Type.Kind == ir.TypeOption && len(n.Type.Elems) == 1 && src.Equal(n.Type.Elems[0]) {
+		return "snglSome(" + gc.EvalExpr(n.Operand) + ")"
+	}
 	goType := typeToGo(n.Type, gc.site())
 	operand := gc.EvalExpr(n.Operand)
 	if src, dst, ok := ir.NumericListConversion(n); ok {
