@@ -767,17 +767,21 @@ SNGL_FUZZ_TARGETS=all go test -run FuzzPipeline .   # every seed on every target
 go test -run '^$' -fuzz FuzzPipeline .              # fuzz
 ```
 
-**An external definition the build trusts is a check the fuzzer cannot make
-yet.** The Go check's stand-ins -- `import "C"` under `FakeImportC`, a project's
-`go:` module, a cgo package the host cannot build -- let any selector on them
-through, and the library's own bindings (`#[c.native]`, `go:` imports,
-`#[c.type]`) claim symbols the compiler can only believe. Both are to be
-checked against the real thing: a project `go:` module type-checked from the
-archive's source, a stand-in for anything the build could have resolved
-failing the run, the `C.` names a package uses checked against the headers its
-`c.link` names (parsed in process by `modernc.org/cc/v4`), and every library
-binding held once to its symbol by a conformance test in the ordinary suite,
-so a program's check can rely on it.
+**An external definition is trusted, as a TypeScript declaration file is.**
+A binding -- `#[go.native]`, `#[c.native]`, `#[c.type]`, a fyne `Spec`, a `go:`
+import -- claims a symbol, and the build believes it: checking each against
+the real package would put the host toolchain and its dependencies in every
+build, and the time they take. The Go check's stand-ins -- `import "C"` under
+`FakeImportC`, a project's `go:` module, a cgo package the host cannot build --
+let any selector on them through for the same reason. So **the fuzzer does not
+mutate a macro**: there is no safe change to one, and a mutated
+`#[go.native("time", "time.DuratLon")]` names a symbol that is not there, which
+is the program's claim and not a fault of the build. An input carrying a macro
+(`#[...]`) that no seed writes verbatim is skipped (`archiveMacros`), so the
+seeds' own bindings are still lowered under every mutation of the code around
+them. What a Spec splices in as Go is still held to its shape -- an import
+path, an identifier, an expression -- since that check costs nothing
+(`checkSpecGo`).
 
 When adding a fixture or directive, confirm it *fails* when the behavior is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 

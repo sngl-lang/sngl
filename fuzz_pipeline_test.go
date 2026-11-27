@@ -48,7 +48,14 @@ func FuzzPipeline(f *testing.F) {
 	// SNGL_FUZZ_TARGETS=all adds every seed on every target, the sweep a
 	// generator change wants before the fuzzer mutates anything.
 	all := os.Getenv("SNGL_FUZZ_TARGETS") == "all"
-	for i, s := range pipelineSeeds(f) {
+	seeds := pipelineSeeds(f)
+	macros := map[string]bool{}
+	for _, s := range seeds {
+		for _, m := range archiveMacros(s.archive) {
+			macros[m] = true
+		}
+	}
+	for i, s := range seeds {
 		if !only.MatchString(s.name) {
 			continue
 		}
@@ -70,10 +77,63 @@ func FuzzPipeline(f *testing.F) {
 			tg := targets[int(target-1)%len(targets)]
 			lang, plat = tg.lang, tg.plat
 		}
+		// A macro is a claim the build believes -- a binding's symbol, a
+		// mark's meaning -- and there is no safe change to one: a mutated
+		// #[go.native] names a Go symbol that is not there, which the build
+		// trusts by design. Only the seeds' own are fuzzed through.
+		for _, m := range archiveMacros(archive) {
+			if !macros[m] {
+				t.Skip("a macro no seed writes: " + m)
+			}
+		}
 		if skip := runPipeline(t, archive, lang, plat); skip != "" {
 			t.Skip(skip)
 		}
 	})
+}
+
+// archiveMacros is the text of every macro, `#[...]`, the archive's SNGL files
+// write, brackets inside a string literal included in the one they sit in.
+func archiveMacros(archive []byte) []string {
+	var out []string
+	for _, f := range txtar.Parse(archive).Files {
+		if path.Ext(f.Name) != ".sngl" {
+			continue
+		}
+		src := string(f.Data)
+		for i := strings.Index(src, "#["); i >= 0; {
+			depth, quote, end := 0, byte(0), -1
+			for j := i + 1; j < len(src) && end < 0; j++ {
+				switch c := src[j]; {
+				case quote != 0:
+					if c == '\\' && quote == '"' {
+						j++
+					} else if c == quote {
+						quote = 0
+					}
+				case c == '"' || c == '`':
+					quote = c
+				case c == '[':
+					depth++
+				case c == ']':
+					if depth--; depth == 0 {
+						end = j + 1
+					}
+				}
+			}
+			if end < 0 {
+				out = append(out, src[i:])
+				break
+			}
+			out = append(out, src[i:end])
+			next := strings.Index(src[end:], "#[")
+			if next < 0 {
+				break
+			}
+			i = end + next
+		}
+	}
+	return out
 }
 
 // TestPipelinePinned runs each archive testdata/pipeline holds -- a program
