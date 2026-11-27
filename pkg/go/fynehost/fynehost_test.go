@@ -328,7 +328,13 @@ component main node {
 	}
 
 	// Type into the field: the widget reports the text it now holds.
-	if err := h.Fire(s.View().Find("field")[0].Key, "input", "SNGL"); err != nil {
+	// ui.input's override keeps state on the interpreter, so #field is the
+	// instance; the widget is the element it renders.
+	field := s.View().FindAny("field")[0]
+	for field.IsComponent() && field.Expanded {
+		field = field.Children[0]
+	}
+	if err := h.Fire(field.Key, "input", "SNGL"); err != nil {
 		t.Fatalf("Fire: %v", err)
 	}
 	if label.Text != "Hello, SNGL!" {
