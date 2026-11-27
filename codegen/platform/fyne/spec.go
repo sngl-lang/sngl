@@ -6,8 +6,11 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/mod/module"
 
 	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
@@ -282,7 +285,10 @@ func decodeSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		}
 	}
 	if sp.New.Name == "" || sp.GoType.Name == "" {
-		return nil, fmt.Errorf("fyne primitive %s: Spec needs both `new` and `goType`", tag)
+		return nil, ir.Decline("fyne", "fyne primitive %s: Spec needs both `new` and `goType`", tag)
+	}
+	if err := checkSpecGo(tag, sp); err != nil {
+		return nil, err
 	}
 	// A prop an Arg hands the constructor and no Setter writes is the
 	// constructor's alone: a grid's column count. Its first write is answered
@@ -300,6 +306,63 @@ func decodeSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		}
 	}
 	return sp, nil
+}
+
+// goIdent is a Go identifier, and goTypeName one a type carries its pointer
+// and slice syntax in front of ("*Label", "[]string").
+var (
+	goIdent    = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	goTypeName = regexp.MustCompile(`^[*\[\]]*[A-Za-z_][A-Za-z0-9_]*$`)
+)
+
+// checkSpecGo holds what a Spec splices into the Go it writes to what that
+// position takes: an import path, a name, a method or a field, and an
+// argument's raw Go an expression. A Spec a program writes for a widget of its
+// own is believed as fyne.sngl's are, and one that names no Go the platform
+// can write is the platform declining the program, not Go that fails to
+// compile.
+func checkSpecGo(tag string, sp *fyneSpec) error {
+	bad := func(what, v string) error {
+		return ir.Decline("fyne", "fyne primitive %s: %s %q is not one Go takes", tag, what, v)
+	}
+	natives := map[string]fyneNative{"new": sp.New, "goType": sp.GoType}
+	for prop, n := range sp.SetterFuncs {
+		natives["the setter of "+prop] = n
+	}
+	for what, n := range natives {
+		if n.Path != "" && module.CheckImportPath(n.Path) != nil {
+			return bad(what+"'s path", n.Path)
+		}
+		if !goTypeName.MatchString(n.Name) {
+			return bad(what+"'s name", n.Name)
+		}
+	}
+	for what, v := range map[string]string{"add": sp.Add, "content": sp.Content} {
+		if v != "" && !goIdent.MatchString(v) {
+			return bad(what, v)
+		}
+	}
+	for _, m := range []map[string]string{sp.Setters, sp.Currents} {
+		for _, v := range m {
+			if !goIdent.MatchString(v) {
+				return bad("the method or field", v)
+			}
+		}
+	}
+	for _, h := range sp.Handlers {
+		if !goIdent.MatchString(h.Field) {
+			return bad("the handler field", h.Field)
+		}
+	}
+	for _, a := range sp.Args {
+		if a.Raw == "" {
+			continue
+		}
+		if _, err := parser.ParseExpr(a.Raw); err != nil {
+			return bad("the argument", a.Raw)
+		}
+	}
+	return nil
 }
 
 // emPx is an em on this platform: the default theme's text size.
