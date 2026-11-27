@@ -237,10 +237,28 @@ func promoteForeignStructs(pkg *ir.Package) error {
 		}
 	}
 	// A data component's record (Component.Data) is built at each call site,
-	// where nothing else may name its type, and a literal spells it.
+	// where nothing else may name its type, and a literal spells it -- the
+	// record's, or a list's of none: a table given no rows lowers them to an
+	// empty `[]TableRow__record{}` and a lambda mapping each, which named a
+	// record nothing declared.
+	record := func(t *ir.Type) {
+		if t.Any(func(t *ir.Type) bool {
+			sd, ok := t.Decl.(*ir.StructDef)
+			return ok && sd != nil && sd.RecordOf != nil
+		}) {
+			want(t)
+		}
+	}
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if lit, ok := n.(*ir.StructLit); ok && lit.Def != nil && lit.Def.RecordOf != nil {
-			want(&ir.Type{Kind: ir.TypeStruct, Decl: lit.Def})
+		switch x := n.(type) {
+		case *ir.StructLit:
+			if x.Def != nil && x.Def.RecordOf != nil {
+				want(&ir.Type{Kind: ir.TypeStruct, Decl: x.Def})
+			}
+		case *ir.ListLit:
+			record(x.Type)
+		case *ir.Lambda:
+			record(x.Type)
 		}
 		return nil
 	})
