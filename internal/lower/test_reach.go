@@ -18,8 +18,9 @@ import (
 // owner's body. So each such read is pointed at what the splice made of it:
 // the var's clone, read as the instance's own state; the node, selected off
 // the instance by the id it now carries; the method's clone, called as the
-// instance's own. That is what repointCellReads does for an implicit cell and
-// repointHandleCalls for a program's method call, said of a test's selects.
+// instance's own. That is what resolveHandleVarReads does for a program's read of an
+// instance's var and repointHandleCalls for its method call, said of a test's
+// selects.
 //
 // A member of a component built at run time is the target's to read, off the
 // instance it holds for the copy (codegen.InstanceReads), on a target that
@@ -37,6 +38,10 @@ type splicedInstance struct {
 	// cloned again -- a population is, where the body inserts it -- and every
 	// clone shares the handle, which a rename of the id renames too.
 	nodes map[string]*ir.Var
+	// handles is each handle the copy's nodes carry, a wrapper's included, by
+	// the name the body declared it under: what a read through the handle
+	// rebased onto the instance names (`c.one.box`).
+	handles map[string]*ir.Var
 	// self is the call site's handle where the splice moved it onto the body's
 	// root node, which a test names by either id.
 	self *ir.Var
@@ -67,7 +72,10 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 	for from, to := range symRenames {
 		switch f := from.(type) {
 		case *ir.Var:
-			if t, ok := to.(*ir.Var); ok {
+			// A handle is a node, which nodes says, and a test reaches it
+			// through the instance; read as a var it lost the instance and
+			// named the copy's handle bare.
+			if t, ok := to.(*ir.Var); ok && !f.NodeHandle {
 				si.vars[f.Name] = t
 			}
 		case *ir.Func:
@@ -77,6 +85,7 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 		}
 	}
 	si.nodes = bodyNodes(body)
+	si.handles = bodyHandles(body)
 	si.props = map[string]ir.Expr{}
 	for _, pr := range n.Component.Props {
 		if pr.Default != nil {
@@ -94,14 +103,14 @@ func (st *inlineCompState) recordInstance(n *ir.NodeInst, symRenames map[ir.Symb
 // pureSplice is what passInlinePure made of a component: its nodes by the ids
 // they were written with, read before the call site's id replaced the root's.
 func pureSplice(comp *ir.Component, handle *ir.Var, symRenames map[ir.Symbol]ir.Symbol, before map[string]*ir.Var, body []ir.Stmt) splice {
-	si := &splicedInstance{comp: comp, vars: map[string]*ir.Var{}, funcs: map[*ir.Func]*ir.Func{}, nodes: before, self: handle}
+	si := &splicedInstance{comp: comp, vars: map[string]*ir.Var{}, funcs: map[*ir.Func]*ir.Func{}, nodes: before, self: handle, handles: bodyHandles(body)}
 	for from, to := range symRenames {
 		if f, ok := from.(*ir.Func); ok {
 			if t, ok := to.(*ir.Func); ok {
 				si.funcs[f] = t
 			}
 		}
-		if f, ok := from.(*ir.Var); ok {
+		if f, ok := from.(*ir.Var); ok && !f.NodeHandle {
 			if t, ok := to.(*ir.Var); ok {
 				si.vars[f.Name] = t
 			}
@@ -141,6 +150,30 @@ func bodyNodes(stmts []ir.Stmt) map[string]*ir.Var {
 	return out
 }
 
+// bodyHandles is each handle a body's nodes carry, by name, the handle a
+// wrapper of passImplicitState carries for its node included.
+func bodyHandles(stmts []ir.Stmt) map[string]*ir.Var {
+	out := map[string]*ir.Var{}
+	ir.WalkView(stmts, func(s ir.Stmt) bool {
+		if n, ok := s.(*ir.NodeInst); ok {
+			for _, h := range []*ir.Var{n.Handle, n.Wraps} {
+				if h == nil {
+					continue
+				}
+				// By the name it has now and the one it was written with,
+				// which a test's reach renames from.
+				for _, name := range []string{h.Name, h.WrittenName()} {
+					if _, seen := out[name]; !seen {
+						out[name] = h
+					}
+				}
+			}
+		}
+		return true
+	})
+	return out
+}
+
 // testReach is each test's instance and, per component a test is handed,
 // its body's nodes as they were written, read before the splice replaces
 // them.
@@ -154,6 +187,9 @@ type testReach struct {
 	params map[*ir.Param]bool
 	root   *ir.Component
 	nodes  map[*ir.Component]map[string]*ir.Var
+	// handles is the root's handles by name, as bodyHandles has them, taken
+	// before anything is spliced into it.
+	handles map[string]*ir.Var
 	// instanceState is the target's InstanceState: it holds each instance
 	// built at run time, and answers a member read through one.
 	instanceState bool
@@ -164,6 +200,7 @@ func testReachRoots(pkg *ir.Package, root *ir.Component, opts Options) *testReac
 	for p := range r.params {
 		if c, ok := p.Type.Decl.(*ir.Component); ok && c == root && r.nodes[c] == nil {
 			r.nodes[c] = bodyNodes(c.Stmts)
+			r.handles = bodyHandles(c.Stmts)
 		}
 	}
 	return r
@@ -274,7 +311,9 @@ func (r *resolver) instance(e ir.Expr) *ir.Ident {
 	}
 }
 
-func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, triggers map[*ir.Call]ir.Call, valueTriggers bool) error {
+// varAt is the inliner's: the copy of each var a splice made, by the handle
+// that copy's node carries, which a read through a node of an instance names.
+func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, triggers map[*ir.Call]ir.Call, valueTriggers bool, varAt map[*ir.Var]map[string]*ir.Var) error {
 	if len(reach.params) == 0 {
 		return nil
 	}
@@ -304,6 +343,17 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, tri
 			receivers[call] = call.Args[0].Value
 		}
 	}
+	// A node passTestReach flattened onto the test's own instance is named
+	// there by the id it renamed the node to, which only it carries
+	// (`c.name__reach0`): the handle of that name, where one has it.
+	byName := map[string]*ir.Var{}
+	for h := range varAt {
+		if _, dup := byName[h.Name]; dup {
+			byName[h.Name] = nil
+			continue
+		}
+		byName[h.Name] = h
+	}
 	for _, fn := range pkg.Funcs {
 		if fn == nil || !fn.IsTest {
 			continue
@@ -317,6 +367,31 @@ func repointTestReaches(pkg *ir.Package, reach *testReach, splices []splice, tri
 			case *ir.Call:
 				r.repointCall(x, fail)
 			case *ir.Select:
+				// `c.one.box.value`, a var read through a node of the
+				// instance -- an unbound two-way prop's cell, or a var of an
+				// instance passTestReach flattened (`c.k__reach0.count`) --
+				// is the copy the splice of that node made, which the
+				// instance holds. A var of an instance test reach recorded
+				// is read through its record below, which knows where the
+				// program keeps it: an instance spliced into a component
+				// made a runtime record holds it in the record
+				// (test_reach_library_sites.txtar's `c.b.hits`).
+				if op, ok := x.Operand.(*ir.Select); ok && !r.instOf(op).holds(x.Field) {
+					var h *ir.Var
+					if osi := r.instOf(op.Operand); osi != nil {
+						h = osi.handles[op.Field]
+					} else if id, ok := op.Operand.(*ir.Ident); ok && r.testParam(id) != nil {
+						h = r.handles[op.Field]
+						if h == nil {
+							h = byName[op.Field]
+						}
+					}
+					if c := varAt[h][x.Field]; c != nil {
+						if inst := r.instance(op); inst != nil {
+							return &ir.Select{AST: x.AST, Type: x.Type, Operand: inst, Field: c.Name}, ir.SkipDir
+						}
+					}
+				}
 				si := r.instOf(x.Operand)
 				if si == nil {
 					if e, err := r.cellRead(x); err != nil {
@@ -796,4 +871,10 @@ func restoreUnreachedTriggers(pkg *ir.Package, root *ir.Component, triggers map[
 			call.Receiver = r
 		}
 	}
+}
+
+// holds reports whether si, an instance test reach recorded, holds a var
+// named field of its own.
+func (si *splicedInstance) holds(field string) bool {
+	return si != nil && si.vars[field] != nil
 }

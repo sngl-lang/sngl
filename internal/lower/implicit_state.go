@@ -28,9 +28,10 @@ import (
 // it at run time in a reactive position, keeps a cell per copy under a `for`
 // where the target keeps no instance state -- and no backend is told.
 //
-// A read of the prop off the node's `#id` names the cell. The inliner repoints
-// it at the copy it splices (repointCellReads), since the read sits outside
-// the component the cell belongs to.
+// A read of the prop off the node's `#id` names the cell. It is left standing
+// for the inliner, which answers it with the copy of the cell the splice of
+// that node made (resolveHandleVarReads), since the read sits outside the
+// component the cell belongs to.
 //
 // One component per call site rather than per declaration, because the `#id`
 // goes inside with the node: the handle is what a test reaches the widget
@@ -56,7 +57,7 @@ var passImplicitState = pass{
 	apply:   lowerImplicitState,
 }
 
-func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
+func lowerImplicitState(pkg *ir.Package, _ Features, opts Options) error {
 	if pkg == nil {
 		return nil
 	}
@@ -75,31 +76,31 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 	if len(st.reads) == 0 {
 		return nil
 	}
-	return ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
+	// A read of the prop through the node's handle is left standing for the
+	// inliner, which gives each copy of a body a handle of its own and so
+	// knows which copy's cell each read means: the body's own
+	// (resolveHandleVarReads), and a test's through its instance
+	// (repointTestReaches). Answered here with the one cell, every copy read
+	// it, and two copies were refused.
+	if opts.handleCells == nil {
+		return nil
+	}
+	return ir.Walk(pkg, func(n ir.Node) error {
 		sel, ok := n.(*ir.Select)
 		if !ok {
-			return n, nil
+			return nil
 		}
 		h := handleThrough(sel.Operand, st.through)
 		if h == nil {
-			return n, nil
+			return nil
 		}
-		cell := st.reads[h][sel.Field]
-		if cell == nil {
-			return n, nil
-		}
-		// Positioned where the read was written, which is where a read that
-		// cannot say which copy it means is refused (cellReadError).
-		var at *ast.IdentExpr
-		if sel.AST != nil {
-			at = &ast.IdentExpr{Pos: sel.AST.Pos, Name: sel.AST.Field}
-			if sel.AST.Operand != nil {
-				if p := sel.AST.Operand.ExprPos(); p != nil && p.IsValid() {
-					at.Pos = *p
-				}
+		if cell := st.reads[h][sel.Field]; cell != nil {
+			if opts.handleCells[h] == nil {
+				opts.handleCells[h] = map[string]*ir.Var{}
 			}
+			opts.handleCells[h][sel.Field] = cell
 		}
-		return &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell, AST: at}, ir.SkipDir
+		return nil
 	})
 }
 
@@ -496,127 +497,6 @@ func identSafe(name string) string {
 	}, name)
 }
 
-// implicitCellOwners is the component passImplicitState wrapped around each
-// cell, taken before the inliner drops the ones it splices.
-func implicitCellOwners(pkg *ir.Package) map[*ir.Var]*ir.Component {
-	out := map[*ir.Var]*ir.Component{}
-	for _, c := range pkg.Components {
-		if c == nil {
-			continue
-		}
-		for _, v := range c.Vars {
-			if v.Cell {
-				out[v] = c
-			}
-		}
-	}
-	return out
-}
-
-// repointCellReads points each read of an implicit cell made outside its
-// component at the copy the inliner spliced where the node is rendered.
-//
-// The read is a `#id` read of the prop, which passImplicitState turned into a
-// read of the cell; the component around the node was then spliced, and its
-// renames reached only the body it spliced. One copy is the one the read
-// means. None -- the node is in a component built at run time -- or several
-// is a read that cannot say which instance it asks, the rule uniqueNodeIDs
-// holds a handle to.
-func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones map[*ir.Var][]*ir.Var) error {
-	if len(owners) == 0 {
-		return nil
-	}
-	// A kept component's own reads of its cell are the instance reading its
-	// state, and stay.
-	own := map[*ir.Ident]bool{}
-	wrappers := map[*ir.Component]bool{}
-	for _, w := range owners {
-		wrappers[w] = true
-	}
-	for _, c := range pkg.Components {
-		if wrappers[c] {
-			_ = ir.Walk(c, func(n ir.Node) error {
-				if id, ok := n.(*ir.Ident); ok {
-					own[id] = true
-				}
-				return nil
-			})
-		}
-	}
-	var bad error
-	// In a test the read is through the test's instance, as every other
-	// read of the instance's state is: a bare write there is the program's,
-	// and passReactivity would patch the nodes reading it from the test.
-	for _, fn := range pkg.Funcs {
-		if fn == nil || !fn.IsTest || len(fn.Params) < 2 {
-			continue
-		}
-		inst := fn.Params[1]
-		err := ir.Rewrite(fn, func(n ir.Node) (ir.Node, error) {
-			id, ok := n.(*ir.Ident)
-			if !ok {
-				return n, nil
-			}
-			v, ok := id.Sym.(*ir.Var)
-			if !ok || owners[v] == nil || len(clones[v]) != 1 {
-				return n, nil
-			}
-			cell := clones[v][0]
-			return &ir.Select{Type: id.Type, Operand: &ir.Ident{Name: inst.Name, Type: inst.Type, Sym: inst}, Field: cell.Name}, ir.SkipDir
-		})
-		if err != nil {
-			return err
-		}
-	}
-	err := ir.Rewrite(pkg, func(n ir.Node) (ir.Node, error) {
-		id, ok := n.(*ir.Ident)
-		if !ok || own[id] {
-			return n, nil
-		}
-		v, ok := id.Sym.(*ir.Var)
-		if !ok {
-			return n, nil
-		}
-		w := owners[v]
-		if w == nil {
-			return n, nil
-		}
-		copies := clones[v]
-		if len(copies) == 1 {
-			id.Name, id.Sym = copies[0].Name, copies[0]
-			return n, nil
-		}
-		if bad == nil {
-			bad = cellReadError(w, v, id, len(copies))
-		}
-		return n, nil
-	})
-	if err != nil {
-		return err
-	}
-	return bad
-}
-
-// cellReadError refuses read, a read of w's cell v that cannot say which of
-// its copies it means, at the read where it was written: that is where the
-// remedy goes, and the node is the override's, in the platform's library.
-func cellReadError(w *ir.Component, v *ir.Var, read *ir.Ident, copies int) error {
-	pos, id := "<unknown>", "?"
-	if len(w.Stmts) > 0 {
-		if inner, ok := w.Stmts[0].(*ir.NodeInst); ok {
-			pos, id = nodePos(inner), writtenID(inner)
-		}
-	}
-	if p := identPos(read); p != "<unknown>" {
-		pos = p
-	}
-	why := "is built at run time here"
-	if copies > 1 {
-		why = "is rendered more than once"
-	}
-	return fmt.Errorf("%s: `#%s` %s, so a read of its unbound :%s cannot say which copy it means; bind :%s to a var and read that", pos, id, why, v.Name, v.Name)
-}
-
 // repointHandleCalls points each call of a method through a node's `#id` at
 // the clone the inliner made of it where it spliced the node: `details.open()`
 // is a call of the one instance's `open`, which reads and writes that
@@ -626,7 +506,7 @@ func cellReadError(w *ir.Component, v *ir.Var, read *ir.Ident, copies int) error
 // The call names the declaration's method and a handle, and the splice renamed
 // neither: left alone it came out as `m.details.open()`, a field and a method
 // no emitted type has. A handle whose node was rendered more than once cannot
-// say which copy the call means, the rule repointCellReads holds a read to --
+// say which copy the call means --
 // unless one copy was hoisted onto the owner the call is in (owner): a
 // component built at run time splices the node into its own body, and spliced
 // whole elsewhere it carries a copy of that clone to the owner it lands in.

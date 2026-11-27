@@ -82,6 +82,12 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, opts Options) error {
 			if !ok {
 				return n, nil
 			}
+			// A cell's read is the inliner's to answer, per copy.
+			if id, ok := sel.Operand.(*ir.Ident); ok {
+				if h, ok := id.Sym.(*ir.Var); ok && opts.handleCells[h][sel.Field] != nil {
+					return n, nil
+				}
+			}
 			e := rewriteNodePropRead(sel, handles)
 			if e == nil {
 				e = rewriteTestPropRead(sel, tests, nil)

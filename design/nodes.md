@@ -1313,10 +1313,12 @@ per body, so two components each writing `#bar` declare two vars and each read
 says which it meant, while two spliced copies of one body share theirs. So a
 prop read is answered in the body before the splice (`passNodePropReads`),
 where `bar.text` is that copy's own argument, and a method call is repointed
-at each copy's node (`repointHandleCalls`). What is left standing after the
-splice still cannot say which copy it means, and `uniqueNodeIDs` refuses it by
-symbol; an unbound two-way prop's read, the instance's cell, is refused at the
-read by `cellReadError`. This was once a blanket rule, a handle that is read
+at each copy's node (`repointHandleCalls`). Every handle a spliced body
+declares is cloned per copy, as its vars are, and a read of an instance's var
+or of an unbound two-way prop's cell through one is the copy that splice made
+(`resolveHandleVarReads`). What is left standing after the splice -- a handle
+something outside the body reads -- still cannot say which copy it means, and
+`uniqueNodeIDs` refuses it by symbol. This was once a blanket rule, a handle that is read
 may not be rendered twice, from when a prop read reached the emitter and
 resolved to the first copy's field (Jonathan's call to lift it, 2026-11-27).
 `ir.NodeInst.Handle` is the link that makes the symbol reachable from the

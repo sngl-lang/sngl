@@ -266,6 +266,12 @@ type Options struct {
 	// test's prop read with, for passHoistState to say where the var lives.
 	// Set by Lower.
 	blockReads blockReads
+
+	// handleCells is the cell behind each prop of an unbound two-way node that
+	// a read through the node's `#id` names, by the handle as the program
+	// wrote it: passImplicitState leaves the read standing for the inliner,
+	// which knows which copy's cell each copy's handle means. Set by Lower.
+	handleCells map[*ir.Var]map[string]*ir.Var
 }
 
 // renamer numbers renamed declarations per name: `hits__inst0` and
@@ -316,6 +322,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	opts.splices = &[]splice{}
 	opts.triggers = map[*ir.Call]ir.Call{}
 	opts.blockReads = blockReads{}
+	opts.handleCells = map[*ir.Var]map[string]*ir.Var{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {

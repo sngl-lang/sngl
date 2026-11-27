@@ -506,12 +506,14 @@ time in a reactive position, keeps a cell per copy under a `for` on bubbletea
 -- and no backend is told. One wrapper per call site rather than per
 declaration, because the node's `#id` moves inside with it: the handle is what
 a test drives the widget through. A read of the prop off the `#id`
-(`box.checked`) names the cell, and since it sits outside the wrapper the
-inliner repoints it at the one copy it spliced (`repointCellReads`); a read of
-one built at run time, or rendered more than once, cannot say which copy it
-means and is refused with a position, on the terms `uniqueNodeIDs` holds a
-handle to. That is also why `box.checked` beside an input under a reactive `if`
-is refused: the wrapper there is an instance of its own. Bare children stay at
+(`box.checked`) names the cell, as `k.count` names a var of `counter #k`: it
+sits outside the wrapper, so it is left standing until the inliner has
+spliced the wrapper, and answered with the copy of the cell that splice made,
+by the handle the copy's node carries (`resolveHandleVarReads`). Each copy of
+a body has handles of its own, so a body rendered twice reads its own cell in
+each (`cmd/sngl/testdata/instance_state_read_runs.txt`). A read of a wrapper
+built at run time, beside an input under a reactive `if`, is refused with a
+position: the wrapper there is an instance of its own. Bare children stay at
 the call site and reach the node through the wrapper's own rest slot. A
 two-way prop the call site did bind is the wrapper's own two-way prop, bound to
 what the call site bound and through to the node, as an override binds its
