@@ -1481,8 +1481,21 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 		if fn.Params[rel].CFuncType == nil {
 			return c.decline("calling %s, whose release names no C type (#[c.type])", fn.Foreign.Name)
 		}
+		// The argument's type, as the callback's above: the declaration may be
+		// the library's frozen one, whose struct a rename on the build's copy
+		// did not reach (canonicalStructs).
+		ht := fn.Params[held].Type
+		if held < len(n.Args) {
+			v := n.Args[held].Value
+			if cv, ok := v.(*ir.CConvert); ok {
+				v = cv.Operand
+			}
+			if vt := v.ExprType(); vt != nil && vt.Kind == ir.TypeStruct {
+				ht = vt
+			}
+		}
 		args = slices.Clone(args)
-		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(fn.Params[held].Type))
+		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(ht))
 	}
 	call := ir.CCallExpr(fn, args)
 	if free != "" {
