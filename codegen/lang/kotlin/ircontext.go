@@ -1727,10 +1727,22 @@ func EnumName(decl ir.Symbol) string {
 	if !ok {
 		return exportName(decl.SymName())
 	}
-	if ed.PkgPath() != "" {
-		return "Sngl" + exportName(ed.Name)
+	name := ed.Name
+	if name == "" {
+		// An inline enum (`weight enum { normal, bold }`) has no name, and a
+		// Kotlin enum class needs one: it is named for its members, so two
+		// written alike are one class. It printed `enum class (`.
+		var b strings.Builder
+		b.WriteString("Enum")
+		for _, m := range ed.Members {
+			b.WriteString(exportName(m.Name))
+		}
+		name = b.String()
 	}
-	return exportName(ed.Name)
+	if ed.PkgPath() != "" {
+		return "Sngl" + exportName(name)
+	}
+	return exportName(name)
 }
 
 // EnumDecl declares ed as a Kotlin enum class. Each entry carries the member's

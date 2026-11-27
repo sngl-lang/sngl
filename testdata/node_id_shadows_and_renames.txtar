@@ -128,7 +128,7 @@ body { font-family: system-ui, sans-serif; }
             }
             __slot0.push(tag__1);
             let __n1 = document.createElement("span");
-            __n1.textContent = "reads " + tag__1.value;
+            __n1.textContent = "reads inner";
             let __place0_i_ref2 = null;
             if (__place0_i < __place0_prev.length) {
               __place0_i_ref2 = __place0_prev[__place0_i];
@@ -162,4 +162,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:d10422f76092771a6f838f6068dfc713
+pass sha256:c80d831918b05c010e41a66b1c361a3a

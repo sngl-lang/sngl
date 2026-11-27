@@ -330,7 +330,7 @@ func refuseFocusInRecursion(comp *ir.Component) error {
 	if comp.AST != nil && pos.File != comp.AST.Pos.File {
 		pos = comp.AST.Pos
 	}
-	return fmt.Errorf("%s: the recursive component %q renders a focusable node in its own body; this target's focus order reaches only what the window renders, and a recursion renders each level from a function of its own -- render the focusable nodes outside %q", pos, comp.Name, comp.Name)
+	return ir.Decline("", "%s: the recursive component %q renders a focusable node in its own body; this target's focus order reaches only what the window renders, and a recursion renders each level from a function of its own -- render the focusable nodes outside %q", pos, comp.Name, comp.Name)
 }
 
 func suppliedBodies(n *ir.NodeInst) [][]ir.Stmt {

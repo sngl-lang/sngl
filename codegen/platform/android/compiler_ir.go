@@ -530,12 +530,19 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	}
 	scoped := stateScopedFuncs(ctx, stateNames, stateReaching)
 
+	// Under --lang go the funcs the gomobile module holds (goLib); every
+	// other func is this file's, emitted as under `--lang kotlin`.
+	var golib map[*ir.Func]bool
+	if cfg.GoLib {
+		golib = goLib(ctx.AllFuncs())
+	}
+
 	var stateFuncs []*ir.Func
-	if testMode && !cfg.GoLib {
+	if testMode {
 		composed := componentOwnedFuncs(ctx)
 		allFuncs := ctx.AllFuncs()
 		for _, fn := range allFuncs {
-			if fn.IsTest || codegen.IsComputed(fn) {
+			if fn.IsTest || codegen.IsComputed(fn) || golib[fn] {
 				continue
 			}
 			// A func of a component composed on its own is a local fun of
@@ -597,16 +604,13 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// there. Without this the module held `func Fib(n int) int` and the Kotlin
 	// called a bare `fib(k)` that existed in neither file.
 	//
-	// The filter is emitGoLibIR's: what that module emits is what can be
-	// called through it, and a computed or a receiver-bearing func is not.
+	// The set is emitGoLibIR's (goLib): what that module emits is what can be
+	// called through it.
 	if cfg.GoLib {
 		if kc.IdentRewrites == nil {
 			kc.IdentRewrites = map[string]string{}
 		}
-		for _, fn := range ctx.AllFuncs() {
-			if !inGoLib(fn) {
-				continue
-			}
+		for fn := range golib {
 			kc.IdentRewrites[fn.Name] = "golib.Golib." + exportName(fn.Name)
 		}
 	}
@@ -727,7 +731,14 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(mf)
 	}
 
+	declaredEnums := map[string]bool{}
 	for _, ed := range info.Enums {
+		// Two inline enums written alike are one class (kotlin.EnumName).
+		name := kotlin.EnumName(ed)
+		if declaredEnums[name] {
+			continue
+		}
+		declaredEnums[name] = true
 		body.WriteString(kotlin.EnumDecl(ed))
 		body.WriteString("\n")
 	}
@@ -916,9 +927,9 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// The component's own funcs, as local funs closing over the state
 	// declared just above. In test mode they are members of MainScreenState
 	// instead, and the call sites are rewritten to reach them there.
-	if !testMode && !cfg.GoLib {
+	if !testMode {
 		for _, fn := range calleesFirst(ctx.AllFuncs()) {
-			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) {
+			if !mainOwnFuncs[fn] || fn.IsTest || codegen.IsComputed(fn) || golib[fn] {
 				continue
 			}
 			if !scoped[fn] {
@@ -941,7 +952,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// destroyed. Remembered first, so it is forgotten last: every @unmount
 	// and timer below has gone when Teardown releases what lives as long as
 	// the application.
-	if td := ctx.Pkg.Teardown; td != nil && !cfg.GoLib {
+	if td := ctx.Pkg.Teardown; td != nil && !golib[td] {
 		fmt.Fprintf(&body, "    %s(Unit) {\n", kc.Name(ktDisposableEffect))
 		body.WriteString("        onDispose {\n")
 		for _, line := range kc.EvalStmt(&ir.CallStmt{Call: &ir.Call{Type: ir.TypVoid, Func: td}}) {
@@ -999,7 +1010,7 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 	// spelled it.
 	allFuncs := ctx.AllFuncs()
 	for _, fn := range allFuncs {
-		if fn.IsTest || codegen.IsComputed(fn) || cfg.GoLib && !composeSide(fn) {
+		if fn.IsTest || codegen.IsComputed(fn) || golib[fn] {
 			continue
 		}
 		if testMode && stateMembers[fn] {
@@ -1694,7 +1705,7 @@ func pageTypeMethods(ctx *codegen.CodegenCtx, cfg Config) {
 	moved := map[*ir.Func]*ir.Func{}
 	reaching := codegen.PackageStateFuncs(ctx.Pkg)
 	for i, fn := range ctx.Pkg.Funcs {
-		if !fn.IsStatic() && (cfg.GoLib || !fn.OnType() || !reaching[fn]) {
+		if !fn.IsStatic() && (!fn.OnType() || !reaching[fn]) {
 			continue
 		}
 		page := *fn

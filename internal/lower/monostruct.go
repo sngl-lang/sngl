@@ -60,6 +60,12 @@ func monomorphizeStructs(pkg *ir.Package, names map[string]bool) {
 			if !ok || !generic[orig] {
 				continue
 			}
+			// A receiver carrying its bindings -- a static method's copy,
+			// which has no receiver parameter -- is that instantiation.
+			if len(fn.Receiver.Elems) == len(orig.TypeParams) {
+				fn.Receiver = ms.rewrite(fn.Receiver)
+				continue
+			}
 			recv := fn.RecvParam
 			if recv == nil && len(fn.Params) > 0 {
 				recv = fn.Params[0]

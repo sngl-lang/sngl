@@ -1,0 +1,192 @@
+# A target declines a program it cannot express, at the line that asks for
+# what it lacks, rather than emitting code its own compiler refuses
+# (ir.Declined, design/testing.md).
+
+# A js: function left for a Go build to call: called, or handed on as a value.
+! sngl generate --lang=go --platform=bubbletea --out=bad js.sngl
+stderr 'js.sngl:9:\d+: hello is js:./api''s, and a "go" build cannot call it at run time'
+! sngl generate --lang=go --platform=bubbletea --out=bad jsvalue.sngl
+stderr 'jsvalue.sngl:13:\d+: hello is js:./api''s, and a "go" build cannot call it at run time'
+# html's handlers are JavaScript, whatever the language.
+sngl generate --lang=go --platform=html --out=ok js.sngl
+
+# A declaration marked as another language's, with no spelling in the build's.
+! sngl generate --lang=go --platform=bubbletea --out=bad jsnative.sngl
+stderr 'jsnative.sngl:10:\d+: btoa is js''s, and a "go" build cannot call it at run time'
+# And a Go one, where html runs the page's script: all of it under any
+# language but Go, and under Go what the page reads.
+! sngl generate --lang=none --platform=html --out=bad gonative.sngl
+stderr 'gonative.sngl:10:\d+: getpid is go''s, and a "none" build cannot call it at run time'
+! sngl generate --lang=go --platform=html --out=bad gohost.sngl
+stderr 'the page''s script names syscall, a Go package, and the page runs JavaScript'
+
+# A go: import is not that: html.frontend compiles it to wasm and the page
+# reaches it through the extern bridge, so no module import names it.
+sngl generate --lang=go --platform=html --out=wasm wasm.sngl
+stdout 'wasm/assets/wasm_exec\..*\.js'
+grep '__sngl_externs' wasm/server.go
+! grep 'from "example.com/declines/api"' wasm/server.go
+
+# A C function, on a build whose handlers write no call to C.
+! sngl generate --lang=kotlin --platform=android --out=bad c.sngl
+stderr 'c.sngl:11:\d+: say is the C function say, and kotlin on android writes no call to C'
+! sngl generate --lang=js --platform=html --out=bad c.sngl
+stderr 'writes no call to C'
+
+# Go holds cCalls: the same call is cgo, not a decline. The run-time check
+# above leaves C to this capability rather than calling it another language.
+sngl generate --lang=go --platform=bubbletea --out=cgo c.sngl
+grep 'import "C"' cgo/model.go
+
+# Another platform's package: a function, and a component.
+! sngl generate --lang=go --platform=bubbletea --out=bad gtk.sngl
+stderr 'gtk.sngl:5:\d+: quit is declared by sngl:platform/gtk4, and this build targets bubbletea'
+! sngl generate --lang=go --platform=win32 --out=bad html.sngl
+stderr 'html.sngl:5:\d+: component "html.div" has no win32 implementation'
+
+# A call only the build answers, in a view whose loop the target runs: a static
+# site answers it per page.
+! sngl generate --lang=go --platform=bubbletea --out=bad md.sngl
+stderr 'md.parse is answered only while the program builds'
+stderr 'makes a view''s calls as the program runs, where a static site makes them per document'
+sngl generate --lang=none --platform=html --out=ok md.sngl
+
+-- api/index.ts --
+export async function hello(name: string): Promise<string> { return "Hello " + name; }
+-- js.sngl --
+import ui "sngl:ui"
+import api "js:./api"
+
+var greeting = ""
+
+ui.window {
+    ui.text(value=greeting)
+    ui.button(text="go", @click {
+        greeting = api.hello("world")
+    })
+}
+-- jsvalue.sngl --
+import ui "sngl:ui"
+import api "js:./api"
+
+func run(f func(name string) string) string {
+    return f("world")
+}
+
+var greeting = ""
+
+ui.window {
+    ui.text(value=greeting)
+    ui.button(text="go", @click {
+        greeting = run(api.hello)
+    })
+}
+-- say.h --
+void say(const char *s);
+-- say.c --
+#include <stdio.h>
+#include "say.h"
+void say(const char *s) { puts(s); }
+-- jsnative.sngl --
+import ui "sngl:ui"
+import js "sngl:language/js"
+
+#[js.native("btoa")]
+func btoa(s string) string
+
+var said = ""
+
+ui.window {
+    ui.button(text=said, @click { said = btoa("hi") })
+}
+-- gonative.sngl --
+import ui "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("syscall", "syscall.Getpid")]
+func getpid() int
+
+var pid = 0
+
+ui.window {
+    ui.button(text="{pid}", @click { pid = getpid() })
+}
+-- gohost.sngl --
+import ui "sngl:ui"
+import go "sngl:language/go"
+
+#[go.native("syscall", "syscall.ImplementsGetwd")]
+const getwd bool
+
+var shown = false
+
+ui.window {
+    ui.button(text="{shown}", @click { shown = getwd })
+}
+-- go.mod --
+module example.com/declines
+
+go 1.23
+-- api/api.go --
+package api
+
+func Double(n int) int { return n * 2 }
+-- wasm.sngl --
+import ui "sngl:ui"
+import "sngl:platform/html"
+import "go:example.com/declines/api"
+
+var n = 1
+
+ui.window {
+    ui.button(text="{n}", @click { n = html.frontend(api.Double(n)) })
+}
+-- c.sngl --
+import ui "sngl:ui"
+import c "sngl:x/c"
+
+c.link(include="say.h", sources=["say.c", "say.h"])
+
+#[c.native("say")]
+func say(s string)
+
+ui.window {
+    ui.button(text="go", @click {
+        say("hi")
+    })
+}
+-- gtk.sngl --
+import ui "sngl:ui"
+import gtk4 "sngl:platform/gtk4"
+
+ui.window {
+    ui.button(text="go", @click { gtk4.quit() })
+}
+-- html.sngl --
+import ui "sngl:ui"
+import html "sngl:platform/html"
+
+ui.window {
+    html.div(innerText="hi")
+}
+-- md.sngl --
+import ui "sngl:ui"
+import nav "sngl:ui/nav"
+import md "sngl:ui/markup/md"
+
+struct Doc {
+    href string
+    body string
+}
+
+const docs = [Doc{href="/a.html", body="# A"}, Doc{href="/b.html", body="# B"}]
+
+ui.window(title=pages.current.title) {
+    nav.stack #pages {
+        for var d = docs {
+            nav.page(href=d.href, title=d.href) {
+                md.document(source=d.body)
+            }
+        }
+    }
+}

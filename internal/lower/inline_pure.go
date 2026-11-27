@@ -1239,22 +1239,29 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 	if len(params) == 0 {
 		return stmts
 	}
-	bindings := map[string]ir.Expr{}
+	// Keyed by the declaration, not its name: a lambda in the handler may
+	// take a parameter of the same name -- `xs.filter(func(e int) => e > 1)`
+	// in an `@input(e)` -- and that one is the lambda's.
+	type field struct {
+		p    *ir.Param
+		name string
+	}
+	bindings := map[*ir.Param]ir.Expr{}
 	// A wrapper that has the value but no event carries it as the argument:
 	// a platform callback reporting a change it is passed nothing for
 	// (Compose's RadioButton onClick, whose value is the option the override
 	// looped to) can only name the value. The payloads this applies to hold
 	// exactly that one field, so a read of it is the argument itself.
-	payloadValues := map[string]ir.Expr{}
+	payloadValues := map[field]ir.Expr{}
 	var held []heldField
 	for i, p := range params {
 		if p == nil || p.Name == "" {
 			continue
 		}
 		if i < len(args) {
-			bindings[p.Name] = args[i].Value
+			bindings[p] = args[i].Value
 			if f, ok := soleFieldGiven(p.Type, args[i].Value); ok {
-				payloadValues[p.Name+"."+f] = args[i].Value
+				payloadValues[field{p, f}] = args[i].Value
 			}
 			// A payload the wrapper builds in place is read field by field,
 			// so no target has to declare the struct to take one apart. It is
@@ -1275,7 +1282,7 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 						v = &ir.Ident{Name: sym.Name, Type: t, Sym: sym}
 						held[len(held)-1].ref = sym
 					}
-					payloadValues[p.Name+"."+f.Name] = v
+					payloadValues[field{p, f.Name}] = v
 				}
 			}
 			continue
@@ -1296,7 +1303,7 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 				enclosing.Params = append(enclosing.Params, p)
 			}
 		}
-		bindings[p.Name] = &ir.Ident{Name: target.Name, Type: target.Type, Sym: target}
+		bindings[p] = &ir.Ident{Name: target.Name, Type: target.Type, Sym: target}
 	}
 	if len(bindings) == 0 {
 		return stmts
@@ -1305,8 +1312,8 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 	walker := newExprWalker(func(e ir.Expr) ir.Expr {
 		if sel, ok := e.(*ir.Select); ok && len(payloadValues) > 0 {
 			if id, ok := sel.Operand.(*ir.Ident); ok {
-				if _, isParam := id.Sym.(*ir.Param); isParam {
-					if v, ok := payloadValues[id.Name+"."+sel.Field]; ok {
+				if p, isParam := id.Sym.(*ir.Param); isParam {
+					if v, ok := payloadValues[field{p, sel.Field}]; ok {
 						if ref, ok := v.(*ir.Ident); ok {
 							if sym, ok := ref.Sym.(*ir.Var); ok {
 								read[sym] = true
@@ -1321,10 +1328,11 @@ func bindEventParams(stmts []ir.Stmt, params []*ir.Param, args []ir.CallArg, enc
 		if !ok {
 			return e
 		}
-		if _, isParam := id.Sym.(*ir.Param); !isParam {
+		p, isParam := id.Sym.(*ir.Param)
+		if !isParam {
 			return e
 		}
-		if bound, ok := bindings[id.Name]; ok {
+		if bound, ok := bindings[p]; ok {
 			return deepCloneExpr(bound)
 		}
 		return e

@@ -1,0 +1,146 @@
+# A library struct a build declares beside the program's own reaches every
+# backend by name, and a program may declare the same name: gtk4's `arcTo`
+# takes a `draw.Point`, a `draw.path` a `draw.Style`, and gtk4's widgets hold a
+# `Look`. The build renames the library's copy, keeping the program's
+# (draw.Point is Point__draw), and points every copy of the declaration at the
+# renamed one: a frozen library function held the original, so gtk4/c kept a
+# `Look` beside `Look__gtk4` and gtk4/go compared one with the other. Before, the
+# build declined: "rename the local one". FuzzPipeline found gtk4/c's.
+
+sngl test --platform=none clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=c clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=c clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html clash.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --opt testRunner=robolectric clash.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- clash.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+import draw "sngl:ui/draw"
+
+struct Point {
+    label string = ""
+}
+
+struct Look {
+    weight int = 0
+}
+
+struct Style {
+    bold bool = false
+}
+
+component main ui.node {
+    var p = Point{label="x"}
+    var look = Look{weight=700}
+    var style = Style{bold=true}
+
+    ui.text #shown(value="{p.label} {look.weight} {style.bold}")
+    draw.canvas(width=40px, height=20px) {
+        draw.path(style=draw.Style{stroke=color{r=255}}) {
+            draw.arcTo(cx=1.0, cy=1.0, x=2.0, y=2.0, r=1.0)
+        }
+        draw.canvasText(x=0.0, y=0.0, content=p.label, style=draw.Style{fill=color{b=255}})
+    }
+}
+
+func testClash(t test.Test, c main) {
+    t.assert(c.shown.value == "x 700 true")
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/clash.sngl/main/1 --
+sha256:7b6d107b43741c0d9097e5a6c8ae1943
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/clash.sngl/main/1 --
+sha256:e3c37bc1be71cbaac7eb0c9808011b9a
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/clash.sngl/main/1 --
+sha256:1148adc7f4a80ef6cc9c1ab1d43b2dd3
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/clash.sngl/main/1 --
+sha256:1238b29aa4f216dd0740f7406e214709
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/clash.sngl/main/1 --
+sha256:93ff3b9b38cbaceee8126e197b240095
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/clash.sngl/main/1 --
+sha256:efe5dedb2b146e2e36e1adec8e3107b9
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/clash.sngl/main/1 --
+sha256:0b08b9538c849fabd6f6529888377f39
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/clash.sngl/main/1 --
+sha256:d65b74e78095e9d25645071b25366f3f
+{
+  "results": [
+    {
+      "Desc": "Clash",
+      "Passed": true
+    }
+  ]
+}

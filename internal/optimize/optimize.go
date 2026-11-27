@@ -1,6 +1,7 @@
 package optimize
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -301,9 +302,109 @@ func Optimize(pkg *ir.Package, cfg *Config) error {
 	}
 	cfg.nativeSettled = true
 	if err := optimizeIR(pkg, cfg, nil, reach); err != nil {
+		// A refusal written where the build had no target in hand names
+		// this one's, as lower.Lower does.
+		if d, ok := errors.AsType[*ir.TargetDeclined](err); ok && d.Target == "" {
+			d.Target = cfg.Platform
+		}
 		return err
 	}
-	return reportRefused(cfg)
+	if err := reportRefused(cfg); err != nil {
+		return err
+	}
+	return declineUnrunnableNative(pkg, cfg)
+}
+
+// declineUnrunnableNative declines a program that still calls a go: or js:
+// function once folding is done, on a build whose language cannot call that
+// scheme at run time: what folding did not answer the program would have to
+// call, and `fetchHello` from a TypeScript module emitted into Go is a name
+// nothing declares. A call refused evaluation was answered by reportRefused;
+// this is the one that was never eligible -- async, impure, or reading what
+// the build does not have.
+//
+// html is the exception for both: its handlers are JavaScript whatever the
+// language, and it bridges go: to wasm.
+func declineUnrunnableNative(pkg *ir.Package, cfg *Config) error {
+	scheme := map[*ir.Func]string{}
+	for _, imp := range pkg.Imports {
+		if imp.Native == nil {
+			continue
+		}
+		s, _ := imports.ParseScheme(imp.Path)
+		if s != "go" && s != "js" || schemeRunnableAtRuntime(s, cfg.Language) || cfg.Platform == "html" {
+			continue
+		}
+		for _, fn := range imp.Native.Funcs {
+			scheme[fn] = imp.Path
+		}
+	}
+	// A declaration marked as another language's -- `#[js.native("btoa")]`
+	// -- with no spelling in the language the build's handlers are written
+	// in. C's is passCMarshal's (Features.CCalls).
+	// html writes the page's script whatever the language, and a Go server's
+	// code beside it under `--lang go`, where which a call lands in is html's
+	// own to say (declineGoModules); under any other language it is all the
+	// page's. android is always two languages, Compose's Kotlin and, under
+	// `--lang go`, golib's Go, and its own to divide.
+	handlers := cfg.Language
+	if cfg.Platform == "html" && cfg.Language != "go" {
+		handlers = "js"
+	}
+	marked := func(fn *ir.Func) (string, bool) {
+		f := fn.Foreign
+		// Marked is a #[foreign] correspondence, still the program's own
+		// declaration, which the backend emits.
+		if f.Scheme == "" || f.Scheme == "c" || f.Marked || cfg.Platform == "html" && handlers != "js" || cfg.Platform == "android" || f.In(handlers) != nil {
+			return "", false
+		}
+		return f.Scheme, true
+	}
+	// A call, or the function handed on as a value for something else to
+	// call: `run(api.fetchHello)`.
+	var declined error
+	decline := func(fn *ir.Func, at ast.Pos) {
+		path, ok := scheme[fn]
+		if !ok {
+			path, ok = marked(fn)
+		}
+		if !ok || declined != nil {
+			return
+		}
+		pos := ""
+		if at.IsValid() {
+			pos = at.String() + ": "
+		}
+		declined = ir.Decline(cfg.Platform, "%s%s is %s's, and a %q build cannot call it at run time", pos, fn.Name, path, cfg.Language)
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		switch x := n.(type) {
+		case *ir.Call:
+			if x.Func != nil && x.AST != nil {
+				decline(x.Func, callStart(x.AST))
+			} else if x.Func != nil {
+				decline(x.Func, ast.Pos{})
+			}
+		case *ir.Ident:
+			if fn, ok := x.Sym.(*ir.Func); ok {
+				// A member of another package is written as a select, which
+				// is where its position is (Ident.SelAST).
+				var at ast.Pos
+				switch {
+				case x.SelAST != nil:
+					at = x.SelAST.Pos
+				case x.AST != nil:
+					at = x.AST.Pos
+				}
+				decline(fn, at)
+			}
+		}
+		if declined != nil {
+			return ir.SkipAll
+		}
+		return nil
+	})
+	return declined
 }
 
 // evalNativeRounds discovers and evaluates every pure native call reachable
