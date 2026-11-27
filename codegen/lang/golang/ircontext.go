@@ -1201,6 +1201,9 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 	if out, ok := gc.grpcCall(n); ok {
 		return out
 	}
+	if out, ok := gc.sqlCall(n); ok {
+		return out
+	}
 	// Dispatch by intrinsic ID, never by method name. An unregistered ID falls
 	// through to the paths below.
 	if out, imports, ok := codegen.EmitIntrinsicCall(langGo, gc.Ctx.Platform, n, gc.EvalExpr); ok {
@@ -1887,6 +1890,19 @@ func (gc *GoIRContext) evalConversion(n *ir.Conversion) string {
 	// must not let a later write to `b` reach h. The helper takes its argument
 	// by value and addresses the copy, which answers both at once.
 	if ir.IsOptionWrap(n) {
+		// A literal is Go's int or float64 to snglSome's inference, which a
+		// sized option is not: `snglSome(264)` is a *int.
+		if _, lit := n.Operand.(*ir.Literal); lit && n.Type != nil && len(n.Type.Elems) == 1 && n.Type.Elems[0].IsSized() {
+			return "snglSome[" + gc.goType(n.Type.Elems[0]) + "](" + gc.EvalExpr(n.Operand) + ")"
+		}
+		return "snglSome(" + gc.EvalExpr(n.Operand) + ")"
+	}
+	// An option put into an option of itself is a wrap too, which
+	// ir.IsOptionWrap leaves out since every other target holds one option
+	// as both: Go's is a pointer to the pointer, and a conversion of *T to
+	// **T does not compile. An async.query over an option[T] answer holds
+	// its value so.
+	if src := n.Operand.ExprType(); src != nil && src.Kind == ir.TypeOption && n.Type != nil && n.Type.Kind == ir.TypeOption && len(n.Type.Elems) == 1 && src.Equal(n.Type.Elems[0]) {
 		return "snglSome(" + gc.EvalExpr(n.Operand) + ")"
 	}
 	goType := typeToGo(n.Type, gc.site())

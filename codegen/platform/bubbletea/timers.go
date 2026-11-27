@@ -115,10 +115,8 @@ func emitTimerCases(b *strings.Builder, timers []codegen.LoopTimer, gc *golang.G
 			conds = append(conds, timerGate(t, lgc))
 		}
 		fmt.Fprintf(&body, "%sif %s {\n", indent, strings.Join(conds, " && "))
-		for _, stmt := range t.Handler.Block {
-			for _, line := range lgc.EvalStmt(stmt) {
-				fmt.Fprintf(&body, "%s\t%s\n", indent, line)
-			}
+		for _, line := range handlerLines(lgc, t.Handler.Block) {
+			fmt.Fprintf(&body, "%s\t%s\n", indent, line)
 		}
 		fmt.Fprintf(&body, "%s\tcmds = append(cmds, %s)\n", indent, timerTick(i, t, lgc, "msg.key", "msg.gen"))
 		fmt.Fprintf(&body, "%s}\n", indent)

@@ -717,7 +717,14 @@ local of one given the sealed type. **C** a struct of `int64_t tag` and a
 field per payload member, as Go's, compared and copied by tag through
 functions the file defines (`codegen/lang/c/enums.go`). **The interpreter**
 an `interp.EnumValue`, which the optimizer writes back as the literal naming
-its member where it folds a call returning one (`irFromValue`).
+its member where it folds a call returning one (`irFromValue`); a literal of
+one folded whole arrives as an `interp.Struct`, and its member's type is the
+member's payload (`ir.MemberPayload`), which no struct declares as a field:
+looked up as one, the zero return after a match over an
+`async.Result[list[T]]` came back an untyped `[]`, Go's `[]any{}`
+(`testdata/result_list_zero_return.txtar`). **Kotlin** declares a local
+holding an option with its type, since one starting with a value infers the
+value's, which a later `null` does not fit.
 Go and Kotlin copy a generic enum per instantiation, a library's into the
 program, on each side of the struct pass (`monomorphizeEnums`). A payload is
 a use of its type for the shake, and a library struct one carries is promoted

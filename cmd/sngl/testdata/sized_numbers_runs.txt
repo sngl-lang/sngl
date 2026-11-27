@@ -1,21 +1,26 @@
 # testdata's sized-number fixtures, on the targets whose arithmetic is not
 # Go's: JavaScript holds an int as a double and Kotlin widens Byte and Short
 # arithmetic to Int, so each narrows a result back to its width -- a compound
-# assignment as well as a binary expression.
+# assignment as well as a binary expression. A literal written into an option
+# of a sized type takes its width on each, Go's included.
 
-mkdir compound conversions float basics wraparound uint
+mkdir compound conversions float basics wraparound uint option
 cp $SNGL_ROOT/testdata/test_sized_compound_assign.sngl compound
 cp $SNGL_ROOT/testdata/test_sized_conversions.sngl conversions
 cp $SNGL_ROOT/testdata/test_sized_float.sngl float
 cp $SNGL_ROOT/testdata/test_sized_int_basics.sngl basics
 cp $SNGL_ROOT/testdata/test_sized_int_wraparound.sngl wraparound
 cp $SNGL_ROOT/testdata/test_sized_uint.sngl uint
+cp $SNGL_ROOT/testdata/test_sized_option_literal.sngl option
 
 sngl test --platform=html ./...
-stdout '^ok +22 tests, 0 failures$'
+stdout '^ok +25 tests, 0 failures$'
 
 sngl test --platform=android --language=kotlin ./...
-stdout '^ok +22 tests, 0 failures$'
+stdout '^ok +25 tests, 0 failures$'
+
+sngl test --platform=bubbletea --language=go option
+stdout '^ok +3 tests, 0 failures$'
 -- testrun/android/kotlin/test_sized_compound_assign.sngl/compound/1 --
 sha256:561c430898661853862e6c6da7e4a909
 {
@@ -118,6 +123,24 @@ sha256:31b6d9304428276ebfc6993873a98d77
     }
   ]
 }
+-- testrun/android/kotlin/test_sized_option_literal.sngl/_/1 --
+sha256:993338f3d4eb6eec1e9b058453fe6e5d
+{
+  "results": [
+    {
+      "Desc": "Assigned",
+      "Passed": true
+    },
+    {
+      "Desc": "Passed",
+      "Passed": true
+    },
+    {
+      "Desc": "Returned",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/android/kotlin/test_sized_uint.sngl/uints/1 --
 sha256:0b5a2927fad2c7cd45024006391e16a5
 {
@@ -136,6 +159,24 @@ sha256:0b5a2927fad2c7cd45024006391e16a5
     },
     {
       "Desc": "UnsignedWrap",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/test_sized_option_literal.sngl/_/1 --
+sha256:a23685c652ce411598c28159bb8253dd
+{
+  "results": [
+    {
+      "Desc": "Assigned",
+      "Passed": true
+    },
+    {
+      "Desc": "Passed",
+      "Passed": true
+    },
+    {
+      "Desc": "Returned",
       "Passed": true
     }
   ]
@@ -238,6 +279,24 @@ sha256:39dcba55ccc2775b1220ac176620efaa
     },
     {
       "Desc": "NegationWraps",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/test_sized_option_literal.sngl/_/1 --
+sha256:3110cae2b724c5a3b33c892011bc7380
+{
+  "results": [
+    {
+      "Desc": "Assigned",
+      "Passed": true
+    },
+    {
+      "Desc": "Passed",
+      "Passed": true
+    },
+    {
+      "Desc": "Returned",
       "Passed": true
     }
   ]

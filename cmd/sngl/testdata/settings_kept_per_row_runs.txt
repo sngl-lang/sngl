@@ -68,7 +68,7 @@ func testARemountReadsEachRowBack(t test.Test, c app) {
     t.assert(c.rows[1].count == 4)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:869c38aaaf5be33f8acb5d0cd3f49d3c
+sha256:ad72aa098e2483b2d80f852a1f7d4132
 {
   "results": [
     {

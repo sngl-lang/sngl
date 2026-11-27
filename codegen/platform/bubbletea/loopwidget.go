@@ -231,10 +231,8 @@ func emitCopyHandler(vw *viewWalk, h *ir.EventHandler, value string, info *irAna
 		vw.line("_ = %s", name)
 		hgc = gc.WithLocal(name)
 	}
-	for _, stmt := range h.Func.Block {
-		for _, l := range hgc.EvalStmt(stmt) {
-			vw.line("%s", l)
-		}
+	for _, l := range handlerLines(hgc, h.Func.Block) {
+		vw.line("%s", l)
 	}
 	var sync strings.Builder
 	syncMutatedInputs(&sync, h.Func.Block, info.widgets, info.binds, hgc)

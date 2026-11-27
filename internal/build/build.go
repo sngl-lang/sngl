@@ -260,7 +260,7 @@ func generate(o Options, pkg *ir.Package, target Target, fileAssets []codegen.Fi
 		return nil, nil, fmt.Errorf("%s: platform %q does not support language %q (supported: %v)", o.Name, target.Platform, target.Lang, plat.SupportedLangs())
 	}
 
-	if err := refuseGRPC(pkg, target); err != nil {
+	if err := Refuse(pkg, target); err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", o.Name, err)
 	}
 
@@ -422,6 +422,80 @@ func dropTests(pkg *ir.Package) {
 	pkg.Funcs = slices.DeleteFunc(pkg.Funcs, func(f *ir.Func) bool { return f != nil && f.IsTest })
 }
 
+// Refused is a program a target cannot build: it reaches something the
+// target's language writes nothing for. A test run skips it, as it does a
+// component the platform does not implement.
+type Refused struct {
+	Reason string
+}
+
+func (r *Refused) Error() string { return r.Reason }
+
+// Refuse is the first reason pkg cannot be built for target, or nil.
+func Refuse(pkg *ir.Package, target Target) error {
+	if err := refuseGRPC(pkg, target); err != nil {
+		return err
+	}
+	return refuseSQL(pkg, target)
+}
+
+// refuseSQL refuses a program running a sngl:sql statement on a language
+// whose generator writes none, and on Kotlin one written for an engine but
+// SQLite, the one android carries.
+func refuseSQL(pkg *ir.Package, target Target) error {
+	implemented := codegen.LangImplements(target.Lang, ir.SQLQueryIntrinsic)
+	var err error
+	reachedCalls(pkg, func(c *ir.Call) {
+		if err != nil || !ir.IsSQL(c.Func) {
+			return
+		}
+		switch {
+		case !implemented:
+			err = &Refused{fmt.Sprintf("the program queries a database, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+		case target.Lang == "kotlin" && ir.SQLEngine(c) != "" && ir.SQLEngine(c) != "sqlite":
+			err = &Refused{fmt.Sprintf("the program queries %s, and %s/%s reaches SQLite alone", ir.SQLEngine(c), target.Platform, target.Lang)}
+		}
+	})
+	return err
+}
+
+// reachedCalls hands visit every call pkg makes, and every call made by a
+// function or a component it reaches in another package: an imported
+// package's statements are lowered into the program only later, and what a
+// `sql:` import writes runs the program's queries there.
+func reachedCalls(pkg *ir.Package, visit func(*ir.Call)) {
+	seen := map[any]bool{}
+	var walk func(root any)
+	follow := func(x any) {
+		if x == nil || seen[x] {
+			return
+		}
+		walk(x)
+	}
+	walk = func(root any) {
+		seen[root] = true
+		_ = ir.Walk(root, func(n ir.Node) error {
+			switch x := n.(type) {
+			case *ir.Call:
+				visit(x)
+				if x.Func != nil {
+					follow(x.Func)
+				}
+			case *ir.Ident:
+				if f, ok := x.Sym.(*ir.Func); ok && f != nil {
+					follow(f)
+				}
+			case *ir.NodeInst:
+				if x.Component != nil {
+					follow(x.Component)
+				}
+			}
+			return nil
+		})
+	}
+	walk(pkg)
+}
+
 // refuseGRPC refuses a program calling a gRPC service, or making the
 // async.queue only a gRPC call reads, on a language that writes neither yet,
 // which would otherwise reach the generator with nothing to emit for it.
@@ -430,18 +504,16 @@ func refuseGRPC(pkg *ir.Package, target Target) error {
 		return nil
 	}
 	var err error
-	_ = ir.WalkExprs(pkg, func(e ir.Expr) error {
-		c, ok := e.(*ir.Call)
-		if !ok || err != nil || c.Func == nil {
-			return nil
+	reachedCalls(pkg, func(c *ir.Call) {
+		if err != nil || c.Func == nil {
+			return
 		}
 		switch {
 		case ir.IsGRPC(c.Func):
-			err = fmt.Errorf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
+			err = &Refused{fmt.Sprintf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
 		case strings.HasPrefix(c.Func.Intrinsic, "async.queue"):
-			err = fmt.Errorf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)
+			err = &Refused{fmt.Sprintf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
 		}
-		return nil
 	})
 	return err
 }

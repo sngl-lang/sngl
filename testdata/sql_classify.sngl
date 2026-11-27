@@ -1,0 +1,38 @@
+// sngl:sql's classify reads a failure's code -- a SQLSTATE, or SQLite's result
+// code name -- as what a program should do next. It is SNGL, so every target
+// classifies alike, and a failure with no code is handed back as it came.
+
+import async "sngl:async"
+import sql "sngl:sql"
+import test "sngl:test"
+
+func kind(code string) async.FailureKind {
+    return sql.classify({kind=async.FailureKind.server, message="m", code=code}).kind
+}
+
+func testSQLite(t test.Test) {
+    t.assert(kind("SQLITE_CONSTRAINT") == async.FailureKind.request)
+    t.assert(kind("SQLITE_ERROR") == async.FailureKind.request)
+    t.assert(kind("SQLITE_BUSY") == async.FailureKind.server)
+    t.assert(kind("SQLITE_CANTOPEN") == async.FailureKind.transport)
+    t.assert(kind("SQLITE_PERM") == async.FailureKind.auth)
+    t.assert(kind("SQLITE_INTERRUPT") == async.FailureKind.cancelled)
+}
+
+func testSQLState(t test.Test) {
+    t.assert(kind("23505") == async.FailureKind.request)
+    t.assert(kind("02000") == async.FailureKind.request)
+    t.assert(kind("42P01") == async.FailureKind.request)
+    t.assert(kind("42501") == async.FailureKind.auth)
+    t.assert(kind("28P01") == async.FailureKind.auth)
+    t.assert(kind("40001") == async.FailureKind.server)
+    t.assert(kind("40P01") == async.FailureKind.server)
+    t.assert(kind("08006") == async.FailureKind.transport)
+    t.assert(kind("57014") == async.FailureKind.cancelled)
+}
+
+func testNoCode(t test.Test) {
+    var f = sql.classify({kind=async.FailureKind.transport, message="refused", code=""})
+    t.assert(f.kind == async.FailureKind.transport)
+    t.assert(f.message == "refused")
+}

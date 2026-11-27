@@ -30,6 +30,9 @@ type scaffoldData struct {
 	// HasSettings is true when the program keeps settings, and MainActivity
 	// opens SnglSettings: a test, on an activity of its own, never does.
 	HasSettings bool
+	// HasSQL is true when the program runs a sngl:sql statement, and
+	// MainActivity hands SnglSql the context its databases live under.
+	HasSQL bool
 	// Permissions are what the manifest asks for: what the program reaches
 	// asks (permissions), and INTERNET for the on-device test agent.
 	Permissions []string
@@ -82,6 +85,7 @@ func newScaffoldData(cfg Config) scaffoldData {
 	combo := cfg.combo()
 	return scaffoldData{
 		HasSettings:     cfg.settings,
+		HasSQL:          cfg.sql,
 		Package:         cfg.Package,
 		AppName:         appLabel(cfg),
 		HasIcon:         cfg.Icon != "",

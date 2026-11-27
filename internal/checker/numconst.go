@@ -112,6 +112,7 @@ func (c *checker) checkIntFits(pos ast.Pos, value *big.Int, target *ir.Type) {
 //     is representable as a float; no wrap)
 //   - otherwise                      → plain int, checked against int64
 func (c *checker) typeIntLiteral(pos ast.Pos, magnitude string, negative bool, expected *ir.Type) *ir.Type {
+	expected = numericWanted(expected)
 	value, ok := new(big.Int).SetString(magnitude, 0)
 	if !ok {
 		return TypInt
@@ -140,6 +141,7 @@ func (c *checker) typeIntLiteral(pos ast.Pos, magnitude string, negative bool, e
 // adapts to a float target; against anything else it stays plain float (and a
 // non-float target surfaces as a downstream type-mismatch).
 func (c *checker) typeFloatLiteral(expected *ir.Type) *ir.Type {
+	expected = numericWanted(expected)
 	if expected != nil && expected.Kind == ir.TypeFloat {
 		return expected
 	}
@@ -151,6 +153,7 @@ func (c *checker) typeFloatLiteral(expected *ir.Type) *ir.Type {
 // typed operands are returned unchanged. Used to unify binary-operator operands
 // so arithmetic runs at a single width.
 func (c *checker) adaptNumericOperand(expr ir.Expr, target *ir.Type, pos ast.Pos) ir.Expr {
+	target = numericWanted(target)
 	if target == nil || !target.IsNumeric() {
 		return expr
 	}
@@ -168,4 +171,14 @@ func (c *checker) adaptNumericOperand(expr ir.Expr, target *ir.Type, pos ast.Pos
 		}
 	}
 	return &ir.Literal{Type: target, Value: raw}
+}
+
+// numericWanted is the numeric type a literal written where t is wanted
+// takes: t, or the element of an option of one. `pages(264)` against an
+// option[int64] parameter wants an int64, which wraps into the option.
+func numericWanted(t *ir.Type) *ir.Type {
+	if t != nil && t.Kind == ir.TypeOption && len(t.Elems) == 1 && t.Elems[0].IsNumeric() {
+		return t.Elems[0]
+	}
+	return t
 }

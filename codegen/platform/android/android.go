@@ -156,6 +156,7 @@ func (g *Generator) configFromRequest(req *codegen.Request) (Config, error) {
 func (c *compilation) emitKotlin(req *codegen.Request, sink codegen.Sink) error {
 	cfg := c.cfg
 	cfg.settings = codegen.UsesSettings(req.Pkg)
+	cfg.sql = c.lang == "kotlin" && kotlin.UsesSQL(req.Pkg)
 	ctx := c.ctx
 	// In --opt test=true builds the Compose source needs a hoisted
 	// MainScreenState class so generated tests can construct a state

@@ -103,6 +103,9 @@ func Run(ctx context.Context, pkg *ir.Package, cfg Config) (results []*codegen.T
 		// root is.
 		groupPkg := ir.ClonePackageFor(pkg, plat.PlatformIdentifier(), LangIdent(lang))
 		build.IsolateRootComponent(groupPkg, group.Component)
+		if err := build.Refuse(groupPkg, build.Target{Lang: LangIdent(lang), Platform: plat.PlatformIdentifier()}); err != nil {
+			return results, err
+		}
 		if err := build.ApplyCgo(groupPkg, build.Target{Lang: LangIdent(lang), Platform: plat.PlatformIdentifier(), Options: opts}); err != nil {
 			return results, err
 		}

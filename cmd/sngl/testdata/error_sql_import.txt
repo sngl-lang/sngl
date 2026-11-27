@@ -1,0 +1,263 @@
+# A configuration is one of the project's own files, read through the project:
+# a path outside it is refused before anything is read, and so is a file it
+# names outside it. What sqlc refuses is the import's error, at the file and
+# line; a configuration of two packages, or for an engine sngl:sql does not
+# reach, is refused; and what the import leaves out it says.
+env SNGL_GENCACHE=off
+
+! sngl check proj/up.sngl
+stderr 'import "sql:../outside/sqlc.yaml": scheme "sql": sql:../outside/sqlc.yaml is outside the project'
+
+! sngl check proj/escape.sngl
+stderr 'sql:./escape/sqlc.yaml reads ../outside/schema.sql, which is outside the project'
+
+! sngl check proj/broken.sngl
+stderr 'broken/query.sql:2:8: column "nope" does not exist'
+
+! sngl check proj/two.sngl
+stderr 'sql:./two/sqlc.yaml declares 2 packages, and an import reads one'
+
+! sngl check proj/engine.sngl
+stderr 'sql:./engine/sqlc.yaml is written for clickhouse'
+
+sngl check proj/notes.sngl
+stderr 'query Copy is left out: :copyfrom is not one sngl:sql runs'
+
+# A directory of queries, and a pattern, are read as sqlc reads them.
+sngl check proj/dirs.sngl
+
+# A query file names its schema in a directive, read relative to itself.
+# The schema names the engine, SQLite where none of its files does, and a
+# query file naming one overrides it.
+sngl check proj/file.sngl
+sngl check proj/pg.sngl
+sngl check proj/override.sngl
+
+! sngl check proj/mixed.sngl
+stderr ' mixed/b.sql:1: sngl:engine mysql, where mixed/a.sql:1 says postgresql'
+
+! sngl check proj/noschema.sngl
+stderr 'sql:./noschema.sql names no schema: say where it is with `-- sngl:schema <path>`'
+
+! sngl check proj/typo.sngl
+stderr ' typo.sql:2: sngl:shema is no directive: a query file says sngl:schema, and sngl:engine to override its schema.s'
+
+! sngl check proj/engine2.sngl
+stderr ' engine2.sql:1: sngl:engine oracle is none of sqlite, postgresql, mysql'
+
+! sngl check proj/escape2.sngl
+stderr 'sql:./escape2.sql reads ../outside/schema.sql, which is outside the project'
+
+! sngl check proj/broken2.sngl
+stderr 'broken2.sql:4:8: column "nope" does not exist'
+
+-- proj/up.sngl --
+import db "sql:../outside/sqlc.yaml"
+
+const x = 1
+-- proj/escape.sngl --
+import db "sql:./escape/sqlc.yaml"
+
+const x = 1
+-- proj/escape/sqlc.yaml --
+version: "2"
+sql:
+  - engine: sqlite
+    schema: ../../outside/schema.sql
+    queries: query.sql
+-- proj/broken.sngl --
+import db "sql:./broken/sqlc.yaml"
+
+const x = 1
+-- proj/broken/sqlc.yaml --
+version: "2"
+sql:
+  - engine: sqlite
+    schema: schema.sql
+    queries: query.sql
+-- proj/broken/schema.sql --
+CREATE TABLE a (id INTEGER NOT NULL);
+-- proj/broken/query.sql --
+-- name: Bad :one
+SELECT nope FROM a;
+-- proj/two.sngl --
+import db "sql:./two/sqlc.yaml"
+
+const x = 1
+-- proj/two/sqlc.yaml --
+version: "2"
+sql:
+  - engine: sqlite
+    schema: schema.sql
+    queries: query.sql
+  - engine: sqlite
+    schema: schema.sql
+    queries: query.sql
+-- proj/two/schema.sql --
+CREATE TABLE a (id INTEGER NOT NULL);
+-- proj/two/query.sql --
+-- name: All :many
+SELECT id FROM a;
+-- proj/engine.sngl --
+import db "sql:./engine/sqlc.yaml"
+
+const x = 1
+-- proj/engine/sqlc.yaml --
+version: "2"
+sql:
+  - engine: clickhouse
+    schema: schema.sql
+    queries: query.sql
+-- proj/engine/schema.sql --
+CREATE TABLE a (id UInt64) ENGINE = Memory;
+-- proj/engine/query.sql --
+-- name: All :many
+SELECT id FROM a;
+-- proj/notes.sngl --
+import db "sql:./notes/sqlc.yaml"
+
+const x = db.schema.length()
+-- proj/notes/sqlc.yaml --
+version: "2"
+sql:
+  - engine: postgresql
+    schema: schema.sql
+    queries: query.sql
+-- proj/notes/schema.sql --
+CREATE TABLE a (id bigint NOT NULL);
+-- proj/notes/query.sql --
+-- name: All :many
+SELECT id FROM a;
+
+-- name: Copy :copyfrom
+INSERT INTO a (id) VALUES ($1);
+-- proj/dirs.sngl --
+import db "sql:./dirs/sqlc.yaml"
+
+const x = db.Thing{id=1}
+
+func count() int {
+    match var all = db.allCall() {
+        ok { return all.length() }
+        failed { return 0 }
+    }
+}
+
+func first() int64 {
+    // Every column of one table, so the table's own struct.
+    match var t = db.firstCall() {
+        ok {
+            if t == null {
+                return 0
+            }
+            return t.id
+        }
+        failed { return 0 }
+    }
+}
+-- proj/dirs/sqlc.yaml --
+version: "2"
+sql:
+  - engine: sqlite
+    schema: migrations
+    queries: "queries/*.sql"
+-- proj/dirs/migrations/001_things.sql --
+CREATE TABLE things (id INTEGER NOT NULL);
+-- proj/dirs/migrations/001_things.down.sql --
+this is not SQL, and a down migration is not read
+-- proj/dirs/queries/all.sql --
+-- name: All :many
+SELECT id FROM things;
+-- proj/dirs/queries/first.sql --
+-- name: First :one
+SELECT id FROM things LIMIT 1;
+-- proj/file.sngl --
+import db "sql:./file/queries.sql"
+
+const x = db.Thing{id=1}
+-- proj/file/queries.sql --
+-- sngl:schema ../dirs/migrations
+
+-- name: All :many
+SELECT id FROM things;
+-- proj/pg.sngl --
+import db "sql:./pg/queries.sql"
+
+// A bigint is PostgreSQL's int8, an int64, where SQLite has no bigint.
+const x = db.Account{id=int64(1), name="a"}
+-- proj/pg/queries.sql --
+-- sngl:schema schema.sql
+
+-- name: Accounts :many
+SELECT * FROM accounts WHERE name = $1;
+-- proj/pg/schema.sql --
+-- sngl:engine postgresql
+CREATE TABLE accounts (id bigserial PRIMARY KEY, name text NOT NULL);
+-- proj/override.sngl --
+import db "sql:./override.sql"
+
+const x = 1
+-- proj/override.sql --
+-- sngl:schema ov/schema.sql
+-- sngl:engine mysql
+
+-- name: Things :many
+SELECT * FROM things WHERE id = ?;
+-- proj/ov/schema.sql --
+-- sngl:engine postgresql
+CREATE TABLE things (id bigint NOT NULL);
+-- proj/mixed.sngl --
+import db "sql:./mixed/queries.sql"
+
+const x = 1
+-- proj/mixed/queries.sql --
+-- sngl:schema a.sql
+-- sngl:schema b.sql
+
+-- name: A :many
+SELECT id FROM a;
+-- proj/mixed/a.sql --
+-- sngl:engine postgresql
+CREATE TABLE a (id bigint NOT NULL);
+-- proj/mixed/b.sql --
+-- sngl:engine mysql
+CREATE TABLE b (id bigint NOT NULL);
+-- proj/noschema.sngl --
+import db "sql:./noschema.sql"
+
+const x = 1
+-- proj/noschema.sql --
+-- name: All :many
+SELECT 1;
+-- proj/typo.sngl --
+import db "sql:./typo.sql"
+
+const x = 1
+-- proj/typo.sql --
+-- sngl:schema dirs/migrations
+-- sngl:shema dirs/migrations
+-- proj/engine2.sngl --
+import db "sql:./engine2.sql"
+
+const x = 1
+-- proj/engine2.sql --
+-- sngl:engine oracle
+-- proj/escape2.sngl --
+import db "sql:./escape2.sql"
+
+const x = 1
+-- proj/escape2.sql --
+-- sngl:schema ../outside/schema.sql
+-- proj/broken2.sngl --
+import db "sql:./broken2.sql"
+
+const x = 1
+-- proj/broken2.sql --
+-- sngl:schema broken/schema.sql
+
+-- name: Bad :one
+SELECT nope FROM a;
+-- proj/outside/sqlc.yaml --
+version: "2"
+-- outside/schema.sql --
+CREATE TABLE secret (id INTEGER);

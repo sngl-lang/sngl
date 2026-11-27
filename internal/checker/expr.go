@@ -904,6 +904,17 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 		left = exprType(leftExpr)
 		right = exprType(rightExpr)
 	}
+	// Compared with an option of one, a literal takes the option's sized
+	// element: `pages == 264` against an option[int64].
+	if x.Op == ast.BinEq || x.Op == ast.BinNeq {
+		if numericWanted(left) != left && isUntypedNumericConst(rightExpr) {
+			rightExpr = c.adaptNumericOperand(rightExpr, left, x.Pos)
+			right = exprType(rightExpr)
+		} else if numericWanted(right) != right && isUntypedNumericConst(leftExpr) {
+			leftExpr = c.adaptNumericOperand(leftExpr, right, x.Pos)
+			left = exprType(leftExpr)
+		}
+	}
 
 	skip := left.Kind == ir.TypeInvalid || right.Kind == ir.TypeInvalid
 

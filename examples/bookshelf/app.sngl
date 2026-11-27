@@ -1,0 +1,94 @@
+import async "sngl:async"
+import books "sql:./db/queries.sql"
+import time "sngl:time"
+import ui "sngl:ui"
+
+output(name="Bookshelf", description="A reading list kept in SQLite.") {
+    go {
+        bubbletea
+        fyne
+        gtk4
+    }
+    kotlin {
+        android
+    }
+}
+
+// The shelf's file: under the app's own database directory on android, the
+// working directory everywhere else.
+const file = "bookshelf.db"
+
+// A search over the shelf, a book added at the top, and a row per book to
+// mark read or take off. It asks for the list when it mounts and whenever the
+// search changes, and again after each change it makes.
+component shelf ui.node {
+    var search = ""
+    var title = ""
+    var author = ""
+    var found option[list[books.Book]] = null
+    var failure option[async.Failure] = null
+    var unread option[int64] = null
+
+    books.shelf #listed(search=search, :value=found, :failure=failure)
+    books.unread #counted(:value=unread)
+
+    // Asks both again, after a change to the shelf.
+    func changed() {
+        listed.refresh()
+        counted.refresh()
+    }
+
+    ui.vbox(style={gap=8px, padding=12px}) {
+        ui.text #count(value="{unread.or(0)} to read, {found.or([]).length()} shown", style={fontWeight=bold})
+        ui.input #searchBox(placeholder="Search", :value=search)
+        ui.hbox(style={gap=8px, alignItems=center}) {
+            ui.input #titleBox(placeholder="Title", :value=title)
+            ui.input #authorBox(placeholder="Author", :value=author)
+            ui.button #add(text="Add", disabled=title == "", @click {
+                match var id = books.addBookCall(title=title, author=author, added=time.now()) {
+                    ok {
+                        title = ""
+                        author = ""
+                        changed()
+                    }
+                    failed { failure = id }
+                }
+            })
+        }
+        for var b = found.or([]) {
+            ui.hbox(style={gap=8px, alignItems=center}) {
+                ui.checkbox(checked=b.read, label=b.author == "" ? b.title : "{b.title}, {b.author}", @change {
+                    books.setReadCall(read=!b.read, id=b.id)
+                    changed()
+                })
+                ui.button(text="Remove", @click {
+                    books.removeBookCall(id=b.id)
+                    changed()
+                })
+            }
+        }
+        if failure != null {
+            ui.text #problem(value=failure.message)
+        }
+    }
+}
+
+// The shelf, once the schema is in its file: each statement may find it
+// already done.
+ui.window(title="Bookshelf") {
+    var ready = false
+    var problem = ""
+    books.source(file) {
+        effect(on=0, @mount {
+            match var r = books.create() {
+                ok { ready = true }
+                failed { problem = r.message }
+            }
+        })
+        if ready {
+            shelf
+        } else {
+            ui.text(value=problem == "" ? "Opening the shelf…" : problem)
+        }
+    }
+}

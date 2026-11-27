@@ -816,8 +816,10 @@ func (kc *KtIRContext) LocalVarText(n *ir.LocalVar, initStr string) string {
 		// host value may be narrower than the type SNGL declared -- Compose's
 		// empty `Modifier` is its companion object.
 		sd, host := hostStruct(n.Type)
-		nullInit := n.Type != nil && n.Type.Kind == ir.TypeOption && n.Init.ExprType() != nil && n.Init.ExprType().Kind == ir.TypeNull
-		if ir.PayloadEnum(n.Type) != nil || nullInit || host && sd.Foreign.Scheme == "kotlin" {
+		// An option holding a value at first infers the value's type, which
+		// a later `null` does not fit; `null` alone infers `Nothing?`.
+		option := n.Type != nil && n.Type.Kind == ir.TypeOption
+		if ir.PayloadEnum(n.Type) != nil || option || host && sd.Foreign.Scheme == "kotlin" {
 			return "var " + n.Name + ": " + IRTypeToKt(n.Type) + " = " + kc.valueCopyFor(n, initStr)
 		}
 		return "var " + n.Name + " = " + kc.valueCopyFor(n, initStr)
@@ -1191,6 +1193,9 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		return out
 	}
 	if out, ok := kc.grpcCall(n); ok {
+		return out
+	}
+	if out, ok := kc.sqlCall(n); ok {
 		return out
 	}
 	// Intrinsic dispatch by ID — never by method name. Backends register only
