@@ -24,6 +24,9 @@ import (
 // var the call site bound (`:visible=shown` writes `shown`), or, left as
 // `details.visible`, the instance's own cell, which passImplicitState names.
 // Called, the function would hold a handle no target can write a prop through.
+// A read goes the same way: a local initialized from a `#id` is that `#id`
+// (aliasHandleLocals), and a function reading a prop through a node parameter
+// is handed the prop (handPropsForNodeParams).
 //
 // Before ImplicitState, whose rewrite of `details.visible` is what the second
 // half needs; after PlatformExtensionBody, so the node a handle names is the
@@ -50,6 +53,7 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 	if len(nodes) == 0 {
 		return nil
 	}
+	aliasHandleLocals(pkg)
 	st := &handleParams{nodes: nodes, writes: map[*ir.Func]map[*ir.Param]bool{}, tests: map[*ir.Param]bool{}, pkg: pkg}
 	for _, fn := range pkg.Funcs {
 		if fn != nil && fn.IsTest && len(fn.Params) > 1 {
@@ -82,7 +86,11 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 	if err != nil {
 		return err
 	}
-	return st.err
+	if st.err != nil {
+		return st.err
+	}
+	st.handPropsForNodeParams()
+	return nil
 }
 
 // boundTarget is what a write of target lands on when target is a two-way
