@@ -51,7 +51,11 @@ type declarativeState struct {
 	// hosted is the family the position being lowered accepts, which a
 	// component taking the family it is placed in is a member of
 	// (rendersAsType).
-	hosted       *ir.Component
+	hosted *ir.Component
+	// places is every ir.InstancePlaceName something reads: the position of
+	// an instance a #[construct] prop rebuilds where it stands, which the
+	// append that first placed it binds to its parent.
+	places       map[string]bool
 	intrinsics   map[string]*ir.Func
 	nextID       int
 	lifter       *lifter
@@ -86,7 +90,7 @@ type declarativeState struct {
 }
 
 func newDeclarativeState(pkg *ir.Package, caps Features) *declarativeState {
-	st := &declarativeState{language: caps.language, liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: programConnect(pkg, caps.connect)}
+	st := &declarativeState{language: caps.language, liftHandlers: !caps.Lambda, instanceRecords: hasInstanceRuntime(caps), intrinsics: map[string]*ir.Func{}, connect: programConnect(pkg, caps.connect), places: placesRead(pkg)}
 	for _, op := range ir.NodeOps {
 		st.intrinsics[op] = nodeOpFunc(op)
 	}
@@ -252,7 +256,7 @@ func (st *declarativeState) processStmtsForParent(stmts []ir.Stmt, funcs *[]*ir.
 		case *ir.NodeInst:
 			out = append(out, st.lowerNodeIntoStmts(n, funcs)...)
 			if parent != nil {
-				out = append(out, st.appendChildStmt(cloneIdent(parent), n))
+				out = append(out, st.appendChildStmt(cloneIdent(parent), n)...)
 			}
 		case *ir.If:
 			n.Body = st.processStmtsForParent(n.Body, funcs, parent)
@@ -440,7 +444,7 @@ func (st *declarativeState) lowerNodeIntoStmts(n *ir.NodeInst, funcs *[]*ir.Func
 		switch cn := c.(type) {
 		case *ir.NodeInst:
 			stmts = append(stmts, st.lowerNodeIntoStmts(cn, funcs)...)
-			stmts = append(stmts, st.appendChildStmt(ref(), cn))
+			stmts = append(stmts, st.appendChildStmt(ref(), cn)...)
 		default:
 			// Non-NodeInst child (If/For/etc.): recurse, but thread the
 			// surrounding parent id so any NodeInsts inside the body get
@@ -682,13 +686,34 @@ func (st *declarativeState) componentRootBinding(n *ir.NodeInst) []ir.Stmt {
 }
 
 // appendChildStmt attaches a node to a parent expression: what the tree
-// attaches for it (attachRef).
-func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) ir.Stmt {
+// attaches for it (attachRef). An instance whose position something reads
+// (places) has the parent bound under its place name first, for the rebuild
+// to put the new instance back into.
+func (st *declarativeState) appendChildStmt(parent ir.Expr, child *ir.NodeInst) []ir.Stmt {
 	stmt, err := childOp(st.intrinsics[ir.NodeOpAppendChild], ir.ProtocolAppend, parent, st.attachRef(child), st.language)
 	if err != nil && st.err == nil {
 		st.err = err
 	}
-	return stmt
+	if child.Component == nil || !st.places[ir.InstancePlaceName(child.ID)] {
+		return []ir.Stmt{stmt}
+	}
+	place := &ir.Var{Name: ir.InstancePlaceName(child.ID), Type: parent.ExprType(), Synthesized: true}
+	return []ir.Stmt{&ir.LocalVar{Name: place.Name, Type: place.Type, Sym: place, Init: ir.CloneExprSharingDecls(parent)}, stmt}
+}
+
+// placesRead is every ir.InstancePlaceName pkg reads.
+func placesRead(pkg *ir.Package) map[string]bool {
+	out := map[string]bool{}
+	if pkg == nil {
+		return out
+	}
+	_ = ir.Walk(pkg, func(n ir.Node) error {
+		if id, ok := n.(*ir.Ident); ok && id.IsElementRef && strings.HasSuffix(id.Name, ir.InstancePlaceName("")) {
+			out[id.Name] = true
+		}
+		return nil
+	})
+	return out
 }
 
 // attachRef is a reference to what the tree attaches for n (attachName),
@@ -758,7 +783,7 @@ func (st *declarativeState) attachName(n *ir.NodeInst) string {
 func lowerNodeForSlot(st *declarativeState, n *ir.NodeInst, parentRef ir.Expr, funcs *[]*ir.Func) (string, []ir.Stmt) {
 	stmts := st.lowerNodeIntoStmts(n, funcs)
 	if parentRef != nil {
-		stmts = append(stmts, st.appendChildStmt(parentRef, n))
+		stmts = append(stmts, st.appendChildStmt(parentRef, n)...)
 	}
 	return st.attachName(n), stmts
 }

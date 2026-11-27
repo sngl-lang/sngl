@@ -1,6 +1,6 @@
 A `#[construct]` prop written from state, on an instance no render owns,
-rebuilds the instance where it stands: fyne and gtk4 cannot put a child back
-at a position, and decline the program rather than fail lowering it.
+rebuilds the instance where it stands: fyne cannot put a child back at a
+position, and declines the program rather than fail lowering it.
 
 -- app.sngl --
 import macro "sngl:macro"
@@ -9,7 +9,6 @@ import ui "sngl:ui"
 output {
     go {
         fyne
-        gtk4
     }
 }
 

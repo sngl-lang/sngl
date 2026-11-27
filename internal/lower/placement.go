@@ -58,7 +58,7 @@ func lowerPlacement(pkg *ir.Package, feats Features, opts Options) error {
 			ir.RewriteTypes(c, func(t *ir.Type) *ir.Type { return t.Substitute(bound) })
 		}
 	}
-	p := &placement{plat: plat, records: collectRecords(pkg), pkg: pkg, language: feats.language, platform: opts.Platform}
+	p := &placement{plat: plat, records: collectRecords(pkg), pkg: pkg, language: feats.language, platform: opts.Platform, places: placesRead(pkg)}
 	// Read off the node operations, which the rewrite below makes calls.
 	if root := pkg.RootDecl(); root != nil {
 		p.rootTops, p.rootType = bodyTops(root)
@@ -487,6 +487,10 @@ func closureFuncs(root any) []*ir.Func {
 
 type placement struct {
 	plat *ir.NodeProtocol
+	// places is every ir.InstancePlaceName the package reads (placesRead):
+	// an instance put into its component's contents has the contents bound
+	// under it, for a rebuild to put a new instance back into.
+	places map[string]bool
 	// language is the build's (Features.language), which protocolSplice
 	// marshals for.
 	language string

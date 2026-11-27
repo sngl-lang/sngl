@@ -2320,7 +2320,7 @@ func (st *reactivityState) renderSlotBody(declSt *declarativeState, parentParam 
 		if st.placement != nil {
 			return st.place(st.placement, declSt.attachRef(n))
 		}
-		return []ir.Stmt{declSt.appendChildStmt(parentRef, n)}
+		return declSt.appendChildStmt(parentRef, n)
 	}
 	emitNodeAt := func(n *ir.NodeInst) []ir.Stmt {
 		var sub []ir.Stmt
