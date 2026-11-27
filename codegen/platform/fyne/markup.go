@@ -62,10 +62,12 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 		// md.document's are -- arrives through this, field by field.
 		sp.Setters["spanStyle"] = "SetSpanStyle"
 		sp.SetterArgs = map[string]func(ir.Expr) []ir.Expr{"spanStyle": spanStyleArgs}
-		if c, ok := props["color"]; ok && !codegen.SpanStyleKnownColor(c) {
-			sp.Setters["color"] = "SetColor"
-		} else {
+		// A color absent from props may still be written: harvestSpec leaves
+		// out a write reading a temp hoisted after the create.
+		if c, ok := props["color"]; ok && codegen.SpanStyleKnownColor(c) {
 			sp.CtorOnly["color"] = true
+		} else {
+			sp.Setters["color"] = "SetColor"
 		}
 	default:
 		return nil, fmt.Errorf("fyne: %s is not a markup primitive", tag)

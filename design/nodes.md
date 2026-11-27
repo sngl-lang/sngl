@@ -268,7 +268,7 @@ program's. A test's trigger, `c.save.click()`, is the
 platform's `#[gen.fires(event)]` function for the event the program's
 handler was connected to (`recordFire` notes it at each connect, under the
 name the program wrote, which an override may have connected under another:
-ui.input's `@change` is an edit's `@activate`), handed the node and the
+ui.textarea's `@change` is an entry's `@activate`), handed the node and the
 trigger's values. A fire puts each value where the host keeps it and raises
 the host's own notification, so the program's handler runs as it would for
 the user: win32's press of a check box sets its state and sends the
@@ -920,8 +920,7 @@ override holds to it** (`cmd/sngl/testdata/program_write_fires_no_event_runs.txt
 on every target). A handler reports only a value the program does not already
 hold -- `if checkActive(b) != checked { … }`, fyne's `if v != value { … }` --
 so a bound value written to the widget, whose host fires its change signal for
-the write, reports nothing; a commit (an entry's `activate`, fyne's submit) is
-not guarded, since pressing Enter commits whatever the value. A host whose
+the write, reports nothing. A host whose
 write fires its signal more than once is written quietly instead: gtk4's entry
 overrides do not bind `text` but push it from
 `effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
@@ -934,9 +933,12 @@ puts the value in place first and emits the signal itself (`_rtFireDay`).
 
 **A field's `@change` is its commit, never an edit.** android's input and
 textarea are `SnglTextField` (`textfield.kt`): `onValueChange` reports `@input`
-and marks the field edited, and the focus leaving it -- or, on an input, the
-keyboard's Done or a hardware Enter, the input being one line -- commits an
-edited field and clears the mark. Done and Enter then fire `@submit` whether or
+and the override marks the field edited, and the focus leaving it -- or, on an
+input, the keyboard's Done or a hardware Enter, the input being one line --
+calls `onCommit`, which commits an edited field and clears the mark. The mark
+is the override's var, not Kotlin's, so a test's `change`, which calls the
+override's `commit`, clears it too: kept in Kotlin, Enter after a test's
+change committed again (`input_submit_runs.txt`). Done and Enter then fire `@submit` whether or
 not anything was committed, and hide the keyboard as Compose's default would.
 A program's write marks nothing, and Done followed by the focus leaving commits
 once. The focus's commit waits for the main looper and asks whether the field
@@ -947,6 +949,54 @@ android fired `@change` from every keystroke
 moves the focus, presses Done and a hardware Enter and removes a field; a
 test's `submit` is the keyboard's action. The `change` trigger writes the value
 and emits, as fyne's invoker does.
+
+Every target's input commits on Enter the same way, and then fires `@submit`
+(`cmd/sngl/testdata/input_submit_runs.txt`): the edit mark is set where the
+override reports `@input` behind its guard against the program's own write, so
+a program's write marks nothing, and cleared by the commit. fyne's `Entry` and
+gtk4's and win32's `activate` committed on every Enter. The mark is a var of
+the override on none, fyne, gtk4, win32 and android; on html it is a property of the
+element (`markEdited`, `takeEdit`), since a var made a loop's copy a runtime
+instance no test's trigger reached, and the browser's own `change` on Enter or
+blur commits only what Enter has not; bubbletea's is a field beside the
+widget, by copy key under a loop (`marksEdits`,
+`codegen/platform/bubbletea/input_submit_run_test.go` presses the keys). A
+test's `submit` is Enter: a keydown on html (`pressKey`), gtk4's and win32's
+activation, bubbletea's Enter path, fyne's `OnSubmitted` handed the text the
+entry holds. A test's `change` commits without submitting: a trigger
+override calling the override's `commit` on gtk4 and win32, html's and none's
+`change` handlers, and fyne's `OnCommit`, a callback of the runtime's `Entry`
+only a test calls, since an override's trigger is not reached through a
+loop's copy there (#318).
+
+The focus leaving an input commits through the same mark, so Enter and then the
+focus leaving commits once (`cmd/sngl/testdata/input_blur_commit_runs.txt` on
+html, android and win32). fyne, win32 and bubbletea committed only at Enter.
+fyne's is `@leave`, the runtime `Entry`'s `OnFocusLost`; win32's is the edit's
+EN_KILLFOCUS, Edit's `@leave`; bubbletea's is the focus sync that blurs a field
+marked edited, outside a loop; html's is a `blur` listener dispatching `change`
+on a marked element (`commitEdit`), since the browser's own change follows no
+script's write; it reads the event's target, since a handler reading `#field`
+rebuilt the element at every keystroke
+(`html_construct_patches_contents.txtar`), so html's `@blur` takes the event. A
+test's `focus` moves the focus on html (the element's `focus`), win32
+(`SetFocus`) and android; fyne's and bubbletea's are Go run tests
+(`input_blur_commit_run_test.go`). gtk4's input still commits only at Enter: a
+GtkEventControllerFocus on the entry heard no `leave` when a test's
+`gtk_widget_grab_focus` moved the focus under cage, so nothing could pin it,
+and the interpreter has no focus to move.
+
+bubbletea's textarea, where Enter is a line of the text, commits the same way
+(`commitsOnBlur`): an Update that changes the forwarded widget's value marks it
+edited, and the focus sync that blurs it commits a marked one. A program's
+write reaches the widget through `SetValue`, never Update, so marks nothing.
+A loop's copies share one field and do not commit. The `change` trigger was an
+invoker nobody wrote (`program_write_fires_no_event_runs.txt`), and
+`codegen/platform/bubbletea/textarea_commit_run_test.go` tabs away from one.
+fyne's textarea commits a marked edit as the focus leaves it (`@leave`, the
+runtime `Entry`'s `OnFocusLost`); it committed at Shift+Enter, fyne's
+`OnSubmitted` on a multiline entry, and never as the focus left.
+`codegen/platform/fyne/textarea_commit_run_test.go` moves the canvas's focus.
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
@@ -1322,6 +1372,23 @@ which needs a language-to-platform read hook that does not exist; on gtk4 a
 getter is a call (`gtk_editable_get_text`) whose name GIR would have to supply
 per property. The one such read that works is a `#[c.native]` method's
 receiver, above.
+
+**A handle held anywhere but its `#id` reads as the `#id` does**, since
+`propHolds` only answers a read whose operand is the `#id`. A local
+initialized from one and never assigned is that `#id` (`aliasHandleLocals`),
+and a function reading a prop through a node parameter is handed the prop
+instead: `grab(f)` of `func grab(x ui.input)` reading `x.value` becomes
+`grab(f.value)`, its parameter `x__value`, and the parameter goes where
+nothing else reads it (`handPropsForNodeParams`, after HandleParams' write
+inlining, to a fixed point so a caller passing its own parameter on is
+handed the prop too). Left alone, `var h = f` named a field bubbletea's Model
+never declares and a Kotlin value android never made, fyne and gtk4
+title-cased `h.Value` onto the widget, and a parameter typed `any` on the Go
+targets had no field at all (#332,
+`cmd/sngl/testdata/two_way_prop_read_through_handle_runs.txt`). html's write
+through such a local set the element and not the var it is bound to. What
+stays unanswered: a local assigned after its initializer, a function used as
+a value, or one handed a node as something other than a plain path.
 
 **Two nodes may share an id, and a body rendered twice may read its handles:
 each copy reads its own.** `uniqueNodeIDs` renames the later copies *by name*,

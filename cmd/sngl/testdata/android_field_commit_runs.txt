@@ -7,7 +7,7 @@
 # every target answers is program_write_fires_no_event_runs.txt's.
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   8 tests, 0 failures'
+stdout 'ok   9 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin keys.sngl
 stdout 'ok   1 tests, 0 failures'
@@ -91,6 +91,15 @@ func testDoneThenBlurFiresOnce(t Test, c main) {
     t.assert(c.changes == 1)
 }
 
+func testChangeTriggerThenBlurFiresOnce(t Test, c main) {
+    c.notes.focus()
+    c.notes.input("xy")
+    c.notes.change("xy")
+    t.assert(c.changes == 1)
+    c.other.focus()
+    t.assert(c.changes == 1)
+}
+
 func testDoneUneditedFiresNothing(t Test, c main) {
     c.field.focus()
     c.field.submit()
@@ -147,9 +156,13 @@ func testEnterCommitsAndSubmits(t test.Test, c app) {
     t.assert(c.order == "cs")
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:c2b9b563a496b9deaeb92f6ac3e97cef
+sha256:182a6755cb821d2c017f31c635e9d1ad
 {
   "results": [
+    {
+      "Desc": "ChangeTriggerThenBlurFiresOnce",
+      "Passed": true
+    },
     {
       "Desc": "DoneCommitsThenSubmits",
       "Passed": true
@@ -185,7 +198,7 @@ sha256:c2b9b563a496b9deaeb92f6ac3e97cef
   ]
 }
 -- testrun/android/kotlin/keys.sngl/app/1 --
-sha256:4f34fa290ace06c254f87b2e36224be9
+sha256:d468fe9a2810e21bc6a1e1b4ddccf033
 {
   "results": [
     {

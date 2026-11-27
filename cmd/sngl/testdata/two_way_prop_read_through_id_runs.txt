@@ -85,7 +85,7 @@ func testAHandlerReadsTheValueReported(t test.Test, c fields) {
     t.assert(c.handled.value == "true bee")
 }
 -- testrun/android/kotlin/app.sngl/fields/1 --
-sha256:175ed2bf50ce04f3709690373077a573
+sha256:9647795c7adaee9529162e6e7a5f2e14
 {
   "results": [
     {
@@ -109,7 +109,7 @@ sha256:c2659e2af87b55fd7eb12a5bae7e5d8d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/fields/1 --
-sha256:24c007e0f5275349a0da43735192f00e
+sha256:2f7087311630de31f3a23b16afd9e741
 {
   "results": [
     {
@@ -133,7 +133,7 @@ sha256:4aba7f0ca8527901b5be103039fe8799
   ]
 }
 -- testrun/fyne/go/app.sngl/fields/1 --
-sha256:0027ac603467f7548691b8bdbdb25e4a
+sha256:f3a800ca8d0a35130cfabaf62898141c
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:9a8719a9d1d95c96844e35fe07275326
   ]
 }
 -- testrun/gtk4/go/app.sngl/fields/1 --
-sha256:5a35504bbcf4e6a0f6d20054f69554d9
+sha256:1c9ddfb6366e55adc8c9413ebe1f8c8b
 {
   "results": [
     {
@@ -181,7 +181,7 @@ sha256:0dab4bb61300ffdd9881f157a9da90eb
   ]
 }
 -- testrun/html/none/app.sngl/fields/1 --
-sha256:37feb95d66d9367076247297d80cbaa8
+sha256:3d4de429bdf35c827d3c97e8aa9c6298
 {
   "results": [
     {

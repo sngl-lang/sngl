@@ -165,7 +165,7 @@ func testOneInputIsTheTests(t test.Test, c field) {
     t.assert(c.name.value == "a")
 }
 -- testrun/android/kotlin/cell.sngl/pair/1 --
-sha256:4612c6aa6fe106e5b9e8952262f2aa6c
+sha256:236e79ce8a2b211009708ddf0c2d3044
 {
   "results": [
     {
@@ -175,7 +175,7 @@ sha256:4612c6aa6fe106e5b9e8952262f2aa6c
   ]
 }
 -- testrun/android/kotlin/inputs.sngl/field/1 --
-sha256:39c3b39a9bf8408723f0ed35b2023bd1
+sha256:b9c87e9f949c2511f5298e04c930f8c2
 {
   "results": [
     {
@@ -185,7 +185,7 @@ sha256:39c3b39a9bf8408723f0ed35b2023bd1
   ]
 }
 -- testrun/android/kotlin/inputs.sngl/pair/1 --
-sha256:28ba2e82d66e6e538fce35db4f863c21
+sha256:d836de279f48df648063f94758689204
 {
   "results": [
     {
@@ -245,7 +245,7 @@ sha256:686c2ebf7de1a84b686af80aca59c0fe
   ]
 }
 -- testrun/fyne/go/cell.sngl/pair/1 --
-sha256:7ad7fe9c5e63772a88d4aee442aa437b
+sha256:90e09e35a545d17400fdc1816852cb10
 {
   "results": [
     {
@@ -255,7 +255,7 @@ sha256:7ad7fe9c5e63772a88d4aee442aa437b
   ]
 }
 -- testrun/fyne/go/inputs.sngl/field/1 --
-sha256:6bfcc949ef37a86c96a89ec4376b6ed0
+sha256:7cb9f262a79112a0b0f3ca88a473ed72
 {
   "results": [
     {
@@ -265,7 +265,7 @@ sha256:6bfcc949ef37a86c96a89ec4376b6ed0
   ]
 }
 -- testrun/fyne/go/inputs.sngl/pair/1 --
-sha256:eea4d5801a3477dbd00a8a8fb61beabf
+sha256:62139e790c7d7db6e094ea5c863cb947
 {
   "results": [
     {
@@ -285,7 +285,7 @@ sha256:7f53543e26382d2a2ef8c6535769964e
   ]
 }
 -- testrun/gtk4/c/cell.sngl/pair/1 --
-sha256:248d4d4a14e96eef321410de5cc5d471
+sha256:950f70a9c94b2bb8862a4fab5cd1b735
 {
   "results": [
     {
@@ -295,7 +295,7 @@ sha256:248d4d4a14e96eef321410de5cc5d471
   ]
 }
 -- testrun/gtk4/c/inputs.sngl/field/1 --
-sha256:d31551858a6f19eeac6120b7ba0c7cd2
+sha256:c269935007430bcad6ce959b0d30923c
 {
   "results": [
     {
@@ -305,7 +305,7 @@ sha256:d31551858a6f19eeac6120b7ba0c7cd2
   ]
 }
 -- testrun/gtk4/c/inputs.sngl/pair/1 --
-sha256:d7e82b12e7b7bbd825b1153ec01b468f
+sha256:e0fc097fcd0a3b337f8edac7251ff3a8
 {
   "results": [
     {
@@ -325,7 +325,7 @@ sha256:a962b2fc0f283af1770edaacef69ead7
   ]
 }
 -- testrun/gtk4/go/cell.sngl/pair/1 --
-sha256:3a7c60d03deb6b8a69cd1d3825b2b8fa
+sha256:4f4e065979fe88f0bef20d2703a09f60
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:3a7c60d03deb6b8a69cd1d3825b2b8fa
   ]
 }
 -- testrun/gtk4/go/inputs.sngl/field/1 --
-sha256:f66d38c5058c6c383e775aa5a9ac9421
+sha256:7208854cb3431c7c4fbfafc822286331
 {
   "results": [
     {
@@ -345,7 +345,7 @@ sha256:f66d38c5058c6c383e775aa5a9ac9421
   ]
 }
 -- testrun/gtk4/go/inputs.sngl/pair/1 --
-sha256:93d79291ef8cd8469357dad9d3602d61
+sha256:582b8ca1a8a928e16c4b9331b861f1e3
 {
   "results": [
     {
@@ -365,7 +365,7 @@ sha256:278108d4a6f74713396ecc6a14ab1eda
   ]
 }
 -- testrun/html/none/cell.sngl/pair/1 --
-sha256:50909858833d8a92996c3829dd1b0d27
+sha256:8d9b8d1b633e8bb941459cf70342bd4e
 {
   "results": [
     {
@@ -375,7 +375,7 @@ sha256:50909858833d8a92996c3829dd1b0d27
   ]
 }
 -- testrun/html/none/inputs.sngl/field/1 --
-sha256:cbaf2e529ecce5028f31427a6b1cfef8
+sha256:3100b65d5f83c98df3bd7be036276f56
 {
   "results": [
     {
@@ -385,7 +385,7 @@ sha256:cbaf2e529ecce5028f31427a6b1cfef8
   ]
 }
 -- testrun/html/none/inputs.sngl/pair/1 --
-sha256:8c20ac28455b268445dd71372c7766b4
+sha256:a1d0d902f09a7b2e95ccf85b73013707
 {
   "results": [
     {
@@ -405,7 +405,7 @@ sha256:7ff239ae4b0641c12a1c76f7b46dd23f
   ]
 }
 -- testrun/win32/c/cell.sngl/pair/1 --
-sha256:c511d9415a89b4df0091171b4035c99a
+sha256:52dcf4d1d359ca55cb04c54575204e7b
 {
   "results": [
     {
@@ -415,7 +415,7 @@ sha256:c511d9415a89b4df0091171b4035c99a
   ]
 }
 -- testrun/win32/c/inputs.sngl/field/1 --
-sha256:72129bbe2f0c157a1dc55fe37bd1c831
+sha256:74ed3e54d262793e01be8d536b3271c8
 {
   "results": [
     {
@@ -425,7 +425,7 @@ sha256:72129bbe2f0c157a1dc55fe37bd1c831
   ]
 }
 -- testrun/win32/c/inputs.sngl/pair/1 --
-sha256:78f5146b1515bb23fdbe5190edcd5495
+sha256:e147a5e9b4b0f71db6bfc9e044687692
 {
   "results": [
     {
@@ -435,7 +435,7 @@ sha256:78f5146b1515bb23fdbe5190edcd5495
   ]
 }
 -- testrun/win32/c/state.sngl/pair/1 --
-sha256:487e95753e5028129a13472c25f15fb3
+sha256:9430edfa7a848cc0af63b49e4ea2cb4d
 {
   "results": [
     {
@@ -445,7 +445,7 @@ sha256:487e95753e5028129a13472c25f15fb3
   ]
 }
 -- testrun/win32/go/cell.sngl/pair/1 --
-sha256:fbec10fe5229a70c7f86ad83e7c9e714
+sha256:e58318815c4313be8619dcb2c2892b98
 {
   "results": [
     {
@@ -455,7 +455,7 @@ sha256:fbec10fe5229a70c7f86ad83e7c9e714
   ]
 }
 -- testrun/win32/go/inputs.sngl/field/1 --
-sha256:92ca7d1068e07426a0fa6dd0989513ca
+sha256:1a3bdd3889ccf2b03ee4f41978211ee0
 {
   "results": [
     {
@@ -465,7 +465,7 @@ sha256:92ca7d1068e07426a0fa6dd0989513ca
   ]
 }
 -- testrun/win32/go/inputs.sngl/pair/1 --
-sha256:78add0ba1e737e5b63bb783ab05edc8a
+sha256:3c703df1d28effbf933501cbf7953882
 {
   "results": [
     {
@@ -475,7 +475,7 @@ sha256:78add0ba1e737e5b63bb783ab05edc8a
   ]
 }
 -- testrun/win32/go/state.sngl/pair/1 --
-sha256:cc2cb519d914f248ef975dce0aa69b60
+sha256:d98a231ee70c27c2948460534ba994fd
 {
   "results": [
     {

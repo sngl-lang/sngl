@@ -81,8 +81,21 @@ var tokenColors = map[string]string{
 	"comment":  "8", // bright black
 }
 
-// withToken overlays what a `token` span says it is.
-func (c spanCascade) withToken(kind string) spanCascade {
+// withToken overlays what a `token` span says it is. A kind read at run time
+// asks tui.TokenColor, which holds the same table.
+func (vc *irViewContext) withToken(c spanCascade, e ir.Expr) spanCascade {
+	kind := enumMember(e)
+	if kind == "" {
+		vc.requireImport(tuiImportPath)
+		k := vc.gc.EvalExpr(e)
+		fallback := c.color
+		if fallback == "" {
+			fallback = `""`
+		}
+		c.color = fmt.Sprintf("tui.TokenColor(%s, %s)", k, fallback)
+		c.faint = orGo(c.faint, fmt.Sprintf("%s == %q", k, "comment"))
+		return c
+	}
 	if col, ok := tokenColors[kind]; ok {
 		c.color = strconv.Quote(col)
 	}
@@ -301,7 +314,7 @@ func (vc *irViewContext) renderSpan(stmt ir.Stmt, accVar string, c spanCascade) 
 		}
 		c = vc.withSpanStyle(c, codegen.NodeProp(s, "spanStyle"))
 		if k := codegen.NodeProp(s, "kind"); k != nil {
-			c = c.withToken(enumMember(k))
+			c = vc.withToken(c, k)
 		}
 		c = vc.withPaletteColor(c, codegen.NodeProp(s, "color"))
 		if text := codegen.NodeProp(s, "text"); text != nil {

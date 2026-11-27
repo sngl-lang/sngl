@@ -522,7 +522,8 @@ type Test struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	name string
+	name          string
+	edited__inst0 bool
 
 	__n2 *fyne.Container
 	__n0 *fynelayout.Entry
@@ -540,6 +541,16 @@ func (m *Model) __init(preset map[string]bool) {
 	if !preset["name"] {
 		m.name = "World"
 	}
+	if !preset["edited__inst0"] {
+		m.edited__inst0 = false
+	}
+}
+
+func (m *Model) commit__inst0(v string) {
+	m.name = v
+	m.__n0.SetText(m.name)
+	m.__n1.SetText((("Hello, " + m.name) + "!"))
+	m.edited__inst0 = false
 }
 
 func (m *Model) __wrote_name() {
@@ -552,13 +563,24 @@ func (m *Model) __n0_input_handler(v string) {
 		m.name = v
 		m.__n0.SetText(m.name)
 		m.__n1.SetText((("Hello, " + m.name) + "!"))
+		m.edited__inst0 = true
 	}
 }
 
 func (m *Model) __n0_change_handler(v string) {
-	m.name = v
-	m.__n0.SetText(m.name)
-	m.__n1.SetText((("Hello, " + m.name) + "!"))
+	m.commit__inst0(v)
+}
+
+func (m *Model) __n0_submit_handler(v string) {
+	if m.edited__inst0 {
+		m.commit__inst0(v)
+	}
+}
+
+func (m *Model) __n0_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.name)
+	}
 }
 
 func (m *Model) Name() string {
@@ -569,6 +591,14 @@ func (m *Model) SetName(v string) {
 	m.name = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n2 = fynelayout.NewVBox()
@@ -576,7 +606,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetText(m.name)
 	m.__n0.SetPlaceHolder("Enter your name")
 	m.__n0.OnChanged = m.__n0_input_handler
-	m.__n0.OnSubmitted = m.__n0_change_handler
+	m.__n0.OnCommit = m.__n0_change_handler
+	m.__n0.OnSubmitted = m.__n0_submit_handler
+	m.__n0.OnFocusLost = m.__n0_leave_handler
 	m.__n2.Add(m.__n0)
 	m.__n1 = widget.NewLabel("")
 	m.__n1.SetText((("Hello, " + m.name) + "!"))
@@ -827,6 +859,7 @@ type snglState struct {
 	_holding            bool
 	_started            bool
 	name                string
+	edited__inst0       bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -3195,6 +3228,13 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 	return ((ga > gb) || ((ga == gb) && (a > b)))
 }
 
+func Commit__inst0(v string) {
+	m.name = v
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
+	m.edited__inst0 = false
+	__effects0_settle()
+}
+
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.entry))) != m.__effect0_key {
 		SetEntryText(m.entry, m.__effect0_key)
@@ -3251,14 +3291,15 @@ func Entry_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.name {
 		m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
+		m.edited__inst0 = true
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), (("Hello, " + m.name) + "!"))
-	__effects0_settle()
+	if m.edited__inst0 {
+		Commit__inst0(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func snglInit() {
@@ -3269,6 +3310,7 @@ func snglInit() {
 	m._holding = false
 	m._started = false
 	m.name = "World"
+	m.edited__inst0 = false
 	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
@@ -3398,8 +3440,10 @@ private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T
 class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
     var name by mutableStateOf(__snglPre(__pre, "name") { "World" })
+    var edited__inst0 by mutableStateOf(__snglPre(__pre, "edited__inst0") { false })
     fun commit__inst0(v: String) {
         name = v
+        edited__inst0 = false
     }
 }
 
@@ -3410,8 +3454,11 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
         SnglTextField(value = state.name, label = "Enter your name", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier, onValueChange = { v ->
             state.name = v
+            state.edited__inst0 = true
         }, onCommit = {
-            state.commit__inst0(state.name)
+            if (state.edited__inst0) {
+            	state.commit__inst0(state.name)
+            }
         }, onSubmit = {})
         Text(text = (("Hello, " + state.name) + "!"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
@@ -3597,10 +3644,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -3608,7 +3652,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -3617,16 +3661,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -3643,7 +3679,7 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }
@@ -3736,17 +3772,43 @@ window.__sngl_boot = () => {
   if (typeof window !== "undefined") {
     Object.assign(window, { __wrote_name });
   }
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
+  }
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n0.addEventListener("input", function(e) {
     state.name = e.currentTarget.value;
     __n0.value = state.name;
     __n1.textContent = "Hello, " + state.name + "!";
+    _snglMarkEdited(e.currentTarget);
   });
   __n0.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
-    __n0.value = state.name;
-    __n1.textContent = "Hello, " + state.name + "!";
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
+      ;
+      state.name = e.currentTarget.value;
+      __n0.value = state.name;
+      __n1.textContent = "Hello, " + state.name + "!";
+    }
+    ;
+  });
+  __n0.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
+  });
+  __n0.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
   });
   function __sngl_init() {
     __n0.value = state.name;
@@ -3760,15 +3822,15 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:ce48074c571800c4037ae766bf333b1e
 -- run/go/fyne --
-pass sha256:8f31c74406f51fbf62a1768ff4ff10dd
+pass sha256:82515dd34321d8cfd6d420229a58cb03
 -- run/go/gtk4 --
-pass sha256:01875066da75df6388f2858bf6181175
+pass sha256:5a5b04d4442b382aaa39aa3d0fa6eeea
 -- run/kotlin/android --
-pass sha256:fb7eacb5b1a12f0a1a460e9e5e8b80d0
+pass sha256:0d596008759507c1ad85a00e6e241927
 -- run/none/html --
-pass sha256:dfe4e478feaa145d5d8b24e30bc0cefa
+pass sha256:b36b6451ea44397be58d0e4655dd5493
 -- testrun/html/none/component_input.sngl/main/1 --
-sha256:a5c34b9b78af6aac60ab04d03ae3000c
+sha256:548fbacf9edd810073ce2d7b37be3900
 {
   "results": [
     {

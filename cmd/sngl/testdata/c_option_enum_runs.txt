@@ -47,7 +47,7 @@ sha256:4eeb842e889fae2c5208ea4e357fbb72
   ]
 }
 -- testrun/win32/c/app.sngl/panel/1 --
-sha256:7543aa727dde65e1d93364c52f3d3bb5
+sha256:64a7a0c7ca716efcab5d8d8cbb0a19f0
 {
   "results": [
     {

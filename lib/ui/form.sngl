@@ -34,7 +34,7 @@ enum InputType { text, password, search, email, number, tel, url }
 // the field keeps its own text, starting from a one-way `value=` if given. `placeholder` shows when
 // empty; `readonly` disables edits while keeping focus/selection; set
 // `type` to what the field holds for appropriate platform behavior. `@input` fires on every keystroke, `@change` on commit
-// (blur or Enter), `@submit` on Enter. `maxLength` caps accepted input.
+// (blur or Enter) of an edit made since the last commit, `@submit` on every Enter, after the commit. `maxLength` caps accepted input.
 component input(
     placeholder string = "",
     readonly    bool = false,

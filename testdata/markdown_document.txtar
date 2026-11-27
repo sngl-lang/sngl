@@ -1695,7 +1695,7 @@ func (m Model) View() tea.View {
 																				if inner.Kind == "code" {
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = ""
 																					for _, r := range inner.Runs {
-																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(""))).Render(fmt.Sprint(r.Text))
+																						content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(tui.TokenColor(r.Token, "")))).Faint(r.Token == "comment").Render(fmt.Sprint(r.Text))
 																					}
 																					content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item_0Item_1_0Item_0Item_1_0Item_0Item_1_0Item)
 																				} else {
@@ -2543,7 +2543,7 @@ func (m Model) View() tea.View {
 																		if inner.Kind == "code" {
 																			content_0Item_0Item_1_0Item_0Item_1_0Item = ""
 																			for _, r := range inner.Runs {
-																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(""))).Render(fmt.Sprint(r.Text))
+																				content_0Item_0Item_1_0Item_0Item_1_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(tui.TokenColor(r.Token, "")))).Faint(r.Token == "comment").Render(fmt.Sprint(r.Text))
 																			}
 																			content_0Item_0Item_1_0Item_0Item_1_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item_0Item_1_0Item_0Item_1_0Item)
 																		} else {
@@ -3392,7 +3392,7 @@ func (m Model) View() tea.View {
 															if inner.Kind == "code" {
 																content_0Item_0Item_1_0Item = ""
 																for _, r := range inner.Runs {
-																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(""))).Render(fmt.Sprint(r.Text))
+																	content_0Item_0Item_1_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(tui.TokenColor(r.Token, "")))).Faint(r.Token == "comment").Render(fmt.Sprint(r.Text))
 																}
 																content_0Item_0Item_1_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item_0Item_1_0Item)
 															} else {
@@ -4241,7 +4241,7 @@ func (m Model) View() tea.View {
 												if b.Kind == "code" {
 													content_0Item = ""
 													for _, r := range b.Runs {
-														content_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(""))).Render(fmt.Sprint(r.Text))
+														content_0Item += lipgloss.NewStyle().Foreground(lipgloss.Color(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token).Or(tui.TokenColor(r.Token, "")))).Faint(r.Token == "comment").Render(fmt.Sprint(r.Text))
 													}
 													content_0Item = BoxLook(Style{Padding: snglSome(Measurement{Px: 12}), FlexDirection: "unset", AlignItems: "unset", JustifyContent: "unset", Position: "unset", FontWeight: "unset", FontStyle: "unset", TextAlign: "unset", WhiteSpace: "unset", Background: snglSome(snglcolor.Color{R: 245, G: 245, B: 245, A: 255}), BorderRadius: snglSome(Measurement{Px: 4}), BorderStyle: "unset", Display: "unset", ListStyleType: "unset"}, false).Render(content_0Item)
 												} else {
@@ -9816,7 +9816,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:1277a5d060e54c56ddb69361caca30c6
+pass sha256:7354265e0f557b54d464fcc0d220a787
 -- run/go/fyne --
 pass sha256:801f0764bfad796bc6814bfac3df09f8
 -- run/none/html --

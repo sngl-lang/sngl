@@ -1,6 +1,7 @@
 package testlaunch
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -162,5 +163,48 @@ func TestAToolIsAnsweredFromItsRecord(t *testing.T) {
 				t.Errorf("out, err = %q, %v, want %q", out, err, tc.err)
 			}
 		})
+	}
+}
+
+// verify holds a rerun's picture to its record as a snapshot assertion holds
+// one to its golden: a marquee's frame or a font's antialiasing moves a few
+// pixels between runs, and a layout that moved moves far more.
+func TestVerifyHoldsAPictureWithinTheSnapshotTolerance(t *testing.T) {
+	gen := t.TempDir()
+	if err := os.WriteFile(filepath.Join(gen, "main.c"), []byte("int main;"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	picture := func(changed int) []byte {
+		pix := bytes.Repeat([]byte{0, 0, 0, 255}, 20*20)
+		for i := range changed {
+			pix[i*4] = 255
+		}
+		data, err := encodePixels(pix, 20, 20)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return data
+	}
+	var snaps string
+	run := func(rr *Records, png []byte) error {
+		snaps = t.TempDir()
+		_, err := rr.answer("k", gen, snaps, func() ([]*codegen.TestResult, error) {
+			return []*codegen.TestResult{{Desc: "x", Passed: true}}, os.WriteFile(filepath.Join(snaps, "app.png"), png, 0o644)
+		})
+		return err
+	}
+	seed := NewRecords(map[string]Record{}, true, false)
+	if err := run(seed, picture(0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(NewRecords(seed.Written(), false, true), picture(1)); err != nil {
+		t.Errorf("one pixel in 400 moved: %v", err)
+	}
+	// A later launch asserting against the picture digests what is on disk.
+	if left, _ := os.ReadFile(filepath.Join(snaps, "app.png")); !bytes.Equal(left, picture(0)) {
+		t.Error("the rerun left its own picture, not the record's")
+	}
+	if err := run(NewRecords(seed.Written(), false, true), picture(40)); err == nil || !strings.Contains(err.Error(), "disagrees") {
+		t.Errorf("40 pixels in 400 moved: err = %v, want a disagreement", err)
 	}
 }

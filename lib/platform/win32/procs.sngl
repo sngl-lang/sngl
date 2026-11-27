@@ -25,6 +25,7 @@ struct _On {
     change    func() = func() {}
     activate  func() = func() {}
     activates bool = false
+    leave     func() = func() {}
     closed    func() = func() {}
     reach     func() = func() {}
     load      func() = func() {}
@@ -351,6 +352,12 @@ func _onActivate(w api.HWND, activate func()) {
     _on[w] = h
 }
 
+func _onLeave(w api.HWND, leave func()) {
+    var h = _handlers(w)
+    h.leave = leave
+    _on[w] = h
+}
+
 func _onClosed(w api.HWND, closed func()) {
     var h = _handlers(w)
     h.closed = closed
@@ -399,6 +406,13 @@ func _changed(w api.HWND) {
 func _activated(w api.HWND) {
     if _on.contains(w) {
         var f = _on[w].activate
+        f()
+    }
+}
+
+func _left(w api.HWND) {
+    if _on.contains(w) {
+        var f = _on[w].leave
         f()
     }
 }
@@ -937,6 +951,10 @@ func _command(w api.HWND, msg api.UINT, wp api.WPARAM, lp api.LPARAM, kind int) 
         // EN_KILLFOCUS: a multi-line edit's text is committed as it is
         // left, Enter being a line of it.
         _activated(src)
+        return 0
+    }
+    if code == 512 && k.kind == _kEdit {
+        _left(src)
         return 0
     }
     if code == 1 && k.kind == _kSelect {

@@ -235,7 +235,7 @@ func emitCopyHandler(vw *viewWalk, h *ir.EventHandler, value string, info *irAna
 		vw.line("%s", l)
 	}
 	var sync strings.Builder
-	syncMutatedInputs(&sync, h.Func.Block, info.widgets, info.binds, hgc)
+	syncMutatedInputs(&sync, h.Func.Block, info)
 	for l := range strings.SplitSeq(strings.TrimRight(sync.String(), "\n"), "\n") {
 		if l = strings.TrimSpace(l); l != "" {
 			vw.line("%s", l)
@@ -273,6 +273,9 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 			if hasInput {
 				emitCopyHandler(vw, codegen.NodeHandler(w.node, "input"), "__v", info, gc)
 			}
+			if marksEdits(w) {
+				vw.line("m.%s[__key] = true", editedField(w))
+			}
 			vw.indent--
 			vw.line("}")
 			switch {
@@ -280,6 +283,12 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 				vw.line("if __v := %s; __v != __prev {", readOf("w", val.get))
 				vw.indent++
 				emitCopyHandler(vw, codegen.NodeHandler(w.node, "change"), "__v", info, gc)
+				vw.indent--
+				vw.line("}")
+			case entersToCommit(w):
+				vw.line("if __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {")
+				vw.indent++
+				emitCopyEnter(vw, w, info, gc)
 				vw.indent--
 				vw.line("}")
 			case hasChange:
@@ -295,6 +304,23 @@ func emitLoopWidgetForward(b *strings.Builder, w widgetInfo, info *irAnalysis, g
 		vw.line("}")
 	})
 	fmt.Fprintf(b, "%s\t}()\n%s}\n", indent, indent)
+}
+
+// emitCopyEnter writes what Enter in a copy of a single-line field runs, the
+// copy being w: the commit of an edit, then the @submit.
+func emitCopyEnter(vw *viewWalk, w widgetInfo, info *irAnalysis, gc *golang.GoIRContext) {
+	val, _, _ := widgetPayloadEvents(w)
+	if marksEdits(w) {
+		vw.line("if m.%s[__key] {", editedField(w))
+		vw.indent++
+		vw.line("delete(m.%s, __key)", editedField(w))
+		emitCopyHandler(vw, codegen.NodeHandler(w.node, "change"), readOf("w", val.get), info, gc)
+		vw.indent--
+		vw.line("}")
+	}
+	if submits(w) {
+		emitCopyHandler(vw, codegen.NodeHandler(w.node, "submit"), "", info, gc)
+	}
 }
 
 // emitLoopWidgetInvokers writes a test's invokers for a widget under a loop
@@ -313,12 +339,17 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 	for _, ev := range []struct {
 		name string
 		want bool
-	}{{"input", val.goType == "string" && !choosesOnMove(w)}, {"change", commits(w)}} {
+	}{{"input", val.goType == "string" && !choosesOnMove(w)}, {"change", commits(w)}, {"submit", submits(w)}} {
 		if !ev.want {
 			continue
 		}
 		drive := func(method, lead, pre, match string, counted bool) {
-			fmt.Fprintf(b, "func (m *Model) %s(%sv %s) {\n%s\tfunc() {\n", method, lead, val.goType, pre)
+			param := "v " + val.goType
+			if ev.name == "submit" {
+				param = ""
+				lead = strings.TrimSuffix(lead, ", ")
+			}
+			fmt.Fprintf(b, "func (m *Model) %s(%s%s) {\n%s\tfunc() {\n", method, lead, param, pre)
 			walkCopies(b, w, gc, 2, func(vw *viewWalk, gc *golang.GoIRContext) {
 				cond := match
 				if !counted {
@@ -328,9 +359,25 @@ func emitLoopWidgetInvokers(b *strings.Builder, w widgetInfo, info *irAnalysis, 
 				vw.indent++
 				vw.line("__key := %s", gc.EvalExpr(lower.CopyIdentity(w.loop.loops)))
 				vw.line("w := %s", copyCall(w, gc))
+				if ev.name == "submit" {
+					emitCopyEnter(vw, w, info, gc)
+					vw.line("return")
+					vw.indent--
+					vw.line("}")
+					if counted {
+						vw.line("__n++")
+					}
+					return
+				}
 				vw.line("w%s(v)", val.set)
 				vw.line("m.%s[__key] = w", w.fieldName)
 				emitCopyHandler(vw, w.loop.bind, "v", info, gc)
+				switch {
+				case ev.name == "input" && marksEdits(w):
+					vw.line("m.%s[__key] = true", editedField(w))
+				case ev.name == "change" && marksEdits(w):
+					vw.line("delete(m.%s, __key)", editedField(w))
+				}
 				emitCopyHandler(vw, codegen.NodeHandler(w.node, ev.name), "v", info, gc)
 				vw.line("return")
 				vw.indent--

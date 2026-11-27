@@ -11,7 +11,8 @@
 # can be selected refusing one; a tree's TVN_ITEMEXPANDED reaching
 # `@expand`; a modal's close box, which reports `@close` only where it is
 # closable; and WM_DPICHANGED, which sizes the window as Windows suggests
-# and lays it out at the new DPI. The snapshot holds what the procedures
+# and lays it out at the new DPI, a text a line of the message font at that
+# DPI tall, whatever the font. The snapshot holds what the procedures
 # paint: the colors, the drawn button, a card's frame and a bar's text. In
 # C and Go, on 64- and 32-bit Windows under Wine, and in Go calling C
 # directly.
@@ -92,7 +93,8 @@ func expand(n ui.node) int
 func closeOwned(n ui.node) int
 
 // WM_DPICHANGED to n's window, `dpi` and a frame 300 by 400, and then its
-// client size and the size of the text labeled `text`.
+// client size and the size of the text labeled `text`, its height `L`
+// where it is a line of the message font at `dpi`.
 #[c.native("peek_dpi")]
 func dpiChanged(n ui.node, dpi int, text string) string
 
@@ -112,7 +114,7 @@ component main ui.node {
     ui.vbox(style={background=#204060, padding=4px, gap=2px}) {
         ui.text #status(value="ink", style={color=#ff8000})
         ui.text(value="own", style={color=#00ff00, background=#0000ff})
-        ui.input(value=name, @change(v) { submits += 1 })
+        ui.input(value=name, @submit { submits += 1 })
         ui.textarea(value=notes, rows=2, @change(v) { commits += 1 })
         ui.button(text="Paint", style={background=#c03030, color=#ffffff})
         ui.button(text="Plain")
@@ -212,7 +214,7 @@ func testAModalClosesWhereItIsClosable(t test.Test, c main) {
 func testDraws(t test.Test, c main) {
     t.wait(func() => false, 50)
     t.snapshot("painted")
-    t.assert(dpiChanged(c.status, 144, "ink") == "top 292x366 text 280x21")
+    t.assert(dpiChanged(c.status, 144, "ink") == "top 292x366 text 280xL")
 }
 -- peek.h --
 #include <windows.h>
@@ -434,6 +436,29 @@ int peek_close_owned(HWND any) {
 	return o.n;
 }
 
+typedef BOOL(WINAPI *metrics_for_dpi)(UINT, UINT, PVOID, UINT, UINT);
+
+/* line_at is the height of a line of the message font at dpi. */
+static int line_at(int dpi) {
+	NONCLIENTMETRICSW ncm;
+	memset(&ncm, 0, sizeof ncm);
+	ncm.cbSize = sizeof ncm;
+	metrics_for_dpi for_dpi = (metrics_for_dpi)(void (*)(void))GetProcAddress(GetModuleHandleW(L"user32.dll"), "SystemParametersInfoForDpi");
+	if (!for_dpi || !for_dpi(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0, (UINT)dpi)) {
+		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
+		ncm.lfMessageFont.lfHeight = MulDiv(ncm.lfMessageFont.lfHeight, dpi, 96);
+	}
+	HDC dc = CreateCompatibleDC(NULL);
+	HFONT font = CreateFontIndirectW(&ncm.lfMessageFont);
+	HGDIOBJ old = SelectObject(dc, font);
+	TEXTMETRICW tm;
+	GetTextMetricsW(dc, &tm);
+	SelectObject(dc, old);
+	DeleteObject(font);
+	DeleteDC(dc);
+	return tm.tmHeight;
+}
+
 const char *peek_dpi(HWND any, int dpi, const char *text) {
 	HWND top = GetAncestor(any, GA_ROOT);
 	RECT r;
@@ -443,11 +468,17 @@ const char *peek_dpi(HWND any, int dpi, const char *text) {
 	RECT c, t;
 	GetClientRect(top, &c);
 	GetWindowRect(first(any, "Static", 0, 0, text), &t);
-	snprintf(out, sizeof out, "top %ldx%ld text %ldx%ld", c.right, c.bottom, t.right - t.left, t.bottom - t.top);
+	char tall[16];
+	if (t.bottom - t.top == line_at(dpi)) {
+		snprintf(tall, sizeof tall, "L");
+	} else {
+		snprintf(tall, sizeof tall, "%ld", t.bottom - t.top);
+	}
+	snprintf(out, sizeof out, "top %ldx%ld text %ldx%s", c.right, c.bottom, t.right - t.left, tall);
 	return out;
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:14bcebce954cc6d0510f488b59d3abbc
+sha256:a61445bae0ee8add358a0f3651068041
 {
   "results": [
     {
@@ -492,7 +523,7 @@ sha256:14bcebce954cc6d0510f488b59d3abbc
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:b9e02b0da30e19f2f3bde084b63b61ed
+sha256:0e840f1d1d7643eaaf6588ba7ec3abcb
 {
   "results": [
     {
@@ -534,7 +565,7 @@ sha256:b9e02b0da30e19f2f3bde084b63b61ed
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:9a411cca175321c62b0eebb5d99c6ffe
+sha256:d1445e8be15dc1c7b15744f31f7a08a8
 {
   "results": [
     {
@@ -576,7 +607,7 @@ sha256:9a411cca175321c62b0eebb5d99c6ffe
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:1bd1c382789b815925dc342633fc44cd
+sha256:b597530a53ce03555ae95fdc08dcc0cf
 {
   "results": [
     {
@@ -618,7 +649,7 @@ sha256:1bd1c382789b815925dc342633fc44cd
   ]
 }
 -- testrun/win32/go/app.sngl/main/3 --
-sha256:fc79f3847831396e605324d100fdf526
+sha256:1e2298ad100d8277375c9313865a4602
 {
   "results": [
     {

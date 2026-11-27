@@ -9,8 +9,8 @@
 # or radio fired its change for a write and reported it as the user's.
 #
 # Typing into a field fires its @input and not its @change, which is the
-# commit's: android fired both from every keystroke. bubbletea's textarea has
-# no commit, so notes.sngl, which commits one, does not run there.
+# commit's: android fired both from every keystroke. bubbletea's textarea had
+# no commit, so a test committing one named an invoker it never wrote.
 
 sngl test --platform=none app.sngl
 stdout 'ok   5 tests, 0 failures'
@@ -34,6 +34,9 @@ sngl test --platform=none notes.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=html notes.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go notes.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=fyne --language=go notes.sngl
@@ -156,7 +159,7 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:ceefb1ab1510ae98f839014015b46176
+sha256:7de5c9bd123512692c0b00c735476e2b
 {
   "results": [
     {
@@ -182,7 +185,7 @@ sha256:ceefb1ab1510ae98f839014015b46176
   ]
 }
 -- testrun/android/kotlin/notes.sngl/main/1 --
-sha256:169f9126d76978829a308e9bdecac58f
+sha256:8dc11ea6e92717611f8cc99ff0886213
 {
   "results": [
     {
@@ -192,7 +195,7 @@ sha256:169f9126d76978829a308e9bdecac58f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:b17dd1543af96fd0975d2a840417eb56
+sha256:afdaf1c2905a9f2ae7456744b10e27d4
 {
   "results": [
     {
@@ -217,8 +220,18 @@ sha256:b17dd1543af96fd0975d2a840417eb56
     }
   ]
 }
+-- testrun/bubbletea/go/notes.sngl/main/1 --
+sha256:4431dbcf485b06f282578813d544c29f
+{
+  "results": [
+    {
+      "Desc": "CommittingFiresChange",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:f5edc37ef436d012cff82b669687cc9f
+sha256:64a7146f675391f983e24e392145e1a0
 {
   "results": [
     {
@@ -244,7 +257,7 @@ sha256:f5edc37ef436d012cff82b669687cc9f
   ]
 }
 -- testrun/fyne/go/notes.sngl/main/1 --
-sha256:2775963b827cec6d0b13756ff8653a5b
+sha256:85d0e225ea1b6ce1b7515a5f8487952a
 {
   "results": [
     {
@@ -254,7 +267,7 @@ sha256:2775963b827cec6d0b13756ff8653a5b
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:dddf3f919e2ec102c1550a26265198a5
+sha256:54c6541077bb445795d4952e902e4678
 {
   "results": [
     {
@@ -290,7 +303,7 @@ sha256:ab87d65f6cd7fd8713fd9a105e1cbaf6
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:eadd727ee45e90c90695f2922cb2dcd4
+sha256:c4b8c1324e5d42c5525484bc01a8e630
 {
   "results": [
     {

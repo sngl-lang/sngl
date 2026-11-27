@@ -288,9 +288,11 @@ component Widget(
     @click(),
     @change(text string),
     @input(text string),
+    @submit(text string),
     @toggle(flag bool),
     @adjust(number int),
     @pick(date option[time.date]),
+    @leave(),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -379,7 +381,15 @@ const component Button(text string = "", focusable bool = true, style ui.Style =
     }
 }
 
-const component Entry(text string = "", placeholder string = "", style ui.Style = ui.Style{}, @input(text string), @change(text string)) ui.node {
+const component Entry(
+    text        string = "",
+    placeholder string = "",
+    style       ui.Style = ui.Style{},
+    @input(text string),
+    @change(text string),
+    @submit(text string),
+    @leave(),
+) ui.node {
     Widget(
         spec = Spec{
             new = Native{path="duckfam.us/sngl/pkg/go/fynelayout", name="NewEntry"},
@@ -390,7 +400,9 @@ const component Entry(text string = "", placeholder string = "", style ui.Style 
             ],
             handlers = [
                 Handler{on="input", field="OnChanged", signature="func(s string)"},
-                Handler{on="change", field="OnSubmitted", signature="func(s string)"},
+                Handler{on="change", field="OnCommit", signature="func(s string)"},
+                Handler{on="submit", field="OnSubmitted", signature="func(s string)"},
+                Handler{on="leave", field="OnFocusLost", signature="func()"},
             ],
         },
         text = text,
@@ -398,6 +410,8 @@ const component Entry(text string = "", placeholder string = "", style ui.Style 
         look = lookOf(style),
         @input { input() },
         @change { change() },
+        @submit { submit() },
+        @leave { leave() },
     ) {}
 }
 
@@ -408,6 +422,7 @@ const component MultiLineEntry(
     style       ui.Style = ui.Style{},
     @input(text string),
     @change(text string),
+    @leave(),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -420,7 +435,8 @@ const component MultiLineEntry(
             ],
             handlers = [
                 Handler{on="input", field="OnChanged", signature="func(s string)"},
-                Handler{on="change", field="OnSubmitted", signature="func(s string)"},
+                Handler{on="change", field="OnCommit", signature="func(s string)"},
+                Handler{on="leave", field="OnFocusLost", signature="func()"},
             ],
         },
         text = text,
@@ -429,6 +445,7 @@ const component MultiLineEntry(
         look = lookOf(style),
         @input { input() },
         @change { change() },
+        @leave { leave() },
     ) {}
 }
 
@@ -1046,7 +1063,17 @@ func ui.select[T].change[platform](value) {
 
 // --- Text entry ---
 
-const component ui.input[platform](placeholder, value, style, @input, @change) {
+// Enter and the focus leaving commit only an edit made since the last commit,
+// and Enter then submits, as android's keyboard action does. SetText reports
+// the program's write as OnChanged, which the guard keeps from marking an
+// edit.
+const component ui.input[platform](placeholder, value, style, @input, @change, @submit) {
+    var edited = false
+    func commit(v string) {
+        value = v
+        edited = false
+        change(v)
+    }
     Entry(
         text = value,
         placeholder = placeholder,
@@ -1054,17 +1081,34 @@ const component ui.input[platform](placeholder, value, style, @input, @change) {
         @input(v) {
             if v != value {
                 value = v
+                edited = true
                 input(v)
             }
         },
-        @change(v) {
-            value = v
-            change(v)
+        @change(v) { commit(v) },
+        @submit(v) {
+            if edited {
+                commit(v)
+            }
+            submit()
+        },
+        @leave {
+            if edited {
+                commit(value)
+            }
         },
     ) {}
 }
 
+// The focus leaving commits only an edit made since the last commit; Enter is
+// a line of the text, as on android.
 const component ui.textarea[platform](placeholder, value, rows, style, @input, @change) {
+    var edited = false
+    func commit(v string) {
+        value = v
+        edited = false
+        change(v)
+    }
     MultiLineEntry(
         text = value,
         placeholder = placeholder,
@@ -1073,12 +1117,15 @@ const component ui.textarea[platform](placeholder, value, rows, style, @input, @
         @input(v) {
             if v != value {
                 value = v
+                edited = true
                 input(v)
             }
         },
-        @change(v) {
-            value = v
-            change(v)
+        @change(v) { commit(v) },
+        @leave {
+            if edited {
+                commit(value)
+            }
         },
     ) {}
 }

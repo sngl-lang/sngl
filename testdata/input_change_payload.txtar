@@ -81,6 +81,7 @@ type Model struct {
 	last           string
 	items          []string
 	value__inst0   string
+	edited__inst0  bool
 	__root         *fyne.Container
 	__slot0        []fyne.CanvasObject
 	__slot0_at     fyne.CanvasObject
@@ -109,6 +110,9 @@ func (m *Model) __init(preset map[string]bool) {
 	}
 	if !preset["value__inst0"] {
 		m.value__inst0 = ""
+	}
+	if !preset["edited__inst0"] {
+		m.edited__inst0 = false
 	}
 	if !preset["__root"] {
 		m.__root = container.NewVBox()
@@ -148,6 +152,14 @@ func __identified0(__xs []string) []__anon_id_elem_c6a818 {
 		__out = append(__out, __anon_id_elem_c6a818{Id: __id, Elem: __x})
 	}
 	return __out
+}
+
+func (m *Model) commit__inst0(v string) {
+	m.value__inst0 = v
+	m.__n3.SetText(m.value__inst0)
+	m.edited__inst0 = false
+	m.last = ("got " + v)
+	m.__n4.SetText(m.last)
 }
 
 func (m *Model) __renderSlot0(__parent *fyne.Container) {
@@ -229,14 +241,24 @@ func (m *Model) __n3_input_handler(v string) {
 	if v != m.value__inst0 {
 		m.value__inst0 = v
 		m.__n3.SetText(m.value__inst0)
+		m.edited__inst0 = true
 	}
 }
 
 func (m *Model) __n3_change_handler(v string) {
-	m.value__inst0 = v
-	m.__n3.SetText(m.value__inst0)
-	m.last = ("got " + v)
-	m.__n4.SetText(m.last)
+	m.commit__inst0(v)
+}
+
+func (m *Model) __n3_submit_handler(v string) {
+	if m.edited__inst0 {
+		m.commit__inst0(v)
+	}
+}
+
+func (m *Model) __n3_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.value__inst0)
+	}
 }
 
 func (m *Model) Last() string {
@@ -263,6 +285,14 @@ func (m *Model) SetValue__inst0(v string) {
 	m.value__inst0 = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n6 = fynelayout.NewVBox()
@@ -270,7 +300,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.SetText(m.value__inst0)
 	m.__n3.SetPlaceHolder("")
 	m.__n3.OnChanged = m.__n3_input_handler
-	m.__n3.OnSubmitted = m.__n3_change_handler
+	m.__n3.OnCommit = m.__n3_change_handler
+	m.__n3.OnSubmitted = m.__n3_submit_handler
+	m.__n3.OnFocusLost = m.__n3_leave_handler
 	m.__n6.Add(m.__n3)
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText(m.last)
@@ -282,16 +314,18 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 
 // RowInstance is one live instance of the Row component.
 type RowInstance struct {
-	Root         fyne.CanvasObject
-	__model      *Model
-	__prop_label string
-	committed    string
-	value__inst1 string
-	value__inst2 string
-	__root       *fyne.Container
-	__n0         *fynelayout.Entry
-	__n1         *fynelayout.Entry
-	__n2         *widget.Label
+	Root          fyne.CanvasObject
+	__model       *Model
+	__prop_label  string
+	committed     string
+	value__inst1  string
+	value__inst2  string
+	edited__inst1 bool
+	edited__inst2 bool
+	__root        *fyne.Container
+	__n0          *fynelayout.Entry
+	__n1          *fynelayout.Entry
+	__n2          *widget.Label
 }
 
 func newRowInstance(__model *Model, __a_label string) *RowInstance {
@@ -301,6 +335,8 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.committed = ""
 	c.value__inst1 = ""
 	c.value__inst2 = ""
+	c.edited__inst1 = false
+	c.edited__inst2 = false
 	c.__root = container.NewVBox()
 	__n7 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewEntry()
@@ -310,13 +346,21 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		if v != c.value__inst1 {
 			c.value__inst1 = v
 			c.__n0.SetText(c.value__inst1)
+			c.edited__inst1 = true
 		}
 	}
+	c.__n0.OnCommit = func(v string) {
+		c.commit__inst1(v)
+	}
 	c.__n0.OnSubmitted = func(v string) {
-		c.value__inst1 = v
-		c.__n0.SetText(c.value__inst1)
-		c.committed = v
-		c.__n2.SetText(c.committed)
+		if c.edited__inst1 {
+			c.commit__inst1(v)
+		}
+	}
+	c.__n0.OnFocusLost = func() {
+		if c.edited__inst1 {
+			c.commit__inst1(c.value__inst1)
+		}
 	}
 	__n7.Add(c.__n0)
 	c.__n1 = fynelayout.NewMultiLineEntry()
@@ -327,13 +371,16 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		if v != c.value__inst2 {
 			c.value__inst2 = v
 			c.__n1.SetText(c.value__inst2)
+			c.edited__inst2 = true
 		}
 	}
-	c.__n1.OnSubmitted = func(v string) {
-		c.value__inst2 = v
-		c.__n1.SetText(c.value__inst2)
-		c.committed = ((c.__prop_label + ":") + v)
-		c.__n2.SetText(c.committed)
+	c.__n1.OnCommit = func(v string) {
+		c.commit__inst2(v)
+	}
+	c.__n1.OnFocusLost = func() {
+		if c.edited__inst2 {
+			c.commit__inst2(c.value__inst2)
+		}
 	}
 	__n7.Add(c.__n1)
 	c.__n2 = widget.NewLabel("")
@@ -341,6 +388,22 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	__n7.Add(c.__n2)
 	c.Root = __n7
 	return c
+}
+
+func (c *RowInstance) commit__inst1(v string) {
+	c.value__inst1 = v
+	c.__n0.SetText(c.value__inst1)
+	c.edited__inst1 = false
+	c.committed = v
+	c.__n2.SetText(c.committed)
+}
+
+func (c *RowInstance) commit__inst2(v string) {
+	c.value__inst2 = v
+	c.__n1.SetText(c.value__inst2)
+	c.edited__inst2 = false
+	c.committed = ((c.__prop_label + ":") + v)
+	c.__n2.SetText(c.committed)
 }
 
 func (c *RowInstance) SetLabel(__v string) {
@@ -448,6 +511,7 @@ type Row__inst struct {
 	Committed           string
 	Value__inst1        string
 	Value__inst2        string
+	Edited__inst1       bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -630,6 +694,7 @@ type snglState struct {
 	last                string
 	items               []string
 	value__inst0        string
+	edited__inst0       bool
 	__effect2_key       string
 	__effect2_live      []string
 	__effect2_desired   []string
@@ -3138,17 +3203,16 @@ func Row__new(label string) *Row__inst {
 		func(e cgo.Widget) {
 			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Value__inst1 {
 				__self.Value__inst1 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+				__self.Edited__inst1 = true
 			}
 			Row__effects0_settle(__self)
 		}(__self.Entry)
 	})
 	_rtSignalConnect(__self.Entry, "activate", func() {
 		func(e cgo.Widget) {
-			__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-			__self.Value__inst1 = __input_value_wrote1
-			__self.Committed = __input_value_wrote1
-			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Committed)
-			Row__effects0_settle(__self)
+			if __self.Edited__inst1 {
+				Row__commit__inst1(__self, cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+			}
 		}(__self.Entry)
 	})
 	_rtBoxAppend(__self.__n4, __self.Entry)
@@ -3182,6 +3246,14 @@ func Row__new(label string) *Row__inst {
 	Row__effects0_settle(__self)
 	__self.__root = __self.__n4
 	return __self
+}
+
+func Row__commit__inst1(this *Row__inst, v string) {
+	this.Value__inst1 = v
+	this.Edited__inst1 = false
+	this.Committed = v
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(this.__n0)), this.Committed)
+	Row__effects0_settle(this)
 }
 
 func Row__effect0_mount(__self *Row__inst) {
@@ -3269,6 +3341,14 @@ func Row__set_label(__self *Row__inst, __v string) {
 
 func Row__destroy(__self *Row__inst) {
 	return
+}
+
+func Commit__inst0(v string) {
+	m.value__inst0 = v
+	m.edited__inst0 = false
+	m.last = ("got " + v)
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.last)
+	__effects1_settle()
 }
 
 func __effect2_mount() {
@@ -3413,16 +3493,15 @@ func __snglTeardown() {
 func Entry_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.value__inst0 {
 		m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+		m.edited__inst0 = true
 	}
 	__effects1_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	__input_value_wrote1 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	m.value__inst0 = __input_value_wrote1
-	m.last = ("got " + __input_value_wrote1)
-	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n1)), m.last)
-	__effects1_settle()
+	if m.edited__inst0 {
+		Commit__inst0(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func snglInit() {
@@ -3435,6 +3514,7 @@ func snglInit() {
 	m.last = ""
 	m.items = []string{"a"}
 	m.value__inst0 = ""
+	m.edited__inst0 = false
 	m.__effect2_key = ""
 	m.__effect2_live = []string{}
 	m.__effect2_desired = []string{}
@@ -3534,6 +3614,6 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:0998d69f70352717020906c08d1691aa
+pass sha256:1653c7b94cfcd6ba63096f235d635cd8
 -- run/go/gtk4 --
-pass sha256:74c2ae0cc175060e3767c2782635de27
+pass sha256:2b97ff9102d3b3909b376808c176dc06

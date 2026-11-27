@@ -694,13 +694,13 @@ component OutlinedTextField(
 ) ui.node
 
 // sngl:ui's input and textarea: an OutlinedTextField reporting each edit to
-// `onValueChange` and committing to `onCommit` as the focus leaves it or, if
+// `onValueChange` and calling `onCommit` as the focus leaves it or, if
 // `commitsOnDone`, at the keyboard's Done or a hardware Enter, the field then
-// being one line, after which `onSubmit` is called. Only an edit since the
-// last commit is committed, and a field removed while focused commits nothing.
-// Kotlin the platform ships (codegen/platform/android/textfield.kt), since
-// whether the text was edited since the last commit is state of the field's
-// own.
+// being one line, after which `onSubmit` is called. A field removed while
+// focused calls neither. Whether there is an edit to commit is the override's
+// to say, since a test's change commits too. Kotlin the platform ships
+// (codegen/platform/android/textfield.kt), since the focus leaving is a
+// modifier node's.
 #[gen.renders(identity)]
 #[intrinsic("android:SnglTextField")]
 component SnglTextField(

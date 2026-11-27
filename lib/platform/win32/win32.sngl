@@ -197,6 +197,10 @@ func _rtOnActivate(w ui.node, fn func()) {
     _onActivate(_handle(w), fn)
 }
 
+func _rtOnLeave(w ui.node, fn func()) {
+    _onLeave(_handle(w), fn)
+}
+
 // A control's or a toplevel's text, which the runtime measures it by again.
 func _rtSetText(w ui.node, text string) {
     _setText(_handle(w), text)
@@ -734,7 +738,7 @@ func _fire_CheckBox_click(b CheckBox, checked bool) {
 // A single-line EDIT control. `@change` is each change to its text the user
 // makes, and `@activate` Enter pressed in it.
 #[marks.intrinsic("win32:Edit")]
-component Edit(look Look, @change(), @activate()) ui.node
+component Edit(look Look, @change(), @activate(), @leave()) ui.node
 
 #[c.native("sngl_win32_edit")]
 #[go.native("duckfam.us/sngl/lib/platform/win32/cgo", "cgo.SnglWin32Edit")]
@@ -775,6 +779,11 @@ func _on_Edit_change(e Edit, change func()) {
 #[gen.protocol(on)]
 func _on_Edit_activate(e Edit, activate func()) {
     _rtOnActivate(e, activate)
+}
+
+#[gen.protocol(on)]
+func _on_Edit_leave(e Edit, leave func()) {
+    _rtOnLeave(e, leave)
 }
 
 #[c.native("sngl_win32_fire_change")]
@@ -2897,23 +2906,54 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 // The value is pushed by an effect rather than bound, as gtk4's is: the
 // edit reports each change it is given as one the user made, so only a
 // value it does not already show is written, and quietly.
-const component ui.input[platform](value, focusable, style, @input, @change) {
+//
+// Enter and the focus leaving commit only an edit made since the last commit,
+// and Enter then submits, as android's keyboard action does.
+const component ui.input[platform](value, focusable, style, @input, @change, @submit) {
+    var edited = false
+    func commit(v string) {
+        value = v
+        edited = false
+        change(v)
+    }
     Edit #entry(
         look = lookOf(style),
         @change {
             if editText(entry) != value {
                 value = editText(entry)
+                edited = true
                 input(value)
             }
         },
         @activate {
-            value = editText(entry)
-            change(value)
+            if edited {
+                commit(editText(entry))
+            }
+            submit()
+        },
+        @leave {
+            if edited {
+                commit(editText(entry))
+            }
         },
     ) {}
     effect(on=value, @mount(v) {
         setEditText(entry, v)
     })
+}
+
+func ui.input.change[platform](value) {
+    commit(value)
+}
+
+func ui.input.submit[platform]() {
+    _rtFireActivate(entry, editText(entry))
+}
+
+// A test focuses the edit as a click or Tab does, so the focus leaving
+// another reaches its own path.
+func ui.input.focus[platform]() {
+    api.SetFocus(_handle(entry))
 }
 
 // As ui.input's, but for Enter, which is a line of the text: the text is

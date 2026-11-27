@@ -225,7 +225,9 @@ func wineEnv(prefix string) []string {
 // make: its windows drawn by the null driver, which needs no display and
 // still draws each into a bitmap PrintWindow can read.
 func winePrefix(ctx context.Context) (string, error) {
-	prefix := filepath.Join(codegen.SnglCacheDir(), "wine")
+	// Named for the steps below, so a branch taking other steps never runs
+	// in, or removes, a prefix another branch made.
+	prefix := filepath.Join(codegen.SnglCacheDir(), "wine-2")
 	ready := filepath.Join(prefix, ".sngl-ready")
 	if _, err := os.Stat(ready); err == nil {
 		return prefix, nil
@@ -250,6 +252,8 @@ func winePrefix(ctx context.Context) (string, error) {
 	steps := [][]string{
 		{"wineboot", "-i"},
 		{"wine", "reg", "add", `HKCU\Software\Wine\Drivers`, "/v", "Graphics", "/d", "null", "/f"},
+		// Snapshot records were drawn in 8pt; Wine 11.22 defaults to 9pt.
+		{"wine", "reg", "add", `HKCU\Control Panel\Desktop\WindowMetrics`, "/v", "MessageFont", "/t", "REG_BINARY", "/d", messageFont, "/f"},
 		// The registry reaches the disk as the server ends.
 		{"wineserver", "-w"},
 	}
@@ -269,6 +273,12 @@ func winePrefix(ctx context.Context) (string, error) {
 	}
 	return prefix, nil
 }
+
+// messageFont is the LOGFONTW of 8pt Tahoma at 96 DPI, as reg add takes
+// binary: a height of -11, weight 400, DEFAULT_CHARSET, the face padded to
+// LF_FACESIZE.
+var messageFont = "f5ffffff" + strings.Repeat("00", 12) + "90010000" + "00000001" + "00000000" +
+	"5400610068006f006d006100" + strings.Repeat("00", 64-12)
 
 // StderrToFile points cmd's stderr, a program Wine runs, at a file, and is
 // what was written to it, which also closes it. The first program of a

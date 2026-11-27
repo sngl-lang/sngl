@@ -245,6 +245,7 @@ func emitSnapshotMethods(info *irAnalysis) (string, []string) {
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
+	deps *codegen.DepTracker
 	// tests is whether the package holds a test, whose invokers are its own:
 	// a build to ship holds none, and writes none of them.
 	tests     bool
@@ -326,6 +327,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	gc.OffLoop = &golang.OffLoopSnapshots{}
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
+		deps:           ctx.Deps,
 		gc:             gc,
 		tests:          codegen.BuildsTests(ctx.Pkg),
 	}
@@ -577,9 +579,15 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	for _, w := range info.widgets {
 		if w.loop != nil {
 			fmt.Fprintf(&b, "\t%s map[string]%s\n", w.fieldName, w.model.Type)
+			if marksEdits(w) {
+				fmt.Fprintf(&b, "\t%s map[string]bool\n", editedField(w))
+			}
 			continue
 		}
 		fmt.Fprintf(&b, "\t%s %s\n", w.fieldName, w.model.Type)
+		if marksEdits(w) {
+			fmt.Fprintf(&b, "\t%s bool\n", editedField(w))
+		}
 	}
 	if len(info.widgets) > 0 {
 		b.WriteString("\n")
@@ -634,6 +642,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 	for _, w := range info.widgets {
 		if w.loop != nil {
 			fmt.Fprintf(&b, "\tm.%s = map[string]%s{}\n", w.fieldName, w.model.Type)
+			if marksEdits(w) {
+				fmt.Fprintf(&b, "\tm.%s = map[string]bool{}\n", editedField(w))
+			}
 			continue
 		}
 		fmt.Fprintf(&b, "\tm.%s = %s\n", w.fieldName, w.model.New)
@@ -1222,7 +1233,9 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		val, hasInput, hasChange := widgetPayloadEvents(w)
 		get := val.get
 		picks := choosesOnMove(w)
-		if hasInput || hasChange && picks {
+		blurs := blursToCommit(w)
+		enters := entersToCommit(w)
+		if hasInput || hasChange && picks || marksEdits(w) {
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
@@ -1242,6 +1255,13 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		switch {
 		case hasChange && picks:
 			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "change"), fwdIndent)
+		case blurs:
+			fmt.Fprintf(b, "%s\tif %s != __prev {\n%s\t\tm.%s = true\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, editedField(w), fwdIndent)
+		case enters:
+			if marksEdits(w) {
+				fmt.Fprintf(b, "%s\tif %s != __prev {\n%s\t\tm.%s = true\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, editedField(w), fwdIndent)
+			}
+			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s()\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "enter"), fwdIndent)
 		case hasChange:
 			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s(%s)\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "change"), bindReadBack(w.fieldName, get), fwdIndent)
 		}
@@ -1324,7 +1344,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, temps map[*ir
 		for _, line := range handlerLines(gc, block) {
 			fmt.Fprintf(b, "\t\t\t%s\n", line)
 		}
-		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
+		syncMutatedInputs(b, block, info)
 	}
 
 	for _, s := range stmts {
@@ -1593,7 +1613,7 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
-			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			syncMutatedInputs(b, h.Func.Block, info)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 		}
@@ -1676,9 +1696,54 @@ func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 }
 
 // commits reports whether a widget has a commit for @change to fire on: Enter
-// in a single-line field, or a select's cursor moving.
+// in a single-line field, a select's cursor moving, or focus leaving an edited
+// textarea.
 func commits(w widgetInfo) bool {
-	return w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput" || choosesOnMove(w)
+	return w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput" || choosesOnMove(w) || commitsOnBlur(w)
+}
+
+// commitsOnBlur reports whether a widget commits only when focus leaves it
+// after an edit, Enter being a line of its text. A loop's copies share one
+// field and have no mark of their own, so they do not.
+func commitsOnBlur(w widgetInfo) bool { return w.model.Type == "textarea.Model" && w.loop == nil }
+
+// entersToCommit reports whether w is a single-line field whose Enter the
+// program hears: it commits an edit made since the last commit, then submits.
+func entersToCommit(w widgetInfo) bool {
+	if w.model.Type != "textinput.Model" {
+		return false
+	}
+	_, _, change := widgetPayloadEvents(w)
+	return change || submits(w)
+}
+
+func submits(w widgetInfo) bool {
+	if w.node == nil || w.model.Type != "textinput.Model" {
+		return false
+	}
+	h := codegen.NodeHandler(w.node, "submit")
+	return h != nil && h.Func != nil
+}
+
+// marksEdits reports whether w's @change commits only an edit, which an
+// Update's change of the value marks and the commit clears. A loop's copies
+// are marked by their key.
+func marksEdits(w widgetInfo) bool {
+	_, _, change := widgetPayloadEvents(w)
+	return change && (commitsOnBlur(w) || w.model.Type == "textinput.Model")
+}
+
+// editedField is the mark an Update's edit sets on a widget that marksEdits
+// and its commit clears, so a program's write, which no Update forwards to
+// the widget, commits nothing.
+func editedField(w widgetInfo) string { return "__" + w.fieldName + "_edited" }
+
+// blursToCommit reports whether w has an @change that focus leaving fires
+// and Enter does not. An input's focus leaving commits too, through the same
+// mark as its Enter (emitIRFocusSync).
+func blursToCommit(w widgetInfo) bool {
+	_, _, change := widgetPayloadEvents(w)
+	return change && commitsOnBlur(w)
 }
 
 // choosesOnMove reports whether a widget's value is the row its cursor is on,
@@ -1754,6 +1819,9 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
+			if ev.name == "input" && marksEdits(w) {
+				fmt.Fprintf(b, "\tm.%s = true\n", editedField(w))
+			}
 			b.WriteString("}\n\n")
 		}
 		for _, ev := range []struct {
@@ -1766,6 +1834,9 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			h := codegen.NodeHandler(w.node, ev.name)
 			hgc := gc
 			fmt.Fprintf(b, "func (m *Model) %s(__v %s) {\n", widgetEventMethod(w, ev.name), val.goType)
+			if ev.name == "change" && marksEdits(w) {
+				fmt.Fprintf(b, "\tm.%s = false\n", editedField(w))
+			}
 			if len(h.Func.Params) > 0 {
 				name := h.Func.Params[0].Name
 				hgc = gc.WithLocal(name)
@@ -1776,7 +1847,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
-			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			syncMutatedInputs(b, h.Func.Block, info)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
@@ -1792,9 +1863,47 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
+			if ev.name == "input" && marksEdits(w) {
+				fmt.Fprintf(b, "\tm.%s = true\n", editedField(w))
+			}
 			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
 		}
+		if entersToCommit(w) && w.loop == nil {
+			emitEnter(b, w, info, gc)
+		}
 	}
+}
+
+// emitEnter writes what Enter in a single-line field runs -- the commit of an
+// edit, then the @submit -- and, for a field a test names, its submit
+// invoker, which presses it.
+func emitEnter(b *strings.Builder, w widgetInfo, info *irAnalysis, gc *golang.GoIRContext) {
+	val, _, _ := widgetPayloadEvents(w)
+	if submits(w) {
+		h := codegen.NodeHandler(w.node, "submit")
+		fmt.Fprintf(b, "func (m *Model) %s() {\n", widgetEventMethod(w, "submit"))
+		for _, stmt := range h.Func.Block {
+			for _, line := range gc.EvalStmt(stmt) {
+				fmt.Fprintf(b, "\t%s\n", line)
+			}
+		}
+		syncMutatedInputs(b, h.Func.Block, info)
+		drawAfterUpdate(b)
+		b.WriteString("}\n\n")
+	}
+	fmt.Fprintf(b, "func (m *Model) %s() {\n", widgetEventMethod(w, "enter"))
+	if marksEdits(w) {
+		fmt.Fprintf(b, "\tif m.%s {\n\t\tm.%s(%s)\n\t}\n", editedField(w), widgetEventMethod(w, "change"), bindReadBack(w.fieldName, val.get))
+	}
+	if submits(w) {
+		fmt.Fprintf(b, "\tm.%s()\n", widgetEventMethod(w, "submit"))
+	}
+	b.WriteString("}\n\n")
+	if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests || !submits(w) {
+		return
+	}
+	fmt.Fprintf(b, "// %sSubmit presses Enter in the #%s widget; for tests.\n", w.node.ID, w.node.ID)
+	fmt.Fprintf(b, "func (m *Model) %sSubmit() {\n\tm.%s()\n}\n\n", w.node.ID, widgetEventMethod(w, "enter"))
 }
 
 func teaKeyGuard(key string) string {
@@ -1833,6 +1942,10 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", w.fieldName)
 		b.WriteString("\t\t\t} else {\n")
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", w.fieldName)
+		if blursToCommit(w) || marksEdits(w) && w.model.Type == "textinput.Model" {
+			val, _, _ := widgetPayloadEvents(w)
+			fmt.Fprintf(b, "\t\t\t\tif m.%s {\n\t\t\t\t\tm.%s(%s)\n\t\t\t\t}\n", editedField(w), widgetEventMethod(w, "change"), bindReadBack(w.fieldName, val.get))
+		}
 		b.WriteString("\t\t\t}\n")
 	}
 }
@@ -1897,16 +2010,16 @@ func nodeFocusSlotIdx(n *ir.NodeInst) int {
 	return id
 }
 
-func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo, binds []irBind, gc *golang.GoIRContext) {
+func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis) {
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
-		for v := range codegen.MutatedFields(nil, nil, stmt) {
+		for v := range codegen.MutatedFields(nil, info.deps, stmt) {
 			mutated[v.SymName()] = true
 		}
 	}
-	for _, w := range widgets {
+	for _, w := range info.widgets {
 		for _, bd := range w.binds {
-			if mutated[bd.target] && bindTargetSyncs(binds, bd.target) && bd.set != "" {
+			if mutated[bd.target] && bindTargetSyncs(info.binds, bd.target) && bd.set != "" {
 				fmt.Fprintf(b, "\t\t\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bd.target)
 			}
 		}
@@ -2005,7 +2118,7 @@ func emitScreenBack(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext
 	for _, line := range handlerLines(gc, h.Func.Block) {
 		fmt.Fprintf(b, "\t\t\t%s\n", line)
 	}
-	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	syncMutatedInputs(b, h.Func.Block, info)
 }
 
 // screenKeyMethod is the Model method running the window's `@key`.
@@ -2135,7 +2248,7 @@ func emitScreenKeyMethod(b *strings.Builder, info *irAnalysis, gc *golang.GoIRCo
 		}
 	}
 	b.WriteString("\t}()\n")
-	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	syncMutatedInputs(b, h.Func.Block, info)
 	b.WriteString("\treturn __stopped\n")
 	b.WriteString("}\n\n")
 }
@@ -2148,7 +2261,7 @@ func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysi
 	for _, line := range handlerLines(gc, h.Func.Block) {
 		fmt.Fprintf(b, "%s%s\n", indent, line)
 	}
-	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	syncMutatedInputs(b, h.Func.Block, info)
 }
 
 // accessor is the name of bind's getter, and its setter, Msg and Cmd after it;

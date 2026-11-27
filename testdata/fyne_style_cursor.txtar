@@ -101,6 +101,7 @@ type Model struct {
 	busy           bool
 	value__inst0   string
 	visible__inst0 bool
+	edited__inst0  bool
 
 	__n0      *fynelayout.Toplevel
 	__n3      *fyne.Container
@@ -121,7 +122,14 @@ func New() *Model {
 	m.busy = false
 	m.value__inst0 = ""
 	m.visible__inst0 = true
+	m.edited__inst0 = false
 	return m
+}
+
+func (m *Model) commit__inst0(v string) {
+	m.value__inst0 = v
+	m.__n1.SetText(m.value__inst0)
+	m.edited__inst0 = false
 }
 
 func LookOf(s Style) fynelayout.Look {
@@ -268,12 +276,24 @@ func (m *Model) __n1_input_handler(v string) {
 	if v != m.value__inst0 {
 		m.value__inst0 = v
 		m.__n1.SetText(m.value__inst0)
+		m.edited__inst0 = true
 	}
 }
 
 func (m *Model) __n1_change_handler(v string) {
-	m.value__inst0 = v
-	m.__n1.SetText(m.value__inst0)
+	m.commit__inst0(v)
+}
+
+func (m *Model) __n1_submit_handler(v string) {
+	if m.edited__inst0 {
+		m.commit__inst0(v)
+	}
+}
+
+func (m *Model) __n1_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.value__inst0)
+	}
 }
 
 func (m *Model) Busy() bool {
@@ -300,6 +320,14 @@ func (m *Model) SetVisible__inst0(v bool) {
 	m.visible__inst0 = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
@@ -322,7 +350,9 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetPlaceHolder("")
 	m.__n1__box.SetLook(fynelayout.Look{Fill: snglcolor.Color{}, Stroke: snglcolor.Color{}, TextColor: snglcolor.Color{}, Cursor: 2})
 	m.__n1.OnChanged = m.__n1_input_handler
-	m.__n1.OnSubmitted = m.__n1_change_handler
+	m.__n1.OnCommit = m.__n1_change_handler
+	m.__n1.OnSubmitted = m.__n1_submit_handler
+	m.__n1.OnFocusLost = m.__n1_leave_handler
 	m.__n3.Add(m.__n1__box)
 	m.__n5 = widget.NewLabel("")
 	m.__n5__box = fynelayout.NewBox(m.__n5)
@@ -353,4 +383,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:758af73e8d88f0bce95272683848ac06
+pass sha256:a5726582fd08e4cac65657485afd6bee

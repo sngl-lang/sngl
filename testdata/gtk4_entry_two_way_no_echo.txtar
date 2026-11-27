@@ -93,6 +93,7 @@ type _classMeasure__result struct {
 
 type Search__inst struct {
 	Search              string
+	Edited__inst0       bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -3038,15 +3039,16 @@ func Search__new() *Search__inst {
 			if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != __self.Search {
 				__self.Search = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 				cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Search)
+				__self.Edited__inst0 = true
 			}
 			Search__effects0_settle(__self)
 		}(__self.Box)
 	})
 	_rtSignalConnect(__self.Box, "activate", func() {
 		func(e cgo.Widget) {
-			__self.Search = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-			cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(__self.__n0)), __self.Search)
-			Search__effects0_settle(__self)
+			if __self.Edited__inst0 {
+				Search__commit__inst0(__self, cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+			}
 		}(__self.Box)
 	})
 	_rtBoxAppend(__self.__n4, __self.Box)
@@ -3059,6 +3061,13 @@ func Search__new() *Search__inst {
 	Search__effects0_settle(__self)
 	__self.__root = __self.__n4
 	return __self
+}
+
+func Search__commit__inst0(this *Search__inst, v string) {
+	this.Search = v
+	cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(this.__n0)), this.Search)
+	this.Edited__inst0 = false
+	Search__effects0_settle(this)
 }
 
 func Search__effect0_mount(__self *Search__inst) {
@@ -3209,4 +3218,4 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:508468bf746685267b053d33c78c37fb
+pass sha256:b91ac52675a2b0efebba74d6f0d2c796

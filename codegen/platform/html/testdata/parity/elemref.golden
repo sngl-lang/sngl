@@ -21,6 +21,17 @@ body { font-family: system-ui, sans-serif; }
 (() => {
   // sngl-entry.js
   var state = { name: "", visible__inst0: true };
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
+  }
   var $1 = document.getElementById("$1");
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
@@ -28,11 +39,26 @@ body { font-family: system-ui, sans-serif; }
     state.name = e.currentTarget.value;
     __n1.value = state.name;
     __n2.textContent = "Hello, " + state.name + "!";
+    _snglMarkEdited(e.currentTarget);
   });
   __n1.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
-    __n1.value = state.name;
-    __n2.textContent = "Hello, " + state.name + "!";
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
+      ;
+      state.name = e.currentTarget.value;
+      __n1.value = state.name;
+      __n2.textContent = "Hello, " + state.name + "!";
+    }
+    ;
+  });
+  __n1.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
+  });
+  __n1.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
   });
   $1.addEventListener("click", function() {
     state.name = "";

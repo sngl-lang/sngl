@@ -708,6 +708,7 @@ func (m *Model) __widget0_change(__v string) {
 	l := __v
 	_ = l
 	m.choose__inst0(l)
+	m.widget0.SetValue(m.label__inst0)
 	_ = m.View()
 }
 
@@ -4424,7 +4425,7 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/go/bubbletea --
-pass sha256:dfd900aba61699167365a265b4ef6b8c
+pass sha256:dae51f387529d9acb38cc1b6ac7d2e9b
 -- run/go/fyne --
 pass sha256:505d89fe887c5b823d10f7b7eec869d4
 -- run/go/gtk4 --
