@@ -41,15 +41,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	for _, c := range pkg.Components {
 		onList[c] = true
 	}
-	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, placed: feats.Placement, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, cells: map[*ir.Var][]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
-	cellOwners := implicitCellOwners(pkg)
+	st := &inlineCompState{pkg: pkg, main: main, cycles: cycles, reactive: reactive, platform: opts.Platform, placed: feats.Placement, instanceState: feats.InstanceState, nativeEffects: feats.Effects, genericComponents: feats.GenericComponents, onList: onList, names: namesOrOwn(opts.names), demoted: map[*ir.Func]bool{}, handleCells: opts.handleCells, varAt: map[*ir.Var]map[string]*ir.Var{}, handleOrigin: map[*ir.Var]*ir.Var{}, compInsts: map[*ir.Component][]componentInstance{}, methods: map[*ir.Var]map[*ir.Func][]*ir.Func{}, methodOwner: map[*ir.Func]*[]*ir.Func{}, methodOf: map[*ir.Func]handleMethod{}}
 	st.readAbroad = handlesReadAbroad(pkg)
 	st.reach = testReachRoots(pkg, main, opts)
 	st.reach.instanceState = feats.InstanceState
 	if err := st.run(); err != nil {
-		return err
-	}
-	if err := repointCellReads(pkg, cellOwners, st.cells); err != nil {
 		return err
 	}
 	ambiguous := repointHandleCalls(pkg, st.methods, st.methodOwner)
@@ -59,6 +55,11 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	}
 	dropNestedMethods(pkg, st.keep)
 	pkg.Components = retainComponents(pkg.Components, st.keep)
+	// After the drop: a component spliced everywhere it was written still
+	// holds the reads as written, which no copy is.
+	if err := st.resolveHandleVarReads(); err != nil {
+		return err
+	}
 	if err := refuseAmbiguousHandleCalls(pkg, ambiguous); err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func lowerInlineComponents(pkg *ir.Package, feats Features, opts Options) error 
 	if opts.splices != nil {
 		spliced = *opts.splices
 	}
-	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...), opts.triggers, feats.ValueTriggers)
+	return repointTestReaches(pkg, st.reach, append(spliced, st.insts...), opts.triggers, feats.ValueTriggers, st.varAt)
 }
 
 // unreachedCycles is every recursive component nothing the program renders
@@ -236,16 +237,20 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 				renameNodeID(n, n.ID+"__"+strconv.Itoa(k), reads)
 			}
 			// The refusal is keyed by *symbol*, which is a narrower question
-			// and a different one. A read is an ident bound to one var, and
-			// declareNodeIDs runs per body: two unrelated `#bar`s are two vars
-			// and each read says which it meant, while two spliced copies of
-			// one body share theirs and neither read can. Only the second is
-			// ambiguous -- keyed by name instead, an innocent `quiet()`
-			// rendered twice was refused for a `#bar` that `reader()` read.
+			// and a different one. A read is an ident bound to one var: two
+			// unrelated `#bar`s are two vars and each read says which it
+			// meant, and a splice gives each copy of a body its own handles,
+			// so each copy's reads say which copy they mean. The one handle
+			// copies still share is one read outside the component that
+			// declares it (handlesReadAbroad), and a read of that names every
+			// copy -- keyed by name instead, an innocent `quiet()` rendered
+			// twice was refused for a `#bar` that `reader()` read.
 			if n.Handle == nil {
 				return nil
 			}
 			if first, ok := rendered[n.Handle]; ok {
+				// A prop read is no read here: passNodePropReads answered it
+				// in the body before the splice, so each copy reads its own.
 				if r := reads[n.Handle]; len(r) > 0 && dup == nil {
 					dup = fmt.Errorf("%s: `#%s` is read here, and %s renders more than one of it -- the read cannot say which; give each copy its own id, or pass the value it is read for as a prop", identPos(r[0]), n.Handle.WrittenName(), nodePos(first))
 				}
@@ -393,9 +398,15 @@ type inlineCompState struct {
 	// demoted is the clones dropReceiver made receiverless, so the call sites
 	// renameIdents repointed at them can give their receiver up too.
 	demoted map[*ir.Func]bool
-	// cells is each implicit cell (ir.Var.Cell) and the copies splicing its
-	// component made of it, for repointCellReads.
-	cells map[*ir.Var][]*ir.Var
+	// handleCells is Options.handleCells: the cell behind each prop a read
+	// through a handle names, by the handle as written.
+	handleCells map[*ir.Var]map[string]*ir.Var
+	// varAt is the copy of each var a splice made, by the handle its call
+	// site's node carries and the name a read through it uses, for
+	// resolveHandleVarReads and a test's reads through an instance.
+	varAt map[*ir.Var]map[string]*ir.Var
+	// handleOrigin is the handle each clone a splice made was cloned from.
+	handleOrigin map[*ir.Var]*ir.Var
 	// methods is, per node handle, each method of the component splicing that
 	// node cloned and the clones, for repointHandleCalls.
 	methods map[*ir.Var]map[*ir.Func][]*ir.Func
@@ -599,7 +610,7 @@ func (st *inlineCompState) refuseCanvasInCycles() error {
 			continue
 		}
 		if n := firstCanvas(c.Stmts); n != nil {
-			return fmt.Errorf("%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
+			return ir.Decline("", "%s: a canvas in the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it in what renders %q", nodePos(n), c.Name, c.Name)
 		}
 	}
 	var err error
@@ -611,7 +622,7 @@ func (st *inlineCompState) refuseCanvasInCycles() error {
 			}
 			for _, s := range ir.SuppliedContent(n) {
 				if at := firstCanvas(s.Body); at != nil {
-					err = fmt.Errorf("%s: a canvas handed to the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it outside %q", nodePos(at), n.Component.Name, n.Component.Name)
+					err = ir.Decline("", "%s: a canvas handed to the recursive component %q is drawn once per level, and this target keeps one surface per canvas it can reach from the page -- draw it outside %q", nodePos(at), n.Component.Name, n.Component.Name)
 					return ir.SkipAll
 				}
 			}
@@ -668,7 +679,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			continue
 		}
 		if v := usedVar(c); v != nil {
-			return fmt.Errorf("%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
+			return ir.Decline("", "%s: the recursive component %q declares state of its own (%q); this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", varPos(v), c.Name, v.Name, c.Name)
 		}
 		// A component that is not spliced renders as a function of the Model,
 		// whose methods are the Model's and cannot read the props the render
@@ -678,7 +689,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			if fn.AST != nil {
 				pos = fn.AST.Pos.String()
 			}
-			return fmt.Errorf("%s: the recursive component %q declares %q, which reads its props; this target makes a component's functions the program's own by splicing it where it is written, and a recursion is never spliced -- pass what %q reads as its arguments, or compute it where %q is rendered", pos, c.Name, fn.Name, fn.Name, c.Name)
+			return ir.Decline("", "%s: the recursive component %q declares %q, which reads its props; this target makes a component's functions the program's own by splicing it where it is written, and a recursion is never spliced -- pass what %q reads as its arguments, or compute it where %q is rendered", pos, c.Name, fn.Name, fn.Name, c.Name)
 		}
 		var found, lifetime *ir.NodeInst
 		_ = ir.WalkStmts(c.Stmts, func(s ir.Stmt) error {
@@ -703,7 +714,7 @@ func (st *inlineCompState) refuseStateInCycles() error {
 			if c.AST != nil && pos.File != c.AST.Pos.File {
 				pos = c.AST.Pos
 			}
-			return fmt.Errorf("%s: the recursive component %q places a timer or effect in its own body; this target keeps a lifetime's handle only by splicing it where it is written, and a recursion is never spliced -- place it in what renders %q", pos, c.Name, c.Name)
+			return ir.Decline("", "%s: the recursive component %q places a timer or effect in its own body; this target keeps a lifetime's handle only by splicing it where it is written, and a recursion is never spliced -- place it in what renders %q", pos, c.Name, c.Name)
 		}
 		if found != nil {
 			return fmt.Errorf("%s: %q has state of its own and is written in the recursive component %q; this target keeps a component's state only by splicing it where it is written, and a recursion is never spliced -- keep the state in what renders %q and pass it in as props", nodePos(found), found.Component.Name, c.Name, c.Name)
@@ -1400,9 +1411,6 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		clone := cloneHoistedVar(v, st.names.next(v.Name, "inst"), typeArgs)
 		renames[v] = clone.Name
 		symRenames[v] = clone
-		if v.Cell && st.cells != nil {
-			st.cells[v] = append(st.cells[v], clone)
-		}
 		// The clone is as reactive as the original. st.reactive was computed
 		// once, before this pass created any of these, so a `for` iterating an
 		// inlined component's own state read as non-reactive -- and the
@@ -1454,23 +1462,47 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	if inner := wrappedNode(n); inner != nil && inner.Handle != nil && inner.Handle != n.Wraps {
 		symRenames[inner.Handle] = n.Wraps
 	}
-	// A handle the body declares and calls a method through, and nothing
-	// outside it reads, is the copy's own, as its state is: the checker
-	// declares one per body, so every copy shared it, and a method of the
-	// copy's calling through it -- an openapi adapter's `refresh` calling its
-	// query's -- could not say which copy's node it meant. A node
-	// passImplicitState moved into a wrapper is the body's still, through the
-	// wrapper's Wraps. One a component outside reads stays shared, since the
-	// reads of it are not in this splice, and so does one only a test
-	// reaches, which the test's reach is pointed through as it was.
-	called := handlesCalledIn(comp)
+	// Every handle the body declares is the copy's own, as its state is: the
+	// checker declares one per body, so every copy shared it, and a read or a
+	// call through it in one copy -- gtk4's input asking its own entry for its
+	// text, an openapi adapter's `refresh` calling its query's -- could not say
+	// which copy's node it meant. A node passImplicitState moved into a
+	// wrapper is the body's still, through the wrapper's Wraps. What the call
+	// site gave, its own handle carried onto the body, is the call site's. One
+	// a component outside reads stays shared, since the reads of it are not in
+	// this splice. A test reaches the copy's through the splice's nodes.
 	for _, h := range ownNodeHandles(comp) {
 		if _, ok := symRenames[h]; ok {
 			continue
 		}
-		if called[h] && !st.readAbroad[h] {
-			clone := *h
-			symRenames[h] = &clone
+		if h == n.Handle || h == n.Wraps || st.readAbroad[h] {
+			continue
+		}
+		clone := *h
+		symRenames[h] = &clone
+		st.handleOrigin[&clone] = st.origin(h)
+	}
+	// The copy of each var this splice made is the one a read through the
+	// call site's handle means (resolveHandleVarReads): `k.count` reads the
+	// copy of `count` this instance holds. A wrapper passImplicitState made
+	// carries its node's handle as Wraps, and its cells are read by the name
+	// of the prop each stands behind.
+	if at := st.spliceHandle(n); at != nil {
+		record := func(field string, v *ir.Var) {
+			if c, ok := symRenames[v].(*ir.Var); ok {
+				if st.varAt[at] == nil {
+					st.varAt[at] = map[string]*ir.Var{}
+				}
+				st.varAt[at][field] = c
+			}
+		}
+		for _, v := range comp.Vars {
+			record(v.Name, v)
+		}
+		if inner := wrappedNode(n); inner != nil && inner.Handle != nil {
+			for field, cell := range st.handleCells[st.origin(inner.Handle)] {
+				record(field, cell)
+			}
 		}
 	}
 
@@ -1830,20 +1862,6 @@ func ownNodeHandles(comp *ir.Component) []*ir.Var {
 	return out
 }
 
-// handlesCalledIn is every handle comp's body or methods call a method through.
-func handlesCalledIn(comp *ir.Component) map[*ir.Var]bool {
-	out := map[*ir.Var]bool{}
-	_ = ir.Walk(comp, func(n ir.Node) error {
-		if call, ok := n.(*ir.Call); ok && call.Func != nil {
-			if h, _ := handleReceiver(call); h != nil {
-				out[h] = true
-			}
-		}
-		return nil
-	})
-	return out
-}
-
 // handlesReadAbroad is every handle read somewhere other than the component
 // whose body declares it: by the package, or by another component.
 func handlesReadAbroad(pkg *ir.Package) map[*ir.Var]bool {
@@ -2192,4 +2210,77 @@ func (st *inlineCompState) handleRead(h *ir.Var) bool {
 		})
 	}
 	return st.readHandles[h]
+}
+
+// origin is the handle h was cloned from as the program wrote it, h itself
+// where no splice cloned it.
+func (st *inlineCompState) origin(h *ir.Var) *ir.Var {
+	for {
+		o, ok := st.handleOrigin[h]
+		if !ok {
+			return h
+		}
+		h = o
+	}
+}
+
+// spliceHandle is the handle a read of n's instance is written through: the
+// call site's, or the one a wrapper carries for the node inside it.
+func (st *inlineCompState) spliceHandle(n *ir.NodeInst) *ir.Var {
+	if n.Wraps != nil {
+		return n.Wraps
+	}
+	return n.Handle
+}
+
+// resolveHandleVarReads answers each read of an instance's var through the
+// handle of the node that renders it -- `k.count`, or `box.value` for an
+// unbound two-way prop's cell -- with the copy the splice of that node made.
+// Each copy of a body has a handle of its own, so a read in each says which
+// copy it means. A cell no splice answered is in a component built at run
+// time, which keeps it as its own.
+func (st *inlineCompState) resolveHandleVarReads() error {
+	if len(st.varAt) == 0 && len(st.handleCells) == 0 {
+		return nil
+	}
+	var bad error
+	err := ir.Rewrite(st.pkg, func(n ir.Node) (ir.Node, error) {
+		sel, ok := n.(*ir.Select)
+		if !ok {
+			return n, nil
+		}
+		id, ok := sel.Operand.(*ir.Ident)
+		if !ok {
+			return n, nil
+		}
+		h, ok := id.Sym.(*ir.Var)
+		if !ok || !h.NodeHandle {
+			return n, nil
+		}
+		if c := st.varAt[h][sel.Field]; c != nil {
+			return &ir.Ident{Name: c.Name, Type: sel.Type, Sym: c, AST: identAt(sel)}, ir.SkipDir
+		}
+		if st.handleCells[st.origin(h)][sel.Field] != nil && bad == nil {
+			bad = fmt.Errorf("%s: `#%s` is built at run time here, so a read of its unbound :%s cannot reach it; bind :%s to a var and read that", exprPos(sel), h.WrittenName(), sel.Field, sel.Field)
+		}
+		return n, nil
+	})
+	if err != nil {
+		return err
+	}
+	return bad
+}
+
+// identAt is an ident positioned where sel's operand was written.
+func identAt(sel *ir.Select) *ast.IdentExpr {
+	if sel.AST == nil {
+		return nil
+	}
+	at := &ast.IdentExpr{Pos: sel.AST.Pos, Name: sel.AST.Field}
+	if sel.AST.Operand != nil {
+		if p := sel.AST.Operand.ExprPos(); p != nil && p.IsValid() {
+			at.Pos = *p
+		}
+	}
+	return at
 }

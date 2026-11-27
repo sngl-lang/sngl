@@ -91,6 +91,7 @@ enum Optimization {
     inlineComponents,
     viewStatements,
     entryWrites,
+    cCalls,
 )]
 #[gen.name("c")]
 #[gen.native("c")]

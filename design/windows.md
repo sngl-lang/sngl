@@ -488,7 +488,7 @@ They are ordinary methods in the window's body (`func open() { visible = true }`
 bound one and the window's own cell (passImplicitState) where nothing did; a
 read `details.visible` names the same. A method called through a component's
 `#id` is repointed at the clone the inliner made where it spliced the node
-(`repointHandleCalls`, beside repointCellReads) -- before, `p.open()` came out
+(`repointHandleCalls`, beside resolveHandleVarReads) -- before, `p.open()` came out
 as `m.p.open()` and the method was shaken away. One no splice answered is
 refused (`refuseUnsplicedHandleCalls`) once the components nothing renders are
 dropped, since a test build rooted at one component leaves its siblings'
@@ -497,10 +497,13 @@ calls emitted nowhere
 substitutes a component's events into its hoisted methods too, which is how a
 method's write of a bound prop reaches the caller. The override binds the prop
 through (`Toplevel(:visible=visible)`), which works because passPropBindings
-also lowers the bindings of every library body the program renders. A handle a component's own body calls a method through, and nothing
-outside reads, is the copy's own in each splice (`handlesCalledIn`,
-`handlesReadAbroad`), as its state is: shared, a method of the copy's calling
-through it could not say which copy's node it meant. A clone is recorded with
+also lowers the bindings of every library body the program renders. Every handle a component's body declares, other than the
+one its call site carried onto it and one a component outside reads, is the
+copy's own in each splice (`handlesReadAbroad`), as its state is: shared, a
+read or a call in one copy could not say which copy's node it meant -- gtk4's
+input asking its own entry for its text failed every component that rendered
+an input twice -- and a test reaches the copy's through the splice's nodes,
+never its vars (`recordInstance`). A clone is recorded with
 the owner it was hoisted onto, and so is the copy a later splice makes of
 it, where a component built at run time spliced the node into its own body
 and is spliced whole elsewhere too: a call is pointed at the clone in its

@@ -321,6 +321,17 @@ made none; two had C declare the var twice and write a thawed body's write
 to an undeclared local, since C matches a package var by pointer
 (`testdata/gtk4_keys_runs.txtar`, whose `@key` state is a gtk4 package var
 that every gtk4 golden's program, importing no gtk4, also reaches).
+A library struct the build declares (`promoteForeignStructs`) is treated the same
+way when it is renamed. Every backend emits a struct by its name, so one
+whose name the program also declares is renamed on the build's copy, taking
+its package's last segment (gtk4's `Look` is `Look__gtk4`), and the program's
+keeps its name. Then every type naming any copy of that declaration is
+repointed at the one the build declares, a copy of the frozen one where
+that was all it had (`canonicalStructs`). gtk4's `_LookState`, frozen, held
+the original `Look`, so C defined both and Go compared one with the other
+(`cmd/sngl/testdata/struct_name_collides_with_promoted_runs.txt`). A frozen
+foreign function's parameter still names the original, so C's release for a
+held value reads the argument's type rather than the parameter's.
 A library declaration is folded only where the build reached it as it copied
 the library, and a protocol function lowering splices in later reaches a
 struct whose declaration nothing folded: frozen, or copied and not folded for

@@ -33,6 +33,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 	targets := buildNativeFuncMap(req.Pkg, req.Lang.LanguageIdentifier())
 	routes := make([]codegen.HTTPRoute, 0, len(windows))
 	var served []servedRoute
+	handlers := map[string]bool{}
 	for i, win := range windows {
 		// A window holding a nav.stack is a route per page, named for the
 		// page and served at its href; one holding none is served at the
@@ -85,7 +86,7 @@ func (g *Generator) generateRoutes(req *codegen.Request, sink codegen.Sink, fron
 			return fmt.Errorf("html: route %s: %w", path, err)
 		}
 		routes = append(routes, codegen.HTTPRoute{
-			Name:      routeHandlerName(routeName, path),
+			Name:      uniqueHandlerName(handlers, routeHandlerName(routeName, path), path),
 			Path:      path,
 			Title:     title,
 			Params:    extractRouteParams(path),
@@ -440,6 +441,20 @@ func routeExportName(s string) string {
 		return "Index"
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// uniqueHandlerName is name, or, where an earlier route took it, the name its
+// path makes: the copies a `for` makes of one `nav.page #page` share the id
+// and differ in where they are served.
+func uniqueHandlerName(taken map[string]bool, name, path string) string {
+	if taken[name] {
+		name = routeHandlerName("", path)
+	}
+	for base, n := name, 2; taken[name]; n++ {
+		name = fmt.Sprintf("%s%d", base, n)
+	}
+	taken[name] = true
+	return name
 }
 
 // routeHandlerName generates a valid Go function name for a route handler.

@@ -329,7 +329,7 @@ service Library {
   rpc Echo(stream GetBookRequest) returns (stream Book);
 }
 -- testrun/android/kotlin/app.sngl/_/1 --
-sha256:0c3df4745e1d6d13ceb9910f8e43011f
+sha256:668e53bbf2841312401a792b6b3e27b0
 {
   "results": [
     {
@@ -385,7 +385,7 @@ sha256:34ac3e6ec47ee865a1dea797579a5a60
   ]
 }
 -- testrun/bubbletea/go/app.sngl/_/1 --
-sha256:8ac3ae7b5057ee3aff70a63f8ff1bb16
+sha256:8a89b0b69e4df3f356bb130229137675
 {
   "results": [
     {
@@ -441,7 +441,7 @@ sha256:775cce9adafbfd19fb228ac2ae604230
   ]
 }
 -- testrun/fyne/go/app.sngl/_/1 --
-sha256:a2b686da2e4b961d2cb61b9b2b934063
+sha256:e3d4d04b10ebe8e62ad34e02f71219cd
 {
   "results": [
     {
@@ -497,7 +497,7 @@ sha256:abe97ca2607c028dc21f13a3567f5c0a
   ]
 }
 -- testrun/gtk4/go/app.sngl/_/1 --
-sha256:4a3013cebf0dd91b47f4bd382195f4e1
+sha256:c86709e8ec150d553cc2aff8287c34d0
 {
   "results": [
     {

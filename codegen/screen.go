@@ -22,9 +22,12 @@ type Screen struct {
 // OneWindowError is SoleScreen's refusal. It is a type so that a harness
 // compiling every fixture for one platform can tell a program this platform
 // refuses by design from a failure of the platform.
-type OneWindowError struct{ msg string }
+type OneWindowError struct{ platform, msg string }
 
 func (e *OneWindowError) Error() string { return e.msg }
+
+// DeclinedBy makes a second window an ir.Declined.
+func (e *OneWindowError) DeclinedBy() string { return e.platform }
 
 // Shown is whether the screen is drawn, as the target spells an expression:
 // the conditions around it and its own `visible`.
@@ -117,10 +120,10 @@ func SoleScreen(stmts []ir.Stmt, intrinsic, platform string, pos func(*ir.NodeIn
 					continue
 				}
 				if inLoop {
-					return &OneWindowError{fmt.Sprintf("%s: %s shows one window, and a `for` makes a copy of this one per element", pos(n), platform)}
+					return &OneWindowError{platform, fmt.Sprintf("%s: %s shows one window, and a `for` makes a copy of this one per element", pos(n), platform)}
 				}
 				if found != nil {
-					return &OneWindowError{fmt.Sprintf("%s: %s shows one window, and this is a second; the first is at %s", pos(n), platform, pos(found.Node))}
+					return &OneWindowError{platform, fmt.Sprintf("%s: %s shows one window, and this is a second; the first is at %s", pos(n), platform, pos(found.Node))}
 				}
 				found = &Screen{Node: n, Conds: conds, Owner: owner}
 			default:

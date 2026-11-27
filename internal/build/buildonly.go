@@ -22,7 +22,12 @@ import (
 // document, with the loop variables around it bound -- what a `for` over the
 // pages of a site hands `md.document`. The target refuses what its fold could
 // not answer (codegen.RefuseUnfoldedBuildCalls).
-func refuseBuildOnlyCalls(pkg *ir.Package, foldsViews bool) error {
+//
+// A call in a view a target does not fold is the target declining the
+// program, where it is the program's arguments that no build knows: a static
+// site answers `md.document(source=d.body)` in a `for` over a const list per
+// page, and a target running the loop has no build-time value to hand it.
+func refuseBuildOnlyCalls(pkg *ir.Package, target Target, foldsViews bool) error {
 	memo := map[*ir.Func]bool{}
 	skip := map[*ir.Call]bool{}
 	for _, o := range ir.Owners(pkg) {
@@ -57,8 +62,25 @@ func refuseBuildOnlyCalls(pkg *ir.Package, foldsViews bool) error {
 	if found == nil {
 		return nil
 	}
-	return codegen.BuildOnlyDiagnostic(found, sites[found], memo)
+	d := codegen.BuildOnlyDiagnostic(found, sites[found], memo)
+	if sites[found] != nil {
+		return &ir.TargetDeclined{Target: target.Platform, Msg: d.Error() + "; " + describe(target) + " makes a view's calls as the program runs, where a static site makes them per document"}
+	}
+	return &buildOnlyDeclined{d, target.Platform}
 }
+
+// buildOnlyDeclined is a call only the build can answer left where no view
+// holds it, which the program checked clean with: bubbletea's loop over a
+// site's const pages hands the parse a value the build does not have
+// (cmd/sngl/testdata/markdown_document_refused.txt). The build declines it,
+// at the position the diagnostic names, as it does one a view holds.
+type buildOnlyDeclined struct {
+	ir.Diagnostic
+	target string
+}
+
+func (e *buildOnlyDeclined) DeclinedBy() string { return e.target }
+func (e *buildOnlyDeclined) Unwrap() error      { return e.Diagnostic }
 
 // refuseStateIntoBuildCalls reports, where the program wrote it, an argument
 // that reads state and lands in a prop its component hands to a call only the

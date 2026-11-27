@@ -1,6 +1,7 @@
 package lower
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -265,6 +266,12 @@ type Options struct {
 	// test's prop read with, for passHoistState to say where the var lives.
 	// Set by Lower.
 	blockReads blockReads
+
+	// handleCells is the cell behind each prop of an unbound two-way node that
+	// a read through the node's `#id` names, by the handle as the program
+	// wrote it: passImplicitState leaves the read standing for the inliner,
+	// which knows which copy's cell each copy's handle means. Set by Lower.
+	handleCells map[*ir.Var]map[string]*ir.Var
 }
 
 // renamer numbers renamed declarations per name: `hits__inst0` and
@@ -315,6 +322,7 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 	opts.splices = &[]splice{}
 	opts.triggers = map[*ir.Call]ir.Call{}
 	opts.blockReads = blockReads{}
+	opts.handleCells = map[*ir.Var]map[string]*ir.Var{}
 	if opts.StopAfter != "" {
 		known := false
 		for _, p := range passes {
@@ -394,6 +402,11 @@ func Lower(pkg *ir.Package, feats Features, opts Options) error {
 			continue
 		}
 		if err := p.apply(pkg, feats, opts); err != nil {
+			// A refusal written where the pass had no target in hand names
+			// the build's.
+			if d, ok := errors.AsType[*ir.TargetDeclined](err); ok && d.Target == "" {
+				d.Target = opts.Platform
+			}
 			return fmt.Errorf("lower: pass %s: %w", p.name, err)
 		}
 		if opts.StopAfter != "" && p.name == opts.StopAfter {
@@ -577,6 +590,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 	seen := map[*ir.Component]bool{}
 	var out []*ir.Component
 	var walk func(stmts []ir.Stmt)
+	var walkComp func(c *ir.Component)
 	visit := func(c *ir.Component) {
 		if c == nil || local[c] || seen[c] {
 			return
@@ -596,9 +610,25 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 		seen[c] = true
 		out = append(out, c)
+		walkComp(c)
+	}
+	// A component's body, and the body this build's target will swap in for
+	// it: the swap is later (passPlatformExtensionBody), so a program's
+	// bodyless `dial` overridden for android looked empty, the `ui.button` its
+	// override renders never joined the list, and passContext left that
+	// button's flexShare read for InlinePure to splice into the view -- a
+	// panic in Kotlin's emitter (testdata/trigger_writes_through_this.txtar,
+	// android/go).
+	walkComp = func(c *ir.Component) {
 		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
+		}
+		if ov, ok := c.PlatformOverrides[platform]; ok && platform != "" {
+			walk(ov.Stmts)
+			for _, f := range ov.Funcs {
+				walk(f.Block)
+			}
 		}
 	}
 	walk = func(stmts []ir.Stmt) {
@@ -632,10 +662,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Stmts)
-		for _, f := range c.Funcs {
-			walk(f.Block)
-		}
+		walkComp(c)
 	}
 	walk(pkg.Body)
 	return out

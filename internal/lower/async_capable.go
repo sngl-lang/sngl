@@ -1,8 +1,6 @@
 package lower
 
 import (
-	"fmt"
-
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
 )
@@ -84,7 +82,7 @@ func refuseAsyncIntrinsic(c *ir.Call, s ir.Stmt, caps Features, opts Options) er
 		if caps.AsyncPost {
 			return nil
 		}
-		return fmt.Errorf("%s: async.do runs a closure back on the thread the target draws on, and %s has no way to reach one", callPos(c, s), platformOrThis(opts.Platform))
+		return ir.Decline(opts.Platform, "%s: async.do runs a closure back on the thread the target draws on, and %s has no way to reach one", callPos(c, s), platformOrThis(opts.Platform))
 	case AsyncStartIntrinsic:
 		if caps.AsyncSpawn {
 			return nil
@@ -93,7 +91,7 @@ func refuseAsyncIntrinsic(c *ir.Call, s ir.Stmt, caps Features, opts Options) er
 		// answers the id, and a platform whose handlers are not written in
 		// that language takes it back -- html's are JavaScript whatever
 		// `--lang` says.
-		return fmt.Errorf("%s: async.start runs a closure without waiting for it, and %s has no way to start one", callPos(c, s), describeBuild(opts))
+		return ir.Decline(opts.Platform, "%s: async.start runs a closure without waiting for it, and %s has no way to start one", callPos(c, s), describeBuild(opts))
 	}
 	return nil
 }

@@ -5,7 +5,14 @@ spelled the same was replaced: `e > 1` inside the lambda emitted
 parameter now stands for itself, while the handler's own `e` still resolves to
 the DOM event and reads its value through `e.target`.
 
+The handler's parameter is bound by its declaration when a platform's
+override splices the handler in (bindEventParams), not by its name: bound by
+name, the lambda's `e` was replaced by the value the event carried, and
+`filter((e2) => __input_value_wrote0 > 1)` compared the input's text with 1
+for every element. Every Go platform emitted the same.
+
 deny out/none/html/index.html `e2.target` -- the lambda's parameter is an int, so nothing may read a DOM property off it
+deny out/none/html/index.html `=> __input_value_wrote0` -- the lambda compares its own parameter, not the event's value
 -- app.sngl --
 import . "sngl:ui"
 
@@ -61,7 +68,7 @@ body { font-family: system-ui, sans-serif; }
     state.value__inst0 = __input_value_wrote0;
     __n1.value = state.value__inst0;
     state.name__inst0 = __input_value_wrote0;
-    state.n__inst0 = state.xs__inst0.filter((e2) => __input_value_wrote0 > 1).length;
+    state.n__inst0 = state.xs__inst0.filter((e2) => e2 > 1).length;
     __n2.textContent = String(state.n__inst0);
   });
   __n1.addEventListener("change", function(e) {
@@ -77,4 +84,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:2fb93d3235eac2e661ef4f5d34d655c4
+pass sha256:35aea6d8b3ed0382c01ab64600b4c066
