@@ -129,7 +129,7 @@ sha256:9fb8d812aabb351b1c431fee9b8edf90
   ]
 }
 -- testrun/bubbletea/go/bound.sngl/form/1 --
-sha256:0e5ab304e1e21f7abcd3c9f7c68ea94b
+sha256:d1629abc1445189373496f4a397dcb98
 {
   "results": [
     {

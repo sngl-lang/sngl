@@ -620,6 +620,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.todos = append(m.todos, Todo{Text: m.newTodo})
 			m.newTodo = ""
 			m.__effects0_settle()
+			m.widget0.SetValue(m.newTodo)
 		case msg.Code == tea.KeySpace && m.__focusID == 2 && (m.__pressing || m.__focusShown()):
 			func() {
 				__focusPos2 := 0
