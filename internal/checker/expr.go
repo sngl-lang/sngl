@@ -4162,6 +4162,8 @@ func (c *checker) checkStmt(s ast.Stmt) ir.Stmt {
 		var valExpr ir.Expr
 		if x.Value != nil {
 			valExpr = c.checkExprAs(x.Value, c.returnType, returnSlot(x.Pos))
+		} else if rt := c.returnType; rt != nil && rt.Kind != ir.TypeVoid && rt.Kind != ir.TypeInvalid {
+			c.error(x.Pos, "missing return value: the function returns %s", rt)
 		}
 		if c.rejectStmtInViewBody(x.Pos, "a return") {
 			return nil

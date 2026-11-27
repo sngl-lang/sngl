@@ -4,5 +4,10 @@ func foo() int {
     return "hello" // ERROR(check) "cannot return string as int"
 }
 
+// A return with no value, in a function that returns one, returns nothing.
+func bare() string {
+    return // ERROR(check) "missing return value: the function returns string"
+}
+
 window {
 }
