@@ -361,6 +361,8 @@ func UnemittedIntrinsic(lang string, c *ir.Call) *ir.TargetDeclined {
 
 type unemitted struct{ err *ir.TargetDeclined }
 
+func (u unemitted) Error() string { return u.err.Error() }
+
 // recoverUnemitted sets *err to what RequireIntrinsicFallback unwound with.
 func recoverUnemitted(err *error) {
 	r := recover()
