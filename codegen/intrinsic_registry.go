@@ -320,30 +320,12 @@ func EmitIntrinsicCall(lang, platform string, c *ir.Call, translate func(ir.Expr
 	return "", nil, false
 }
 
-// RequireIntrinsicFallback stops a build that has nothing to emit. A
-// declaration marked #[intrinsic] with no body is a signature: the result
-// comes from the target's implementation of the id, so emitting a plain call
-// to it would name a function that does not exist. The `usable` flag is the
-// declaration saying its own body computes the same answer, which is what
-// makes emitting the SNGL body safe for the ones that carry it.
-//
-// Call this at the point a backend is about to emit a generic call, not when
-// the id-keyed registry declines: several ids are still served by a backend's
-// own name-keyed dispatch, and those calls never reach the generic path.
-//
-// What it stops is declined (UnemittedIntrinsic), not failed: the program
-// checked clean, and which ids a language implements is the target's to say.
-// A translator deep in an expression has no error to return, so it unwinds to
-// Generate.
+// RequireIntrinsicFallback declines c, a call of a bodiless intrinsic lang has
+// no emitter for. Call it where a backend is about to emit a generic call, past
+// its name-keyed dispatch. It panics, and Generate recovers the decline, since a
+// translator has no error to return from inside an expression.
 func RequireIntrinsicFallback(lang string, c *ir.Call) {
-	if c == nil || c.Func == nil || c.Func.Intrinsic == "" {
-		return
-	}
-	// A body is the declaration's claim that it computes the right answer, and
-	// it is the whole claim — there is no flag beside it to consult. A
-	// declaration with none is a signature, so there is nothing here to emit
-	// instead of the missing emitter.
-	if len(c.Func.Block) > 0 {
+	if c == nil || c.Func == nil || c.Func.Intrinsic == "" || len(c.Func.Block) > 0 {
 		return
 	}
 	panic(unemitted{UnemittedIntrinsic(lang, c)})

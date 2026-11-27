@@ -78,8 +78,12 @@ func (c *Context) fail(format string, args ...any) string {
 // decline is fail for what C cannot express by design rather than what this
 // generator gets wrong: a host value or function another language owns.
 func (c *Context) decline(format string, args ...any) string {
+	return c.declined(ir.Decline("c", "c: "+format, args...))
+}
+
+func (c *Context) declined(d *ir.TargetDeclined) string {
 	if c.file.err == nil {
-		c.file.err = ir.Decline("c", "c: "+format, args...)
+		c.file.err = d
 	}
 	return "/* unsupported */ 0"
 }
@@ -749,10 +753,7 @@ func (c *Context) Call(n *ir.Call) string {
 		return c.fail("calling %s on a component", n.Func.Name)
 	}
 	if n.Func.Intrinsic != "" && len(n.Func.Block) == 0 {
-		if c.file.err == nil {
-			c.file.err = codegen.UnemittedIntrinsic(langC, n)
-		}
-		return "/* unsupported */ 0"
+		return c.declined(codegen.UnemittedIntrinsic(langC, n))
 	}
 	return funcName(n.Func) + "(" + strings.Join(args, ", ") + ")"
 }
