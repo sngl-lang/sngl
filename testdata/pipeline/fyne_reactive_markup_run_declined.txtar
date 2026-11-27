@@ -1,0 +1,32 @@
+A markup run under an `if` inside a richText is built by a component lifted
+out of the position, whose record holds its root as a widget: a fyne run is
+not one, and fyne declines the program rather than write Go that does not
+compile.
+
+-- app.sngl --
+import markup "sngl:ui/markup"
+import ui "sngl:ui"
+
+output {
+    go {
+        fyne
+    }
+}
+
+ui.window {
+    var on = false
+    var n = 1
+
+    ui.button(text="toggle", @click {
+        on!!
+        n += 1
+    })
+    markup.richText {
+        markup.text("flow ")
+        if on {
+            markup.run(style={fontStyle=n > 2 ? markup.Slant.italic : markup.Slant.normal}) {
+                markup.text(" gated")
+            }
+        }
+    }
+}
