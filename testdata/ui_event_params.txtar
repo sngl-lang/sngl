@@ -952,6 +952,7 @@ type Model struct {
 	seen           string
 	clicks         int
 	checked__inst0 bool
+	edited__inst0  bool
 
 	__n1  *fyne.Container
 	box   *fynelayout.Check
@@ -991,6 +992,15 @@ func (m *Model) __init(preset map[string]bool) {
 	if !preset["checked__inst0"] {
 		m.checked__inst0 = m.lit
 	}
+	if !preset["edited__inst0"] {
+		m.edited__inst0 = false
+	}
+}
+
+func (m *Model) commit__inst0(v string) {
+	m.name = v
+	m.field.SetText(m.name)
+	m.edited__inst0 = false
 }
 
 func (m *Model) box_toggle_handler(on__p0 bool) {
@@ -1016,14 +1026,20 @@ func (m *Model) field_input_handler(v string) {
 	if v != m.name {
 		m.name = v
 		m.field.SetText(m.name)
+		m.edited__inst0 = true
 		m.seen = ((("input " + v) + " ") + m.name)
 		m.__n0.SetText(m.seen)
 	}
 }
 
 func (m *Model) field_change_handler(v string) {
-	m.name = v
-	m.field.SetText(m.name)
+	m.commit__inst0(v)
+}
+
+func (m *Model) field_submit_handler(v string) {
+	if m.edited__inst0 {
+		m.commit__inst0(v)
+	}
 }
 
 func (m *Model) day_pick_handler(d *time.Time) {
@@ -1072,16 +1088,25 @@ func (m *Model) fieldInput(s string) {
 	}
 }
 
-// fieldChange invokes the OnSubmitted callback on the #field widget; for tests.
+// fieldChange invokes the OnCommit callback on the #field widget; for tests.
 func (m *Model) fieldChange(s string) {
 	if oc := m.field.OnChanged; m.field.Text != s {
 		m.field.OnChanged = nil
 		m.field.SetText(s)
 		m.field.OnChanged = oc
 	}
+	if cb := m.field.OnCommit; cb != nil {
+		m.field.OnCommit = nil
+		cb(s)
+		m.field.OnCommit = cb
+	}
+}
+
+// fieldSubmit invokes the OnSubmitted callback on the #field widget; for tests.
+func (m *Model) fieldSubmit() {
 	if cb := m.field.OnSubmitted; cb != nil {
 		m.field.OnSubmitted = nil
-		cb(s)
+		cb(m.field.Text)
 		m.field.OnSubmitted = cb
 	}
 }
@@ -1158,6 +1183,14 @@ func (m *Model) SetChecked__inst0(v bool) {
 	m.checked__inst0 = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1 = fynelayout.NewVBox()
@@ -1175,7 +1208,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.field.SetText(m.name)
 	m.field.SetPlaceHolder("")
 	m.field.OnChanged = m.field_input_handler
-	m.field.OnSubmitted = m.field_change_handler
+	m.field.OnCommit = m.field_change_handler
+	m.field.OnSubmitted = m.field_submit_handler
 	m.__n1.Add(m.field)
 	m.day = fynelayout.NewDateEntry()
 	m.day.SetDate(m.picked)
@@ -1499,6 +1533,7 @@ type snglState struct {
 	seen                string
 	clicks              int
 	checked__inst0      bool
+	edited__inst0       bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -3989,6 +4024,12 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 	return ((ga > gb) || ((ga == gb) && (a > b)))
 }
 
+func Commit__inst0(v string) {
+	m.name = v
+	m.edited__inst0 = false
+	__effects0_settle()
+}
+
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.field))) != m.__effect0_key {
 		SetEntryText(m.field, m.__effect0_key)
@@ -4102,6 +4143,7 @@ func Field_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.name {
 		__input_value_wrote0 := cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
 		m.name = __input_value_wrote0
+		m.edited__inst0 = true
 		m.seen = ((("input " + __input_value_wrote0) + " ") + m.name)
 		cgo.GtkLabelSetLabel((cgo.PGtkLabel)(unsafe.Pointer(m.__n0)), m.seen)
 	}
@@ -4109,8 +4151,9 @@ func Field_changed_handler(e cgo.Widget) {
 }
 
 func Field_activate_handler(e cgo.Widget) {
-	m.name = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	__effects0_settle()
+	if m.edited__inst0 {
+		Commit__inst0(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func Day_daySelected_handler(c cgo.Widget) {
@@ -4145,6 +4188,7 @@ func snglInit() {
 	m.seen = "none"
 	m.clicks = 0
 	m.checked__inst0 = m.lit
+	m.edited__inst0 = false
 	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
@@ -4834,6 +4878,10 @@ window.__sngl_boot = () => {
     Object.assign($2, p);
     $2.dispatchEvent(Object.assign(new Event("change"), p));
   };
+  state.fieldKeydown = (p) => {
+    Object.assign($2, p);
+    $2.dispatchEvent(Object.assign(new Event("keydown"), p));
+  };
   state.dayChange = (p) => {
     Object.assign($3, p);
     $3.dispatchEvent(Object.assign(new Event("change"), p));
@@ -4852,6 +4900,17 @@ window.__sngl_boot = () => {
   }
   function String(v) {
     return "" + v;
+  }
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
   }
   var $2 = document.getElementById("$2");
   var $3 = document.getElementById("$3");
@@ -4878,12 +4937,24 @@ window.__sngl_boot = () => {
     let __input_value_wrote0 = e.currentTarget.value;
     state.name = __input_value_wrote0;
     $2.value = state.name;
+    _snglMarkEdited(e.currentTarget);
     state.seen = "input " + __input_value_wrote0 + " " + state.name;
     __n2.textContent = state.seen;
   });
   $2.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
-    $2.value = state.name;
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
+      ;
+      state.name = e.currentTarget.value;
+      $2.value = state.name;
+    }
+    ;
+  });
+  $2.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
   });
   $3.addEventListener("change", function(e) {
     let __datepicker_value_wrote0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
@@ -4910,10 +4981,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
-pass sha256:cde99df0266fd4b31dd5b833933e87ea
+pass sha256:365502a6f32bf2b823d005cc3affd3a0
 -- run/go/gtk4 --
-pass sha256:6720a5b95b84e2ac7ab08f817420f7b0
+pass sha256:8705bab4fbc6c0566e726f5372432a3a
 -- run/kotlin/android --
 pass sha256:fa0d1db705d48d0b6c5499fd304e0171
 -- run/none/html --
-pass sha256:21905db21354d4e2500145799710d72a
+pass sha256:4e4e26fee55ef3de65e0d52717ef743c

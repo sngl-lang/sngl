@@ -258,6 +258,8 @@ type snglState struct {
 	a                   string
 	b                   string
 	d                   *time.Time
+	edited__inst0       bool
+	edited__inst1       bool
 	value__inst0        *time.Time
 	__effect0_key       string
 	__effect0_live      []string
@@ -2705,6 +2707,18 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 	return ((ga > gb) || ((ga == gb) && (a > b)))
 }
 
+func Commit__inst0(v string) {
+	m.a = v
+	m.edited__inst0 = false
+	__effects0_settle()
+}
+
+func Commit__inst1(v string) {
+	m.b = v
+	m.edited__inst1 = false
+	__effects0_settle()
+}
+
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.first))) != m.__effect0_key {
 		SetEntryText(m.first, m.__effect0_key)
@@ -2840,25 +2854,29 @@ func __effects0_settle() {
 func First_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.a {
 		m.a = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+		m.edited__inst0 = true
 	}
 	__effects0_settle()
 }
 
 func First_activate_handler(e cgo.Widget) {
-	m.a = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	__effects0_settle()
+	if m.edited__inst0 {
+		Commit__inst0(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func Second_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.b {
 		m.b = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+		m.edited__inst1 = true
 	}
 	__effects0_settle()
 }
 
 func Second_activate_handler(e cgo.Widget) {
-	m.b = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	__effects0_settle()
+	if m.edited__inst1 {
+		Commit__inst1(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func Cal_daySelected_handler(c cgo.Widget) {
@@ -2881,6 +2899,8 @@ func snglInit() {
 	m.a = ""
 	m.b = ""
 	m.d = nil
+	m.edited__inst0 = false
+	m.edited__inst1 = false
 	m.value__inst0 = nil
 	m.__effect0_key = ""
 	m.__effect0_live = []string{}
@@ -3004,4 +3024,4 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/gtk4 --
-pass sha256:fbca984687aa139621a00b281aa2e05a
+pass sha256:5a78524016489019f5688308c1bfddd7

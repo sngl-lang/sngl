@@ -41,18 +41,41 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { name__inst0: "Alice", visible__inst0: true, value__inst0: null };
   state.value__inst0 = state.name__inst0;
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
+  }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   var __n2 = document.querySelector('[data-sngl-id="__n2"]');
   __n1.addEventListener("input", function(e) {
     let __input_value_wrote0 = e.currentTarget.value;
     state.value__inst0 = __input_value_wrote0;
     __n1.value = state.value__inst0;
+    _snglMarkEdited(e.currentTarget);
     state.name__inst0 = __input_value_wrote0;
     __n2.textContent = state.name__inst0;
   });
   __n1.addEventListener("change", function(e) {
-    state.value__inst0 = e.currentTarget.value;
-    __n1.value = state.value__inst0;
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.value__inst0) {
+      ;
+      state.value__inst0 = e.currentTarget.value;
+      __n1.value = state.value__inst0;
+    }
+    ;
+  });
+  __n1.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
   });
   function __sngl_init() {
     __n1.value = state.value__inst0;
@@ -63,4 +86,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:dbe2520a8bd6455346c373f22c1e4449
+pass sha256:85b2a25b822df68b174639f11cce39c2

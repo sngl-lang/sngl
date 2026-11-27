@@ -530,6 +530,7 @@ type Model struct {
 	name__inst0    string
 	visible__inst0 bool
 	value__inst0   string
+	edited__inst0  bool
 
 	__n0    *fynelayout.Toplevel
 	__n2    *widget.Label
@@ -543,7 +544,14 @@ func New() *Model {
 	m.name__inst0 = ""
 	m.visible__inst0 = true
 	m.value__inst0 = m.name__inst0
+	m.edited__inst0 = false
 	return m
+}
+
+func (m *Model) commit__inst0(v string) {
+	m.value__inst0 = v
+	m.__n1.SetText(m.value__inst0)
+	m.edited__inst0 = false
 }
 
 func (m *Model) __n0_closed_handler() {
@@ -558,12 +566,18 @@ func (m *Model) __n1_input_handler(v string) {
 	if v != m.value__inst0 {
 		m.value__inst0 = v
 		m.__n1.SetText(m.value__inst0)
+		m.edited__inst0 = true
 	}
 }
 
 func (m *Model) __n1_change_handler(v string) {
-	m.value__inst0 = v
-	m.__n1.SetText(m.value__inst0)
+	m.commit__inst0(v)
+}
+
+func (m *Model) __n1_submit_handler(v string) {
+	if m.edited__inst0 {
+		m.commit__inst0(v)
+	}
 }
 
 func (m *Model) Name__inst0() string {
@@ -590,6 +604,14 @@ func (m *Model) SetValue__inst0(v string) {
 	m.value__inst0 = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree and returns the first window's content.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	if m.__built {
@@ -607,7 +629,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.SetText(m.value__inst0)
 	m.__n1.SetPlaceHolder("")
 	m.__n1.OnChanged = m.__n1_input_handler
-	m.__n1.OnSubmitted = m.__n1_change_handler
+	m.__n1.OnCommit = m.__n1_change_handler
+	m.__n1.OnSubmitted = m.__n1_submit_handler
 	m.__n0.Add(m.__n1)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
@@ -815,6 +838,7 @@ type snglState struct {
 	name__inst0         string
 	visible__inst0      bool
 	value__inst0        string
+	edited__inst0       bool
 	_attached           []cgo.Widget
 	_heard              _HeardState
 	_holding            bool
@@ -832,6 +856,12 @@ type snglState struct {
 }
 
 var m = &snglState{}
+
+func Commit__inst0(v string) {
+	m.value__inst0 = v
+	m.edited__inst0 = false
+	__effects0_settle()
+}
 
 func _main(build func()) int {
 	return _appRun(build)
@@ -3296,13 +3326,15 @@ func __n0_visible_handler(__visible bool) {
 func Entry_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.value__inst0 {
 		m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+		m.edited__inst0 = true
 	}
 	__effects0_settle()
 }
 
 func Entry_activate_handler(e cgo.Widget) {
-	m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	__effects0_settle()
+	if m.edited__inst0 {
+		Commit__inst0(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func snglInit() {
@@ -3310,6 +3342,7 @@ func snglInit() {
 	m.name__inst0 = ""
 	m.visible__inst0 = true
 	m.value__inst0 = m.name__inst0
+	m.edited__inst0 = false
 	m._attached = []cgo.Widget{}
 	m._heard = _HeardState{Then: func() {
 	}}
@@ -3574,14 +3607,37 @@ body { font-family: system-ui, sans-serif; }
   // sngl-entry.js
   var state = { name__inst0: "", visible__inst0: true, value__inst0: null };
   state.value__inst0 = state.name__inst0;
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
+  }
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
   __n1.addEventListener("input", function(e) {
     state.value__inst0 = e.currentTarget.value;
     __n1.value = state.value__inst0;
+    _snglMarkEdited(e.currentTarget);
   });
   __n1.addEventListener("change", function(e) {
-    state.value__inst0 = e.currentTarget.value;
-    __n1.value = state.value__inst0;
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.value__inst0) {
+      ;
+      state.value__inst0 = e.currentTarget.value;
+      __n1.value = state.value__inst0;
+    }
+    ;
+  });
+  __n1.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
   });
   function __sngl_init() {
     __n1.value = state.value__inst0;
@@ -3593,10 +3649,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:13ec5f5447c3bd70476022c6f038384b
 -- run/go/fyne --
-pass sha256:51de69565226a4106da04843359ade6c
+pass sha256:0f634a7a412e91ca9399c9cbc0f91008
 -- run/go/gtk4 --
-pass sha256:02ae7b18d180e5b2f34e41af32cc3736
+pass sha256:9a8ccd521aa804a77a1da908f0eae134
 -- run/kotlin/android --
 pass sha256:95e3a25c2b9c579b0597c35843e35504
 -- run/none/html --
-pass sha256:f39fdae2d442a337629e986f0f3199e3
+pass sha256:b1b023a0c28cc70d05476d380eccfbbb

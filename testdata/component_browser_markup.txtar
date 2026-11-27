@@ -230,6 +230,10 @@ window.__sngl_boot = () => {
     Object.assign($6, p);
     $6.dispatchEvent(Object.assign(new Event("change"), p));
   };
+  state.inputKeydown = (p) => {
+    Object.assign($6, p);
+    $6.dispatchEvent(Object.assign(new Event("keydown"), p));
+  };
   state.selectChange = (p) => {
     Object.assign($10, p);
     $10.dispatchEvent(Object.assign(new Event("change"), p));
@@ -895,6 +899,17 @@ window.__sngl_boot = () => {
       }
     }
   }
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
+  }
   if (!customElements.get("sngl-swipe")) customElements.define("sngl-swipe", class extends HTMLElement {
     connectedCallback() {
       this.style.display = "block";
@@ -954,10 +969,22 @@ window.__sngl_boot = () => {
   $6.addEventListener("input", function(e) {
     state.name = e.currentTarget.value;
     $6.value = state.name;
+    _snglMarkEdited(e.currentTarget);
   });
   $6.addEventListener("change", function(e) {
-    state.name = e.currentTarget.value;
-    $6.value = state.name;
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
+      ;
+      state.name = e.currentTarget.value;
+      $6.value = state.name;
+    }
+    ;
+  });
+  $6.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
   });
   __n0.addEventListener("change", function(e) {
     state.checked__inst0 = e.currentTarget.checked;
@@ -1008,9 +1035,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:164f1eeebb79dfb4e843e8fc389dfeaf
+pass sha256:434aa0e67492267cbbe732263123b429
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:b5aed809b94c164a032b2fe2f2f0d8d6
+sha256:1a5b9c7f52f78ebf909630c6eb1d8a9a
 {
   "results": [
     {

@@ -12,6 +12,8 @@ sngl test --platform=bubbletea --language=go app.sngl
 stdout 'ok   5 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
 stdout 'ok   5 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
 stdout 'ok   5 tests, 0 failures'
 sngl test --platform=win32 --language=c app.sngl
@@ -124,6 +126,32 @@ sha256:e2ef923554b0b5acebfc0b5fc43b0df3
 }
 -- testrun/fyne/go/app.sngl/main/1 --
 sha256:5fef5e54a14d4f7e8a032d2e6358d3ff
+{
+  "results": [
+    {
+      "Desc": "ChangeTriggerDoesNotSubmit",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenEnterCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterAgainUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/main/1 --
+sha256:44d1443262a4121c995929a1a11f0bdb
 {
   "results": [
     {

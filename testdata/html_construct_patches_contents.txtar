@@ -138,10 +138,13 @@ body { font-family: system-ui, sans-serif; }
     });
     let __on1 = props.__on1 ?? ((__e0) => {
     });
+    let __on2 = props.__on2 ?? ((__e0) => {
+    });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
+    let __prop___on2 = __on2;
     function __set___p1(__v) {
       if (__prop___p1 === __v) {
         return;
@@ -156,6 +159,9 @@ body { font-family: system-ui, sans-serif; }
     function __set___on1(__v) {
       __prop___on1 = __v;
     }
+    function __set___on2(__v) {
+      __prop___on2 = __v;
+    }
     let __n1 = document.createElement(__prop___p0);
     let __n2 = document.createElement("input");
     __n2.value = __prop___p1;
@@ -169,6 +175,9 @@ body { font-family: system-ui, sans-serif; }
     __n2.addEventListener("change", (__on1_0) => {
       __prop___on1(__on1_0);
     });
+    __n2.addEventListener("keydown", (__on2_0) => {
+      __prop___on2(__on2_0);
+    });
     __n1.appendChild(__n2);
     let __n3 = document.createElement("span");
     __n3.textContent = __prop___p1;
@@ -180,7 +189,8 @@ body { font-family: system-ui, sans-serif; }
       },
       __set___p1,
       __set___on0,
-      __set___on1
+      __set___on1,
+      __set___on2
     };
   }
   function __cf___child1(props) {
@@ -243,10 +253,13 @@ body { font-family: system-ui, sans-serif; }
     });
     let __on1 = props.__on1 ?? ((__e0) => {
     });
+    let __on2 = props.__on2 ?? ((__e0) => {
+    });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
+    let __prop___on2 = __on2;
     function __set___p0(__v) {
       if (__prop___p0 === __v) {
         return;
@@ -273,6 +286,9 @@ body { font-family: system-ui, sans-serif; }
     function __set___on1(__v) {
       __prop___on1 = __v;
     }
+    function __set___on2(__v) {
+      __prop___on2 = __v;
+    }
     let __n14 = document.createElement("div");
     __n14.setAttribute("style", "display:flex;flex-direction:column");
     let __n6 = __cf_seeded({ start: __prop___p0 });
@@ -290,6 +306,9 @@ body { font-family: system-ui, sans-serif; }
     __n7.addEventListener("change", (__on1_0) => {
       __prop___on1(__on1_0);
     });
+    __n7.addEventListener("keydown", (__on2_0) => {
+      __prop___on2(__on2_0);
+    });
     __n14.appendChild(__n7);
     __root.appendChild(__n14);
     return {
@@ -299,7 +318,8 @@ body { font-family: system-ui, sans-serif; }
       __set___p0,
       __set___p1,
       __set___on0,
-      __set___on1
+      __set___on1,
+      __set___on2
     };
   }
   var __slot0 = [];
@@ -347,17 +367,29 @@ body { font-family: system-ui, sans-serif; }
                   __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
+                _snglMarkEdited(e.currentTarget);
               });
               __n9.__set___on1((e) => {
-                state.name = e.currentTarget.value;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  state.name = e.currentTarget.value;
+                  for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                    ;
+                    __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  }
+                  ;
+                  for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+                    ;
+                    __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  }
+                  ;
                 }
                 ;
-                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+              });
+              __n9.__set___on2((e) => {
+                if (e.key === "Enter") {
                   ;
-                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  _snglCommitEdit(e.currentTarget);
                 }
                 ;
               });
@@ -378,16 +410,27 @@ body { font-family: system-ui, sans-serif; }
                   __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
+                _snglMarkEdited(e.currentTarget);
               }, __on1: (e) => {
-                state.name = e.currentTarget.value;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  state.name = e.currentTarget.value;
+                  for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                    ;
+                    __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  }
+                  ;
+                  for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+                    ;
+                    __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  }
+                  ;
                 }
                 ;
-                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+              }, __on2: (e) => {
+                if (e.key === "Enter") {
                   ;
-                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  _snglCommitEdit(e.currentTarget);
                 }
                 ;
               } });
@@ -519,17 +562,29 @@ body { font-family: system-ui, sans-serif; }
                   __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
+                _snglMarkEdited(e.currentTarget);
               });
               __n11.__set___on1((e) => {
-                state.name = e.currentTarget.value;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  state.name = e.currentTarget.value;
+                  for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                    ;
+                    __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  }
+                  ;
+                  for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+                    ;
+                    __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  }
+                  ;
                 }
                 ;
-                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+              });
+              __n11.__set___on2((e) => {
+                if (e.key === "Enter") {
                   ;
-                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  _snglCommitEdit(e.currentTarget);
                 }
                 ;
               });
@@ -551,16 +606,27 @@ body { font-family: system-ui, sans-serif; }
                   __inst5_live[__inst5_live_ui].__set___p1(state.name);
                 }
                 ;
+                _snglMarkEdited(e.currentTarget);
               }, __on1: (e) => {
-                state.name = e.currentTarget.value;
-                for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.name) {
                   ;
-                  __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  state.name = e.currentTarget.value;
+                  for (const [__inst1_live_ui, _] of __inst1_live.entries()) {
+                    ;
+                    __inst1_live[__inst1_live_ui].__set___p1(state.name);
+                  }
+                  ;
+                  for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+                    ;
+                    __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  }
+                  ;
                 }
                 ;
-                for (const [__inst5_live_ui, _] of __inst5_live.entries()) {
+              }, __on2: (e) => {
+                if (e.key === "Enter") {
                   ;
-                  __inst5_live[__inst5_live_ui].__set___p1(state.name);
+                  _snglCommitEdit(e.currentTarget);
                 }
                 ;
               } });
@@ -600,6 +666,17 @@ body { font-family: system-ui, sans-serif; }
   }
   function String(v) {
     return "" + v;
+  }
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
   }
   var $0 = document.getElementById("$0");
   var $1 = document.getElementById("$1");
@@ -641,4 +718,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:f27c4d5d2c4e95274459e9de7ab5baca
+pass sha256:ccaccf59d6ae109cf87718ea8b10bd94

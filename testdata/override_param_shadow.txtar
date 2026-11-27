@@ -724,6 +724,7 @@ type Model struct {
 	checked__inst0 bool
 	value__inst0   string
 	checked__inst1 bool
+	edited__inst0  bool
 
 	__n0  *fyne.Container
 	box   *fynelayout.Check
@@ -757,6 +758,15 @@ func (m *Model) __init(preset map[string]bool) {
 	if !preset["checked__inst1"] {
 		m.checked__inst1 = false
 	}
+	if !preset["edited__inst0"] {
+		m.edited__inst0 = false
+	}
+}
+
+func (m *Model) commit__inst0(v__p0 string) {
+	m.value__inst0 = v__p0
+	m.field.SetText(m.value__inst0)
+	m.edited__inst0 = false
 }
 
 func (m *Model) box_toggle_handler(on__p0 bool) {
@@ -767,17 +777,23 @@ func (m *Model) box_toggle_handler(on__p0 bool) {
 	}
 }
 
-func (m *Model) field_input_handler(v__p0 string) {
-	if v__p0 != m.value__inst0 {
-		m.value__inst0 = v__p0
+func (m *Model) field_input_handler(v__p1 string) {
+	if v__p1 != m.value__inst0 {
+		m.value__inst0 = v__p1
 		m.field.SetText(m.value__inst0)
+		m.edited__inst0 = true
 		m.v = (m.v + "!")
 	}
 }
 
-func (m *Model) field_change_handler(v__p1 string) {
-	m.value__inst0 = v__p1
-	m.field.SetText(m.value__inst0)
+func (m *Model) field_change_handler(v__p2 string) {
+	m.commit__inst0(v__p2)
+}
+
+func (m *Model) field_submit_handler(v__p3 string) {
+	if m.edited__inst0 {
+		m.commit__inst0(v__p3)
+	}
 }
 
 func (m *Model) sw_toggle_handler(on__p1 bool) {
@@ -806,16 +822,25 @@ func (m *Model) fieldInput(s string) {
 	}
 }
 
-// fieldChange invokes the OnSubmitted callback on the #field widget; for tests.
+// fieldChange invokes the OnCommit callback on the #field widget; for tests.
 func (m *Model) fieldChange(s string) {
 	if oc := m.field.OnChanged; m.field.Text != s {
 		m.field.OnChanged = nil
 		m.field.SetText(s)
 		m.field.OnChanged = oc
 	}
+	if cb := m.field.OnCommit; cb != nil {
+		m.field.OnCommit = nil
+		cb(s)
+		m.field.OnCommit = cb
+	}
+}
+
+// fieldSubmit invokes the OnSubmitted callback on the #field widget; for tests.
+func (m *Model) fieldSubmit() {
 	if cb := m.field.OnSubmitted; cb != nil {
 		m.field.OnSubmitted = nil
-		cb(s)
+		cb(m.field.Text)
 		m.field.OnSubmitted = cb
 	}
 }
@@ -877,6 +902,14 @@ func (m *Model) SetChecked__inst1(v bool) {
 	m.checked__inst1 = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewVBox()
@@ -889,7 +922,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.field.SetText(m.value__inst0)
 	m.field.SetPlaceHolder("")
 	m.field.OnChanged = m.field_input_handler
-	m.field.OnSubmitted = m.field_change_handler
+	m.field.OnCommit = m.field_change_handler
+	m.field.OnSubmitted = m.field_submit_handler
 	m.__n0.Add(m.field)
 	m.sw = fynelayout.NewCheck("", nil)
 	m.sw.SetText("")
@@ -1150,6 +1184,7 @@ type snglState struct {
 	checked__inst0      bool
 	value__inst0        string
 	checked__inst1      bool
+	edited__inst0       bool
 	__effect0_key       string
 	__effect0_live      []string
 	__effect0_desired   []string
@@ -3554,6 +3589,12 @@ func _spreadsBefore(a int, b int, minimums []int, naturals []int) bool {
 	return ((ga > gb) || ((ga == gb) && (a > b)))
 }
 
+func Commit__inst0(v__p0 string) {
+	m.value__inst0 = v__p0
+	m.edited__inst0 = false
+	__effects0_settle()
+}
+
 func __effect0_mount() {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(m.field))) != m.__effect0_key {
 		SetEntryText(m.field, m.__effect0_key)
@@ -3619,14 +3660,16 @@ func Box_toggled_handler(b cgo.Widget) {
 func Field_changed_handler(e cgo.Widget) {
 	if cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))) != m.value__inst0 {
 		m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
+		m.edited__inst0 = true
 		m.v = (m.v + "!")
 	}
 	__effects0_settle()
 }
 
 func Field_activate_handler(e cgo.Widget) {
-	m.value__inst0 = cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e)))
-	__effects0_settle()
+	if m.edited__inst0 {
+		Commit__inst0(cgo.GtkEditableGetText((cgo.PGtkEditable)(unsafe.Pointer(e))))
+	}
 }
 
 func Sw_notifyActive_handler(s cgo.Widget) {
@@ -3657,6 +3700,7 @@ func snglInit() {
 	m.checked__inst0 = false
 	m.value__inst0 = ""
 	m.checked__inst1 = false
+	m.edited__inst0 = false
 	m.__effect0_key = ""
 	m.__effect0_live = []string{}
 	m.__effect0_desired = []string{}
@@ -4174,6 +4218,10 @@ window.__sngl_boot = () => {
     Object.assign($1, p);
     $1.dispatchEvent(Object.assign(new Event("change"), p));
   };
+  state.fieldKeydown = (p) => {
+    Object.assign($1, p);
+    $1.dispatchEvent(Object.assign(new Event("keydown"), p));
+  };
   state.boxChange = (p) => {
     Object.assign(__n0, p);
     __n0.dispatchEvent(Object.assign(new Event("change"), p));
@@ -4188,6 +4236,17 @@ window.__sngl_boot = () => {
   function String(v) {
     return "" + v;
   }
+  function _snglMarkEdited(el) {
+    el.__snglEdited = true;
+  }
+  function _snglTakeEdit(el) {
+    const e = el.__snglEdited === true;
+    el.__snglEdited = false;
+    return e;
+  }
+  function _snglCommitEdit(el) {
+    if (el.__snglEdited === true) el.dispatchEvent(new Event("change"));
+  }
   var $1 = document.getElementById("$1");
   var __n0 = document.querySelector('[data-sngl-id="__n0"]');
   var __n1 = document.querySelector('[data-sngl-id="__n1"]');
@@ -4199,11 +4258,23 @@ window.__sngl_boot = () => {
   $1.addEventListener("input", function(e) {
     state.value__inst0 = e.currentTarget.value;
     $1.value = state.value__inst0;
+    _snglMarkEdited(e.currentTarget);
     state.v = state.v + "!";
   });
   $1.addEventListener("change", function(e) {
-    state.value__inst0 = e.currentTarget.value;
-    $1.value = state.value__inst0;
+    if (_snglTakeEdit(e.currentTarget) || e.currentTarget.value !== state.value__inst0) {
+      ;
+      state.value__inst0 = e.currentTarget.value;
+      $1.value = state.value__inst0;
+    }
+    ;
+  });
+  $1.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      ;
+      _snglCommitEdit(e.currentTarget);
+    }
+    ;
   });
   __n1.addEventListener("change", function(e) {
     let __toggle_checked_wrote0 = e.currentTarget.checked;
@@ -4224,10 +4295,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:a611283a22da746c92444200354d5e1d
 -- run/go/fyne --
-pass sha256:4668b3c3f20b584a16fa1804963705c0
+pass sha256:a72760227d224cda03a712e795c7b240
 -- run/go/gtk4 --
-pass sha256:39a1569159214862cc6131e8acfd4763
+pass sha256:e08de88a0e8111a6a8db7534eaa3841f
 -- run/kotlin/android --
 pass sha256:ab2ee51976694958315215b77acf5dc6
 -- run/none/html --
-pass sha256:1435b427f5a6a2ec0e43f0d552b60d56
+pass sha256:7c5082659d650d4630e102a968ec3885
