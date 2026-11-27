@@ -1,0 +1,52 @@
+# A number as a single-base unit is that many of its base: `var zero
+# time.duration = 0`. C holds such a unit as a double and had no rule for the
+# conversion ("converting int to duration"). FuzzPipeline found it, from
+# testdata/unit_duration_name.sngl.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+import time "sngl:time"
+
+var zero time.duration = 0
+var some time.duration = 5s
+
+component panel ui.node {
+    ui.text #shown(value=zero < some ? "zero" : "set")
+}
+
+func testDuration(t test.Test, c panel) {
+    t.assert(c.shown.value == "zero")
+    t.assert(zero < some)
+}
+
+ui.window {
+    panel
+}
+-- testrun/gtk4/c/app.sngl/panel/1 --
+sha256:1e0b3b495b29181f12601b680550ab9e
+{
+  "results": [
+    {
+      "Desc": "Duration",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panel/1 --
+sha256:75ad48780353e6fcc86fae5839548d18
+{
+  "results": [
+    {
+      "Desc": "Duration",
+      "Passed": true
+    }
+  ]
+}

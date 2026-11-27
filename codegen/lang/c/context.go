@@ -845,6 +845,13 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 		if from.Kind == ir.TypeBool {
 			return operand
 		}
+	case ir.TypeUnit:
+		// A number as a single-base unit is that many of its base, the
+		// double C holds it as: `var zero duration = 0`
+		// (testdata/unit_duration_name.sngl).
+		if !multiBase(to) && (from.Kind == ir.TypeInt || from.Kind == ir.TypeFloat) {
+			return "(double)(" + operand + ")"
+		}
 	}
 	return c.fail("converting %s to %s", from, to)
 }
@@ -1450,10 +1457,10 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 	var free string
 	if cb >= 0 && off >= 0 {
 		if fn.Params[cb].CFuncType == nil || rel >= 0 && fn.Params[rel].CFuncType == nil {
-			return c.fail("calling %s, whose function parameters name no C type (#[c.type])", fn.Foreign.Name)
+			return c.decline("calling %s, whose function parameters name no C type (#[c.type])", fn.Foreign.Name)
 		}
 		if ctx < 0 {
-			return c.fail("calling %s, whose callback takes no context", fn.Foreign.Name)
+			return c.decline("calling %s, whose callback takes no context", fn.Foreign.Name)
 		}
 		args = slices.Clone(args)
 		// The argument is rendered already, as the function value it is: a
