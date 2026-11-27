@@ -45,10 +45,16 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	case "Span":
 		sp.New = fyneNative{Path: fynetextPath, Name: "NewSpan"}
 		sp.GoType = fyneNative{Path: fynetextPath, Name: "*Span"}
-		sp.Args = []fyneArg{{
+		style := fyneArg{
 			Type: fyneNative{Path: fynetextPath, Name: "Style"},
 			Raw:  spanStyleChain(props),
-		}}
+		}
+		// A kind reading state is SetToken's, which the write that moves it
+		// reaches too.
+		if k := props["kind"]; k != nil && enumOrString(k) == "" && !readsState(k) {
+			style.Method, style.MethodArg = "WithToken", k
+		}
+		sp.Args = []fyneArg{style}
 		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
 		sp.Setters["kind"] = "SetToken"

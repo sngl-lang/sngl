@@ -195,7 +195,9 @@ follows from the tree being rendered rather than written out:
   construction. fyne's span answers it with `SetSpanStyle`, the
   `markup.SpanStyle` handed over a field at a time (`spanStyleArgs`, the
   spec's `SetterArgs`) since the runtime has no type for it, and the flow
-  rebuilds its segments. A token's kind read from data is `SetToken`. A
+  rebuilds its segments. A token's kind read from data is the constructor's
+  `WithToken(r.Token)` (`testdata/fyne_markup_data_kind.txtar`), and one
+  reading state is `SetToken`. A
   write the constructor was built from is the constructor's only when it
   reads no state: one reading state is the same expression after the state
   moved, and was dropped, so a run kept the kind and style it was built with
