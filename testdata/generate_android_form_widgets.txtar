@@ -61,11 +61,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -98,6 +98,16 @@ fun MainScreen() {
     var open__inst0 by remember { mutableStateOf(false) }
 
 
+    fun commit__inst0(v: String) {
+        value__inst0 = v
+    }
+
+
+    fun commit__inst1(v: String) {
+        value__inst1 = v
+    }
+
+
     fun choose__inst0(label: String) {
         open__inst0 = false
         var at = choiceLabeled__string(listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana")), label)
@@ -120,15 +130,17 @@ fun MainScreen() {
             }
         }
         Column {
-            OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+            SnglTextField(value = value__inst0, label = "Name", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst0 = v
                 name = v
-            }, label = {
-                Text(text = "Name", modifier = Modifier)
-            })
-            OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
+            }, onCommit = {
+                commit__inst0(value__inst0)
+            }, onSubmit = {})
+            SnglTextField(value = value__inst1, label = "", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst1 = v
-            })
+            }, onCommit = {
+                commit__inst1(value__inst1)
+            }, onSubmit = {})
             Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst0(v)
 }).safeDrawingPadding()) {
@@ -289,5 +301,93 @@ private fun parseDate(s: String): String? =
     } catch (e: DateTimeParseException) {
         null
     }
+-- out/kotlin/android/SnglTextField.kt --
+package test.sngl.app
+
+import android.os.Handler
+import android.os.Looper
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusEventModifierNode
+import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.text.input.ImeAction
+
+// The contract is SnglTextField's declaration in lib/platform/android/android.sngl.
+@Composable
+fun SnglTextField(
+    value: String,
+    label: String,
+    minLines: Int,
+    readOnly: Boolean,
+    commitsOnDone: Boolean,
+    modifier: Modifier,
+    onValueChange: (String) -> Unit,
+    onCommit: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    val commit = remember { SnglCommit() }
+    SideEffect {
+        commit.onCommit = onCommit
+        commit.onSubmit = onSubmit
+    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = {
+            commit.edited = true
+            onValueChange(it)
+        },
+        readOnly = readOnly,
+        singleLine = commitsOnDone,
+        minLines = minLines,
+        label = if (label.isEmpty()) null else ({ Text(label) }),
+        keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
+        // A non-null onDone replaces the default action, which hides the keyboard.
+        keyboardActions = KeyboardActions(onDone = {
+            commit.fire()
+            commit.onSubmit()
+            defaultKeyboardAction(ImeAction.Done)
+        }),
+        modifier = modifier.then(SnglCommitOnBlur(commit)),
+    )
+}
+
+private class SnglCommit {
+    var edited = false
+    var onCommit: () -> Unit = {}
+    var onSubmit: () -> Unit = {}
+
+    fun fire() {
+        if (edited) {
+            edited = false
+            onCommit()
+        }
+    }
+}
+
+private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
+    override fun create() = SnglCommitOnBlurNode(commit)
+
+    override fun update(node: SnglCommitOnBlurNode) {
+        node.commit = commit
+    }
+}
+
+// A field removed while focused loses its focus while this node is still
+// attached, so the commit waits for the main looper and asks again: a removed
+// field commits nothing, as html's removed input fires no change.
+private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
+    override fun onFocusEvent(focusState: FocusState) {
+        if (!focusState.isFocused && isAttached) {
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+        }
+    }
+}
 -- run/kotlin/android --
-pass sha256:c3d4287149fc71101d7c3e5edd6fca09
+pass sha256:d77a7409987bcc7d1bd01c8b443a9365

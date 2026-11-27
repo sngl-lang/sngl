@@ -9,8 +9,9 @@ import (
 	"duckfam.us/sngl/ir"
 )
 
-// dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
-// SnglPager's, gridKt SnglGrid's, choosesKt snglChooses's, flexShareKt snglFlexShare's,
+// dateFieldKt is SnglDateField's source, textFieldKt SnglTextField's,
+// scrollKt SnglScroll's, pagerKt SnglPager's, gridKt SnglGrid's, choosesKt
+// snglChooses's, flexShareKt snglFlexShare's,
 // flexibleKt snglFlexible's and snglFlexed's, and appbarKt SnglAppBar's with
 // the menu's composables.
 //
@@ -28,6 +29,9 @@ var gridKt string
 
 //go:embed chooses.kt
 var choosesKt string
+
+//go:embed textfield.kt
+var textFieldKt string
 
 //go:embed appbar.kt
 var appbarKt string
@@ -57,6 +61,7 @@ var shippedComposables = []struct {
 	intrinsic, call, name, src string
 }{
 	{intrinsic: intrinsicNS + "SnglDateField", name: "SnglDateField", src: dateFieldKt},
+	{intrinsic: intrinsicNS + "SnglTextField", name: "SnglTextField", src: textFieldKt},
 	{intrinsic: intrinsicNS + "SnglScroll", name: "SnglScroll", src: scrollKt},
 	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
 	{intrinsic: intrinsicNS + "SnglGrid", name: "SnglGrid", src: gridKt},

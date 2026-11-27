@@ -1877,36 +1877,14 @@ func callsiteNames(callsite *ir.NodeInst) map[string]bool {
 func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer) []ir.Stmt {
 	renames := map[ir.Symbol]string{}
 	symRenames := map[ir.Symbol]ir.Symbol{}
-	freshen := func(fn *ir.Func) {
-		if fn == nil {
-			return
-		}
-		var params []*ir.Param
-		for i, p := range fn.Params {
-			if p == nil || !taken[p.Name] {
-				continue
-			}
-			if params == nil {
-				params = append([]*ir.Param{}, fn.Params...)
-			}
-			q := *p
-			q.Name = names.next(p.Name, "p")
-			params[i] = &q
-			renames[p] = q.Name
-			symRenames[p] = &q
-		}
-		if params != nil {
-			fn.Params = params
-		}
-	}
 	_ = ir.Walk(body, func(n ir.Node) error {
 		switch v := n.(type) {
 		case *ir.NodeInst:
 			for i := range v.Handlers {
-				freshen(v.Handlers[i].Func)
+				freshenParams(v.Handlers[i].Func, taken, names, renames, symRenames)
 			}
 		case *ir.Lambda:
-			freshen(v.Func)
+			freshenParams(v.Func, taken, names, renames, symRenames)
 		case *ir.LocalVar:
 			if v.Sym == nil || !taken[v.Name] {
 				break
@@ -1920,6 +1898,44 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 		return nil
 	})
 	return renameIdents(body, renames, symRenames)
+}
+
+// freshenParams renames each of fn's parameters whose name is in taken,
+// recording the rename for renameIdents.
+func freshenParams(fn *ir.Func, taken map[string]bool, names renamer, renames map[ir.Symbol]string, symRenames map[ir.Symbol]ir.Symbol) {
+	if fn == nil {
+		return
+	}
+	var params []*ir.Param
+	for i, p := range fn.Params {
+		if p == nil || p.Receiver || !taken[p.Name] {
+			continue
+		}
+		if params == nil {
+			params = append([]*ir.Param{}, fn.Params...)
+		}
+		q := *p
+		q.Name = names.next(p.Name, "p")
+		params[i] = &q
+		renames[p] = q.Name
+		symRenames[p] = &q
+	}
+	if params != nil {
+		fn.Params = params
+	}
+}
+
+// freshenMethodParams is freshenShadowingParams for a method a splice hoists
+// onto its owner, its own parameters included. A trigger keeps its
+// parameters, which name the event's.
+func freshenMethodParams(fn *ir.Func, taken map[string]bool, names renamer) {
+	if fn.Trigger == "" {
+		renames := map[ir.Symbol]string{}
+		symRenames := map[ir.Symbol]ir.Symbol{}
+		freshenParams(fn, taken, names, renames, symRenames)
+		fn.Block = renameIdents(fn.Block, renames, symRenames)
+	}
+	fn.Block = freshenShadowingParams(fn.Block, taken, names)
 }
 
 // freshNodeHandles gives each node in a spliced copy of a body a handle of its
