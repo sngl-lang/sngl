@@ -1,0 +1,35 @@
+A program declaring a fyne widget of its own writes the Go the platform
+splices in: here a `Native` whose path is no Go import path. fyne declines the
+program rather than write an import Go refuses.
+
+-- app.sngl --
+import fyne "sngl:platform/fyne"
+import ui "sngl:ui"
+
+output {
+    go {
+        fyne
+    }
+}
+
+const widgetPath = "fyne.io:fyne/v2/widget"
+
+const func widget(name string) => fyne.Native{path=widgetPath, name=name}
+
+const component Shown(const spec fyne.Spec, text string) ui.node {
+    fyne.Widget(spec=spec, text=text)
+}
+
+var reading = "42"
+
+ui.window {
+    Shown(
+        spec = fyne.Spec{
+            new = widget("NewLabel"),
+            args = [fyne.Arg{raw=`"…"`}],
+            goType = widget("*Label"),
+            setters = [fyne.Setter{prop="text", call="SetText"}],
+        },
+        text = reading,
+    )
+}

@@ -90,6 +90,14 @@ func emitComponentInstance(
 			fmt.Fprintf(&ctorBody, "\t%s\n", line)
 		}
 	}
+	// A record's root is held as a widget, and a run of a flow is not one: a
+	// markup.run under a reactive position in a richText is built by a
+	// component lifted out of it, which this platform does not write yet.
+	for _, top := range tr.topLevel {
+		if sp := tr.specs[top]; sp != nil && sp.GoType.Path == fynetextPath {
+			failSink(ir.Decline("fyne", "fyne: a markup run under an `if` or a `for` inside a markup.richText is built apart from its flow, which fyne does not do yet"))
+		}
+	}
 	rootLines, root := instanceRootExpr(tr, cgc)
 	for _, line := range rootLines {
 		fmt.Fprintf(&ctorBody, "\t%s\n", line)

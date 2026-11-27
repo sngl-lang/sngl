@@ -615,6 +615,10 @@ func (p *placement) intoContents(owner string, stmts []ir.Stmt, tops []string, r
 				p.fail("%v", err)
 				return false
 			}
+			if place := ir.InstancePlaceName(strings.TrimSuffix(lv.Name, ir.InstanceRootSuffix)); p.places[place] {
+				v := &ir.Var{Name: place, Type: contents.Return, Synthesized: true}
+				out = append(out, &ir.LocalVar{Name: v.Name, Type: v.Type, Sym: v, Init: root()})
+			}
 			out = append(out, through(put)...)
 		}
 		pending = nil

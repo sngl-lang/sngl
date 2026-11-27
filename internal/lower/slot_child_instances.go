@@ -444,6 +444,7 @@ func (st *slotChildSynth) liftValues(n any, l *lift, local map[ir.Symbol]bool) {
 					p := l.prop("func("+identityOf(x.Func)+")", fn.Type, fn)
 					x.Callee = &ir.Ident{Name: p.Name, Type: fn.Type, Sym: p}
 					x.Func = nil
+					x.Args = slices.DeleteFunc(x.Args, isOwnerArg)
 				}
 				return node, nil
 			}
@@ -513,12 +514,18 @@ func (l *lift) prop(key string, typ *ir.Type, value ir.Expr) *ir.Param {
 
 // funcValue is the func c calls as a value: a lambda calling it as c does,
 // with what it is handed in place of c's arguments. A method's receiver is
-// the site's, as c's is, and no parameter of the lambda.
+// the site's, as c's is, and no parameter of the lambda -- and so is the
+// component a func of its own is called on where a target writes that
+// receiver as the first argument (isOwnerArg).
 func funcValue(c *ir.Call) *ir.Lambda {
 	fn := c.Func
 	wrapper := &ir.Func{Return: fn.Return}
 	call := &ir.Call{Type: c.Type, Func: fn, Receiver: c.Receiver, ReceiverArg: c.ReceiverArg, TypeArgs: c.TypeArgs}
 	for i, a := range c.Args {
+		if isOwnerArg(a) {
+			call.Args = append(call.Args, ir.CallArg{Name: a.Name, Value: ir.CloneExprSharingDecls(a.Value)})
+			continue
+		}
 		np := &ir.Param{Name: "__fnArg" + strconv.Itoa(i), Type: a.Value.ExprType()}
 		wrapper.Params = append(wrapper.Params, np)
 		call.Args = append(call.Args, ir.CallArg{Name: a.Name, Value: &ir.Ident{Name: np.Name, Type: np.Type, Sym: np}})
@@ -529,6 +536,18 @@ func funcValue(c *ir.Call) *ir.Lambda {
 		wrapper.Block = []ir.Stmt{&ir.Return{Value: call}}
 	}
 	return &ir.Lambda{Type: &ir.Type{Kind: ir.TypeFunc, Sig: wrapper.FuncSig()}, Func: wrapper}
+}
+
+// isOwnerArg reports whether a is the component a func of its own is called
+// on, written as an argument (passNoImplicitRecv): what the site has and a
+// lifted body does not.
+func isOwnerArg(a ir.CallArg) bool {
+	id, ok := a.Value.(*ir.Ident)
+	if !ok {
+		return false
+	}
+	_, ok = id.Sym.(*ir.Component)
+	return ok
 }
 
 // writesFree reports whether lam's body writes a binding declared outside

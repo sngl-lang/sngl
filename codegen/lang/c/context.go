@@ -823,6 +823,9 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 				return c.unitText(ud, operand)
 			}
 		}
+		if ir.IsColorStruct(from) {
+			return c.colorHex(from, operand)
+		}
 		return c.fail("the text of a %s", from)
 	}
 	switch to.Kind {
