@@ -1,0 +1,18 @@
+// Nothing runs the top of a file, so a statement written there is an error
+// rather than one that checks clean and does nothing; and a package is not a
+// node, so one written where a component goes is an error too.
+import draw "sngl:ui/draw"
+import ui "sngl:ui"
+
+var n = 0
+
+n = 1    // ERROR(check) "a statement cannot be written at the top of a file"
+n++      // ERROR(check) "a statement cannot be written at the top of a file"
+va.b = 0 // ERROR(check) "a statement cannot be written at the top of a file"
+
+ui.window {
+    draw { // ERROR(check) "draw is a package, not a component"
+        draw.canvas
+    }
+    ui.text(value="{n}")
+}

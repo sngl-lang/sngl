@@ -874,8 +874,11 @@ func cStaticRefusal(p *ir.Param) string {
 	}
 	r := sig.Return
 	if p.COuts {
-		sd, _ := r.Decl.(*ir.StructDef)
-		if r.Kind != ir.TypeStruct || sd == nil || len(sd.Fields) == 0 || ir.CTypeOf(r) != nil {
+		var sd *ir.StructDef
+		if r != nil {
+			sd, _ = r.Decl.(*ir.StructDef)
+		}
+		if sd == nil || r.Kind != ir.TypeStruct || len(sd.Fields) == 0 || ir.CTypeOf(r) != nil {
 			return fmt.Sprintf("is marked #[c.outs] and answers %s: what C reads through the pointers it hands the callback is a struct of the program's, a field for each", typeOrNothing(r))
 		}
 		for _, f := range sd.Fields {

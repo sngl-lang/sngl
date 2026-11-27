@@ -1652,6 +1652,12 @@ func (c *checker) pass1() {
 			case *ast.DisabledDecl:
 			case *ast.Comment:
 			default:
+				// An assignment, a return or a loop's break: what a handler
+				// or a function runs, and nothing runs the top of a file.
+				// Dropped here, `n = 1` checked clean and did nothing.
+				if p := stmt.StmtPos(); p != nil {
+					c.error(*p, "a statement cannot be written at the top of a file: it runs in a handler or a function")
+				}
 			}
 		}
 	}

@@ -1,0 +1,17 @@
+# A TypeScript function whose parameter is destructured has no name for it,
+# so the parameter takes its position's, and the import builds: the binding
+# pattern was handed to Node.Text, which panics over one.
+env SNGL_GENCACHE=off
+sngl generate --platform=html --lang=go -o out app.sngl
+
+-- app.sngl --
+import lib "js:./lib"
+import ui "sngl:ui"
+
+ui.window {
+    ui.text(value=string(lib.area(arg0={w=2, h=3})))
+}
+-- lib/index.ts --
+export function area({ w, h }: { w: number; h: number }): number {
+    return w * h;
+}
