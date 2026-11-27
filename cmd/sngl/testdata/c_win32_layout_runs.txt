@@ -910,7 +910,7 @@ int peek_lbutton(HWND any, const char *text) {
 	return 1;
 }
 -- testrun/win32/c/app.sngl/controls/1 --
-sha256:c19bb2d81f7041c63ef308ef461c0a90
+sha256:3a9d2d8d20c5e973b523156125f46619
 {
   "results": [
     {
@@ -920,7 +920,7 @@ sha256:c19bb2d81f7041c63ef308ef461c0a90
   ]
 }
 -- testrun/win32/c/app.sngl/controls/2 --
-sha256:d57fdae4ff09dca9548639bfe12d0f11
+sha256:0fd7a357f22717ae9fd83843a6d09447
 {
   "results": [
     {
@@ -1010,7 +1010,7 @@ sha256:5497def38b432b6e50fe8b0f84e664bb
   ]
 }
 -- testrun/win32/go/app.sngl/controls/1 --
-sha256:100cec1dc09ed2698620e2bc8d688b6c
+sha256:396366162527c328e7c739f73a640a4f
 {
   "results": [
     {
@@ -1020,7 +1020,7 @@ sha256:100cec1dc09ed2698620e2bc8d688b6c
   ]
 }
 -- testrun/win32/go/app.sngl/controls/2 --
-sha256:c6be7a9e4de18d8e6cd52c410b17faae
+sha256:15b6507367a6207f9a4eb79ae2d70c71
 {
   "results": [
     {
