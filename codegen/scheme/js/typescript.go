@@ -356,11 +356,22 @@ func childTypes(n *snglts.Node) []*snglts.Node {
 	return out
 }
 
-// identText extracts the identifier text from a name node.
-func identText(n *snglts.Node) string {
+// identText extracts the text of a name node: an identifier or a quoted
+// name. It is empty for a name with no text of its own, such as a
+// destructured parameter's `{a, b}`, a binding pattern, which Node.Text
+// panics over rather than answer; snglts exports no kind to test for first.
+func identText(n *snglts.Node) (text string) {
 	if n == nil {
 		return ""
 	}
+	if n.Kind == snglts.KindIdentifier {
+		return n.Text()
+	}
+	defer func() {
+		if recover() != nil {
+			text = ""
+		}
+	}()
 	return n.Text()
 }
 
