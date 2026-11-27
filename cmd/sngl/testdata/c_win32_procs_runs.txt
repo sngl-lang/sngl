@@ -478,7 +478,7 @@ const char *peek_dpi(HWND any, int dpi, const char *text) {
 	return out;
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:49e2adb2d80bae7422137e875a7680f4
+sha256:a61445bae0ee8add358a0f3651068041
 {
   "results": [
     {
@@ -523,7 +523,7 @@ sha256:49e2adb2d80bae7422137e875a7680f4
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:52dccac76fc8b27e640b247396a4d443
+sha256:0e840f1d1d7643eaaf6588ba7ec3abcb
 {
   "results": [
     {
@@ -565,7 +565,7 @@ sha256:52dccac76fc8b27e640b247396a4d443
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:016ed174e1cdc18d497e250608eb1ffc
+sha256:d1445e8be15dc1c7b15744f31f7a08a8
 {
   "results": [
     {
@@ -607,7 +607,7 @@ sha256:016ed174e1cdc18d497e250608eb1ffc
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:01a3320baad5e2e6183de81adeb8c116
+sha256:b597530a53ce03555ae95fdc08dcc0cf
 {
   "results": [
     {
@@ -649,7 +649,7 @@ sha256:01a3320baad5e2e6183de81adeb8c116
   ]
 }
 -- testrun/win32/go/app.sngl/main/3 --
-sha256:cf29d428aed1d46a48030053865f99ac
+sha256:1e2298ad100d8277375c9313865a4602
 {
   "results": [
     {
