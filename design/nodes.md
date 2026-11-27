@@ -1349,6 +1349,23 @@ getter is a call (`gtk_editable_get_text`) whose name GIR would have to supply
 per property. The one such read that works is a `#[c.native]` method's
 receiver, above.
 
+**A handle held anywhere but its `#id` reads as the `#id` does**, since
+`propHolds` only answers a read whose operand is the `#id`. A local
+initialized from one and never assigned is that `#id` (`aliasHandleLocals`),
+and a function reading a prop through a node parameter is handed the prop
+instead: `grab(f)` of `func grab(x ui.input)` reading `x.value` becomes
+`grab(f.value)`, its parameter `x__value`, and the parameter goes where
+nothing else reads it (`handPropsForNodeParams`, after HandleParams' write
+inlining, to a fixed point so a caller passing its own parameter on is
+handed the prop too). Left alone, `var h = f` named a field bubbletea's Model
+never declares and a Kotlin value android never made, fyne and gtk4
+title-cased `h.Value` onto the widget, and a parameter typed `any` on the Go
+targets had no field at all (#332,
+`cmd/sngl/testdata/two_way_prop_read_through_handle_runs.txt`). html's write
+through such a local set the element and not the var it is bound to. What
+stays unanswered: a local assigned after its initializer, a function used as
+a value, or one handed a node as something other than a plain path.
+
 **Two nodes may share an id, and a body rendered twice may read its handles:
 each copy reads its own.** `uniqueNodeIDs` renames the later copies *by name*,
 because what that repairs is the emitted namespace, where any two `#bar`s

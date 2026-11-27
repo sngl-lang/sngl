@@ -1,0 +1,382 @@
+# A node's two-way prop read through its handle held anywhere but the `#id`
+# itself reads what the call site bound it to, as the read through the `#id`
+# does (two_way_prop_read_through_id_runs.txt): a local initialized from the
+# `#id` is the `#id` (aliasHandleLocals), and a function reading a prop
+# through a node parameter is handed the prop (handPropsForNodeParams). The
+# functions have block bodies, which the optimizer's inliner leaves called.
+
+sngl test --platform=none app.sngl
+stdout 'ok +10 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +10 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +10 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +10 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +10 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +10 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+func grab(x ui.input) string {
+    var v = x.value
+    return v
+}
+
+func both(x ui.input, y ui.input) string {
+    var v = "{x.value}/{y.value}"
+    return v
+}
+
+func onward(y ui.input) => grab(y) + "!"
+
+func caption(x ui.text) string {
+    var v = x.value
+    return v
+}
+
+func shout(x ui.input) {
+    x.value = x.value + "!"
+}
+
+component row(start string) ui.node {
+    var name = start
+    var got = "none"
+
+    ui.input #f(:value=name)
+    ui.button #read(text="read", @click { got = grab(f) })
+    ui.text #seen(value=got)
+}
+
+component held ui.node {
+    var name = "ada"
+    var got = "none"
+    var typed = "none"
+
+    ui.input #f(:value=name, @input { typed = grab(f) })
+    ui.input #g()
+    ui.text #t(value="cap {name}")
+    ui.button #plain(text="plain", @click {
+        var h = f
+        got = h.value
+    })
+    ui.button #local(text="local", @click {
+        var h = f
+        if name != "" {
+            var h2 = h
+            got = h2.value
+        }
+    })
+    ui.button #shown(text="shown", @click { got = grab(f) })
+    ui.button #cell(text="cell", @click { got = both(f, g) })
+    ui.button #passed(text="passed", @click { got = onward(f) })
+    ui.button #text(text="text", @click { got = caption(t) })
+    ui.button #write(text="write", @click {
+        var h = f
+        h.value = "zed"
+        got = h.value
+    })
+    ui.button #shouted(text="shouted", @click {
+        shout(f)
+        got = grab(f)
+    })
+    ui.button #set(text="set", @click { name = "grace" })
+    ui.text #seen(value=got)
+    ui.text #heard(value=typed)
+    for var s = ["p", "q"] {
+        row #r(start=s)
+    }
+}
+
+func testALocalReadsTheBinding(t test.Test, c held) {
+    c.set.click()
+    c.plain.click()
+    t.assert(c.seen.value == "grace")
+}
+
+func testAChainedLocalReadsTheBinding(t test.Test, c held) {
+    c.set.click()
+    c.local.click()
+    t.assert(c.seen.value == "grace")
+}
+
+func testAParamReadsTheBinding(t test.Test, c held) {
+    c.set.click()
+    c.shown.click()
+    t.assert(c.seen.value == "grace")
+}
+
+func testAnUnboundCellReadsThroughAParam(t test.Test, c held) {
+    c.g.input("bee")
+    c.cell.click()
+    t.assert(c.seen.value == "ada/bee")
+}
+
+func testAParamPassedOnReadsTheBinding(t test.Test, c held) {
+    c.set.click()
+    c.passed.click()
+    t.assert(c.seen.value == "grace!")
+}
+
+func testAOneWayPropReadsThroughAParam(t test.Test, c held) {
+    c.set.click()
+    c.text.click()
+    t.assert(c.seen.value == "cap grace")
+}
+
+func testAWriteThroughALocalLandsOnTheBinding(t test.Test, c held) {
+    c.write.click()
+    t.assert(c.seen.value == "zed")
+    t.assert(c.t.value == "cap zed")
+}
+
+func testAWriteThroughAParamThenARead(t test.Test, c held) {
+    c.shouted.click()
+    t.assert(c.seen.value == "ada!")
+}
+
+func testAHandlerReadsTheReportThroughAParam(t test.Test, c held) {
+    c.f.input("bee")
+    t.assert(c.heard.value == "bee")
+}
+
+func testEachCopyReadsItsOwnThroughAParam(t test.Test, c held) {
+    c.r[1].read.click()
+    t.assert(c.r[1].seen.value == "q")
+    c.r[0].read.click()
+    t.assert(c.r[0].seen.value == "p")
+}
+-- testrun/android/kotlin/app.sngl/held/1 --
+sha256:4eb700579b9f0d6f3d845899e6ac1edb
+{
+  "results": [
+    {
+      "Desc": "AChainedLocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheReportThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "ALocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AOneWayPropReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamPassedOnReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughALocalLandsOnTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAParamThenARead",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUnboundCellReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyReadsItsOwnThroughAParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/held/1 --
+sha256:a720f513f46e6f99ca325c19307acdd7
+{
+  "results": [
+    {
+      "Desc": "AChainedLocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheReportThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "ALocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AOneWayPropReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamPassedOnReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughALocalLandsOnTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAParamThenARead",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUnboundCellReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyReadsItsOwnThroughAParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/held/1 --
+sha256:463a3bb7207120e86333db2a90c78ff1
+{
+  "results": [
+    {
+      "Desc": "AChainedLocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheReportThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "ALocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AOneWayPropReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamPassedOnReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughALocalLandsOnTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAParamThenARead",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUnboundCellReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyReadsItsOwnThroughAParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/held/1 --
+sha256:b2d0512304e835c827e2ca341a57720b
+{
+  "results": [
+    {
+      "Desc": "AChainedLocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheReportThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "ALocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AOneWayPropReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamPassedOnReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughALocalLandsOnTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAParamThenARead",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUnboundCellReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyReadsItsOwnThroughAParam",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/held/1 --
+sha256:20cda020f5d8f0db2148e980b72f8305
+{
+  "results": [
+    {
+      "Desc": "AChainedLocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheReportThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "ALocalReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AOneWayPropReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamPassedOnReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AParamReadsTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughALocalLandsOnTheBinding",
+      "Passed": true
+    },
+    {
+      "Desc": "AWriteThroughAParamThenARead",
+      "Passed": true
+    },
+    {
+      "Desc": "AnUnboundCellReadsThroughAParam",
+      "Passed": true
+    },
+    {
+      "Desc": "EachCopyReadsItsOwnThroughAParam",
+      "Passed": true
+    }
+  ]
+}
