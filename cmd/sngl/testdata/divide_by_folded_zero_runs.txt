@@ -1,7 +1,7 @@
-# A divisor written as zero is a division by zero when the program runs, on
-# every target as on the interpreter. Go refuses one it can see at compile
-# time, so the build failed rather than the test: the generated Go hands it
-# over as no constant.
+# A divisor the fold finds to be zero is a division by zero when the program
+# runs, on every target as on the interpreter. (One written as zero is an
+# error of the check.) Go refuses one it can see at compile time, so the build
+# failed rather than the test: the generated Go hands it over as no constant.
 env SNGL_GENCACHE=off
 
 ! sngl test --platform=none main.sngl
@@ -15,10 +15,12 @@ stdout 'FAIL: /ModuloByZero'
 import test "sngl:test"
 import ui "sngl:ui"
 
+const zero = 0
+
 var n = 5
 
 component page ui.node {
-    ui.button #mod(text="{n}", @click { n = n % 0 })
+    ui.button #mod(text="{n}", @click { n = n % zero })
 }
 
 func testModuloByZero(t test.Test, c page) {

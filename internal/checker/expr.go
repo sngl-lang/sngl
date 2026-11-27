@@ -997,6 +997,9 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinDiv:
+		if !skip && writtenZero(rightExpr) {
+			c.error(x.Pos, "division by zero")
+		}
 		if !skip {
 			switch {
 			case left.IsNumeric() && right.IsNumeric():
@@ -1013,6 +1016,9 @@ func (c *checker) finishBinary(x *ast.BinaryExpr, leftExpr, rightExpr ir.Expr) i
 			typ = c.unifyNumeric(left, right, x.Pos, x.Op)
 		}
 	case ast.BinMod:
+		if !skip && writtenZero(rightExpr) {
+			c.error(x.Pos, "modulo by zero")
+		}
 		if !skip {
 			switch {
 			case left.IsNumeric() && right.IsNumeric():
