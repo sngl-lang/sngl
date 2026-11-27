@@ -5078,7 +5078,13 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 	// (e.g. timer condition guard like `running { ... }`), or if a namespace
 	// can resolve it.
 	if comp == nil && name != "" {
-		if _, inScope := c.scope.Lookup(name); !inScope {
+		if sym, inScope := c.scope.Lookup(name); inScope {
+			// `ui { … }`: the package, where one of its components was meant.
+			if _, isNS := sym.(*ir.Namespace); isNS {
+				c.error(vn.Pos, "%s is a package, not a component", name)
+				return nil
+			}
+		} else {
 			if !c.resolveQualifiedIdent(name) {
 				c.error(vn.Pos, "unknown component %q%s", name, c.stdlibHintFor(name, hintComponent))
 			}
