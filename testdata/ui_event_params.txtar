@@ -4306,6 +4306,9 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.Switch
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.shape.CircleShape
@@ -4337,6 +4340,9 @@ class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     var seen by mutableStateOf(__snglPre(__pre, "seen") { "none" })
     var clicks by mutableStateOf(__snglPre(__pre, "clicks") { 0 })
     var checked__inst0 by mutableStateOf(__snglPre(__pre, "checked__inst0") { lit })
+    fun commit__inst0(v: String) {
+        name = v
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -4362,7 +4368,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         OutlinedTextField(value = state.name, readOnly = false, modifier = Modifier.testTag("field"), onValueChange = { v ->
             state.name = v
             state.seen = ((("input " + v) + " ") + state.name)
-        })
+        }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = {  ->
+    state.commit__inst0(state.name)
+}))
         SnglDateField(value = state.picked, label = "", enabled = true, modifier = Modifier.testTag("day"), onValueChange = { v ->
             state.picked = v
             state.seen = (if ((v == null)) "no day" else "day")
@@ -4822,6 +4830,6 @@ pass sha256:cde99df0266fd4b31dd5b833933e87ea
 -- run/go/gtk4 --
 pass sha256:6720a5b95b84e2ac7ab08f817420f7b0
 -- run/kotlin/android --
-pass sha256:07c2198b57ea0611e25cc77908d6b4dd
+pass sha256:8d726518f72451419c41c3b3dab10706
 -- run/none/html --
 pass sha256:21905db21354d4e2500145799710d72a

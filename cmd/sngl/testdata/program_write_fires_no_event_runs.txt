@@ -7,24 +7,43 @@
 # back to the widget it came from, and gtk4's entry fired "changed" for that
 # write, re-entering the handler until the stack overflowed; a checkbox, switch
 # or radio fired its change for a write and reported it as the user's.
+#
+# Typing into a field fires its @input and not its @change, which is the
+# commit's: android fired both from every keystroke. bubbletea's textarea has
+# no commit, so notes.sngl, which commits one, does not run there.
 
 sngl test --platform=none app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=html app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
 
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   3 tests, 0 failures'
+stdout 'ok   5 tests, 0 failures'
+
+sngl test --platform=none notes.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=html notes.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go notes.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=gtk4 --language=go notes.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin notes.sngl
+stdout 'ok   1 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -52,9 +71,11 @@ component main ui.node {
     var on = false
     var pick = "a"
     var events = 0
+    var changes = 0
 
     ui.vbox {
-        ui.input #field(:value=text, @input(v) { events += 1 })
+        ui.input #field(:value=text, @input(v) { events += 1 }, @change(v) { changes += 1 })
+        ui.textarea #notes(:value=text, @input(v) { events += 1 }, @change(v) { changes += 1 })
         ui.checkbox #box(:checked=on, label="c", @change(c) { events += 1 })
         ui.radio(:value=pick, @change(v) { events += 1 }) {
             ui.choice(label="a", value="a")
@@ -83,6 +104,22 @@ func testTypingFiresOnce(t Test, c main) {
     c.field.input("xy")
     t.assert(c.text == "xy")
     t.assert(c.events == 1)
+    t.assert(c.changes == 0)
+}
+
+func testCommittingFiresChange(t Test, c main) {
+    c.field.input("xy")
+    c.field.change("xy")
+    t.assert(c.text == "xy")
+    t.assert(c.events == 1)
+    t.assert(c.changes == 1)
+}
+
+func testTypingNotesFiresOnce(t Test, c main) {
+    c.notes.input("xy")
+    t.assert(c.text == "xy")
+    t.assert(c.events == 1)
+    t.assert(c.changes == 0)
 }
 
 func testCheckingFiresOnce(t Test, c main) {
@@ -94,8 +131,32 @@ func testCheckingFiresOnce(t Test, c main) {
 ui.window {
     main
 }
+-- notes.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var text = ""
+    var events = 0
+    var changes = 0
+
+    ui.textarea #notes(:value=text, @input(v) { events += 1 }, @change(v) { changes += 1 })
+}
+
+func testCommittingFiresChange(t Test, c main) {
+    c.notes.input("xy")
+    t.assert(c.changes == 0)
+    c.notes.change("xy")
+    t.assert(c.text == "xy")
+    t.assert(c.events == 1)
+    t.assert(c.changes == 1)
+}
+
+ui.window {
+    main
+}
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:4ff6cb7e44868cad05d0e3a7d0811145
+sha256:bf6b603256dd273b84f7a468942c9597
 {
   "results": [
     {
@@ -107,13 +168,31 @@ sha256:4ff6cb7e44868cad05d0e3a7d0811145
       "Passed": true
     },
     {
+      "Desc": "CommittingFiresChange",
+      "Passed": true
+    },
+    {
       "Desc": "TypingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingNotesFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/notes.sngl/main/1 --
+sha256:4edf697c87cac79932a2fd08b3cd966d
+{
+  "results": [
+    {
+      "Desc": "CommittingFiresChange",
       "Passed": true
     }
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:496c66a5998aa9e13463e1862baea5ce
+sha256:b17dd1543af96fd0975d2a840417eb56
 {
   "results": [
     {
@@ -125,13 +204,21 @@ sha256:496c66a5998aa9e13463e1862baea5ce
       "Passed": true
     },
     {
+      "Desc": "CommittingFiresChange",
+      "Passed": true
+    },
+    {
       "Desc": "TypingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingNotesFiresOnce",
       "Passed": true
     }
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:9f539f85c20987f5d0edec11174335e6
+sha256:f5edc37ef436d012cff82b669687cc9f
 {
   "results": [
     {
@@ -143,13 +230,31 @@ sha256:9f539f85c20987f5d0edec11174335e6
       "Passed": true
     },
     {
+      "Desc": "CommittingFiresChange",
+      "Passed": true
+    },
+    {
       "Desc": "TypingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingNotesFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/notes.sngl/main/1 --
+sha256:2775963b827cec6d0b13756ff8653a5b
+{
+  "results": [
+    {
+      "Desc": "CommittingFiresChange",
       "Passed": true
     }
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:021b8c3c48b23bfd2a6d93d96f8008b0
+sha256:dddf3f919e2ec102c1550a26265198a5
 {
   "results": [
     {
@@ -161,13 +266,31 @@ sha256:021b8c3c48b23bfd2a6d93d96f8008b0
       "Passed": true
     },
     {
+      "Desc": "CommittingFiresChange",
+      "Passed": true
+    },
+    {
       "Desc": "TypingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingNotesFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/notes.sngl/main/1 --
+sha256:ab87d65f6cd7fd8713fd9a105e1cbaf6
+{
+  "results": [
+    {
+      "Desc": "CommittingFiresChange",
       "Passed": true
     }
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:4174488dafb65208e06ba5a77b078cfe
+sha256:eadd727ee45e90c90695f2922cb2dcd4
 {
   "results": [
     {
@@ -179,7 +302,25 @@ sha256:4174488dafb65208e06ba5a77b078cfe
       "Passed": true
     },
     {
+      "Desc": "CommittingFiresChange",
+      "Passed": true
+    },
+    {
       "Desc": "TypingFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "TypingNotesFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/notes.sngl/main/1 --
+sha256:7d248d8a013d3f9b0b641ca91c6990f2
+{
+  "results": [
+    {
+      "Desc": "CommittingFiresChange",
       "Passed": true
     }
   ]

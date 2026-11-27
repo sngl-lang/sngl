@@ -3376,6 +3376,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.Text
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -3399,6 +3402,9 @@ private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T
 class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
     var name by mutableStateOf(__snglPre(__pre, "name") { "World" })
+    fun commit__inst0(v: String) {
+        name = v
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -3408,7 +3414,9 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
         OutlinedTextField(value = state.name, readOnly = false, modifier = Modifier, onValueChange = { v ->
             state.name = v
-        }, label = {
+        }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = {  ->
+    state.commit__inst0(state.name)
+}), label = {
             Text(text = "Enter your name", modifier = Modifier)
         })
         Text(text = (("Hello, " + state.name) + "!"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
@@ -3674,7 +3682,7 @@ pass sha256:8f31c74406f51fbf62a1768ff4ff10dd
 -- run/go/gtk4 --
 pass sha256:01875066da75df6388f2858bf6181175
 -- run/kotlin/android --
-pass sha256:3f4c3b32fd66b7783d15b8d877c51c11
+pass sha256:d31ba4fba4c10c172d6324477a2e6fd5
 -- run/none/html --
 pass sha256:dfe4e478feaa145d5d8b24e30bc0cefa
 -- testrun/html/none/component_input.sngl/main/1 --

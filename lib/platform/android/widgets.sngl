@@ -187,8 +187,13 @@ const component shapes.image[platform](width, height, shapes) {
 // slot's whole body: a literal placeholder folds the slot away and a slot that
 // renders nothing is not passed. A placeholder only known at run time cannot
 // be answered that way and keeps the argument, so an empty one shows as the
-// notched, uncaptioned field the fold exists to avoid.
+// notched, uncaptioned field the fold exists to avoid. The text is committed
+// at the keyboard's Done, as fyne's and gtk4's are at Enter.
 const component ui.input[platform](placeholder, readonly, value, style, @input, @change) {
+    func commit(v string) {
+        value = v
+        change(v)
+    }
     OutlinedTextField(
         value = value,
         readOnly = readonly,
@@ -196,8 +201,9 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
         onValueChange = func(v) {
             value = v
             input(v)
-            change(v)
         },
+        keyboardOptions = keyboardOptionsOf(imeAction=imeDone),
+        keyboardActions = keyboardActionsOf(onDone=func() { commit(value) }),
     ) {
         component label {
             if placeholder != "" {
@@ -205,6 +211,11 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
             }
         }
     }
+}
+
+// A test commits as the keyboard's Done does.
+func ui.input.change[platform](value) {
+    commit(value)
 }
 
 const component ui.checkbox[platform](label, checked, focusable, style, @change) {
@@ -349,17 +360,27 @@ func ui.select[T].change[platform](value) {
     choose(ui.choiceLabel(options, value))
 }
 
+// The text is committed at Shift+Enter, as fyne's multi-line entry is, since
+// Enter is a line of it.
 const component ui.textarea[platform](value, style, @input, @change) {
+    func commit(v string) {
+        value = v
+        change(v)
+    }
     OutlinedTextField(
         value = value,
         minLines = 3,
-        modifier = modifierOf(style, flexShare),
+        modifier = modifierOf(style, flexShare).snglCommitsOnShiftEnter(func() { commit(value) }),
         onValueChange = func(v) {
             value = v
             input(v)
-            change(v)
         },
     ) {}
+}
+
+// A test commits as Shift+Enter does.
+func ui.textarea.change[platform](value) {
+    commit(value)
 }
 
 // A date is typed as YYYY-MM-DD, or picked in Material's dialog from the

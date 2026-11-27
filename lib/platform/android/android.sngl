@@ -680,17 +680,44 @@ component RadioButton(
 #[gen.renders(identity)]
 #[kt.native("OutlinedTextField", "androidx.compose.material3.OutlinedTextField")]
 component OutlinedTextField(
-    value         string,
-    minLines      int,
-    readOnly      bool,
-    enabled       bool,
-    singleLine    bool,
-    modifier      Modifier,
+    value           string,
+    minLines        int,
+    readOnly        bool,
+    enabled         bool,
+    singleLine      bool,
+    modifier        Modifier,
     // Compose passes the new text.
-    onValueChange func(value string),
-    label         option[component ui.node],
-    trailingIcon  option[component ui.node],
+    onValueChange   func(value string),
+    keyboardOptions KeyboardOptions,
+    keyboardActions KeyboardActions,
+    label           option[component ui.node],
+    trailingIcon    option[component ui.node],
 ) ui.node
+
+#[kt.native("androidx.compose.foundation.text.KeyboardOptions")]
+struct KeyboardOptions {}
+
+#[kt.native("androidx.compose.foundation.text.KeyboardActions")]
+struct KeyboardActions {}
+
+#[kt.native("androidx.compose.ui.text.input.ImeAction")]
+struct ImeAction {}
+
+#[kt.native("ImeAction.Done", "androidx.compose.ui.text.input.ImeAction")]
+const imeDone ImeAction
+
+#[kt.native("KeyboardOptions", "androidx.compose.foundation.text.KeyboardOptions", named)]
+const func keyboardOptionsOf(imeAction ImeAction) KeyboardOptions
+
+#[kt.native("KeyboardActions", "androidx.compose.foundation.text.KeyboardActions", named)]
+const func keyboardActionsOf(onDone func()) KeyboardActions
+
+// Calls `onCommit` at a hardware Shift+Enter in the field it is put on, which
+// the field then does not type. Kotlin the platform ships
+// (codegen/platform/android/commits.kt), since Compose says it in a lambda
+// reading the key event's fields.
+#[kt.native("snglCommitsOnShiftEnter", "", method)]
+const func Modifier.snglCommitsOnShiftEnter(onCommit func()) Modifier
 
 // A field a date is typed into, with a button opening Material's date picker.
 // It is Kotlin the platform ships with the app (codegen/platform/android/

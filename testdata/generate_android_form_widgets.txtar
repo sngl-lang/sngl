@@ -64,6 +64,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
@@ -98,6 +101,16 @@ fun MainScreen() {
     var open__inst0 by remember { mutableStateOf(false) }
 
 
+    fun commit__inst0(v: String) {
+        value__inst0 = v
+    }
+
+
+    fun commit__inst1(v: String) {
+        value__inst1 = v
+    }
+
+
     fun choose__inst0(label: String) {
         open__inst0 = false
         var at = choiceLabeled__string(listOf(Choice__record__string(label = "Apple", value = "Apple"), Choice__record__string(label = "Banana", value = "Banana")), label)
@@ -123,12 +136,16 @@ fun MainScreen() {
             OutlinedTextField(value = value__inst0, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst0 = v
                 name = v
-            }, label = {
+            }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = {  ->
+    commit__inst0(value__inst0)
+}), label = {
                 Text(text = "Name", modifier = Modifier)
             })
             OutlinedTextField(value = value__inst1, readOnly = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst1 = v
-            })
+            }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = {  ->
+    commit__inst1(value__inst1)
+}))
             Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst0(v)
 }).safeDrawingPadding()) {
@@ -290,4 +307,4 @@ private fun parseDate(s: String): String? =
         null
     }
 -- run/kotlin/android --
-pass sha256:c3d4287149fc71101d7c3e5edd6fca09
+pass sha256:2787f6aa1ef5e08481806d2e6200c276
