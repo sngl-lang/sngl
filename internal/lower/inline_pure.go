@@ -1922,6 +1922,38 @@ func freshenShadowingParams(body []ir.Stmt, taken map[string]bool, names renamer
 	return renameIdents(body, renames, symRenames)
 }
 
+// freshenMethodParams is freshenShadowingParams for a method a splice hoists
+// onto its owner, its own parameters included: android's
+// `func commit(v string) { value = v }` bound to a call site's `:value=v` was
+// `v = v`, the parameter assigned to itself
+// (cmd/sngl/testdata/node_prop_read_runs.txt). A trigger keeps its
+// parameters, which name the event's.
+func freshenMethodParams(fn *ir.Func, taken map[string]bool, names renamer) {
+	if fn.Trigger == "" {
+		renames := map[ir.Symbol]string{}
+		symRenames := map[ir.Symbol]ir.Symbol{}
+		var params []*ir.Param
+		for i, p := range fn.Params {
+			if p == nil || p.Receiver || !taken[p.Name] {
+				continue
+			}
+			if params == nil {
+				params = append([]*ir.Param{}, fn.Params...)
+			}
+			q := *p
+			q.Name = names.next(p.Name, "p")
+			params[i] = &q
+			renames[p] = q.Name
+			symRenames[p] = &q
+		}
+		if params != nil {
+			fn.Params = params
+			fn.Block = renameIdents(fn.Block, renames, symRenames)
+		}
+	}
+	fn.Block = freshenShadowingParams(fn.Block, taken, names)
+}
+
 // freshNodeHandles gives each node in a spliced copy of a body a handle of its
 // own, recorded in renames for the reads of it. Shared, two splices of one
 // override held one `#cal`, and its own effect's read of it could not say
