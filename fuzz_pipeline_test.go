@@ -45,11 +45,20 @@ func FuzzPipeline(f *testing.F) {
 	if v := os.Getenv("SNGL_FUZZ_SEEDS"); v != "" {
 		only = regexp.MustCompile(v)
 	}
+	// SNGL_FUZZ_TARGETS=all adds every seed on every target, the sweep a
+	// generator change wants before the fuzzer mutates anything.
+	all := os.Getenv("SNGL_FUZZ_TARGETS") == "all"
 	for i, s := range pipelineSeeds(f) {
 		if !only.MatchString(s.name) {
 			continue
 		}
 		f.Add(s.archive, uint8(0))
+		if all {
+			for t := range targets {
+				f.Add(s.archive, uint8(1+t))
+			}
+			continue
+		}
 		// Every seed on one other target too, rotating, so the seed run
 		// reaches each generator without multiplying the corpus by all of
 		// them.
@@ -61,27 +70,63 @@ func FuzzPipeline(f *testing.F) {
 			tg := targets[int(target-1)%len(targets)]
 			lang, plat = tg.lang, tg.plat
 		}
-		files, err := compilePipeline(archive, lang, plat)
-		if err != nil {
-			if skip, ok := errors.AsType[pipelineSkip](err); ok {
-				t.Skip(skip.reason)
-			}
-			t.Fatalf("%s/%s: %v\n--- archive ---\n%s", lang, plat, err, archive)
-		}
-		goos := "linux"
-		if plat == "win32" {
-			goos = "windows"
-		}
-		if err := checkGoFiles(files, goos); err != nil {
-			t.Fatalf("%s/%s: generated Go: %v\n--- archive ---\n%s", lang, plat, err, archive)
-		}
-		for name, data := range files {
-			if err := checkGenerated(name, data); err != nil {
-				t.Fatalf("%s/%s: generated %s: %v\n--- archive ---\n%s\n--- %s ---\n%s",
-					lang, plat, name, err, archive, name, data)
-			}
+		if skip := runPipeline(t, archive, lang, plat); skip != "" {
+			t.Skip(skip)
 		}
 	})
+}
+
+// TestPipelinePinned runs each archive testdata/pipeline holds -- a program
+// the fuzzer found, written with the output block naming the targets it was
+// found on -- and holds it to building, or to a target declining it: one that
+// stops at the parse or the check pins nothing.
+func TestPipelinePinned(t *testing.T) {
+	testinputs.Packages(t, ".", "./pkg/go/...", "./lib/...")
+	names, err := filepath.Glob("testdata/pipeline/*.txtar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range names {
+		t.Run(strings.TrimSuffix(filepath.Base(n), ".txtar"), func(t *testing.T) {
+			archive, err := os.ReadFile(n)
+			if err != nil {
+				t.Fatal(err)
+			}
+			skip := runPipeline(t, archive, "", "")
+			if skip != "" && !strings.HasPrefix(skip, "declined: ") && !strings.HasPrefix(skip, "refused: ") {
+				t.Fatalf("stopped short of the build, so pins nothing: %s", skip)
+			}
+		})
+	}
+}
+
+// runPipeline compiles archive for lang/plat, its own output blocks where
+// lang is empty, and holds what it generates to the in-process checks. It
+// fails t on a fault and answers why the input stopped short of codegen, ""
+// where it built.
+func runPipeline(t *testing.T, archive []byte, lang, plat string) string {
+	t.Helper()
+	files, err := compilePipeline(archive, lang, plat)
+	if err != nil {
+		if skip, ok := errors.AsType[pipelineSkip](err); ok {
+			return skip.reason
+		}
+		t.Fatalf("%s/%s: %v\n--- archive ---\n%s", lang, plat, err, archive)
+	}
+	goos := "linux"
+	if plat == "win32" {
+		goos = "windows"
+	}
+	if err := checkGoFiles(files, goos); err != nil {
+		t.Fatalf("%s/%s: generated Go: %v\n--- archive ---\n%s", lang, plat, err, archive)
+	}
+	for name, data := range files {
+		if err := checkGenerated(name, data); err != nil {
+			t.Fatalf("%s/%s: generated %s: %v\n--- archive ---\n%s\n--- %s ---\n%s",
+				lang, plat, name, err, archive, name, data)
+		}
+	}
+	return ""
 }
 
 // A pipelineSkip is an input the pipeline stopped short of codegen on for a
@@ -224,7 +269,7 @@ type pipelineSeed struct {
 
 // pipelineSeeds is every fixture and every golden, as archives: a fixture is
 // its one file, and a golden is its package with the generated code and the
-// records taken out.
+// records taken out. Beside them, every archive testdata/pipeline holds.
 func pipelineSeeds(tb testing.TB) []pipelineSeed {
 	var out []pipelineSeed
 	names, err := filepath.Glob("testdata/*.sngl")
@@ -236,7 +281,7 @@ func pipelineSeeds(tb testing.TB) []pipelineSeed {
 		if err != nil {
 			tb.Fatal(err)
 		}
-		out = append(out, pipelineSeed{n, txtar.Format(&txtar.Archive{Files: []txtar.File{{Name: "main.sngl", Data: data}}})})
+		out = append(out, pipelineSeed{name: n, archive: txtar.Format(&txtar.Archive{Files: []txtar.File{{Name: "main.sngl", Data: data}}})})
 	}
 	goldens, err := filepath.Glob("testdata/*.txtar")
 	if err != nil {
@@ -252,7 +297,18 @@ func pipelineSeeds(tb testing.TB) []pipelineSeed {
 			top, _, _ := strings.Cut(f.Name, "/")
 			return top == "out" || top == "run" || top == "testrun" || top == "written"
 		})
-		out = append(out, pipelineSeed{n, txtar.Format(a)})
+		out = append(out, pipelineSeed{name: n, archive: txtar.Format(a)})
+	}
+	pinned, err := filepath.Glob("testdata/pipeline/*.txtar")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	for _, n := range pinned {
+		data, err := os.ReadFile(n)
+		if err != nil {
+			tb.Fatal(err)
+		}
+		out = append(out, pipelineSeed{name: n, archive: data})
 	}
 	return out
 }

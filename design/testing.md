@@ -753,11 +753,17 @@ on its own targets and on one rotating other target, which reaches every
 generator without multiplying the corpus by all of them. The seed run is part
 of the ordinary suite. A seed's rotating target moves when a fixture is added,
 so a bug the seeds found is pinned by a golden or a script of its own, not by
-the seed. `SNGL_FUZZ_SEEDS` is a regexp the seeds' file names are held to, for
-rerunning the ones a fix is about.
+the seed -- or, where the fix is a target declining the program, which neither
+can tell from a fault, by an archive in `testdata/pipeline/` whose `output`
+block names the targets. `TestPipelinePinned` builds each on its own outputs
+and fails one that stops at the parse or the check, since it pins nothing; the
+fuzzer seeds them too. `SNGL_FUZZ_SEEDS` is a regexp the seeds' file names are held to, for
+rerunning the ones a fix is about, and `SNGL_FUZZ_TARGETS=all` adds every seed
+on every target.
 
 ```bash
 SNGL_FUZZ_SEEDS=radio go test -run FuzzPipeline .   # the seeds whose name matches
+SNGL_FUZZ_TARGETS=all go test -run FuzzPipeline .   # every seed on every target
 go test -run '^$' -fuzz FuzzPipeline .              # fuzz
 ```
 
