@@ -5394,10 +5394,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardActions
 
 class Test {
     override fun equals(other: Any?) = other is Test
@@ -5496,11 +5492,11 @@ fun __input_state1(__start_value: String = "", __ctx_flexShare: (Float) -> andro
         onDispose { if (SnglInstances[__sngl] === __entry) SnglInstances.remove(__sngl) }
     }
 
-    OutlinedTextField(value = value, readOnly = false, modifier = Modifier.testTag("field"), onValueChange = { v ->
+    SnglTextField(value = value, label = "", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.testTag("field"), onValueChange = { v ->
         value = v
-    }, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = {  ->
-    commit__inst0(value)
-}))
+    }, onCommit = {
+        commit__inst0(value)
+    })
 }
 
 fun __identified0(__xs: List<String>): List<__anon_id_elem_c6a818> {
@@ -5658,6 +5654,67 @@ private class FlexedNode : Modifier.Node() {
     override fun onDetach() {
         line?.flex(-1)
         line = null
+    }
+}
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglTextField.kt --
+package test.sngl.app
+
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.ImeAction
+
+// SnglTextField is sngl:ui's input and textarea: onValueChange is each edit,
+// and onCommit the text committed, as the focus leaves the field or, where
+// commitsOnDone, at the keyboard's Done. Only an edit since the last commit is
+// committed, so a program's write of the value, or a Done the focus then
+// leaves after, commits nothing.
+@Composable
+fun SnglTextField(
+    value: String,
+    label: String,
+    minLines: Int,
+    readOnly: Boolean,
+    commitsOnDone: Boolean,
+    modifier: Modifier,
+    onValueChange: (String) -> Unit,
+    onCommit: () -> Unit,
+) {
+    val commit = remember { SnglCommit() }
+    commit.onCommit = onCommit
+    OutlinedTextField(
+        value = value,
+        onValueChange = {
+            commit.edited = true
+            onValueChange(it)
+        },
+        readOnly = readOnly,
+        minLines = minLines,
+        label = if (label.isEmpty()) null else ({ Text(label) }),
+        keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
+        // A non-null onDone replaces the default action, which hides the keyboard.
+        keyboardActions = KeyboardActions(onDone = {
+            commit.fire()
+            defaultKeyboardAction(ImeAction.Done)
+        }),
+        modifier = modifier.onFocusChanged { if (!it.isFocused) commit.fire() },
+    )
+}
+
+private class SnglCommit {
+    var edited = false
+    var onCommit: () -> Unit = {}
+
+    fun fire() {
+        if (edited) {
+            edited = false
+            onCommit()
+        }
     }
 }
 -- out/kotlin/android/app/src/test/kotlin/test/sngl/app/MainScreenTest.kt --
@@ -6207,6 +6264,6 @@ pass sha256:c9f935673287d281a9c156184baaefee
 -- run/go/gtk4 --
 pass sha256:d458071aed13f790d5bd6b4ce3769dac
 -- run/kotlin/android --
-pass sha256:cc816fec16dc94294b36764506fdcac8
+pass sha256:5052aed20c0cdfab1539126ab625584f
 -- run/none/html --
 pass sha256:020f33d540d824c56dc4a1e0db8ed1bd

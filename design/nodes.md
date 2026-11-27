@@ -932,14 +932,16 @@ overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
 `selectDay` blocks "day-selected" the same way; a test's fire
 puts the value in place first and emits the signal itself (`_rtFireDay`).
 
-**A field's `@change` is its commit, never an edit.** android's
-`onValueChange` reports `@input` alone; `ui.input` commits at the keyboard's
-Done (`KeyboardActions.onDone`) and `ui.textarea` as the focus leaves it
-(`snglCommitsOnBlur`, `blurcommit.kt`), as html's and win32's do, since Enter
-is a line of it; only a text changed since the focus arrived commits, as
-html's `change` event does. A test commits through each override's `change`
-trigger, which calls the commit the field does. android fired `@change` from
-every keystroke (`program_write_fires_no_event_runs.txt`).
+**A field's `@change` is its commit, never an edit.** android's input and
+textarea are `SnglTextField` (`textfield.kt`): `onValueChange` reports `@input`
+and marks the field edited, and the focus leaving it -- or, on an input, the
+keyboard's Done, which then hides the keyboard as Compose's default would --
+commits an edited field and clears the mark. A program's write marks nothing,
+and Done followed by the focus leaving commits once. android fired `@change`
+from every keystroke (`program_write_fires_no_event_runs.txt`), and
+`android_field_commit_runs.txt` moves the focus and presses Done; a test's
+`submit` is the keyboard's action. The `change` trigger writes the value and
+emits, as fyne's invoker does.
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;

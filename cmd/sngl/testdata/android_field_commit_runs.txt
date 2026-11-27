@@ -1,0 +1,107 @@
+# An android field commits through its own path: the focus leaving it, and an
+# input's keyboard Done, each committing only an edit made since the last
+# commit. A test moves the focus to another field and presses the keyboard's
+# action, as a user does. Only android, whose commit is this path; the change
+# trigger every target answers is program_write_fires_no_event_runs.txt's.
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var text = ""
+    var memo = ""
+    var away = ""
+    var changes = 0
+
+    ui.vbox {
+        ui.input #field(:value=text, @change(v) { changes += 1 })
+        ui.textarea #notes(:value=memo, @change(v) { changes += 1 })
+        ui.input #other(:value=away)
+        ui.button #set(text="set", @click {
+            text = "abc"
+            memo = "abc"
+        })
+    }
+}
+
+func testFocusNoEditBlurFiresNothing(t Test, c main) {
+    c.field.focus()
+    c.other.focus()
+    c.notes.focus()
+    c.other.focus()
+    t.assert(c.changes == 0)
+}
+
+func testFocusEditBlurFiresOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    t.assert(c.changes == 0)
+    c.other.focus()
+    t.assert(c.changes == 1)
+    c.notes.focus()
+    c.notes.input("xy")
+    t.assert(c.changes == 1)
+    c.other.focus()
+    t.assert(c.changes == 2)
+}
+
+func testProgramWriteThenBlurFiresNothing(t Test, c main) {
+    c.field.focus()
+    c.set.click()
+    c.other.focus()
+    c.notes.focus()
+    c.set.click()
+    c.other.focus()
+    t.assert(c.text == "abc")
+    t.assert(c.changes == 0)
+}
+
+func testDoneThenBlurFiresOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    t.assert(c.changes == 0)
+    c.field.submit()
+    t.assert(c.changes == 1)
+    c.other.focus()
+    t.assert(c.changes == 1)
+}
+
+func testDoneUneditedFiresNothing(t Test, c main) {
+    c.field.focus()
+    c.field.submit()
+    t.assert(c.changes == 0)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:9263361b249c1beb0e9089f2c23835b5
+{
+  "results": [
+    {
+      "Desc": "DoneThenBlurFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "DoneUneditedFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "FocusEditBlurFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "FocusNoEditBlurFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenBlurFiresNothing",
+      "Passed": true
+    }
+  ]
+}

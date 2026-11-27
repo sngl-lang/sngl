@@ -156,7 +156,7 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:101b909878203524ad5cdf72eb45ddb6
+sha256:ed2de45a54f22ca6424950234f6a6250
 {
   "results": [
     {
@@ -182,7 +182,7 @@ sha256:101b909878203524ad5cdf72eb45ddb6
   ]
 }
 -- testrun/android/kotlin/notes.sngl/main/1 --
-sha256:1209ecf46b4da5fa3a5a0a95bac54f13
+sha256:49b1022e0d71b4882fc024aa2cab5550
 {
   "results": [
     {

@@ -3324,7 +3324,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.Modifier
 
@@ -3355,37 +3354,70 @@ class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
 @Composable
 fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
-    OutlinedTextField(value = state.text, minLines = 3, modifier = Modifier.snglCommitsOnBlur(state.text, {  ->
-    state.commit__inst0(state.text)
-}).safeDrawingPadding(), onValueChange = { v ->
+    SnglTextField(value = state.text, label = "Notes", minLines = 3, readOnly = false, commitsOnDone = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
         state.text = v
+    }, onCommit = {
+        state.commit__inst0(state.text)
     })
 }
--- out/kotlin/android/app/src/main/java/test/sngl/app/SnglBlurCommit.kt --
+-- out/kotlin/android/app/src/main/java/test/sngl/app/SnglTextField.kt --
 package test.sngl.app
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.ImeAction
 
-// snglCommitsOnBlur commits a field as the focus leaves it, if its text
-// differs from what it held when the focus arrived: html's change event.
-fun Modifier.snglCommitsOnBlur(text: String, onCommit: () -> Unit): Modifier = composed {
-    var atFocus by remember { mutableStateOf<String?>(null) }
-    val current by rememberUpdatedState(text)
-    val commit by rememberUpdatedState(onCommit)
-    onFocusChanged {
-        val held = atFocus
-        if (it.isFocused) {
-            if (held == null) atFocus = current
-        } else if (held != null) {
-            atFocus = null
-            if (held != current) commit()
+// SnglTextField is sngl:ui's input and textarea: onValueChange is each edit,
+// and onCommit the text committed, as the focus leaves the field or, where
+// commitsOnDone, at the keyboard's Done. Only an edit since the last commit is
+// committed, so a program's write of the value, or a Done the focus then
+// leaves after, commits nothing.
+@Composable
+fun SnglTextField(
+    value: String,
+    label: String,
+    minLines: Int,
+    readOnly: Boolean,
+    commitsOnDone: Boolean,
+    modifier: Modifier,
+    onValueChange: (String) -> Unit,
+    onCommit: () -> Unit,
+) {
+    val commit = remember { SnglCommit() }
+    commit.onCommit = onCommit
+    OutlinedTextField(
+        value = value,
+        onValueChange = {
+            commit.edited = true
+            onValueChange(it)
+        },
+        readOnly = readOnly,
+        minLines = minLines,
+        label = if (label.isEmpty()) null else ({ Text(label) }),
+        keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
+        // A non-null onDone replaces the default action, which hides the keyboard.
+        keyboardActions = KeyboardActions(onDone = {
+            commit.fire()
+            defaultKeyboardAction(ImeAction.Done)
+        }),
+        modifier = modifier.onFocusChanged { if (!it.isFocused) commit.fire() },
+    )
+}
+
+private class SnglCommit {
+    var edited = false
+    var onCommit: () -> Unit = {}
+
+    fun fire() {
+        if (edited) {
+            edited = false
+            onCommit()
         }
     }
 }
@@ -3485,7 +3517,7 @@ pass sha256:99858d36f3aa8ccc36962e3491674516
 -- run/go/gtk4 --
 pass sha256:3726f4a677de62c4c2cac1fedd14d397
 -- run/kotlin/android --
-pass sha256:d19076c835aba1645d930c2a2f8a9fb8
+pass sha256:50ad03b37768b504a73c632d2213f515
 -- run/none/html --
 pass sha256:df5432f42bd8b109b957c1aca95738ad
 -- testrun/html/none/component_textarea.sngl/main/1 --

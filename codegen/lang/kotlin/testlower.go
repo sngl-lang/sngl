@@ -409,6 +409,9 @@ func composeAction(event string, args []ir.CallArg, lower func(ir.Expr) string) 
 		// A field is focused as a tap or a Tab focuses it: what a hardware
 		// keyboard types then goes to it.
 		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.RequestFocus)"
+	case "submit":
+		// The keyboard's action key, Done on a field that commits there.
+		return "performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnImeAction)"
 	case "input", "change", "changed":
 		text := extractEventValue(args, lower)
 		if len(args) == 1 {
