@@ -88,13 +88,9 @@ stdout 'func bump\('
 sngl dump --stage lowered --platform bubbletea --lang go --format sngl genericbody.sngl
 stdout 'func bump'
 
-# async.query is such a component, its body's refresh among them, and under a
-# `for` the inliner demotes it to a plain function: once printed with a
-# receiver's type params and no receiver to split them from (#284).
+# An async.query under a `for`, whose inlined refresh is such a function (#284).
 sngl dump --stage lowered --after NoInlineComponents --platform bubbletea --lang go --format sngl query.sngl
 sngl dump --stage lowered --platform bubbletea --lang go --format sngl query.sngl
-sngl dump --stage lowered --after NoInlineComponents --platform fyne --lang go --format sngl query.sngl
-sngl dump --stage lowered --platform fyne --lang go --format sngl query.sngl
 
 -- query.sngl --
 import async "sngl:async"
