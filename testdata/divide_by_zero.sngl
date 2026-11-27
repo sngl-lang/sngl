@@ -1,0 +1,19 @@
+// A divisor written as zero is never a correct program, so the check refuses
+// one. A const the fold finds to be zero is left to the run time.
+import ui "sngl:ui"
+
+const zero = 0
+
+func divides(n int, x float, b int8) int {
+    var a = n / 0       // ERROR(check) "division by zero"
+    var c = n % 0       // ERROR(check) "modulo by zero"
+    var d = x / 0.0     // ERROR(check) "division by zero"
+    var e = x % -0.0    // ERROR(check) "modulo by zero"
+    var f = b / int8(0) // ERROR(check) "division by zero"
+    var g = n / (0)     // ERROR(check) "division by zero"
+    return n / zero + n / 1 + n % 10
+}
+
+ui.window {
+    ui.text(value="{divides(1, 1.0, 1)}")
+}

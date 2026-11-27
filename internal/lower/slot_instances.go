@@ -714,8 +714,13 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 	elRef := func(v *ir.Var) ir.Expr {
 		return &ir.Ident{Name: v.Name, Type: v.Type, IsElementRef: true, Sym: v, Synthesized: true}
 	}
-	bindRoot := func(el *ir.Var, inst *ir.Var, key ir.Expr) ir.Stmt {
-		args := []ir.CallArg{{Value: varRef(inst)}}
+	// The instance is named rather than a symbol's: the position's var is
+	// the build's, which a handler reaches by name, and a symbol of its own
+	// here is a local that a target capturing locals into a closure (C)
+	// copies in, under a name nothing declares.
+	curRef := func() ir.Expr { return handleRef(cur.Name, cur.Type) }
+	bindRoot := func(el *ir.Var, inst ir.Expr, key ir.Expr) ir.Stmt {
+		args := []ir.CallArg{{Value: inst}}
 		if key != nil {
 			args = append(args, ir.CallArg{Value: key})
 		}
@@ -757,12 +762,12 @@ func (st *reactivityState) recreateStatic(n *ir.NodeInst, declSt *declarativeSta
 
 	return []ir.Stmt{
 		&ir.LocalVar{Name: fresh.Name, Type: elem, Sym: fresh, Init: declSt.componentCreateCall(built)},
-		bindRoot(freshEl, fresh, key),
-		bindRoot(prevEl, cur, nil),
+		bindRoot(freshEl, varRef(fresh), key),
+		bindRoot(prevEl, curRef(), nil),
 		op(ir.NodeOpInsertBefore, place, elRef(freshEl), elRef(prevEl)),
 		st.childOp(ir.ProtocolRemove, cloneIdent(place), elRef(prevEl)),
-		op(ir.NodeOpDestroyComponent, varRef(cur)),
-		&ir.Assign{Target: varRef(cur), Op: ast.AssignSet, Value: varRef(fresh)},
+		op(ir.NodeOpDestroyComponent, curRef()),
+		&ir.Assign{Target: curRef(), Op: ast.AssignSet, Value: varRef(fresh)},
 	}
 }
 
