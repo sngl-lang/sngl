@@ -11,7 +11,8 @@
 # can be selected refusing one; a tree's TVN_ITEMEXPANDED reaching
 # `@expand`; a modal's close box, which reports `@close` only where it is
 # closable; and WM_DPICHANGED, which sizes the window as Windows suggests
-# and lays it out at the new DPI. The snapshot holds what the procedures
+# and lays it out at the new DPI, a text a line of the message font at that
+# DPI tall, whatever the font. The snapshot holds what the procedures
 # paint: the colors, the drawn button, a card's frame and a bar's text. In
 # C and Go, on 64- and 32-bit Windows under Wine, and in Go calling C
 # directly.
@@ -92,7 +93,8 @@ func expand(n ui.node) int
 func closeOwned(n ui.node) int
 
 // WM_DPICHANGED to n's window, `dpi` and a frame 300 by 400, and then its
-// client size and the size of the text labeled `text`.
+// client size and the size of the text labeled `text`, its height `L`
+// where it is a line of the message font at `dpi`.
 #[c.native("peek_dpi")]
 func dpiChanged(n ui.node, dpi int, text string) string
 
@@ -212,7 +214,7 @@ func testAModalClosesWhereItIsClosable(t test.Test, c main) {
 func testDraws(t test.Test, c main) {
     t.wait(func() => false, 50)
     t.snapshot("painted")
-    t.assert(dpiChanged(c.status, 144, "ink") == "top 292x366 text 280x21")
+    t.assert(dpiChanged(c.status, 144, "ink") == "top 292x366 text 280xL")
 }
 -- peek.h --
 #include <windows.h>
@@ -434,6 +436,29 @@ int peek_close_owned(HWND any) {
 	return o.n;
 }
 
+typedef BOOL(WINAPI *metrics_for_dpi)(UINT, UINT, PVOID, UINT, UINT);
+
+/* line_at is the height of a line of the message font at dpi. */
+static int line_at(int dpi) {
+	NONCLIENTMETRICSW ncm;
+	memset(&ncm, 0, sizeof ncm);
+	ncm.cbSize = sizeof ncm;
+	metrics_for_dpi for_dpi = (metrics_for_dpi)(void (*)(void))GetProcAddress(GetModuleHandleW(L"user32.dll"), "SystemParametersInfoForDpi");
+	if (!for_dpi || !for_dpi(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0, (UINT)dpi)) {
+		SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
+		ncm.lfMessageFont.lfHeight = MulDiv(ncm.lfMessageFont.lfHeight, dpi, 96);
+	}
+	HDC dc = CreateCompatibleDC(NULL);
+	HFONT font = CreateFontIndirectW(&ncm.lfMessageFont);
+	HGDIOBJ old = SelectObject(dc, font);
+	TEXTMETRICW tm;
+	GetTextMetricsW(dc, &tm);
+	SelectObject(dc, old);
+	DeleteObject(font);
+	DeleteDC(dc);
+	return tm.tmHeight;
+}
+
 const char *peek_dpi(HWND any, int dpi, const char *text) {
 	HWND top = GetAncestor(any, GA_ROOT);
 	RECT r;
@@ -443,11 +468,17 @@ const char *peek_dpi(HWND any, int dpi, const char *text) {
 	RECT c, t;
 	GetClientRect(top, &c);
 	GetWindowRect(first(any, "Static", 0, 0, text), &t);
-	snprintf(out, sizeof out, "top %ldx%ld text %ldx%ld", c.right, c.bottom, t.right - t.left, t.bottom - t.top);
+	char tall[16];
+	if (t.bottom - t.top == line_at(dpi)) {
+		snprintf(tall, sizeof tall, "L");
+	} else {
+		snprintf(tall, sizeof tall, "%ld", t.bottom - t.top);
+	}
+	snprintf(out, sizeof out, "top %ldx%ld text %ldx%s", c.right, c.bottom, t.right - t.left, tall);
 	return out;
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:261b4f76bc5a1df0f81670df014b1170
+sha256:49e2adb2d80bae7422137e875a7680f4
 {
   "results": [
     {
@@ -492,7 +523,7 @@ sha256:261b4f76bc5a1df0f81670df014b1170
   }
 }
 -- testrun/win32/c/app.sngl/main/2 --
-sha256:d0e3b87e34375fbc812f1172012aa17b
+sha256:52dccac76fc8b27e640b247396a4d443
 {
   "results": [
     {
@@ -534,7 +565,7 @@ sha256:d0e3b87e34375fbc812f1172012aa17b
   ]
 }
 -- testrun/win32/go/app.sngl/main/1 --
-sha256:d07261244360b47d055a1b768808c373
+sha256:016ed174e1cdc18d497e250608eb1ffc
 {
   "results": [
     {
@@ -576,7 +607,7 @@ sha256:d07261244360b47d055a1b768808c373
   ]
 }
 -- testrun/win32/go/app.sngl/main/2 --
-sha256:b851c9402208c53081ddd0b56c015173
+sha256:01a3320baad5e2e6183de81adeb8c116
 {
   "results": [
     {
@@ -618,7 +649,7 @@ sha256:b851c9402208c53081ddd0b56c015173
   ]
 }
 -- testrun/win32/go/app.sngl/main/3 --
-sha256:5f0d9f4ec39e465eea918503957dc4d6
+sha256:cf29d428aed1d46a48030053865f99ac
 {
   "results": [
     {

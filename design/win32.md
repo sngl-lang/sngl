@@ -583,6 +583,10 @@ given:
 A scroll lays its children out at the size they measure along each axis it
 scrolls, offset by its position, and sets its bars from that.
 
+Pin: `cmd/sngl/testdata/c_win32_layout_runs.txt`, every window read off Win32
+and held to a template in the message font's metrics, so a font moves none of
+it and a gap, padding or share changed fails it (`design/testing.md`).
+
 **A component's contents box grows by what it holds.** A component that
 renders a slot, or several nodes, at its top renders them into the box
 `#[gen.protocol(contents)]` makes (`sngl_win32_contents`). That box flexes by

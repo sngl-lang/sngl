@@ -220,7 +220,13 @@ while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
 out of a failure's text. The prefix pins the message font, which every text
 and control measures by, to 8pt Tahoma: Wine 11.22 defaults to 9pt where the
 Wine the records were first made under had 8pt, so the same program laid out
-13px lines on one host and 14px on the other. A change to the prefix's steps
+13px lines on one host and 14px on the other. The pin is for the snapshots,
+whose pictures are compared within 0.5%: the scripts asserting geometry do not
+need it, since each writes what text measures in the font's own metrics (a
+line `L`, a string's width `[text]`) and a window's place as its gap past its
+sibling, so any font passes them and only a change to what layout adds fails
+them (`c_win32_layout_runs.txt`, its dumps held to templates by `peek_want`,
+and `c_win32_procs_runs.txt`'s DPI change). A change to the prefix's steps
 renames its directory (`wine-2`), so a branch with the old steps keeps its
 own prefix rather than running in, or remaking, the new one. Each launch is recorded as any `sngl test` is
 (`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures). Wine's Wayland

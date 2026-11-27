@@ -12,6 +12,15 @@
 # on a box doing the same, a loop's buttons replaced and reordered, and a
 # modal's own window sized to what it holds. In C and Go, on 64- and 32-bit
 # Windows under Wine, and in Go calling C directly: each lays out the same.
+#
+# Each dump is held to a template (peek.c's peek_want) that writes what text
+# measures in the message font's own metrics -- `L` a line of it, `[text]`
+# text's width -- and a window's place in a line as its gap past the one
+# before (`+4`), so the font Wine or Windows picks moves no assertion while
+# every gap, padding, share and alignment stays exact. What a control or a
+# wrap decides (a tree's rows, a table's, the strip over tabs, rich text's
+# lines) is `?`, and so is the controls' window's height, which a larger font
+# makes taller than Wine's screen.
 
 exec sh -c 'echo iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAALElEQVR4nGNgGJ7ghIbGf1yYIs0EDSFGM15DRg0YDAYQawhOzcQYQlAz3QEA+63jzIuGVSkAAAAASUVORK5CYII= | base64 -d > logo.png'
 sngl test --platform=win32 --language=c app.sngl
@@ -41,10 +50,15 @@ output {
 c.link(include="peek.h", sources=["peek.c", "peek.h"])
 
 // Every window in the window `n` is in, in z-order, each its class, its
-// place in the client area of the window holding it, and `-` where it is
-// hidden, after the window's client size.
+// place in the client area of the window holding it, and `-` in place of
+// it where it is hidden, after the window's client size.
 #[c.native("peek_layout")]
 func layout(n ui.node) string
+
+// The dump `layout` writes as `template` describes it in the message font's
+// metrics (peek.c's peek_want).
+#[c.native("peek_want")]
+func want(n ui.node, template string) string
 
 // A scroll bar's request (SB_LINEDOWN 1, SB_PAGEDOWN 3, SB_THUMBPOSITION 4,
 // SB_BOTTOM 7) to the first scroll of n's window along that axis, and a
@@ -283,423 +297,439 @@ component presses ui.node {
 
 func testLines(t test.Test, c lines) {
     t.wait(func() => false, 50)
-    t.assert(layout(c.name) == """
-        top 221x548
-          SnglBox 0,0 221x548
-            Static 8,514 205x26
-            SnglBox 8,460 205x50
-              Static 26,0 179x50
-              Static 0,0 20x50
-            SnglBox 0,0 0x0 -
-              Static 0,0 0x0
-            Static 8,443 205x13
-            SnglBox 8,414 205x25
-              Static 6,6 193x13
-            Static 8,385 205x25
-            Static 8,368 205x13
-            Static 8,334 120x30
-            SnglBox 8,290 205x40
-              Static 81,0 37x40
+    t.assert(layout(c.name) == want(c.name, """
+        W = 196+[flex1]
+        R = W-16
+        B = L+10
+        A = [a wide button here]+20
+        top Wx+0
+          SnglBox 0,0 Wx+8
+            Static 8,+4 Rx2L
+            SnglBox 8,+4 Rx50
+              Static +6,0 R-6-[one]x50
+              Static 0,0 [one]x50
+            SnglBox -
+              Static
+            Static 8,+4 RxL
+            SnglBox 8,+4 Rx+6
+              Static 6,6 R-12xL
+            Static 8,+4 RxL+12
+            Static 8,+4 RxL
+            Static 8,+4 120x30
+            SnglBox 8,+4 Rx40
+              Static +6,0 [stretch]x40
               Button 0,0 75x40
-            SnglBox 8,244 205x42
-              Button 42,19 120x23
-              Static 78,0 49x13
-            SnglBox 8,180 205x60
-              Button 11,0 75x23
-              Static 0,0 5x13
-            SnglBox 8,116 205x60
-              Button 13,37 75x23
-              Static 0,47 7x13
-            SnglBox 8,52 205x60
-              Button 12,18 75x23
-              Static 0,23 6x13
-            SnglBox 8,25 205x23
-              Static 180,0 25x23
-              Button 95,0 75x23
-              SnglBox 85,0 0x23
-              Button 0,0 75x23
-            Static 8,8 205x13
-        """)
+            SnglBox 8,+4 Rx+0
+              Button (R-A)/2,+6 AxB
+              Static (R-[centered])/2,0 [centered]xL
+            SnglBox 8,+4 Rx60
+              Button +6,0 75xB
+              Static 0,0 [s]xL
+            SnglBox 8,+4 Rx60
+              Button +6,60-B 75xB
+              Static 0,60-L [e]xL
+            SnglBox 8,+4 Rx60
+              Button +6,(60-B)/2 75xB
+              Static 0,(60-L)/2 [c]xL
+            SnglBox 8,+4 RxB
+              Static +10,0 [flex1]xB
+              Button +10,0 75xB
+              SnglBox +10,0 0xB
+              Button 0,0 75xB
+            Static 8,8 RxL
+        """))
     c.label = "a label much longer than it was"
     c.p = 2px
     c.hide = true
     t.wait(func() => false, 50)
-    t.assert(layout(c.name) == """
-        top 221x548
-          SnglBox 0,0 221x519
-            Static 2,491 217x26
-            SnglBox 2,437 217x50
-              Static 26,0 191x50
-              Static 0,0 20x50
-            SnglBox 0,0 0x0 -
-              Static 0,0 0x0
-            Static 8,443 205x13 -
-            SnglBox 2,408 217x25
-              Static 6,6 205x13
-            Static 2,379 217x25
-            Static 2,362 217x13
-            Static 2,328 120x30
-            SnglBox 2,284 217x40
-              Static 81,0 37x40
+    t.assert(layout(c.name) == want(c.name, """
+        W = 196+[flex1]
+        R = W-4
+        B = L+10
+        A = [a wide button here]+20
+        top Wx+L+16
+          SnglBox 0,0 Wx+2
+            Static 2,+4 Rx2L
+            SnglBox 2,+4 Rx50
+              Static +6,0 R-6-[one]x50
+              Static 0,0 [one]x50
+            SnglBox -
+              Static
+            Static -
+            SnglBox 2,+4 Rx+6
+              Static 6,6 R-12xL
+            Static 2,+4 RxL+12
+            Static 2,+4 RxL
+            Static 2,+4 120x30
+            SnglBox 2,+4 Rx40
+              Static +6,0 [stretch]x40
               Button 0,0 75x40
-            SnglBox 2,238 217x42
-              Button 48,19 120x23
-              Static 84,0 49x13
-            SnglBox 2,174 217x60
-              Button 11,0 75x23
-              Static 0,0 5x13
-            SnglBox 2,110 217x60
-              Button 13,37 75x23
-              Static 0,47 7x13
-            SnglBox 2,46 217x60
-              Button 12,18 75x23
-              Static 0,23 6x13
-            SnglBox 2,19 217x23
-              Static 189,0 28x23
-              Button 98,0 81x23
-              SnglBox 85,0 3x23
-              Button 0,0 75x23
-            Static 2,2 217x13
-        """)
+            SnglBox 2,+4 Rx+0
+              Button (R-A)/2,+6 AxB
+              Static (R-[centered])/2,0 [centered]xL
+            SnglBox 2,+4 Rx60
+              Button +6,0 75xB
+              Static 0,0 [s]xL
+            SnglBox 2,+4 Rx60
+              Button +6,60-B 75xB
+              Static 0,60-L [e]xL
+            SnglBox 2,+4 Rx60
+              Button +6,(60-B)/2 75xB
+              Static 0,(60-L)/2 [c]xL
+            SnglBox 2,+4 RxB
+              Static +10,0 [flex1]+3xB
+              Button +10,0 81xB
+              SnglBox +10,0 3xB
+              Button 0,0 75xB
+            Static 2,2 RxL
+        """))
 }
 
 func testGrids(t test.Test, c grids) {
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 300x391
-          SnglBox 0,0 300x391
-            SnglBox 0,301 300x90
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 300x+0
+          SnglBox 0,0 300x+0
+            SnglBox 0,+6 300x90
               Button 0,45 300x45
               Static 0,0 300x45
-            SnglBox 0,272 300x23
-              Static 200,0 100x23
-              Button 100,0 100x23
-              Static 0,0 100x23
-            SnglBox 0,226 300x40
+            SnglBox 0,+6 300xB
+              Static 200,0 100xB
+              Button 100,0 100xB
+              Static 0,0 100xB
+            SnglBox 0,+6 300x40
               Button 0,0 300x40
               Static 0,0 300x40
-            SnglBox 0,81 200x139
-              Button 0,116 75x23
-              Button 81,87 75x23
-              Button 0,87 75x23
-              Button 81,58 75x23
-              Button 0,58 75x23
-              Button 81,29 75x23
-              Button 0,29 75x23
-              Button 81,0 75x23
-              Button 0,0 75x23
-            SnglBox 0,0 300x75
-              Button 0,52 98x23
-              Button 202,26 98x23
-              Button 101,26 98x23
-              Button 0,26 98x23
-              Button 202,0 98x23
-              Button 101,0 98x23
-              Button 0,0 98x23
-        """)
+            SnglBox 0,+6 200x+0
+              Button 0,4(B+6) 75xB
+              Button 81,3(B+6) 75xB
+              Button 0,3(B+6) 75xB
+              Button 81,2(B+6) 75xB
+              Button 0,2(B+6) 75xB
+              Button 81,B+6 75xB
+              Button 0,B+6 75xB
+              Button 81,0 75xB
+              Button 0,0 75xB
+            SnglBox 0,0 300x+0
+              Button 0,2(B+3) 98xB
+              Button 202,B+3 98xB
+              Button 101,B+3 98xB
+              Button 0,B+3 98xB
+              Button 202,0 98xB
+              Button 101,0 98xB
+              Button 0,0 98xB
+        """))
     c.cols = 2
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 300x417
-          SnglBox 0,0 300x417
-            SnglBox 0,327 300x90
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 300x+0
+          SnglBox 0,0 300x+0
+            SnglBox 0,+6 300x90
               Button 0,45 300x45
               Static 0,0 300x45
-            SnglBox 0,298 300x23
-              Static 200,0 100x23
-              Button 100,0 100x23
-              Static 0,0 100x23
-            SnglBox 0,252 300x40
+            SnglBox 0,+6 300xB
+              Static 200,0 100xB
+              Button 100,0 100xB
+              Static 0,0 100xB
+            SnglBox 0,+6 300x40
               Button 0,0 300x40
               Static 0,0 300x40
-            SnglBox 0,107 200x139
-              Button 0,116 75x23
-              Button 81,87 75x23
-              Button 0,87 75x23
-              Button 81,58 75x23
-              Button 0,58 75x23
-              Button 81,29 75x23
-              Button 0,29 75x23
-              Button 81,0 75x23
-              Button 0,0 75x23
-            SnglBox 0,0 300x101
-              Button 0,78 148x23
-              Button 151,52 148x23
-              Button 0,52 148x23
-              Button 151,26 148x23
-              Button 0,26 148x23
-              Button 151,0 148x23
-              Button 0,0 148x23
-        """)
+            SnglBox 0,+6 200x+0
+              Button 0,4(B+6) 75xB
+              Button 81,3(B+6) 75xB
+              Button 0,3(B+6) 75xB
+              Button 81,2(B+6) 75xB
+              Button 0,2(B+6) 75xB
+              Button 81,B+6 75xB
+              Button 0,B+6 75xB
+              Button 81,0 75xB
+              Button 0,0 75xB
+            SnglBox 0,0 300x+0
+              Button 0,3(B+3) 148xB
+              Button 151,2(B+3) 148xB
+              Button 0,2(B+3) 148xB
+              Button 151,B+3 148xB
+              Button 0,B+3 148xB
+              Button 151,0 148xB
+              Button 0,0 148xB
+        """))
 }
 
 func testControls(t test.Test, c controls) {
     t.wait(func() => false, 300)
-    t.assert(layout(c.root) == """
-        top 200x700
-          SnglBox 0,0 200x700
-            SnglBox 0,693 200x7
-            SnglBox 0,671 200x16
+    t.assert(layout(c.root) == want(c.root, """
+        top 200x?
+          SnglBox 0,0 200x+0
+            SnglBox 0,+6 200x7
+            SnglBox 0,+6 200x16
               SnglBox 0,0 200x16
-            SnglBox 0,641 200x24
+            SnglBox 0,+6 200x24
               SnglBox 0,0 200x24
-            SnglBox 0,596 160x39
-              SnglBox 0,0 0x0 -
-                SnglBox 0,0 0x0 -
-              SnglBox 0,0 0x0 -
-                SnglBox 0,0 0x0 -
-              SnglBox 0,0 0x0 -
-            SnglBox 0,558 200x32
-            SysDateTimePick32 0,531 200x21
+            SnglBox 0,+6 160x?
+              SnglBox -
+                SnglBox
+              SnglBox -
+                SnglBox
+              SnglBox -
+            SnglBox 0,+6 200x32
+            SysDateTimePick32 0,+6 200xL+8
               Button 2,2 13x13
-            SysTreeView32 0,457 200x68
-            SysListView32 0,400 200x51
-              SysHeader32 0,0 196x17
-            Static 0,381 200x13
-            SnglBox 0,345 200x30
-              Static 19,0 5x30
-              Static 11,0 2x30
-              Static 0,0 5x30
-            Static 0,337 200x2
-            msctls_progress32 0,314 200x17
-            msctls_progress32 0,292 200x16
-            msctls_progress32 0,269 200x17
-            ComboBox 0,240 200x21
-            Edit 0,187 200x47
-            Edit 0,121 200x60
-            Edit 0,94 200x21
-            SnglBox 0,71 200x17
-              Button 56,0 62x17
-              Button 0,0 50x17
-              SnglBox 0,0 0x0 -
-            Button 0,48 200x17
-            Button 0,19 200x23
-            Static 0,0 200x13
-        """)
+            SysTreeView32 0,+6 200x?
+            SysListView32 0,+6 200x?
+              SysHeader32 0,0 196x?
+            Static 0,+6 200xL
+            SnglBox 0,+6 200x30
+              Static +6,0 [y]x30
+              Static +6,0 2x30
+              Static 0,0 [x]x30
+            Static 0,+6 200x2
+            msctls_progress32 0,+6 200xL+4
+            msctls_progress32 0,+6 200x16
+            msctls_progress32 0,+8 200xL+4
+            ComboBox 0,+6 200xL+8
+            Edit 0,+6 200x3L+8
+            Edit 0,+6 200x4L+8
+            Edit 0,+6 200xL+8
+            SnglBox 0,+6 200x+0
+              Button +6,0 [banana]+21xL+4
+              Button 0,0 [apple]+21xL+4
+              SnglBox -
+            Button 0,+6 200xL+4
+            Button 0,+6 200xL+10
+            Static 0,0 200xL
+        """))
 }
 
 func testPanels(t test.Test, c panels) {
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 200x193
-          SnglBox 0,0 200x193
-            Static 0,180 200x13
-            SnglBox 0,134 120x40
-              SnglBox 0,0 966x23
-                Button 891,0 75x23
-                Button 810,0 75x23
-                Button 729,0 75x23
-                Button 648,0 75x23
-                Button 567,0 75x23
-                Button 486,0 75x23
-                Button 405,0 75x23
-                Button 324,0 75x23
-                Button 243,0 75x23
-                Button 162,0 75x23
-                Button 81,0 75x23
-                Button 0,0 75x23
-                SnglBox 0,0 0x0 -
-            SnglBox 0,68 200x60
-              SnglBox 0,0 183x222
-                Static 0,209 183x13
-                Static 0,190 183x13
-                Static 0,171 183x13
-                Static 0,152 183x13
-                Static 0,133 183x13
-                Static 0,114 183x13
-                Static 0,95 183x13
-                Static 0,76 183x13
-                Static 0,57 183x13
-                Static 0,38 183x13
-                Static 0,19 183x13
-                Static 0,0 183x13
-                SnglBox 0,0 0x0 -
-            SysTabControl32 0,0 200x62
-              SnglBox 4,22 192x36
-                Static 0,0 192x13
-              SnglBox 0,0 0x0 -
-                Static 0,0 0x0
-                Button 0,0 0x0
-              msctls_updown32 -34,1 34x17 -
-        """)
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 200x+0
+          SnglBox 0,0 200x+0
+            Static 0,+6 200xL
+            SnglBox 0,+6 120xB+17
+              SnglBox 0,0 966xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button 0,0 75xB
+                SnglBox -
+            SnglBox 0,+6 200x60
+              SnglBox 0,0 183x+0
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,0 183xL
+                SnglBox -
+            SysTabControl32 0,0 200x+4
+              SnglBox 4,? 192xB+L
+                Static 0,0 192xL
+              SnglBox -
+                Static
+                Button
+              msctls_updown32 -
+        """))
     c.idx = 1
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 200x193
-          SnglBox 0,0 200x193
-            Static 0,180 200x13
-            SnglBox 0,134 120x40
-              SnglBox 0,0 966x23
-                Button 891,0 75x23
-                Button 810,0 75x23
-                Button 729,0 75x23
-                Button 648,0 75x23
-                Button 567,0 75x23
-                Button 486,0 75x23
-                Button 405,0 75x23
-                Button 324,0 75x23
-                Button 243,0 75x23
-                Button 162,0 75x23
-                Button 81,0 75x23
-                Button 0,0 75x23
-                SnglBox 0,0 0x0 -
-            SnglBox 0,68 200x60
-              SnglBox 0,0 183x222
-                Static 0,209 183x13
-                Static 0,190 183x13
-                Static 0,171 183x13
-                Static 0,152 183x13
-                Static 0,133 183x13
-                Static 0,114 183x13
-                Static 0,95 183x13
-                Static 0,76 183x13
-                Static 0,57 183x13
-                Static 0,38 183x13
-                Static 0,19 183x13
-                Static 0,0 183x13
-                SnglBox 0,0 0x0 -
-            SysTabControl32 0,0 200x62
-              SnglBox 4,22 192x36
-                Static 0,23 192x13
-                Button 0,0 192x23
-              SnglBox 4,22 192x36 -
-                Static 0,0 192x13
-              msctls_updown32 -34,1 34x17 -
-        """)
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 200x+0
+          SnglBox 0,0 200x+0
+            Static 0,+6 200xL
+            SnglBox 0,+6 120xB+17
+              SnglBox 0,0 966xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button 0,0 75xB
+                SnglBox -
+            SnglBox 0,+6 200x60
+              SnglBox 0,0 183x+0
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,0 183xL
+                SnglBox -
+            SysTabControl32 0,0 200x+4
+              SnglBox 4,? 192xB+L
+                Static 0,+0 192xL
+                Button 0,0 192xB
+              SnglBox -
+                Static
+              msctls_updown32 -
+        """))
     scroll(c.root, true, 1)
     scroll(c.root, true, 1)
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 200x193
-          SnglBox 0,0 200x193
-            Static 0,180 200x13
-            SnglBox 0,134 120x40
-              SnglBox 0,0 966x23
-                Button 891,0 75x23
-                Button 810,0 75x23
-                Button 729,0 75x23
-                Button 648,0 75x23
-                Button 567,0 75x23
-                Button 486,0 75x23
-                Button 405,0 75x23
-                Button 324,0 75x23
-                Button 243,0 75x23
-                Button 162,0 75x23
-                Button 81,0 75x23
-                Button 0,0 75x23
-                SnglBox 0,0 0x0 -
-            SnglBox 0,68 200x60
-              SnglBox 0,-40 183x222
-                Static 0,209 183x13
-                Static 0,190 183x13
-                Static 0,171 183x13
-                Static 0,152 183x13
-                Static 0,133 183x13
-                Static 0,114 183x13
-                Static 0,95 183x13
-                Static 0,76 183x13
-                Static 0,57 183x13
-                Static 0,38 183x13
-                Static 0,19 183x13
-                Static 0,0 183x13
-                SnglBox 0,0 0x0 -
-            SysTabControl32 0,0 200x62
-              SnglBox 4,22 192x36
-                Static 0,23 192x13
-                Button 0,0 192x23
-              SnglBox 4,22 192x36 -
-                Static 0,0 192x13
-              msctls_updown32 -34,1 34x17 -
-        """)
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 200x+0
+          SnglBox 0,0 200x+0
+            Static 0,+6 200xL
+            SnglBox 0,+6 120xB+17
+              SnglBox 0,0 966xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button 0,0 75xB
+                SnglBox -
+            SnglBox 0,+6 200x60
+              SnglBox 0,-40 183x+0
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,0 183xL
+                SnglBox -
+            SysTabControl32 0,0 200x+4
+              SnglBox 4,? 192xB+L
+                Static 0,+0 192xL
+                Button 0,0 192xB
+              SnglBox -
+                Static
+              msctls_updown32 -
+        """))
     wheel(c.root, -240)
     scroll(c.root, false, 3)
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 200x193
-          SnglBox 0,0 200x193
-            Static 0,180 200x13
-            SnglBox 0,134 120x40
-              SnglBox -160,0 966x23
-                Button 891,0 75x23
-                Button 810,0 75x23
-                Button 729,0 75x23
-                Button 648,0 75x23
-                Button 567,0 75x23
-                Button 486,0 75x23
-                Button 405,0 75x23
-                Button 324,0 75x23
-                Button 243,0 75x23
-                Button 162,0 75x23
-                Button 81,0 75x23
-                Button 0,0 75x23
-                SnglBox 0,0 0x0 -
-            SnglBox 0,68 200x60
-              SnglBox 0,-40 183x222
-                Static 0,209 183x13
-                Static 0,190 183x13
-                Static 0,171 183x13
-                Static 0,152 183x13
-                Static 0,133 183x13
-                Static 0,114 183x13
-                Static 0,95 183x13
-                Static 0,76 183x13
-                Static 0,57 183x13
-                Static 0,38 183x13
-                Static 0,19 183x13
-                Static 0,0 183x13
-                SnglBox 0,0 0x0 -
-            SysTabControl32 0,0 200x62
-              SnglBox 4,22 192x36
-                Static 0,23 192x13
-                Button 0,0 192x23
-              SnglBox 4,22 192x36 -
-                Static 0,0 192x13
-              msctls_updown32 -34,1 34x17 -
-        """)
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 200x+0
+          SnglBox 0,0 200x+0
+            Static 0,+6 200xL
+            SnglBox 0,+6 120xB+17
+              SnglBox -160,0 966xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button 0,0 75xB
+                SnglBox -
+            SnglBox 0,+6 200x60
+              SnglBox 0,-40 183x+0
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,0 183xL
+                SnglBox -
+            SysTabControl32 0,0 200x+4
+              SnglBox 4,? 192xB+L
+                Static 0,+0 192xL
+                Button 0,0 192xB
+              SnglBox -
+                Static
+              msctls_updown32 -
+        """))
     scroll(c.root, true, 7)
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 200x193
-          SnglBox 0,0 200x193
-            Static 0,180 200x13
-            SnglBox 0,134 120x40
-              SnglBox -160,0 966x23
-                Button 891,0 75x23
-                Button 810,0 75x23
-                Button 729,0 75x23
-                Button 648,0 75x23
-                Button 567,0 75x23
-                Button 486,0 75x23
-                Button 405,0 75x23
-                Button 324,0 75x23
-                Button 243,0 75x23
-                Button 162,0 75x23
-                Button 81,0 75x23
-                Button 0,0 75x23
-                SnglBox 0,0 0x0 -
-            SnglBox 0,68 200x60
-              SnglBox 0,-162 183x222
-                Static 0,209 183x13
-                Static 0,190 183x13
-                Static 0,171 183x13
-                Static 0,152 183x13
-                Static 0,133 183x13
-                Static 0,114 183x13
-                Static 0,95 183x13
-                Static 0,76 183x13
-                Static 0,57 183x13
-                Static 0,38 183x13
-                Static 0,19 183x13
-                Static 0,0 183x13
-                SnglBox 0,0 0x0 -
-            SysTabControl32 0,0 200x62
-              SnglBox 4,22 192x36
-                Static 0,23 192x13
-                Button 0,0 192x23
-              SnglBox 4,22 192x36 -
-                Static 0,0 192x13
-              msctls_updown32 -34,1 34x17 -
-        """)
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        H = 12L+66
+        top 200x+0
+          SnglBox 0,0 200x+0
+            Static 0,+6 200xL
+            SnglBox 0,+6 120xB+17
+              SnglBox -160,0 966xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button +6,0 75xB
+                Button 0,0 75xB
+                SnglBox -
+            SnglBox 0,+6 200x60
+              SnglBox 0,60-H 183x+0
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,+6 183xL
+                Static 0,0 183xL
+                SnglBox -
+            SysTabControl32 0,0 200x+4
+              SnglBox 4,? 192xB+L
+                Static 0,+0 192xL
+                Button 0,0 192xB
+              SnglBox -
+                Static
+              msctls_updown32 -
+        """))
     t.assert(c.ends == 1)
 }
 
@@ -715,54 +745,57 @@ func testPresses(t test.Test, c presses) {
     t.assert(c.cards == 3)
     t.assert(c.inner == 2)
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 237x100
-          SnglBox 0,0 237x88
-            Static 0,75 237x13
-            SnglBox 0,29 237x40
-              SnglBox 2,21 233x17
-                Static 2,2 229x13
-              Static 2,2 233x13
-            SnglBox 0,0 0x0 -
-            SnglBox 0,0 237x23
-              Button 162,0 75x23
-              Button 81,0 75x23
-              Button 0,0 75x23
-              SnglBox 0,0 0x0 -
-            SnglBox 0,0 0x0 -
-              SnglBox 0,0 0x0 -
-                SnglBox 0,0 0x0 -
-        """)
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 237xmax(100,@)
+          SnglBox 0,0 237x+0
+            Static 0,+6 237xL
+            SnglBox 0,+6 237x+2
+              SnglBox 2,+6 233x+2
+                Static 2,2 229xL
+              Static 2,2 233xL
+            SnglBox -
+            SnglBox 0,0 237xB
+              Button +6,0 75xB
+              Button +6,0 75xB
+              Button 0,0 75xB
+              SnglBox -
+            SnglBox -
+              SnglBox
+                SnglBox
+        """))
     c.items = ["zero", "one", "three", "four"]
     c.asking = true
     t.wait(func() => false, 50)
-    t.assert(layout(c.root) == """
-        top 399x100
-          SnglBox 0,0 399x88
-            Static 0,75 399x13
-            SnglBox 0,29 399x40
-              SnglBox 2,21 395x17
-                Static 2,2 391x13
-              Static 2,2 395x13
-            SnglBox 0,0 0x0 -
-            SnglBox 0,0 399x23
-              Button 243,0 75x23
-              Button 324,0 75x23
-              Button 0,0 75x23
-              Button 81,0 75x23
-              SnglBox 0,0 0x0 -
-            SnglBox 0,0 0x0 -
-              SnglBox 0,0 0x0 -
-                SnglBox 0,0 0x0 -
+    t.assert(layout(c.root) == want(c.root, """
+        B = L+10
+        top 399xmax(100,@)
+          SnglBox 0,0 399x+0
+            Static 0,+6 399xL
+            SnglBox 0,+6 399x+2
+              SnglBox 2,+6 395x+2
+                Static 2,2 391xL
+              Static 2,2 395xL
+            SnglBox -
+            SnglBox 0,0 399xB
+              Button 243,0 75xB
+              Button 324,0 75xB
+              Button 0,0 75xB
+              Button 81,0 75xB
+              SnglBox -
+            SnglBox -
+              SnglBox
+                SnglBox
         owned 240x80
-          Button 12,31 216x23
-          Static 12,12 216x13
-        """)
+          Button 12,+6 216xB
+          Static 12,12 216xL
+        """))
 }
 -- peek.h --
 #include <windows.h>
 
 const char *peek_layout(HWND any);
+const char *peek_want(HWND any, const char *tmpl);
 int peek_scroll(HWND any, int vertical, int code);
 int peek_wheel(HWND any, int delta);
 int peek_press(HWND any, const char *text);
@@ -770,6 +803,7 @@ int peek_lbutton(HWND any, const char *text);
 -- peek.c --
 #include "peek.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -786,18 +820,26 @@ static void put(const char *s) {
 }
 
 /* walk writes w and each window under it, in z-order: its class, its rect
- * in its parent's client area, and "-" where its style hides it. */
-static void walk(HWND w, int depth) {
+ * in its parent's client area, and "-" in place of the rect where its style
+ * hides it. Under a hidden window it writes only the class, as nothing
+ * lays such a window out. */
+static void walk(HWND w, int depth, int seen) {
 	char cls[64], line[160];
 	GetClassNameA(w, cls, sizeof cls);
 	RECT r;
 	GetWindowRect(w, &r);
 	MapWindowPoints(HWND_DESKTOP, GetParent(w), (POINT *)&r, 2);
 	int shown = (GetWindowLongW(w, GWL_STYLE) & WS_VISIBLE) != 0;
-	snprintf(line, sizeof line, "\n%*s%s %ld,%ld %ldx%ld%s", 2 * depth, "", cls, r.left, r.top, r.right - r.left, r.bottom - r.top, shown ? "" : " -");
+	if (!seen) {
+		snprintf(line, sizeof line, "\n%*s%s", 2 * depth, "", cls);
+	} else if (!shown) {
+		snprintf(line, sizeof line, "\n%*s%s -", 2 * depth, "", cls);
+	} else {
+		snprintf(line, sizeof line, "\n%*s%s %ld,%ld %ldx%ld", 2 * depth, "", cls, r.left, r.top, r.right - r.left, r.bottom - r.top);
+	}
 	put(line);
 	for (HWND k = GetWindow(w, GW_CHILD); k; k = GetWindow(k, GW_HWNDNEXT)) {
-		walk(k, depth + 1);
+		walk(k, depth + 1, seen && shown);
 	}
 }
 
@@ -808,7 +850,7 @@ static void window(HWND top, const char *what) {
 	snprintf(line, sizeof line, "%s%s %ldx%ld", used ? "\n" : "", what, c.right, c.bottom);
 	put(line);
 	for (HWND k = GetWindow(top, GW_CHILD); k; k = GetWindow(k, GW_HWNDNEXT)) {
-		walk(k, 1);
+		walk(k, 1, 1);
 	}
 }
 
@@ -820,23 +862,435 @@ static BOOL CALLBACK owned(HWND w, LPARAM lp) {
 	return TRUE;
 }
 
-const char *peek_layout(HWND any) {
+static const char *dump(HWND any) {
 	HWND top = GetAncestor(any, GA_ROOT);
 	used = 0;
 	out[0] = 0;
 	window(top, "top");
 	EnumWindows(owned, (LPARAM)top);
-	/* PEEK_OUT, a Windows path, collects each dump, as these tests
-	 * were written from. */
+	return out;
+}
+
+/* PEEK_OUT, a Windows path, collects each dump, and each template that
+ * differs from it, as these tests were written from. */
+static void record(const char *what, const char *s) {
 	const char *path = getenv("PEEK_OUT");
-	if (path) {
-		FILE *f = fopen(path, "a");
-		if (f) {
-			fprintf(f, "%s\n\n", out);
-			fclose(f);
+	FILE *f = path ? fopen(path, "a") : NULL;
+	if (f) {
+		fprintf(f, "%s%s\n\n", what, s);
+		fclose(f);
+	}
+}
+
+const char *peek_layout(HWND any) {
+	dump(any);
+	record("", out);
+	return out;
+}
+
+/* A template is a dump with an expression for each number, which
+ * peek_want evaluates in the message font:
+ *
+ *   L          the height of a line of the font
+ *   [text]     text's width in it
+ *   NAME       a definition, NAME = expr on a line of its own
+ *   ?NAME, ?   the window's own value, bound to NAME or ignored
+ *   @          the far edge, along the field's axis, of the next shown
+ *              sibling listed (in a position) or of the first shown child
+ *              listed (in a size)
+ *   +e         @+e
+ *
+ * with + - * / ( ), max and min, and 2L for 2*L. */
+
+enum { MAXLINES = 256, MAXDEFS = 32 };
+
+static struct tline {
+	int depth, hidden, nf;
+	char cls[64];
+	const char *f[4];
+	int len[4], state[4], val[4], bad[4], got[4];
+} tl[MAXLINES];
+static int ntl;
+
+static struct {
+	char name[16];
+	const char *expr;
+	int len, state, val;
+} defs[MAXDEFS];
+static int ndefs;
+
+static HDC font_dc;
+static int line_h;
+static int failed;
+
+static void font_metrics(void) {
+	if (font_dc) {
+		return;
+	}
+	NONCLIENTMETRICSW ncm;
+	memset(&ncm, 0, sizeof ncm);
+	ncm.cbSize = sizeof ncm;
+	SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof ncm, &ncm, 0);
+	font_dc = CreateCompatibleDC(NULL);
+	SelectObject(font_dc, CreateFontIndirectW(&ncm.lfMessageFont));
+	TEXTMETRICW tm;
+	GetTextMetricsW(font_dc, &tm);
+	line_h = tm.tmHeight;
+}
+
+static int text_width(const char *s, int n) {
+	WCHAR w[256];
+	int k = MultiByteToWideChar(CP_UTF8, 0, s, n, w, 255);
+	RECT r = {0, 0, 0, 0};
+	DrawTextW(font_dc, w, k, &r, DT_CALCRECT | DT_NOPREFIX);
+	return r.right - r.left;
+}
+
+struct parse {
+	const char *s, *end;
+};
+
+static int expr(struct parse *p);
+static int field(int i, int f);
+static int edge(void);
+
+static int expect(struct parse *p, char c) {
+	if (p->s < p->end && *p->s == c) {
+		p->s++;
+		return 1;
+	}
+	failed = 1;
+	return 0;
+}
+
+static int lookup(const char *s, int n) {
+	if (n == 1 && *s == 'L') {
+		return line_h;
+	}
+	for (int i = 0; i < ndefs; i++) {
+		if ((int)strlen(defs[i].name) != n || strncmp(defs[i].name, s, (size_t)n) != 0) {
+			continue;
+		}
+		if (defs[i].state == 1) {
+			failed = 1;
+			return 0;
+		}
+		if (defs[i].state == 0) {
+			defs[i].state = 1;
+			struct parse q = {defs[i].expr, defs[i].expr + defs[i].len};
+			defs[i].val = expr(&q);
+			failed |= q.s != q.end;
+			defs[i].state = 2;
+		}
+		return defs[i].val;
+	}
+	for (int i = 0; i < ntl; i++) {
+		for (int f = 0; f < tl[i].nf; f++) {
+			if (tl[i].len[f] == n + 1 && tl[i].f[f][0] == '?' && strncmp(tl[i].f[f] + 1, s, (size_t)n) == 0) {
+				return tl[i].got[f];
+			}
 		}
 	}
-	return out;
+	failed = 1;
+	return 0;
+}
+
+static int factor(struct parse *p) {
+	const char *s = p->s;
+	if (s >= p->end) {
+		failed = 1;
+		return 0;
+	}
+	if (*s == '-') {
+		p->s++;
+		return -factor(p);
+	}
+	if (*s == '@') {
+		p->s++;
+		return edge();
+	}
+	if (*s == '(') {
+		p->s++;
+		int v = expr(p);
+		expect(p, ')');
+		return v;
+	}
+	if (*s == '[') {
+		const char *close = memchr(s, ']', (size_t)(p->end - s));
+		if (!close) {
+			failed = 1;
+			return 0;
+		}
+		p->s = close + 1;
+		return text_width(s + 1, (int)(close - s - 1));
+	}
+	if (isdigit((unsigned char)*s)) {
+		int v = 0;
+		while (p->s < p->end && isdigit((unsigned char)*p->s)) {
+			v = v * 10 + (*p->s++ - '0');
+		}
+		if (p->s < p->end && (isalpha((unsigned char)*p->s) || *p->s == '(' || *p->s == '[')) {
+			v *= factor(p);
+		}
+		return v;
+	}
+	int n = 0;
+	while (s + n < p->end && (isalnum((unsigned char)s[n]) || s[n] == '_')) {
+		n++;
+	}
+	if (n == 0) {
+		failed = 1;
+		return 0;
+	}
+	p->s += n;
+	if (n == 3 && (strncmp(s, "max", 3) == 0 || strncmp(s, "min", 3) == 0)) {
+		expect(p, '(');
+		int a = expr(p);
+		expect(p, ',');
+		int b = expr(p);
+		expect(p, ')');
+		return (s[1] == 'a') == (a > b) ? a : b;
+	}
+	return lookup(s, n);
+}
+
+static int term(struct parse *p) {
+	int v = factor(p);
+	while (p->s < p->end && (*p->s == '*' || *p->s == '/')) {
+		char op = *p->s++;
+		int r = factor(p);
+		if (op == '*') {
+			v *= r;
+		} else if (r) {
+			v /= r;
+		} else {
+			failed = 1;
+		}
+	}
+	return v;
+}
+
+static int expr(struct parse *p) {
+	int v = term(p);
+	while (p->s < p->end && (*p->s == '+' || *p->s == '-')) {
+		char op = *p->s++;
+		int r = term(p);
+		v = op == '+' ? v + r : v - r;
+	}
+	return v;
+}
+
+/* related is the line a field's +e is past: for a position, the next shown
+ * sibling, which z-order lists after it; for a size, the first shown child. */
+static int related(int i, int size) {
+	int depth = tl[i].depth + size;
+	for (int j = i + 1; j < ntl && tl[j].depth >= depth; j++) {
+		if (tl[j].depth == depth && tl[j].nf == 4 && !tl[j].hidden) {
+			return j;
+		}
+	}
+	return -1;
+}
+
+static int at_line, at_field;
+
+/* edge is @ in the field being evaluated. */
+static int edge(void) {
+	struct tline *t = &tl[at_line];
+	int size = t->nf == 2 || at_field >= 2;
+	int axis = t->nf == 2 ? at_field : at_field % 2;
+	int j = related(at_line, size);
+	if (j < 0) {
+		failed = 1;
+		return 0;
+	}
+	int v = field(j, axis) + field(j, axis + 2);
+	failed |= tl[j].bad[axis] | tl[j].bad[axis + 2];
+	return v;
+}
+
+static int field(int i, int f) {
+	struct tline *t = &tl[i];
+	if (t->state[f] == 2) {
+		return t->val[f];
+	}
+	if (t->state[f] == 1) {
+		failed = 1;
+		return 0;
+	}
+	t->state[f] = 1;
+	int was = failed, line = at_line, fld = at_field;
+	failed = 0;
+	at_line = i;
+	at_field = f;
+	struct parse p = {t->f[f], t->f[f] + t->len[f]};
+	int v = 0;
+	if (p.s < p.end && *p.s == '?') {
+		v = t->got[f];
+		p.s = p.end;
+	} else if (p.s < p.end && *p.s == '+') {
+		p.s++;
+		v = edge();
+		v += expr(&p);
+	} else {
+		v = expr(&p);
+	}
+	t->bad[f] = failed || p.s != p.end;
+	failed = was;
+	at_line = line;
+	at_field = fld;
+	t->val[f] = v;
+	t->state[f] = 2;
+	return v;
+}
+
+/* split cuts s at its first sep outside brackets; an x in max is no
+ * separator. */
+static int split(const char *s, int n, char sep, const char **f, int *len) {
+	int depth = 0;
+	for (int k = 1; k < n; k++) {
+		depth += s[k - 1] == '(' || s[k - 1] == '[' ? 1 : s[k - 1] == ')' || s[k - 1] == ']' ? -1 : 0;
+		if (depth == 0 && s[k] == sep && !islower((unsigned char)s[k - 1])) {
+			f[0] = s;
+			len[0] = k;
+			f[1] = s + k + 1;
+			len[1] = n - k - 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* token is the next word of s from k on, which a [text] may hold spaces
+ * in. */
+static int token(const char *s, int n, int *k, const char **t) {
+	while (*k < n && s[*k] == ' ') {
+		(*k)++;
+	}
+	*t = s + *k;
+	int start = *k, depth = 0;
+	while (*k < n && (depth > 0 || s[*k] != ' ')) {
+		depth += s[*k] == '[' ? 1 : s[*k] == ']' ? -1 : 0;
+		(*k)++;
+	}
+	return *k - start;
+}
+
+static void parse_line(const char *s, int n) {
+	int indent = 0;
+	while (indent < n && s[indent] == ' ') {
+		indent++;
+	}
+	int k = indent;
+	const char *a, *b, *c;
+	int na = token(s, n, &k, &a);
+	int nb = token(s, n, &k, &b);
+	if (na == 0) {
+		return;
+	}
+	if (nb == 1 && *b == '=') {
+		if (ndefs < MAXDEFS) {
+			snprintf(defs[ndefs].name, sizeof defs[ndefs].name, "%.*s", na, a);
+			while (k < n && s[k] == ' ') {
+				k++;
+			}
+			defs[ndefs].expr = s + k;
+			defs[ndefs].len = n - k;
+			defs[ndefs].state = 0;
+			ndefs++;
+		}
+		return;
+	}
+	if (ntl == MAXLINES) {
+		return;
+	}
+	struct tline *t = &tl[ntl++];
+	memset(t, 0, sizeof *t);
+	t->depth = indent / 2;
+	snprintf(t->cls, sizeof t->cls, "%.*s", na, a);
+	int nc = token(s, n, &k, &c);
+	if (nb == 1 && *b == '-') {
+		t->hidden = 1;
+	} else if (nb && !nc && split(b, nb, 'x', t->f, t->len)) {
+		t->nf = 2;
+	} else if (nb && nc && split(b, nb, ',', t->f, t->len) && split(c, nc, 'x', t->f + 2, t->len + 2)) {
+		t->nf = 4;
+	} else if (nb) {
+		t->nf = -1;
+	}
+}
+
+/* read_own reads each window's own values off the dump, the line at the same
+ * place as the template's. */
+static void read_own(const char *dumped) {
+	const char *s = dumped;
+	for (int i = 0; i < ntl && *s; i++) {
+		const char *nl = strchr(s, '\n');
+		int n = nl ? (int)(nl - s) : (int)strlen(s);
+		char line[256], cls[64];
+		long v[4];
+		snprintf(line, sizeof line, "%.*s", n, s);
+		if (sscanf(line, "%63s %ld,%ld %ldx%ld", cls, &v[0], &v[1], &v[2], &v[3]) == 5) {
+			for (int f = 0; f < 4; f++) {
+				tl[i].got[f] = (int)v[f];
+			}
+		} else if (sscanf(line, "%63s %ldx%ld", cls, &v[0], &v[1]) == 3) {
+			tl[i].got[0] = (int)v[0];
+			tl[i].got[1] = (int)v[1];
+		}
+		s = nl ? nl + 1 : s + n;
+	}
+}
+
+static char wanted[65536];
+
+/* peek_want is the dump the template tmpl describes, a field it cannot
+ * evaluate written "!". */
+const char *peek_want(HWND any, const char *tmpl) {
+	font_metrics();
+	ntl = 0;
+	ndefs = 0;
+	for (const char *s = tmpl; *s;) {
+		const char *nl = strchr(s, '\n');
+		int n = nl ? (int)(nl - s) : (int)strlen(s);
+		parse_line(s, n);
+		s += n + (nl ? 1 : 0);
+	}
+	read_own(dump(any));
+	size_t at = 0;
+	wanted[0] = 0;
+	for (int i = 0; i < ntl; i++) {
+		struct tline *t = &tl[i];
+		char v[4][16], line[256];
+		for (int f = 0; f < t->nf; f++) {
+			int n = field(i, f);
+			if (t->bad[f]) {
+				snprintf(v[f], sizeof v[f], "!");
+			} else {
+				snprintf(v[f], sizeof v[f], "%d", n);
+			}
+		}
+		const char *sep = i ? "\n" : "";
+		int pad = 2 * t->depth;
+		if (t->hidden) {
+			snprintf(line, sizeof line, "%s%*s%s -", sep, pad, "", t->cls);
+		} else if (t->nf == 2) {
+			snprintf(line, sizeof line, "%s%*s%s %sx%s", sep, pad, "", t->cls, v[0], v[1]);
+		} else if (t->nf == 4) {
+			snprintf(line, sizeof line, "%s%*s%s %s,%s %sx%s", sep, pad, "", t->cls, v[0], v[1], v[2], v[3]);
+		} else {
+			snprintf(line, sizeof line, "%s%*s%s%s", sep, pad, "", t->cls, t->nf ? " !" : "");
+		}
+		size_t n = strlen(line);
+		if (at + n < sizeof wanted) {
+			memcpy(wanted + at, line, n + 1);
+			at += n;
+		}
+	}
+	if (strcmp(wanted, out) != 0) {
+		record("want:\n", wanted);
+	}
+	return wanted;
 }
 
 struct find {
@@ -910,7 +1364,7 @@ int peek_lbutton(HWND any, const char *text) {
 	return 1;
 }
 -- testrun/win32/c/app.sngl/controls/1 --
-sha256:3a9d2d8d20c5e973b523156125f46619
+sha256:2f266dfdc969fae5aa2a86722c2ffd7f
 {
   "results": [
     {
@@ -920,7 +1374,7 @@ sha256:3a9d2d8d20c5e973b523156125f46619
   ]
 }
 -- testrun/win32/c/app.sngl/controls/2 --
-sha256:0fd7a357f22717ae9fd83843a6d09447
+sha256:ce3cccd4991bcd393edc04fa717983dc
 {
   "results": [
     {
@@ -930,7 +1384,7 @@ sha256:0fd7a357f22717ae9fd83843a6d09447
   ]
 }
 -- testrun/win32/c/app.sngl/grids/1 --
-sha256:18ec0fe87e8f7e48b3627fab43a1d2db
+sha256:cd57ac9957a487a50cebe9a7a7f4b2c9
 {
   "results": [
     {
@@ -940,7 +1394,7 @@ sha256:18ec0fe87e8f7e48b3627fab43a1d2db
   ]
 }
 -- testrun/win32/c/app.sngl/grids/2 --
-sha256:9f7b5d82cb5dd9c9e00ec7146bb5f116
+sha256:521e786a36fb8dfd0ec2869b44dcf8c6
 {
   "results": [
     {
@@ -950,7 +1404,7 @@ sha256:9f7b5d82cb5dd9c9e00ec7146bb5f116
   ]
 }
 -- testrun/win32/c/app.sngl/lines/1 --
-sha256:8b562dfa7160e04a08af8473dc245795
+sha256:6a244c7dbf311d22d7280acc40d691e7
 {
   "results": [
     {
@@ -960,7 +1414,7 @@ sha256:8b562dfa7160e04a08af8473dc245795
   ]
 }
 -- testrun/win32/c/app.sngl/lines/2 --
-sha256:9f8361d8ea5a674ea514e871381dd23f
+sha256:2c1f3b4e99a4f429035d62e2f2daa85a
 {
   "results": [
     {
@@ -970,7 +1424,7 @@ sha256:9f8361d8ea5a674ea514e871381dd23f
   ]
 }
 -- testrun/win32/c/app.sngl/panels/1 --
-sha256:de093328f98ee76703e4182a22282d20
+sha256:d53263ac356c37bfaf9950d4bd21a475
 {
   "results": [
     {
@@ -980,7 +1434,7 @@ sha256:de093328f98ee76703e4182a22282d20
   ]
 }
 -- testrun/win32/c/app.sngl/panels/2 --
-sha256:8dd3f22cd297d6e779ea095fea8380ed
+sha256:ef8a07bd8f35c3c53b8b6f9141911942
 {
   "results": [
     {
@@ -990,7 +1444,7 @@ sha256:8dd3f22cd297d6e779ea095fea8380ed
   ]
 }
 -- testrun/win32/c/app.sngl/presses/1 --
-sha256:18e638033a93ddf5a2846a6445100dfb
+sha256:f7e1e85a5e811c68ae9e7bf184f5c2f8
 {
   "results": [
     {
@@ -1000,7 +1454,7 @@ sha256:18e638033a93ddf5a2846a6445100dfb
   ]
 }
 -- testrun/win32/c/app.sngl/presses/2 --
-sha256:5497def38b432b6e50fe8b0f84e664bb
+sha256:c740d506fc0dcff95d7db85b40794ce8
 {
   "results": [
     {
@@ -1010,7 +1464,7 @@ sha256:5497def38b432b6e50fe8b0f84e664bb
   ]
 }
 -- testrun/win32/go/app.sngl/controls/1 --
-sha256:396366162527c328e7c739f73a640a4f
+sha256:5fc7e4b8a17e14d7292c1b4dc1cc150d
 {
   "results": [
     {
@@ -1020,7 +1474,7 @@ sha256:396366162527c328e7c739f73a640a4f
   ]
 }
 -- testrun/win32/go/app.sngl/controls/2 --
-sha256:15b6507367a6207f9a4eb79ae2d70c71
+sha256:534dc54ccaa1d975913b017546c837af
 {
   "results": [
     {
@@ -1030,7 +1484,7 @@ sha256:15b6507367a6207f9a4eb79ae2d70c71
   ]
 }
 -- testrun/win32/go/app.sngl/grids/1 --
-sha256:8b8967c22a29b67569803bf53af9c863
+sha256:c24f0d74f9050c8bcfac6329e534cdd4
 {
   "results": [
     {
@@ -1040,7 +1494,7 @@ sha256:8b8967c22a29b67569803bf53af9c863
   ]
 }
 -- testrun/win32/go/app.sngl/grids/2 --
-sha256:eaf9245fb553b6823e061187b2a0e0bd
+sha256:aafa630eaf62dede3e6324d11ae5f2be
 {
   "results": [
     {
@@ -1050,7 +1504,7 @@ sha256:eaf9245fb553b6823e061187b2a0e0bd
   ]
 }
 -- testrun/win32/go/app.sngl/lines/1 --
-sha256:aa9bbb45c9ef61c033918713089a6af0
+sha256:f80c7112808077a6f0631c285b1a1f65
 {
   "results": [
     {
@@ -1060,7 +1514,7 @@ sha256:aa9bbb45c9ef61c033918713089a6af0
   ]
 }
 -- testrun/win32/go/app.sngl/lines/2 --
-sha256:afa443c4b56dee07cbb75782c306c5dc
+sha256:73fe430f2ec7b947f9e0063c7757a607
 {
   "results": [
     {
@@ -1070,7 +1524,7 @@ sha256:afa443c4b56dee07cbb75782c306c5dc
   ]
 }
 -- testrun/win32/go/app.sngl/panels/1 --
-sha256:dd5e36dfa120b748ddd138e9f7287678
+sha256:6cc22f36e6143abbef9f3b0245264b47
 {
   "results": [
     {
@@ -1080,7 +1534,7 @@ sha256:dd5e36dfa120b748ddd138e9f7287678
   ]
 }
 -- testrun/win32/go/app.sngl/panels/2 --
-sha256:2284ee9b80f09b94661e7538d0d44ad6
+sha256:6d2159837e2a9bd3e9fde94ceb490a96
 {
   "results": [
     {
@@ -1090,7 +1544,7 @@ sha256:2284ee9b80f09b94661e7538d0d44ad6
   ]
 }
 -- testrun/win32/go/app.sngl/presses/1 --
-sha256:17d8805bee27f99aaaa102ca861fbe5a
+sha256:ff636a8514875711d01a7c78cff4dc39
 {
   "results": [
     {
@@ -1100,7 +1554,7 @@ sha256:17d8805bee27f99aaaa102ca861fbe5a
   ]
 }
 -- testrun/win32/go/app.sngl/presses/2 --
-sha256:31837c9b126b1d43f4c69070b37c6149
+sha256:781902a2d3ea58553265e0179808f722
 {
   "results": [
     {
