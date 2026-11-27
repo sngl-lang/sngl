@@ -1,0 +1,87 @@
+# A row a slot builds per copy is lifted into a component of its own, and a
+# call it makes of a func of its owner reaches that func through a prop
+# holding a lambda. C writes the owner as the call's first argument, which
+# the lambda took as a parameter and the lifted row went on handing it --
+# the owner, which nothing in the row holds.
+env SNGL_GENCACHE=off
+
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component tag(name string) ui.node {
+    ui.text #t(value=name)
+}
+
+component shelf ui.node {
+    var rows = [["fig", "kiwi"], ["plum"]]
+    var mark = "!"
+
+    func label(n string) => "{n}{mark}"
+
+    for var row = rows {
+        ui.hbox {
+            for var n = row {
+                tag #tags(name=label(n))
+            }
+        }
+    }
+    ui.button #louder(text="Louder", @click { mark = "!!" })
+}
+
+component app ui.node {
+    var away = false
+    ui.button #leave(text="Leave", @click { away = !away })
+    if !away {
+        shelf #s
+    }
+}
+
+func testARowCallsItsOwnersFunc(t test.Test, c app) {
+    t.assert(c.s != null && c.s.tags[0][0].t.value == "fig!" && c.s.tags[1][0].t.value == "plum!")
+    if c.s != null {
+        c.s.louder.click()
+    }
+    t.assert(c.s != null && c.s.tags[0][1].t.value == "kiwi!!")
+}
+
+ui.window {
+    app
+}
+-- testrun/gtk4/c/app.sngl/app/1 --
+sha256:f5808a267073832afb761a3cf18afb63
+{
+  "results": [
+    {
+      "Desc": "ARowCallsItsOwnersFunc",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/app/1 --
+sha256:e5a3dc343e12450bdc5ac31923484c1d
+{
+  "results": [
+    {
+      "Desc": "ARowCallsItsOwnersFunc",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/app/1 --
+sha256:1f36d01b54114fb83fa2a1667e281e93
+{
+  "results": [
+    {
+      "Desc": "ARowCallsItsOwnersFunc",
+      "Passed": true
+    }
+  ]
+}
