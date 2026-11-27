@@ -489,17 +489,14 @@ func extractEventValue(args []ir.CallArg, lower func(ir.Expr) string) string {
 }
 
 // lowerTestExpr translates a SNGL test expression to Kotlin source.
-// `c.<var>` is a direct field read on MainScreenState; `c.<id>.<prop>`
-// is fetched via the Compose semantics tree.
+// `c.<var>` is a direct field read on MainScreenState. A node's prop read
+// (`c.<id>.<prop>`) arrives answered: passTestReach and passNodePropReads
+// turn it into the expression the program gave the prop.
 //
-// surf is what the receiver exposes, and the two halves answer different
-// questions. MethodFields names component ids that are NOT MainScreenState
-// fields — they correspond to widgets gated by `if` / `for`, so presence and
-// per-prop reads go through Compose finders rather than the state object.
-// StateFields names the cells the state object does declare, which is what
-// separates `c.state.entry` from `c.<id>.<prop>`: without it every `c.X.Y`
-// read as a node's text, so a test asserting on its component's own state
-// asked the view tree for a tag no widget carries.
+// surf is what the receiver exposes. MethodFields names component ids that
+// are NOT MainScreenState fields — they correspond to widgets gated by `if` /
+// `for`, so presence goes through Compose finders rather than the state
+// object.
 func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) string {
 	// `<recv>.<id> == null` asks whether the node is rendered now, which is
 	// whether the semantics tree holds a node carrying its tag -- and, for
@@ -557,25 +554,6 @@ func lowerTestExpr(e ir.Expr, surf TestSurface, compRecvs map[string]bool) strin
 		}
 		return surf.translator().EvalExpr(n)
 	case *ir.Select:
-		// `<recv>.<id>[idx].<prop>` — Compose `onAllNodesWithTag(<id>)[idx]`
-		// then read via composeNodeTextAt. Not for a list the state object
-		// holds, whose element's field is an ordinary read.
-		if idx, ok := n.Operand.(*ir.Index); ok {
-			if inner, ok := idx.Operand.(*ir.Select); ok {
-				if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] && !surf.StateFields[inner.Field] {
-					return fmt.Sprintf("composeNodeTextAt(composeTestRule, %q, %s)",
-						inner.Field, lowerTestExpr(idx.Idx, surf, compRecvs))
-				}
-			}
-		}
-		// `<recv>.<id>.<prop>` — Compose semantics text read for the tag.
-		// A cell the state object declares is not that: it is an ordinary
-		// field, and the read is an ordinary one.
-		if inner, ok := n.Operand.(*ir.Select); ok {
-			if id, ok := inner.Operand.(*ir.Ident); ok && compRecvs[id.Name] && !surf.StateFields[inner.Field] {
-				return fmt.Sprintf("composeNodeText(composeTestRule, %q)", inner.Field)
-			}
-		}
 		if id, ok := n.Operand.(*ir.Ident); ok && compRecvs[id.Name] {
 			return id.Name + "." + SafeIdent(n.Field)
 		}
@@ -911,15 +889,11 @@ func compReceiverSet(fn *ir.Func) map[string]bool {
 }
 
 // TestSurface is what a test's component receiver exposes, as the emitters
-// need to tell one read from another. Two sets rather than two parameters
-// because every function that takes one takes the other.
+// need to tell one read from another.
 type TestSurface struct {
 	// MethodFields is every component func and computed package func: a name
 	// the state object does not hold a cell for.
 	MethodFields map[string]bool
-	// StateFields is every var a window, the package or a component owns --
-	// the cells the state object declares.
-	StateFields map[string]bool
 	// Pkg is the package under test, and Members what MainScreen spells each
 	// state member as (`state.<name>`). With both, an expression the test
 	// lowerer has no special case for renders the way MainScreen renders it,

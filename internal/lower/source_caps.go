@@ -54,6 +54,7 @@ var capabilityField = map[string]func(*Features) *bool{
 	"entryWrites":       func(f *Features) *bool { return &f.EntryWrites },
 	"unreadLocals":      func(f *Features) *bool { return &f.UnreadLocals },
 	"valueTriggers":     func(f *Features) *bool { return &f.ValueTriggers },
+	"cCalls":            func(f *Features) *bool { return &f.CCalls },
 }
 
 var passField = map[string]func(*Features) *bool{

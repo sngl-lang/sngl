@@ -91,8 +91,10 @@ func WriteProgram(fe codegen.FileEmitter, pkg *ir.Package, platform string) erro
 
 	for _, fn := range pkg.Funcs {
 		// A helper a test hands its Test is written with the tests
-		// (WriteTests), whose calls of it are the agent's.
-		if fn.IsTest || ir.TakesTest(fn) || !codegen.HasBody(fn) || fn.Foreign.Name != "" || fn.Intrinsic != "" {
+		// (WriteTests), whose calls of it are the agent's. A #[foreign]
+		// mark (Marked) leaves the declaration the program's own, body and
+		// all.
+		if fn.IsTest || ir.TakesTest(fn) || !codegen.HasBody(fn) || fn.Foreign.Name != "" && !fn.Foreign.Marked || fn.Intrinsic != "" {
 			continue
 		}
 		writeFunc(&b, gc, pkg, fn)

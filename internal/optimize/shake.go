@@ -1,7 +1,6 @@
 package optimize
 
 import (
-	"fmt"
 	"log/slog"
 	"path"
 	"slices"
@@ -274,37 +273,93 @@ func promoteForeignStructs(pkg *ir.Package) error {
 	// Promotion is keyed by declaration and every backend emits by name, so a
 	// promoted library struct whose name the program also declares would be a
 	// second `type Point struct` in one file -- Go refuses it, and JS takes
-	// whichever came last. Two library structs are renamed on the build's copy,
-	// the later package's taking its last segment (draw.Style is Style__draw
-	// beside ui.Style), so the pair is the same whichever was promoted first.
-	//
-	// The program's own, or a directory's, is reported rather than renamed: it
-	// is the author's name, and the one a test or a host reads it by.
+	// whichever came last. The library's is renamed on the build's copy,
+	// taking its package's last segment (gtk4's Look is Look__gtk4 beside the
+	// program's), since nothing outside the build names it. The program's own,
+	// or a directory's, keeps its name: it is the author's, and the one a test
+	// or a host reads it by. Of two library structs the later package's is
+	// renamed (draw.Style is Style__draw beside ui.Style), so the pair is the
+	// same whichever was promoted first.
+	canon := map[string]*ir.StructDef{}
 	for _, sd := range added {
-		if other, clash := byName[sd.Name]; clash && fromLibrary(other) && fromLibrary(sd) {
+		canon[declKey(sd)] = sd
+	}
+	renamed := false
+	for _, sd := range added {
+		if other, clash := byName[sd.Name]; clash {
 			later, kept := sd, other
-			if other.PkgPath() > sd.PkgPath() {
+			if fromLibrary(other) && (!fromLibrary(sd) || other.PkgPath() > sd.PkgPath()) {
 				later, kept = other, sd
 			}
-			_, rest, _ := strings.Cut(later.PkgPath(), ":")
-			renamed := sd.Name + "__" + strings.Map(identRune, path.Base(rest))
-			if _, taken := byName[renamed]; !taken {
-				later.Name = renamed
-				byName[sd.Name], byName[renamed] = kept, later
-				continue
+			if !fromLibrary(later) {
+				return ir.Decline("", "%s declares struct %q and so does %s, which this build has to declare and cannot rename -- rename the local one",
+					pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()))
 			}
-		}
-		if other, clash := byName[sd.Name]; clash {
-			return fmt.Errorf("%s declares struct %q and so does %s, which this build has to declare; "+
-				"every target emits a struct by its name, so the two cannot both be declared -- rename the local one",
-				pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()))
+			_, rest, _ := strings.Cut(later.PkgPath(), ":")
+			name := sd.Name + "__" + strings.Map(identRune, path.Base(rest))
+			if _, taken := byName[name]; taken {
+				return ir.Decline("", "%s declares struct %q and so does %s, which this build has to declare as %q, a name %s takes too -- rename the local one",
+					pkgLabel(other.PkgPath()), sd.Name, pkgLabel(sd.PkgPath()), name, pkgLabel(byName[name].PkgPath()))
+			}
+			later.Name = name
+			byName[sd.Name], byName[name] = kept, later
+			renamed = true
+			continue
 		}
 		byName[sd.Name] = sd
 	}
 	pkg.Structs = append(pkg.Structs, added...)
 	pkg.Enums = append(pkg.Enums, addedEnums...)
 	pkg.Units = append(pkg.Units, addedUnits...)
+	if renamed {
+		canonicalStructs(pkg, canon)
+	}
 	return nil
+}
+
+// canonicalStructs points every type in pkg naming a copy of a promoted
+// library struct at the copy the build declares, canon's, keyed by the
+// declaration's package and its name before any rename. A declaration is
+// reached through more than one copy -- a library function the build did not
+// clone holds the frozen original -- and a rename reaches only the one it
+// writes: gtk4's `_LookState` held the frozen `Look`, so C kept a `Look` beside
+// `Look__gtk4` and Go compared one with the other. A canon that is the frozen
+// original is first swapped for a copy the build owns, since its fields are
+// what the rewrite has to reach.
+func canonicalStructs(pkg *ir.Package, canon map[string]*ir.StructDef) {
+	for i, sd := range pkg.Structs {
+		key := declKey(sd)
+		if !sd.Frozen || canon[key] != sd {
+			continue
+		}
+		cp := *sd
+		cp.Frozen = false
+		cp.Fields = make([]*ir.StructField, len(sd.Fields))
+		for j, f := range sd.Fields {
+			fc := *f
+			fc.Default = ir.CloneExprSharingDecls(f.Default)
+			cp.Fields[j] = &fc
+		}
+		canon[key], pkg.Structs[i] = &cp, &cp
+	}
+	var swap func(t *ir.Type) *ir.Type
+	swap = func(t *ir.Type) *ir.Type {
+		if t == nil {
+			return nil
+		}
+		t = t.MapChildren(swap)
+		sd, ok := t.Decl.(*ir.StructDef)
+		if !ok || sd == nil || t.Kind != ir.TypeStruct || sd.PkgPath() == "" {
+			return t
+		}
+		if c := canon[declKey(sd)]; c != nil && c != sd {
+			cp := *t
+			cp.Decl = c
+			return &cp
+		}
+		return t
+	}
+	ir.RewriteTypes(pkg, swap)
 }
 
 // namesBuiltinStruct reports whether t is, or holds, a struct of a builtin

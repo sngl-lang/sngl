@@ -19,13 +19,14 @@ import (
 // nothing declares. It is not an approximation of the answer: with no object to
 // mutate, what the prop was given *is* what the prop holds.
 //
-// Which nodes those are is the tree's to say, not this pass's. A primitive
-// claims `#[gen.renders(identity)]` when a `#id` on what it draws names
-// something still there while the program runs, and a read of such a node is
-// left alone for the platform to emit. Nothing claimed is nothing held, which
-// is the tier's polarity and the answer that leaves a program working: a
-// target that has not thought about it gets a value that was true at build
-// time rather than a reference to nothing.
+// A node the target keeps is answered the same way for a one-way prop, which
+// only its call site writes (answeredAtBuild); only a two-way prop's read is
+// left for the platform to emit. Which nodes are kept is the tree's to say: a
+// primitive claims `#[gen.renders(identity)]` when a `#id` on what it draws
+// names something still there while the program runs. Nothing claimed is
+// nothing held, which is the tier's polarity and the answer that leaves a
+// program working: a target that has not thought about it gets a value that
+// was true at build time rather than a reference to nothing.
 //
 // Always on, because it is gated by the declaration rather than by the target:
 // a build with no capability to read still has a tree that answers.
@@ -81,6 +82,12 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, opts Options) error {
 			if !ok {
 				return n, nil
 			}
+			// A cell's read is the inliner's to answer, per copy.
+			if id, ok := sel.Operand.(*ir.Ident); ok {
+				if h, ok := id.Sym.(*ir.Var); ok && opts.handleCells[h][sel.Field] != nil {
+					return n, nil
+				}
+			}
 			e := rewriteNodePropRead(sel, handles)
 			if e == nil {
 				e = rewriteTestPropRead(sel, tests, nil)
@@ -129,14 +136,17 @@ func collectNodeHandles(stmts []ir.Stmt, out map[*ir.Var]*ir.NodeInst) {
 }
 
 // rewriteNodePropRead is what `handle.prop` should become, or nil to leave it
-// alone: the expression the prop was given, for a handle whose node the target
-// keeps nothing of.
+// alone: the expression the prop was given, wherever that is what the prop
+// holds (answeredAtBuild).
 func rewriteNodePropRead(sel *ir.Select, handles map[*ir.Var]*ir.NodeInst) ir.Expr {
 	node := handleNodeOf(sel.Operand, handles)
-	if node == nil || !rendersWithoutIdentity(node) {
+	if node == nil {
 		return nil
 	}
-	v := nodePropExpr(node, sel.Field)
+	v := propHolds(node, sel.Field)
+	if v == nil && rendersWithoutIdentity(node) {
+		v = nodePropExpr(node, sel.Field)
+	}
 	if v == nil {
 		return nil
 	}
@@ -151,6 +161,40 @@ func rewriteNodePropRead(sel *ir.Select, handles map[*ir.Var]*ir.NodeInst) ir.Ex
 	// nowhere to hold the temp. Accepted -- a prop whose value is expensive
 	// enough to notice is already being evaluated once for the node itself.
 	return ir.CloneExprSharingDecls(v)
+}
+
+// answerOwnHandleReads is e, written in comp's body, with each prop read
+// through one of comp's own handles answered there (rewriteNodePropRead), to a
+// fixed point. A test's read through an instance, `c.out.value` given
+// "{bar.text}", is answered in the body's terms before it is rebased: rebased
+// first, `bar.text` would be `c.bar.text`, a read through the instance's
+// handle that no target answers.
+//
+// The checker refuses a prop that reads its way back to itself, and
+// refuseNodePropCycle any the check did not see, so the loop ends.
+func answerOwnHandleReads(e ir.Expr, comp *ir.Component) ir.Expr {
+	handles := map[*ir.Var]*ir.NodeInst{}
+	collectNodeHandles(comp.Stmts, handles)
+	if len(handles) == 0 {
+		return e
+	}
+	for {
+		changed := false
+		e = newExprWalker(func(x ir.Expr) ir.Expr {
+			sel, ok := x.(*ir.Select)
+			if !ok {
+				return x
+			}
+			if v := rewriteNodePropRead(sel, handles); v != nil {
+				changed = true
+				return v
+			}
+			return x
+		}).expr(e)
+		if !changed {
+			return e
+		}
+	}
 }
 
 // handleNodeOf is the node an expression names through its `#id`, or nil.
@@ -191,6 +235,48 @@ func nodePropExpr(n *ir.NodeInst, name string) ir.Expr {
 	return nil
 }
 
+// answeredAtBuild reports whether rewriteNodePropRead answers a read of n's
+// prop field.
+func answeredAtBuild(n *ir.NodeInst, field string) bool {
+	return propHolds(n, field) != nil || rendersWithoutIdentity(n) && nodePropExpr(n, field) != nil
+}
+
+// propHolds is what n's prop field holds while n is rendered, as an expression
+// written where n is, or nil where only the node can say.
+//
+// A one-way prop is the program's to say: nothing but the call site writes
+// it, so it holds what that expression evaluates to, which is the
+// interpreter's answer too. A two-way prop bound to a target holds the
+// target, which the binding keeps in step with the node both ways. Only a
+// two-way prop left unbound is the node's own -- the instance's cell, which
+// passImplicitState answers.
+//
+// Leaving a read to the target asked each one to keep a getter per widget per
+// prop, and none did: gtk4 emitted `m.bar.Text` against a cgo.Widget,
+// bubbletea named a field its Model never declared, fyne title-cased `value`
+// onto an Entry that spells it Text, and html read a handle the inliner had
+// spliced away inside a component.
+func propHolds(n *ir.NodeInst, field string) ir.Expr {
+	if n.Component == nil {
+		return nil
+	}
+	for _, p := range n.Component.Props {
+		if p.Name != field {
+			continue
+		}
+		if !p.Bidirectional {
+			return nodePropExpr(n, field)
+		}
+		for _, b := range n.Bindings {
+			if b.PropName == field {
+				return b.Target
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
 // rendersWithoutIdentity reports whether this target is known to render n as
 // something nothing can hold.
 //
@@ -224,16 +310,13 @@ func refuseNodePropCycle(handles map[*ir.Var]*ir.NodeInst) error {
 	// The edge set: node -> the nodes its props read.
 	edges := map[*ir.NodeInst][]*ir.NodeInst{}
 	for _, node := range handles {
-		if !rendersWithoutIdentity(node) {
-			continue
-		}
 		for i := range node.Props {
 			ir.WalkExprs(node.Props[i].Value, func(e ir.Expr) error {
 				sel, ok := e.(*ir.Select)
 				if !ok {
 					return nil
 				}
-				if to := handleNodeOf(sel.Operand, handles); to != nil {
+				if to := handleNodeOf(sel.Operand, handles); to != nil && answeredAtBuild(to, sel.Field) {
 					edges[node] = append(edges[node], to)
 				}
 				return nil
@@ -363,30 +446,12 @@ func answerTestPropRead(sel *ir.Select, tests map[*ir.Param]bool, reads blockRea
 	if node == nil || node.Component == nil || len(loops) != len(idxs) {
 		return nil, false
 	}
-	var v ir.Expr
-	for _, p := range node.Component.Props {
-		if p.Name != sel.Field || !p.Bidirectional {
-			continue
-		}
-		// A two-way prop holds what the call site bound it to; one left
-		// unbound is the instance's cell, which passImplicitState answers.
-		for _, b := range node.Bindings {
-			if b.PropName == p.Name {
-				v = b.Target
-			}
-		}
-		if v == nil {
-			return nil, false
-		}
-	}
-	if v == nil {
-		v = nodePropExpr(node, sel.Field)
-	}
+	v := propHolds(node, sel.Field)
 	if v == nil {
 		return nil, false
 	}
 	env := loopBindings(loops, idxs)
-	out := rebaseOnInstanceUnder(ir.CloneExprSharingDecls(v), comp, inst, env)
+	out := rebaseOnInstanceUnder(answerOwnHandleReads(ir.CloneExprSharingDecls(v), comp), comp, inst, env)
 	if out == nil {
 		return nil, true
 	}

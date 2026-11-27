@@ -85,7 +85,20 @@ func lowerLibFuncs(pkg *ir.Package, feats Features, opts Options) error {
 	// Only a placed build splices them: cgogen's wrappers lower a platform's
 	// package with no features, and write no SNGL helper.
 	if feats.Placement {
-		for _, fn := range placedProtocols(pkg) {
+		protocols := placedProtocols(pkg)
+		// The build target's own -- attach, detach, contents -- which
+		// placement splices for the program's root whatever the program
+		// names. Found through a target package only when some override
+		// happened to call into it: a program importing another platform's
+		// package as well lost win32's `_attachNode` that way.
+		if feats.platform != nil {
+			for _, fn := range feats.platform.Funcs() {
+				if len(fn.Block) > 0 && !slices.Contains(protocols, fn) {
+					protocols = append(protocols, fn)
+				}
+			}
+		}
+		for _, fn := range protocols {
 			block := ir.CloneExprSharingDecls(&ir.Lambda{Func: fn}).(*ir.Lambda).Func.Block
 			prepare(block)
 			push(block)
