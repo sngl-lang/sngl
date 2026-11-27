@@ -34,7 +34,8 @@ func testIndexOnNonList(t Test, c errs) { // ERROR(test) "cannot index"
 }
 
 func testDivisionByZero(t Test, c errs) { // ERROR(test) "division by zero"
-    c.count = 1 / 0
+    var zero = 0
+    c.count = 1 / zero
 }
 
 component overflow node {

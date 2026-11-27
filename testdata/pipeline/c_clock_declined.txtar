@@ -1,0 +1,23 @@
+C holds a datetime as its RFC 3339 text and implements neither the clock nor
+a datetime's arithmetic yet: it declines the program rather than fail
+generating it.
+
+-- app.sngl --
+import time "sngl:time"
+import ui "sngl:ui"
+
+output {
+    c {
+        gtk4
+        win32
+    }
+}
+
+component main ui.node {
+    var deadline = time.now()
+    ui.text(value="{int(time.since(deadline) / 1s)}")
+}
+
+ui.window {
+    main
+}

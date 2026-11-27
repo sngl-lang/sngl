@@ -1636,6 +1636,9 @@ ArgExprCont =
   truncates. A unit may be scaled by a number (`5px * 2`), and dividing two
   values of one single-base unit type yields a dimensionless `float` (see
   [Unit types](#unit-types)).
+- Dividing by zero, with `/` or `%`, is an error when the program runs. A
+  divisor written as zero (`n / 0`, `x % -0.0`, `n / int8(0)`) is an error
+  of the check.
 
 When a binary arithmetic operator mixes `int` and `float` operands, the `int`
 operand is converted to `float` and the result is `float`.

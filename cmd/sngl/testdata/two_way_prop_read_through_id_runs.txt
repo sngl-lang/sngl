@@ -85,7 +85,7 @@ func testAHandlerReadsTheValueReported(t test.Test, c fields) {
     t.assert(c.handled.value == "true bee")
 }
 -- testrun/android/kotlin/app.sngl/fields/1 --
-sha256:0062fc295fe29b58ceb07f1e1e61457e
+sha256:175ed2bf50ce04f3709690373077a573
 {
   "results": [
     {

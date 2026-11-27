@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -436,7 +437,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 `)
 		return sort + "(&(" + xs + ")" + call, true
 	}
-	return c.fail("the intrinsic %s", id), true
+	return c.declined(codegen.UnemittedIntrinsic(langC, n)), true
 }
 
 // less is whether a orders before b, two values of the ordered type t.
@@ -1006,7 +1007,7 @@ func (c *Context) mapIntrinsic(n *ir.Call, t *ir.Type, m string) string {
 		c.file.helper(name, fmt.Sprintf("static %s %s(%s m) {\n\t%s l = {sngl_alloc(sizeof(%s) * (size_t)(m.len + 1)), m.len, m.len};\n\tif (m.len > 0) {\n\t\tmemcpy(l.data, m.%s, sizeof(%s) * (size_t)m.len);\n\t}\n\treturn l;\n}\n", l, name, c.mapType(t), l, et, part, et))
 		return name + "(" + m + ")"
 	}
-	return c.fail("the intrinsic %s", n.Func.Intrinsic)
+	return c.declined(codegen.UnemittedIntrinsic(langC, n))
 }
 
 // mapRemove renders a map's `remove`: the entries but the key's, in their
@@ -1080,6 +1081,15 @@ func (c *Context) mapLoop(n *ir.For) string {
 	return head
 }
 
+// colorHex is a color's hex(), which is also its text. The color is the
+// program's struct, which the runtime does not know: a function of the file
+// hands it its channels.
+func (c *Context) colorHex(t *ir.Type, operand string) string {
+	name := c.typeName(t) + "_hex"
+	c.file.helper(name, "static sngl_string "+name+"("+c.typeName(t)+" c) {\n\treturn sngl_color_hex(c.r, c.g, c.b, c.a);\n}\n")
+	return name + "(" + operand + ")"
+}
+
 // stringIntrinsic renders a call of one of sngl:builtin's string methods,
 // most of them the runtime's.
 func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
@@ -1093,12 +1103,7 @@ func (c *Context) stringIntrinsic(n *ir.Call) (string, bool) {
 		"string.replace":   "sngl_string_replace",
 	}
 	if n.Func.Intrinsic == "color.hex" && len(n.Args) == 1 {
-		// The color is the program's struct, which the runtime does not
-		// know: a function of the file hands it its channels.
-		t := c.typeName(n.Args[0].Value.ExprType())
-		name := t + "_hex"
-		c.file.helper(name, "static sngl_string "+name+"("+t+" c) {\n\treturn sngl_color_hex(c.r, c.g, c.b, c.a);\n}\n")
-		return name + "(" + c.EvalExpr(n.Args[0].Value) + ")", true
+		return c.colorHex(n.Args[0].Value.ExprType(), c.EvalExpr(n.Args[0].Value)), true
 	}
 	if n.Func.Intrinsic == "string.fromCodePoint" && len(n.Args) == 1 {
 		return c.fromCodePoint() + "(" + c.EvalExpr(n.Args[0].Value) + ")", true

@@ -330,7 +330,23 @@ func (gc *GoIRContext) Binary(n *ir.Binary, left, right string) string {
 		}
 		return eq
 	}
+	// A divisor the program wrote as zero is a division by zero when it
+	// runs, as the interpreter's is; Go refuses one it can see at compile
+	// time, so it is handed over as no constant.
+	if (n.Op == ast.BinDiv || n.Op == ast.BinMod) && isZeroLiteral(n.Right) {
+		right = "func() " + typeToGo(n.Right.ExprType(), gc.site()) + " { return " + right + " }()"
+	}
 	return "(" + left + " " + irBinaryOp(n.Op) + " " + right + ")"
+}
+
+// isZeroLiteral reports whether e is a number literal whose value is zero.
+func isZeroLiteral(e ir.Expr) bool {
+	lit, ok := e.(*ir.Literal)
+	if !ok || lit.Type == nil || (lit.Type.Kind != ir.TypeInt && lit.Type.Kind != ir.TypeFloat) {
+		return false
+	}
+	v, err := strconv.ParseFloat(strings.ReplaceAll(lit.Value, "_", ""), 64)
+	return err == nil && v == 0
 }
 
 // goUnitRatio emits `unit / unit`, which the checker types as the

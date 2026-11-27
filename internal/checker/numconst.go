@@ -2,6 +2,7 @@ package checker
 
 import (
 	"math/big"
+	"strings"
 
 	"duckfam.us/sngl/ast"
 	"duckfam.us/sngl/ir"
@@ -181,4 +182,24 @@ func numericWanted(t *ir.Type) *ir.Type {
 		return t.Elems[0]
 	}
 	return t
+}
+
+// writtenZero reports whether e is a number written as zero: a literal, the
+// negation of one, or a conversion of one. A divisor that only folding finds
+// to be zero -- a const, which a target may answer for itself -- is left to
+// the run time.
+func writtenZero(e ir.Expr) bool {
+	switch e := e.(type) {
+	case *ir.Literal:
+		if e.Type == nil || (e.Type.Kind != ir.TypeInt && e.Type.Kind != ir.TypeFloat) {
+			return false
+		}
+		v, _, err := big.ParseFloat(strings.ReplaceAll(e.Value, "_", ""), 0, 64, big.ToNearestEven)
+		return err == nil && v.Sign() == 0
+	case *ir.Unary:
+		return e.Op == ast.UnaryNeg && writtenZero(e.Operand)
+	case *ir.Conversion:
+		return writtenZero(e.Operand)
+	}
+	return false
 }
