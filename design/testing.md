@@ -711,7 +711,13 @@ called or handed on as a value once folding is done, by the optimizer
 (`declineUnrunnableNative`); html runs JavaScript handlers whatever the
 language and bridges `go:` to wasm. A function or a component of another
 platform's package -- `gtk4.quit()` or `html.div` on win32 -- by
-passForeignPrimitive, as it does another platform's primitive. Each of these
+passForeignPrimitive, as it does another platform's primitive. A bodiless
+intrinsic the language a call is written in has no implementation of --
+`time.now` in C, `grpc.call` in the JavaScript of a Go build's page -- by the
+generator, at the call it was about to write (`codegen.UnemittedIntrinsic`):
+only the generator knows what its own name-keyed dispatch answers, and a
+translator with no error to return unwinds from `RequireIntrinsicFallback` to
+`codegen.Generate`. Each of these
 was code the target's own compiler refused: `fetchHello` emitted bare into Go,
 a C conversion handed to the Kotlin translator, which panicked.
 

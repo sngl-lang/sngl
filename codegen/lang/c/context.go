@@ -749,7 +749,10 @@ func (c *Context) Call(n *ir.Call) string {
 		return c.fail("calling %s on a component", n.Func.Name)
 	}
 	if n.Func.Intrinsic != "" && len(n.Func.Block) == 0 {
-		return c.fail("the intrinsic %s", n.Func.Intrinsic)
+		if c.file.err == nil {
+			c.file.err = codegen.UnemittedIntrinsic(langC, n)
+		}
+		return "/* unsupported */ 0"
 	}
 	return funcName(n.Func) + "(" + strings.Join(args, ", ") + ")"
 }

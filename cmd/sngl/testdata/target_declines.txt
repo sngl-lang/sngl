@@ -51,6 +51,57 @@ stderr 'md.parse is answered only while the program builds'
 stderr 'makes a view''s calls as the program runs, where a static site makes them per document'
 sngl generate --lang=none --platform=html --out=ok md.sngl
 
+# An intrinsic the language the call is written in has no implementation of.
+! sngl generate --lang=c --platform=win32 --out=bad clock.sngl
+stderr 'clock.sngl:8:\d+: intrinsic time.now has no c implementation'
+! sngl generate --lang=c --platform=gtk4 --out=bad between.sngl
+stderr 'between.sngl:8:\d+: intrinsic time.between has no c implementation'
+# The Go build implements gRPC, and html's handlers are JavaScript.
+! sngl generate --lang=go --platform=html --out=bad grpc.sngl
+stderr 'grpc.sngl:15:\d+: intrinsic grpc.call has no js implementation'
+
+-- clock.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var at = ""
+
+ui.window {
+    ui.button(text=at, @click {
+        at = string(time.now() == time.now())
+    })
+}
+-- between.sngl --
+import ui "sngl:ui"
+import time "sngl:time"
+
+var a time.datetime = "2024-01-15T10:30:00+05:00"
+var b time.datetime = "2024-01-15T10:31:00+05:00"
+
+ui.window {
+    ui.text(value=string(int(time.between(a, b) / 1s)))
+}
+-- grpc.sngl --
+import async "sngl:async"
+import grpc "sngl:grpc"
+import ui "sngl:ui"
+
+#[grpc.message("shop.Get")]
+struct Get {
+    #[grpc.field(1)]
+    id int = 0
+}
+
+var title = "-"
+
+ui.window {
+    ui.button(text=title, @click {
+        match var b = grpc.call[Get, Get](server="localhost:50051", method="/shop.Shop/Get", request={id=1}) {
+            ok { title = "{b.id}" }
+            failed { title = b.code }
+        }
+    })
+}
 -- api/index.ts --
 export async function hello(name: string): Promise<string> { return "Hello " + name; }
 -- js.sngl --
