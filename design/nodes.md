@@ -1252,7 +1252,9 @@ state the prop reads instead.
 writes -- a checkbox reports its clicks through it -- so a write from the
 program is one more writer of that cell and lands where the host's report does.
 `passHandleParams` makes `bound.checked = false` under `:checked=shown` a write
-of `shown`, and inlines a call handing a handle to a function that writes one
+of `shown`, and a read of `bound.checked` a read of it, which bubbletea and
+fyne otherwise emitted as a widget field nothing declared
+(`cmd/sngl/testdata/two_way_prop_read_through_id_runs.txt`); and it inlines a call handing a handle to a function that writes one
 through the parameter (`details.open()`); an unbound one is left to
 `passImplicitState`, which names the instance's cell. The interpreter writes
 through the handle the same way (`writeThroughHandle`, and a toggle through

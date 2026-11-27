@@ -1,0 +1,181 @@
+# A two-way prop the call site binds, read through the node's `#id`, reads
+# what it is bound to: `t.selected` under `:selected=sel` is `sel`
+# (passHandleParams, as a write through the handle already was). Left
+# standing, bubbletea read a widget field the binding never declared
+# (`m.t__r0.Selected`, `m.f`), fyne asked its container for it, and html's
+# test read nothing.
+#
+# The test reaches each grid's copy through the text that reads the table,
+# whose answer rebased on the instance is the bound var too (rebaseKeeping):
+# read as the table off the instance, it named a grid no Go target keeps.
+
+sngl test --platform=none app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go app.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component grid(cells list[string]) ui.node {
+    var sel = 0
+
+    ui.table #t(columns=["name"], selectable=true, :selected=sel) {
+        for var c = cells {
+            if c != "" {
+                ui.tableRow(cells=[c])
+            }
+        }
+    }
+    ui.text #shown(value="{t.selected}")
+    ui.button #last(text="last", @click { sel = cells.length() - 1 })
+}
+
+component groups ui.node {
+    var outer = [[["a", "b"], ["c"]], [["d", "e", "f"]]]
+
+    for var i, gs = outer {
+        for var g = gs {
+            ui.text #title(value="{i}")
+            grid #grid(cells=g)
+        }
+    }
+    ui.button #add(text="add", @click { outer.push([["g"]]) })
+}
+
+component fields ui.node {
+    var name = "ada"
+    var on = false
+
+    ui.input #f(:value=name)
+    ui.checkbox #box(label="on", :checked=on)
+    ui.text #seen(value="{f.value} {box.checked}")
+    ui.button #set(text="set", @click {
+        name = "grace"
+        on = true
+    })
+}
+
+func testEachCopyReadsItsOwnSelection(t test.Test, c groups) {
+    t.assert(c.grid[0][0].shown.value == "0")
+    c.grid[1][0].last.click()
+    t.assert(c.grid[1][0].shown.value == "2")
+    t.assert(c.grid[0][0].shown.value == "0")
+    c.add.click()
+    t.assert(c.title[2][0].value == "2")
+}
+
+func testABoundPropReadsWhatItIsBoundTo(t test.Test, c fields) {
+    t.assert(c.seen.value == "ada false")
+    c.set.click()
+    t.assert(c.seen.value == "grace true")
+}
+-- testrun/android/kotlin/app.sngl/fields/1 --
+sha256:300728c3f7f996603a4caacec67dfb1e
+{
+  "results": [
+    {
+      "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/groups/1 --
+sha256:c2659e2af87b55fd7eb12a5bae7e5d8d
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnSelection",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/fields/1 --
+sha256:d18a470c34afb97399b0c573e80934d6
+{
+  "results": [
+    {
+      "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/groups/1 --
+sha256:4aba7f0ca8527901b5be103039fe8799
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnSelection",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/fields/1 --
+sha256:80a9627e2b0f08d09a9eba584bcad99c
+{
+  "results": [
+    {
+      "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/groups/1 --
+sha256:9a8719a9d1d95c96844e35fe07275326
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnSelection",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/fields/1 --
+sha256:390baf74082b79960ca0a65472ec6af6
+{
+  "results": [
+    {
+      "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/groups/1 --
+sha256:0dab4bb61300ffdd9881f157a9da90eb
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnSelection",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/fields/1 --
+sha256:020669ca0c9010f8be6f23880ace1f6e
+{
+  "results": [
+    {
+      "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/groups/1 --
+sha256:760a93c29e99ff4cc34280450407dd15
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnSelection",
+      "Passed": true
+    }
+  ]
+}

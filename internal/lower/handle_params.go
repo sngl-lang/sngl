@@ -66,6 +66,10 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 			if t := st.boundTarget(x.Target); t != nil {
 				x.Target = t
 			}
+		case *ir.Select:
+			if t := st.boundRead(x); t != nil {
+				return t, ir.SkipDir
+			}
 		case *ir.CallStmt:
 			body, ok, err := st.inline(x.Call)
 			if err != nil || !ok {
@@ -104,6 +108,18 @@ func (st *handleParams) boundTarget(target ir.Expr) ir.Expr {
 		}
 	}
 	return nil
+}
+
+// boundRead is what a read of a node's two-way prop through its own `#id`
+// reads where the node binds it: `t.selected` under `:selected=sel` is `sel`.
+// Left standing, a backend named a widget field the binding never declared
+// (bubbletea's `m.t__r0.Selected`, fyne's `m.t.Selected` on a container).
+// A test's `c.t.selected` is NodePropReads' to answer through the instance.
+func (st *handleParams) boundRead(sel *ir.Select) ir.Expr {
+	if _, ok := sel.Operand.(*ir.Ident); !ok {
+		return nil
+	}
+	return st.boundTarget(sel)
 }
 
 type handleParams struct {
