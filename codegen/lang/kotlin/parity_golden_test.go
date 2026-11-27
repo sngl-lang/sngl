@@ -92,7 +92,6 @@ func lowerTestFileFixture(t *testing.T, path string) string {
 	fns, suffixes, methodFields := codegen.CollectTestFuncs(pkg)
 	surf := kotlin.TestSurface{
 		MethodFields: methodFields,
-		StateFields:  codegen.StateFieldNames(pkg),
 	}
 	if len(fns) == 0 {
 		t.Fatal("fixture has no test funcs")

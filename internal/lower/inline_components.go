@@ -237,12 +237,14 @@ func uniqueNodeIDs(pkg *ir.Package) error {
 				renameNodeID(n, n.ID+"__"+strconv.Itoa(k), reads)
 			}
 			// The refusal is keyed by *symbol*, which is a narrower question
-			// and a different one. A read is an ident bound to one var, and
-			// declareNodeIDs runs per body: two unrelated `#bar`s are two vars
-			// and each read says which it meant, while two spliced copies of
-			// one body share theirs and neither read can. Only the second is
-			// ambiguous -- keyed by name instead, an innocent `quiet()`
-			// rendered twice was refused for a `#bar` that `reader()` read.
+			// and a different one. A read is an ident bound to one var: two
+			// unrelated `#bar`s are two vars and each read says which it
+			// meant, and a splice gives each copy of a body its own handles,
+			// so each copy's reads say which copy they mean. The one handle
+			// copies still share is one read outside the component that
+			// declares it (handlesReadAbroad), and a read of that names every
+			// copy -- keyed by name instead, an innocent `quiet()` rendered
+			// twice was refused for a `#bar` that `reader()` read.
 			if n.Handle == nil {
 				return nil
 			}

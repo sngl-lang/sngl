@@ -505,8 +505,11 @@ func identSafe(name string) string {
 //
 // The call names the declaration's method and a handle, and the splice renamed
 // neither: left alone it came out as `m.details.open()`, a field and a method
-// no emitted type has. A handle whose node was rendered more than once cannot
-// say which copy the call means --
+// no emitted type has. A splice gives each copy of a body its own handles, so
+// a call written in the body names its own copy's; a handle read outside the
+// component that declares it is shared by every copy (handlesReadAbroad), and
+// a call through it, its node rendered more than once, cannot say which copy
+// it means --
 // unless one copy was hoisted onto the owner the call is in (owner): a
 // component built at run time splices the node into its own body, and spliced
 // whole elsewhere it carries a copy of that clone to the owner it lands in.

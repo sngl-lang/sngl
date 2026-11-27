@@ -341,7 +341,6 @@ func emitKotlinTestSources(req *codegen.Request, sink codegen.Sink, cfg Config, 
 	testFns, suffixes, methodFields := codegen.CollectTestFuncs(req.Pkg)
 	surf := kotlin.TestSurface{
 		MethodFields:   methodFields,
-		StateFields:    codegen.StateFieldNames(req.Pkg),
 		Pkg:            req.Pkg,
 		Members:        members,
 		Platform:       "android",
