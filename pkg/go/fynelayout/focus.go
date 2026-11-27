@@ -182,6 +182,10 @@ func (h *Hyperlink) AcceptsTab() bool { return acceptsTab(h, false, false) }
 // written `focusable=false`, since a disabled report refuses its paste.
 type Entry struct {
 	widget.Entry
+	// OnCommit is a test's commit of the text, its change trigger: the
+	// widget's own commit is Enter, which OnSubmitted hears and which
+	// submits as well.
+	OnCommit func(text string)
 }
 
 // NewEntry is widget.NewEntry's Entry.

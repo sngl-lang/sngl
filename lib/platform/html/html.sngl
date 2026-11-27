@@ -136,8 +136,9 @@ struct Event {
 // focus itself and 3 when it bubbled up from something inside it.
 #[js.native("KeyboardEvent")]
 struct KeyEvent {
-    key        string
-    eventPhase int
+    key           string
+    eventPhase    int
+    currentTarget Target
 }
 
 // A key pressed in a window, as its `sngl-keys` dispatches it: the fields of
@@ -237,6 +238,10 @@ func element.press()
 // input events do.
 #[js.native("_snglFire")]
 func element.fire(event string)
+
+// Dispatches a keydown of the key named, as a person's press of it does.
+#[js.native("_snglPressKey")]
+func element.pressKey(key string)
 
 // Sets the text an input, a textarea or a select holds, as typing or choosing
 // does, without an event: fire says what happened.
@@ -480,8 +485,13 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-const component ui.input[platform](placeholder, readonly, value, disabled, type, focusable, style, @input, @change) {
-    html.input(
+// Enter commits only an edit made since the last commit, then submits, as
+// android's keyboard action does. The browser's own change, which it may fire
+// on Enter as well as on blur, commits only what Enter has not. The element
+// carries the edit: a var here makes a loop's copy a runtime instance, which
+// a test's trigger does not reach.
+const component ui.input[platform](placeholder, readonly, value, disabled, type, focusable, style, @input, @change, @submit) {
+    html.input #field(
         value = value,
         disabled = disabled,
         readonly = readonly,
@@ -494,14 +504,40 @@ const component ui.input[platform](placeholder, readonly, value, disabled, type,
         },
         @input(e) {
             value = e.currentTarget.value
+            markEdited(e.currentTarget)
             input(value)
         },
         @change(e) {
-            value = e.currentTarget.value
-            change(value)
+            if takeEdit(e.currentTarget) || e.currentTarget.value != value {
+                value = e.currentTarget.value
+                change(value)
+            }
+        },
+        @keydown(e) {
+            if e.key == "Enter" {
+                commitEdit(e.currentTarget)
+                submit()
+            }
         },
     ) {}
 }
+
+func ui.input.submit[platform]() {
+    field.pressKey("Enter")
+}
+
+// Marks an input edited since its last commit, on the element.
+#[js.native("_snglMarkEdited")]
+func markEdited(t Target)
+
+// Whether the input was edited since its last commit, clearing the mark.
+#[js.native("_snglTakeEdit")]
+func takeEdit(t Target) bool
+
+// Dispatches change on an input edited since its last commit, whose listener
+// takes the mark and commits.
+#[js.native("_snglCommitEdit")]
+func commitEdit(t Target)
 
 const component ui.checkbox[platform](label, checked, disabled, focusable, style, @change) {
     html.label(style=css({display=inlineFlex, alignItems=center, gap=4px, ...style}), @mousedown(e) {

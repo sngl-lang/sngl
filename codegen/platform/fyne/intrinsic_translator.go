@@ -219,6 +219,9 @@ type fyneEventInvoker struct {
 	// List says a test indexes the id, so its copies are kept by key
 	// (copiesField) and an `At` invoker drives the one it is handed the key of.
 	List bool
+	// HandsText says the callback is handed the entry's own text rather than
+	// a test's: a test's submit() names none, and Enter submits what is there.
+	HandsText bool
 }
 
 func (t *fyneTranslator) withInvokerSink(sink func(fyneEventInvoker)) *fyneTranslator {
@@ -1157,6 +1160,9 @@ func (t *fyneTranslator) recordInvoker(id, event string, h fyneHandler, unheard 
 		Unheard:   unheard,
 		Params:    params,
 	}
+	if event == "submit" && h.Field == "OnSubmitted" {
+		inv.Params, inv.HandsText = nil, true
+	}
 	inv.List = t.indexed[id]
 	t.invokerSink(inv)
 }
@@ -1216,6 +1222,11 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 		fmt.Fprintf(b, "\t%s(%s)\n}\n\n", inv.Press, strings.Join(append([]string{w}, call...), ", "))
 		return
 	}
+	if inv.HandsText {
+		fmt.Fprintf(b, "\tif cb := %s.%s; cb != nil {\n\t\t%s.%s = nil\n\t\tcb(%s.Text)\n\t\t%s.%s = cb\n\t}\n}\n\n",
+			w, inv.Field, w, inv.Field, w, w, inv.Field)
+		return
+	}
 	if len(inv.Params) == 0 {
 		fmt.Fprintf(b, "\tif %s.%s != nil {\n\t\t%s.%s()\n\t}\n}\n\n", w, inv.Field, w, inv.Field)
 		return
@@ -1224,7 +1235,7 @@ func emitFyneInvoker(b *strings.Builder, inv fyneEventInvoker, name string, lead
 	// submit what they have not typed. Put it there first without firing
 	// OnChanged, as gtk4's invoker does, or a binding's write-back setting it
 	// would fire @input.
-	if inv.Field == "OnSubmitted" && len(inv.Params) == 1 && golang.IRTypeToGo(inv.Params[0].Type) == "string" {
+	if (inv.Field == "OnSubmitted" || inv.Field == "OnCommit") && len(inv.Params) == 1 && golang.IRTypeToGo(inv.Params[0].Type) == "string" {
 		v := inv.Params[0].Name
 		fmt.Fprintf(b, "\tif oc := %s.OnChanged; %s.Text != %s {\n\t\t%s.OnChanged = nil\n\t\t%s.SetText(%s)\n\t\t%s.OnChanged = oc\n\t}\n",
 			w, w, v, w, w, v, w)

@@ -1,0 +1,202 @@
+# Enter in a ui.input commits an edit made since the last commit, then
+# submits: @change once per edit, then @submit every time, android's keyboard
+# action on every target. A program's write is no edit, and a test's change
+# trigger commits without submitting. A test's submit() is the field's Enter.
+# Only android wired @submit; fyne and gtk4 committed on every Enter.
+
+sngl test --platform=none app.sngl
+stdout 'ok   5 tests, 0 failures'
+sngl test --platform=html app.sngl
+stdout 'ok   5 tests, 0 failures'
+sngl test --platform=bubbletea --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+sngl test --platform=fyne --language=go app.sngl
+stdout 'ok   5 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   5 tests, 0 failures'
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   5 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var text = ""
+    var order = ""
+
+    ui.vbox {
+        ui.input #field(
+            :value = text,
+            @change(v) { order = order + "c" },
+            @submit { order = order + "s" },
+        )
+        ui.button #set(text="set", @click { text = "abc" })
+    }
+}
+
+func testEditThenEnterCommitsThenSubmits(t Test, c main) {
+    c.field.input("xy")
+    c.field.submit()
+    t.assert(c.text == "xy")
+    t.assert(c.order == "cs")
+}
+
+func testEnterAgainUneditedOnlySubmits(t Test, c main) {
+    c.field.input("xy")
+    c.field.submit()
+    c.field.submit()
+    t.assert(c.order == "css")
+}
+
+func testEnterUneditedOnlySubmits(t Test, c main) {
+    c.field.submit()
+    t.assert(c.order == "s")
+}
+
+func testProgramWriteThenEnterOnlySubmits(t Test, c main) {
+    c.set.click()
+    c.field.submit()
+    t.assert(c.text == "abc")
+    t.assert(c.order == "s")
+}
+
+func testChangeTriggerDoesNotSubmit(t Test, c main) {
+    c.field.change("xy")
+    t.assert(c.text == "xy")
+    t.assert(c.order == "c")
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:7de2f63a3a395881a32abe49c9efd138
+{
+  "results": [
+    {
+      "Desc": "ChangeTriggerDoesNotSubmit",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenEnterCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterAgainUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/main/1 --
+sha256:e2ef923554b0b5acebfc0b5fc43b0df3
+{
+  "results": [
+    {
+      "Desc": "ChangeTriggerDoesNotSubmit",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenEnterCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterAgainUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:5fef5e54a14d4f7e8a032d2e6358d3ff
+{
+  "results": [
+    {
+      "Desc": "ChangeTriggerDoesNotSubmit",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenEnterCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterAgainUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:b8ae5cca1e5274c0325f9fb0518faf41
+{
+  "results": [
+    {
+      "Desc": "ChangeTriggerDoesNotSubmit",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenEnterCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterAgainUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:adcf056b4440dda3020601ba06f9edda
+{
+  "results": [
+    {
+      "Desc": "EditThenEnterCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterAgainUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterUneditedOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangeTriggerDoesNotSubmit",
+      "Passed": true
+    }
+  ]
+}

@@ -4324,19 +4324,31 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 // deletes and reinserts it, firing "changed" for each, so writing back the
 // text "changed" just reported re-entered the handler until the stack
 // overflowed. Only a value the entry does not already show is written.
-const component ui.input[platform](value, focusable, style, @input, @change) {
+//
+// Enter commits only an edit made since the last commit, then submits, as
+// android's keyboard action does.
+const component ui.input[platform](value, focusable, style, @input, @change, @submit) {
+    var edited = false
+    func commit(v string) {
+        value = v
+        edited = false
+        change(v)
+    }
     GtkEntry #entry(
         canFocus = focusable,
         look = lookOf(style),
         @changed(e) {
             if entryText(e) != value {
                 value = entryText(e)
+                edited = true
                 input(value)
             }
         },
         @activate(e) {
-            value = entryText(e)
-            change(value)
+            if edited {
+                commit(entryText(e))
+            }
+            submit()
         },
     ) {}
     effect(on=value, @mount(v) {
@@ -4344,6 +4356,14 @@ const component ui.input[platform](value, focusable, style, @input, @change) {
             setEntryText(entry, v)
         }
     })
+}
+
+func ui.input.change[platform](value) {
+    commit(value)
+}
+
+func ui.input.submit[platform]() {
+    _rtSignalEmit(entry, "activate")
 }
 
 // gtk4 has no lightweight multi-line entry; map textarea to GtkEntry so

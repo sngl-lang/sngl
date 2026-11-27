@@ -85,6 +85,7 @@ component Control[T any](
     value T,
     @input(value T),
     @change(value T),
+    @submit(),
 ) ui.node
 
 // The interpreter draws no widget, so each sngl:ui widget is answered the way a
@@ -141,16 +142,28 @@ const component ui.tree[platform] {}
 
 const component ui.button[platform] {}
 
-const component ui.input[platform](value, @input, @change) {
+// Enter commits only an edit made since the last commit, then submits, as
+// android's keyboard action does.
+const component ui.input[platform](value, @input, @change, @submit) {
+    var edited = false
     Control(
         value = value,
         @input(v) {
             value = v
+            edited = true
             input(v)
         },
         @change(v) {
             value = v
+            edited = false
             change(v)
+        },
+        @submit {
+            if edited {
+                edited = false
+                change(value)
+            }
+            submit()
         },
     )
 }

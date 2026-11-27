@@ -2897,23 +2897,43 @@ const component ui.checkbox[platform](label, checked, focusable, style, @change)
 // The value is pushed by an effect rather than bound, as gtk4's is: the
 // edit reports each change it is given as one the user made, so only a
 // value it does not already show is written, and quietly.
-const component ui.input[platform](value, focusable, style, @input, @change) {
+//
+// Enter commits only an edit made since the last commit, then submits, as
+// android's keyboard action does.
+const component ui.input[platform](value, focusable, style, @input, @change, @submit) {
+    var edited = false
+    func commit(v string) {
+        value = v
+        edited = false
+        change(v)
+    }
     Edit #entry(
         look = lookOf(style),
         @change {
             if editText(entry) != value {
                 value = editText(entry)
+                edited = true
                 input(value)
             }
         },
         @activate {
-            value = editText(entry)
-            change(value)
+            if edited {
+                commit(editText(entry))
+            }
+            submit()
         },
     ) {}
     effect(on=value, @mount(v) {
         setEditText(entry, v)
     })
+}
+
+func ui.input.change[platform](value) {
+    commit(value)
+}
+
+func ui.input.submit[platform]() {
+    _rtFireActivate(entry, editText(entry))
 }
 
 // As ui.input's, but for Enter, which is a line of the text: the text is

@@ -268,7 +268,7 @@ program's. A test's trigger, `c.save.click()`, is the
 platform's `#[gen.fires(event)]` function for the event the program's
 handler was connected to (`recordFire` notes it at each connect, under the
 name the program wrote, which an override may have connected under another:
-ui.input's `@change` is an edit's `@activate`), handed the node and the
+ui.textarea's `@change` is an entry's `@activate`), handed the node and the
 trigger's values. A fire puts each value where the host keeps it and raises
 the host's own notification, so the program's handler runs as it would for
 the user: win32's press of a check box sets its state and sends the
@@ -920,8 +920,7 @@ override holds to it** (`cmd/sngl/testdata/program_write_fires_no_event_runs.txt
 on every target). A handler reports only a value the program does not already
 hold -- `if checkActive(b) != checked { … }`, fyne's `if v != value { … }` --
 so a bound value written to the widget, whose host fires its change signal for
-the write, reports nothing; a commit (an entry's `activate`, fyne's submit) is
-not guarded, since pressing Enter commits whatever the value. A host whose
+the write, reports nothing. A host whose
 write fires its signal more than once is written quietly instead: gtk4's entry
 overrides do not bind `text` but push it from
 `effect(on=value, @mount(v) { if entryText(entry) != v { setEntryText(entry, v) } })`,
@@ -947,6 +946,25 @@ android fired `@change` from every keystroke
 moves the focus, presses Done and a hardware Enter and removes a field; a
 test's `submit` is the keyboard's action. The `change` trigger writes the value
 and emits, as fyne's invoker does.
+
+Every target's input commits on Enter the same way, and then fires `@submit`
+(`cmd/sngl/testdata/input_submit_runs.txt`): the edit mark is set where the
+override reports `@input` behind its guard against the program's own write, so
+a program's write marks nothing, and cleared by the commit. fyne's `Entry` and
+gtk4's and win32's `activate` committed on every Enter. The mark is a var of
+the override on none, fyne, gtk4 and win32; on html it is a property of the
+element (`markEdited`, `takeEdit`), since a var made a loop's copy a runtime
+instance no test's trigger reached, and the browser's own `change` on Enter or
+blur commits only what Enter has not; bubbletea's is a field beside the
+widget, by copy key under a loop (`marksEdits`,
+`codegen/platform/bubbletea/input_submit_run_test.go` presses the keys). A
+test's `submit` is Enter: a keydown on html (`pressKey`), gtk4's and win32's
+activation, bubbletea's Enter path, fyne's `OnSubmitted` handed the text the
+entry holds. A test's `change` commits without submitting: a trigger
+override calling the override's `commit` on gtk4 and win32, html's and none's
+`change` handlers, and fyne's `OnCommit`, a callback of the runtime's `Entry`
+only a test calls, since Fyne's one commit is Enter and an override's trigger
+is not reached through a loop's copy there (#318).
 
 bubbletea's textarea, where Enter is a line of the text, commits the same way
 (`commitsOnBlur`): an Update that changes the forwarded widget's value marks it

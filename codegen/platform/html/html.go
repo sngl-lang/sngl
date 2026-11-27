@@ -962,6 +962,10 @@ func newHTMLGen(pkg *ir.Package, lang codegen.LangTranslator, opts htmlConfig, s
 // each written where a call reached it.
 var elementHelpers = []struct{ name, js string }{
 	{"_snglFire", "function _snglFire(el, type) { el.dispatchEvent(new Event(type, { bubbles: true })); }"},
+	{"_snglPressKey", "function _snglPressKey(el, key) { el.dispatchEvent(new KeyboardEvent(\"keydown\", { key, bubbles: true })); }"},
+	{"_snglMarkEdited", "function _snglMarkEdited(el) { el.__snglEdited = true; }"},
+	{"_snglTakeEdit", "function _snglTakeEdit(el) { const e = el.__snglEdited === true; el.__snglEdited = false; return e; }"},
+	{"_snglCommitEdit", "function _snglCommitEdit(el) { if (el.__snglEdited === true) el.dispatchEvent(new Event(\"change\")); }"},
 	{"_snglSetValue", "function _snglSetValue(el, v) { el.value = v; }"},
 	{"_snglSetChecked", "function _snglSetChecked(el, v) { el.checked = v; }"},
 	{"_snglInputAt", "function _snglInputAt(el, at) { return el.querySelectorAll(\"input\")[at]; }"},
