@@ -1,0 +1,35 @@
+A `#[construct]` prop written from state, on an instance no render owns,
+rebuilds the instance where it stands: fyne and gtk4 cannot put a child back
+at a position, and decline the program rather than fail lowering it.
+
+-- app.sngl --
+import macro "sngl:macro"
+import ui "sngl:ui"
+
+output {
+    go {
+        fyne
+        gtk4
+    }
+}
+
+component seeded(#[macro.construct] start int, more = 0) ui.node {
+    var n = start
+    ui.button(text="bump inner", @click { n = n + 5 })
+    ui.text(value="s:" + string(n))
+    if more > 0 {
+        seeded(start=start, more=more - 1)
+    }
+}
+
+component App() ui.node {
+    var k = 10
+    ui.text(value="before")
+    ui.button(text="bump", @click { k = k + 1 })
+    seeded(start=k, more=0)
+    ui.text(value="after")
+}
+
+ui.window(title="H") {
+    App()
+}

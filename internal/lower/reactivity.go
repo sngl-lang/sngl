@@ -139,6 +139,19 @@ func (st *reactivityState) failf(pos ast.Pos, format string, args ...any) {
 	st.err = fmt.Errorf("%s", msg)
 }
 
+// declinef is failf for a program the platform declines: one that checked
+// clean, and that a platform with the capability it lacks would build.
+func (st *reactivityState) declinef(pos ast.Pos, format string, args ...any) {
+	if st.err != nil {
+		return
+	}
+	msg := fmt.Sprintf(format, args...)
+	if pos.IsValid() {
+		msg = pos.String() + ": " + msg
+	}
+	st.err = &ir.TargetDeclined{Target: st.platformName(), Msg: msg}
+}
+
 // childOp records the package-level childOp's error as this pass's.
 func (st *reactivityState) childOp(op ir.ProtocolOp, parent, child ir.Expr) *ir.CallStmt {
 	name := ir.NodeOpAppendChild
@@ -1850,7 +1863,7 @@ func (st *reactivityState) rebuildsFor(props []reactiveProp) ([]*ir.NodeInst, ma
 			continue
 		}
 		if !st.caps.InsertBefore {
-			st.failf(p.KeyPos, "#[construct] prop %q of component %s is written from state, which rebuilds the instance where it stands -- and %s cannot put a child back at a position, so there is nowhere to put the new one; move the instantiation inside an `if` or a `for`, which rebuilds by re-rendering", p.Key, p.Comp.Name, st.platformName())
+			st.declinef(p.KeyPos, "#[construct] prop %q of component %s is written from state, which rebuilds the instance where it stands -- and %s cannot put a child back at a position, so there is nowhere to put the new one; move the instantiation inside an `if` or a `for`, which rebuilds by re-rendering", p.Key, p.Comp.Name, st.platformName())
 			continue
 		}
 		if p.Node == nil || rebuilt[p.NodeID] {
