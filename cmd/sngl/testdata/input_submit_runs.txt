@@ -1,23 +1,25 @@
 # Enter in a ui.input commits an edit made since the last commit, then
 # submits: @change once per edit, then @submit every time, android's keyboard
 # action on every target. A program's write is no edit, and a test's change
-# trigger commits without submitting. A test's submit() is the field's Enter.
+# trigger commits without submitting, and counts as the commit: android's
+# edit mark was Kotlin's own, which the trigger never cleared, so Enter after
+# it committed again. A test's submit() is the field's Enter.
 # Only android wired @submit; fyne and gtk4 committed on every Enter.
 
 sngl test --platform=none app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 sngl test --platform=html app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 sngl test --platform=win32 --language=c app.sngl
-stdout 'ok   5 tests, 0 failures'
+stdout 'ok   6 tests, 0 failures'
 
 -- app.sngl --
 import . "sngl:test"
@@ -63,6 +65,13 @@ func testProgramWriteThenEnterOnlySubmits(t Test, c main) {
     t.assert(c.order == "s")
 }
 
+func testChangeTriggerClearsTheEdit(t Test, c main) {
+    c.field.input("xy")
+    c.field.change("xy")
+    c.field.submit()
+    t.assert(c.order == "cs")
+}
+
 func testChangeTriggerDoesNotSubmit(t Test, c main) {
     c.field.change("xy")
     t.assert(c.text == "xy")
@@ -73,9 +82,13 @@ ui.window {
     main
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:7de2f63a3a395881a32abe49c9efd138
+sha256:ad25111c303f76af549e3d6bead9127d
 {
   "results": [
+    {
+      "Desc": "ChangeTriggerClearsTheEdit",
+      "Passed": true
+    },
     {
       "Desc": "ChangeTriggerDoesNotSubmit",
       "Passed": true
@@ -99,9 +112,13 @@ sha256:7de2f63a3a395881a32abe49c9efd138
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:e2ef923554b0b5acebfc0b5fc43b0df3
+sha256:5e4fa1278e55b80976e673ba2e8d09d2
 {
   "results": [
+    {
+      "Desc": "ChangeTriggerClearsTheEdit",
+      "Passed": true
+    },
     {
       "Desc": "ChangeTriggerDoesNotSubmit",
       "Passed": true
@@ -125,9 +142,13 @@ sha256:e2ef923554b0b5acebfc0b5fc43b0df3
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:5fef5e54a14d4f7e8a032d2e6358d3ff
+sha256:6c007d446cf3871b964cdba955224eb2
 {
   "results": [
+    {
+      "Desc": "ChangeTriggerClearsTheEdit",
+      "Passed": true
+    },
     {
       "Desc": "ChangeTriggerDoesNotSubmit",
       "Passed": true
@@ -151,9 +172,13 @@ sha256:5fef5e54a14d4f7e8a032d2e6358d3ff
   ]
 }
 -- testrun/gtk4/go/app.sngl/main/1 --
-sha256:44d1443262a4121c995929a1a11f0bdb
+sha256:7957108ad3edb428546d3fd66b7fe658
 {
   "results": [
+    {
+      "Desc": "ChangeTriggerClearsTheEdit",
+      "Passed": true
+    },
     {
       "Desc": "ChangeTriggerDoesNotSubmit",
       "Passed": true
@@ -177,9 +202,13 @@ sha256:44d1443262a4121c995929a1a11f0bdb
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:b8ae5cca1e5274c0325f9fb0518faf41
+sha256:4031086ed08b8059dd19d02da6a0caf5
 {
   "results": [
+    {
+      "Desc": "ChangeTriggerClearsTheEdit",
+      "Passed": true
+    },
     {
       "Desc": "ChangeTriggerDoesNotSubmit",
       "Passed": true
@@ -203,7 +232,7 @@ sha256:b8ae5cca1e5274c0325f9fb0518faf41
   ]
 }
 -- testrun/win32/c/app.sngl/main/1 --
-sha256:adcf056b4440dda3020601ba06f9edda
+sha256:ed682e25dc1a7bd00dc70bcbff452e57
 {
   "results": [
     {
@@ -220,6 +249,10 @@ sha256:adcf056b4440dda3020601ba06f9edda
     },
     {
       "Desc": "ProgramWriteThenEnterOnlySubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangeTriggerClearsTheEdit",
       "Passed": true
     },
     {

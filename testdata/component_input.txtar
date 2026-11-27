@@ -3433,8 +3433,10 @@ private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T
 class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     var __ctx_flexShare by mutableStateOf<(Float) -> androidx.compose.ui.Modifier>(__snglPre(__pre, "__ctx_flexShare") { snglFlexShare })
     var name by mutableStateOf(__snglPre(__pre, "name") { "World" })
+    var edited__inst0 by mutableStateOf(__snglPre(__pre, "edited__inst0") { false })
     fun commit__inst0(v: String) {
         name = v
+        edited__inst0 = false
     }
 }
 
@@ -3445,8 +3447,11 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
     Column(modifier = Modifier.snglFlexible(false).safeDrawingPadding()) {
         SnglTextField(value = state.name, label = "Enter your name", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier, onValueChange = { v ->
             state.name = v
+            state.edited__inst0 = true
         }, onCommit = {
-            state.commit__inst0(state.name)
+            if (state.edited__inst0) {
+            	state.commit__inst0(state.name)
+            }
         }, onSubmit = {})
         Text(text = (("Hello, " + state.name) + "!"), modifier = Modifier, style = LocalTextStyle.current.merge(TextStyle.Default))
     }
@@ -3632,10 +3637,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -3643,7 +3645,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -3652,16 +3654,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -3678,7 +3672,7 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }
@@ -3822,7 +3816,7 @@ pass sha256:a25e3bae25049e42d2663a32e7b01caf
 -- run/go/gtk4 --
 pass sha256:5a5b04d4442b382aaa39aa3d0fa6eeea
 -- run/kotlin/android --
-pass sha256:fb7eacb5b1a12f0a1a460e9e5e8b80d0
+pass sha256:0d596008759507c1ad85a00e6e241927
 -- run/none/html --
 pass sha256:20a87e17ac454ab5e000d6da927c3928
 -- testrun/html/none/component_input.sngl/main/1 --

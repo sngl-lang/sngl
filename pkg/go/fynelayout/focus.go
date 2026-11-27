@@ -184,8 +184,10 @@ type Entry struct {
 	widget.Entry
 	// OnCommit is a test's commit of the text, its change trigger: the
 	// widget's own commit is Enter, which OnSubmitted hears and which
-	// submits as well.
-	OnCommit func(text string)
+	// submits as well, or on a multiline entry the focus leaving, which
+	// OnFocusLost hears.
+	OnCommit    func(text string)
+	OnFocusLost func()
 }
 
 // NewEntry is widget.NewEntry's Entry.
@@ -222,6 +224,13 @@ func (e *Entry) TypedRune(r rune) {
 func (e *Entry) TypedShortcut(s fyne.Shortcut) { typedShortcut(e, s, true, e.Entry.TypedShortcut) }
 
 func (e *Entry) AcceptsTab() bool { return acceptsTab(e, true, e.Entry.AcceptsTab()) }
+
+func (e *Entry) FocusLost() {
+	e.Entry.FocusLost()
+	if e.OnFocusLost != nil {
+		e.OnFocusLost()
+	}
+}
 
 // DateEntry is a widget.DateEntry whose keys its window hears first, as keys
 // pressed while editing.

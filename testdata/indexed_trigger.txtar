@@ -5503,9 +5503,11 @@ fun __checkbox_state0(__start_checked: Boolean = false, label: String, __ctx_fle
 @Composable
 fun __input_state1(__start_value: String = "", __ctx_flexShare: (Float) -> androidx.compose.ui.Modifier = snglFlexShare, __copy: String = "", onChange: ((String) -> Unit)? = null, __sngl: String = "") {
     var value by remember { mutableStateOf(__start_value) }
+    var edited__inst0 by remember { mutableStateOf(false) }
 
     fun commit__inst0(v: String) {
         value = v
+        edited__inst0 = false
         onChange?.invoke(v)
     }
 
@@ -5523,8 +5525,11 @@ fun __input_state1(__start_value: String = "", __ctx_flexShare: (Float) -> andro
 
     SnglTextField(value = value, label = "", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.testTag("field"), onValueChange = { v ->
         value = v
+        edited__inst0 = true
     }, onCommit = {
-        commit__inst0(value)
+        if (edited__inst0) {
+        	commit__inst0(value)
+        }
     }, onSubmit = {})
 }
 
@@ -5723,10 +5728,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -5734,7 +5736,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -5743,16 +5745,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -5769,7 +5763,7 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }
@@ -6353,6 +6347,6 @@ pass sha256:bf8a326b956ad0c70b1d96d38c8a5c18
 -- run/go/gtk4 --
 pass sha256:737d9deeb89e4bbe57c3776b2c8f94e9
 -- run/kotlin/android --
-pass sha256:ba79dcdaafd2d921dcad2be908394b83
+pass sha256:a9fe5cf3a31af097795c92f996658e7e
 -- run/none/html --
 pass sha256:94b21deb6a532116fef6cd46bd946263

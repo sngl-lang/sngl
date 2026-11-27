@@ -35,10 +35,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -46,7 +43,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -55,16 +52,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -81,7 +70,7 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }

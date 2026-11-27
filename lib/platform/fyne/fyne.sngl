@@ -292,6 +292,7 @@ component Widget(
     @toggle(flag bool),
     @adjust(number int),
     @pick(date option[time.date]),
+    @leave(),
 ) ui.node
 
 #[gen.renders(identity)]
@@ -418,6 +419,7 @@ const component MultiLineEntry(
     style       ui.Style = ui.Style{},
     @input(text string),
     @change(text string),
+    @leave(),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -430,7 +432,8 @@ const component MultiLineEntry(
             ],
             handlers = [
                 Handler{on="input", field="OnChanged", signature="func(s string)"},
-                Handler{on="change", field="OnSubmitted", signature="func(s string)"},
+                Handler{on="change", field="OnCommit", signature="func(s string)"},
+                Handler{on="leave", field="OnFocusLost", signature="func()"},
             ],
         },
         text = text,
@@ -439,6 +442,7 @@ const component MultiLineEntry(
         look = lookOf(style),
         @input { input() },
         @change { change() },
+        @leave { leave() },
     ) {}
 }
 
@@ -1087,7 +1091,15 @@ const component ui.input[platform](placeholder, value, style, @input, @change, @
     ) {}
 }
 
+// The focus leaving commits only an edit made since the last commit; Enter is
+// a line of the text, as on android.
 const component ui.textarea[platform](placeholder, value, rows, style, @input, @change) {
+    var edited = false
+    func commit(v string) {
+        value = v
+        edited = false
+        change(v)
+    }
     MultiLineEntry(
         text = value,
         placeholder = placeholder,
@@ -1096,12 +1108,15 @@ const component ui.textarea[platform](placeholder, value, rows, style, @input, @
         @input(v) {
             if v != value {
                 value = v
+                edited = true
                 input(v)
             }
         },
-        @change(v) {
-            value = v
-            change(v)
+        @change(v) { commit(v) },
+        @leave {
+            if edited {
+                commit(value)
+            }
         },
     ) {}
 }

@@ -933,9 +933,12 @@ puts the value in place first and emits the signal itself (`_rtFireDay`).
 
 **A field's `@change` is its commit, never an edit.** android's input and
 textarea are `SnglTextField` (`textfield.kt`): `onValueChange` reports `@input`
-and marks the field edited, and the focus leaving it -- or, on an input, the
-keyboard's Done or a hardware Enter, the input being one line -- commits an
-edited field and clears the mark. Done and Enter then fire `@submit` whether or
+and the override marks the field edited, and the focus leaving it -- or, on an
+input, the keyboard's Done or a hardware Enter, the input being one line --
+calls `onCommit`, which commits an edited field and clears the mark. The mark
+is the override's var, not Kotlin's, so a test's `change`, which calls the
+override's `commit`, clears it too: kept in Kotlin, Enter after a test's
+change committed again (`input_submit_runs.txt`). Done and Enter then fire `@submit` whether or
 not anything was committed, and hide the keyboard as Compose's default would.
 A program's write marks nothing, and Done followed by the focus leaving commits
 once. The focus's commit waits for the main looper and asks whether the field
@@ -952,7 +955,7 @@ Every target's input commits on Enter the same way, and then fires `@submit`
 override reports `@input` behind its guard against the program's own write, so
 a program's write marks nothing, and cleared by the commit. fyne's `Entry` and
 gtk4's and win32's `activate` committed on every Enter. The mark is a var of
-the override on none, fyne, gtk4 and win32; on html it is a property of the
+the override on none, fyne, gtk4, win32 and android; on html it is a property of the
 element (`markEdited`, `takeEdit`), since a var made a loop's copy a runtime
 instance no test's trigger reached, and the browser's own `change` on Enter or
 blur commits only what Enter has not; bubbletea's is a field beside the
@@ -973,6 +976,10 @@ write reaches the widget through `SetValue`, never Update, so marks nothing.
 A loop's copies share one field and do not commit. The `change` trigger was an
 invoker nobody wrote (`program_write_fires_no_event_runs.txt`), and
 `codegen/platform/bubbletea/textarea_commit_run_test.go` tabs away from one.
+fyne's textarea commits a marked edit as the focus leaves it (`@leave`, the
+runtime `Entry`'s `OnFocusLost`); it committed at Shift+Enter, fyne's
+`OnSubmitted` on a multiline entry, and never as the focus left.
+`codegen/platform/fyne/textarea_commit_run_test.go` moves the canvas's focus.
 
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;

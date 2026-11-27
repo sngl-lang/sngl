@@ -4380,8 +4380,10 @@ class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     var seen by mutableStateOf(__snglPre(__pre, "seen") { "none" })
     var clicks by mutableStateOf(__snglPre(__pre, "clicks") { 0 })
     var checked__inst0 by mutableStateOf(__snglPre(__pre, "checked__inst0") { lit })
+    var edited__inst0 by mutableStateOf(__snglPre(__pre, "edited__inst0") { false })
     fun commit__inst0(v: String) {
         name = v
+        edited__inst0 = false
     }
 }
 
@@ -4407,9 +4409,12 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
         }
         SnglTextField(value = state.name, label = "", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.testTag("field"), onValueChange = { v ->
             state.name = v
+            state.edited__inst0 = true
             state.seen = ((("input " + v) + " ") + state.name)
         }, onCommit = {
-            state.commit__inst0(state.name)
+            if (state.edited__inst0) {
+            	state.commit__inst0(state.name)
+            }
         }, onSubmit = {})
         SnglDateField(value = state.picked, label = "", enabled = true, modifier = Modifier.testTag("day"), onValueChange = { v ->
             state.picked = v
@@ -4691,10 +4696,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -4702,7 +4704,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -4711,16 +4713,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -4737,7 +4731,7 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }
@@ -4985,6 +4979,6 @@ pass sha256:365502a6f32bf2b823d005cc3affd3a0
 -- run/go/gtk4 --
 pass sha256:8705bab4fbc6c0566e726f5372432a3a
 -- run/kotlin/android --
-pass sha256:fa0d1db705d48d0b6c5499fd304e0171
+pass sha256:0917d73cc84f7df7de07d661a2ca4e9a
 -- run/none/html --
 pass sha256:4e4e26fee55ef3de65e0d52717ef743c

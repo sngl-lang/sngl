@@ -314,6 +314,7 @@ type RowInstance struct {
 	value__inst1  string
 	value__inst2  string
 	edited__inst1 bool
+	edited__inst2 bool
 	__root        *fyne.Container
 	__n0          *fynelayout.Entry
 	__n1          *fynelayout.Entry
@@ -328,6 +329,7 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.value__inst1 = ""
 	c.value__inst2 = ""
 	c.edited__inst1 = false
+	c.edited__inst2 = false
 	c.__root = container.NewVBox()
 	__n7 := fynelayout.NewVBox()
 	c.__n0 = fynelayout.NewEntry()
@@ -357,13 +359,16 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 		if v != c.value__inst2 {
 			c.value__inst2 = v
 			c.__n1.SetText(c.value__inst2)
+			c.edited__inst2 = true
 		}
 	}
-	c.__n1.OnSubmitted = func(v string) {
-		c.value__inst2 = v
-		c.__n1.SetText(c.value__inst2)
-		c.committed = ((c.__prop_label + ":") + v)
-		c.__n2.SetText(c.committed)
+	c.__n1.OnCommit = func(v string) {
+		c.commit__inst2(v)
+	}
+	c.__n1.OnFocusLost = func() {
+		if c.edited__inst2 {
+			c.commit__inst2(c.value__inst2)
+		}
 	}
 	__n7.Add(c.__n1)
 	c.__n2 = widget.NewLabel("")
@@ -378,6 +383,14 @@ func (c *RowInstance) commit__inst1(v string) {
 	c.__n0.SetText(c.value__inst1)
 	c.edited__inst1 = false
 	c.committed = v
+	c.__n2.SetText(c.committed)
+}
+
+func (c *RowInstance) commit__inst2(v string) {
+	c.value__inst2 = v
+	c.__n1.SetText(c.value__inst2)
+	c.edited__inst2 = false
+	c.committed = ((c.__prop_label + ":") + v)
 	c.__n2.SetText(c.committed)
 }
 
@@ -3589,6 +3602,6 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:6f5b933dd77020314b5ceb586efb3c85
+pass sha256:62bc34321ade1d3fac3254430842ed83
 -- run/go/gtk4 --
 pass sha256:2b97ff9102d3b3909b376808c176dc06

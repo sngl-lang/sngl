@@ -165,7 +165,7 @@ func testOneInputIsTheTests(t test.Test, c field) {
     t.assert(c.name.value == "a")
 }
 -- testrun/android/kotlin/cell.sngl/pair/1 --
-sha256:4612c6aa6fe106e5b9e8952262f2aa6c
+sha256:236e79ce8a2b211009708ddf0c2d3044
 {
   "results": [
     {
@@ -175,7 +175,7 @@ sha256:4612c6aa6fe106e5b9e8952262f2aa6c
   ]
 }
 -- testrun/android/kotlin/inputs.sngl/field/1 --
-sha256:39c3b39a9bf8408723f0ed35b2023bd1
+sha256:b9c87e9f949c2511f5298e04c930f8c2
 {
   "results": [
     {
@@ -185,7 +185,7 @@ sha256:39c3b39a9bf8408723f0ed35b2023bd1
   ]
 }
 -- testrun/android/kotlin/inputs.sngl/pair/1 --
-sha256:28ba2e82d66e6e538fce35db4f863c21
+sha256:d836de279f48df648063f94758689204
 {
   "results": [
     {

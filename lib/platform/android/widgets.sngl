@@ -183,8 +183,10 @@ const component shapes.image[platform](width, height, shapes) {
 }
 
 const component ui.input[platform](placeholder, readonly, value, style, @input, @change, @submit) {
+    var edited = false
     func commit(v string) {
         value = v
+        edited = false
         change(v)
     }
     SnglTextField(
@@ -196,9 +198,14 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
         modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
+            edited = true
             input(v)
         },
-        onCommit = func() { commit(value) },
+        onCommit = func() {
+            if edited {
+                commit(value)
+            }
+        },
         onSubmit = func() { submit() },
     ) {}
 }
@@ -351,8 +358,10 @@ func ui.select[T].change[platform](value) {
 
 // Enter is a line of the text, so only the focus leaving commits it.
 const component ui.textarea[platform](placeholder, readonly, value, style, @input, @change) {
+    var edited = false
     func commit(v string) {
         value = v
+        edited = false
         change(v)
     }
     SnglTextField(
@@ -364,9 +373,14 @@ const component ui.textarea[platform](placeholder, readonly, value, style, @inpu
         modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
+            edited = true
             input(v)
         },
-        onCommit = func() { commit(value) },
+        onCommit = func() {
+            if edited {
+                commit(value)
+            }
+        },
         onSubmit = func() {},
     ) {}
 }

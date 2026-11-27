@@ -151,7 +151,7 @@ func testEachCopyReadsItsOwnThroughAParam(t test.Test, c held) {
     t.assert(c.r[0].seen.value == "p")
 }
 -- testrun/android/kotlin/app.sngl/held/1 --
-sha256:4eb700579b9f0d6f3d845899e6ac1edb
+sha256:0fae2465a0ef4bbfb47cc75f42d40fe6
 {
   "results": [
     {

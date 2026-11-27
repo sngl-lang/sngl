@@ -505,7 +505,8 @@ type Test struct {
 
 // Model holds the state for this SNGL UI.
 type Model struct {
-	text string
+	text          string
+	edited__inst0 bool
 
 	__n0 *fynelayout.Entry
 }
@@ -521,6 +522,15 @@ func (m *Model) __init(preset map[string]bool) {
 	if !preset["text"] {
 		m.text = ""
 	}
+	if !preset["edited__inst0"] {
+		m.edited__inst0 = false
+	}
+}
+
+func (m *Model) commit__inst0(v string) {
+	m.text = v
+	m.__n0.SetText(m.text)
+	m.edited__inst0 = false
 }
 
 func (m *Model) __wrote_text() {
@@ -531,12 +541,18 @@ func (m *Model) __n0_input_handler(v string) {
 	if v != m.text {
 		m.text = v
 		m.__n0.SetText(m.text)
+		m.edited__inst0 = true
 	}
 }
 
 func (m *Model) __n0_change_handler(v string) {
-	m.text = v
-	m.__n0.SetText(m.text)
+	m.commit__inst0(v)
+}
+
+func (m *Model) __n0_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.text)
+	}
 }
 
 func (m *Model) Text() string {
@@ -547,6 +563,14 @@ func (m *Model) SetText(v string) {
 	m.text = v
 }
 
+func (m *Model) Edited__inst0() bool {
+	return m.edited__inst0
+}
+
+func (m *Model) SetEdited__inst0(v bool) {
+	m.edited__inst0 = v
+}
+
 // BuildUI creates the widget tree. Call once; widgets are updated selectively.
 func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0 = fynelayout.NewMultiLineEntry()
@@ -554,7 +578,8 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n0.SetPlaceHolder("Notes")
 	m.__n0.SetMinRowsVisible(4)
 	m.__n0.OnChanged = m.__n0_input_handler
-	m.__n0.OnSubmitted = m.__n0_change_handler
+	m.__n0.OnCommit = m.__n0_change_handler
+	m.__n0.OnFocusLost = m.__n0_leave_handler
 	content := fyne.CanvasObject(m.__n0)
 	return content
 }
@@ -3345,8 +3370,10 @@ private fun <T> __snglPre(pre: Map<String, Any?>, key: String, init: () -> T): T
 
 class MainScreenState(__pre: Map<String, Any?> = emptyMap()) {
     var text by mutableStateOf(__snglPre(__pre, "text") { "" })
+    var edited__inst0 by mutableStateOf(__snglPre(__pre, "edited__inst0") { false })
     fun commit__inst0(v: String) {
         text = v
+        edited__inst0 = false
     }
 }
 
@@ -3356,8 +3383,11 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
 
     SnglTextField(value = state.text, label = "Notes", minLines = 3, readOnly = false, commitsOnDone = false, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
         state.text = v
+        state.edited__inst0 = true
     }, onCommit = {
-        state.commit__inst0(state.text)
+        if (state.edited__inst0) {
+        	state.commit__inst0(state.text)
+        }
     }, onSubmit = {})
 }
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglTextField.kt --
@@ -3398,10 +3428,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -3409,7 +3436,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -3418,16 +3445,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -3444,7 +3463,7 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }
@@ -3540,11 +3559,11 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:7a6a147de577c2fd62464256a92fedff
 -- run/go/fyne --
-pass sha256:99858d36f3aa8ccc36962e3491674516
+pass sha256:9418d6a807227626765f9e831e913c15
 -- run/go/gtk4 --
 pass sha256:3726f4a677de62c4c2cac1fedd14d397
 -- run/kotlin/android --
-pass sha256:1db22fa617c5e91778b5b460f7c76bf1
+pass sha256:6dbb30df3384b87453aeda693aedd7b7
 -- run/none/html --
 pass sha256:df5432f42bd8b109b957c1aca95738ad
 -- testrun/html/none/component_textarea.sngl/main/1 --

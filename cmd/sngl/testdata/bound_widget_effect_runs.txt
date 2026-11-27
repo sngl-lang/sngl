@@ -61,7 +61,7 @@ func testTypingRunsTheUpdate(t test.Test, c app) {
     t.assert(c.renames == 1)
 }
 -- testrun/android/kotlin/app.sngl/app/1 --
-sha256:9b320db2099d167266d8ddfed8d3387d
+sha256:0ff5e8ba70883705734b788f701f598d
 {
   "results": [
     {

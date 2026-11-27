@@ -3354,6 +3354,6 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:23157d7281345d00e8788d8c0c576d37
+pass sha256:cf33b121895a01e41c99be3898bad981
 -- run/go/gtk4 --
 pass sha256:99dd765ea6c3da3f49e6dad79e16f811

@@ -95,16 +95,20 @@ fun MainScreen() {
     var value__inst3 by remember { mutableStateOf<String?>(null) }
     var value__inst4 by remember { mutableStateOf<String?>(birthday) }
     var visible__inst0 by remember { mutableStateOf(true) }
+    var edited__inst0 by remember { mutableStateOf(false) }
+    var edited__inst1 by remember { mutableStateOf(false) }
     var open__inst0 by remember { mutableStateOf(false) }
 
 
     fun commit__inst0(v: String) {
         value__inst0 = v
+        edited__inst0 = false
     }
 
 
     fun commit__inst1(v: String) {
         value__inst1 = v
+        edited__inst1 = false
     }
 
 
@@ -132,14 +136,20 @@ fun MainScreen() {
         Column {
             SnglTextField(value = value__inst0, label = "Name", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst0 = v
+                edited__inst0 = true
                 name = v
             }, onCommit = {
-                commit__inst0(value__inst0)
+                if (edited__inst0) {
+                	commit__inst0(value__inst0)
+                }
             }, onSubmit = {})
             SnglTextField(value = value__inst1, label = "", minLines = 1, readOnly = false, commitsOnDone = true, modifier = Modifier.safeDrawingPadding(), onValueChange = { v ->
                 value__inst1 = v
+                edited__inst1 = true
             }, onCommit = {
-                commit__inst1(value__inst1)
+                if (edited__inst1) {
+                	commit__inst1(value__inst1)
+                }
             }, onSubmit = {})
             Box(modifier = Modifier.snglChooses({ v: String ->
     choose__inst0(v)
@@ -339,10 +349,7 @@ fun SnglTextField(
     }
     OutlinedTextField(
         value = value,
-        onValueChange = {
-            commit.edited = true
-            onValueChange(it)
-        },
+        onValueChange = onValueChange,
         readOnly = readOnly,
         singleLine = commitsOnDone,
         minLines = minLines,
@@ -350,7 +357,7 @@ fun SnglTextField(
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
-            commit.fire()
+            commit.onCommit()
             commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
@@ -359,16 +366,8 @@ fun SnglTextField(
 }
 
 private class SnglCommit {
-    var edited = false
     var onCommit: () -> Unit = {}
     var onSubmit: () -> Unit = {}
-
-    fun fire() {
-        if (edited) {
-            edited = false
-            onCommit()
-        }
-    }
 }
 
 private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
@@ -385,9 +384,9 @@ private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElemen
 private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
     override fun onFocusEvent(focusState: FocusState) {
         if (!focusState.isFocused && isAttached) {
-            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.onCommit() }
         }
     }
 }
 -- run/kotlin/android --
-pass sha256:d77a7409987bcc7d1bd01c8b443a9365
+pass sha256:0ec455b7d66006c484a0b3c9adc9e702
