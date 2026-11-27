@@ -88,7 +88,7 @@ func TestUniqueNodeIDsReachesEveryBody(t *testing.T) {
 		&ir.ContextProvider{Children: []ir.Stmt{inProvider}},
 		&ir.LocalVar{Init: &ir.Lambda{Func: &ir.Func{Block: []ir.Stmt{inLambda}}}},
 	}}
-	uniqueNodeIDs(&ir.Package{Components: []*ir.Component{main}}, nil)
+	uniqueNodeIDs(&ir.Package{Components: []*ir.Component{main}})
 
 	if first.ID != "inc" {
 		t.Errorf("the first occurrence keeps the name, got %q", first.ID)

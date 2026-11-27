@@ -2324,9 +2324,12 @@ there reads what the id would have shadowed -- `ui.scroll #both(direction=both)`
 is the enum member -- and one nothing else declares is a recursive
 declaration (`ui.text #t(value = t.value)`). A handler among the arguments runs
 once the node is built, and reads it like any other code; so does the node's
-content. A handle that is read may not be rendered more
-than once — two copies of one body would share it, and neither read could say
-which it meant.
+content. A body rendered more than once
+gives each copy its own node, and a property read or a method call written in
+the body reaches its own copy's: `bar.text` is what that copy's `bar` was given.
+A read of what only the node holds -- a two-way property left unbound -- is an
+error there, since the copies would share it, and the read could not say which
+it meant.
 
 ## Reactivity
 

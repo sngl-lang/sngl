@@ -1305,19 +1305,25 @@ getter is a call (`gtk_editable_get_text`) whose name GIR would have to supply
 per property. The one such read that works is a `#[c.native]` method's
 receiver, above.
 
-**Two nodes may share an id, but a handle that is *read* may not be rendered
-twice.** The two halves are asked differently and deliberately so.
-`uniqueNodeIDs` renames the later copies *by name*, because what that repairs is
-the emitted namespace, where any two `#bar`s collide however unrelated. The
-refusal is *by symbol*: `declareNodeIDs` runs per body, so two components each
-writing `#bar` declare two vars and each read says which it meant, while two
-spliced copies of one body share theirs and neither read can — all of them
-resolve to the first copy's field, and the second widget is created and never
-touched. `ir.NodeInst.Handle` is the link that makes the symbol reachable from
-the node, since `ID` is only a name. Keyed by name instead, a `quiet()` that
-reads nothing and renders one was refused for a `#bar` that a *different*
-component read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both
-halves apart.
+**Two nodes may share an id, and a body rendered twice may read its handles:
+each copy reads its own.** `uniqueNodeIDs` renames the later copies *by name*,
+because what that repairs is the emitted namespace, where any two `#bar`s
+collide however unrelated. A read is bound *by symbol*: `declareNodeIDs` runs
+per body, so two components each writing `#bar` declare two vars and each read
+says which it meant, while two spliced copies of one body share theirs. So a
+prop read is answered in the body before the splice (`passNodePropReads`),
+where `bar.text` is that copy's own argument, and a method call is repointed
+at each copy's node (`repointHandleCalls`). What is left standing after the
+splice still cannot say which copy it means, and `uniqueNodeIDs` refuses it by
+symbol; an unbound two-way prop's read, the instance's cell, is refused at the
+read by `cellReadError`. This was once a blanket rule, a handle that is read
+may not be rendered twice, from when a prop read reached the emitter and
+resolved to the first copy's field (Jonathan's call to lift it, 2026-11-27).
+`ir.NodeInst.Handle` is the link that makes the symbol reachable from the
+node, since `ID` is only a name. Keyed by name instead, a `quiet()` that reads
+nothing and renders one was refused for a `#bar` that a *different* component
+read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both halves
+apart.
 
 **An `#id` is a declaration, hoisted to its component's scope.** It shadows
 what an enclosing scope binds and is a redeclaration beside a var, a prop or a

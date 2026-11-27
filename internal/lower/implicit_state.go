@@ -88,7 +88,18 @@ func lowerImplicitState(pkg *ir.Package, _ Features, _ Options) error {
 		if cell == nil {
 			return n, nil
 		}
-		return &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell}, ir.SkipDir
+		// Positioned where the read was written, which is where a read that
+		// cannot say which copy it means is refused (cellReadError).
+		var at *ast.IdentExpr
+		if sel.AST != nil {
+			at = &ast.IdentExpr{Pos: sel.AST.Pos, Name: sel.AST.Field}
+			if sel.AST.Operand != nil {
+				if p := sel.AST.Operand.ExprPos(); p != nil && p.IsValid() {
+					at.Pos = *p
+				}
+			}
+		}
+		return &ir.Ident{Name: cell.Name, Type: cell.Type, Sym: cell, AST: at}, ir.SkipDir
 	})
 }
 
@@ -576,7 +587,7 @@ func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones 
 			return n, nil
 		}
 		if bad == nil {
-			bad = cellReadError(w, v, len(copies))
+			bad = cellReadError(w, v, id, len(copies))
 		}
 		return n, nil
 	})
@@ -586,12 +597,18 @@ func repointCellReads(pkg *ir.Package, owners map[*ir.Var]*ir.Component, clones 
 	return bad
 }
 
-func cellReadError(w *ir.Component, v *ir.Var, copies int) error {
+// cellReadError refuses read, a read of w's cell v that cannot say which of
+// its copies it means, at the read where it was written: that is where the
+// remedy goes, and the node is the override's, in the platform's library.
+func cellReadError(w *ir.Component, v *ir.Var, read *ir.Ident, copies int) error {
 	pos, id := "<unknown>", "?"
 	if len(w.Stmts) > 0 {
 		if inner, ok := w.Stmts[0].(*ir.NodeInst); ok {
 			pos, id = nodePos(inner), writtenID(inner)
 		}
+	}
+	if p := identPos(read); p != "<unknown>" {
+		pos = p
 	}
 	why := "is built at run time here"
 	if copies > 1 {

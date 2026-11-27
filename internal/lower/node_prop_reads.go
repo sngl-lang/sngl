@@ -83,11 +83,6 @@ func lowerNodePropReads(pkg *ir.Package, _ Features, opts Options) error {
 				return n, nil
 			}
 			e := rewriteNodePropRead(sel, handles)
-			if e != nil && opts.foldedHandleReads != nil {
-				id := sel.Operand.(*ir.Ident)
-				v := id.Sym.(*ir.Var)
-				opts.foldedHandleReads[v] = append(opts.foldedHandleReads[v], id)
-			}
 			if e == nil {
 				e = rewriteTestPropRead(sel, tests, nil)
 			}

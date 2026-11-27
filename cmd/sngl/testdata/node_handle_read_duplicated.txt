@@ -1,14 +1,27 @@
-# A `#id` may be duplicated; a handle that is *read* may not be rendered twice.
+# A `#id` may be duplicated, and a body rendered more than once may read its
+# handles: each copy reads its own.
 #
 # uniqueNodeIDs renames the later copies of an id and lets the first keep the
 # name, so a test naming `#inc` still means the `#inc` it wrote. A read cannot
-# follow that rename: the checker declares one var per written id and every
-# spliced copy of that body shares it, so `{bar.text}` in each copy resolves
-# to the first copy's node. The second is created and then never read.
-# Qualifying the read is what would make it quietly wrong, so the duplicate is
-# refused in the pass that first knows of it rather than left to the host
-# compiler to miss.
+# follow that rename -- the checker declares one var per written id and every
+# spliced copy shares it -- so a prop read is answered in the body before the
+# splice (passNodePropReads), and `{bar.text}` in each copy is that copy's
+# "b{n}". read.sngl's test clicks the first copy's button and reads both.
 #
+# What only the node holds has no expression to answer with: an unbound
+# two-way prop is the instance's cell, which the copies would share, so that
+# read is refused where it is written. fyne, because gtk4's input override
+# reads its own entry's handle, which no program wrote.
+
+sngl generate --lang go --platform gtk4 --out out read.sngl
+sngl test --platform=none read.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go read.sngl
+stdout 'ok +1 tests, 0 failures'
+
+! sngl generate --lang go --platform fyne --out bad cell.sngl
+stderr 'cell.sngl:6:25: `#box` is rendered more than once, so a read of its unbound :value cannot say which copy it means'
+
 # A method called through the handle is a call of the node, which
 # repointHandleCalls points at each copy's own: `bar.pulse()` in each copy of
 # dup.sngl pulses its own bar.
@@ -17,14 +30,6 @@
 # questions: the rename repairs the emitted namespace, where any two `#bar`s
 # collide, while the refusal is about a read that cannot say which copy it
 # meant, which only arises within one body. innocent.sngl is the difference.
-
-! sngl generate --lang go --platform gtk4 --out out read.sngl
-stderr 'is read here, and .* renders more than one of it'
-
-# The diagnostic names the read, not just the node: the remedies it offers are
-# actionable where the read is written, and a user landing on the node sees
-# nothing wrong there.
-stderr 'read\.sngl:7:22'
 
 sngl generate --lang go --platform gtk4 --out out1 dup.sngl
 grep 'WidgetPulse\(m\.bar\)' out1/main.go
@@ -56,20 +61,47 @@ sngl generate --lang go --platform gtk4 --out out4 single.sngl
 grep 'WidgetPulse\(m\.bar\)' out4/main.go
 
 -- read.sngl --
-import . "sngl:ui"
+import ui "sngl:ui"
+import test "sngl:test"
 
-component bump() node {
+component bump ui.node {
     var n = 0
-    vbox {
-        button #bar(text="b", @click { n += 1 })
-        text(value="{bar.text}")
+    ui.vbox {
+        ui.button #bar(text="b{n}", @click { n += 1 })
+        ui.text #out(value="{bar.text}")
     }
 }
 
-window {
-    vbox {
-        bump()
-        bump()
+component pair ui.node {
+    ui.vbox {
+        bump #one()
+        bump #two()
+    }
+}
+
+ui.window {
+    pair()
+}
+
+func testEachCopyReadsItsOwn(t test.Test, c pair) {
+    c.one.bar.click()
+    t.assert(c.one.out.value == "b1")
+    t.assert(c.two.out.value == "b0")
+}
+-- cell.sngl --
+import ui "sngl:ui"
+
+component field ui.node {
+    ui.vbox {
+        ui.input #box()
+        ui.text(value="{box.value}")
+    }
+}
+
+ui.window {
+    ui.vbox {
+        field()
+        field()
     }
 }
 -- dup.sngl --
@@ -175,4 +207,14 @@ window {
             bar.pulse()
         })
     }
+}
+-- testrun/gtk4/go/read.sngl/pair/1 --
+sha256:fbf0ce2b5e2bf6e7508f950297b43a30
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwn",
+      "Passed": true
+    }
+  ]
 }
