@@ -45,14 +45,18 @@ func markupSpec(tag string, props map[string]ir.Expr) (*fyneSpec, error) {
 	case "Span":
 		sp.New = fyneNative{Path: fynetextPath, Name: "NewSpan"}
 		sp.GoType = fyneNative{Path: fynetextPath, Name: "*Span"}
-		sp.Args = []fyneArg{{
-			Type: fyneNative{Path: fynetextPath, Name: "Style"},
-			Raw:  spanStyleChain(props),
-		}}
 		sp.CtorOnly = map[string]bool{"kind": true, "spanStyle": true}
 		sp.Setters["text"] = "SetText"
 		sp.Setters["kind"] = "SetToken"
 		sp.Setters["href"] = "SetHref"
+		style := fyneArg{
+			Type: fyneNative{Path: fynetextPath, Name: "Style"},
+			Raw:  spanStyleChain(props),
+		}
+		if k := props["kind"]; k != nil && enumOrString(k) == "" && !setterAnswers(sp, "kind", k) {
+			style.Method, style.MethodArg = "WithToken", k
+		}
+		sp.Args = []fyneArg{style}
 		// A style the constructor could read off a literal is said there; one
 		// computed while the program runs -- a run's styles read from data, as
 		// md.document's are -- arrives through this, field by field.

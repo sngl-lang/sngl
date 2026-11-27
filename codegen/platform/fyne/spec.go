@@ -39,6 +39,11 @@ type fyneArg struct {
 	// `fynetext.Style` plus `().WithBold()`. Empty for the arguments a Spec
 	// writes in fyne.sngl, which name no package.
 	Type fyneNative
+	// Method and MethodArg end a typed Raw in one more call whose argument
+	// is an expression the build cannot write as text: a span's kind read
+	// from data.
+	Method    string
+	MethodArg ir.Expr
 }
 
 // fyneHandler is the Fyne callback field one declared event is assigned to,
@@ -371,7 +376,12 @@ func (s *fyneSpec) ctorArgs(al aliaser) []ir.Expr {
 		// The spec writes the argument as Go and says its type where it
 		// names one; text it leaves untyped is no SNGL value.
 		if a.Type.Name != "" {
-			out = append(out, rawGoExpr(a.Type.qualify(al)+a.Raw, ir.NativeGoNamed(a.Type.qualify(al))))
+			t := ir.NativeGoNamed(a.Type.qualify(al))
+			e := rawGoExpr(a.Type.qualify(al)+a.Raw, t)
+			if a.Method != "" {
+				e = methodCall(e, a.Method, []ir.Expr{a.MethodArg}, t)
+			}
+			out = append(out, e)
 			continue
 		}
 		out = append(out, rawGoExpr(a.Raw, nil))

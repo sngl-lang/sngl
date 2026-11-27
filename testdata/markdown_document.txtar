@@ -5813,7 +5813,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																							__n217__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Stroke: snglcolor.Color{}, Radius: 4.0, TextColor: snglcolor.Color{}})
 																							__n218 := fynetext.NewSpan(fynetext.Style().WithMono())
 																							for _, r := range inner.Runs {
-																								__n219 := fynetext.NewSpan(fynetext.Style())
+																								__n219 := fynetext.NewSpan(fynetext.Style().WithToken(r.Token))
 																								__n219.SetColor(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token))
 																								__n220 := fynetext.NewSpan(fynetext.Style())
 																								__n220.SetText(r.Text)
@@ -7045,7 +7045,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																					__n428__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Stroke: snglcolor.Color{}, Radius: 4.0, TextColor: snglcolor.Color{}})
 																					__n429 := fynetext.NewSpan(fynetext.Style().WithMono())
 																					for _, r := range inner.Runs {
-																						__n430 := fynetext.NewSpan(fynetext.Style())
+																						__n430 := fynetext.NewSpan(fynetext.Style().WithToken(r.Token))
 																						__n430.SetColor(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token))
 																						__n431 := fynetext.NewSpan(fynetext.Style())
 																						__n431.SetText(r.Text)
@@ -8278,7 +8278,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 																		__n639__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Stroke: snglcolor.Color{}, Radius: 4.0, TextColor: snglcolor.Color{}})
 																		__n640 := fynetext.NewSpan(fynetext.Style().WithMono())
 																		for _, r := range inner.Runs {
-																			__n641 := fynetext.NewSpan(fynetext.Style())
+																			__n641 := fynetext.NewSpan(fynetext.Style().WithToken(r.Token))
 																			__n641.SetColor(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token))
 																			__n642 := fynetext.NewSpan(fynetext.Style())
 																			__n642.SetText(r.Text)
@@ -9520,7 +9520,7 @@ func (m *Model) __renderSlot0(__parent *fyne.Container) {
 															__n850__box.SetLook(fynelayout.Look{PaddingTop: 12.0, PaddingRight: 12.0, PaddingBottom: 12.0, PaddingLeft: 12.0, Fill: snglcolor.Color{R: 245, G: 245, B: 245, A: 255}, Stroke: snglcolor.Color{}, Radius: 4.0, TextColor: snglcolor.Color{}})
 															__n851 := fynetext.NewSpan(fynetext.Style().WithMono())
 															for _, r := range b.Runs {
-																__n852 := fynetext.NewSpan(fynetext.Style())
+																__n852 := fynetext.NewSpan(fynetext.Style().WithToken(r.Token))
 																__n852.SetColor(TokenColor(Palette{Plain: snglcolor.Color{}, Keyword: snglcolor.Color{}, Type: snglcolor.Color{}, Function: snglcolor.Color{}, Variable: snglcolor.Color{}, Constant: snglcolor.Color{}, String: snglcolor.Color{}, Number: snglcolor.Color{}, Comment: snglcolor.Color{}, Operator: snglcolor.Color{}, Punctuation: snglcolor.Color{}}, r.Token))
 																__n853 := fynetext.NewSpan(fynetext.Style())
 																__n853.SetText(r.Text)
@@ -9818,6 +9818,6 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:1277a5d060e54c56ddb69361caca30c6
 -- run/go/fyne --
-pass sha256:2c431af64614ef282c79a3e06db77f38
+pass sha256:801f0764bfad796bc6814bfac3df09f8
 -- run/none/html --
 pass sha256:975a4f8965a0c49cbd1cc9ced11c95f0
