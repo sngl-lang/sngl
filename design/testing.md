@@ -764,25 +764,35 @@ on its own targets and on one rotating other target, which reaches every
 generator without multiplying the corpus by all of them. The seed run is part
 of the ordinary suite. A seed's rotating target moves when a fixture is added,
 so a bug the seeds found is pinned by a golden or a script of its own, not by
-the seed. `SNGL_FUZZ_SEEDS` is a regexp the seeds' file names are held to, for
-rerunning the ones a fix is about.
+the seed -- or, where the fix is a target declining the program, which neither
+can tell from a fault, by an archive in `testdata/pipeline/` whose `output`
+block names the targets. `TestPipelinePinned` builds each on its own outputs
+and fails one that stops at the parse or the check, since it pins nothing; the
+fuzzer seeds them too. `SNGL_FUZZ_SEEDS` is a regexp the seeds' file names are held to, for
+rerunning the ones a fix is about, and `SNGL_FUZZ_TARGETS=all` adds every seed
+on every target.
 
 ```bash
 SNGL_FUZZ_SEEDS=radio go test -run FuzzPipeline .   # the seeds whose name matches
+SNGL_FUZZ_TARGETS=all go test -run FuzzPipeline .   # every seed on every target
 go test -run '^$' -fuzz FuzzPipeline .              # fuzz
 ```
 
-**An external definition the build trusts is a check the fuzzer cannot make
-yet.** The Go check's stand-ins -- `import "C"` under `FakeImportC`, a project's
-`go:` module, a cgo package the host cannot build -- let any selector on them
-through, and the library's own bindings (`#[c.native]`, `go:` imports,
-`#[c.type]`) claim symbols the compiler can only believe. Both are to be
-checked against the real thing: a project `go:` module type-checked from the
-archive's source, a stand-in for anything the build could have resolved
-failing the run, the `C.` names a package uses checked against the headers its
-`c.link` names (parsed in process by `modernc.org/cc/v4`), and every library
-binding held once to its symbol by a conformance test in the ordinary suite,
-so a program's check can rely on it.
+**An external definition is trusted, as a TypeScript declaration file is.**
+A binding -- `#[go.native]`, `#[c.native]`, `#[c.type]`, a fyne `Spec`, a `go:`
+import -- claims a symbol, and the build believes it: checking each against
+the real package would put the host toolchain and its dependencies in every
+build, and the time they take. The Go check's stand-ins -- `import "C"` under
+`FakeImportC`, a project's `go:` module, a cgo package the host cannot build --
+let any selector on them through for the same reason. So **the fuzzer does not
+mutate a macro**: there is no safe change to one, and a mutated
+`#[go.native("time", "time.DuratLon")]` names a symbol that is not there, which
+is the program's claim and not a fault of the build. An input carrying a macro
+(`#[...]`) that no seed writes verbatim is skipped (`archiveMacros`), so the
+seeds' own bindings are still lowered under every mutation of the code around
+them. What a Spec splices in as Go is still held to its shape -- an import
+path, an identifier, an expression -- since that check costs nothing
+(`checkSpecGo`).
 
 When adding a fixture or directive, confirm it *fails* when the behavior is reverted. Several directives in this repo assert conditions that no test actually evaluates.
 

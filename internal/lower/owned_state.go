@@ -976,7 +976,9 @@ func (st *ownedStateRun) retainedIn(c *ir.Component, s ir.Stmt) (pre, post []ir.
 			old := &ir.Var{Name: st.name("__old"), Type: cell.Type, Synthesized: true}
 			pre = append(pre,
 				&ir.LocalVar{Name: old.Name, Type: old.Type, Init: identOf(cell), Sym: old},
-				&ir.Assign{Target: identOf(cell), Value: arg},
+				// The promotion into the option stays a node: Go's option[T] is
+				// *T, and a bare T stored there does not compile.
+				&ir.Assign{Target: identOf(cell), Value: &ir.Conversion{Type: cell.Type, Operand: arg}},
 			)
 			call.Args[i].Value = &ir.Conversion{Type: typ, Operand: identOf(cell)}
 			post = append(post, st.releaseIfHeld(identOf(old), typ))

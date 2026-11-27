@@ -293,6 +293,7 @@ body { font-family: system-ui, sans-serif; }
     __n14.setAttribute("style", "display:flex;flex-direction:column");
     let __n6 = __cf_seeded({ start: __prop___p0 });
     let __n6__el = __n6.__root;
+    let __n6__pos = __n14;
     __n14.appendChild(__n6__el);
     let __n7 = document.createElement("input");
     __n7.value = __prop___p1;
@@ -718,4 +719,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:ccaccf59d6ae109cf87718ea8b10bd94
+pass sha256:c0dbfa15966217c01024eb158ecf54fe

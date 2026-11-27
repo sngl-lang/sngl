@@ -1,0 +1,23 @@
+// A function written alone as a statement is called, and its arguments are
+// checked as any call's are: one it requires and was not handed is missing.
+import async "sngl:async"
+import ui "sngl:ui"
+
+var n = 0
+
+func bump() {
+    n = n + 1
+}
+
+func twice(f func()) {
+    f()
+    f()
+}
+
+ui.window {
+    ui.button(text="{n}", @click {
+        bump
+        twice    // ERROR(check) "missing required argument"
+        async.do // ERROR(check) "missing required argument"
+    })
+}
