@@ -580,6 +580,9 @@ func emitIR(info *irAnalysis, ctx *codegen.CodegenCtx, cfg Config) (string, []st
 			continue
 		}
 		fmt.Fprintf(&b, "\t%s %s\n", w.fieldName, w.model.Type)
+		if blursToCommit(w) {
+			fmt.Fprintf(&b, "\t%s bool\n", editedField(w))
+		}
 	}
 	if len(info.widgets) > 0 {
 		b.WriteString("\n")
@@ -1222,7 +1225,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		val, hasInput, hasChange := widgetPayloadEvents(w)
 		get := val.get
 		picks := choosesOnMove(w)
-		if hasInput || hasChange && picks {
+		blurs := blursToCommit(w)
+		if hasInput || hasChange && picks || blurs {
 			fmt.Fprintf(b, "%s\t__prev := %s\n", fwdIndent, bindReadBack(w.fieldName, get))
 		}
 		fmt.Fprintf(b, "%s\tm.%s, cmd = m.%s%s\n", fwdIndent, w.fieldName, w.fieldName, w.model.Update)
@@ -1242,6 +1246,8 @@ func emitIRUpdate(b *strings.Builder, info *irAnalysis, ctx *codegen.CodegenCtx,
 		switch {
 		case hasChange && picks:
 			fmt.Fprintf(b, "%s\tif __v := %s; __v != __prev {\n%s\t\tm.%s(__v)\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, widgetEventMethod(w, "change"), fwdIndent)
+		case blurs:
+			fmt.Fprintf(b, "%s\tif %s != __prev {\n%s\t\tm.%s = true\n%s\t}\n", fwdIndent, bindReadBack(w.fieldName, get), fwdIndent, editedField(w), fwdIndent)
 		case hasChange:
 			fmt.Fprintf(b, "%s\tif __k, ok := msg.(tea.KeyPressMsg); ok && __k.Code == tea.KeyEnter {\n%s\t\tm.%s(%s)\n%s\t}\n", fwdIndent, fwdIndent, widgetEventMethod(w, "change"), bindReadBack(w.fieldName, get), fwdIndent)
 		}
@@ -1676,9 +1682,26 @@ func widgetPayloadEvents(w widgetInfo) (val widgetValue, input, change bool) {
 }
 
 // commits reports whether a widget has a commit for @change to fire on: Enter
-// in a single-line field, or a select's cursor moving.
+// in a single-line field, a select's cursor moving, or focus leaving an edited
+// textarea.
 func commits(w widgetInfo) bool {
-	return w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput" || choosesOnMove(w)
+	return w.model.Type == "textinput.Model" || w.model.Type == "tui.DateInput" || choosesOnMove(w) || commitsOnBlur(w)
+}
+
+// commitsOnBlur reports whether a widget commits only when focus leaves it
+// after an edit, Enter being a line of its text. A loop's copies share one
+// field and have no mark of their own, so they do not.
+func commitsOnBlur(w widgetInfo) bool { return w.model.Type == "textarea.Model" && w.loop == nil }
+
+// editedField is the mark an Update's edit sets on a widget that
+// commitsOnBlur and its commit clears, so a program's write, which no Update
+// forwards to the widget, commits nothing.
+func editedField(w widgetInfo) string { return "__" + w.fieldName + "_edited" }
+
+// blursToCommit reports whether w has an @change that focus leaving fires.
+func blursToCommit(w widgetInfo) bool {
+	_, _, change := widgetPayloadEvents(w)
+	return change && commitsOnBlur(w)
 }
 
 // choosesOnMove reports whether a widget's value is the row its cursor is on,
@@ -1754,6 +1777,9 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
 			}
+			if ev.name == "input" && blursToCommit(w) {
+				fmt.Fprintf(b, "\tm.%s = true\n", editedField(w))
+			}
 			b.WriteString("}\n\n")
 		}
 		for _, ev := range []struct {
@@ -1766,6 +1792,9 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 			h := codegen.NodeHandler(w.node, ev.name)
 			hgc := gc
 			fmt.Fprintf(b, "func (m *Model) %s(__v %s) {\n", widgetEventMethod(w, ev.name), val.goType)
+			if ev.name == "change" && blursToCommit(w) {
+				fmt.Fprintf(b, "\tm.%s = false\n", editedField(w))
+			}
 			if len(h.Func.Params) > 0 {
 				name := h.Func.Params[0].Name
 				hgc = gc.WithLocal(name)
@@ -1791,6 +1820,9 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 				if bindTargetSyncs(info.binds, bd.target) {
 					b.WriteString(writeBack(w, bd, info.binds, "\t"))
 				}
+			}
+			if ev.name == "input" && blursToCommit(w) {
+				fmt.Fprintf(b, "\tm.%s = true\n", editedField(w))
 			}
 			fmt.Fprintf(b, "\tm.%s(v)\n}\n\n", widgetEventMethod(w, ev.name))
 		}
@@ -1833,6 +1865,10 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", w.fieldName)
 		b.WriteString("\t\t\t} else {\n")
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", w.fieldName)
+		if blursToCommit(w) {
+			val, _, _ := widgetPayloadEvents(w)
+			fmt.Fprintf(b, "\t\t\t\tif m.%s {\n\t\t\t\t\tm.%s(%s)\n\t\t\t\t}\n", editedField(w), widgetEventMethod(w, "change"), bindReadBack(w.fieldName, val.get))
+		}
 		b.WriteString("\t\t\t}\n")
 	}
 }
