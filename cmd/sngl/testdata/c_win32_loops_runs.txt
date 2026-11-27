@@ -321,7 +321,7 @@ sha256:245e6fa11bd1b714fafe186133d5d43d
   ]
 }
 -- testrun/win32/c/rows.sngl/main/1 --
-sha256:8a84b6abd8b32e7a50634eb757b47d8e
+sha256:d91f6e323198dddc6a1a1069b2b6b26a
 {
   "results": [
     {
@@ -397,7 +397,7 @@ sha256:da95239fe3390c97ceaa6207febb5609
   ]
 }
 -- testrun/win32/go/rows.sngl/main/1 --
-sha256:3a038763df536e602a938c01c4076fd0
+sha256:3a57c5211c0a48ec089ae05f1f5a9b8d
 {
   "results": [
     {

@@ -112,7 +112,7 @@ component main ui.node {
     ui.vbox(style={background=#204060, padding=4px, gap=2px}) {
         ui.text #status(value="ink", style={color=#ff8000})
         ui.text(value="own", style={color=#00ff00, background=#0000ff})
-        ui.input(value=name, @change(v) { submits += 1 })
+        ui.input(value=name, @submit { submits += 1 })
         ui.textarea(value=notes, rows=2, @change(v) { commits += 1 })
         ui.button(text="Paint", style={background=#c03030, color=#ffffff})
         ui.button(text="Plain")
