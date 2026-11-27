@@ -3,24 +3,25 @@
 # (passHandleParams, as a write through the handle already was). Left
 # standing, bubbletea read a widget field the binding never declared
 # (`m.t__r0.Selected`, `m.f`), fyne asked its container for it, and html's
-# test read nothing.
+# test read nothing. A handler reads the value its report wrote, which the
+# interpreter read off the handle as the node last rendered it.
 #
 # The test reaches each grid's copy through the text that reads the table,
 # whose answer rebased on the instance is the bound var too (rebaseKeeping):
 # read as the table off the instance, it named a grid no Go target keeps.
 
 sngl test --platform=none app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=html app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok +2 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 
 -- app.sngl --
 import test "sngl:test"
@@ -55,10 +56,13 @@ component groups ui.node {
 component fields ui.node {
     var name = "ada"
     var on = false
+    var heard = "none"
+    var typed = "none"
 
-    ui.input #f(:value=name)
-    ui.checkbox #box(label="on", :checked=on)
+    ui.input #f(:value=name, @input { typed = f.value })
+    ui.checkbox #box(label="on", :checked=on, @change { heard = "{box.checked}" })
     ui.text #seen(value="{f.value} {box.checked}")
+    ui.text #handled(value="{heard} {typed}")
     ui.button #set(text="set", @click {
         name = "grace"
         on = true
@@ -79,12 +83,22 @@ func testABoundPropReadsWhatItIsBoundTo(t test.Test, c fields) {
     c.set.click()
     t.assert(c.seen.value == "grace true")
 }
+
+func testAHandlerReadsTheValueReported(t test.Test, c fields) {
+    c.box.change(true)
+    c.f.input("bee")
+    t.assert(c.handled.value == "true bee")
+}
 -- testrun/android/kotlin/app.sngl/fields/1 --
-sha256:300728c3f7f996603a4caacec67dfb1e
+sha256:0062fc295fe29b58ceb07f1e1e61457e
 {
   "results": [
     {
       "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheValueReported",
       "Passed": true
     }
   ]
@@ -100,11 +114,15 @@ sha256:c2659e2af87b55fd7eb12a5bae7e5d8d
   ]
 }
 -- testrun/bubbletea/go/app.sngl/fields/1 --
-sha256:d18a470c34afb97399b0c573e80934d6
+sha256:24c007e0f5275349a0da43735192f00e
 {
   "results": [
     {
       "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheValueReported",
       "Passed": true
     }
   ]
@@ -120,11 +138,15 @@ sha256:4aba7f0ca8527901b5be103039fe8799
   ]
 }
 -- testrun/fyne/go/app.sngl/fields/1 --
-sha256:80a9627e2b0f08d09a9eba584bcad99c
+sha256:0027ac603467f7548691b8bdbdb25e4a
 {
   "results": [
     {
       "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheValueReported",
       "Passed": true
     }
   ]
@@ -140,11 +162,15 @@ sha256:9a8719a9d1d95c96844e35fe07275326
   ]
 }
 -- testrun/gtk4/go/app.sngl/fields/1 --
-sha256:390baf74082b79960ca0a65472ec6af6
+sha256:5a35504bbcf4e6a0f6d20054f69554d9
 {
   "results": [
     {
       "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheValueReported",
       "Passed": true
     }
   ]
@@ -160,11 +186,15 @@ sha256:0dab4bb61300ffdd9881f157a9da90eb
   ]
 }
 -- testrun/html/none/app.sngl/fields/1 --
-sha256:020669ca0c9010f8be6f23880ace1f6e
+sha256:37feb95d66d9367076247297d80cbaa8
 {
   "results": [
     {
       "Desc": "ABoundPropReadsWhatItIsBoundTo",
+      "Passed": true
+    },
+    {
+      "Desc": "AHandlerReadsTheValueReported",
       "Passed": true
     }
   ]

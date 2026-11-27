@@ -1142,14 +1142,5 @@ func boundProp(sel *ir.Select, nodes map[ir.Symbol]*ir.NodeInst) ir.Expr {
 	if !ok || id.Sym == nil {
 		return nil
 	}
-	n := nodes[id.Sym]
-	if n == nil {
-		return nil
-	}
-	for _, b := range n.Bindings {
-		if b.PropName == sel.Field {
-			return b.Target
-		}
-	}
-	return nil
+	return nodes[id.Sym].Binding(sel.Field)
 }

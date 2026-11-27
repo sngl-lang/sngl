@@ -1501,6 +1501,9 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		if fn := intrinsicMethod(e.Operand.ExprType(), e.Field); fn != nil {
 			return fn([]any{obj})
 		}
+		if v, ok, err := readThroughHandle(m, e.Field); ok {
+			return v, err
+		}
 		return m[e.Field], nil
 	}
 	if u, ok := obj.(unitValue); ok {

@@ -820,6 +820,21 @@ func (env *Env) parentValue(sym ir.Symbol) any {
 	return v
 }
 
+// readThroughHandle reads a two-way prop of the node m is a handle to where
+// the call site bound it, as writeThroughHandle writes it there. The handle's
+// own copy is what the node last rendered, which a handler of the report that
+// changed it has not seen.
+func readThroughHandle(m map[string]any, field string) (any, bool, error) {
+	inst, _ := m["__inst"].(*ir.NodeInst)
+	owner, _ := m["__ownerEnv"].(*Env)
+	t := inst.Binding(field)
+	if t == nil || owner == nil {
+		return nil, false, nil
+	}
+	v, err := owner.Eval(t)
+	return v, true, err
+}
+
 // writeThroughHandle writes a two-way prop of the node m is a handle to --
 // `w.visible = true` in `func window.open(w window)` -- where a write of the
 // prop lands: the var the call site bound, in the scope the node was written
