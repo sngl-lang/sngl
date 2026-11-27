@@ -38,7 +38,7 @@ func (g *Generator) Snapshot(irPkg *ir.Package, lang codegen.LangTranslator, wid
 		"gradle":  false,
 	})
 
-	if err := g.Generate(&codegen.Request{
+	if err := codegen.Generate(g, &codegen.Request{
 		Pkg:     irPkg,
 		Lang:    lang,
 		Options: opts,

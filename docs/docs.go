@@ -505,7 +505,7 @@ func compilePreview(source string) string {
 	}
 
 	mem := codegen.NewMemSink()
-	if err := gen.Generate(&codegen.Request{
+	if err := codegen.Generate(gen, &codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{"preview": true}),
 	}, mem); err != nil {

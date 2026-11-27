@@ -59,9 +59,9 @@ func TestIntrinsicRegistryDuplicatePanics(t *testing.T) {
 
 func TestRequireIntrinsicFallback(t *testing.T) {
 	cases := []struct {
-		name  string
-		fn    *ir.Func
-		panic bool
+		name     string
+		fn       *ir.Func
+		declined bool
 	}{
 		{"nil func", nil, false},
 		{"not an intrinsic", &ir.Func{Name: "plain"}, false},
@@ -76,12 +76,14 @@ func TestRequireIntrinsicFallback(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer func() {
-				if r := recover(); (r != nil) != tc.panic {
-					t.Errorf("panicked = %v; want %v (%v)", r != nil, tc.panic, r)
-				}
+			err := func() (err error) {
+				defer recoverUnemitted(&err)
+				RequireIntrinsicFallback("some-lang", &ir.Call{Func: tc.fn})
+				return nil
 			}()
-			RequireIntrinsicFallback("some-lang", tc.fn)
+			if ir.IsDeclined(err) != tc.declined || err != nil && !tc.declined {
+				t.Errorf("err = %v; want declined %v", err, tc.declined)
+			}
 		})
 	}
 }

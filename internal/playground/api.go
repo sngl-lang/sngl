@@ -260,7 +260,7 @@ func Compile(source string) string {
 	opts := optionsForTarget(pkg, "html")
 	codegen.SetOptionField(opts, "preview", true)
 	mem := codegen.NewMemSink()
-	if err := gen.Generate(&codegen.Request{
+	if err := codegen.Generate(gen, &codegen.Request{
 		Pkg: pkg, Lang: lang,
 		Options:   opts,
 		ProjectFS: fsys,
@@ -405,7 +405,7 @@ func Generate(source, platform, lang string) string {
 	}
 
 	mem := codegen.NewMemSink()
-	if err := gen.Generate(&codegen.Request{
+	if err := codegen.Generate(gen, &codegen.Request{
 		Pkg: pkg, Lang: lt,
 		Options:   optionsForTarget(pkg, platform),
 		ProjectFS: fsys,
