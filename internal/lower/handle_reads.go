@@ -172,7 +172,6 @@ func (st *handleParams) passesProps(fn *ir.Func, calls []*ir.Call) bool {
 	return true
 }
 
-// nodeParam is the component p is a node of, or nil.
 func nodeParam(p *ir.Param) *ir.Component {
 	if p.Type == nil || p.Type.Kind != ir.TypeComponent {
 		return nil

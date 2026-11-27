@@ -1717,7 +1717,6 @@ func entersToCommit(w widgetInfo) bool {
 	return change || submits(w)
 }
 
-// submits reports whether the program handles a single-line field's @submit.
 func submits(w widgetInfo) bool {
 	if w.node == nil || w.model.Type != "textinput.Model" {
 		return false

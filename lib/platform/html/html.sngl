@@ -239,7 +239,6 @@ func element.press()
 #[js.native("_snglFire")]
 func element.fire(event string)
 
-// Dispatches a keydown of the key named, as a person's press of it does.
 #[js.native("_snglPressKey")]
 func element.pressKey(key string)
 
@@ -536,7 +535,6 @@ func ui.input.focus[platform]() {
     field.focus()
 }
 
-// Marks an input edited since its last commit, on the element.
 #[js.native("_snglMarkEdited")]
 func markEdited(t Target)
 

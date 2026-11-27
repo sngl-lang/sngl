@@ -252,8 +252,7 @@ func winePrefix(ctx context.Context) (string, error) {
 	steps := [][]string{
 		{"wineboot", "-i"},
 		{"wine", "reg", "add", `HKCU\Software\Wine\Drivers`, "/v", "Graphics", "/d", "null", "/f"},
-		// Wine 11.22's message font is 9pt where the one the layouts were
-		// recorded under had 8pt; every text and control measures by it.
+		// Snapshot records were drawn in 8pt; Wine 11.22 defaults to 9pt.
 		{"wine", "reg", "add", `HKCU\Control Panel\Desktop\WindowMetrics`, "/v", "MessageFont", "/t", "REG_BINARY", "/d", messageFont, "/f"},
 		// The registry reaches the disk as the server ends.
 		{"wineserver", "-w"},
