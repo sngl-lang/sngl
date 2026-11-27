@@ -303,10 +303,8 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 		if !ok || nodeOf[p] == nil {
 			return nil
 		}
-		for _, b := range nodeOf[p].Bindings {
-			if b.PropName == sel.Field {
-				return boundThrough(b.Target, argOf[p])
-			}
+		if t := nodeOf[p].Binding(sel.Field); t != nil {
+			return boundThrough(t, argOf[p])
 		}
 		return nil
 	}

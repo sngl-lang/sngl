@@ -120,7 +120,7 @@ func hostReports(comp *ir.Component, p *ir.Prop) bool {
 		case *ir.Literal:
 			named = x.Value == p.Name
 		case *ir.NodeInst:
-			named = slices.ContainsFunc(x.Bindings, func(b ir.PropBinding) bool { return b.PropName == p.Name })
+			named = x.Binding(p.Name) != nil
 		}
 		if named {
 			return ir.SkipAll

@@ -854,17 +854,14 @@ func writeThroughHandle(m map[string]any, field string, val any) error {
 	if prop == nil {
 		return nil
 	}
-	for _, b := range inst.Bindings {
-		if b.PropName != field {
-			continue
-		}
+	if t := inst.Binding(field); t != nil {
 		owner, _ := m["__ownerEnv"].(*Env)
 		if owner == nil {
 			return nil
 		}
 		tmp := &ir.Param{Name: "__bound"}
 		owner.Set(tmp, val)
-		err := owner.execAssign(&ir.Assign{Target: b.Target, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
+		err := owner.execAssign(&ir.Assign{Target: t, Op: ast.AssignSet, Value: &ir.Ident{Name: tmp.Name, Sym: tmp}})
 		delete(owner.vals, tmp)
 		return err
 	}
