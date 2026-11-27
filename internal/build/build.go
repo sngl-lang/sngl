@@ -424,12 +424,16 @@ func dropTests(pkg *ir.Package) {
 
 // Refused is a program a target cannot build: it reaches something the
 // target's language writes nothing for. A test run skips it, as it does a
-// component the platform does not implement.
+// component the platform does not implement. It is the target declining a
+// valid program (ir.Declined), which is how the pipeline fuzzer tells it
+// from a fault.
 type Refused struct {
+	Target string // "platform/lang"
 	Reason string
 }
 
-func (r *Refused) Error() string { return r.Reason }
+func (r *Refused) Error() string      { return r.Reason }
+func (r *Refused) DeclinedBy() string { return r.Target }
 
 // Refuse is the first reason pkg cannot be built for target, or nil.
 func Refuse(pkg *ir.Package, target Target) error {
@@ -451,9 +455,9 @@ func refuseSQL(pkg *ir.Package, target Target) error {
 		}
 		switch {
 		case !implemented:
-			err = &Refused{fmt.Sprintf("the program queries a database, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program queries a database, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
 		case target.Lang == "kotlin" && ir.SQLEngine(c) != "" && ir.SQLEngine(c) != "sqlite":
-			err = &Refused{fmt.Sprintf("the program queries %s, and %s/%s reaches SQLite alone", ir.SQLEngine(c), target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program queries %s, and %s/%s reaches SQLite alone", ir.SQLEngine(c), target.Platform, target.Lang)}
 		}
 	})
 	return err
@@ -510,9 +514,9 @@ func refuseGRPC(pkg *ir.Package, target Target) error {
 		}
 		switch {
 		case ir.IsGRPC(c.Func):
-			err = &Refused{fmt.Sprintf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
 		case strings.HasPrefix(c.Func.Intrinsic, "async.queue"):
-			err = &Refused{fmt.Sprintf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
 		}
 	})
 	return err

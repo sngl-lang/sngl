@@ -66,8 +66,21 @@ func refuseBuildOnlyCalls(pkg *ir.Package, target Target, foldsViews bool) error
 	if sites[found] != nil {
 		return &ir.TargetDeclined{Target: target.Platform, Msg: d.Error() + "; " + describe(target) + " makes a view's calls as the program runs, where a static site makes them per document"}
 	}
-	return d
+	return &buildOnlyDeclined{d, target.Platform}
 }
+
+// buildOnlyDeclined is a call only the build can answer left where no view
+// holds it, which the program checked clean with: bubbletea's loop over a
+// site's const pages hands the parse a value the build does not have
+// (cmd/sngl/testdata/markdown_document_refused.txt). The build declines it,
+// at the position the diagnostic names, as it does one a view holds.
+type buildOnlyDeclined struct {
+	ir.Diagnostic
+	target string
+}
+
+func (e *buildOnlyDeclined) DeclinedBy() string { return e.target }
+func (e *buildOnlyDeclined) Unwrap() error      { return e.Diagnostic }
 
 // refuseStateIntoBuildCalls reports, where the program wrote it, an argument
 // that reads state and lands in a prop its component hands to a call only the

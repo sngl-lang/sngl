@@ -83,7 +83,7 @@ func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 		c := &compilation{ctx: codegen.NewCodegenCtx(req, "html"), frontendNatives: placement.frontend}
 		// Static mode has no server to host the route's POST handler.
 		if win, ok := backendHandlerWindow(req.Pkg); ok {
-			return fmt.Errorf("html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
+			return ir.Decline("html", "html: window %q has a server-side handler (calls a non-js: import) but the build target %q has no server — compile with a server language (e.g. --lang go) or wrap the call in html.frontend(...)", win, req.Lang.LanguageIdentifier())
 		}
 		m, err := c.BuildMutationModel(req, c.ctx.Analysis)
 		if err != nil {
