@@ -1,9 +1,13 @@
-# Go and Kotlin write a gRPC call: a target in another language refuses the
+# Go and Kotlin write a gRPC call: a target in another language, or one whose
+# program runs in another (html's browser JavaScript), refuses the
 # program before its generator has nothing to write for the call, and one
 # making the async.queue only a gRPC call reads.
 
 ! sngl generate --platform=html -o out app.sngl
 stderr 'the program calls a gRPC service, which html/none cannot yet: only the Go targets and android can'
+
+! sngl generate --platform=html --lang=go -o out app.sngl
+stderr 'the program calls a gRPC service, which html/go cannot yet: its program runs as js'
 
 ! sngl generate --platform=gtk4 --lang=c -o out app.sngl
 stderr 'which gtk4/c cannot yet'

@@ -447,7 +447,7 @@ func Refuse(pkg *ir.Package, target Target) error {
 // whose generator writes none, and on Kotlin one written for an engine but
 // SQLite, the one android carries.
 func refuseSQL(pkg *ir.Package, target Target) error {
-	implemented := codegen.LangImplements(target.Lang, ir.SQLQueryIntrinsic)
+	implemented := codegen.Implements(target.Platform, target.Lang, ir.SQLQueryIntrinsic)
 	var err error
 	reachedCalls(pkg, func(c *ir.Call) {
 		if err != nil || !ir.IsSQL(c.Func) {
@@ -455,7 +455,7 @@ func refuseSQL(pkg *ir.Package, target Target) error {
 		}
 		switch {
 		case !implemented:
-			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program queries a database, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program queries a database, which %s/%s cannot yet: %s", target.Platform, target.Lang, unimplementedWhy(target))}
 		case target.Lang == "kotlin" && ir.SQLEngine(c) != "" && ir.SQLEngine(c) != "sqlite":
 			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program queries %s, and %s/%s reaches SQLite alone", ir.SQLEngine(c), target.Platform, target.Lang)}
 		}
@@ -500,11 +500,20 @@ func reachedCalls(pkg *ir.Package, visit func(*ir.Call)) {
 	walk(pkg)
 }
 
+// unimplementedWhy says why target has no sql or gRPC: where its program
+// runs in a language of its own, that language has neither.
+func unimplementedWhy(target Target) string {
+	if r, ok := codegen.LookupPlatform(target.Platform).(codegen.ScriptRunner); ok && r.ScriptLang() != target.Lang && target.Lang != "none" {
+		return "its program runs as " + r.ScriptLang() + ", and only the Go targets and android can"
+	}
+	return "only the Go targets and android can"
+}
+
 // refuseGRPC refuses a program calling a gRPC service, or making the
 // async.queue only a gRPC call reads, on a language that writes neither yet,
 // which would otherwise reach the generator with nothing to emit for it.
 func refuseGRPC(pkg *ir.Package, target Target) error {
-	if codegen.LangImplements(target.Lang, ir.GRPCCallIntrinsic) {
+	if codegen.Implements(target.Platform, target.Lang, ir.GRPCCallIntrinsic) {
 		return nil
 	}
 	var err error
@@ -514,9 +523,9 @@ func refuseGRPC(pkg *ir.Package, target Target) error {
 		}
 		switch {
 		case ir.IsGRPC(c.Func):
-			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program calls a gRPC service, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program calls a gRPC service, which %s/%s cannot yet: %s", target.Platform, target.Lang, unimplementedWhy(target))}
 		case strings.HasPrefix(c.Func.Intrinsic, "async.queue"):
-			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program makes an async.queue, which %s/%s cannot yet: only the Go targets and android can", target.Platform, target.Lang)}
+			err = &Refused{target.Platform + "/" + target.Lang, fmt.Sprintf("the program makes an async.queue, which %s/%s cannot yet: %s", target.Platform, target.Lang, unimplementedWhy(target))}
 		}
 	})
 	return err
