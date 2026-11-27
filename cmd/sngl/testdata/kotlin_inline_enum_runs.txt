@@ -1,0 +1,65 @@
+# An inline enum (`weight enum { normal, bold }`, `var mode enum { light, dark }`)
+# has no name, and Kotlin declares every enum as a class: android printed
+# `enum class (` and `var weight:  = .NORMAL`, which did not compile. Kotlin
+# names one for its members, EnumLightDark, and two written alike are one
+# class.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --opt testRunner=robolectric app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+struct Appearance {
+    weight enum { normal, bold }
+}
+
+component panel ui.node {
+    var look = Appearance{weight=bold}
+    var mode enum { light, dark } = light
+    var other enum { light, dark } = dark
+
+    ui.text #shown(value=look.weight == bold ? "bold" : "normal")
+    ui.text #modes(value="{mode} {other}")
+    ui.button #thin(text="thin", @click {
+        look = Appearance{weight=normal}
+        mode = dark
+    })
+}
+
+func testInlineEnums(t test.Test, c panel) {
+    t.assert(c.shown.value == "bold")
+    t.assert(c.modes.value == "light dark")
+    c.thin.click()
+    t.assert(c.shown.value == "normal")
+    t.assert(c.modes.value == "dark dark")
+}
+
+ui.window {
+    panel
+}
+-- testrun/android/kotlin/app.sngl/panel/1 --
+sha256:fe8303f7ce4472f7bd3c41cbe5ddc2c8
+{
+  "results": [
+    {
+      "Desc": "InlineEnums",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/app.sngl/panel/1 --
+sha256:46f72878f84158aea5294ed8f5568c5f
+{
+  "results": [
+    {
+      "Desc": "InlineEnums",
+      "Passed": true
+    }
+  ]
+}

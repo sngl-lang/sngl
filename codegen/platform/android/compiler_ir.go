@@ -728,7 +728,14 @@ func emitIR(info *irAndroidAnalysis, ctx *codegen.CodegenCtx, cfg Config, testMo
 		body.WriteString(mf)
 	}
 
+	declaredEnums := map[string]bool{}
 	for _, ed := range info.Enums {
+		// Two inline enums written alike are one class (kotlin.EnumName).
+		name := kotlin.EnumName(ed)
+		if declaredEnums[name] {
+			continue
+		}
+		declaredEnums[name] = true
 		body.WriteString(kotlin.EnumDecl(ed))
 		body.WriteString("\n")
 	}
