@@ -212,7 +212,12 @@ and reused: the null driver needs no display, so `DISPLAY` is cleared and no
 window reaches a desktop, and with no window manager a window keeps the size
 the program gives it, where cage's Xwayland kept one at its creation size
 while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
-out of a failure's text. Each launch is recorded as any `sngl test` is
+out of a failure's text. The prefix pins the message font, which every text
+and control measures by, to 8pt Tahoma: Wine 11.22 defaults to 9pt where the
+Wine the records were first made under had 8pt, so the same program laid out
+13px lines on one host and 14px on the other. A change to the prefix's steps
+renames its directory (`wine-2`), so a branch with the old steps keeps its
+own prefix rather than running in, or remaking, the new one. Each launch is recorded as any `sngl test` is
 (`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures). Wine's Wayland
 driver (`HKCU\Software\Wine\Drivers\Graphics=wayland`) hung under cage
 until killed, and with no display and no null driver Wine hung too, which is
