@@ -5056,12 +5056,16 @@ func (c *checker) checkVisualNode(vn *ast.VisualNode) ir.Stmt {
 				return nil
 			}
 			if fn, ok := sym.(*ir.Func); ok {
-				// This is a function call, not a visual node.
-				props, _, _ := c.checkAndSplitArgs(vn.Args, nil)
-				var args []ir.CallArg
-				for _, p := range props {
-					args = append(args, ir.CallArg{Name: p.Name, Value: p.Value})
+				// This is a function call, not a visual node, and its
+				// arguments are checked against the function as any call's
+				// are: `async.do` alone is a call missing its argument.
+				// Written bare, the list has no position of its own, so
+				// what it is missing is reported at the name.
+				argList := vn.Args
+				if !vn.HasParens {
+					argList.Pos = vn.Pos
 				}
+				args := c.checkCallArgs(argList, fn.FuncSig())
 				if c.rejectCallInViewBody(vn.Pos, fn) {
 					return nil
 				}
