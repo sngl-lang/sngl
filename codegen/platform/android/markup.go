@@ -234,12 +234,7 @@ func (cc *irComposeContext) renderSpanFor(s *ir.For, dec decoration) {
 // nothing, which is what lets Compose merge the nesting.
 func (cc *irComposeContext) spanStyleExpr(n *ir.NodeInst, dec decoration) (string, decoration) {
 	var parts []string
-	themed := ""
-	if kind := enumMember(codegen.NodeProp(n, "kind")); kind != "" {
-		if role, ok := tokenColors[kind]; ok {
-			themed = cc.kc.Name(ktMaterialTheme) + ".colorScheme." + role
-		}
-	}
+	themed := cc.tokenColor(codegen.NodeProp(n, "kind"))
 	// A palette the program set wins over the scheme's role, and the unset
 	// color is the palette saying nothing -- at run time too, where the role
 	// is what `let` falls back to.
@@ -381,6 +376,45 @@ var tokenColors = map[string]string{
 	"constant": "tertiary",
 	"number":   "tertiary",
 	"comment":  "onSurfaceVariant",
+}
+
+// tokenColor is the scheme role a token's kind draws in, or "" for none. A
+// kind read at run time is a `when` over the enum, Unspecified for a kind
+// with no role, which leaves the enclosing span's color standing as a
+// literal kind with none does.
+func (cc *irComposeContext) tokenColor(kind ir.Expr) string {
+	if kind == nil {
+		return ""
+	}
+	scheme := cc.kc.Name(ktMaterialTheme) + ".colorScheme."
+	if m := enumMember(kind); m != "" {
+		if role, ok := tokenColors[m]; ok {
+			return scheme + role
+		}
+		return ""
+	}
+	ed, ok := kind.ExprType().Decl.(*ir.EnumDef)
+	if !ok || ed == nil {
+		return ""
+	}
+	var roles []string
+	members := map[string][]string{}
+	for _, m := range ed.Members {
+		role, ok := tokenColors[m.Name]
+		if !ok {
+			continue
+		}
+		if _, seen := members[role]; !seen {
+			roles = append(roles, role)
+		}
+		members[role] = append(members[role], cc.kc.EvalExpr(&ir.Ident{Member: m.Name, Type: kind.ExprType()}))
+	}
+	arms := make([]string, 0, len(roles)+1)
+	for _, role := range roles {
+		arms = append(arms, strings.Join(members[role], ", ")+" -> "+scheme+role)
+	}
+	arms = append(arms, "else -> "+composeColor(cc.kc)+".Unspecified")
+	return fmt.Sprintf("when (%s) { %s }", cc.kc.EvalExpr(kind), strings.Join(arms, "; "))
 }
 
 // enumMember names the member an enum-valued prop holds: an *ir.Ident carrying

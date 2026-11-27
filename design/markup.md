@@ -196,7 +196,8 @@ follows from the tree being rendered rather than written out:
   `markup.SpanStyle` handed over a field at a time (`spanStyleArgs`, the
   spec's `SetterArgs`) since the runtime has no type for it, and the flow
   rebuilds its segments. A token's kind read from data is the constructor's
-  `WithToken(r.Token)` (`testdata/fyne_markup_data_kind.txtar`), and one
+  `WithToken(r.Token)` (`testdata/markup_token_data_kind.txtar`, which also
+  holds bubbletea's and android's run-time lookups), and one
   reading state is `SetToken`. A
   write the constructor was built from is the constructor's only when it
   reads no state: one reading state is the same expression after the state
