@@ -18,6 +18,7 @@ import (
 	"golang.org/x/tools/txtar"
 
 	"duckfam.us/sngl/codegen"
+	"duckfam.us/sngl/codegen/testharness/snapshot"
 )
 
 // A Record is what one launch of a generated test program produced: its
@@ -65,6 +66,47 @@ func (r Record) format() []byte {
 	return fmt.Appendf(nil, "%s\n%s\n", r.Digest, body)
 }
 
+func writeSnapshots(dir string, rec Record) error {
+	for rel, data := range rec.Snapshots {
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(p, data, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sameRun holds a rerun to its record, a picture only as closely as a
+// snapshot assertion holds one: a font's antialiasing or a marquee's frame
+// moves a few pixels from run to run, and Wine from release to release.
+func sameRun(rerun, rec Record) bool {
+	if !bytes.Equal(rerun.withoutPictures().format(), rec.withoutPictures().format()) {
+		return false
+	}
+	for rel, data := range rerun.Snapshots {
+		if filepath.Ext(rel) != ".png" || bytes.Equal(data, rec.Snapshots[rel]) {
+			continue
+		}
+		if ok, _ := snapshot.PNGClose(rec.Snapshots[rel], data); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (r Record) withoutPictures() Record {
+	r.Snapshots = maps.Clone(r.Snapshots)
+	for rel := range r.Snapshots {
+		if filepath.Ext(rel) == ".png" {
+			r.Snapshots[rel] = nil
+		}
+	}
+	return r
+}
+
 // Written returns every record reached this run, keyed by archive name.
 func (rr *Records) Written() map[string]Record {
 	rr.mu.Lock()
@@ -97,14 +139,8 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 	matched := recorded && have.Digest == want
 	if matched && !rr.verify {
 		rr.keep(name, have)
-		for rel, data := range have.Snapshots {
-			p := filepath.Join(snapDir, rel)
-			if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-				return nil, err
-			}
-			if err := os.WriteFile(p, data, 0o644); err != nil {
-				return nil, err
-			}
+		if err := writeSnapshots(snapDir, have); err != nil {
+			return nil, err
 		}
 		return cloneResults(have.Results), nil
 	}
@@ -145,10 +181,11 @@ func (rr *Records) answer(key, genDir, snapDir string, launch func() ([]*codegen
 	}
 	if !rr.update {
 		rr.keep(name, have)
-		if !bytes.Equal(rec.format(), have.format()) {
+		if !sameRun(rec, have) {
 			return nil, fmt.Errorf("%s: a rerun disagrees with the record:\n%s\nrerun its test with -update -- `go tool verify -update` rerecords every package's", name, rec.format())
 		}
-		return results, err
+		// A later launch asserting against this picture digests it.
+		return results, writeSnapshots(snapDir, have)
 	}
 	rr.keep(name, rec)
 	return results, err

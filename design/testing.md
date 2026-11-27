@@ -63,6 +63,11 @@ naming `-update`; `go test ./cmd/sngl -run TestScript/<name> -update` reruns
 those launches for real, refuses to record one the host cannot run, and
 rewrites the records, while `-verify` reruns every launch whatever its record
 says, as a golden's does -- a toolchain or browser upgrade moves no digest.
+A rerun's PNG is held to its record within a snapshot assertion's tolerance
+(`snapshot.PNGClose`), and the recorded picture is what it leaves on disk, since
+a later launch asserting against it digests it: a marquee's frame and a font's
+antialiasing move a few pixels between runs, which failed win32's controls
+script one run in two.
 The digest does not cover `pkg/<lang>/` runtimes, which the generated program
 imports from the checkout -- a change there wants a `-verify` the digest will
 not ask for, the same gap a golden's record has.
@@ -215,7 +220,13 @@ while Wine laid it out at another. `WINEDEBUG=-all` keeps Wine's diagnostics
 out of a failure's text. The prefix pins the message font, which every text
 and control measures by, to 8pt Tahoma: Wine 11.22 defaults to 9pt where the
 Wine the records were first made under had 8pt, so the same program laid out
-13px lines on one host and 14px on the other. A change to the prefix's steps
+13px lines on one host and 14px on the other. The pin is for the snapshots,
+whose pictures are compared within 0.5%: the scripts asserting geometry do not
+need it, since each writes what text measures in the font's own metrics (a
+line `L`, a string's width `[text]`) and a window's place as its gap past its
+sibling, so any font passes them and only a change to what layout adds fails
+them (`c_win32_layout_runs.txt`, its dumps held to templates by `peek_want`,
+and `c_win32_procs_runs.txt`'s DPI change). A change to the prefix's steps
 renames its directory (`wine-2`), so a branch with the old steps keeps its
 own prefix rather than running in, or remaking, the new one. Each launch is recorded as any `sngl test` is
 (`cmd/sngl/testdata/c_win32_test_runs.txt`, both architectures). Wine's Wayland

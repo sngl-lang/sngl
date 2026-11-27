@@ -101,11 +101,23 @@ func mimeExt(mime string) (string, bool) {
 // affect far more pixels).
 const pngMaxDiffPct = 0.5
 
-// pngMatch decodes two PNG images and compares them with a pixel-count
-// tolerance. Returns (true, "") when the fraction of differing pixels is
-// below pngMaxDiffPct. On failure it saves debug copies to os.TempDir()
-// and returns a diagnostic diff string.
+// pngMatch is PNGClose, saving debug copies to os.TempDir() on failure.
 func pngMatch(goldenPath string, goldenBytes, actualBytes []byte) (bool, string) {
+	ok, diff := PNGClose(goldenBytes, actualBytes)
+	if ok {
+		return true, ""
+	}
+	base := strings.TrimSuffix(filepath.Base(goldenPath), filepath.Ext(goldenPath))
+	dbgGolden := filepath.Join(os.TempDir(), "sngl-snap-golden-"+base+".png")
+	dbgActual := filepath.Join(os.TempDir(), "sngl-snap-actual-"+base+".png")
+	_ = os.WriteFile(dbgGolden, goldenBytes, 0o644)
+	_ = os.WriteFile(dbgActual, actualBytes, 0o644)
+	return false, fmt.Sprintf("%s\ngolden: %s\nactual: %s", diff, dbgGolden, dbgActual)
+}
+
+// PNGClose reports whether two PNGs are the same size and differ in at most
+// pngMaxDiffPct of their pixels, and otherwise how they differ.
+func PNGClose(goldenBytes, actualBytes []byte) (bool, string) {
 	decodeImg := func(data []byte) (image.Image, error) {
 		img, _, err := image.Decode(bytes.NewReader(data))
 		return img, err
@@ -153,17 +165,10 @@ func pngMatch(goldenPath string, goldenBytes, actualBytes []byte) (bool, string)
 	if diffPct <= pngMaxDiffPct {
 		return true, ""
 	}
-	// Save debug copies so failures can be inspected.
-	base := strings.TrimSuffix(filepath.Base(goldenPath), filepath.Ext(goldenPath))
-	dbgGolden := filepath.Join(os.TempDir(), "sngl-snap-golden-"+base+".png")
-	dbgActual := filepath.Join(os.TempDir(), "sngl-snap-actual-"+base+".png")
-	_ = os.WriteFile(dbgGolden, goldenBytes, 0o644)
-	_ = os.WriteFile(dbgActual, actualBytes, 0o644)
 	return false, fmt.Sprintf(
-		"PNG pixels differ: %d/%d pixels (%.2f%% > %.1f%% threshold), maxDelta=%.0f/65535, avgDelta=%.0f/65535\ngolden: %s\nactual: %s",
+		"PNG pixels differ: %d/%d pixels (%.2f%% > %.1f%% threshold), maxDelta=%.0f/65535, avgDelta=%.0f/65535",
 		diffCount, total, diffPct, pngMaxDiffPct,
 		maxDelta, totalDelta/float64(diffCount),
-		dbgGolden, dbgActual,
 	)
 }
 
