@@ -13,7 +13,8 @@ import (
 // the program's c.links ship and the dispatchers its C callbacks cross
 // through. Every caller generating a program to build goes through it, so a
 // build, a test's launch and a dump hold the same files.
-func Generate(plat PlatformGenerator, req *Request, sink Sink) error {
+func Generate(plat PlatformGenerator, req *Request, sink Sink) (err error) {
+	defer recoverUnemitted(&err)
 	cc, ok := req.Lang.(CCompiler)
 	if !ok {
 		return plat.Generate(req, sink)

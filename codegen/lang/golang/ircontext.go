@@ -1281,7 +1281,7 @@ func (gc *GoIRContext) evalCall(n *ir.Call) string {
 			return gc.FreeFuncName(fname) + "(" + strings.Join(args, ", ") + ")"
 		}
 
-		codegen.RequireIntrinsicFallback(langGo, n.Func)
+		codegen.RequireIntrinsicFallback(langGo, n)
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
@@ -1470,7 +1470,7 @@ func (gc *GoIRContext) evalNamespaceCall(n *ir.Call) string {
 			return result
 		}
 
-		codegen.RequireIntrinsicFallback(langGo, n.Func)
+		codegen.RequireIntrinsicFallback(langGo, n)
 		return receiver + "." + fname + "(" + strings.Join(args, ", ") + ")"
 	}
 
@@ -1578,7 +1578,7 @@ func (gc *GoIRContext) evalTypeMethodCall(n *ir.Call) string {
 		return goName + "(" + strings.Join(gc.withModelArg(n.Func, args), ", ") + ")"
 	}
 
-	codegen.RequireIntrinsicFallback(langGo, n.Func)
+	codegen.RequireIntrinsicFallback(langGo, n)
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}

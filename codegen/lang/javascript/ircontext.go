@@ -727,7 +727,7 @@ func (jc *JsIRContext) evalCall(n *ir.Call) string {
 	if n.Func != nil {
 		fname := n.Func.Name
 		args := jc.evalCallArgs(n.Args)
-		codegen.RequireIntrinsicFallback(langJS, n.Func)
+		codegen.RequireIntrinsicFallback(langJS, n)
 		call := fname + "(" + strings.Join(args, ", ") + ")"
 		if n.Func.IsAsync && !n.Detached {
 			call = "await " + call
@@ -877,7 +877,7 @@ func (jc *JsIRContext) evalQualifiedCall(n *ir.Call) (string, bool) {
 		return "", false
 	}
 	// A native import JavaScript does not call here: named through its alias.
-	codegen.RequireIntrinsicFallback(langJS, n.Func)
+	codegen.RequireIntrinsicFallback(langJS, n)
 	call := qualName + "(" + strings.Join(args, ", ") + ")"
 	if n.Func.IsAsync && !n.Detached {
 		call = "await " + call
@@ -918,7 +918,7 @@ func (jc *JsIRContext) evalNamespaceCall(n *ir.Call) string {
 		// type-method path uses).
 		// Nothing above recognized it, so this is the generic emission and
 		// the same guard the other paths carry applies.
-		codegen.RequireIntrinsicFallback(langJS, n.Func)
+		codegen.RequireIntrinsicFallback(langJS, n)
 		var call string
 		if jc.Ctx != nil && jc.Ctx.Pkg != nil && jc.userFuncMatches(receiverName, fname) {
 			jsName := strings.ReplaceAll(qualName, ".", "_")
@@ -1012,7 +1012,7 @@ func (jc *JsIRContext) evalTypeMethodCall(n *ir.Call) string {
 		}
 	}
 
-	codegen.RequireIntrinsicFallback(langJS, n.Func)
+	codegen.RequireIntrinsicFallback(langJS, n)
 	if len(args) >= 1 {
 		recv := args[0]
 		rest := args[1:]

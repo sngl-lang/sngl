@@ -183,7 +183,7 @@ func buildDocPlans(docs []codegen.BatchDoc) ([]docPlan, error) {
 // bytes.
 func generateDocMainScreen(g *Generator, p docPlan) ([]byte, error) {
 	mem := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{
+	if err := codegen.Generate(g, &codegen.Request{
 		Pkg:  p.doc.Pkg,
 		Lang: p.doc.Lang,
 		Options: codegen.OptionsFromMap(map[string]any{
