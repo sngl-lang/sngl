@@ -398,7 +398,7 @@ func snapshot(t *testing.T, src string, width, height int) image.Image {
 		lang := codegen.LookupLang(id)
 		// What Snapshot generates and builds.
 		sink := codegen.NewMemSink()
-		if err := g.Generate(&codegen.Request{Pkg: results[0].Pkg, Lang: lang, Options: codegen.OptionsFromMap(map[string]any{"snapshot": true})}, sink); err != nil {
+		if err := codegen.Generate(g, &codegen.Request{Pkg: results[0].Pkg, Lang: lang, Options: codegen.OptionsFromMap(map[string]any{"snapshot": true})}, sink); err != nil {
 			t.Fatal(err)
 		}
 		entry, call := "main.c", "sngl_win32_snapshot(argv[1]"
