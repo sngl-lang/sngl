@@ -66,14 +66,6 @@ func lowerHandleParams(pkg *ir.Package, _ Features, _ Options) error {
 			if t := st.boundTarget(x.Target); t != nil {
 				x.Target = t
 			}
-		case *ir.Select:
-			// A read through the node's own `#id` reads what the node binds
-			// the prop to: `t.selected` under `:selected=sel` is `sel`.
-			if _, ok := x.Operand.(*ir.Ident); ok {
-				if t := st.boundTarget(x); t != nil {
-					return t, ir.SkipDir
-				}
-			}
 		case *ir.CallStmt:
 			body, ok, err := st.inline(x.Call)
 			if err != nil || !ok {

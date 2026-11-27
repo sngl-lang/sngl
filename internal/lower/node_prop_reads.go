@@ -267,12 +267,7 @@ func propHolds(n *ir.NodeInst, field string) ir.Expr {
 		if !p.Bidirectional {
 			return nodePropExpr(n, field)
 		}
-		for _, b := range n.Bindings {
-			if b.PropName == field {
-				return b.Target
-			}
-		}
-		return nil
+		return n.Binding(field)
 	}
 	return nil
 }
@@ -1113,11 +1108,9 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 			own[p.Sym] = true
 		}
 	}
-	nodes := map[ir.Symbol]*ir.NodeInst{}
 	ir.WalkView(comp.Stmts, func(s ir.Stmt) bool {
 		if n, ok := s.(*ir.NodeInst); ok && n.Handle != nil {
 			own[n.Handle] = true
-			nodes[n.Handle] = n
 		}
 		return true
 	})
@@ -1158,18 +1151,6 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 			out.Args = args
 			return &out
 		}
-		// A two-way prop read through the body's own handle is what the node
-		// binds it to, as passHandleParams makes it in the body.
-		if sel, ok := x.(*ir.Select); ok {
-			if t := boundProp(sel, nodes); t != nil {
-				v := rebaseKeeping(ir.CloneExprSharingDecls(t), comp, inst, env, keep)
-				if v == nil {
-					unnamed = true
-					return x
-				}
-				return v
-			}
-		}
 		id, ok := x.(*ir.Ident)
 		if !ok || id.Sym == nil {
 			return x
@@ -1198,14 +1179,4 @@ func rebaseKeeping(e ir.Expr, comp *ir.Component, inst ir.Expr, env map[ir.Symbo
 		return nil
 	}
 	return out
-}
-
-// boundProp is what sel, a prop read through the handle of one of nodes,
-// reads where the node binds the prop, or nil.
-func boundProp(sel *ir.Select, nodes map[ir.Symbol]*ir.NodeInst) ir.Expr {
-	id, ok := sel.Operand.(*ir.Ident)
-	if !ok || id.Sym == nil {
-		return nil
-	}
-	return nodes[id.Sym].Binding(sel.Field)
 }

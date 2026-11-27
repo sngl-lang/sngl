@@ -1,14 +1,9 @@
 # A two-way prop the call site binds, read through the node's `#id`, reads
-# what it is bound to: `t.selected` under `:selected=sel` is `sel`
-# (passHandleParams, as a write through the handle already was). Left
-# standing, bubbletea read a widget field the binding never declared
-# (`m.t__r0.Selected`, `m.f`), fyne asked its container for it, and html's
-# test read nothing. A handler reads the value its report wrote, which the
-# interpreter read off the handle as the node last rendered it.
-#
-# The test reaches each grid's copy through the text that reads the table,
-# whose answer rebased on the instance is the bound var too (rebaseKeeping):
-# read as the table off the instance, it named a grid no Go target keeps.
+# what it is bound to: `t.selected` under `:selected=sel` is `sel` (propHolds
+# on the targets, readThroughHandle in the interpreter). A handler reads the
+# value its report wrote, which the interpreter read off the handle as the
+# node last rendered it. A table under two loops, reached from the test
+# through the text that reads it, is the shape that first broke on bubbletea.
 
 sngl test --platform=none app.sngl
 stdout 'ok +3 tests, 0 failures'

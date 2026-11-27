@@ -1252,13 +1252,13 @@ state the prop reads instead.
 writes -- a checkbox reports its clicks through it -- so a write from the
 program is one more writer of that cell and lands where the host's report does.
 `passHandleParams` makes `bound.checked = false` under `:checked=shown` a write
-of `shown`, and a read of `bound.checked` directly through its `#id` a read of it, which bubbletea and
-fyne otherwise emitted as a widget field nothing declared
-(`cmd/sngl/testdata/two_way_prop_read_through_id_runs.txt`); and it inlines a call handing a handle to a function that writes one
+of `shown`, and inlines a call handing a handle to a function that writes one
 through the parameter (`details.open()`); an unbound one is left to
 `passImplicitState`, which names the instance's cell. The interpreter writes
 and reads through the handle the same way (`writeThroughHandle`, a toggle
-through one, and `readThroughHandle`). `testdata/node_prop_write_two_way.sngl` runs it, `.txtar` is the code on
+through one, and `readThroughHandle`, without which a handler of the report
+read the value the node last rendered:
+`cmd/sngl/testdata/two_way_prop_read_through_id_runs.txt`). `testdata/node_prop_write_two_way.sngl` runs it, `.txtar` is the code on
 all six targets, and `error_node_prop_assign.sngl` is the one-way half.
 
 What a *lowering* writes is untouched, and is how a prop reaches a host at all:
