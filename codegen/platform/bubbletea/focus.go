@@ -220,7 +220,7 @@ func emitLoopSlotHandlers(b *strings.Builder, f *ir.For, temps []ir.Stmt, info *
 							fmt.Fprintf(&body, "%s%s\n", strings.Repeat("\t", w.indent+1), l)
 						}
 					}
-					syncMutatedInputs(&body, block, info.widgets, info.binds, gc)
+					syncMutatedInputs(&body, block, info)
 					w.b.WriteString(body.String())
 					w.line("\treturn")
 					w.line("}")

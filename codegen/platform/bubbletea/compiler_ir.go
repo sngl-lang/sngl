@@ -245,6 +245,7 @@ func emitSnapshotMethods(info *irAnalysis) (string, []string) {
 
 type irAnalysis struct {
 	*codegen.CommonAnalysis
+	deps *codegen.DepTracker
 	// tests is whether the package holds a test, whose invokers are its own:
 	// a build to ship holds none, and writes none of them.
 	tests     bool
@@ -326,6 +327,7 @@ func analyzeIR(ctx *codegen.CodegenCtx) *irAnalysis {
 	gc.OffLoop = &golang.OffLoopSnapshots{}
 	info := &irAnalysis{
 		CommonAnalysis: ctx.Analysis,
+		deps:           ctx.Deps,
 		gc:             gc,
 		tests:          codegen.BuildsTests(ctx.Pkg),
 	}
@@ -1330,7 +1332,7 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, temps map[*ir
 		for _, line := range handlerLines(gc, block) {
 			fmt.Fprintf(b, "\t\t\t%s\n", line)
 		}
-		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
+		syncMutatedInputs(b, block, info)
 	}
 
 	for _, s := range stmts {
@@ -1599,7 +1601,7 @@ func emitBtDirectInvokers(b *strings.Builder, stmts []ir.Stmt, keyed []btEventIn
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
-			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			syncMutatedInputs(b, h.Func.Block, info)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 		}
@@ -1805,7 +1807,7 @@ func emitWidgetPayloadHandlers(b *strings.Builder, info *irAnalysis, gc *golang.
 					fmt.Fprintf(b, "\t%s\n", line)
 				}
 			}
-			syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+			syncMutatedInputs(b, h.Func.Block, info)
 			drawAfterUpdate(b)
 			b.WriteString("}\n\n")
 			if w.node.ID == "" || strings.HasPrefix(w.node.ID, "__n") || !info.tests {
@@ -1933,16 +1935,16 @@ func nodeFocusSlotIdx(n *ir.NodeInst) int {
 	return id
 }
 
-func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, widgets []widgetInfo, binds []irBind, gc *golang.GoIRContext) {
+func syncMutatedInputs(b *strings.Builder, stmts []ir.Stmt, info *irAnalysis) {
 	mutated := make(map[string]bool)
 	for _, stmt := range stmts {
-		for v := range codegen.MutatedFields(nil, nil, stmt) {
+		for v := range codegen.MutatedFields(nil, info.deps, stmt) {
 			mutated[v.SymName()] = true
 		}
 	}
-	for _, w := range widgets {
+	for _, w := range info.widgets {
 		for _, bd := range w.binds {
-			if mutated[bd.target] && bindTargetSyncs(binds, bd.target) && bd.set != "" {
+			if mutated[bd.target] && bindTargetSyncs(info.binds, bd.target) && bd.set != "" {
 				fmt.Fprintf(b, "\t\t\tm.%s%s(m.%s)\n", w.fieldName, bd.set, bd.target)
 			}
 		}
@@ -2041,7 +2043,7 @@ func emitScreenBack(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext
 	for _, line := range handlerLines(gc, h.Func.Block) {
 		fmt.Fprintf(b, "\t\t\t%s\n", line)
 	}
-	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	syncMutatedInputs(b, h.Func.Block, info)
 }
 
 // screenKeyMethod is the Model method running the window's `@key`.
@@ -2171,7 +2173,7 @@ func emitScreenKeyMethod(b *strings.Builder, info *irAnalysis, gc *golang.GoIRCo
 		}
 	}
 	b.WriteString("\t}()\n")
-	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	syncMutatedInputs(b, h.Func.Block, info)
 	b.WriteString("\treturn __stopped\n")
 	b.WriteString("}\n\n")
 }
@@ -2184,7 +2186,7 @@ func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysi
 	for _, line := range handlerLines(gc, h.Func.Block) {
 		fmt.Fprintf(b, "%s%s\n", indent, line)
 	}
-	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
+	syncMutatedInputs(b, h.Func.Block, info)
 }
 
 // accessor is the name of bind's getter, and its setter, Msg and Cmd after it;

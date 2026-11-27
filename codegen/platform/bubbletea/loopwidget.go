@@ -235,7 +235,7 @@ func emitCopyHandler(vw *viewWalk, h *ir.EventHandler, value string, info *irAna
 		vw.line("%s", l)
 	}
 	var sync strings.Builder
-	syncMutatedInputs(&sync, h.Func.Block, info.widgets, info.binds, hgc)
+	syncMutatedInputs(&sync, h.Func.Block, info)
 	for l := range strings.SplitSeq(strings.TrimRight(sync.String(), "\n"), "\n") {
 		if l = strings.TrimSpace(l); l != "" {
 			vw.line("%s", l)
