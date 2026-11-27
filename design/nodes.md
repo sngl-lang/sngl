@@ -1271,8 +1271,10 @@ program is one more writer of that cell and lands where the host's report does.
 of `shown`, and inlines a call handing a handle to a function that writes one
 through the parameter (`details.open()`); an unbound one is left to
 `passImplicitState`, which names the instance's cell. The interpreter writes
-through the handle the same way (`writeThroughHandle`, and a toggle through
-one). `testdata/node_prop_write_two_way.sngl` runs it, `.txtar` is the code on
+and reads through the handle the same way (`writeThroughHandle`, a toggle
+through one, and `readThroughHandle`, without which a handler of the report
+read the value the node last rendered:
+`cmd/sngl/testdata/two_way_prop_read_through_id_runs.txt`). `testdata/node_prop_write_two_way.sngl` runs it, `.txtar` is the code on
 all six targets, and `error_node_prop_assign.sngl` is the one-way half.
 
 What a *lowering* writes is untouched, and is how a prop reaches a host at all:

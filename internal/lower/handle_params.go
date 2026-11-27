@@ -94,14 +94,8 @@ func (st *handleParams) boundTarget(target ir.Expr) ir.Expr {
 	if !ok {
 		return nil
 	}
-	n := st.handleOf(sel.Operand)
-	if n == nil {
-		return nil
-	}
-	for _, b := range n.Bindings {
-		if b.PropName == sel.Field {
-			return ir.CloneExprSharingDecls(b.Target)
-		}
+	if t := st.handleOf(sel.Operand).Binding(sel.Field); t != nil {
+		return ir.CloneExprSharingDecls(t)
 	}
 	return nil
 }
@@ -301,10 +295,8 @@ func (st *handleParams) inline(call *ir.Call) ([]ir.Stmt, bool, error) {
 		if !ok || nodeOf[p] == nil {
 			return nil
 		}
-		for _, b := range nodeOf[p].Bindings {
-			if b.PropName == sel.Field {
-				return boundThrough(b.Target, argOf[p])
-			}
+		if t := nodeOf[p].Binding(sel.Field); t != nil {
+			return boundThrough(t, argOf[p])
 		}
 		return nil
 	}
