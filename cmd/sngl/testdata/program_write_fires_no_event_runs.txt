@@ -9,8 +9,8 @@
 # or radio fired its change for a write and reported it as the user's.
 #
 # Typing into a field fires its @input and not its @change, which is the
-# commit's: android fired both from every keystroke. bubbletea's textarea has
-# no commit, so notes.sngl, which commits one, does not run there.
+# commit's: android fired both from every keystroke. bubbletea's textarea had
+# no commit, so a test committing one named an invoker it never wrote.
 
 sngl test --platform=none app.sngl
 stdout 'ok   5 tests, 0 failures'
@@ -34,6 +34,9 @@ sngl test --platform=none notes.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=html notes.sngl
+stdout 'ok   1 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go notes.sngl
 stdout 'ok   1 tests, 0 failures'
 
 sngl test --platform=fyne --language=go notes.sngl
@@ -192,7 +195,7 @@ sha256:169f9126d76978829a308e9bdecac58f
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:b17dd1543af96fd0975d2a840417eb56
+sha256:284615ed0e24bdb9ca3a3c7ff5aa5b4f
 {
   "results": [
     {
@@ -213,6 +216,16 @@ sha256:b17dd1543af96fd0975d2a840417eb56
     },
     {
       "Desc": "TypingNotesFiresOnce",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/notes.sngl/main/1 --
+sha256:4431dbcf485b06f282578813d544c29f
+{
+  "results": [
+    {
+      "Desc": "CommittingFiresChange",
       "Passed": true
     }
   ]

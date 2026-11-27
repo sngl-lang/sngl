@@ -948,6 +948,14 @@ moves the focus, presses Done and a hardware Enter and removes a field; a
 test's `submit` is the keyboard's action. The `change` trigger writes the value
 and emits, as fyne's invoker does.
 
+bubbletea's textarea, where Enter is a line of the text, commits the same way
+(`commitsOnBlur`): an Update that changes the forwarded widget's value marks it
+edited, and the focus sync that blurs it commits a marked one. A program's
+write reaches the widget through `SetValue`, never Update, so marks nothing.
+A loop's copies share one field and do not commit. The `change` trigger was an
+invoker nobody wrote (`program_write_fires_no_event_runs.txt`), and
+`codegen/platform/bubbletea/textarea_commit_run_test.go` tabs away from one.
+
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
 gtk4 sets the widget's state (which fires the signal) or its text; fyne calls
