@@ -58,7 +58,7 @@ sha256:cb5ab826d1f44d35815942f837681849
   ]
 }
 -- testrun/android/kotlin/app.sngl/Tour/1 --
-sha256:8cd1a52210fdaafc5db653590c3e2a49
+sha256:fa277777bae5bfd559aeaf190205b1df
 {
   "results": [
     {

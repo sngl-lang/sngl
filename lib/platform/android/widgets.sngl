@@ -360,8 +360,8 @@ func ui.select[T].change[platform](value) {
     choose(ui.choiceLabel(options, value))
 }
 
-// The text is committed at Shift+Enter, as fyne's multi-line entry is, since
-// Enter is a line of it.
+// The text is committed as the focus leaves it, as html's and win32's are,
+// since Enter is a line of it.
 const component ui.textarea[platform](value, style, @input, @change) {
     func commit(v string) {
         value = v
@@ -370,7 +370,7 @@ const component ui.textarea[platform](value, style, @input, @change) {
     OutlinedTextField(
         value = value,
         minLines = 3,
-        modifier = modifierOf(style, flexShare).snglCommitsOnShiftEnter(func() { commit(value) }),
+        modifier = modifierOf(style, flexShare).snglCommitsOnBlur(value, func() { commit(value) }),
         onValueChange = func(v) {
             value = v
             input(v)
@@ -378,7 +378,7 @@ const component ui.textarea[platform](value, style, @input, @change) {
     ) {}
 }
 
-// A test commits as Shift+Enter does.
+// A test commits as the focus leaving does.
 func ui.textarea.change[platform](value) {
     commit(value)
 }

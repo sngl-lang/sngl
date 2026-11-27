@@ -934,10 +934,11 @@ puts the value in place first and emits the signal itself (`_rtFireDay`).
 
 **A field's `@change` is its commit, never an edit.** android's
 `onValueChange` reports `@input` alone; `ui.input` commits at the keyboard's
-Done (`KeyboardActions.onDone`) and `ui.textarea` at a hardware Shift+Enter
-(`snglCommitsOnShiftEnter`, `commits.kt`), as fyne's multi-line entry submits,
-since Enter is a line of it. A test commits through each override's `change`
-trigger, which calls the commit the key does. android fired `@change` from
+Done (`KeyboardActions.onDone`) and `ui.textarea` as the focus leaves it
+(`snglCommitsOnBlur`, `blurcommit.kt`), as html's and win32's do, since Enter
+is a line of it; only a text changed since the focus arrived commits, as
+html's `change` event does. A test commits through each override's `change`
+trigger, which calls the commit the field does. android fired `@change` from
 every keystroke (`program_write_fires_no_event_runs.txt`).
 
 A test's trigger reaches the platform's input path: html writes the

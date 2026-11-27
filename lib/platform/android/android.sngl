@@ -712,12 +712,12 @@ const func keyboardOptionsOf(imeAction ImeAction) KeyboardOptions
 #[kt.native("KeyboardActions", "androidx.compose.foundation.text.KeyboardActions", named)]
 const func keyboardActionsOf(onDone func()) KeyboardActions
 
-// Calls `onCommit` at a hardware Shift+Enter in the field it is put on, which
-// the field then does not type. Kotlin the platform ships
-// (codegen/platform/android/commits.kt), since Compose says it in a lambda
-// reading the key event's fields.
-#[kt.native("snglCommitsOnShiftEnter", "", method)]
-const func Modifier.snglCommitsOnShiftEnter(onCommit func()) Modifier
+// Calls `onCommit` as the focus leaves the field it is put on, if `text` has
+// changed since the focus arrived. Kotlin the platform ships
+// (codegen/platform/android/blurcommit.kt), since what the field held at focus
+// is state of the modifier's own.
+#[kt.native("snglCommitsOnBlur", "", method)]
+const func Modifier.snglCommitsOnBlur(text string, onCommit func()) Modifier
 
 // A field a date is typed into, with a button opening Material's date picker.
 // It is Kotlin the platform ships with the app (codegen/platform/android/

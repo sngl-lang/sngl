@@ -10,8 +10,8 @@ import (
 )
 
 // dateFieldKt is SnglDateField's source, scrollKt SnglScroll's, pagerKt
-// SnglPager's, gridKt SnglGrid's, choosesKt snglChooses's, commitsKt
-// snglCommitsOnShiftEnter's, flexShareKt snglFlexShare's,
+// SnglPager's, gridKt SnglGrid's, choosesKt snglChooses's, blurCommitKt
+// snglCommitsOnBlur's, flexShareKt snglFlexShare's,
 // flexibleKt snglFlexible's and snglFlexed's, and appbarKt SnglAppBar's with
 // the menu's composables.
 //
@@ -30,8 +30,8 @@ var gridKt string
 //go:embed chooses.kt
 var choosesKt string
 
-//go:embed commits.kt
-var commitsKt string
+//go:embed blurcommit.kt
+var blurCommitKt string
 
 //go:embed appbar.kt
 var appbarKt string
@@ -65,7 +65,7 @@ var shippedComposables = []struct {
 	{intrinsic: intrinsicNS + "SnglPager", name: "SnglPager", src: pagerKt},
 	{intrinsic: intrinsicNS + "SnglGrid", name: "SnglGrid", src: gridKt},
 	{call: "snglChooses", name: "SnglChooses", src: choosesKt},
-	{call: "snglCommitsOnShiftEnter", name: "SnglCommits", src: commitsKt},
+	{call: "snglCommitsOnBlur", name: "SnglBlurCommit", src: blurCommitKt},
 	{intrinsic: intrinsicNS + "Screen", name: "SnglAppBar", src: appbarKt},
 	{call: flexShareName, name: "SnglFlexShare", src: flexShareKt},
 	{intrinsic: intrinsicNS + "SnglScroll", call: "snglFlexible", name: "SnglFlexible", src: flexibleKt},

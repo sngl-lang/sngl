@@ -15,9 +15,9 @@ sngl generate --platform=android --lang=kotlin --out=out app.sngl
 # text Compose passed, which is the event's own parameter and which the
 # handler reads. Its `value` is one-way, so the field shows a remembered cell
 # of its own that starts at `notes`, and the callback writes the cell before
-# the handler writes `notes`. Its commit is Shift+Enter, put on the modifier.
+# the handler writes `notes`. Its commit is the focus leaving, put on the modifier.
 grep 'var value__inst0 by remember \{ mutableStateOf\(notes\) \}' out/MainScreen.kt
-grep 'OutlinedTextField\(value = value__inst0, minLines = 3, modifier = Modifier\.snglCommitsOnShiftEnter\(' out/MainScreen.kt
+grep 'OutlinedTextField\(value = value__inst0, minLines = 3, modifier = Modifier\.snglCommitsOnBlur\(' out/MainScreen.kt
 grep '\}\)\.safeDrawingPadding\(\), onValueChange = \{ v ->' out/MainScreen.kt
 grep 'value__inst0 = v$' out/MainScreen.kt
 grep 'notes = v$' out/MainScreen.kt
