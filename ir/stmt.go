@@ -174,6 +174,20 @@ func (n *NodeInst) Prop(name string) Expr {
 	return nil
 }
 
+// Binding is what the call site bound the two-way prop name to, or nil where
+// it left the prop unbound. Nil-safe on the receiver.
+func (n *NodeInst) Binding(name string) Expr {
+	if n == nil {
+		return nil
+	}
+	for _, b := range n.Bindings {
+		if b.PropName == name {
+			return b.Target
+		}
+	}
+	return nil
+}
+
 // SlotContent is what a call site supplies for one named slot. Params are the
 // caller's own names for the insertion's arguments, matched by position.
 type SlotContent struct {

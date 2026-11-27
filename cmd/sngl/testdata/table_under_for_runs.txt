@@ -5,20 +5,22 @@
 # copy accessor took the cell's value only for a widget whose value it syncs,
 # which a table is not, while every call handed it the cell: `too many
 # arguments in call to m.widget0Copy`. The call and the accessor now ask one
-# question (copyTakesValue).
+# question (copyTakesValue). The table is also written under an indexed loop
+# with its rows under a `for` and an `if`, and in a component rendered under
+# two loops, each of which met the same error.
 
 sngl test --platform=none app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=html app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=bubbletea --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=fyne --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=gtk4 --language=go app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 sngl test --platform=android --language=kotlin app.sngl
-stdout 'ok +1 tests, 0 failures'
+stdout 'ok +3 tests, 0 failures'
 
 -- app.sngl --
 import test "sngl:test"
@@ -35,8 +37,51 @@ component groups ui.node {
     }
 }
 
+component indexed ui.node {
+    var groups = [["a", "b"], ["c"]]
+
+    for var i, g = groups {
+        ui.text #at(value="{i}")
+        ui.table(columns=["name"]) {
+            for var c = g {
+                if c != "b" {
+                    ui.tableRow(cells=[c])
+                }
+            }
+        }
+    }
+    ui.button #add(text="add", @click { groups.push(["d"]) })
+}
+
+component grid(cells list[string]) ui.node {
+    ui.table(columns=["name"]) {
+        ui.tableRow(cells=cells)
+    }
+}
+
+component nested ui.node {
+    var outer = [[["a"], ["b"]], [["c"]]]
+
+    for var gs = outer {
+        for var g = gs {
+            ui.text #first(value=g[0])
+            grid(cells=g)
+        }
+    }
+}
+
 func testEachGroupHasItsTable(t test.Test, c groups) {
     t.assert(c.title[1] != null && c.title[1].value == "b")
+}
+
+func testAnIndexedLoopGrows(t test.Test, c indexed) {
+    c.add.click()
+    t.assert(c.at[2].value == "2")
+}
+
+func testANestedLoopBuildsEachGrid(t test.Test, c nested) {
+    t.assert(c.first[0][1].value == "b")
+    t.assert(c.first[1][0].value == "c")
 }
 -- testrun/android/kotlin/app.sngl/groups/1 --
 sha256:dd2c390564f858c65d7a66142325f599
@@ -44,6 +89,26 @@ sha256:dd2c390564f858c65d7a66142325f599
   "results": [
     {
       "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/indexed/1 --
+sha256:5aa5154aac64395fac25da606f32313b
+{
+  "results": [
+    {
+      "Desc": "AnIndexedLoopGrows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/app.sngl/nested/1 --
+sha256:278f18f0d59e8fa13c99cd70518bf10d
+{
+  "results": [
+    {
+      "Desc": "ANestedLoopBuildsEachGrid",
       "Passed": true
     }
   ]
@@ -58,12 +123,52 @@ sha256:b822eec79b8bb95a719755ba8669d54c
     }
   ]
 }
+-- testrun/bubbletea/go/app.sngl/indexed/1 --
+sha256:0fef78528d352f5ad1738326a9c4df4b
+{
+  "results": [
+    {
+      "Desc": "AnIndexedLoopGrows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/app.sngl/nested/1 --
+sha256:14f730caf6c905ebf5a830f8c6c943f7
+{
+  "results": [
+    {
+      "Desc": "ANestedLoopBuildsEachGrid",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/fyne/go/app.sngl/groups/1 --
 sha256:b688421af0ec38e8968fd733f68e9baf
 {
   "results": [
     {
       "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/indexed/1 --
+sha256:045efdd0ce88739b94acb9f922bcf3a0
+{
+  "results": [
+    {
+      "Desc": "AnIndexedLoopGrows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/app.sngl/nested/1 --
+sha256:8458bbfad7b8b34f970399a170601457
+{
+  "results": [
+    {
+      "Desc": "ANestedLoopBuildsEachGrid",
       "Passed": true
     }
   ]
@@ -78,12 +183,52 @@ sha256:9f000c35ec8ff9dd878b6e55bb68a444
     }
   ]
 }
+-- testrun/gtk4/go/app.sngl/indexed/1 --
+sha256:9bd766e59dbb6a4a0ac4f8cd719f1668
+{
+  "results": [
+    {
+      "Desc": "AnIndexedLoopGrows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/app.sngl/nested/1 --
+sha256:daa228164f5e3cf7a7c994fffabce76a
+{
+  "results": [
+    {
+      "Desc": "ANestedLoopBuildsEachGrid",
+      "Passed": true
+    }
+  ]
+}
 -- testrun/html/none/app.sngl/groups/1 --
 sha256:e206b66b7ead7c93a5f340836a12c4e3
 {
   "results": [
     {
       "Desc": "EachGroupHasItsTable",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/indexed/1 --
+sha256:fad0321b9db1923b1d5804bf2be874ad
+{
+  "results": [
+    {
+      "Desc": "AnIndexedLoopGrows",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/nested/1 --
+sha256:9cde9f6b46937bc4b38c50915fa67b97
+{
+  "results": [
+    {
+      "Desc": "ANestedLoopBuildsEachGrid",
       "Passed": true
     }
   ]

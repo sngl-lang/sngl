@@ -267,12 +267,7 @@ func propHolds(n *ir.NodeInst, field string) ir.Expr {
 		if !p.Bidirectional {
 			return nodePropExpr(n, field)
 		}
-		for _, b := range n.Bindings {
-			if b.PropName == field {
-				return b.Target
-			}
-		}
-		return nil
+		return n.Binding(field)
 	}
 	return nil
 }
