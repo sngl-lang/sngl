@@ -14,7 +14,14 @@ import (
 var passCMarshal = pass{
 	name:    "CMarshal",
 	enabled: func(Features) bool { return true },
-	apply:   func(pkg *ir.Package, f Features, _ Options) error { return marshalC(pkg, f.language) },
+	apply: func(pkg *ir.Package, f Features, opts Options) error {
+		// A build with no language -- cgogen lowering a platform's package
+		// for its wrappers -- names no translator to refuse for.
+		if !f.CCalls && f.language != "" {
+			return refuseCCalls(pkg, opts)
+		}
+		return marshalC(pkg, f.language)
+	},
 }
 
 // CMarshal is passCMarshal for the interpreter simulating a target.
@@ -27,10 +34,13 @@ func CMarshal(pkg *ir.Package) error { return marshalC(pkg, "") }
 // marshalC is passCMarshal for a build in language, which calls a C
 // declaration with a spelling in that language through it (cWrapped).
 func marshalC(pkg *ir.Package, language string) error {
+	return marshalWith(newCMarshal(language), pkg)
+}
+
+func marshalWith(m *cMarshal, pkg *ir.Package) error {
 	if pkg == nil {
 		return nil
 	}
-	m := newCMarshal(language)
 	m.index(pkg)
 	if err := m.walk(pkg); err != nil {
 		return err
@@ -105,6 +115,9 @@ type cMarshal struct {
 	queue   []*ir.Func
 	conv    map[ir.BuiltinKind]*ir.Func
 	indexed map[*ir.Package]bool
+	// refuse is the build declining every C call it meets, set where the
+	// build's handlers reach no C (refuseCCalls).
+	refuse *Options
 }
 
 func (m *cMarshal) index(p *ir.Package) {
@@ -228,6 +241,16 @@ func marshalSpliced(e ir.Expr, language string) (ir.Expr, error) {
 // called with the receiver as argument zero, which no parameter declares.
 func (m *cMarshal) call(c *ir.Call) error {
 	fn := c.Func
+	if m.refuse != nil {
+		if fn.Foreign.Path != "C" || fn.Builtin.IsCMarshal() {
+			return nil
+		}
+		at := ""
+		if c.AST != nil && c.AST.Pos.IsValid() {
+			at = c.AST.Pos.String() + ": "
+		}
+		return ir.Decline(m.refuse.Platform, "%s%s is the C function %s, and %s writes no call to C", at, fn.Name, fn.Foreign.Name, describeBuild(*m.refuse))
+	}
 	// purego takes Go's own values, but a parameter the compiler passes is
 	// still the call's to write: a held value's release.
 	if m.language == cPurego && fn.Foreign.Path == "C" && !fn.IsCCast() && !m.done[c] {
@@ -506,4 +529,14 @@ func CWrappers(pkg *ir.Package) error {
 		}
 	}
 	return lowerTernary(pkg, Features{}, Options{})
+}
+
+// refuseCCalls declines a program that calls a C function, for a build whose
+// handlers reach no C (Features.CCalls). It walks what passCMarshal would --
+// the package and every body of the packages it imports -- since a platform
+// package's own override calling C is as unbuildable as the program's call.
+func refuseCCalls(pkg *ir.Package, opts Options) error {
+	m := newCMarshal("")
+	m.refuse = &opts
+	return marshalWith(m, pkg)
 }

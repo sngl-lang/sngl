@@ -1,0 +1,58 @@
+# C has no enum type, so NoEnum makes each member the int its ordinal is, and
+# `var maybe option[Status] = active` wraps that int in an option of Status.
+# C took it for a conversion it had no rule for ("converting int to
+# option[Status]"). FuzzPipeline found it.
+
+sngl test --platform=none app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok +1 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+enum Status { active, inactive, pending }
+
+component panel ui.node {
+    var maybe option[Status] = active
+    var none option[Status] = null
+
+    ui.text #shown(value=maybe == active ? "on" : "off")
+    ui.button #off(text="off", @click { maybe = Status.inactive })
+}
+
+func testOptionOfEnum(t test.Test, c panel) {
+    t.assert(c.maybe == active)
+    t.assert(c.none == null)
+    t.assert(c.shown.value == "on")
+    c.off.click()
+    t.assert(c.maybe == inactive)
+    t.assert(c.shown.value == "off")
+}
+
+ui.window {
+    panel
+}
+-- testrun/gtk4/c/app.sngl/panel/1 --
+sha256:4eeb842e889fae2c5208ea4e357fbb72
+{
+  "results": [
+    {
+      "Desc": "OptionOfEnum",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/panel/1 --
+sha256:7543aa727dde65e1d93364c52f3d3bb5
+{
+  "results": [
+    {
+      "Desc": "OptionOfEnum",
+      "Passed": true
+    }
+  ]
+}

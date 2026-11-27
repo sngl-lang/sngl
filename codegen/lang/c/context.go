@@ -75,6 +75,15 @@ func (c *Context) fail(format string, args ...any) string {
 	return "/* unsupported */ 0"
 }
 
+// decline is fail for what C cannot express by design rather than what this
+// generator gets wrong: a host value or function another language owns.
+func (c *Context) decline(format string, args ...any) string {
+	if c.file.err == nil {
+		c.file.err = ir.Decline("c", "c: "+format, args...)
+	}
+	return "/* unsupported */ 0"
+}
+
 // TypeName is t as C declares a value of it.
 func (c *Context) TypeName(t *ir.Type) string { return c.typeName(t) }
 
@@ -275,7 +284,7 @@ func (c *Context) Ident(n *ir.Ident) string {
 		// the build put none of it -- the handler of a boundary inlined
 		// away, reached from a lambda lifted before it was.
 		if ir.IsHostValue(sym) {
-			return c.fail("%s, which is %s's", n.Name, sym.Foreign.Path)
+			return c.decline("%s, which is %s's", n.Name, sym.Foreign.Path)
 		}
 		if c.State != nil && !c.isLocalVar(sym) {
 			return c.fail("reading %s, which no scope of the program holds here", n.Name)
@@ -733,8 +742,8 @@ func (c *Context) Call(n *ir.Call) string {
 	if out, ok := c.merge(n, args); ok {
 		return out
 	}
-	if n.Func.Foreign.Path != "" {
-		return c.fail("calling %s, which is %s's", n.Func.Name, n.Func.Foreign.Path)
+	if n.Func.Foreign.Path != "" && !n.Func.Foreign.Marked {
+		return c.decline("calling %s, which is %s's", n.Func.Name, n.Func.Foreign.Path)
 	}
 	if n.Receiver != nil {
 		return c.fail("calling %s on a component", n.Func.Name)
@@ -835,6 +844,13 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 	case ir.TypeBool:
 		if from.Kind == ir.TypeBool {
 			return operand
+		}
+	case ir.TypeUnit:
+		// A number as a single-base unit is that many of its base, the
+		// double C holds it as: `var zero duration = 0`
+		// (testdata/unit_duration_name.sngl).
+		if !multiBase(to) && (from.Kind == ir.TypeInt || from.Kind == ir.TypeFloat) {
+			return "(double)(" + operand + ")"
 		}
 	}
 	return c.fail("converting %s to %s", from, to)
@@ -1441,10 +1457,10 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 	var free string
 	if cb >= 0 && off >= 0 {
 		if fn.Params[cb].CFuncType == nil || rel >= 0 && fn.Params[rel].CFuncType == nil {
-			return c.fail("calling %s, whose function parameters name no C type (#[c.type])", fn.Foreign.Name)
+			return c.decline("calling %s, whose function parameters name no C type (#[c.type])", fn.Foreign.Name)
 		}
 		if ctx < 0 {
-			return c.fail("calling %s, whose callback takes no context", fn.Foreign.Name)
+			return c.decline("calling %s, whose callback takes no context", fn.Foreign.Name)
 		}
 		args = slices.Clone(args)
 		// The argument is rendered already, as the function value it is: a
@@ -1470,10 +1486,23 @@ func (c *Context) CCall(n *ir.Call, args []string) string {
 	}
 	if held := slices.IndexFunc(fn.Params, func(p *ir.Param) bool { return p.CAlias.IsCHeld() }); held >= 0 && rel >= 0 && off >= 0 {
 		if fn.Params[rel].CFuncType == nil {
-			return c.fail("calling %s, whose release names no C type (#[c.type])", fn.Foreign.Name)
+			return c.decline("calling %s, whose release names no C type (#[c.type])", fn.Foreign.Name)
+		}
+		// The argument's type, as the callback's above: the declaration may be
+		// the library's frozen one, whose struct a rename on the build's copy
+		// did not reach (canonicalStructs).
+		ht := fn.Params[held].Type
+		if held < len(n.Args) {
+			v := n.Args[held].Value
+			if cv, ok := v.(*ir.CConvert); ok {
+				v = cv.Operand
+			}
+			if vt := v.ExprType(); vt != nil && vt.Kind == ir.TypeStruct {
+				ht = vt
+			}
 		}
 		args = slices.Clone(args)
-		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(fn.Params[held].Type))
+		args[off+rel] = c.fnPointer(fn, rel, c.heldRelease(ht))
 	}
 	call := ir.CCallExpr(fn, args)
 	if free != "" {

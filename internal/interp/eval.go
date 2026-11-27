@@ -1501,7 +1501,10 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		if fn := intrinsicMethod(e.Operand.ExprType(), e.Field); fn != nil {
 			return fn([]any{obj})
 		}
-		return m[e.Field], nil
+		if v, ok := m[e.Field]; ok {
+			return v, nil
+		}
+		return instanceVar(m, e.Field), nil
 	}
 	if u, ok := obj.(unitValue); ok {
 		return u.baseAmount(e.Field)
@@ -1516,6 +1519,24 @@ func (env *Env) evalSelect(e *ir.Select) (any, error) {
 		}
 	}
 	return nil, fmt.Errorf("cannot select field %q on %T", e.Field, obj)
+}
+
+// instanceVar is the var named field of the instance a node handle m names,
+// read in the instance's own scope as it is now: `k.count` off `counter #k`.
+// Nil where m is no instance or declares no such var.
+func instanceVar(m map[string]any, field string) any {
+	ce, _ := m["__compEnv"].(*Env)
+	node, _ := m["__node"].(*Node)
+	if ce == nil || node == nil || node.Component == nil {
+		return nil
+	}
+	for _, v := range node.Component.Vars {
+		if v.Name == field {
+			val, _ := ce.Value(v)
+			return val
+		}
+	}
+	return nil
 }
 
 // intrinsicMethod is the intrinsic behind a component type's method named

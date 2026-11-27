@@ -481,7 +481,7 @@ func (c *Context) option(n *ir.Conversion) (string, bool) {
 			return c.EvalExpr(n.Operand), true
 		}
 		return "(" + c.EvalExpr(n.Operand) + ").value", true
-	case ir.IsOptionWrap(n):
+	case ir.IsOptionWrap(n) || ordinalWrap(n):
 		if c.ptrOption(n.Type) {
 			return c.EvalExpr(n.Operand), true
 		}
@@ -497,6 +497,17 @@ func (c *Context) option(n *ir.Conversion) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// ordinalWrap reports whether n wraps an int in an option of an enum: C has
+// no enum type, and NoEnum made the member the int its ordinal is, so
+// `var maybe option[Status] = active` wraps one (c_option_enum_runs.txt).
+func ordinalWrap(n *ir.Conversion) bool {
+	if n.Type == nil || n.Type.Kind != ir.TypeOption || len(n.Type.Elems) != 1 {
+		return false
+	}
+	from, elem := n.Operand.ExprType(), n.Type.Elems[0]
+	return from != nil && from.Kind == ir.TypeInt && elem != nil && elem.Kind == ir.TypeEnum && ir.PayloadEnum(elem) == nil
 }
 
 // optionCompare is a comparison with null, which asks whether an option holds

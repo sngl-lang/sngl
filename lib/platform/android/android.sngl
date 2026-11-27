@@ -14,9 +14,10 @@ import gen "sngl:x/gen"
 // calls passEffect would build. No reactiveCanvas -- the draw lambda reads
 // Compose state directly, so a recomposition already redraws. `navigation`
 // because sngl:ui/nav is a NavHost here (nav.go): each page a destination with
-// a typed route, the back stack Compose's.
+// a typed route, the back stack Compose's. Its handlers are Kotlin whatever
+// `--lang` says, so neither Go's goroutine nor its cgo is theirs to use.
 #[gen.can(effects, instanceState, navigation, viewMatches, valueTriggers)]
-#[gen.cannot(inlineComponents, structSpread)]
+#[gen.cannot(inlineComponents, structSpread, asyncSpawn, cCalls)]
 #[gen.wants(structComponents, stdlibContextParam, canvas)]
 #[gen.name("android")]
 #[gen.native("android")]

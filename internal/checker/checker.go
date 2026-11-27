@@ -5086,7 +5086,7 @@ func countsRepeat(counts []nodeCount) bool {
 //
 // Another declaration of the name in that same scope -- a var, a prop, a
 // method -- is a redeclaration. The same id written again is the one handle,
-// which a node reading it may not be rendered twice (see design/nodes.md).
+// which each spliced copy shares (see design/nodes.md).
 func (c *checker) declareNodeID(id, target string, pos ast.Pos, counts []nodeCount) {
 	if id == "" {
 		return

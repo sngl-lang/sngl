@@ -1,0 +1,486 @@
+# A spliced body's handles are each copy's own, as its vars are, and a read
+# through one reaches its own copy: a var of a component instance (`k.count`
+# off `counter #k`, state.sngl), the cell behind a two-way prop the call site
+# left unbound (`box.value`, cell.sngl), and what an override reads of its own
+# node (inputs.sngl).
+#
+# The inliner gave every copy the checker's one handle, so a read in a copy
+# could not say which copy it meant. gtk4's input asks its own entry for its
+# text, and any component rendering an input twice was refused; an unbound
+# cell read in a component rendered twice was refused; and `k.count` was never
+# answered at all -- the interpreter read nil, and fyne, bubbletea and gtk4
+# emitted a field nothing declared. Each splice now records the copy of each
+# var it made under the handle its node carries (resolveHandleVarReads), and
+# a test reaches the copy's through the splice's handles.
+
+sngl test --platform=none state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=c state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=c state.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin state.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=none cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=html cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=bubbletea --language=go cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=fyne --language=go cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=go cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=gtk4 --language=c cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=go cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=win32 --language=c cell.sngl
+stdout 'ok +1 tests, 0 failures'
+sngl test --platform=android --language=kotlin cell.sngl
+stdout 'ok +1 tests, 0 failures'
+
+sngl test --platform=none inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=html inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=bubbletea --language=go inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=fyne --language=go inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=go inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=gtk4 --language=c inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=go inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=win32 --language=c inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+sngl test --platform=android --language=kotlin inputs.sngl
+stdout 'ok +2 tests, 0 failures'
+
+-- state.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component counter ui.node {
+    var count = 0
+    effect(on=count, @mount(v) {})
+    ui.button #inc(text="+", @click { count += 1 })
+}
+
+component field ui.node {
+    ui.vbox {
+        counter #k()
+        ui.text #out(value="[{k.count}]")
+    }
+}
+
+component pair ui.node {
+    ui.vbox {
+        field #one()
+        field #two()
+    }
+}
+
+ui.window {
+    pair()
+}
+
+func testOwn(t test.Test, c pair) {
+    c.one.k.inc.click()
+    t.assert(c.one.out.value == "[1]")
+    t.assert(c.two.out.value == "[0]")
+}
+-- cell.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component field ui.node {
+    ui.vbox {
+        ui.input #box()
+        ui.text #out(value="[{box.value}]")
+    }
+}
+
+component pair ui.node {
+    ui.vbox {
+        field #one()
+        field #two()
+    }
+}
+
+ui.window {
+    pair()
+}
+
+func testEachCopyReadsItsOwnCell(t test.Test, c pair) {
+    t.assert(c.one.out.value == "[]")
+    c.one.box.input("hi")
+    t.assert(c.one.out.value == "[hi]")
+    t.assert(c.two.out.value == "[]")
+}
+-- inputs.sngl --
+import ui "sngl:ui"
+import test "sngl:test"
+
+component field ui.node {
+    ui.vbox {
+        ui.input #name()
+    }
+}
+
+component pair ui.node {
+    ui.vbox {
+        field #one()
+        field #two()
+    }
+}
+
+ui.window {
+    pair()
+}
+
+func testEachInputIsItsOwn(t test.Test, c pair) {
+    c.one.name.input("a")
+    t.assert(c.one.name.value == "a")
+    t.assert(c.two.name.value == "")
+}
+
+// The component under test is the test's own instance, and nothing splices
+// it: its input's cell is reached through the handles it was written with.
+func testOneInputIsTheTests(t test.Test, c field) {
+    c.name.input("a")
+    t.assert(c.name.value == "a")
+}
+-- testrun/android/kotlin/cell.sngl/pair/1 --
+sha256:88fe86ce5b00f700f27bf9f1dffcbaa2
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/inputs.sngl/field/1 --
+sha256:4f35b3b3b6235e01b28dee98bbde6653
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/inputs.sngl/pair/1 --
+sha256:8db17ec4b940013c5d6f2eab8d02b651
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/state.sngl/pair/1 --
+sha256:ecfac981c45faf216dd2ad211a4d04ed
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/cell.sngl/pair/1 --
+sha256:fa15e79cad86c04cd93d978315e7d88f
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/inputs.sngl/field/1 --
+sha256:a02ec6bf81392de7bc139fc59cda1d87
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/inputs.sngl/pair/1 --
+sha256:61ba3fe08934bebf9c35b909c2d0f452
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/bubbletea/go/state.sngl/pair/1 --
+sha256:686c2ebf7de1a84b686af80aca59c0fe
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/cell.sngl/pair/1 --
+sha256:7ad7fe9c5e63772a88d4aee442aa437b
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/inputs.sngl/field/1 --
+sha256:6bfcc949ef37a86c96a89ec4376b6ed0
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/inputs.sngl/pair/1 --
+sha256:eea4d5801a3477dbd00a8a8fb61beabf
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/fyne/go/state.sngl/pair/1 --
+sha256:7f53543e26382d2a2ef8c6535769964e
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/cell.sngl/pair/1 --
+sha256:248d4d4a14e96eef321410de5cc5d471
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/inputs.sngl/field/1 --
+sha256:d31551858a6f19eeac6120b7ba0c7cd2
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/inputs.sngl/pair/1 --
+sha256:d7e82b12e7b7bbd825b1153ec01b468f
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/c/state.sngl/pair/1 --
+sha256:a962b2fc0f283af1770edaacef69ead7
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/cell.sngl/pair/1 --
+sha256:3a7c60d03deb6b8a69cd1d3825b2b8fa
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/inputs.sngl/field/1 --
+sha256:f66d38c5058c6c383e775aa5a9ac9421
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/inputs.sngl/pair/1 --
+sha256:93d79291ef8cd8469357dad9d3602d61
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/gtk4/go/state.sngl/pair/1 --
+sha256:278108d4a6f74713396ecc6a14ab1eda
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/cell.sngl/pair/1 --
+sha256:50909858833d8a92996c3829dd1b0d27
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/inputs.sngl/field/1 --
+sha256:cbaf2e529ecce5028f31427a6b1cfef8
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/inputs.sngl/pair/1 --
+sha256:8c20ac28455b268445dd71372c7766b4
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/state.sngl/pair/1 --
+sha256:7ff239ae4b0641c12a1c76f7b46dd23f
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/cell.sngl/pair/1 --
+sha256:c511d9415a89b4df0091171b4035c99a
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/inputs.sngl/field/1 --
+sha256:72129bbe2f0c157a1dc55fe37bd1c831
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/inputs.sngl/pair/1 --
+sha256:78f5146b1515bb23fdbe5190edcd5495
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/state.sngl/pair/1 --
+sha256:487e95753e5028129a13472c25f15fb3
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/cell.sngl/pair/1 --
+sha256:fbec10fe5229a70c7f86ad83e7c9e714
+{
+  "results": [
+    {
+      "Desc": "EachCopyReadsItsOwnCell",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/inputs.sngl/field/1 --
+sha256:92ca7d1068e07426a0fa6dd0989513ca
+{
+  "results": [
+    {
+      "Desc": "OneInputIsTheTests",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/inputs.sngl/pair/1 --
+sha256:78add0ba1e737e5b63bb783ab05edc8a
+{
+  "results": [
+    {
+      "Desc": "EachInputIsItsOwn",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/go/state.sngl/pair/1 --
+sha256:cc2cb519d914f248ef975dce0aa69b60
+{
+  "results": [
+    {
+      "Desc": "Own",
+      "Passed": true
+    }
+  ]
+}

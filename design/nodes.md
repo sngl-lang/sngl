@@ -1294,32 +1294,47 @@ beside it spells; a trigger html writes on the page reads it from outside, and
 finds it by `data-sngl-id` as the invokers do
 (`cmd/sngl/testdata/html_element_handle_runs.txt`).
 
-**So a handle's remaining use is reading**, and a *prop* read does not compile
-on the Go mutation platforms: `GoIRContext.Select` ends at
+**So a handle's remaining use is reading**, and a *prop* read is answered at
+build time on every target (`propHolds`, `internal/lower/node_prop_reads.go`).
+A one-way prop holds what its call site gave it, since nothing else writes it;
+a two-way prop bound to a var holds the var; only a two-way prop left unbound
+is the node's own, the instance's cell. Left to the target, a read did not
+compile on the Go mutation platforms: `GoIRContext.Select` ends at
 `operand + "." + ExportName(field)`, inventing a Go field by title-casing the
-SNGL prop, so `box.value` is `m.box.Value` against a `widget.Entry` that spells
-it `Text` — and against a gtk4 handle that is an `unsafe.Pointer` with no
-fields at all. On html it reaches the emitter and renders an empty element
-nothing fills. The one read that does work is a `#[c.native]` method's receiver,
-above. Closing the rest needs a language↔platform read hook that does not
-exist, and on gtk4 a getter is a call (`gtk_editable_get_text`) whose name GIR
-would have to supply per property, not a field. Until then a read is answered
-at build time wherever the tree says the node is gone — see
-`#[gen.renders(identity)]` under `sngl:x/gen`.
+SNGL prop, so `box.value` was `m.box.Value` against a `widget.Entry` that
+spells it `Text` -- and against a gtk4 handle that is a `cgo.Widget` with no
+fields at all -- while bubbletea named a field its Model never declared and
+html read a handle the inliner had spliced away inside a component
+(`cmd/sngl/testdata/node_prop_read_runs.txt`). A read a test makes through an
+instance, `c.out.value` given `"{bar.text}"`, rebases the node's own handle
+to the element ref `c.bar`, which the next round answers in turn. What no
+target answers is a read of anything else -- measured or platform state --
+which needs a language-to-platform read hook that does not exist; on gtk4 a
+getter is a call (`gtk_editable_get_text`) whose name GIR would have to supply
+per property. The one such read that works is a `#[c.native]` method's
+receiver, above.
 
-**Two nodes may share an id, but a handle that is *read* may not be rendered
-twice.** The two halves are asked differently and deliberately so.
-`uniqueNodeIDs` renames the later copies *by name*, because what that repairs is
-the emitted namespace, where any two `#bar`s collide however unrelated. The
-refusal is *by symbol*: `declareNodeIDs` runs per body, so two components each
-writing `#bar` declare two vars and each read says which it meant, while two
-spliced copies of one body share theirs and neither read can — all of them
-resolve to the first copy's field, and the second widget is created and never
-touched. `ir.NodeInst.Handle` is the link that makes the symbol reachable from
-the node, since `ID` is only a name. Keyed by name instead, a `quiet()` that
-reads nothing and renders one was refused for a `#bar` that a *different*
-component read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both
-halves apart.
+**Two nodes may share an id, and a body rendered twice may read its handles:
+each copy reads its own.** `uniqueNodeIDs` renames the later copies *by name*,
+because what that repairs is the emitted namespace, where any two `#bar`s
+collide however unrelated. A read is bound *by symbol*: `declareNodeIDs` runs
+per body, so two components each writing `#bar` declare two vars and each read
+says which it meant, while two spliced copies of one body share theirs. So a
+prop read is answered in the body before the splice (`passNodePropReads`),
+where `bar.text` is that copy's own argument, and a method call is repointed
+at each copy's node (`repointHandleCalls`). Every handle a spliced body
+declares is cloned per copy, as its vars are, and a read of an instance's var
+or of an unbound two-way prop's cell through one is the copy that splice made
+(`resolveHandleVarReads`). What is left standing after the splice -- a handle
+something outside the body reads -- still cannot say which copy it means, and
+`uniqueNodeIDs` refuses it by symbol. This was once a blanket rule, a handle that is read
+may not be rendered twice, from when a prop read reached the emitter and
+resolved to the first copy's field (Jonathan's call to lift it, 2026-11-27).
+`ir.NodeInst.Handle` is the link that makes the symbol reachable from the
+node, since `ID` is only a name. Keyed by name instead, a `quiet()` that reads
+nothing and renders one was refused for a `#bar` that a *different* component
+read; `cmd/sngl/testdata/node_handle_read_duplicated.txt` holds both halves
+apart.
 
 **An `#id` is a declaration, hoisted to its component's scope.** It shadows
 what an enclosing scope binds and is a redeclaration beside a var, a prop or a

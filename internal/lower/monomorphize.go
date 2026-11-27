@@ -307,6 +307,17 @@ func (m *monomorph) instance(fn *ir.Func, b map[string]*ir.Type) *ir.Func {
 	}
 	inst := ir.InstantiateFunc(fn, b)
 	inst.Name = m.fresh(fn.Name + "__" + strings.Join(key, "_"))
+	// A method of a generic type is a method of the type at the receiver's
+	// bindings, which a static one has no receiver parameter to say:
+	// `box[T].from` at T=int is box[int]'s, and the struct pass makes that
+	// box__int's.
+	if r := fn.Receiver; r != nil && len(fn.RecvTypeParams) > 0 && len(r.Elems) == 0 {
+		if sd, ok := r.Decl.(*ir.StructDef); ok && len(sd.TypeParams) == len(fn.RecvTypeParams) {
+			cp := *r
+			cp.Elems = args[:len(fn.RecvTypeParams)]
+			inst.Receiver = &cp
+		}
+	}
 	m.instances[fn] = append(m.instances[fn], instance{args, inst})
 	funcs := m.slot[fn]
 	if i := slices.Index(*funcs, fn); i >= 0 {
