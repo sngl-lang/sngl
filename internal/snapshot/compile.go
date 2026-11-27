@@ -65,7 +65,7 @@ func compilePreviewHTMLDoc(pkg *ir.Package, platform, lang string) ([]byte, erro
 	previewDoc := ir.Convert(pkg)
 
 	mem := codegen.NewMemSink()
-	if err := htmlPlat.Generate(&codegen.Request{
+	if err := codegen.Generate(htmlPlat, &codegen.Request{
 		Doc:     previewDoc,
 		Pkg:     pkg,
 		Lang:    noneLang,

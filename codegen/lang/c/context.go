@@ -78,18 +78,14 @@ func (c *Context) fail(format string, args ...any) string {
 // decline is fail for what C cannot express by design rather than what this
 // generator gets wrong: a host value or function another language owns.
 func (c *Context) decline(format string, args ...any) string {
-	if c.file.err == nil {
-		c.file.err = ir.Decline("c", "c: "+format, args...)
-	}
-	return "/* unsupported */ 0"
+	return c.declined(ir.Decline("c", "c: "+format, args...))
 }
 
-// declineIntrinsic is an intrinsic C writes no implementation of where its
-// declaration has no body to emit instead: what another target answers and
-// this generator does not yet, such as the clock and a datetime's arithmetic
-// (C holds a datetime as its RFC 3339 text). The build declines the program.
-func (c *Context) declineIntrinsic(id string) string {
-	return c.decline("the intrinsic %s, which C does not implement yet", id)
+func (c *Context) declined(d *ir.TargetDeclined) string {
+	if c.file.err == nil {
+		c.file.err = d
+	}
+	return "/* unsupported */ 0"
 }
 
 // TypeName is t as C declares a value of it.
@@ -757,7 +753,7 @@ func (c *Context) Call(n *ir.Call) string {
 		return c.fail("calling %s on a component", n.Func.Name)
 	}
 	if n.Func.Intrinsic != "" && len(n.Func.Block) == 0 {
-		return c.declineIntrinsic(n.Func.Intrinsic)
+		return c.declined(codegen.UnemittedIntrinsic(langC, n))
 	}
 	return funcName(n.Func) + "(" + strings.Join(args, ", ") + ")"
 }

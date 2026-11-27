@@ -55,10 +55,6 @@ func (g *Generator) SupportedLangs() []string {
 // which the browser runs: there is no interpreter in the way.
 func (g *Generator) GeneratesUntranslated() bool { return true }
 
-// ScriptLang is JavaScript: a page's logic runs in the browser, and --lang
-// names only the language serving it.
-func (g *Generator) ScriptLang() string { return "js" }
-
 func (g *Generator) Generate(req *codegen.Request, sink codegen.Sink) error {
 	// Agent mode suppresses the user's main() entry so the testagent's drives
 	// the page.

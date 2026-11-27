@@ -88,6 +88,42 @@ stdout 'func bump\('
 sngl dump --stage lowered --platform bubbletea --lang go --format sngl genericbody.sngl
 stdout 'func bump'
 
+# An async.query under a `for`, whose inlined refresh is such a function (#284).
+sngl dump --stage lowered --after NoInlineComponents --platform bubbletea --lang go --format sngl query.sngl
+sngl dump --stage lowered --platform bubbletea --lang go --format sngl query.sngl
+
+-- query.sngl --
+import async "sngl:async"
+import . "sngl:ui"
+
+func quick(name string, life async.Lifetime) async.Result[int] {
+    return {ok=name.length()}
+}
+
+component row(name string) node {
+    var length option[int] = null
+
+    async.query(on=name, fetch=quick, :value=length)
+    text(value=name)
+}
+
+component rows node {
+    var names = ["fig", "apricot"]
+
+    for var n = names {
+        row(name=n)
+    }
+    for var n = names {
+        var length option[int] = null
+
+        async.query(on=n, fetch=quick, :value=length)
+        text(value=n)
+    }
+}
+
+window {
+    rows
+}
 -- main.sngl --
 import . "sngl:ui"
 

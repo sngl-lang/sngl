@@ -140,7 +140,7 @@ func TestUnimplementedIntrinsicPanics(t *testing.T) {
 				if r == nil {
 					t.Fatal("no panic for an intrinsic this backend does not implement")
 				}
-				if !strings.Contains(r.(string), "NoBackendHasThis") {
+				if !strings.Contains(r.(error).Error(), "NoBackendHasThis") {
 					t.Errorf("panic %v does not name the intrinsic", r)
 				}
 			}()

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"duckfam.us/sngl/ast"
+	"duckfam.us/sngl/codegen"
 	"duckfam.us/sngl/ir"
 )
 
@@ -436,7 +437,7 @@ func (c *Context) listIntrinsic(n *ir.Call) (string, bool) {
 `)
 		return sort + "(&(" + xs + ")" + call, true
 	}
-	return c.declineIntrinsic(id), true
+	return c.declined(codegen.UnemittedIntrinsic(langC, n)), true
 }
 
 // less is whether a orders before b, two values of the ordered type t.
@@ -1006,7 +1007,7 @@ func (c *Context) mapIntrinsic(n *ir.Call, t *ir.Type, m string) string {
 		c.file.helper(name, fmt.Sprintf("static %s %s(%s m) {\n\t%s l = {sngl_alloc(sizeof(%s) * (size_t)(m.len + 1)), m.len, m.len};\n\tif (m.len > 0) {\n\t\tmemcpy(l.data, m.%s, sizeof(%s) * (size_t)m.len);\n\t}\n\treturn l;\n}\n", l, name, c.mapType(t), l, et, part, et))
 		return name + "(" + m + ")"
 	}
-	return c.declineIntrinsic(n.Func.Intrinsic)
+	return c.declined(codegen.UnemittedIntrinsic(langC, n))
 }
 
 // mapRemove renders a map's `remove`: the entries but the key's, in their

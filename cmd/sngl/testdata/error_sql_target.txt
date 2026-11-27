@@ -1,7 +1,7 @@
-# Go and Kotlin run a sngl:sql statement: a target in another language, or
-# one whose program runs in another (html's browser JavaScript),
+# Go and Kotlin run a sngl:sql statement: a target in another language
 # refuses the program before its generator has nothing to write for it, a
-# statement in an imported package's function included. Android carries
+# statement in an imported package's function included, and html/go, whose
+# handlers run as JavaScript, declines the call. Android carries
 # SQLite alone, and refuses a program written for another engine.
 env SNGL_GENCACHE=off
 
@@ -9,7 +9,7 @@ env SNGL_GENCACHE=off
 stderr 'the program queries a database, which html/none cannot yet: only the Go targets and android can'
 
 ! sngl generate --platform=html --lang=go -o out app.sngl
-stderr 'the program queries a database, which html/go cannot yet: its program runs as js'
+stderr 'intrinsic sql.query has no js implementation'
 
 ! sngl generate --platform=gtk4 --lang=c -o out app.sngl
 stderr 'which gtk4/c cannot yet'

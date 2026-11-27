@@ -58,7 +58,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 	}
 
 	sink := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{
+	if err := codegen.Generate(g, &codegen.Request{
 		Pkg:  pkg,
 		Lang: lang,
 		Options: codegen.OptionsFromMap(map[string]any{
@@ -164,7 +164,7 @@ func (g *Generator) BatchSnapshot(docs []codegen.BatchDoc, width, height int) (m
 		pkgName := fmt.Sprintf("doc%d", i)
 		pkgDir := filepath.Join(tmpDir, pkgName)
 
-		if err := g.Generate(&codegen.Request{
+		if err := codegen.Generate(g, &codegen.Request{
 			Pkg:  d.Pkg,
 			Lang: d.Lang,
 			Options: codegen.OptionsFromMap(map[string]any{

@@ -182,29 +182,29 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-// The placeholder is Compose's floating `label`. A field given none must get
-// no `label` argument rather than an empty one, so the conditional is the
-// slot's whole body: a literal placeholder folds the slot away and a slot that
-// renders nothing is not passed. A placeholder only known at run time cannot
-// be answered that way and keeps the argument, so an empty one shows as the
-// notched, uncaptioned field the fold exists to avoid.
-const component ui.input[platform](placeholder, readonly, value, style, @input, @change) {
-    OutlinedTextField(
+const component ui.input[platform](placeholder, readonly, value, style, @input, @change, @submit) {
+    func commit(v string) {
+        value = v
+        change(v)
+    }
+    SnglTextField(
         value = value,
+        label = placeholder,
+        minLines = 1,
         readOnly = readonly,
+        commitsOnDone = true,
         modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
             input(v)
-            change(v)
         },
-    ) {
-        component label {
-            if placeholder != "" {
-                Text(text=placeholder) {}
-            }
-        }
-    }
+        onCommit = func() { commit(value) },
+        onSubmit = func() { submit() },
+    ) {}
+}
+
+func ui.input.change[platform](value) {
+    commit(value)
 }
 
 const component ui.checkbox[platform](label, checked, focusable, style, @change) {
@@ -349,17 +349,30 @@ func ui.select[T].change[platform](value) {
     choose(ui.choiceLabel(options, value))
 }
 
-const component ui.textarea[platform](value, style, @input, @change) {
-    OutlinedTextField(
+// Enter is a line of the text, so only the focus leaving commits it.
+const component ui.textarea[platform](placeholder, readonly, value, style, @input, @change) {
+    func commit(v string) {
+        value = v
+        change(v)
+    }
+    SnglTextField(
         value = value,
+        label = placeholder,
         minLines = 3,
+        readOnly = readonly,
+        commitsOnDone = false,
         modifier = modifierOf(style, flexShare),
         onValueChange = func(v) {
             value = v
             input(v)
-            change(v)
         },
+        onCommit = func() { commit(value) },
+        onSubmit = func() {},
     ) {}
+}
+
+func ui.textarea.change[platform](value) {
+    commit(value)
 }
 
 // A date is typed as YYYY-MM-DD, or picked in Material's dialog from the

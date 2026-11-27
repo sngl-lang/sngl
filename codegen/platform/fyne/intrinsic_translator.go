@@ -946,7 +946,7 @@ func (t *fyneTranslator) OnPropAssign(ctx context.Context, node ir.Expr, prop st
 	// moved, though, and was dropped -- a document's run kept the kind it
 	// was built with -- so one with a setter goes to it. One with none, a
 	// drawn image's size, is still the constructor's.
-	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) && !(readsState(value) && hasSetter(sp, prop)) {
+	if sp.CtorOnly[prop] && reflect.DeepEqual(value, sp.CtorProps[prop]) && !setterAnswers(sp, prop, value) {
 		return nil
 	}
 	// A window that names no title is built with none.
@@ -1275,6 +1275,13 @@ func readsState(e ir.Expr) bool {
 		return nil
 	})
 	return found
+}
+
+// setterAnswers reports whether a write of value to a constructor prop goes to
+// its setter rather than the constructor: the constructor's argument for prop
+// has to leave value out, or the two would both say it.
+func setterAnswers(sp *fyneSpec, prop string, value ir.Expr) bool {
+	return readsState(value) && hasSetter(sp, prop)
 }
 
 // hasSetter reports whether sp names something that writes prop.

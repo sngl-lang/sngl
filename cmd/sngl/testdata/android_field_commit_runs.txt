@@ -1,0 +1,196 @@
+# An android field commits through its own path: the focus leaving it, and an
+# input's keyboard Done or hardware Enter, each committing only an edit made
+# since the last commit, and then submitting. A field removed while focused
+# commits nothing, as html's removed input fires no change. A test moves the
+# focus to another field, presses the keyboard's action and a hardware key, as
+# a user does. Only android, whose commit is this path; the change trigger
+# every target answers is program_write_fires_no_event_runs.txt's.
+
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   8 tests, 0 failures'
+
+sngl test --platform=android --language=kotlin keys.sngl
+stdout 'ok   1 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var text = ""
+    var memo = ""
+    var away = ""
+    var gone = ""
+    var changes = 0
+    var order = ""
+    var show = true
+
+    ui.vbox {
+        ui.input #field(
+            :value = text,
+            @change(v) {
+                changes += 1
+                order = order + "c"
+            },
+            @submit {
+                order = order + "s"
+            },
+        )
+        ui.textarea #notes(:value=memo, @change(v) { changes += 1 })
+        ui.input #other(:value=away)
+        ui.button #set(text="set", @click {
+            text = "abc"
+            memo = "abc"
+        })
+        if show {
+            ui.input #leaving(:value=gone, @change(v) { changes += 1 })
+        }
+        ui.button #hide(text="hide", @click { show = false })
+    }
+}
+
+func testFocusNoEditBlurFiresNothing(t Test, c main) {
+    c.field.focus()
+    c.other.focus()
+    c.notes.focus()
+    c.other.focus()
+    t.assert(c.changes == 0)
+}
+
+func testFocusEditBlurFiresOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    t.assert(c.changes == 0)
+    c.other.focus()
+    t.assert(c.changes == 1)
+    c.notes.focus()
+    c.notes.input("xy")
+    t.assert(c.changes == 1)
+    c.other.focus()
+    t.assert(c.changes == 2)
+}
+
+func testProgramWriteThenBlurFiresNothing(t Test, c main) {
+    c.field.focus()
+    c.set.click()
+    c.other.focus()
+    c.notes.focus()
+    c.set.click()
+    c.other.focus()
+    t.assert(c.text == "abc")
+    t.assert(c.changes == 0)
+}
+
+func testDoneThenBlurFiresOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    t.assert(c.changes == 0)
+    c.field.submit()
+    t.assert(c.changes == 1)
+    c.other.focus()
+    t.assert(c.changes == 1)
+}
+
+func testDoneUneditedFiresNothing(t Test, c main) {
+    c.field.focus()
+    c.field.submit()
+    t.assert(c.changes == 0)
+}
+
+func testDoneCommitsThenSubmits(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    c.field.submit()
+    t.assert(c.order == "cs")
+}
+
+func testDoneUneditedSubmitsAlone(t Test, c main) {
+    c.field.focus()
+    c.field.submit()
+    t.assert(c.order == "s")
+}
+
+func testRemovedWhileEditedFiresNothing(t Test, c main) {
+    if c.leaving != null {
+        c.leaving.focus()
+        c.leaving.input("xy")
+    }
+    c.hide.click()
+    t.assert(c.gone == "xy")
+    t.assert(c.changes == 0)
+}
+
+ui.window {
+    main
+}
+-- keys.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component app root {
+    var text = ""
+    var order = ""
+
+    ui.window #main(title="Keys", @key(e, stop) {}) {
+        ui.input #line(:value=text, @change(v) { order = order + "c" }, @submit { order = order + "s" })
+    }
+}
+
+app()
+
+func testEnterCommitsAndSubmits(t test.Test, c app) {
+    c.line.focus()
+    c.main.key(ui.KeyPress{key="h", editing=true}, func() {})
+    c.main.key(ui.KeyPress{key="i", editing=true}, func() {})
+    c.main.key(ui.KeyPress{key="Enter", editing=true}, func() {})
+    t.assert(c.text == "hi")
+    t.assert(c.order == "cs")
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:c2b9b563a496b9deaeb92f6ac3e97cef
+{
+  "results": [
+    {
+      "Desc": "DoneCommitsThenSubmits",
+      "Passed": true
+    },
+    {
+      "Desc": "DoneThenBlurFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "DoneUneditedFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "DoneUneditedSubmitsAlone",
+      "Passed": true
+    },
+    {
+      "Desc": "FocusEditBlurFiresOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "FocusNoEditBlurFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenBlurFiresNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "RemovedWhileEditedFiresNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/android/kotlin/keys.sngl/app/1 --
+sha256:4f34fa290ace06c254f87b2e36224be9
+{
+  "results": [
+    {
+      "Desc": "EnterCommitsAndSubmits",
+      "Passed": true
+    }
+  ]
+}

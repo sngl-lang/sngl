@@ -1261,7 +1261,7 @@ func (kc *KtIRContext) evalCall(n *ir.Call) string {
 		if kc.isScopeComputed(fname, n.Func) {
 			return fname
 		}
-		codegen.RequireIntrinsicFallback(langKt, n.Func)
+		codegen.RequireIntrinsicFallback(langKt, n)
 		return fname + "(" + strings.Join(args, ", ") + ")"
 	}
 	args := kc.evalCallArgs(n.Args)
@@ -1361,7 +1361,7 @@ func (kc *KtIRContext) evalNamespaceCall(n *ir.Call) string {
 		if sel, ok := n.AST.Func.(*ast.SelectExpr); ok && sel.Field != "" {
 			// Nothing above recognized it, so this is the generic emission
 			// and the same guard the other paths carry applies.
-			codegen.RequireIntrinsicFallback(langKt, n.Func)
+			codegen.RequireIntrinsicFallback(langKt, n)
 			return receiver + "." + sel.Field + "(" + strings.Join(args, ", ") + ")"
 		}
 	}
@@ -1493,7 +1493,7 @@ func (kc *KtIRContext) evalTypeMethodCall(n *ir.Call) string {
 		}
 	}
 
-	codegen.RequireIntrinsicFallback(langKt, n.Func)
+	codegen.RequireIntrinsicFallback(langKt, n)
 	if len(args) == 0 {
 		return "/* unresolved method " + qualName + " */"
 	}

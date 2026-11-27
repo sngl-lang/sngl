@@ -464,26 +464,6 @@ func GeneratesUntranslated(platform string) bool {
 	return ok && u.GeneratesUntranslated()
 }
 
-// ScriptRunner is optionally implemented by a PlatformGenerator whose program
-// logic runs in a language of its own whatever --lang names: html's pages run
-// JavaScript in the browser, --lang naming only the server's.
-type ScriptRunner interface {
-	ScriptLang() string
-}
-
-// Implements reports whether a build for lang on platform can emit the
-// intrinsic id: lang implements it, and so does the language the platform
-// runs its program logic in where that is another (ScriptRunner).
-func Implements(platform, lang, id string) bool {
-	if !LangImplements(lang, id) {
-		return false
-	}
-	if r, ok := LookupPlatform(platform).(ScriptRunner); ok && r.ScriptLang() != lang {
-		return LangImplements(r.ScriptLang(), id)
-	}
-	return true
-}
-
 // HTTPRequest describes what the platform needs the language to generate.
 // Route paths are abstract templates (e.g. "/users/{name}"); the language
 // translates {param} placeholders into its framework's routing syntax.

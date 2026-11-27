@@ -33,7 +33,7 @@ func (g *Generator) Snapshot(pkg *ir.Package, lang codegen.LangTranslator, width
 		return nil, fmt.Errorf("%s: snapshot: %s", platformName, reason)
 	}
 	sink := codegen.NewMemSink()
-	if err := g.Generate(&codegen.Request{
+	if err := codegen.Generate(g, &codegen.Request{
 		Pkg:     pkg,
 		Lang:    lang,
 		Options: codegen.OptionsFromMap(map[string]any{snapshotOption: true}),
