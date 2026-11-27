@@ -27,6 +27,9 @@ func loneOuts(#[c.outs] f func() Size, #[c.context] data c.pointer) // ERROR(che
 #[c.native("outs_scalar")]
 func outsScalar(#[c.static] #[c.outs] f func() int) // ERROR(check) "is marked #[c.outs] and answers a int: what C reads through the pointers it hands the callback is a struct of the program's, a field for each"
 
+#[c.native("outs_nothing")]
+func outsNothing(#[c.static] #[c.outs] f func()) // ERROR(check) "is marked #[c.outs] and answers nothing"
+
 #[c.native("outs_string")]
 func outsString(#[c.static] #[c.outs] f func() Named) // ERROR(check) "whose field \"name\" is a string: C reads an int, float or bool through a pointer"
 
