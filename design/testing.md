@@ -63,6 +63,11 @@ naming `-update`; `go test ./cmd/sngl -run TestScript/<name> -update` reruns
 those launches for real, refuses to record one the host cannot run, and
 rewrites the records, while `-verify` reruns every launch whatever its record
 says, as a golden's does -- a toolchain or browser upgrade moves no digest.
+A rerun's PNG is held to its record within a snapshot assertion's tolerance
+(`snapshot.PNGClose`), and the recorded picture is what it leaves on disk, since
+a later launch asserting against it digests it: a marquee's frame and a font's
+antialiasing move a few pixels between runs, which failed win32's controls
+script one run in two.
 The digest does not cover `pkg/<lang>/` runtimes, which the generated program
 imports from the checkout -- a change there wants a `-verify` the digest will
 not ask for, the same gap a golden's record has.
