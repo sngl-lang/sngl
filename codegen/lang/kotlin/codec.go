@@ -41,12 +41,12 @@ func init() {
 }
 
 // UsesCodec reports whether pkg calls a codec intrinsic anywhere, tests
-// included, pathEscape, a lifetime id or a gRPC method: what makes android
-// write SnglCodec.
+// included, pathEscape, a lifetime id, a gRPC method or a sngl:sql
+// statement: what makes android write SnglCodec.
 func UsesCodec(pkg *ir.Package) bool {
 	found := false
 	_ = ir.Walk(pkg, func(n ir.Node) error {
-		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape" || ir.IsGRPC(c.Func)) {
+		if c, ok := n.(*ir.Call); ok && (codegen.IsCodecCall(c) || codegen.IsLifetimeCall(c) || c.Func != nil && c.Func.Intrinsic == "http.pathEscape" || ir.IsGRPC(c.Func) || ir.IsSQL(c.Func)) {
 			found = true
 		}
 		return nil

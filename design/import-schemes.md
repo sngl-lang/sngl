@@ -23,7 +23,12 @@ nothing serves. Two plugins in a closure declaring one name are an error at
 the import that brings the second. A cycle of plugins is a directory import
 cycle, reported where it closes, and the scheme it left waiting is not
 reported again. No registry outlives a check: the schemes hang off the IR, the
-library plugins loaded off the check's `libCache`.
+library plugins loaded off the check's `libCache`. An import left
+unresolved is bound, so a use of its alias is no undefined name, and a
+`match` on a call through it checks no arm's bare name against a type the
+call never had: the import's error is reported last, and a directory's
+check printed the arm's `undefined: failed` ahead of it
+(`cmd/sngl/testdata/error_match_unresolved_import.txt`).
 
 **The handler runs in the interpreter, through the build host**
 (`internal/plugin`, reached through `build.Resolver.GenerateScheme`; a
@@ -188,3 +193,94 @@ harness's server (`internal/testgrpc`, at `127.0.0.1:47820`), which reads
 and writes with protobuf's own runtime so each encoding is checked against
 the reference rather than against itself; the refusals
 `error_grpc_import.txt`, and the edges `codegen/scheme/grpc/grpc_test.go`.
+
+## The `sql:` scheme
+
+**`import db "sql:./db/queries.sql"` writes a package from a file of
+sqlc queries** (`lib/x/scheme/sql`): a struct per table, named in the
+singular as sqlc names a model, an enum per enum, a `…Call` function per
+query answering `async.Result`, a component over `async.query` per `:one` or
+`:many`, `source`, a context naming the database, `schema`, the schema's
+statements, and `create`, which runs them. sqlc's command already says which
+query reads and which writes, so no convention decides the component.
+
+**A query file says where its schema is, and the schema says its engine.**
+`-- sngl:schema schema.sql`, a file, a directory or a pattern relative to
+the query file, may be said more than once; `-- sngl:engine postgresql` is
+said in a schema file, since several query files share one schema and the
+engine is the database's, and a query file saying it overrides the
+schema's. Every schema file naming one names the same, and none naming one
+is SQLite. The directives become the sqlc configuration the yaml form
+writes by hand (`directives.go`): the query file's paths are known before
+anything else is read, and its engine only once the schema's files are, so
+`sql.configFor` answers the files to read and `sql.generate` the engine. A
+sqlc configuration, `sql:./db/sqlc.yaml`, declaring one package, is read as
+well.
+
+**sqlc analyses, linked, and nothing else of it runs.** The issue's
+alternative was its Go output through the `go:` importer, which pins `sql:`
+to Go; its analysis is what a codegen plugin is handed, the
+`GenerateRequest`, and is the same for every language. sqlc keeps it in
+`internal/`, and its one public entry, `pkg/cli.Run`, writes its errors to
+standard error, so `github.com/sngl-lang/sqlc` adds `pkg/analyze` and
+nothing else: the request per package, schema and query errors as values,
+and each schema file as sqlc reads it, its down migration left out. Linking
+`pkg/analyze` rather than the CLI keeps cobra, the wasm plugin runner and
+the cloud client out of sngl. PostgreSQL's parser is pg_query, which is
+cgo, or wazero where cgo is off.
+
+**The handler reads, Go analyses** (`codegen/scheme/sql`). The handler
+reads the file, asks `sql.inputs` what it names -- each joined to the
+file's directory, so a path is refused as outside the project where it
+lands outside it, not where it is written with `..` -- and reads each file
+through the project, a directory's `.sql` files and a pattern's by
+`gen.files`, so every read is recorded; `sql.generate` writes them to a
+temporary directory at their places under the import root, since sqlc's
+compiler reads paths, and runs the analysis there. A configuration declares one package, for `sqlite`,
+`postgresql` or `mysql`, refused otherwise before sqlc runs.
+
+**A row is a struct, and its type says what the wire holds.** A query
+answering every column of one table in order is that table's struct, one
+answering one column that column's value through a struct of one field,
+and any other `<Query>Row`. A column that may be null is an option. A type
+takes the SQL type's width on every target: PostgreSQL's `integer` an `int`,
+`bigint` an `int64`, SQLite's `INTEGER` an `int64` since SQLite's are, a
+`date` or `timestamp` a `time.date` or `time.datetime`, MySQL's
+`tinyint(1)` a `bool`, and `uuid`, `json` and the rest a string. An exact
+`numeric` or `decimal` has no SNGL number to hold every digit, and a float or a
+string would each change what the column means unsaid, so it is left out with
+a note naming the cast the query can write instead (`exactDecimal`); SQLite's
+`NUMERIC` is a float, since SQLite stores one as a real. An array, a
+`sqlc.slice`, a type with none and a `:copyfrom` or `:batch…` query leave the
+query out, with a note. A read decodes its rows through the
+package's two generic helpers, `_rows` and `_one`, copied per row type
+where a target writes no type parameter. A `:one` answers an option of its
+row, null where there is none, as no row is an answer rather than a failure.
+
+**A component is a read's alone.** sqlc's `:one` says how many rows come
+back, not whether the statement writes, and an INSERT … RETURNING is one:
+mounted, its component would insert, and again on every change of key. So a
+statement gets one only where its first word reads (`onlyReads`: SELECT,
+VALUES, or a WITH holding no write), and only where every parameter can key
+a query: a date or a time is held by each target its own way, so compares
+alike on none (`ir.RebuildIncomparable`). A `:one`'s component holds the
+row's option as its value, not an option of one -- Kotlin has no `T??` --
+writing it from `@load`.
+
+**`schema` is split by SNGL, not by sqlc's parser**, which leaves out a
+statement it does not model -- SQLite's trigger and index -- that the
+database still needs. A semicolon ends a statement outside a quote, a
+comment, PostgreSQL's dollar quoting and a `BEGIN … END` or `CASE … END`
+block (`split.go`); a transaction's `BEGIN` opens none.
+
+The runs are `cmd/sngl/testdata/sql_runs.txt`, against SQLite on the
+interpreter, the three Go platforms and android, and `sql_postgresql_runs.txt`
+and `sql_mysql_runs.txt` against the servers the script harness starts
+(`internal/testsql`, the `sqlserver` command) on the interpreter and the Go
+platforms. Those start from the binaries on PATH, so a host without them --
+CI -- replays the Go runs from their records and skips the interpreter's,
+guarded by `[postgresql]` and `[mysql]`. The refusals
+`error_sql_import.txt` and `error_sql_target.txt`; the edges -- each
+engine's types, the notes, the split, the directives --
+`codegen/scheme/sql/sql_test.go`;
+and `examples/bookshelf`.

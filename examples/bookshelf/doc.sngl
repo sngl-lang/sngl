@@ -1,0 +1,20 @@
+// A reading list kept in SQLite: a book added at the top, a search over the
+// shelf, and a row per book to mark read or take off.
+//
+// Nothing here writes a query's types by hand. `import books
+// "sql:./db/queries.sql"` hands sqlc the queries and the schema their
+// `-- sngl:schema` comment names, and writes a
+// package from what it says of them -- a struct per table, a function per
+// query, and a component per read over `async.query` -- so the shelf is
+//
+//	books.shelf #listed(search=search, :value=found, :failure=failure)
+//
+// asked when it mounts and again whenever `search` changes, and
+// `listed.refresh()` after each change the shelf makes.
+//
+//	app.sngl             the window, which creates the schema in its file
+//	                     and then shows the shelf
+//	db/queries.sql       the queries, each named for the function it becomes,
+//	                     and where their schema is
+//	db/schema.sql        the table, created each time the app opens its file
+//	bookshelf_test.sngl  the tests, each against a database of its own

@@ -1,0 +1,57 @@
+# An async.query over an answer that is itself an option holds its value as
+# an option of one, and Go's is a pointer to the pointer: putting the answer
+# in was written as a conversion of *T to **T, which does not compile.
+
+sngl test --platform=none app.sngl
+stdout '1 tests, 0 failures'
+
+sngl test --platform=fyne --language=go app.sngl
+stdout '1 tests, 0 failures'
+
+-- app.sngl --
+import async "sngl:async"
+import test "sngl:test"
+import ui "sngl:ui"
+
+func fetchOne(k int, life async.Lifetime) async.Result[option[int]] {
+    return {ok=k}
+}
+
+// The handler's `value` is this component's prop, not the query's.
+component one[F any](
+    n        int,
+    :value   option[int] = null,
+) F {
+    async.query #query(
+        on=n,
+        fetch=fetchOne,
+        @load(got) {
+            value = got
+        },
+    )
+}
+
+component main ui.node {
+    var got option[int] = null
+    one(n=3, :value=got)
+    ui.text #shown(value="{got.or(0)}")
+}
+
+
+func testHandlerWritesItsOwnValue(t test.Test, c main) {
+    t.wait(func() => c.shown.value == "3", 3000)
+}
+
+ui.window {
+    main
+}
+-- testrun/fyne/go/app.sngl/main/1 --
+sha256:48943ef172f5fb0c9b20c1e113659d12
+{
+  "results": [
+    {
+      "Desc": "HandlerWritesItsOwnValue",
+      "Passed": true
+    }
+  ]
+}

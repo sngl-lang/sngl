@@ -1,0 +1,66 @@
+# A return in an event handler ends the handler, wherever it stands: before
+# a write, or in a loop. Bubbletea writes a handler into Update's switch, so
+# a body that returns is a closure called there, and the return is not
+# Update's.
+
+sngl test --platform=none app.sngl
+stdout '2 tests, 0 failures'
+
+sngl test --platform=bubbletea --language=go app.sngl
+stdout '2 tests, 0 failures'
+
+-- app.sngl --
+import test "sngl:test"
+import ui "sngl:ui"
+
+component counter ui.node {
+    var title = ""
+    var n = 0
+    ui.input #name(:value=title)
+    ui.button #add(text="Add", @click {
+        if title == "" {
+            return
+        }
+        n += 1
+    })
+    ui.button #upTo(text="Up to 3", @click {
+        for var i = [1, 2, 3, 4, 5] {
+            if i > 3 {
+                return
+            }
+            n += 1
+        }
+    })
+    ui.text #count(value="{n}")
+}
+
+func testReturnBeforeAWrite(t test.Test, c counter) {
+    c.add.click()
+    t.assert(c.count.value == "0")
+    c.name.input("x")
+    c.add.click()
+    t.wait(func() => c.count.value == "1", 2000)
+}
+
+func testReturnInALoop(t test.Test, c counter) {
+    c.upTo.click()
+    t.wait(func() => c.count.value == "3", 2000)
+}
+
+ui.window {
+    counter
+}
+-- testrun/bubbletea/go/app.sngl/counter/1 --
+sha256:7e4a8952d288c42db2980e85c7c82617
+{
+  "results": [
+    {
+      "Desc": "ReturnBeforeAWrite",
+      "Passed": true
+    },
+    {
+      "Desc": "ReturnInALoop",
+      "Passed": true
+    }
+  ]
+}

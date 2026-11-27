@@ -1,0 +1,19 @@
+// Running a query against a database while the program runs.
+//
+//	match var r = sql.query(engine=sql.Engine.sqlite, source="books.db", text="SELECT id, title FROM books WHERE id = ?", args="[7]", columns=["id", "title"]) {
+//	    ok { … json.decode[list[Book]](r) … }
+//	    failed { … sql.classify(r).kind … }
+//	}
+//
+// A program rarely writes one: `import db "sql:./sqlc.yaml"` reads the
+// queries sqlc analyses and writes a typed function per query.
+//
+// **The text is the database's own**, with its own placeholders, and the
+// arguments and the rows travel as JSON: the arguments an array, the rows an
+// array of objects keyed by `columns`, which `json.decode` reads as the
+// program's own structs. So each language's runtime is one call with no
+// type in it, and a row is checked against its struct by the codec every
+// target already holds.
+//
+// A query waits, as any async function does. The connection to a source is
+// opened on its first query and kept for the program's life.

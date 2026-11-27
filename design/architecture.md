@@ -197,6 +197,12 @@ target with no way to say a field is meant for one.
   block it joined without rendering it again, as every box around it measures
   it anew (`bubbletea/redraw_run_test.go`).
 
+  A handler's body is written into Update's switch, so one holding a
+  `return` is a closure called there (`handlerLines`): inline, the return
+  was Update's, which answers two values, and a timer's or a scroll's
+  handler returning early skipped what follows it
+  (`cmd/sngl/testdata/handler_return_runs.txt`).
+
   A window's `@key` runs before Update's switch, so it hears every key first
   -- ctrl+c, the close, aside (`tui.KeyName`) -- and a handler that calls
   `stop` leaves `msg` nil, which no case and no forwarded widget takes; the

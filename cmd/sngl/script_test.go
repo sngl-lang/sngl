@@ -20,6 +20,7 @@ import (
 	"duckfam.us/sngl/internal/jdk"
 	"duckfam.us/sngl/internal/testinputs"
 	"duckfam.us/sngl/internal/testlaunch"
+	"duckfam.us/sngl/internal/testsql"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/tools/txtar"
@@ -46,6 +47,7 @@ func TestScript(t *testing.T) {
 	}
 	startTestHTTP(t, root)
 	defer removeSnglBin()
+	defer testsql.Stop()
 	// A script reaches the checkout through subprocesses go test cannot see:
 	// `serve` builds sngl, a go: const evaluates by building a module that
 	// replaces duckfam.us/sngl with it, and a script copies what it needs with
@@ -102,6 +104,12 @@ func TestScript(t *testing.T) {
 			return reason == ""
 		}(),
 	)
+	// `postgresql` and `mysql` are true where the engine's server binaries are
+	// on PATH, so `sqlserver` can start one. The interpreter queries one on
+	// every run; a launch answered from its record queries none, so CI runs
+	// those without either.
+	conds["postgresql"] = script.BoolCondition("a PostgreSQL server can be started", testsql.Available("postgresql"))
+	conds["mysql"] = script.BoolCondition("a MySQL or MariaDB server can be started", testsql.Available("mysql"))
 	conds["android-sdk"] = script.BoolCondition(
 		"ANDROID_HOME or ANDROID_SDK_ROOT points at an Android SDK",
 		os.Getenv("ANDROID_HOME") != "" || os.Getenv("ANDROID_SDK_ROOT") != "",
@@ -216,6 +224,7 @@ func scriptCmds() map[string]script.Cmd {
 	cmds["serve"] = serveCmd()
 	cmds["fetch"] = fetchCmd()
 	cmds["gobuild"] = gobuildCmd()
+	cmds["sqlserver"] = sqlserverCmd()
 	return cmds
 }
 

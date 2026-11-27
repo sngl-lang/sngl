@@ -2102,6 +2102,9 @@ func (env *Env) evalCallSite(call *ir.Call) (any, error) {
 	if result, handled, err := env.evalGRPCCall(call); handled {
 		return result, err
 	}
+	if result, handled, err := env.evalSQLCall(call); handled {
+		return result, err
+	}
 
 	// Namespace call (ns.foo / html.div) — receiver preserved.
 	if call.Receiver != nil {

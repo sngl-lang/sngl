@@ -429,18 +429,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case msg.Code == tea.KeyTab && msg.Mod == tea.ModShift:
 			m.__focusPrev()
 		case msg.Code == tea.KeyEnter && m.__focusID == 0:
-			if _, __err := strconv.Atoi("x"); __err != nil {
-				func() {
-					e := ErrorEvent{Message: __err.Error()}
-					_ = e
-					m.caught = "c"
-					if m.caught == "c" {
-						return
-					}
-					m.caught = "never"
-				}()
-			}
-			m.after = (m.after + "b")
+			func() {
+				if _, __err := strconv.Atoi("x"); __err != nil {
+					func() {
+						e := ErrorEvent{Message: __err.Error()}
+						_ = e
+						m.caught = "c"
+						if m.caught == "c" {
+							return
+						}
+						m.caught = "never"
+					}()
+				}
+				m.after = (m.after + "b")
+			}()
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -3367,7 +3369,7 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/bubbletea --
-pass sha256:4e94fa1f2de34840322c0d1c1bbfe3c6
+pass sha256:1f656da343ad349240d0c7798594992e
 -- run/go/fyne --
 pass sha256:e887d53597d0ae4d067880cbbe510d1f
 -- run/go/gtk4 --

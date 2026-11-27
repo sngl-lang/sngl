@@ -275,4 +275,8 @@ negation of an 8- or 16-bit operand is converted back (`narrowed` in
 it stands for on both (`AssignOp.Binary`): JavaScript's bare `x += 100` left
 an `int8` at 200. `cmd/sngl/testdata/sized_numbers_runs.txt` runs the
 `testdata/test_sized_*.sngl` fixtures on html and android, the two targets
-whose numbers are not Go's.
+whose numbers are not Go's. A number literal written where an option of a
+sized type is wanted -- passed, assigned, returned, compared -- takes the
+element's type, as it takes the sized type's itself (`numericWanted`), and
+Go spells its wrap with the type, `snglSome[int64](252)`: inferred, it was a
+`*int` (`testdata/test_sized_option_literal.sngl`).

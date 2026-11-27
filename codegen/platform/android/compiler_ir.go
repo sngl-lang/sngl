@@ -62,7 +62,10 @@ type Config struct {
 	accent string
 	// settings is whether the program keeps settings, which MainActivity
 	// then opens.
-	settings  bool
+	settings bool
+	// sql is whether the program runs a sngl:sql statement, which
+	// MainActivity hands SnglSql the context to find its databases with.
+	sql       bool
 	defaulted bool
 }
 

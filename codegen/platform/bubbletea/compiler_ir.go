@@ -1321,10 +1321,8 @@ func emitIRButtonHandlersWalk(b *strings.Builder, stmts []ir.Stmt, temps map[*ir
 			return
 		}
 		fmt.Fprintf(b, "\t\tcase %s && m.__focusID == %d%s:\n", keyGuard, slotIdx, overlayGuard)
-		for _, stmt := range block {
-			for _, line := range gc.EvalStmt(stmt) {
-				fmt.Fprintf(b, "\t\t\t%s\n", line)
-			}
+		for _, line := range handlerLines(gc, block) {
+			fmt.Fprintf(b, "\t\t\t%s\n", line)
 		}
 		syncMutatedInputs(b, block, info.widgets, info.binds, gc)
 	}
@@ -2004,10 +2002,8 @@ func emitScreenBack(b *strings.Builder, info *irAnalysis, gc *golang.GoIRContext
 		guard = " && !overlayOpen"
 	}
 	fmt.Fprintf(b, "\t\tcase msg.Code == tea.KeyEsc && (%s)%s:\n", gc.EvalExpr(can), guard)
-	for _, stmt := range h.Func.Block {
-		for _, line := range gc.EvalStmt(stmt) {
-			fmt.Fprintf(b, "\t\t\t%s\n", line)
-		}
+	for _, line := range handlerLines(gc, h.Func.Block) {
+		fmt.Fprintf(b, "\t\t\t%s\n", line)
 	}
 	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 }
@@ -2149,10 +2145,8 @@ func emitScreenClosedHandler(b *strings.Builder, n *ir.NodeInst, info *irAnalysi
 	if h == nil || h.Func == nil {
 		return
 	}
-	for _, stmt := range h.Func.Block {
-		for _, line := range gc.EvalStmt(stmt) {
-			fmt.Fprintf(b, "%s%s\n", indent, line)
-		}
+	for _, line := range handlerLines(gc, h.Func.Block) {
+		fmt.Fprintf(b, "%s%s\n", indent, line)
 	}
 	syncMutatedInputs(b, h.Func.Block, info.widgets, info.binds, gc)
 }
