@@ -695,9 +695,12 @@ component OutlinedTextField(
 
 // sngl:ui's input and textarea: an OutlinedTextField reporting each edit to
 // `onValueChange` and committing to `onCommit` as the focus leaves it or, if
-// `commitsOnDone`, at the keyboard's Done. Kotlin the platform ships
-// (codegen/platform/android/textfield.kt), since whether the text was edited
-// since the last commit is state of the field's own.
+// `commitsOnDone`, at the keyboard's Done or a hardware Enter, the field then
+// being one line, after which `onSubmit` is called. Only an edit since the
+// last commit is committed, and a field removed while focused commits nothing.
+// Kotlin the platform ships (codegen/platform/android/textfield.kt), since
+// whether the text was edited since the last commit is state of the field's
+// own.
 #[gen.renders(identity)]
 #[intrinsic("android:SnglTextField")]
 component SnglTextField(
@@ -709,6 +712,7 @@ component SnglTextField(
     modifier      Modifier,
     onValueChange func(value string),
     onCommit      func(),
+    onSubmit      func(),
 ) ui.node
 
 // A field a date is typed into, with a button opening Material's date picker.

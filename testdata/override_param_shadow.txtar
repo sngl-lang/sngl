@@ -3842,7 +3842,7 @@ fun MainScreen(state: MainScreenState = remember { MainScreenState() }) {
             state.v = (state.v + "!")
         }, onCommit = {
             state.commit__inst0(state.value__inst0)
-        })
+        }, onSubmit = {})
         Row(modifier = Modifier.testTag("sw"), verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = state.checked__inst1, onCheckedChange = { on__p1 ->
                 state.checked__inst1 = on__p1
@@ -3997,21 +3997,22 @@ private class FlexedNode : Modifier.Node() {
 -- out/kotlin/android/app/src/main/java/test/sngl/app/SnglTextField.kt --
 package test.sngl.app
 
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusEventModifierNode
+import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.text.input.ImeAction
 
-// SnglTextField is sngl:ui's input and textarea: onValueChange is each edit,
-// and onCommit the text committed, as the focus leaves the field or, where
-// commitsOnDone, at the keyboard's Done. Only an edit since the last commit is
-// committed, so a program's write of the value, or a Done the focus then
-// leaves after, commits nothing.
+// The contract is SnglTextField's declaration in lib/platform/android/android.sngl.
 @Composable
 fun SnglTextField(
     value: String,
@@ -4022,9 +4023,13 @@ fun SnglTextField(
     modifier: Modifier,
     onValueChange: (String) -> Unit,
     onCommit: () -> Unit,
+    onSubmit: () -> Unit,
 ) {
     val commit = remember { SnglCommit() }
-    commit.onCommit = onCommit
+    SideEffect {
+        commit.onCommit = onCommit
+        commit.onSubmit = onSubmit
+    }
     OutlinedTextField(
         value = value,
         onValueChange = {
@@ -4032,26 +4037,48 @@ fun SnglTextField(
             onValueChange(it)
         },
         readOnly = readOnly,
+        singleLine = commitsOnDone,
         minLines = minLines,
         label = if (label.isEmpty()) null else ({ Text(label) }),
         keyboardOptions = if (commitsOnDone) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
         // A non-null onDone replaces the default action, which hides the keyboard.
         keyboardActions = KeyboardActions(onDone = {
             commit.fire()
+            commit.onSubmit()
             defaultKeyboardAction(ImeAction.Done)
         }),
-        modifier = modifier.onFocusChanged { if (!it.isFocused) commit.fire() },
+        modifier = modifier.then(SnglCommitOnBlur(commit)),
     )
 }
 
 private class SnglCommit {
     var edited = false
     var onCommit: () -> Unit = {}
+    var onSubmit: () -> Unit = {}
 
     fun fire() {
         if (edited) {
             edited = false
             onCommit()
+        }
+    }
+}
+
+private data class SnglCommitOnBlur(val commit: SnglCommit) : ModifierNodeElement<SnglCommitOnBlurNode>() {
+    override fun create() = SnglCommitOnBlurNode(commit)
+
+    override fun update(node: SnglCommitOnBlurNode) {
+        node.commit = commit
+    }
+}
+
+// A field removed while focused loses its focus while this node is still
+// attached, so the commit waits for the main looper and asks again: a removed
+// field commits nothing, as html's removed input fires no change.
+private class SnglCommitOnBlurNode(var commit: SnglCommit) : Modifier.Node(), FocusEventModifierNode {
+    override fun onFocusEvent(focusState: FocusState) {
+        if (!focusState.isFocused && isAttached) {
+            Handler(Looper.getMainLooper()).post { if (isAttached) commit.fire() }
         }
     }
 }
@@ -4201,6 +4228,6 @@ pass sha256:4668b3c3f20b584a16fa1804963705c0
 -- run/go/gtk4 --
 pass sha256:39a1569159214862cc6131e8acfd4763
 -- run/kotlin/android --
-pass sha256:8f097ab81c470b6a5d672c08d6e8bca0
+pass sha256:ab2ee51976694958315215b77acf5dc6
 -- run/none/html --
 pass sha256:1435b427f5a6a2ec0e43f0d552b60d56

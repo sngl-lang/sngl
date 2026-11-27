@@ -182,7 +182,7 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-const component ui.input[platform](placeholder, readonly, value, style, @input, @change) {
+const component ui.input[platform](placeholder, readonly, value, style, @input, @change, @submit) {
     func commit(v string) {
         value = v
         change(v)
@@ -199,6 +199,7 @@ const component ui.input[platform](placeholder, readonly, value, style, @input, 
             input(v)
         },
         onCommit = func() { commit(value) },
+        onSubmit = func() { submit() },
     ) {}
 }
 
@@ -366,6 +367,7 @@ const component ui.textarea[platform](placeholder, readonly, value, style, @inpu
             input(v)
         },
         onCommit = func() { commit(value) },
+        onSubmit = func() {},
     ) {}
 }
 

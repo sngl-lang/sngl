@@ -17,7 +17,6 @@ sngl generate --platform=android --lang=kotlin --out=out app.sngl
 # of its own that starts at `notes`, and the callback writes the cell before
 # the handler writes `notes`.
 grep 'var value__inst0 by remember \{ mutableStateOf\(notes\) \}' out/MainScreen.kt
-grep 'SnglTextField\(value = value__inst0, label = "", minLines = 3, readOnly = false, commitsOnDone = false, modifier = Modifier\.safeDrawingPadding\(\), onValueChange = \{ v ->' out/MainScreen.kt
 grep 'value__inst0 = v$' out/MainScreen.kt
 grep 'notes = v$' out/MainScreen.kt
 
