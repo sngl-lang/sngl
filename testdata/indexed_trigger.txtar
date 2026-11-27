@@ -1755,6 +1755,23 @@ func (m *Model) fieldSubmitAt(key string) {
 	}
 }
 
+// fieldLeave invokes the OnFocusLost callback on the #field widget; for tests.
+func (m *Model) fieldLeave() {
+	if m.__named_field.OnFocusLost != nil {
+		m.__named_field.OnFocusLost()
+	}
+}
+
+// fieldLeaveAt invokes it on the copy of #field with the key; for tests.
+func (m *Model) fieldLeaveAt(key string) {
+	if m.__copies_field[key] == nil {
+		return
+	}
+	if m.__copies_field[key].OnFocusLost != nil {
+		m.__copies_field[key].OnFocusLost()
+	}
+}
+
 // tapClick invokes the OnTapped callback on the #tap widget; for tests.
 func (m *Model) tapClick() {
 	if m.tap.OnTapped != nil {
@@ -1955,6 +1972,11 @@ func new__input_state1Instance(__model *Model, __a___start_value string, __a___c
 	c.field.OnSubmitted = func(v string) {
 		if c.edited__inst0 {
 			c.commit__inst0(v)
+		}
+	}
+	c.field.OnFocusLost = func() {
+		if c.edited__inst0 {
+			c.commit__inst0(c.value)
 		}
 	}
 	c.Root = c.field
@@ -5906,6 +5928,16 @@ window.__sngl_boot = () => {
     Object.assign(el, p);
     el.dispatchEvent(Object.assign(new Event("keydown"), p));
   };
+  state.fieldBlur = (p) => {
+    const el = document.querySelector('[data-sngl-id="field"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("blur"), p));
+  };
+  state.fieldBlurAt = (k, p) => {
+    const el = document.querySelector('[data-sngl-id="field"][data-sngl-copy="' + k + '"]');
+    Object.assign(el, p);
+    el.dispatchEvent(Object.assign(new Event("blur"), p));
+  };
   state.tapClick = () => document.querySelector('[data-sngl-id="tap"]').click();
   state.tapClickAt = (k) => document.querySelector('[data-sngl-id="tap"][data-sngl-copy="' + k + '"]').click();
   state.tapContextmenu = (p) => {
@@ -6083,6 +6115,9 @@ window.__sngl_boot = () => {
         _snglCommitEdit(e.currentTarget);
       }
       ;
+    });
+    field.addEventListener("blur", (e) => {
+      _snglCommitEdit(e.currentTarget);
     });
     __root.appendChild(field);
     return {
@@ -6343,10 +6378,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:ae9c7b98bb09b13285efcf0737c8e3e8
 -- run/go/fyne --
-pass sha256:bf8a326b956ad0c70b1d96d38c8a5c18
+pass sha256:66346b54f0449da9be907d6424ce1526
 -- run/go/gtk4 --
 pass sha256:737d9deeb89e4bbe57c3776b2c8f94e9
 -- run/kotlin/android --
 pass sha256:a9fe5cf3a31af097795c92f996658e7e
 -- run/none/html --
-pass sha256:94b21deb6a532116fef6cd46bd946263
+pass sha256:079811a31c2fbbe79568738f509cf017

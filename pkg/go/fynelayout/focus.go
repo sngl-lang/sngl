@@ -183,9 +183,9 @@ func (h *Hyperlink) AcceptsTab() bool { return acceptsTab(h, false, false) }
 type Entry struct {
 	widget.Entry
 	// OnCommit is a test's commit of the text, its change trigger: the
-	// widget's own commit is Enter, which OnSubmitted hears and which
-	// submits as well, or on a multiline entry the focus leaving, which
-	// OnFocusLost hears.
+	// widget's own commits are the focus leaving, which OnFocusLost hears,
+	// and on a single-line entry Enter, which OnSubmitted hears and which
+	// submits as well.
 	OnCommit    func(text string)
 	OnFocusLost func()
 }

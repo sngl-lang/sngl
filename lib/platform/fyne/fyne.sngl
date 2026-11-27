@@ -388,6 +388,7 @@ const component Entry(
     @input(text string),
     @change(text string),
     @submit(text string),
+    @leave(),
 ) ui.node {
     Widget(
         spec = Spec{
@@ -401,6 +402,7 @@ const component Entry(
                 Handler{on="input", field="OnChanged", signature="func(s string)"},
                 Handler{on="change", field="OnCommit", signature="func(s string)"},
                 Handler{on="submit", field="OnSubmitted", signature="func(s string)"},
+                Handler{on="leave", field="OnFocusLost", signature="func()"},
             ],
         },
         text = text,
@@ -409,6 +411,7 @@ const component Entry(
         @input { input() },
         @change { change() },
         @submit { submit() },
+        @leave { leave() },
     ) {}
 }
 
@@ -1060,9 +1063,10 @@ func ui.select[T].change[platform](value) {
 
 // --- Text entry ---
 
-// Enter commits only an edit made since the last commit, then submits, as
-// android's keyboard action does. SetText reports the program's write as
-// OnChanged, which the guard keeps from marking an edit.
+// Enter and the focus leaving commit only an edit made since the last commit,
+// and Enter then submits, as android's keyboard action does. SetText reports
+// the program's write as OnChanged, which the guard keeps from marking an
+// edit.
 const component ui.input[platform](placeholder, value, style, @input, @change, @submit) {
     var edited = false
     func commit(v string) {
@@ -1087,6 +1091,11 @@ const component ui.input[platform](placeholder, value, style, @input, @change, @
                 commit(v)
             }
             submit()
+        },
+        @leave {
+            if edited {
+                commit(value)
+            }
         },
     ) {}
 }

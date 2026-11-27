@@ -102,6 +102,7 @@ type _On struct {
 	Change    func()
 	Activate  func()
 	Activates bool
+	Leave     func()
 	Closed    func()
 	Reach     func()
 	Load      func()
@@ -619,6 +620,7 @@ func _handlers(w cgo.HWND) _On {
 		__lt15 = _On{Click: func() {
 		}, Change: func() {
 		}, Activate: func() {
+		}, Leave: func() {
 		}, Closed: func() {
 		}, Reach: func() {
 		}, Load: func() {
@@ -1710,6 +1712,10 @@ func _command(w cgo.HWND, msg int, wp int, lp int, kind int) int {
 		_activated(src)
 		return 0
 	}
+	if (code == 512) && (k.Kind == 4) {
+		_left(src)
+		return 0
+	}
 	if (code == 1) && (k.Kind == 9) {
 		_changed(src)
 		return 0
@@ -2248,6 +2254,13 @@ func _changed(w cgo.HWND) {
 	}
 }
 
+func _left(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Leave
+		f()
+	}
+}
+
 func _color(src cgo.HWND, dc cgo.HDC, otherwise int) int {
 	if !func() bool { _, __ok := m._ctls[src]; return __ok }() {
 		return otherwise
@@ -2431,4 +2444,4 @@ func snglWin32Snapshot(path string, w, h int) int    { return cgo.SnglWin32Snaps
 func snglWin32CarryFile(name, data string, n int)    { cgo.SnglWin32CarryFile(name, data, n) }
 func snglPost(fn func())                             { cgo.SnglPost(fn) }
 -- run/go/win32 --
-pass sha256:719b6bda23d29d9ed39289e48702cc39
+pass sha256:f64c767b6ced9b68e01d15872f28cda1

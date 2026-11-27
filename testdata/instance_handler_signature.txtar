@@ -308,6 +308,11 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 			c.commit__inst0(v)
 		}
 	}
+	c.__n2.OnFocusLost = func() {
+		if c.edited__inst0 {
+			c.commit__inst0(c.value__inst0)
+		}
+	}
 	__n6.Add(c.__n2)
 	c.__n3 = widget.NewLabel("")
 	c.__n3.SetText(((((c.__prop_label + " ") + fmt.Sprint(c.on)) + " ") + c.typed))
@@ -3433,6 +3438,6 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:d0532ba1029e6847135a0ab81134cb60
+pass sha256:d969b23eff4824b66d831bd87ad5d07a
 -- run/go/gtk4 --
 pass sha256:c8f418073105e3c228993b5a6b11f5d9

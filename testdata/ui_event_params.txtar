@@ -1042,6 +1042,12 @@ func (m *Model) field_submit_handler(v string) {
 	}
 }
 
+func (m *Model) field_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.name)
+	}
+}
+
 func (m *Model) day_pick_handler(d *time.Time) {
 	if !snglOptEqual(d, m.picked) {
 		m.picked = d
@@ -1108,6 +1114,13 @@ func (m *Model) fieldSubmit() {
 		m.field.OnSubmitted = nil
 		cb(m.field.Text)
 		m.field.OnSubmitted = cb
+	}
+}
+
+// fieldLeave invokes the OnFocusLost callback on the #field widget; for tests.
+func (m *Model) fieldLeave() {
+	if m.field.OnFocusLost != nil {
+		m.field.OnFocusLost()
 	}
 }
 
@@ -1210,6 +1223,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.field.OnChanged = m.field_input_handler
 	m.field.OnCommit = m.field_change_handler
 	m.field.OnSubmitted = m.field_submit_handler
+	m.field.OnFocusLost = m.field_leave_handler
 	m.__n1.Add(m.field)
 	m.day = fynelayout.NewDateEntry()
 	m.day.SetDate(m.picked)
@@ -4876,6 +4890,10 @@ window.__sngl_boot = () => {
     Object.assign($2, p);
     $2.dispatchEvent(Object.assign(new Event("keydown"), p));
   };
+  state.fieldBlur = (p) => {
+    Object.assign($2, p);
+    $2.dispatchEvent(Object.assign(new Event("blur"), p));
+  };
   state.dayChange = (p) => {
     Object.assign($3, p);
     $3.dispatchEvent(Object.assign(new Event("change"), p));
@@ -4950,6 +4968,9 @@ window.__sngl_boot = () => {
     }
     ;
   });
+  $2.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   $3.addEventListener("change", function(e) {
     let __datepicker_value_wrote0 = e.currentTarget.value === "" ? null : e.currentTarget.value;
     state.picked = __datepicker_value_wrote0;
@@ -4975,10 +4996,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:04ed4d18836b303ac3699e75b83f94c5
 -- run/go/fyne --
-pass sha256:365502a6f32bf2b823d005cc3affd3a0
+pass sha256:aec05f979cf535730dcb2ef8906d0af4
 -- run/go/gtk4 --
 pass sha256:8705bab4fbc6c0566e726f5372432a3a
 -- run/kotlin/android --
 pass sha256:0917d73cc84f7df7de07d661a2ca4e9a
 -- run/none/html --
-pass sha256:4e4e26fee55ef3de65e0d52717ef743c
+pass sha256:6753436b709340326717c0d6854ff059

@@ -243,7 +243,7 @@ sha256:a720f513f46e6f99ca325c19307acdd7
   ]
 }
 -- testrun/fyne/go/app.sngl/held/1 --
-sha256:3673b476482b9defce2676053292b716
+sha256:7533e26ecb874b089d371f6d589e1adf
 {
   "results": [
     {
@@ -335,7 +335,7 @@ sha256:9bdf9007d4e2099e9e94d15934199cd3
   ]
 }
 -- testrun/html/none/app.sngl/held/1 --
-sha256:fe2f9b7875514d4dcedebaa5578203d1
+sha256:944cfcc5aafa1d810bfc70351b865ba4
 {
   "results": [
     {

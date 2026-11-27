@@ -966,8 +966,25 @@ activation, bubbletea's Enter path, fyne's `OnSubmitted` handed the text the
 entry holds. A test's `change` commits without submitting: a trigger
 override calling the override's `commit` on gtk4 and win32, html's and none's
 `change` handlers, and fyne's `OnCommit`, a callback of the runtime's `Entry`
-only a test calls, since Fyne's one commit is Enter and an override's trigger
-is not reached through a loop's copy there (#318).
+only a test calls, since an override's trigger is not reached through a
+loop's copy there (#318).
+
+The focus leaving an input commits through the same mark, so Enter and then the
+focus leaving commits once (`cmd/sngl/testdata/input_blur_commit_runs.txt` on
+html, android and win32). fyne, win32 and bubbletea committed only at Enter.
+fyne's is `@leave`, the runtime `Entry`'s `OnFocusLost`; win32's is the edit's
+EN_KILLFOCUS, Edit's `@leave`; bubbletea's is the focus sync that blurs a field
+marked edited, outside a loop; html's is a `blur` listener dispatching `change`
+on a marked element (`commitEdit`), since the browser's own change follows no
+script's write; it reads the event's target, since a handler reading `#field`
+rebuilt the element at every keystroke
+(`html_construct_patches_contents.txtar`), so html's `@blur` takes the event. A
+test's `focus` moves the focus on html (the element's `focus`), win32
+(`SetFocus`) and android; fyne's and bubbletea's are Go run tests
+(`input_blur_commit_run_test.go`). gtk4's input still commits only at Enter: a
+GtkEventControllerFocus on the entry heard no `leave` when a test's
+`gtk_widget_grab_focus` moved the focus under cage, so nothing could pin it,
+and the interpreter has no focus to move.
 
 bubbletea's textarea, where Enter is a line of the text, commits the same way
 (`commitsOnBlur`): an Update that changes the forwarded widget's value marks it

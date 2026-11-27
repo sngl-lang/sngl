@@ -57,6 +57,9 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
   });
+  __n1.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   $1.addEventListener("click", function() {
     state.name = "";
     __n1.value = state.name;

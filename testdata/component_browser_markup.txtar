@@ -234,6 +234,10 @@ window.__sngl_boot = () => {
     Object.assign($6, p);
     $6.dispatchEvent(Object.assign(new Event("keydown"), p));
   };
+  state.inputBlur = (p) => {
+    Object.assign($6, p);
+    $6.dispatchEvent(Object.assign(new Event("blur"), p));
+  };
   state.selectChange = (p) => {
     Object.assign($10, p);
     $10.dispatchEvent(Object.assign(new Event("change"), p));
@@ -986,6 +990,9 @@ window.__sngl_boot = () => {
     }
     ;
   });
+  $6.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   __n0.addEventListener("change", function(e) {
     state.checked__inst0 = e.currentTarget.checked;
     __n0.checked = state.checked__inst0;
@@ -1035,9 +1042,9 @@ window.__sngl_boot = () => {
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:434aa0e67492267cbbe732263123b429
+pass sha256:cd9f5772bcfabec47e64aefffdf7a2cd
 -- testrun/html/none/component_browser_markup.sngl/widgets/1 --
-sha256:1a5b9c7f52f78ebf909630c6eb1d8a9a
+sha256:fffc9ff05765eec6503c7a76b7615224
 {
   "results": [
     {

@@ -181,7 +181,7 @@ sha256:8b83575d67d0e0f60702ca8fdc32ebde
   "stdout": "app"
 }
 -- testrun/build/win32/c/app.sngl/1 --
-sha256:ee90b0fe1d7ad35c0e3f73683ad5d153
+sha256:82a6905565fce2929d8773cdd18974fb
 {
   "stdout": "app.exe"
 }

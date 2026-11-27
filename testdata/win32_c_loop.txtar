@@ -71,7 +71,7 @@ typedef struct sngl_lambda7_env sngl_lambda7_env;
 typedef struct sngl_lambda8_env sngl_lambda8_env;
 typedef struct sngl_lambda9_env sngl_lambda9_env;
 typedef struct sngl_lambda10_env sngl_lambda10_env;
-typedef struct sngl_lambda12_env sngl_lambda12_env;
+typedef struct sngl_lambda11_env sngl_lambda11_env;
 typedef struct sngl_lambda13_env sngl_lambda13_env;
 typedef struct sngl_lambda14_env sngl_lambda14_env;
 typedef struct sngl_lambda15_env sngl_lambda15_env;
@@ -79,6 +79,8 @@ typedef struct sngl_lambda16_env sngl_lambda16_env;
 typedef struct sngl_lambda17_env sngl_lambda17_env;
 typedef struct sngl_lambda18_env sngl_lambda18_env;
 typedef struct sngl_lambda19_env sngl_lambda19_env;
+typedef struct sngl_lambda20_env sngl_lambda20_env;
+typedef struct sngl_lambda21_env sngl_lambda21_env;
 typedef struct s_platform_win32_api__SIZE s_platform_win32_api__SIZE;
 typedef struct s__pictureSize__result s__pictureSize__result;
 typedef struct s__sendSize__result s__sendSize__result;
@@ -101,16 +103,17 @@ typedef struct sngl_fn_HWND__int sngl_fn_HWND__int;
 typedef struct sngl_fn_HWND_int__HWND sngl_fn_HWND_int__HWND;
 typedef struct s__getScrollInfo__result s__getScrollInfo__result;
 typedef struct s_GetWindowRect__result s_GetWindowRect__result;
-typedef struct sngl_lambda45_env sngl_lambda45_env;
-typedef struct sngl_lambda46_env sngl_lambda46_env;
 typedef struct sngl_lambda47_env sngl_lambda47_env;
 typedef struct sngl_lambda48_env sngl_lambda48_env;
 typedef struct sngl_lambda49_env sngl_lambda49_env;
 typedef struct sngl_lambda50_env sngl_lambda50_env;
 typedef struct sngl_lambda51_env sngl_lambda51_env;
 typedef struct sngl_lambda52_env sngl_lambda52_env;
-typedef struct sngl_lambda56_env sngl_lambda56_env;
-typedef struct sngl_lambda58_env sngl_lambda58_env;
+typedef struct sngl_lambda53_env sngl_lambda53_env;
+typedef struct sngl_lambda54_env sngl_lambda54_env;
+typedef struct sngl_lambda55_env sngl_lambda55_env;
+typedef struct sngl_lambda59_env sngl_lambda59_env;
+typedef struct sngl_lambda61_env sngl_lambda61_env;
 typedef struct sngl_opt_HWND sngl_opt_HWND;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
@@ -224,6 +227,7 @@ typedef struct s_platform_win32___On {
 	sngl_fn_void__void change;
 	sngl_fn_void__void activate;
 	bool activates;
+	sngl_fn_void__void leave;
 	sngl_fn_void__void closed;
 	sngl_fn_void__void reach;
 	sngl_fn_void__void load;
@@ -432,9 +436,9 @@ typedef struct sngl_lambda10_env {
 	sngl_env hdr;
 } sngl_lambda10_env;
 
-typedef struct sngl_lambda12_env {
+typedef struct sngl_lambda11_env {
 	sngl_env hdr;
-} sngl_lambda12_env;
+} sngl_lambda11_env;
 
 typedef struct sngl_lambda13_env {
 	sngl_env hdr;
@@ -463,6 +467,14 @@ typedef struct sngl_lambda18_env {
 typedef struct sngl_lambda19_env {
 	sngl_env hdr;
 } sngl_lambda19_env;
+
+typedef struct sngl_lambda20_env {
+	sngl_env hdr;
+} sngl_lambda20_env;
+
+typedef struct sngl_lambda21_env {
+	sngl_env hdr;
+} sngl_lambda21_env;
 
 typedef struct s_platform_win32_api__SIZE {
 	int64_t cx;
@@ -588,14 +600,6 @@ typedef struct s_GetWindowRect__result {
 	s_platform_win32_api__RECT out1;
 } s_GetWindowRect__result;
 
-typedef struct sngl_lambda45_env {
-	sngl_env hdr;
-} sngl_lambda45_env;
-
-typedef struct sngl_lambda46_env {
-	sngl_env hdr;
-} sngl_lambda46_env;
-
 typedef struct sngl_lambda47_env {
 	sngl_env hdr;
 } sngl_lambda47_env;
@@ -620,15 +624,27 @@ typedef struct sngl_lambda52_env {
 	sngl_env hdr;
 } sngl_lambda52_env;
 
-typedef struct sngl_lambda56_env {
+typedef struct sngl_lambda53_env {
 	sngl_env hdr;
-	s___anon_id_elem_c6a818 name;
-} sngl_lambda56_env;
+} sngl_lambda53_env;
 
-typedef struct sngl_lambda58_env {
+typedef struct sngl_lambda54_env {
+	sngl_env hdr;
+} sngl_lambda54_env;
+
+typedef struct sngl_lambda55_env {
+	sngl_env hdr;
+} sngl_lambda55_env;
+
+typedef struct sngl_lambda59_env {
 	sngl_env hdr;
 	s___anon_id_elem_c6a818 name;
-} sngl_lambda58_env;
+} sngl_lambda59_env;
+
+typedef struct sngl_lambda61_env {
+	sngl_env hdr;
+	s___anon_id_elem_c6a818 name;
+} sngl_lambda61_env;
 
 typedef struct sngl_opt_HWND {
 	bool ok;
@@ -682,7 +698,8 @@ static void sngl_lambda6(void *env_);
 static void sngl_lambda7(void *env_);
 static void sngl_lambda8(void *env_);
 static void sngl_lambda9(void *env_);
-static void sngl_lambda10(void *env_, bool visible);
+static void sngl_lambda10(void *env_);
+static void sngl_lambda11(void *env_, bool visible);
 static s_platform_win32___On s_platform_win32___On__keep(s_platform_win32___On v);
 static sngl_fn_void__void sngl_fn_void__void__keep(sngl_fn_void__void v);
 static sngl_fn_bool__void sngl_fn_bool__void__keep(sngl_fn_bool__void v);
@@ -694,14 +711,15 @@ static void s_platform_win32___paintLook(HWND n, s_platform_win32__Look look);
 static void s_platform_win32___relayout(HWND w);
 static void s_platform_win32___setVertical(HWND w, bool vertical);
 static void s_platform_win32___onClick(HWND w, sngl_fn_void__void click);
-static void sngl_lambda12(void *env_);
 static void sngl_lambda13(void *env_);
 static void sngl_lambda14(void *env_);
 static void sngl_lambda15(void *env_);
 static void sngl_lambda16(void *env_);
 static void sngl_lambda17(void *env_);
 static void sngl_lambda18(void *env_);
-static void sngl_lambda19(void *env_, bool visible);
+static void sngl_lambda19(void *env_);
+static void sngl_lambda20(void *env_);
+static void sngl_lambda21(void *env_, bool visible);
 static void s_platform_win32___invalidate(HWND w);
 static void s_platform_win32___setText(HWND w, sngl_string text);
 static HWND s_platform_win32___rtSpacer(void);
@@ -753,19 +771,21 @@ static void s_platform_win32___showModal(HWND m);
 static void s_platform_win32___layoutMessage(HWND top);
 static void s_platform_win32___refresh(HWND w, int64_t dpi);
 static bool s_platform_win32___close(HWND w);
-static void sngl_lambda45(void *env_);
-static void sngl_lambda46(void *env_);
 static void sngl_lambda47(void *env_);
 static void sngl_lambda48(void *env_);
 static void sngl_lambda49(void *env_);
 static void sngl_lambda50(void *env_);
 static void sngl_lambda51(void *env_);
-static void sngl_lambda52(void *env_, bool visible);
+static void sngl_lambda52(void *env_);
+static void sngl_lambda53(void *env_);
+static void sngl_lambda54(void *env_);
+static void sngl_lambda55(void *env_, bool visible);
 static void s_platform_win32___gone(HWND w, bool counted);
 static void s_platform_win32___activated(HWND w);
 static void s_platform_win32___menuCommand(HWND top, int64_t id);
 static void s_platform_win32___clicked(HWND w);
 static void s_platform_win32___changed(HWND w);
+static void s_platform_win32___left(HWND w);
 static int64_t s_platform_win32___color(HWND src, HDC dc, int64_t otherwise);
 static int64_t s_platform_win32___shade(int64_t rgb, int64_t by);
 static int64_t s_platform_win32___signed32(int64_t n);
@@ -778,14 +798,14 @@ static void s_platform_win32___layOutNow(HWND w);
 static void s___renderSlot0(HWND parent);
 static s___anon_id_elem_c6a818 s___anon_id_elem_c6a818__keep(s___anon_id_elem_c6a818 v);
 static void s___anon_id_elem_c6a818__drop(s___anon_id_elem_c6a818 v);
-static void *sngl_lambda56_env__keep(const void *p);
-static void sngl_lambda56_env__release(void *p);
-static void sngl_lambda56_env__rekeep(void *p);
-static void sngl_lambda56(void *env_);
-static void *sngl_lambda58_env__keep(const void *p);
-static void sngl_lambda58_env__release(void *p);
-static void sngl_lambda58_env__rekeep(void *p);
-static void sngl_lambda58(void *env_);
+static void *sngl_lambda59_env__keep(const void *p);
+static void sngl_lambda59_env__release(void *p);
+static void sngl_lambda59_env__rekeep(void *p);
+static void sngl_lambda59(void *env_);
+static void *sngl_lambda61_env__keep(const void *p);
+static void sngl_lambda61_env__release(void *p);
+static void sngl_lambda61_env__rekeep(void *p);
+static void sngl_lambda61(void *env_);
 static sngl_map_string____child0__inst sngl_map_string____child0__inst__keep(sngl_map_string____child0__inst v);
 static void sngl_map_string____child0__inst__drop(sngl_map_string____child0__inst v);
 static void s___snglTeardown(void);
@@ -1309,6 +1329,7 @@ static s_platform_win32___On s_platform_win32___On__keep(s_platform_win32___On v
 	v.click = sngl_fn_void__void__keep(v.click);
 	v.change = sngl_fn_void__void__keep(v.change);
 	v.activate = sngl_fn_void__void__keep(v.activate);
+	v.leave = sngl_fn_void__void__keep(v.leave);
 	v.closed = sngl_fn_void__void__keep(v.closed);
 	v.reach = sngl_fn_void__void__keep(v.reach);
 	v.load = sngl_fn_void__void__keep(v.load);
@@ -1329,6 +1350,7 @@ static void s_platform_win32___On__drop(s_platform_win32___On v) {
 	sngl_fn_void__void__drop(v.click);
 	sngl_fn_void__void__drop(v.change);
 	sngl_fn_void__void__drop(v.activate);
+	sngl_fn_void__void__drop(v.leave);
 	sngl_fn_void__void__drop(v.closed);
 	sngl_fn_void__void__drop(v.reach);
 	sngl_fn_void__void__drop(v.load);
@@ -1842,41 +1864,41 @@ static void s___anon_id_elem_c6a818__drop(s___anon_id_elem_c6a818 v) {
 	sngl_drop((v.elem).ptr);
 }
 
-static void sngl_lambda56_env__release(void *p) {
-	sngl_lambda56_env *e = p;
+static void sngl_lambda59_env__release(void *p) {
+	sngl_lambda59_env *e = p;
 	s___anon_id_elem_c6a818__drop(e->name);
 	(void)e;
 }
 
-static void sngl_lambda56_env__rekeep(void *p) {
-	sngl_lambda56_env *e = p;
+static void sngl_lambda59_env__rekeep(void *p) {
+	sngl_lambda59_env *e = p;
 	e->name = s___anon_id_elem_c6a818__keep(e->name);
 	(void)e;
 }
 
-static void *sngl_lambda56_env__keep(const void *p) {
-	sngl_lambda56_env *e = sngl_counted_new(p, sizeof(sngl_lambda56_env), sngl_lambda56_env__release, sngl_lambda56_env__rekeep, NULL);
+static void *sngl_lambda59_env__keep(const void *p) {
+	sngl_lambda59_env *e = sngl_counted_new(p, sizeof(sngl_lambda59_env), sngl_lambda59_env__release, sngl_lambda59_env__rekeep, NULL);
 	e->hdr.counted = true;
-	sngl_lambda56_env__rekeep(e);
+	sngl_lambda59_env__rekeep(e);
 	return e;
 }
 
-static void sngl_lambda58_env__release(void *p) {
-	sngl_lambda58_env *e = p;
+static void sngl_lambda61_env__release(void *p) {
+	sngl_lambda61_env *e = p;
 	s___anon_id_elem_c6a818__drop(e->name);
 	(void)e;
 }
 
-static void sngl_lambda58_env__rekeep(void *p) {
-	sngl_lambda58_env *e = p;
+static void sngl_lambda61_env__rekeep(void *p) {
+	sngl_lambda61_env *e = p;
 	e->name = s___anon_id_elem_c6a818__keep(e->name);
 	(void)e;
 }
 
-static void *sngl_lambda58_env__keep(const void *p) {
-	sngl_lambda58_env *e = sngl_counted_new(p, sizeof(sngl_lambda58_env), sngl_lambda58_env__release, sngl_lambda58_env__rekeep, NULL);
+static void *sngl_lambda61_env__keep(const void *p) {
+	sngl_lambda61_env *e = sngl_counted_new(p, sizeof(sngl_lambda61_env), sngl_lambda61_env__release, sngl_lambda61_env__rekeep, NULL);
 	e->hdr.counted = true;
-	sngl_lambda58_env__rekeep(e);
+	sngl_lambda61_env__rekeep(e);
 	return e;
 }
 
@@ -2367,13 +2389,13 @@ static void s_platform_win32___insertTo(HWND parent, HWND child, HWND before) {
 }
 
 static void s_platform_win32___onVisible(HWND w, sngl_fn_bool__void visible) {
-	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda3, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda4, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda5, NULL}), .activates = false, .closed = ((sngl_fn_void__void){sngl_lambda6, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda7, NULL}), .load = ((sngl_fn_void__void){sngl_lambda8, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda9, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda10, NULL})});
+	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda3, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda4, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda5, NULL}), .activates = false, .leave = ((sngl_fn_void__void){sngl_lambda6, NULL}), .closed = ((sngl_fn_void__void){sngl_lambda7, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda8, NULL}), .load = ((sngl_fn_void__void){sngl_lambda9, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda10, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda11, NULL})});
 	h.visible = visible;
 	{
-	s_platform_win32___On __kept11 = s_platform_win32___On__keep(h);
-	s_platform_win32___On *__slot11 = &((*sngl_map_HWND___On_slot_kept(&(s_platform_win32___on), w)));
-	s_platform_win32___On__drop(*__slot11);
-	*__slot11 = __kept11;
+	s_platform_win32___On __kept12 = s_platform_win32___On__keep(h);
+	s_platform_win32___On *__slot12 = &((*sngl_map_HWND___On_slot_kept(&(s_platform_win32___on), w)));
+	s_platform_win32___On__drop(*__slot12);
+	*__slot12 = __kept12;
 }
 }
 
@@ -2447,14 +2469,14 @@ static void s_platform_win32___setVertical(HWND w, bool vertical) {
 }
 
 static void s_platform_win32___onClick(HWND w, sngl_fn_void__void click) {
-	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda12, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda13, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda14, NULL}), .activates = false, .closed = ((sngl_fn_void__void){sngl_lambda15, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda16, NULL}), .load = ((sngl_fn_void__void){sngl_lambda17, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda18, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda19, NULL})});
+	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda13, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda14, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda15, NULL}), .activates = false, .leave = ((sngl_fn_void__void){sngl_lambda16, NULL}), .closed = ((sngl_fn_void__void){sngl_lambda17, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda18, NULL}), .load = ((sngl_fn_void__void){sngl_lambda19, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda20, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda21, NULL})});
 	h.click = click;
 	h.clicks = true;
 	{
-	s_platform_win32___On __kept20 = s_platform_win32___On__keep(h);
-	s_platform_win32___On *__slot20 = &((*sngl_map_HWND___On_slot_kept(&(s_platform_win32___on), w)));
-	s_platform_win32___On__drop(*__slot20);
-	*__slot20 = __kept20;
+	s_platform_win32___On __kept22 = s_platform_win32___On__keep(h);
+	s_platform_win32___On *__slot22 = &((*sngl_map_HWND___On_slot_kept(&(s_platform_win32___on), w)));
+	s_platform_win32___On__drop(*__slot22);
+	*__slot22 = __kept22;
 }
 }
 
@@ -2469,10 +2491,10 @@ static void s_platform_win32___setText(HWND w, sngl_string text) {
 	}
 	if (has) {
 		{
-	sngl_string __kept21 = sngl_string_keep(text);
-	sngl_string *__slot21 = &((*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)).text);
-	sngl_drop((*__slot21).ptr);
-	*__slot21 = __kept21;
+	sngl_string __kept23 = sngl_string_keep(text);
+	sngl_string *__slot23 = &((*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)).text);
+	sngl_drop((*__slot23).ptr);
+	*__slot23 = __kept23;
 }
 		(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)).texted = true;
 		if (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, w)->kind == 15) {
@@ -2542,7 +2564,7 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 			if (k.kind == 13) {
 				int64_t mostX = 0;
 				int64_t mostY = 0;
-				for (struct { sngl_list_HWND l; int64_t i; } __loop22 = {k.kids, 0}; __loop22.i < __loop22.l.len; __loop22.i++) { HWND page = __loop22.l.data[__loop22.i];
+				for (struct { sngl_list_HWND l; int64_t i; } __loop24 = {k.kids, 0}; __loop24.i < __loop24.l.len; __loop24.i++) { HWND page = __loop24.l.data[__loop24.i];
 					s_platform_win32___Size p = s_platform_win32___measure(page);
 					mostX = ((p.cx > mostX) ? p.cx : mostX);
 					mostY = ((p.cy > mostY) ? p.cy : mostY);
@@ -2564,7 +2586,7 @@ static s_platform_win32___Size s_platform_win32___measure(HWND w) {
 					}
 				} else {
 					if (k.kind == 20) {
-						for (struct { sngl_list_HWND l; int64_t i; } __loop23 = {k.kids, 0}; __loop23.i < __loop23.l.len; __loop23.i++) { HWND child = __loop23.l.data[__loop23.i];
+						for (struct { sngl_list_HWND l; int64_t i; } __loop25 = {k.kids, 0}; __loop25.i < __loop25.l.len; __loop25.i++) { HWND child = __loop25.l.data[__loop25.i];
 							s_platform_win32_api__SIZE p = (s_platform_win32_api__SIZE){.cx = 0, .cy = 0};
 							s__pictureSize__result __ref0 = sngl_ccall_sngl_win32_picture_size__pictureSize(child, p);
 							p = __ref0.out1;
@@ -2689,7 +2711,7 @@ static bool s_platform_win32___holdsEntries(HWND w) {
 	if (k.kind == 16) {
 		return true;
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop24 = {k.kids, 0}; __loop24.i < __loop24.l.len; __loop24.i++) { HWND child = __loop24.l.data[__loop24.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop26 = {k.kids, 0}; __loop26.i < __loop26.l.len; __loop26.i++) { HWND child = __loop26.l.data[__loop26.i];
 		if (s_platform_win32___holdsEntries(child)) {
 			return true;
 		}
@@ -2729,7 +2751,7 @@ static void s_platform_win32___tabsSync(HWND tabs) {
 	}
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, tabs);
 	(void)(int64_t)SendMessageW(tabs, (UINT)(4873), (WPARAM)(0), (LPARAM)(0));
-	for (struct { sngl_list_HWND l; int64_t i; } __loop25 = {k.kids, 0}; __loop25.i < __loop25.l.len; __loop25.i++) { int64_t i = __loop25.i; HWND page = __loop25.l.data[__loop25.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop27 = {k.kids, 0}; __loop27.i < __loop27.l.len; __loop27.i++) { int64_t i = __loop27.i; HWND page = __loop27.l.data[__loop27.i];
 		s_platform_win32___TabItem item = (s_platform_win32___TabItem){.mask = 1, .pszText = ((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, page) >= 0) ? sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, page)->text : SNGL_STR(""))};
 		s__sendTabItem__result __ref3 = sngl_ccall_SendMessageW__sendTabItem(tabs, (UINT)(4926), (WPARAM)(i), item);
 		item = __ref3.out3;
@@ -2749,7 +2771,7 @@ static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___
 	int64_t n = (ks).len;
 	int64_t mostX = 0;
 	int64_t mostY = 0;
-	for (struct { sngl_list__Kid l; int64_t i; } __loop26 = {ks, 0}; __loop26.i < __loop26.l.len; __loop26.i++) { s_platform_win32___Kid it = __loop26.l.data[__loop26.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop28 = {ks, 0}; __loop28.i < __loop28.l.len; __loop28.i++) { s_platform_win32___Kid it = __loop28.l.data[__loop28.i];
 		mostX = ((it.cx > mostX) ? it.cx : mostX);
 		mostY = ((it.cy > mostY) ? it.cy : mostY);
 	}
@@ -2788,7 +2810,7 @@ static s_platform_win32___Size s_platform_win32___boxMeasure(s_platform_win32___
 						sy = mostY;
 					}
 				} else {
-					for (struct { sngl_list__Kid l; int64_t i; } __loop27 = {ks, 0}; __loop27.i < __loop27.l.len; __loop27.i++) { int64_t i = __loop27.i; s_platform_win32___Kid it = __loop27.l.data[__loop27.i];
+					for (struct { sngl_list__Kid l; int64_t i; } __loop29 = {ks, 0}; __loop29.i < __loop29.l.len; __loop29.i++) { int64_t i = __loop29.i; s_platform_win32___Kid it = __loop29.l.data[__loop29.i];
 						if (k.vertical) {
 							sy += (it.cy + ((i > 0) ? gap : 0));
 						} else {
@@ -2954,7 +2976,7 @@ static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 				}
 			} else {
 				if (k.mode == 3) {
-					for (struct { sngl_list__Kid l; int64_t i; } __loop28 = {ks, 0}; __loop28.i < __loop28.l.len; __loop28.i++) { s_platform_win32___Kid it = __loop28.l.data[__loop28.i];
+					for (struct { sngl_list__Kid l; int64_t i; } __loop30 = {ks, 0}; __loop30.i < __loop30.l.len; __loop30.i++) { s_platform_win32___Kid it = __loop30.l.data[__loop30.i];
 						sngl_list__Rect_push(&(at), (s_platform_win32___Rect){.l = x0, .t = y0, .r = (x0 + iw), .b = (y0 + ih)});
 					}
 				} else {
@@ -2964,7 +2986,7 @@ static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 		}
 	}
 	HDWP batch = BeginDeferWindowPos((int)(((n > 0) ? n : 1)));
-	for (struct { sngl_list__Kid l; int64_t i; } __loop29 = {ks, 0}; __loop29.i < __loop29.l.len; __loop29.i++) { int64_t i = __loop29.i; s_platform_win32___Kid it = __loop29.l.data[__loop29.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop31 = {ks, 0}; __loop31.i < __loop31.l.len; __loop31.i++) { int64_t i = __loop31.i; s_platform_win32___Kid it = __loop31.l.data[__loop31.i];
 		s_platform_win32___Rect r = (*sngl_list__Rect_at(at, i));
 		int64_t ch = (r.b - r.t);
 		s_platform_win32___Ctl kc = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, it.w);
@@ -2997,7 +3019,7 @@ static void s_platform_win32___layOut(HWND box, int64_t width, int64_t height) {
 			i -= 1;
 		}
 	}
-	for (struct { sngl_list__Kid l; int64_t i; } __loop30 = {ks, 0}; __loop30.i < __loop30.l.len; __loop30.i++) { int64_t i = __loop30.i; s_platform_win32___Kid it = __loop30.l.data[__loop30.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop32 = {ks, 0}; __loop32.i < __loop32.l.len; __loop32.i++) { int64_t i = __loop32.i; s_platform_win32___Kid it = __loop32.l.data[__loop32.i];
 		s_platform_win32___place(it.w, ((*sngl_list__Rect_at(at, i)).r - (*sngl_list__Rect_at(at, i)).l), ((*sngl_list__Rect_at(at, i)).b - (*sngl_list__Rect_at(at, i)).t));
 	}
 	if (moved) {
@@ -3009,7 +3031,7 @@ static void s_platform_win32___fillMenu(HMENU m, HWND w, bool top) {
 	if (!(sngl_map_HWND___Ctl_find(s_platform_win32___ctls, w) >= 0)) {
 		return;
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop31 = {sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, w)->kids, 0}; __loop31.i < __loop31.l.len; __loop31.i++) { HWND child = __loop31.l.data[__loop31.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop33 = {sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, w)->kids, 0}; __loop33.i < __loop33.l.len; __loop33.i++) { HWND child = __loop33.l.data[__loop33.i];
 		if (sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) {
 			if (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->kind == 16) {
 				s_platform_win32___addEntry(m, child);
@@ -3024,7 +3046,7 @@ static void s_platform_win32___fillMenu(HMENU m, HWND w, bool top) {
 
 static sngl_list__Kid s_platform_win32___laidKids(s_platform_win32___Ctl k) {
 	sngl_list__Kid out = ((sngl_list__Kid){0});
-	for (struct { sngl_list_HWND l; int64_t i; } __loop32 = {k.kids, 0}; __loop32.i < __loop32.l.len; __loop32.i++) { HWND child = __loop32.l.data[__loop32.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop34 = {k.kids, 0}; __loop34.i < __loop34.l.len; __loop34.i++) { HWND child = __loop34.l.data[__loop34.i];
 		if (((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offProp) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offLook) {
 			s_platform_win32___Size s = s_platform_win32___measure(child);
 			sngl_list__Kid_push(&(out), (s_platform_win32___Kid){.w = child, .cx = s.cx, .cy = s.cy, .flex = s_platform_win32___flexOf(child)});
@@ -3077,7 +3099,7 @@ static s_platform_win32___Flowed s_platform_win32___flow(sngl_list__Kid ks, int6
 	int64_t y = y0;
 	int64_t h = 0;
 	sngl_list__Rect at = ((sngl_list__Rect){0});
-	for (struct { sngl_list__Kid l; int64_t i; } __loop33 = {ks, 0}; __loop33.i < __loop33.l.len; __loop33.i++) { s_platform_win32___Kid it = __loop33.l.data[__loop33.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop35 = {ks, 0}; __loop35.i < __loop35.l.len; __loop35.i++) { s_platform_win32___Kid it = __loop35.l.data[__loop35.i];
 		if ((x > x0) && ((x + it.cx) > (x0 + iw))) {
 			x = x0;
 			y += (h + gap);
@@ -3096,7 +3118,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 	sngl_list_int size = ((sngl_list_int){0});
 	int64_t total = 0;
 	double flex = 0.0;
-	for (struct { sngl_list__Kid l; int64_t i; } __loop34 = {ks, 0}; __loop34.i < __loop34.l.len; __loop34.i++) { s_platform_win32___Kid it = __loop34.l.data[__loop34.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop36 = {ks, 0}; __loop36.i < __loop36.l.len; __loop36.i++) { s_platform_win32___Kid it = __loop36.l.data[__loop36.i];
 		int64_t along = (k.vertical ? it.cy : it.cx);
 		sngl_list_int_push(&(size), along);
 		total += along;
@@ -3104,7 +3126,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 	}
 	int64_t spare = (avail - total);
 	if (k.mode == 4) {
-		for (struct { sngl_list__Kid l; int64_t i; } __loop35 = {ks, 0}; __loop35.i < __loop35.l.len; __loop35.i++) { int64_t i = __loop35.i; s_platform_win32___Kid it = __loop35.l.data[__loop35.i];
+		for (struct { sngl_list__Kid l; int64_t i; } __loop37 = {ks, 0}; __loop37.i < __loop37.l.len; __loop37.i++) { int64_t i = __loop37.i; s_platform_win32___Kid it = __loop37.l.data[__loop37.i];
 			(*sngl_list_int_at(size, i)) = sngl_div(avail, n);
 		}
 		(*sngl_list_int_at(size, (n - 1))) += (avail - (sngl_div(avail, n) * n));
@@ -3112,7 +3134,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 		if ((spare > 0) && (flex > 0.0)) {
 			int64_t given = 0;
 			int64_t last = -1;
-			for (struct { sngl_list__Kid l; int64_t i; } __loop36 = {ks, 0}; __loop36.i < __loop36.l.len; __loop36.i++) { int64_t i = __loop36.i; s_platform_win32___Kid it = __loop36.l.data[__loop36.i];
+			for (struct { sngl_list__Kid l; int64_t i; } __loop38 = {ks, 0}; __loop38.i < __loop38.l.len; __loop38.i++) { int64_t i = __loop38.i; s_platform_win32___Kid it = __loop38.l.data[__loop38.i];
 				if (it.flex > 0.0) {
 					int64_t more = sngl_float_int(((double)(spare) * (it.flex / flex)));
 					(*sngl_list_int_at(size, i)) += more;
@@ -3126,7 +3148,7 @@ static sngl_list__Rect s_platform_win32___line(s_platform_win32___Ctl k, sngl_li
 	int64_t pos = (k.vertical ? y0 : x0);
 	int64_t room = (k.vertical ? iw : ih);
 	sngl_list__Rect at = ((sngl_list__Rect){0});
-	for (struct { sngl_list__Kid l; int64_t i; } __loop37 = {ks, 0}; __loop37.i < __loop37.l.len; __loop37.i++) { int64_t i = __loop37.i; s_platform_win32___Kid it = __loop37.l.data[__loop37.i];
+	for (struct { sngl_list__Kid l; int64_t i; } __loop39 = {ks, 0}; __loop39.i < __loop39.l.len; __loop39.i++) { int64_t i = __loop39.i; s_platform_win32___Kid it = __loop39.l.data[__loop39.i];
 		bool sized = (k.vertical ? (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, it.w)->exactW > 0) : (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, it.w)->exactH > 0));
 		int64_t across = room;
 		int64_t off = 0;
@@ -3163,7 +3185,7 @@ static void s_platform_win32___place(HWND w, int64_t cw, int64_t ch) {
 				s_platform_win32___invalidate(w);
 			} else {
 				if (k.kind == 20) {
-					for (struct { sngl_list_HWND l; int64_t i; } __loop38 = {k.kids, 0}; __loop38.i < __loop38.l.len; __loop38.i++) { HWND child = __loop38.l.data[__loop38.i];
+					for (struct { sngl_list_HWND l; int64_t i; } __loop40 = {k.kids, 0}; __loop40.i < __loop40.l.len; __loop40.i++) { HWND child = __loop40.l.data[__loop40.i];
 						if (sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) {
 							s_platform_win32___Ctl kc = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, child);
 							if ((((kc.placedL != 0) || (kc.placedT != 0)) || (kc.placedR != cw)) || (kc.placedB != ch)) {
@@ -3185,7 +3207,7 @@ static void s_platform_win32___place(HWND w, int64_t cw, int64_t ch) {
 static void s_platform_win32___addEntry(HMENU m, HWND e) {
 	s_platform_win32___Ctl k = sngl_map_HWND___Ctl_at(s_platform_win32___ctls, e);
 	int64_t subs = 0;
-	for (struct { sngl_list_HWND l; int64_t i; } __loop39 = {k.kids, 0}; __loop39.i < __loop39.l.len; __loop39.i++) { HWND child = __loop39.l.data[__loop39.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop41 = {k.kids, 0}; __loop41.i < __loop41.l.len; __loop41.i++) { HWND child = __loop41.l.data[__loop41.i];
 		if ((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) && (sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->kind == 16)) {
 			subs += 1;
 		}
@@ -3207,7 +3229,7 @@ static double s_platform_win32___flexOf(HWND w) {
 		return k.flex;
 	}
 	double most = 0.0;
-	for (struct { sngl_list_HWND l; int64_t i; } __loop40 = {k.kids, 0}; __loop40.i < __loop40.l.len; __loop40.i++) { HWND child = __loop40.l.data[__loop40.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop42 = {k.kids, 0}; __loop42.i < __loop42.l.len; __loop42.i++) { HWND child = __loop42.l.data[__loop42.i];
 		if (((sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offProp) && !sngl_map_HWND___Ctl_entry(s_platform_win32___ctls, child)->offLook) {
 			double f = s_platform_win32___flexOf(child);
 			most = ((f > most) ? f : most);
@@ -3221,7 +3243,7 @@ static void s_platform_win32___layOutTabs(HWND tabs, int64_t w, int64_t h) {
 	s_platform_win32_api__RECT r = (s_platform_win32_api__RECT){.left = 0, .top = 0, .right = w, .bottom = h};
 	s__sendRect__result __ref10 = sngl_ccall_SendMessageW__sendRect(tabs, (UINT)(4904), (WPARAM)(0), r);
 	r = __ref10.out3;
-	for (struct { sngl_list_HWND l; int64_t i; } __loop41 = {k.kids, 0}; __loop41.i < __loop41.l.len; __loop41.i++) { int64_t i = __loop41.i; HWND page = __loop41.l.data[__loop41.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop43 = {k.kids, 0}; __loop43.i < __loop43.l.len; __loop43.i++) { int64_t i = __loop43.i; HWND page = __loop43.l.data[__loop43.i];
 		if (i == k.selected) {
 			(void)(int64_t)SetWindowPos(page, NULL, (int)(r.left), (int)(r.top), (int)((r.right - r.left)), (int)((r.bottom - r.top)), (UINT)(80));
 			s_platform_win32___place(page, (r.right - r.left), (r.bottom - r.top));
@@ -3449,6 +3471,10 @@ static int64_t s_platform_win32___command(HWND w, int64_t msg, int64_t wp, int64
 		s_platform_win32___activated(src);
 		return 0;
 	}
+	if ((code == 512) && (k.kind == 4)) {
+		s_platform_win32___left(src);
+		return 0;
+	}
 	if ((code == 1) && (k.kind == 9)) {
 		s_platform_win32___changed(src);
 		return 0;
@@ -3584,7 +3610,7 @@ static void s_platform_win32___press(HWND w) {
 			}
 		}
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop42 = {chain, 0}; __loop42.i < __loop42.l.len; __loop42.i++) { HWND at = __loop42.l.data[__loop42.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop44 = {chain, 0}; __loop44.i < __loop44.l.len; __loop44.i++) { HWND at = __loop44.l.data[__loop44.i];
 		if ((int64_t)IsWindow(at) != 0) {
 			s_platform_win32___clicked(at);
 		}
@@ -3691,7 +3717,7 @@ static void s_platform_win32___scrolled(HWND w, int64_t bar, int64_t request) {
 	(void)(int64_t)SetScrollPos(w, (int)(bar), (int)(pos), (int)(1));
 	int64_t dx = ((bar == 0) ? by : 0);
 	int64_t dy = ((bar == 1) ? by : 0);
-	for (struct { sngl_list_HWND l; int64_t i; } __loop43 = {k.kids, 0}; __loop43.i < __loop43.l.len; __loop43.i++) { HWND child = __loop43.l.data[__loop43.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop45 = {k.kids, 0}; __loop45.i < __loop45.l.len; __loop45.i++) { HWND child = __loop45.l.data[__loop45.i];
 		if (sngl_map_HWND___Ctl_find(s_platform_win32___ctls, child) >= 0) {
 			(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), child)).placedL += dx;
 			(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), child)).placedR += dx;
@@ -3799,7 +3825,7 @@ static void s_platform_win32___refresh(HWND w, int64_t dpi) {
 		(*sngl_map_HWND___Ctl_slot_kept(&(s_platform_win32___ctls), w)).measured = false;
 		sngl_win32_refont(w, (int)(dpi));
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop44 = {k.kids, 0}; __loop44.i < __loop44.l.len; __loop44.i++) { HWND child = __loop44.l.data[__loop44.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop46 = {k.kids, 0}; __loop46.i < __loop46.l.len; __loop46.i++) { HWND child = __loop46.l.data[__loop46.i];
 		s_platform_win32___refresh(child, dpi);
 	}
 }
@@ -3822,7 +3848,7 @@ static bool s_platform_win32___close(HWND w) {
 		return false;
 	}
 	sngl_win32_set_visible(w, (int)(0));
-	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda45, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda46, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda47, NULL}), .activates = false, .closed = ((sngl_fn_void__void){sngl_lambda48, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda49, NULL}), .load = ((sngl_fn_void__void){sngl_lambda50, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda51, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda52, NULL})});
+	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda47, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda48, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda49, NULL}), .activates = false, .leave = ((sngl_fn_void__void){sngl_lambda50, NULL}), .closed = ((sngl_fn_void__void){sngl_lambda51, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda52, NULL}), .load = ((sngl_fn_void__void){sngl_lambda53, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda54, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda55, NULL})});
 	sngl_fn_bool__void visible = h.visible;
 	sngl_fn_void__void closed = h.closed;
 	(visible).fn((visible).env, false);
@@ -3859,6 +3885,13 @@ static void s_platform_win32___clicked(HWND w) {
 static void s_platform_win32___changed(HWND w) {
 	if (sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) {
 		sngl_fn_void__void f = sngl_map_HWND___On_entry(s_platform_win32___on, w)->change;
+		(f).fn((f).env);
+	}
+}
+
+static void s_platform_win32___left(HWND w) {
+	if (sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) {
+		sngl_fn_void__void f = sngl_map_HWND___On_entry(s_platform_win32___on, w)->leave;
 		(f).fn((f).env);
 	}
 }
@@ -3960,7 +3993,7 @@ static HWND s_platform_win32___findEntry(HWND w, int64_t id) {
 	if ((k.kind == 16) && (k.id == id)) {
 		return (HWND)(w);
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop53 = {k.kids, 0}; __loop53.i < __loop53.l.len; __loop53.i++) { HWND child = __loop53.l.data[__loop53.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop56 = {k.kids, 0}; __loop56.i < __loop56.l.len; __loop56.i++) { HWND child = __loop56.l.data[__loop56.i];
 		HWND found = s_platform_win32___findEntry(child, id);
 		if (found != NULL) {
 			return found;
@@ -3983,23 +4016,23 @@ static void s___renderSlot0(HWND parent) {
 		s___rendering0 = true;
 		s___renderAgain0 = true;
 		{
-			sngl_catch __finally63 = {.up = sngl_catching};
-			sngl_catching = &__finally63;
-			if (setjmp(__finally63.at) == 0) {
+			sngl_catch __finally66 = {.up = sngl_catching};
+			sngl_catching = &__finally66;
+			if (setjmp(__finally66.at) == 0) {
 				while (s___renderAgain0) {
 					s___renderAgain0 = false;
 					s___anchor0 = (HWND)(s_platform_win32___slotAnchor((HWND)(parent), (HWND)(s___anchor0)));
 					sngl_list_HWND __place0_prev = s___slot0;
 					int64_t __place0_i = 0;
 					{
-	sngl_list_HWND __kept54 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
-	sngl_list_HWND *__slot54 = &(s___slot0);
-	sngl_list_HWND__drop(*__slot54);
-	*__slot54 = __kept54;
+	sngl_list_HWND __kept57 = sngl_list_HWND__keep(((sngl_list_HWND){0}));
+	sngl_list_HWND *__slot57 = &(s___slot0);
+	sngl_list_HWND__drop(*__slot57);
+	*__slot57 = __kept57;
 }
 					sngl_map_string____child0__inst __inst1_next = ((sngl_map_string____child0__inst){0});
 					sngl_map_string__int __inst1_seen = ((sngl_map_string__int){0});
-					for (struct { sngl_list___anon_id_elem_c6a818 l; int64_t i; } __loop55 = {s___identified0(s_names), 0}; __loop55.i < __loop55.l.len; __loop55.i++) { s___anon_id_elem_c6a818 name = __loop55.l.data[__loop55.i];
+					for (struct { sngl_list___anon_id_elem_c6a818 l; int64_t i; } __loop58 = {s___identified0(s_names), 0}; __loop58.i < __loop58.l.len; __loop58.i++) { s___anon_id_elem_c6a818 name = __loop58.l.data[__loop58.i];
 						s___child0__inst * __n3 = NULL;
 						sngl_string __key2 = name.id;
 						int64_t __key2_n = sngl_map_string__int_get(__inst1_seen, __key2, 0);
@@ -4009,13 +4042,13 @@ static void s___renderSlot0(HWND parent) {
 						}
 						if (sngl_map_string____child0__inst_find(s___inst1_live, __key2) >= 0) {
 							__n3 = sngl_map_string____child0__inst_get(s___inst1_live, __key2, NULL);
-							s___child0__set___on0(__n3, ((sngl_fn_void__void){sngl_lambda56, sngl_alloc_copy(&(sngl_lambda56_env[]){{.hdr = {sngl_lambda56_env__keep, false}, .name = name}}, sizeof(sngl_lambda56_env))}));
+							s___child0__set___on0(__n3, ((sngl_fn_void__void){sngl_lambda59, sngl_alloc_copy(&(sngl_lambda59_env[]){{.hdr = {sngl_lambda59_env__keep, false}, .name = name}}, sizeof(sngl_lambda59_env))}));
 							s___child0__set___p0(__n3, name);
 						} else {
 							if (sngl_map_string____child0__inst_find(s___inst1_live, __key2) >= 0) {
 								s___child0__destroy(sngl_map_string____child0__inst_get(s___inst1_live, __key2, NULL));
 							}
-							s___child0__inst * __n3__made = s___child0__new(name, ((sngl_fn_void__void){sngl_lambda58, sngl_alloc_copy(&(sngl_lambda58_env[]){{.hdr = {sngl_lambda58_env__keep, false}, .name = name}}, sizeof(sngl_lambda58_env))}));
+							s___child0__inst * __n3__made = s___child0__new(name, ((sngl_fn_void__void){sngl_lambda61, sngl_alloc_copy(&(sngl_lambda61_env[]){{.hdr = {sngl_lambda61_env__keep, false}, .name = name}}, sizeof(sngl_lambda61_env))}));
 							__n3 = __n3__made;
 						}
 						(*sngl_map_string____child0__inst_slot(&(__inst1_next), __key2)) = __n3;
@@ -4035,44 +4068,44 @@ static void s___renderSlot0(HWND parent) {
 						}
 						sngl_list_HWND_push_kept(&(s___slot0), __n3__el);
 					}
-					for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop60 = {s___inst1_live, 0}; __loop60.i < __loop60.m.len; __loop60.i++) { sngl_string __inst1_live_k = __loop60.m.keys[__loop60.i]; s___child0__inst * __inst1_live_v = __loop60.m.vals[__loop60.i];
+					for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop63 = {s___inst1_live, 0}; __loop63.i < __loop63.m.len; __loop63.i++) { sngl_string __inst1_live_k = __loop63.m.keys[__loop63.i]; s___child0__inst * __inst1_live_v = __loop63.m.vals[__loop63.i];
 						if (!(sngl_map_string____child0__inst_find(__inst1_next, __inst1_live_k) >= 0)) {
 							s___child0__destroy(__inst1_live_v);
 						}
 					}
 					{
-	sngl_map_string____child0__inst __kept61 = sngl_map_string____child0__inst__keep(__inst1_next);
-	sngl_map_string____child0__inst *__slot61 = &(s___inst1_live);
-	sngl_map_string____child0__inst__drop(*__slot61);
-	*__slot61 = __kept61;
+	sngl_map_string____child0__inst __kept64 = sngl_map_string____child0__inst__keep(__inst1_next);
+	sngl_map_string____child0__inst *__slot64 = &(s___inst1_live);
+	sngl_map_string____child0__inst__drop(*__slot64);
+	*__slot64 = __kept64;
 }
-					for (struct { sngl_list_HWND l; int64_t i; } __loop62 = {__place0_prev, 0}; __loop62.i < __loop62.l.len; __loop62.i++) { HWND __place0_prev_e = __loop62.l.data[__loop62.i];
+					for (struct { sngl_list_HWND l; int64_t i; } __loop65 = {__place0_prev, 0}; __loop65.i < __loop65.l.len; __loop65.i++) { HWND __place0_prev_e = __loop65.l.data[__loop65.i];
 						if (sngl_list_HWND_index_of(s___slot0, __place0_prev_e) < 0) {
 							s_platform_win32___removeFrom((HWND)(parent), (HWND)(__place0_prev_e));
 						}
 					}
 				}
-				sngl_catching = __finally63.up;
+				sngl_catching = __finally66.up;
 				s___rendering0 = false;
 			} else {
-				__finally63.message = sngl_raised.message;
-				__finally63.kind = sngl_raised.kind;
+				__finally66.message = sngl_raised.message;
+				__finally66.kind = sngl_raised.kind;
 				s___rendering0 = false;
-				sngl_raise(__finally63.message, __finally63.kind);
+				sngl_raise(__finally66.message, __finally66.kind);
 			}
 		}
 	}
 }
 
 static void s___snglTeardown(void) {
-	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop64 = {s___inst1_live, 0}; __loop64.i < __loop64.m.len; __loop64.i++) { sngl_string __inst1_live_dk = __loop64.m.keys[__loop64.i]; s___child0__inst * __inst1_live_dv = __loop64.m.vals[__loop64.i];
+	for (struct { sngl_map_string____child0__inst m; int64_t i; } __loop67 = {s___inst1_live, 0}; __loop67.i < __loop67.m.len; __loop67.i++) { sngl_string __inst1_live_dk = __loop67.m.keys[__loop67.i]; s___child0__inst * __inst1_live_dv = __loop67.m.vals[__loop67.i];
 		s___child0__destroy(__inst1_live_dv);
 	}
 	{
-	sngl_map_string____child0__inst __kept65 = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
-	sngl_map_string____child0__inst *__slot65 = &(s___inst1_live);
-	sngl_map_string____child0__inst__drop(*__slot65);
-	*__slot65 = __kept65;
+	sngl_map_string____child0__inst __kept68 = sngl_map_string____child0__inst__keep(((sngl_map_string____child0__inst){0}));
+	sngl_map_string____child0__inst *__slot68 = &(s___inst1_live);
+	sngl_map_string____child0__inst__drop(*__slot68);
+	*__slot68 = __kept68;
 }
 }
 
@@ -4095,20 +4128,20 @@ static void s___child0__set___p0(s___child0__inst * __self, s___anon_id_elem_c6a
 		return;
 	}
 	{
-	s___anon_id_elem_c6a818 __kept66 = s___anon_id_elem_c6a818__keep(__v);
-	s___anon_id_elem_c6a818 *__slot66 = &(__self->__prop___p0);
-	s___anon_id_elem_c6a818__drop(*__slot66);
-	*__slot66 = __kept66;
+	s___anon_id_elem_c6a818 __kept69 = s___anon_id_elem_c6a818__keep(__v);
+	s___anon_id_elem_c6a818 *__slot69 = &(__self->__prop___p0);
+	s___anon_id_elem_c6a818__drop(*__slot69);
+	*__slot69 = __kept69;
 }
 	s_platform_win32___setText((HWND)(__self->__n0), __self->__prop___p0.elem);
 }
 
 static void s___child0__set___on0(s___child0__inst * __self, sngl_fn_void__void __v) {
 	{
-	sngl_fn_void__void __kept67 = sngl_fn_void__void__keep(__v);
-	sngl_fn_void__void *__slot67 = &(__self->__prop___on0->value);
-	sngl_fn_void__void__drop(*__slot67);
-	*__slot67 = __kept67;
+	sngl_fn_void__void __kept70 = sngl_fn_void__void__keep(__v);
+	sngl_fn_void__void *__slot70 = &(__self->__prop___on0->value);
+	sngl_fn_void__void__drop(*__slot70);
+	*__slot70 = __kept70;
 }
 }
 
@@ -4186,10 +4219,10 @@ static void sngl_lambda8(void *env_) {
 static void sngl_lambda9(void *env_) {
 }
 
-static void sngl_lambda10(void *env_, bool visible) {
+static void sngl_lambda10(void *env_) {
 }
 
-static void sngl_lambda12(void *env_) {
+static void sngl_lambda11(void *env_, bool visible) {
 }
 
 static void sngl_lambda13(void *env_) {
@@ -4210,13 +4243,13 @@ static void sngl_lambda17(void *env_) {
 static void sngl_lambda18(void *env_) {
 }
 
-static void sngl_lambda19(void *env_, bool visible) {
+static void sngl_lambda19(void *env_) {
 }
 
-static void sngl_lambda45(void *env_) {
+static void sngl_lambda20(void *env_) {
 }
 
-static void sngl_lambda46(void *env_) {
+static void sngl_lambda21(void *env_, bool visible) {
 }
 
 static void sngl_lambda47(void *env_) {
@@ -4234,29 +4267,38 @@ static void sngl_lambda50(void *env_) {
 static void sngl_lambda51(void *env_) {
 }
 
-static void sngl_lambda52(void *env_, bool visible) {
+static void sngl_lambda52(void *env_) {
 }
 
-static void sngl_lambda56(void *env_) {
-	sngl_lambda56_env *env = env_;
+static void sngl_lambda53(void *env_) {
+}
+
+static void sngl_lambda54(void *env_) {
+}
+
+static void sngl_lambda55(void *env_, bool visible) {
+}
+
+static void sngl_lambda59(void *env_) {
+	sngl_lambda59_env *env = env_;
 	s___anon_id_elem_c6a818 name = env->name;
 	{
-	sngl_string __kept57 = sngl_string_keep(name.elem);
-	sngl_string *__slot57 = &(s_picked);
-	sngl_drop((*__slot57).ptr);
-	*__slot57 = __kept57;
+	sngl_string __kept60 = sngl_string_keep(name.elem);
+	sngl_string *__slot60 = &(s_picked);
+	sngl_drop((*__slot60).ptr);
+	*__slot60 = __kept60;
 }
 	s_platform_win32___setText((HWND)(s___n2), s_picked);
 }
 
-static void sngl_lambda58(void *env_) {
-	sngl_lambda58_env *env = env_;
+static void sngl_lambda61(void *env_) {
+	sngl_lambda61_env *env = env_;
 	s___anon_id_elem_c6a818 name = env->name;
 	{
-	sngl_string __kept59 = sngl_string_keep(name.elem);
-	sngl_string *__slot59 = &(s_picked);
-	sngl_drop((*__slot59).ptr);
-	*__slot59 = __kept59;
+	sngl_string __kept62 = sngl_string_keep(name.elem);
+	sngl_string *__slot62 = &(s_picked);
+	sngl_drop((*__slot62).ptr);
+	*__slot62 = __kept62;
 }
 	s_platform_win32___setText((HWND)(s___n2), s_picked);
 }
@@ -4283,4 +4325,4 @@ const sngl_win32_asset sngl_win32_assets[] = {
 	{NULL, NULL, 0},
 };
 -- run/c/win32 --
-pass sha256:71e831c2bcd114038cf679f9ec6240e9
+pass sha256:e6c0d6403026a37fc88877c0942c25a1

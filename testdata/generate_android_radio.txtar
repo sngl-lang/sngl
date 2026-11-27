@@ -205,6 +205,7 @@ type _On struct {
 	Change    func()
 	Activate  func()
 	Activates bool
+	Leave     func()
 	Closed    func()
 	Reach     func()
 	Load      func()
@@ -1060,6 +1061,7 @@ func _handlers(w cgo.HWND) _On {
 		__lt18 = _On{Click: func() {
 		}, Change: func() {
 		}, Activate: func() {
+		}, Leave: func() {
 		}, Closed: func() {
 		}, Reach: func() {
 		}, Load: func() {
@@ -2195,6 +2197,10 @@ func _command(w cgo.HWND, msg int, wp int, lp int, kind int) int {
 		_activated(src)
 		return 0
 	}
+	if (code == 512) && (k.Kind == 4) {
+		_left(src)
+		return 0
+	}
 	if (code == 1) && (k.Kind == 9) {
 		_changed(src)
 		return 0
@@ -2729,6 +2735,13 @@ func _clicked(w cgo.HWND) {
 func _changed(w cgo.HWND) {
 	if func() bool { _, __ok := m._on[w]; return __ok }() {
 		f := m._on[w].Change
+		f()
+	}
+}
+
+func _left(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Leave
 		f()
 	}
 }
@@ -3595,6 +3608,6 @@ private class FlexedNode : Modifier.Node() {
     }
 }
 -- run/go/win32 --
-pass sha256:18af1255ab681f675e619ff9667bd240
+pass sha256:151d602765802f01bf65f6b008dee405
 -- run/kotlin/android --
 pass sha256:e84005c08cf99110ed8f47dd4c1c50c9

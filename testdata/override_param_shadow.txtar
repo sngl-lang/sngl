@@ -796,6 +796,12 @@ func (m *Model) field_submit_handler(v__p3 string) {
 	}
 }
 
+func (m *Model) field_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.value__inst0)
+	}
+}
+
 func (m *Model) sw_toggle_handler(on__p1 bool) {
 	if on__p1 != m.checked__inst1 {
 		m.checked__inst1 = on__p1
@@ -842,6 +848,13 @@ func (m *Model) fieldSubmit() {
 		m.field.OnSubmitted = nil
 		cb(m.field.Text)
 		m.field.OnSubmitted = cb
+	}
+}
+
+// fieldLeave invokes the OnFocusLost callback on the #field widget; for tests.
+func (m *Model) fieldLeave() {
+	if m.field.OnFocusLost != nil {
+		m.field.OnFocusLost()
 	}
 }
 
@@ -924,6 +937,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.field.OnChanged = m.field_input_handler
 	m.field.OnCommit = m.field_change_handler
 	m.field.OnSubmitted = m.field_submit_handler
+	m.field.OnFocusLost = m.field_leave_handler
 	m.__n0.Add(m.field)
 	m.sw = fynelayout.NewCheck("", nil)
 	m.sw.SetText("")
@@ -4216,6 +4230,10 @@ window.__sngl_boot = () => {
     Object.assign($1, p);
     $1.dispatchEvent(Object.assign(new Event("keydown"), p));
   };
+  state.fieldBlur = (p) => {
+    Object.assign($1, p);
+    $1.dispatchEvent(Object.assign(new Event("blur"), p));
+  };
   state.boxChange = (p) => {
     Object.assign(__n0, p);
     __n0.dispatchEvent(Object.assign(new Event("change"), p));
@@ -4270,6 +4288,9 @@ window.__sngl_boot = () => {
     }
     ;
   });
+  $1.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   __n1.addEventListener("change", function(e) {
     let __toggle_checked_wrote0 = e.currentTarget.checked;
     state.checked__inst1 = __toggle_checked_wrote0;
@@ -4289,10 +4310,10 @@ window.__sngl_boot = () => {
 -- run/go/bubbletea --
 pass sha256:a611283a22da746c92444200354d5e1d
 -- run/go/fyne --
-pass sha256:a72760227d224cda03a712e795c7b240
+pass sha256:2b21b939b88d9bc03df379b28f4d99d9
 -- run/go/gtk4 --
 pass sha256:e08de88a0e8111a6a8db7534eaa3841f
 -- run/kotlin/android --
 pass sha256:246e8f693fc4ca41b3a945e3ccc19377
 -- run/none/html --
-pass sha256:7c5082659d650d4630e102a968ec3885
+pass sha256:5bfa7a17d40899bbcbe18263add60390

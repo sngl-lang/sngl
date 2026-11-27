@@ -243,6 +243,9 @@ func element.fire(event string)
 #[js.native("_snglPressKey")]
 func element.pressKey(key string)
 
+#[js.native("focus", "", method)]
+func element.focus()
+
 // Sets the text an input, a textarea or a select holds, as typing or choosing
 // does, without an event: fire says what happened.
 #[js.native("_snglSetValue")]
@@ -310,7 +313,7 @@ component element(
     @input(e Event),
     @change(e Event),
     @focus(),
-    @blur(),
+    @blur(e Event),
     @submit(),
     @scroll(),
     @load(),
@@ -485,9 +488,11 @@ const component shapes.image[platform](width, height, shapes) {
     }
 }
 
-// Enter commits only an edit made since the last commit, then submits, as
-// android's keyboard action does. The browser's own change, which it may fire
-// on Enter as well as on blur, commits only what Enter has not. The element
+// Enter and the focus leaving commit only an edit made since the last commit,
+// and Enter then submits, as android's keyboard action does. The browser's
+// own change, which it may fire on Enter as well as on blur, commits only what
+// neither has; blur commits through the mark, since the browser's change
+// does not follow a script's write. The element
 // carries the edit: a var here makes a loop's copy a runtime instance, which
 // a test's trigger does not reach.
 const component ui.input[platform](placeholder, readonly, value, disabled, type, focusable, style, @input, @change, @submit) {
@@ -519,11 +524,16 @@ const component ui.input[platform](placeholder, readonly, value, disabled, type,
                 submit()
             }
         },
+        @blur(e) { commitEdit(e.currentTarget) },
     ) {}
 }
 
 func ui.input.submit[platform]() {
     field.pressKey("Enter")
+}
+
+func ui.input.focus[platform]() {
+    field.focus()
 }
 
 // Marks an input edited since its last commit, on the element.

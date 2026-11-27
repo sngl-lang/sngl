@@ -125,7 +125,7 @@ sha256:efe5dedb2b146e2e36e1adec8e3107b9
   ]
 }
 -- testrun/win32/c/clash.sngl/main/1 --
-sha256:0b08b9538c849fabd6f6529888377f39
+sha256:7cc4ac89292880be71987dd8f0deadcd
 {
   "results": [
     {
@@ -135,7 +135,7 @@ sha256:0b08b9538c849fabd6f6529888377f39
   ]
 }
 -- testrun/win32/go/clash.sngl/main/1 --
-sha256:d65b74e78095e9d25645071b25366f3f
+sha256:87044980106aab31a70034fbabdefd51
 {
   "results": [
     {

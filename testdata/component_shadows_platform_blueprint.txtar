@@ -580,6 +580,12 @@ func (m *Model) __n1_submit_handler(v string) {
 	}
 }
 
+func (m *Model) __n1_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.value__inst0)
+	}
+}
+
 func (m *Model) Name__inst0() string {
 	return m.name__inst0
 }
@@ -631,6 +637,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.OnChanged = m.__n1_input_handler
 	m.__n1.OnCommit = m.__n1_change_handler
 	m.__n1.OnSubmitted = m.__n1_submit_handler
+	m.__n1.OnFocusLost = m.__n1_leave_handler
 	m.__n0.Add(m.__n1)
 	fynelayout.AppAttach(m.__n0)
 	return m.__n0.Container
@@ -3633,6 +3640,9 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
   });
+  __n1.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   function __sngl_init() {
     __n1.value = state.value__inst0;
   }
@@ -3643,10 +3653,10 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:13ec5f5447c3bd70476022c6f038384b
 -- run/go/fyne --
-pass sha256:0f634a7a412e91ca9399c9cbc0f91008
+pass sha256:20a716570cee6f21d2d51c6d601f23fa
 -- run/go/gtk4 --
 pass sha256:9a8ccd521aa804a77a1da908f0eae134
 -- run/kotlin/android --
 pass sha256:57e1354ddd02cc2d6469e252ecfe6f72
 -- run/none/html --
-pass sha256:b1b023a0c28cc70d05476d380eccfbbb
+pass sha256:f95ff761fb4e1d1f9e40653370251cdc

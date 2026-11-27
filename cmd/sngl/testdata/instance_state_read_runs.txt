@@ -245,7 +245,7 @@ sha256:686c2ebf7de1a84b686af80aca59c0fe
   ]
 }
 -- testrun/fyne/go/cell.sngl/pair/1 --
-sha256:6ec6bddc458377bbbfb3b607dd90fe1c
+sha256:90e09e35a545d17400fdc1816852cb10
 {
   "results": [
     {
@@ -255,7 +255,7 @@ sha256:6ec6bddc458377bbbfb3b607dd90fe1c
   ]
 }
 -- testrun/fyne/go/inputs.sngl/field/1 --
-sha256:ae1ef8645adcaa8e613642e2cbdb56e5
+sha256:7cb9f262a79112a0b0f3ca88a473ed72
 {
   "results": [
     {
@@ -265,7 +265,7 @@ sha256:ae1ef8645adcaa8e613642e2cbdb56e5
   ]
 }
 -- testrun/fyne/go/inputs.sngl/pair/1 --
-sha256:e1798faa204396e1d75e65d80d2b70f1
+sha256:62139e790c7d7db6e094ea5c863cb947
 {
   "results": [
     {
@@ -365,7 +365,7 @@ sha256:278108d4a6f74713396ecc6a14ab1eda
   ]
 }
 -- testrun/html/none/cell.sngl/pair/1 --
-sha256:aacd0394326f4b5cf3ecde7bdc7449b9
+sha256:8d9b8d1b633e8bb941459cf70342bd4e
 {
   "results": [
     {
@@ -375,7 +375,7 @@ sha256:aacd0394326f4b5cf3ecde7bdc7449b9
   ]
 }
 -- testrun/html/none/inputs.sngl/field/1 --
-sha256:84d9a8d7fd53801065fa06d84b597357
+sha256:3100b65d5f83c98df3bd7be036276f56
 {
   "results": [
     {
@@ -385,7 +385,7 @@ sha256:84d9a8d7fd53801065fa06d84b597357
   ]
 }
 -- testrun/html/none/inputs.sngl/pair/1 --
-sha256:bb8d63a50a060a03fd818b7556c7bdb6
+sha256:a1d0d902f09a7b2e95ccf85b73013707
 {
   "results": [
     {
@@ -405,7 +405,7 @@ sha256:7ff239ae4b0641c12a1c76f7b46dd23f
   ]
 }
 -- testrun/win32/c/cell.sngl/pair/1 --
-sha256:d1467db01fee66b3716e42b9d71f020c
+sha256:52dcf4d1d359ca55cb04c54575204e7b
 {
   "results": [
     {
@@ -415,7 +415,7 @@ sha256:d1467db01fee66b3716e42b9d71f020c
   ]
 }
 -- testrun/win32/c/inputs.sngl/field/1 --
-sha256:5ec073d3f1f47ed5245db9f79d8c5440
+sha256:74ed3e54d262793e01be8d536b3271c8
 {
   "results": [
     {
@@ -425,7 +425,7 @@ sha256:5ec073d3f1f47ed5245db9f79d8c5440
   ]
 }
 -- testrun/win32/c/inputs.sngl/pair/1 --
-sha256:4a902dcd2f96c19a3a58ec79f486fcd2
+sha256:e147a5e9b4b0f71db6bfc9e044687692
 {
   "results": [
     {
@@ -435,7 +435,7 @@ sha256:4a902dcd2f96c19a3a58ec79f486fcd2
   ]
 }
 -- testrun/win32/c/state.sngl/pair/1 --
-sha256:487e95753e5028129a13472c25f15fb3
+sha256:9430edfa7a848cc0af63b49e4ea2cb4d
 {
   "results": [
     {
@@ -445,7 +445,7 @@ sha256:487e95753e5028129a13472c25f15fb3
   ]
 }
 -- testrun/win32/go/cell.sngl/pair/1 --
-sha256:bab8d07897883a0534c1f6f0311c77ba
+sha256:e58318815c4313be8619dcb2c2892b98
 {
   "results": [
     {
@@ -455,7 +455,7 @@ sha256:bab8d07897883a0534c1f6f0311c77ba
   ]
 }
 -- testrun/win32/go/inputs.sngl/field/1 --
-sha256:24db9c6ed10e59bc983c42b3b26782bf
+sha256:1a3bdd3889ccf2b03ee4f41978211ee0
 {
   "results": [
     {
@@ -465,7 +465,7 @@ sha256:24db9c6ed10e59bc983c42b3b26782bf
   ]
 }
 -- testrun/win32/go/inputs.sngl/pair/1 --
-sha256:3a5515f57a0fd82fb9be8bf01b2a94aa
+sha256:3c703df1d28effbf933501cbf7953882
 {
   "results": [
     {
@@ -475,7 +475,7 @@ sha256:3a5515f57a0fd82fb9be8bf01b2a94aa
   ]
 }
 -- testrun/win32/go/state.sngl/pair/1 --
-sha256:cc2cb519d914f248ef975dce0aa69b60
+sha256:d98a231ee70c27c2948460534ba994fd
 {
   "results": [
     {

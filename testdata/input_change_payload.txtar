@@ -255,6 +255,12 @@ func (m *Model) __n3_submit_handler(v string) {
 	}
 }
 
+func (m *Model) __n3_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.value__inst0)
+	}
+}
+
 func (m *Model) Last() string {
 	return m.last
 }
@@ -296,6 +302,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n3.OnChanged = m.__n3_input_handler
 	m.__n3.OnCommit = m.__n3_change_handler
 	m.__n3.OnSubmitted = m.__n3_submit_handler
+	m.__n3.OnFocusLost = m.__n3_leave_handler
 	m.__n6.Add(m.__n3)
 	m.__n4 = widget.NewLabel("")
 	m.__n4.SetText(m.last)
@@ -348,6 +355,11 @@ func newRowInstance(__model *Model, __a_label string) *RowInstance {
 	c.__n0.OnSubmitted = func(v string) {
 		if c.edited__inst1 {
 			c.commit__inst1(v)
+		}
+	}
+	c.__n0.OnFocusLost = func() {
+		if c.edited__inst1 {
+			c.commit__inst1(c.value__inst1)
 		}
 	}
 	__n7.Add(c.__n0)
@@ -3602,6 +3614,6 @@ import "duckfam.us/sngl/lib/platform/gtk4/cgo"
 func snglGtkCarryFile(name, data string, n int) { cgo.SnglGtkCarryFile(name, data, n) }
 func snglPost(fn func())                        { cgo.SnglPost(fn) }
 -- run/go/fyne --
-pass sha256:62bc34321ade1d3fac3254430842ed83
+pass sha256:1653c7b94cfcd6ba63096f235d635cd8
 -- run/go/gtk4 --
 pass sha256:2b97ff9102d3b3909b376808c176dc06

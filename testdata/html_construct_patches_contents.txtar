@@ -140,11 +140,14 @@ body { font-family: system-ui, sans-serif; }
     });
     let __on2 = props.__on2 ?? ((__e0) => {
     });
+    let __on3 = props.__on3 ?? ((__e0) => {
+    });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
     let __prop___on2 = __on2;
+    let __prop___on3 = __on3;
     function __set___p1(__v) {
       if (__prop___p1 === __v) {
         return;
@@ -162,6 +165,9 @@ body { font-family: system-ui, sans-serif; }
     function __set___on2(__v) {
       __prop___on2 = __v;
     }
+    function __set___on3(__v) {
+      __prop___on3 = __v;
+    }
     let __n1 = document.createElement(__prop___p0);
     let __n2 = document.createElement("input");
     __n2.value = __prop___p1;
@@ -178,6 +184,9 @@ body { font-family: system-ui, sans-serif; }
     __n2.addEventListener("keydown", (__on2_0) => {
       __prop___on2(__on2_0);
     });
+    __n2.addEventListener("blur", (__on3_0) => {
+      __prop___on3(__on3_0);
+    });
     __n1.appendChild(__n2);
     let __n3 = document.createElement("span");
     __n3.textContent = __prop___p1;
@@ -190,7 +199,8 @@ body { font-family: system-ui, sans-serif; }
       __set___p1,
       __set___on0,
       __set___on1,
-      __set___on2
+      __set___on2,
+      __set___on3
     };
   }
   function __cf___child1(props) {
@@ -255,11 +265,14 @@ body { font-family: system-ui, sans-serif; }
     });
     let __on2 = props.__on2 ?? ((__e0) => {
     });
+    let __on3 = props.__on3 ?? ((__e0) => {
+    });
     let __prop___p0 = __p0;
     let __prop___p1 = __p1;
     let __prop___on0 = __on0;
     let __prop___on1 = __on1;
     let __prop___on2 = __on2;
+    let __prop___on3 = __on3;
     function __set___p0(__v) {
       if (__prop___p0 === __v) {
         return;
@@ -289,6 +302,9 @@ body { font-family: system-ui, sans-serif; }
     function __set___on2(__v) {
       __prop___on2 = __v;
     }
+    function __set___on3(__v) {
+      __prop___on3 = __v;
+    }
     let __n14 = document.createElement("div");
     __n14.setAttribute("style", "display:flex;flex-direction:column");
     let __n6 = __cf_seeded({ start: __prop___p0 });
@@ -310,6 +326,9 @@ body { font-family: system-ui, sans-serif; }
     __n7.addEventListener("keydown", (__on2_0) => {
       __prop___on2(__on2_0);
     });
+    __n7.addEventListener("blur", (__on3_0) => {
+      __prop___on3(__on3_0);
+    });
     __n14.appendChild(__n7);
     __root.appendChild(__n14);
     return {
@@ -320,7 +339,8 @@ body { font-family: system-ui, sans-serif; }
       __set___p1,
       __set___on0,
       __set___on1,
-      __set___on2
+      __set___on2,
+      __set___on3
     };
   }
   var __slot0 = [];
@@ -394,6 +414,9 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               });
+              __n9.__set___on3((e) => {
+                _snglCommitEdit(e.currentTarget);
+              });
               __n9.__set___p1(state.name);
             } else {
               if (__inst1_live.length > __inst1_i) {
@@ -434,6 +457,8 @@ body { font-family: system-ui, sans-serif; }
                   _snglCommitEdit(e.currentTarget);
                 }
                 ;
+              }, __on3: (e) => {
+                _snglCommitEdit(e.currentTarget);
               } });
               __n9 = __n9__made;
             }
@@ -589,6 +614,9 @@ body { font-family: system-ui, sans-serif; }
                 }
                 ;
               });
+              __n11.__set___on3((e) => {
+                _snglCommitEdit(e.currentTarget);
+              });
               __n11.__set___p0(state.k);
               __n11.__set___p1(state.name);
             } else {
@@ -630,6 +658,8 @@ body { font-family: system-ui, sans-serif; }
                   _snglCommitEdit(e.currentTarget);
                 }
                 ;
+              }, __on3: (e) => {
+                _snglCommitEdit(e.currentTarget);
               } });
               __n11 = __n11__made;
             }
@@ -719,4 +749,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:c0dbfa15966217c01024eb158ecf54fe
+pass sha256:96e7fe2817f0c64dbb4631efcfefb704

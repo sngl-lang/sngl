@@ -77,6 +77,9 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
   });
+  __n1.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   function __sngl_init() {
     __n1.value = state.value__inst0;
     __n2.textContent = state.name__inst0;
@@ -86,4 +89,4 @@ body { font-family: system-ui, sans-serif; }
 </script>
 </body></html>
 -- run/none/html --
-pass sha256:85b2a25b822df68b174639f11cce39c2
+pass sha256:f7b5944c66ee3c41def95e4f479c343d

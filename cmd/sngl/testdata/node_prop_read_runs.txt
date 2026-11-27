@@ -149,7 +149,7 @@ sha256:adaf9d8a1c175150988d7450ebbb9607
   ]
 }
 -- testrun/fyne/go/bound.sngl/form/1 --
-sha256:77f2f893964105ec63b8ac0dfc119b34
+sha256:9cb594d65a49adbaf6b346304f236903
 {
   "results": [
     {
@@ -209,7 +209,7 @@ sha256:c9df413963cdc695e33f6b9f6c44565f
   ]
 }
 -- testrun/html/none/bound.sngl/form/1 --
-sha256:a2522562231825ce3df8975a835198a0
+sha256:b74caa20eec19cec954462f54e72510f
 {
   "results": [
     {
@@ -219,7 +219,7 @@ sha256:a2522562231825ce3df8975a835198a0
   ]
 }
 -- testrun/win32/c/app.sngl/reader/1 --
-sha256:fe0313a14d8dc3240588c44871afa3cb
+sha256:edc4e5bca74f5c41400316dcadadeb8a
 {
   "results": [
     {
@@ -229,7 +229,7 @@ sha256:fe0313a14d8dc3240588c44871afa3cb
   ]
 }
 -- testrun/win32/c/bound.sngl/form/1 --
-sha256:3aeecea62b5802a61e0c2f5ca42d1cb5
+sha256:67a72e6580b7d63f99989cc6e0a88b80
 {
   "results": [
     {
@@ -239,7 +239,7 @@ sha256:3aeecea62b5802a61e0c2f5ca42d1cb5
   ]
 }
 -- testrun/win32/go/app.sngl/reader/1 --
-sha256:35f9d44dbfe37129ce9d8f1a7e4b265f
+sha256:f87bf14fe183b8d1a931e2a6adb00df2
 {
   "results": [
     {
@@ -249,7 +249,7 @@ sha256:35f9d44dbfe37129ce9d8f1a7e4b265f
   ]
 }
 -- testrun/win32/go/bound.sngl/form/1 --
-sha256:f2f27e9cff68f45a32f67e2895c79795
+sha256:979ed7f33913cb343d1691e88483976e
 {
   "results": [
     {

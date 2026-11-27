@@ -290,6 +290,12 @@ func (m *Model) __n1_submit_handler(v string) {
 	}
 }
 
+func (m *Model) __n1_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.value__inst0)
+	}
+}
+
 func (m *Model) Busy() bool {
 	return m.busy
 }
@@ -346,6 +352,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.OnChanged = m.__n1_input_handler
 	m.__n1.OnCommit = m.__n1_change_handler
 	m.__n1.OnSubmitted = m.__n1_submit_handler
+	m.__n1.OnFocusLost = m.__n1_leave_handler
 	m.__n3.Add(m.__n1__box)
 	m.__n5 = widget.NewLabel("")
 	m.__n5__box = fynelayout.NewBox(m.__n5)
@@ -376,4 +383,4 @@ func main() {
 	_ = os.Stderr
 }
 -- run/go/fyne --
-pass sha256:4608f0a20eaffc6f8bcca01b39aa9f85
+pass sha256:a5726582fd08e4cac65657485afd6bee

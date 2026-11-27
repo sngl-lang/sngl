@@ -1739,7 +1739,9 @@ func marksEdits(w widgetInfo) bool {
 // the widget, commits nothing.
 func editedField(w widgetInfo) string { return "__" + w.fieldName + "_edited" }
 
-// blursToCommit reports whether w has an @change that focus leaving fires.
+// blursToCommit reports whether w has an @change that focus leaving fires
+// and Enter does not. An input's focus leaving commits too, through the same
+// mark as its Enter (emitIRFocusSync).
 func blursToCommit(w widgetInfo) bool {
 	_, _, change := widgetPayloadEvents(w)
 	return change && commitsOnBlur(w)
@@ -1941,7 +1943,7 @@ func emitIRFocusSync(b *strings.Builder, widgets []widgetInfo) {
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Focus()\n", w.fieldName)
 		b.WriteString("\t\t\t} else {\n")
 		fmt.Fprintf(b, "\t\t\t\tm.%s.Blur()\n", w.fieldName)
-		if blursToCommit(w) {
+		if blursToCommit(w) || marksEdits(w) && w.model.Type == "textinput.Model" {
 			val, _, _ := widgetPayloadEvents(w)
 			fmt.Fprintf(b, "\t\t\t\tif m.%s {\n\t\t\t\t\tm.%s(%s)\n\t\t\t\t}\n", editedField(w), widgetEventMethod(w, "change"), bindReadBack(w.fieldName, val.get))
 		}

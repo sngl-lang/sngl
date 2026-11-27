@@ -1,0 +1,149 @@
+# The focus leaving a ui.input commits an edit made since the last commit,
+# through the mark Enter clears: once per edit, so Enter and then the focus
+# leaving commits once, and a program's write or a test's change leaves
+# nothing to commit. A test's focus() focuses the field as a click or Tab
+# does, so the field it leaves loses its focus as a user's does. Only the
+# targets whose test can move the focus: fyne's and bubbletea's are their
+# packages' Go run tests (input_blur_commit_run_test.go), the interpreter has
+# no focus to move, and gtk4's input still commits only at Enter. fyne,
+# win32 and bubbletea committed only at Enter.
+
+sngl test --platform=html app.sngl
+stdout 'ok   4 tests, 0 failures'
+sngl test --platform=android --language=kotlin app.sngl
+stdout 'ok   4 tests, 0 failures'
+sngl test --platform=win32 --language=c app.sngl
+stdout 'ok   4 tests, 0 failures'
+
+-- app.sngl --
+import . "sngl:test"
+import ui "sngl:ui"
+
+component main ui.node {
+    var text = ""
+    var away = ""
+    var changes = 0
+    var order = ""
+
+    ui.vbox {
+        ui.input #field(
+            :value = text,
+            @change(v) {
+                changes += 1
+                order = order + "c"
+            },
+            @submit {
+                order = order + "s"
+            },
+        )
+        ui.input #other(:value=away)
+        ui.button #set(text="set", @click { text = "abc" })
+    }
+}
+
+func testEditThenBlurCommitsOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    t.assert(c.changes == 0)
+    c.other.focus()
+    t.assert(c.changes == 1)
+    t.assert(c.text == "xy")
+    c.field.focus()
+    c.other.focus()
+    t.assert(c.changes == 1)
+}
+
+func testEnterThenBlurCommitsOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    c.field.submit()
+    c.other.focus()
+    t.assert(c.order == "cs")
+}
+
+func testProgramWriteThenBlurCommitsNothing(t Test, c main) {
+    c.field.focus()
+    c.set.click()
+    c.field.focus()
+    c.other.focus()
+    t.assert(c.text == "abc")
+    t.assert(c.changes == 0)
+}
+
+func testChangeThenBlurCommitsOnce(t Test, c main) {
+    c.field.focus()
+    c.field.input("xy")
+    c.field.change("xy")
+    c.other.focus()
+    t.assert(c.changes == 1)
+}
+
+ui.window {
+    main
+}
+-- testrun/android/kotlin/app.sngl/main/1 --
+sha256:f926d991a262610762cf39fc3bc9a2ef
+{
+  "results": [
+    {
+      "Desc": "ChangeThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenBlurCommitsNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/html/none/app.sngl/main/1 --
+sha256:c14e4a1ee4c564f14234516426adf04a
+{
+  "results": [
+    {
+      "Desc": "ChangeThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "EditThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenBlurCommitsNothing",
+      "Passed": true
+    }
+  ]
+}
+-- testrun/win32/c/app.sngl/main/1 --
+sha256:d7e177ce5a5f9cba90a0b9c000dd8da8
+{
+  "results": [
+    {
+      "Desc": "EditThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "EnterThenBlurCommitsOnce",
+      "Passed": true
+    },
+    {
+      "Desc": "ProgramWriteThenBlurCommitsNothing",
+      "Passed": true
+    },
+    {
+      "Desc": "ChangeThenBlurCommitsOnce",
+      "Passed": true
+    }
+  ]
+}

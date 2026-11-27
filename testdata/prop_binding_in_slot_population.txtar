@@ -558,6 +558,12 @@ func (m *Model) __n1_submit_handler(v string) {
 	}
 }
 
+func (m *Model) __n1_leave_handler() {
+	if m.edited__inst0 {
+		m.commit__inst0(m.name)
+	}
+}
+
 func (m *Model) Name() string {
 	return m.name
 }
@@ -600,6 +606,7 @@ func (m *Model) BuildUI() fyne.CanvasObject {
 	m.__n1.OnChanged = m.__n1_input_handler
 	m.__n1.OnCommit = m.__n1_change_handler
 	m.__n1.OnSubmitted = m.__n1_submit_handler
+	m.__n1.OnFocusLost = m.__n1_leave_handler
 	m.__n3.Add(m.__n1)
 	m.__n0.Add(m.__n3)
 	m.__n2 = widget.NewLabel("")
@@ -3478,6 +3485,9 @@ body { font-family: system-ui, sans-serif; }
     }
     ;
   });
+  __n1.addEventListener("blur", function(e) {
+    _snglCommitEdit(e.currentTarget);
+  });
   function __sngl_init() {
     __n1.value = state.name;
     __n2.textContent = "hello " + state.name;
@@ -3489,8 +3499,8 @@ body { font-family: system-ui, sans-serif; }
 -- run/go/bubbletea --
 pass sha256:ad17e41aa8e86e1225138eab76a8813a
 -- run/go/fyne --
-pass sha256:36d06b9afc0e8bdc4b8d114afef27637
+pass sha256:b0b17e0608b941e3aad0c4cbedf05ced
 -- run/go/gtk4 --
 pass sha256:5f4ce0a3856d430eda10b390f22ec3a7
 -- run/none/html --
-pass sha256:691059ccc8a19fc2a6b2f31223cdb721
+pass sha256:9217aa90c8f228589bfaa37d8e5987ab

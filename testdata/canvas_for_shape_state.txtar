@@ -3840,6 +3840,7 @@ typedef struct sngl_lambda33_env sngl_lambda33_env;
 typedef struct sngl_lambda34_env sngl_lambda34_env;
 typedef struct sngl_lambda35_env sngl_lambda35_env;
 typedef struct sngl_lambda36_env sngl_lambda36_env;
+typedef struct sngl_lambda37_env sngl_lambda37_env;
 typedef struct s___lambda0_caps s___lambda0_caps;
 typedef struct sngl_fn_sngl_win32_gfx_p__void sngl_fn_sngl_win32_gfx_p__void;
 typedef struct s___lambda0_caps__env s___lambda0_caps__env;
@@ -3941,6 +3942,7 @@ typedef struct s_platform_win32___On {
 	sngl_fn_void__void change;
 	sngl_fn_void__void activate;
 	bool activates;
+	sngl_fn_void__void leave;
 	sngl_fn_void__void closed;
 	sngl_fn_void__void reach;
 	sngl_fn_void__void load;
@@ -4259,6 +4261,10 @@ typedef struct sngl_lambda36_env {
 	sngl_env hdr;
 } sngl_lambda36_env;
 
+typedef struct sngl_lambda37_env {
+	sngl_env hdr;
+} sngl_lambda37_env;
+
 typedef struct s___lambda0_caps {
 	sngl_list_float ws;
 	s___ref_map_string_pic * p__inst0;
@@ -4367,12 +4373,14 @@ static void sngl_lambda32(void *env_);
 static void sngl_lambda33(void *env_);
 static void sngl_lambda34(void *env_);
 static void sngl_lambda35(void *env_);
-static void sngl_lambda36(void *env_, bool visible);
+static void sngl_lambda36(void *env_);
+static void sngl_lambda37(void *env_, bool visible);
 static void s_platform_win32___gone(HWND w, bool counted);
 static void s_platform_win32___activated(HWND w);
 static void s_platform_win32___menuCommand(HWND top, int64_t id);
 static void s_platform_win32___clicked(HWND w);
 static void s_platform_win32___changed(HWND w);
+static void s_platform_win32___left(HWND w);
 static int64_t s_platform_win32___color(HWND src, HDC dc, int64_t otherwise);
 static int64_t s_platform_win32___shade(int64_t rgb, int64_t by);
 static int64_t s_platform_win32___signed32(int64_t n);
@@ -5279,6 +5287,7 @@ static void s_platform_win32___On__drop(s_platform_win32___On v) {
 	sngl_fn_void__void__drop(v.click);
 	sngl_fn_void__void__drop(v.change);
 	sngl_fn_void__void__drop(v.activate);
+	sngl_fn_void__void__drop(v.leave);
 	sngl_fn_void__void__drop(v.closed);
 	sngl_fn_void__void__drop(v.reach);
 	sngl_fn_void__void__drop(v.load);
@@ -6136,6 +6145,7 @@ static s_platform_win32___On s_platform_win32___On__keep(s_platform_win32___On v
 	v.click = sngl_fn_void__void__keep(v.click);
 	v.change = sngl_fn_void__void__keep(v.change);
 	v.activate = sngl_fn_void__void__keep(v.activate);
+	v.leave = sngl_fn_void__void__keep(v.leave);
 	v.closed = sngl_fn_void__void__keep(v.closed);
 	v.reach = sngl_fn_void__void__keep(v.reach);
 	v.load = sngl_fn_void__void__keep(v.load);
@@ -7601,6 +7611,10 @@ static int64_t s_platform_win32___command(HWND w, int64_t msg, int64_t wp, int64
 		s_platform_win32___activated(src);
 		return 0;
 	}
+	if ((code == 512) && (k.kind == 4)) {
+		s_platform_win32___left(src);
+		return 0;
+	}
 	if ((code == 1) && (k.kind == 9)) {
 		s_platform_win32___changed(src);
 		return 0;
@@ -7974,7 +7988,7 @@ static bool s_platform_win32___close(HWND w) {
 		return false;
 	}
 	sngl_win32_set_visible(w, (int)(0));
-	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda29, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda30, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda31, NULL}), .activates = false, .closed = ((sngl_fn_void__void){sngl_lambda32, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda33, NULL}), .load = ((sngl_fn_void__void){sngl_lambda34, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda35, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda36, NULL})});
+	s_platform_win32___On h = ((sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) ? sngl_map_HWND___On_at(s_platform_win32___on, w) : (s_platform_win32___On){.click = ((sngl_fn_void__void){sngl_lambda29, NULL}), .clicks = false, .change = ((sngl_fn_void__void){sngl_lambda30, NULL}), .activate = ((sngl_fn_void__void){sngl_lambda31, NULL}), .activates = false, .leave = ((sngl_fn_void__void){sngl_lambda32, NULL}), .closed = ((sngl_fn_void__void){sngl_lambda33, NULL}), .reach = ((sngl_fn_void__void){sngl_lambda34, NULL}), .load = ((sngl_fn_void__void){sngl_lambda35, NULL}), .failed = ((sngl_fn_void__void){sngl_lambda36, NULL}), .visible = ((sngl_fn_bool__void){sngl_lambda37, NULL})});
 	sngl_fn_bool__void visible = h.visible;
 	sngl_fn_void__void closed__r1 = h.closed;
 	(visible).fn((visible).env, false);
@@ -8011,6 +8025,13 @@ static void s_platform_win32___clicked(HWND w) {
 static void s_platform_win32___changed(HWND w) {
 	if (sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) {
 		sngl_fn_void__void f = sngl_map_HWND___On_entry(s_platform_win32___on, w)->change;
+		(f).fn((f).env);
+	}
+}
+
+static void s_platform_win32___left(HWND w) {
+	if (sngl_map_HWND___On_find(s_platform_win32___on, w) >= 0) {
+		sngl_fn_void__void f = sngl_map_HWND___On_entry(s_platform_win32___on, w)->leave;
 		(f).fn((f).env);
 	}
 }
@@ -8112,7 +8133,7 @@ static HWND s_platform_win32___findEntry(HWND w, int64_t id) {
 	if ((k.kind == 16) && (k.id == id)) {
 		return (HWND)(w);
 	}
-	for (struct { sngl_list_HWND l; int64_t i; } __loop37 = {k.kids, 0}; __loop37.i < __loop37.l.len; __loop37.i++) { HWND child = __loop37.l.data[__loop37.i];
+	for (struct { sngl_list_HWND l; int64_t i; } __loop38 = {k.kids, 0}; __loop38.i < __loop38.l.len; __loop38.i++) { HWND child = __loop38.l.data[__loop38.i];
 		HWND found = s_platform_win32___findEntry(child, id);
 		if (found != NULL) {
 			return found;
@@ -8130,24 +8151,24 @@ static void s_platform_win32___layOutNow(HWND w) {
 
 static void s___effect0_enter(void) {
 	{
-	sngl_list_string __kept38 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot38 = &(s___effect0_desired);
-	sngl_list_string__drop(*__slot38);
-	*__slot38 = __kept38;
-}
-	{
 	sngl_list_string __kept39 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot39 = &(s___effect0_paths);
+	sngl_list_string *__slot39 = &(s___effect0_desired);
 	sngl_list_string__drop(*__slot39);
 	*__slot39 = __kept39;
 }
 	{
-	sngl_map_string__int __kept40 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot40 = &(s___effect0_pathAt);
-	sngl_map_string__int__drop(*__slot40);
+	sngl_list_string __kept40 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot40 = &(s___effect0_paths);
+	sngl_list_string__drop(*__slot40);
 	*__slot40 = __kept40;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop41 = {s___identified0(s_ws), 0}; __loop41.i < __loop41.l.len; __loop41.i++) { int64_t __copy0 = __loop41.i; s___anon_id_elem_4ccb28 k = __loop41.l.data[__loop41.i];
+	{
+	sngl_map_string__int __kept41 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot41 = &(s___effect0_pathAt);
+	sngl_map_string__int__drop(*__slot41);
+	*__slot41 = __kept41;
+}
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop42 = {s___identified0(s_ws), 0}; __loop42.i < __loop42.l.len; __loop42.i++) { int64_t __copy0 = __loop42.i; s___anon_id_elem_4ccb28 k = __loop42.l.data[__loop42.i];
 		bool __effect0_fresh = true;
 		int64_t __effect0_at = sngl_map_string__int_get(s___effect0_liveAt, k.id, -1);
 		if (__effect0_at >= 0) {
@@ -8163,54 +8184,54 @@ static void s___effect0_enter(void) {
 		sngl_list_string_push_kept(&(s___effect0_desired), sngl_string_keep(k.id));
 	}
 	{
-	sngl_list_string __kept42 = sngl_list_string__keep(s___effect0_desired);
-	sngl_list_string *__slot42 = &(s___effect0_live);
-	sngl_list_string__drop(*__slot42);
-	*__slot42 = __kept42;
-}
-	{
-	sngl_list_string __kept43 = sngl_list_string__keep(s___effect0_paths);
-	sngl_list_string *__slot43 = &(s___effect0_livePaths);
+	sngl_list_string __kept43 = sngl_list_string__keep(s___effect0_desired);
+	sngl_list_string *__slot43 = &(s___effect0_live);
 	sngl_list_string__drop(*__slot43);
 	*__slot43 = __kept43;
 }
 	{
-	sngl_map_string__int __kept44 = sngl_map_string__int__keep(s___effect0_pathAt);
-	sngl_map_string__int *__slot44 = &(s___effect0_liveAt);
-	sngl_map_string__int__drop(*__slot44);
+	sngl_list_string __kept44 = sngl_list_string__keep(s___effect0_paths);
+	sngl_list_string *__slot44 = &(s___effect0_livePaths);
+	sngl_list_string__drop(*__slot44);
 	*__slot44 = __kept44;
+}
+	{
+	sngl_map_string__int __kept45 = sngl_map_string__int__keep(s___effect0_pathAt);
+	sngl_map_string__int *__slot45 = &(s___effect0_liveAt);
+	sngl_map_string__int__drop(*__slot45);
+	*__slot45 = __kept45;
 }
 }
 
 static void s___effect1_mount(void) {
 	{
-	s___anon_copy_v0_2d5b73 __kept45 = s___anon_copy_v0_2d5b73__keep(s___effect1_key);
-	s___anon_copy_v0_2d5b73 *__slot45 = &((*sngl_map_string____anon_copy_v0_2d5b73_slot_kept(&(s___copied__inst0), s___effect1_key.copy)));
-	s___anon_copy_v0_2d5b73__drop(*__slot45);
-	*__slot45 = __kept45;
+	s___anon_copy_v0_2d5b73 __kept46 = s___anon_copy_v0_2d5b73__keep(s___effect1_key);
+	s___anon_copy_v0_2d5b73 *__slot46 = &((*sngl_map_string____anon_copy_v0_2d5b73_slot_kept(&(s___copied__inst0), s___effect1_key.copy)));
+	s___anon_copy_v0_2d5b73__drop(*__slot46);
+	*__slot46 = __kept46;
 }
 }
 
 static void s___effect1_down(void) {
 	{
-	sngl_list___anon_copy_v0_2d5b73 __kept46 = sngl_list___anon_copy_v0_2d5b73__keep(((sngl_list___anon_copy_v0_2d5b73){0}));
-	sngl_list___anon_copy_v0_2d5b73 *__slot46 = &(s___effect1_desired);
-	sngl_list___anon_copy_v0_2d5b73__drop(*__slot46);
-	*__slot46 = __kept46;
-}
-	{
-	sngl_list_string __kept47 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot47 = &(s___effect1_paths);
-	sngl_list_string__drop(*__slot47);
+	sngl_list___anon_copy_v0_2d5b73 __kept47 = sngl_list___anon_copy_v0_2d5b73__keep(((sngl_list___anon_copy_v0_2d5b73){0}));
+	sngl_list___anon_copy_v0_2d5b73 *__slot47 = &(s___effect1_desired);
+	sngl_list___anon_copy_v0_2d5b73__drop(*__slot47);
 	*__slot47 = __kept47;
 }
 	{
-	sngl_map_string__int __kept48 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot48 = &(s___effect1_pathAt);
-	sngl_map_string__int__drop(*__slot48);
+	sngl_list_string __kept48 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot48 = &(s___effect1_paths);
+	sngl_list_string__drop(*__slot48);
 	*__slot48 = __kept48;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop49 = {s___identified0(s_ws), 0}; __loop49.i < __loop49.l.len; __loop49.i++) { int64_t __copy0 = __loop49.i; s___anon_id_elem_4ccb28 k = __loop49.l.data[__loop49.i];
+	{
+	sngl_map_string__int __kept49 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot49 = &(s___effect1_pathAt);
+	sngl_map_string__int__drop(*__slot49);
+	*__slot49 = __kept49;
+}
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop50 = {s___identified0(s_ws), 0}; __loop50.i < __loop50.l.len; __loop50.i++) { int64_t __copy0 = __loop50.i; s___anon_id_elem_4ccb28 k = __loop50.l.data[__loop50.i];
 		sngl_list___anon_copy_v0_2d5b73_push_kept(&(s___effect1_desired), s___anon_copy_v0_2d5b73__keep((s___anon_copy_v0_2d5b73){.copy = k.id, .v0 = k.id}));
 		(*sngl_map_string__int_slot_kept(&(s___effect1_pathAt), k.id)) = (s___effect1_paths).len;
 		sngl_list_string_push_kept(&(s___effect1_paths), sngl_string_keep(k.id));
@@ -8218,45 +8239,45 @@ static void s___effect1_down(void) {
 }
 
 static void s___effect1_up(void) {
-	for (struct { sngl_list___anon_copy_v0_2d5b73 l; int64_t i; } __loop50 = {s___effect1_desired, 0}; __loop50.i < __loop50.l.len; __loop50.i++) { int64_t __effect1_i = __loop50.i; s___anon_copy_v0_2d5b73 __effect1_k = __loop50.l.data[__loop50.i];
+	for (struct { sngl_list___anon_copy_v0_2d5b73 l; int64_t i; } __loop51 = {s___effect1_desired, 0}; __loop51.i < __loop51.l.len; __loop51.i++) { int64_t __effect1_i = __loop51.i; s___anon_copy_v0_2d5b73 __effect1_k = __loop51.l.data[__loop51.i];
 		int64_t __effect1_at = sngl_map_string__int_get(s___effect1_liveAt, (*sngl_list_string_at(s___effect1_paths, __effect1_i)), -1);
 		if (__effect1_at < 0) {
 			{
-	s___anon_copy_v0_2d5b73 __kept51 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
-	s___anon_copy_v0_2d5b73 *__slot51 = &(s___effect1_key);
-	s___anon_copy_v0_2d5b73__drop(*__slot51);
-	*__slot51 = __kept51;
+	s___anon_copy_v0_2d5b73 __kept52 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
+	s___anon_copy_v0_2d5b73 *__slot52 = &(s___effect1_key);
+	s___anon_copy_v0_2d5b73__drop(*__slot52);
+	*__slot52 = __kept52;
 }
 			s___effect1_mount();
 		} else {
 			if (!sngl_string_eq((*sngl_list___anon_copy_v0_2d5b73_at(s___effect1_live, __effect1_at)).copy, __effect1_k.copy) || !sngl_string_eq((*sngl_list___anon_copy_v0_2d5b73_at(s___effect1_live, __effect1_at)).v0, __effect1_k.v0)) {
 				{
-	s___anon_copy_v0_2d5b73 __kept52 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
-	s___anon_copy_v0_2d5b73 *__slot52 = &(s___effect1_key);
-	s___anon_copy_v0_2d5b73__drop(*__slot52);
-	*__slot52 = __kept52;
+	s___anon_copy_v0_2d5b73 __kept53 = s___anon_copy_v0_2d5b73__keep(__effect1_k);
+	s___anon_copy_v0_2d5b73 *__slot53 = &(s___effect1_key);
+	s___anon_copy_v0_2d5b73__drop(*__slot53);
+	*__slot53 = __kept53;
 }
 				s___effect1_mount();
 			}
 		}
 	}
 	{
-	sngl_list___anon_copy_v0_2d5b73 __kept53 = sngl_list___anon_copy_v0_2d5b73__keep(s___effect1_desired);
-	sngl_list___anon_copy_v0_2d5b73 *__slot53 = &(s___effect1_live);
-	sngl_list___anon_copy_v0_2d5b73__drop(*__slot53);
-	*__slot53 = __kept53;
-}
-	{
-	sngl_list_string __kept54 = sngl_list_string__keep(s___effect1_paths);
-	sngl_list_string *__slot54 = &(s___effect1_livePaths);
-	sngl_list_string__drop(*__slot54);
+	sngl_list___anon_copy_v0_2d5b73 __kept54 = sngl_list___anon_copy_v0_2d5b73__keep(s___effect1_desired);
+	sngl_list___anon_copy_v0_2d5b73 *__slot54 = &(s___effect1_live);
+	sngl_list___anon_copy_v0_2d5b73__drop(*__slot54);
 	*__slot54 = __kept54;
 }
 	{
-	sngl_map_string__int __kept55 = sngl_map_string__int__keep(s___effect1_pathAt);
-	sngl_map_string__int *__slot55 = &(s___effect1_liveAt);
-	sngl_map_string__int__drop(*__slot55);
+	sngl_list_string __kept55 = sngl_list_string__keep(s___effect1_paths);
+	sngl_list_string *__slot55 = &(s___effect1_livePaths);
+	sngl_list_string__drop(*__slot55);
 	*__slot55 = __kept55;
+}
+	{
+	sngl_map_string__int __kept56 = sngl_map_string__int__keep(s___effect1_pathAt);
+	sngl_map_string__int *__slot56 = &(s___effect1_liveAt);
+	sngl_map_string__int__drop(*__slot56);
+	*__slot56 = __kept56;
 }
 }
 
@@ -8268,46 +8289,46 @@ static void s___effect2_unmount(void) {
 
 static void s___effect2_down(void) {
 	{
-	sngl_list_string __kept56 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot56 = &(s___effect2_desired);
-	sngl_list_string__drop(*__slot56);
-	*__slot56 = __kept56;
-}
-	{
 	sngl_list_string __kept57 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot57 = &(s___effect2_paths);
+	sngl_list_string *__slot57 = &(s___effect2_desired);
 	sngl_list_string__drop(*__slot57);
 	*__slot57 = __kept57;
 }
 	{
-	sngl_map_string__int __kept58 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot58 = &(s___effect2_pathAt);
-	sngl_map_string__int__drop(*__slot58);
+	sngl_list_string __kept58 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot58 = &(s___effect2_paths);
+	sngl_list_string__drop(*__slot58);
 	*__slot58 = __kept58;
 }
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop59 = {s___identified0(s_ws), 0}; __loop59.i < __loop59.l.len; __loop59.i++) { int64_t __copy0 = __loop59.i; s___anon_id_elem_4ccb28 k = __loop59.l.data[__loop59.i];
+	{
+	sngl_map_string__int __kept59 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot59 = &(s___effect2_pathAt);
+	sngl_map_string__int__drop(*__slot59);
+	*__slot59 = __kept59;
+}
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop60 = {s___identified0(s_ws), 0}; __loop60.i < __loop60.l.len; __loop60.i++) { int64_t __copy0 = __loop60.i; s___anon_id_elem_4ccb28 k = __loop60.l.data[__loop60.i];
 		sngl_list_string_push_kept(&(s___effect2_desired), sngl_string_keep(k.id));
 		(*sngl_map_string__int_slot_kept(&(s___effect2_pathAt), k.id)) = (s___effect2_paths).len;
 		sngl_list_string_push_kept(&(s___effect2_paths), sngl_string_keep(k.id));
 	}
-	for (struct { sngl_list_string l; int64_t i; } __loop60 = {s___effect2_live, 0}; __loop60.i < __loop60.l.len; __loop60.i++) { int64_t __effect2_i = __loop60.i; sngl_string _ = __loop60.l.data[__loop60.i];
+	for (struct { sngl_list_string l; int64_t i; } __loop61 = {s___effect2_live, 0}; __loop61.i < __loop61.l.len; __loop61.i++) { int64_t __effect2_i = __loop61.i; sngl_string _ = __loop61.l.data[__loop61.i];
 		int64_t __effect2_j = (((s___effect2_live).len - 1) - __effect2_i);
 		int64_t __effect2_at = sngl_map_string__int_get(s___effect2_pathAt, (*sngl_list_string_at(s___effect2_livePaths, __effect2_j)), -1);
 		if (__effect2_at < 0) {
 			{
-	sngl_string __kept61 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
-	sngl_string *__slot61 = &(s___effect2_key);
-	sngl_drop((*__slot61).ptr);
-	*__slot61 = __kept61;
+	sngl_string __kept62 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
+	sngl_string *__slot62 = &(s___effect2_key);
+	sngl_drop((*__slot62).ptr);
+	*__slot62 = __kept62;
 }
 			s___effect2_unmount();
 		} else {
 			if (!sngl_string_eq((*sngl_list_string_at(s___effect2_desired, __effect2_at)), (*sngl_list_string_at(s___effect2_live, __effect2_j)))) {
 				{
-	sngl_string __kept62 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
-	sngl_string *__slot62 = &(s___effect2_key);
-	sngl_drop((*__slot62).ptr);
-	*__slot62 = __kept62;
+	sngl_string __kept63 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, __effect2_j)));
+	sngl_string *__slot63 = &(s___effect2_key);
+	sngl_drop((*__slot63).ptr);
+	*__slot63 = __kept63;
 }
 				s___effect2_unmount();
 			}
@@ -8317,59 +8338,59 @@ static void s___effect2_down(void) {
 
 static void s___effect2_up(void) {
 	{
-	sngl_list_string __kept63 = sngl_list_string__keep(s___effect2_desired);
-	sngl_list_string *__slot63 = &(s___effect2_live);
-	sngl_list_string__drop(*__slot63);
-	*__slot63 = __kept63;
-}
-	{
-	sngl_list_string __kept64 = sngl_list_string__keep(s___effect2_paths);
-	sngl_list_string *__slot64 = &(s___effect2_livePaths);
+	sngl_list_string __kept64 = sngl_list_string__keep(s___effect2_desired);
+	sngl_list_string *__slot64 = &(s___effect2_live);
 	sngl_list_string__drop(*__slot64);
 	*__slot64 = __kept64;
 }
 	{
-	sngl_map_string__int __kept65 = sngl_map_string__int__keep(s___effect2_pathAt);
-	sngl_map_string__int *__slot65 = &(s___effect2_liveAt);
-	sngl_map_string__int__drop(*__slot65);
+	sngl_list_string __kept65 = sngl_list_string__keep(s___effect2_paths);
+	sngl_list_string *__slot65 = &(s___effect2_livePaths);
+	sngl_list_string__drop(*__slot65);
 	*__slot65 = __kept65;
+}
+	{
+	sngl_map_string__int __kept66 = sngl_map_string__int__keep(s___effect2_pathAt);
+	sngl_map_string__int *__slot66 = &(s___effect2_liveAt);
+	sngl_map_string__int__drop(*__slot66);
+	*__slot66 = __kept66;
 }
 }
 
 static void s___effect2_teardown(void) {
-	for (struct { sngl_list_string l; int64_t i; } __loop66 = {s___effect2_live, 0}; __loop66.i < __loop66.l.len; __loop66.i++) { int64_t __effect2_ti = __loop66.i; sngl_string _ = __loop66.l.data[__loop66.i];
+	for (struct { sngl_list_string l; int64_t i; } __loop67 = {s___effect2_live, 0}; __loop67.i < __loop67.l.len; __loop67.i++) { int64_t __effect2_ti = __loop67.i; sngl_string _ = __loop67.l.data[__loop67.i];
 		{
-	sngl_string __kept67 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, (((s___effect2_live).len - 1) - __effect2_ti))));
-	sngl_string *__slot67 = &(s___effect2_key);
-	sngl_drop((*__slot67).ptr);
-	*__slot67 = __kept67;
+	sngl_string __kept68 = sngl_string_keep((*sngl_list_string_at(s___effect2_live, (((s___effect2_live).len - 1) - __effect2_ti))));
+	sngl_string *__slot68 = &(s___effect2_key);
+	sngl_drop((*__slot68).ptr);
+	*__slot68 = __kept68;
 }
 		s___effect2_unmount();
 	}
 	{
-	sngl_list_string __kept68 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot68 = &(s___effect2_live);
-	sngl_list_string__drop(*__slot68);
-	*__slot68 = __kept68;
-}
-	{
 	sngl_list_string __kept69 = sngl_list_string__keep(((sngl_list_string){0}));
-	sngl_list_string *__slot69 = &(s___effect2_livePaths);
+	sngl_list_string *__slot69 = &(s___effect2_live);
 	sngl_list_string__drop(*__slot69);
 	*__slot69 = __kept69;
 }
 	{
-	sngl_map_string__int __kept70 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
-	sngl_map_string__int *__slot70 = &(s___effect2_liveAt);
-	sngl_map_string__int__drop(*__slot70);
+	sngl_list_string __kept70 = sngl_list_string__keep(((sngl_list_string){0}));
+	sngl_list_string *__slot70 = &(s___effect2_livePaths);
+	sngl_list_string__drop(*__slot70);
 	*__slot70 = __kept70;
+}
+	{
+	sngl_map_string__int __kept71 = sngl_map_string__int__keep(((sngl_map_string__int){0}));
+	sngl_map_string__int *__slot71 = &(s___effect2_liveAt);
+	sngl_map_string__int__drop(*__slot71);
+	*__slot71 = __kept71;
 }
 }
 
 static void s___effect3_update(void) {
 	sngl_string __copyKey = s___effect3_key.copy;
 	s___anon_id_elem_4ccb28 k__at0 = (s___anon_id_elem_4ccb28){.id = SNGL_STR(""), .elem = 0.0};
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop71 = {s___identified0(s_ws), 0}; __loop71.i < __loop71.l.len; __loop71.i++) { int64_t __copyAt0 = __loop71.i; s___anon_id_elem_4ccb28 __copyElemAt0 = __loop71.l.data[__loop71.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop72 = {s___identified0(s_ws), 0}; __loop72.i < __loop72.l.len; __loop72.i++) { int64_t __copyAt0 = __loop72.i; s___anon_id_elem_4ccb28 __copyElemAt0 = __loop72.l.data[__loop72.i];
 		if (sngl_string_eq(__copyElemAt0.id, __copyKey)) {
 			k__at0 = __copyElemAt0;
 		}
@@ -8394,12 +8415,12 @@ static void s___effects0_settle(void) {
 				s___effects0_pending = false;
 				s___effects0_steps = (s___effects0_steps + 1);
 				sngl_map_string____anon_copy_on_5fc366 __effect3_next = ((sngl_map_string____anon_copy_on_5fc366){0});
-				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop72 = {s___identified0(s_ws), 0}; __loop72.i < __loop72.l.len; __loop72.i++) { int64_t __copy0 = __loop72.i; s___anon_id_elem_4ccb28 k = __loop72.l.data[__loop72.i];
+				for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop73 = {s___identified0(s_ws), 0}; __loop73.i < __loop73.l.len; __loop73.i++) { int64_t __copy0 = __loop73.i; s___anon_id_elem_4ccb28 k = __loop73.l.data[__loop73.i];
 					{
-	s___anon_copy_on_5fc366 __kept73 = s___anon_copy_on_5fc366__keep((s___anon_copy_on_5fc366){.copy = k.id, .on = k.elem});
-	s___anon_copy_on_5fc366 *__slot73 = &(s___effect3_key);
-	s___anon_copy_on_5fc366__drop(*__slot73);
-	*__slot73 = __kept73;
+	s___anon_copy_on_5fc366 __kept74 = s___anon_copy_on_5fc366__keep((s___anon_copy_on_5fc366){.copy = k.id, .on = k.elem});
+	s___anon_copy_on_5fc366 *__slot74 = &(s___effect3_key);
+	s___anon_copy_on_5fc366__drop(*__slot74);
+	*__slot74 = __kept74;
 }
 					sngl_string __effect3_copy = k.id;
 					if (sngl_map_string____anon_copy_on_5fc366_find(s___effect3_keys, __effect3_copy) >= 0) {
@@ -8411,10 +8432,10 @@ static void s___effects0_settle(void) {
 					(*sngl_map_string____anon_copy_on_5fc366_slot(&(__effect3_next), __effect3_copy)) = s___effect3_key;
 				}
 				{
-	sngl_map_string____anon_copy_on_5fc366 __kept74 = sngl_map_string____anon_copy_on_5fc366__keep(__effect3_next);
-	sngl_map_string____anon_copy_on_5fc366 *__slot74 = &(s___effect3_keys);
-	sngl_map_string____anon_copy_on_5fc366__drop(*__slot74);
-	*__slot74 = __kept74;
+	sngl_map_string____anon_copy_on_5fc366 __kept75 = sngl_map_string____anon_copy_on_5fc366__keep(__effect3_next);
+	sngl_map_string____anon_copy_on_5fc366 *__slot75 = &(s___effect3_keys);
+	sngl_map_string____anon_copy_on_5fc366__drop(*__slot75);
+	*__slot75 = __kept75;
 }
 				s___effect3_dirty = false;
 				s___effect3_rekey = false;
@@ -8442,7 +8463,7 @@ static void s___snglTeardown(void) {
 }
 
 static void s___lambda0(s___lambda0_caps state, sngl_win32_gfx * ctx) {
-	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop75 = {s___identified0(state.ws), 0}; __loop75.i < __loop75.l.len; __loop75.i++) { int64_t __copy0 = __loop75.i; s___anon_id_elem_4ccb28 k = __loop75.l.data[__loop75.i];
+	for (struct { sngl_list___anon_id_elem_4ccb28 l; int64_t i; } __loop76 = {s___identified0(state.ws), 0}; __loop76.i < __loop76.l.len; __loop76.i++) { int64_t __copy0 = __loop76.i; s___anon_id_elem_4ccb28 k = __loop76.l.data[__loop76.i];
 		s_platform_win32__Gfx_save(ctx);
 		s_platform_win32__Gfx_rectangle(ctx, 0.0, 0.0, (double)(sngl_map_string__pic_get(state.p__inst0->value, k.id, (s_pic){.n = 0}).n), k.elem);
 		s_platform_win32__paint(ctx, (s_ui_draw__Style){.fill = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .stroke = (s_builtin__color){.r = 0, .g = 0, .b = 0, .a = 0}, .strokeWidth = 1.0, .lineCap = 0, .lineJoin = 0, .fontSize = 16.0, .fontFamily = SNGL_STR("sans-serif")});
@@ -8543,7 +8564,10 @@ static void sngl_lambda34(void *env_) {
 static void sngl_lambda35(void *env_) {
 }
 
-static void sngl_lambda36(void *env_, bool visible) {
+static void sngl_lambda36(void *env_) {
+}
+
+static void sngl_lambda37(void *env_, bool visible) {
 }
 -- out/c/win32/sngl.build --
 # What this program links, which `sngl build` reads.
@@ -11636,6 +11660,7 @@ type _On struct {
 	Change    func()
 	Activate  func()
 	Activates bool
+	Leave     func()
 	Closed    func()
 	Reach     func()
 	Load      func()
@@ -12358,6 +12383,7 @@ func _handlers(w cgo.HWND) _On {
 		__lt21 = _On{Click: func() {
 		}, Change: func() {
 		}, Activate: func() {
+		}, Leave: func() {
 		}, Closed: func() {
 		}, Reach: func() {
 		}, Load: func() {
@@ -13558,6 +13584,10 @@ func _command(w cgo.HWND, msg int, wp int, lp int, kind int) int {
 		_activated(src)
 		return 0
 	}
+	if (code == 512) && (k.Kind == 4) {
+		_left(src)
+		return 0
+	}
 	if (code == 1) && (k.Kind == 9) {
 		_changed(src)
 		return 0
@@ -14092,6 +14122,13 @@ func _clicked(w cgo.HWND) {
 func _changed(w cgo.HWND) {
 	if func() bool { _, __ok := m._on[w]; return __ok }() {
 		f := m._on[w].Change
+		f()
+	}
+}
+
+func _left(w cgo.HWND) {
+	if func() bool { _, __ok := m._on[w]; return __ok }() {
+		f := m._on[w].Leave
 		f()
 	}
 }
@@ -14870,7 +14907,7 @@ window.__sngl_boot = () => {
 -- run/c/gtk4 --
 pass sha256:ca7346f3097e5cf0e478c8ea4449d0a8
 -- run/c/win32 --
-pass sha256:ed04a035c3ef70c00a74fbe80ac72503
+pass sha256:2ee1570b26cd0f7b8b8dfd73c0a01fc3
 -- run/go/bubbletea --
 pass sha256:182ddc986130d60ba7c588cdbc828251
 -- run/go/fyne --
@@ -14878,6 +14915,6 @@ pass sha256:fa2ec1ecac46486d478829185ee48e3d
 -- run/go/gtk4 --
 pass sha256:858c375d5c77f59304352d3454946d43
 -- run/go/win32 --
-pass sha256:ef7c1b03097ea2df8771b4bbf20bea46
+pass sha256:ec4e1729b1bccb88f47966e0ce6eba33
 -- run/none/html --
 pass sha256:f421c9a95ab06abbbce1bd120fb70d21
