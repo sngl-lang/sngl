@@ -84,6 +84,14 @@ func (c *Context) decline(format string, args ...any) string {
 	return "/* unsupported */ 0"
 }
 
+// declineIntrinsic is an intrinsic C writes no implementation of where its
+// declaration has no body to emit instead: what another target answers and
+// this generator does not yet, such as the clock and a datetime's arithmetic
+// (C holds a datetime as its RFC 3339 text). The build declines the program.
+func (c *Context) declineIntrinsic(id string) string {
+	return c.decline("the intrinsic %s, which C does not implement yet", id)
+}
+
 // TypeName is t as C declares a value of it.
 func (c *Context) TypeName(t *ir.Type) string { return c.typeName(t) }
 
@@ -749,7 +757,7 @@ func (c *Context) Call(n *ir.Call) string {
 		return c.fail("calling %s on a component", n.Func.Name)
 	}
 	if n.Func.Intrinsic != "" && len(n.Func.Block) == 0 {
-		return c.fail("the intrinsic %s", n.Func.Intrinsic)
+		return c.declineIntrinsic(n.Func.Intrinsic)
 	}
 	return funcName(n.Func) + "(" + strings.Join(args, ", ") + ")"
 }
@@ -818,6 +826,9 @@ func (c *Context) Conversion(n *ir.Conversion) string {
 			if ud := unitDef(from); ud != nil {
 				return c.unitText(ud, operand)
 			}
+		}
+		if ir.IsColorStruct(from) {
+			return c.colorHex(from, operand)
 		}
 		return c.fail("the text of a %s", from)
 	}
