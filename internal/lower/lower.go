@@ -590,6 +590,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 	seen := map[*ir.Component]bool{}
 	var out []*ir.Component
 	var walk func(stmts []ir.Stmt)
+	var walkComp func(c *ir.Component)
 	visit := func(c *ir.Component) {
 		if c == nil || local[c] || seen[c] {
 			return
@@ -609,9 +610,25 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 		seen[c] = true
 		out = append(out, c)
+		walkComp(c)
+	}
+	// A component's body, and the body this build's target will swap in for
+	// it: the swap is later (passPlatformExtensionBody), so a program's
+	// bodyless `dial` overridden for android looked empty, the `ui.button` its
+	// override renders never joined the list, and passContext left that
+	// button's flexShare read for InlinePure to splice into the view -- a
+	// panic in Kotlin's emitter (testdata/trigger_writes_through_this.txtar,
+	// android/go).
+	walkComp = func(c *ir.Component) {
 		walk(c.Stmts)
 		for _, f := range c.Funcs {
 			walk(f.Block)
+		}
+		if ov, ok := c.PlatformOverrides[platform]; ok && platform != "" {
+			walk(ov.Stmts)
+			for _, f := range ov.Funcs {
+				walk(f.Block)
+			}
 		}
 	}
 	walk = func(stmts []ir.Stmt) {
@@ -645,10 +662,7 @@ func reachableForeignComponents(pkg *ir.Package, local map[*ir.Component]bool, p
 		}
 	}
 	for _, c := range pkg.Components {
-		walk(c.Stmts)
-		for _, f := range c.Funcs {
-			walk(f.Block)
-		}
+		walkComp(c)
 	}
 	walk(pkg.Body)
 	return out

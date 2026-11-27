@@ -587,10 +587,10 @@ fun flexed(m__r1: androidx.compose.ui.Modifier, flex: Double?, share: (Float) ->
 
 fun styleModifier(s: Style, paints: Boolean): androidx.compose.ui.Modifier {
     var m__r6: androidx.compose.ui.Modifier = Modifier
-    var top = side(s.margin, s.marginY, s.marginTop)
-    var right = side(s.margin, s.marginX, s.marginRight)
-    var bottom = side(s.margin, s.marginY, s.marginBottom)
-    var left = side(s.margin, s.marginX, s.marginLeft)
+    var top: Measurement? = side(s.margin, s.marginY, s.marginTop)
+    var right: Measurement? = side(s.margin, s.marginX, s.marginRight)
+    var bottom: Measurement? = side(s.margin, s.marginY, s.marginBottom)
+    var left: Measurement? = side(s.margin, s.marginX, s.marginLeft)
     if (((((top != null) || (right != null)) || (bottom != null)) || (left != null))) {
     	m__r6 = m__r6.padding(inset(left, 0.0), inset(top, 0.0), inset(right, 0.0), inset(bottom, 0.0))
     }
