@@ -98,7 +98,11 @@ bare. A local of the spliced body is renamed the same way, since a call site's
 `:value=got` beside `async.query`'s `match var got = r` wrote `got = got`
 once spliced into a component built at run time
 (`cmd/sngl/testdata/spliced_local_shadows_runs.txt`), and a call site's prop
-values count among the names it reads. `testdata/inst_suffix_one_sequence.txtar` is the fixture.
+values count among the names it reads. A method the splice hoists onto its owner has its own
+parameters freshened too (`freshenMethodParams`): android's input override's
+`func commit(v string) { value = v }` bound to `:value=v` became `v = v`
+(`cmd/sngl/testdata/node_prop_read_runs.txt`). A trigger's parameters are not,
+since they are the event's. `testdata/inst_suffix_one_sequence.txtar` is the fixture.
 
 A *double* suffix is not the symptom and is correct wherever it appears: html's
 `timer` override is substituted by one pass and its owner's clone hoisted by the

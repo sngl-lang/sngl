@@ -1559,8 +1559,10 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 		(*hoist.vars)[i].Init = substituteParamsExpr((*hoist.vars)[i].Init, bindings)
 		(*hoist.vars)[i].Init = substituteVarsExpr((*hoist.vars)[i].Init, provided)
 	}
+	taken := callsiteNames(n)
 	for i := funcStart; i < len(*hoist.funcs); i++ {
 		fn := (*hoist.funcs)[i]
+		freshenMethodParams(fn, taken, st.names)
 		// A prop is substituted by name, and a method's parameter of the
 		// prop's name is the method's: select's trigger takes the `value`
 		// it is to choose, and read as the prop it chose the bound one.
@@ -1580,7 +1582,7 @@ func (st *inlineCompState) expandCall(n *ir.NodeInst) ([]ir.Stmt, error) {
 	body = substituteVars(body, provided)
 	// The caller's handlers land inside the body's own, so a parameter of the
 	// body's sharing a name they read is renamed first (freshenShadowingParams).
-	body = freshenShadowingParams(body, callsiteNames(n), st.names)
+	body = freshenShadowingParams(body, taken, st.names)
 	pressRecords()
 	// Events before slots: an emit in spliced slot content names the caller's
 	// event, and would otherwise be matched against the callee's handlers.

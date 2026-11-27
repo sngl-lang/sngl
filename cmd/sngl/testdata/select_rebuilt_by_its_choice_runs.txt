@@ -147,7 +147,7 @@ func testChoosingRebuildsThePanel(t test.Test, c main) {
     t.assert(c.p.rows().length() == 0 && c.p.none != null)
 }
 -- testrun/android/kotlin/app.sngl/main/1 --
-sha256:464a5b7a6c5ed6c1f4cc3cb8128f45eb
+sha256:9ec44a38c85985c7f910ce145f8d336b
 {
   "results": [
     {
@@ -157,7 +157,7 @@ sha256:464a5b7a6c5ed6c1f4cc3cb8128f45eb
   ]
 }
 -- testrun/bubbletea/go/app.sngl/main/1 --
-sha256:d931953a2b1024f39006e51c8cae8d09
+sha256:3c0db54f85163021965bbfebb0791b05
 {
   "results": [
     {
@@ -167,7 +167,7 @@ sha256:d931953a2b1024f39006e51c8cae8d09
   ]
 }
 -- testrun/fyne/go/app.sngl/main/1 --
-sha256:5fc6664ea2bedb9caa7b6a31e3415be2
+sha256:f8df24bc6e5710d492fb39eddb05bc80
 {
   "results": [
     {
@@ -177,7 +177,7 @@ sha256:5fc6664ea2bedb9caa7b6a31e3415be2
   ]
 }
 -- testrun/html/none/app.sngl/main/1 --
-sha256:39e7c726861213a9e3059499d7545192
+sha256:b16db6fa9ec9bf8d5ac644524e87f2cc
 {
   "results": [
     {

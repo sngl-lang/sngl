@@ -932,6 +932,22 @@ overflowed (`testdata/gtk4_entry_two_way_no_echo.txtar`).
 `selectDay` blocks "day-selected" the same way; a test's fire
 puts the value in place first and emits the signal itself (`_rtFireDay`).
 
+**A field's `@change` is its commit, never an edit.** android's input and
+textarea are `SnglTextField` (`textfield.kt`): `onValueChange` reports `@input`
+and marks the field edited, and the focus leaving it -- or, on an input, the
+keyboard's Done or a hardware Enter, the input being one line -- commits an
+edited field and clears the mark. Done and Enter then fire `@submit` whether or
+not anything was committed, and hide the keyboard as Compose's default would.
+A program's write marks nothing, and Done followed by the focus leaving commits
+once. The focus's commit waits for the main looper and asks whether the field
+is still attached: a field removed while focused loses its focus before it
+detaches, and commits nothing, as html's removed input fires no change.
+android fired `@change` from every keystroke
+(`program_write_fires_no_event_runs.txt`), and `android_field_commit_runs.txt`
+moves the focus, presses Done and a hardware Enter and removes a field; a
+test's `submit` is the keyboard's action. The `change` trigger writes the value
+and emits, as fyne's invoker does.
+
 A test's trigger reaches the platform's input path: html writes the
 arguments, by their declared names, onto the element and the dispatched event;
 gtk4 sets the widget's state (which fires the signal) or its text; fyne calls
